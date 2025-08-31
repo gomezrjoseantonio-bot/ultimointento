@@ -1,12 +1,11 @@
 import React from 'react';
+import PageLayout from '../../../components/common/PageLayout';
 
 const Panel: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Panel</h1>
+    <PageLayout title="Panel" subtitle="Vista general del módulo Horizon con resumen de inversiones.">
       <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Vista general del módulo Horizon con resumen de inversiones.</p>
-    </div>
+    </PageLayout>
   );
 };
 
