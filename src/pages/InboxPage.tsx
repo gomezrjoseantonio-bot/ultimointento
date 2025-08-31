@@ -5,8 +5,8 @@ import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
 
 const InboxPage: React.FC = () => {
-  const [documents, setDocuments] = useState([]);
-  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,18 +26,17 @@ const InboxPage: React.FC = () => {
     loadDocuments();
   }, []);
 
-  const handleDocumentUpload = async (newDocuments) => {
+  const handleDocumentUpload = async (newDocuments: any[]) => {
     // Add documents to state
     setDocuments(prev => [...prev, ...newDocuments]);
   };
 
-  const handleAssignDocument = async (docId, entityType, entityId) => {
+  const handleAssignDocument = async (docId: number, entityId: number) => {
     const db = await initDB();
     const tx = db.transaction('documents', 'readwrite');
     const doc = await tx.store.get(docId);
     
     if (doc) {
-      doc.metadata.entityType = entityType;
       doc.metadata.entityId = entityId;
       await tx.store.put(doc);
       
