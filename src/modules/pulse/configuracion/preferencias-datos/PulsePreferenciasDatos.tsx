@@ -1,12 +1,11 @@
 import React from 'react';
+import PageLayout from '../../../../components/common/PageLayout';
 
 const PulsePreferenciasDatos: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Preferencias & Datos</h1>
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Configuración de preferencias y datos.</p>
-    </div>
+    <PageLayout title="Preferencias & Datos" subtitle="Configuración de preferencias y datos.">
+      <p className="text-neutral-600">En construcción. Próximo hito: funcionalidades.</p>
+    </PageLayout>
   );
 };
 

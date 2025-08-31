@@ -1,12 +1,11 @@
 import React from 'react';
+import PageLayout from '../../../../components/common/PageLayout';
 
 const TPMovimientos: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Movimientos</h1>
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Historial de transacciones personales.</p>
-    </div>
+    <PageLayout title="Movimientos" subtitle="Historial de transacciones personales.">
+      <p className="text-neutral-600">En construcción. Próximo hito: funcionalidades.</p>
+    </PageLayout>
   );
 };
 

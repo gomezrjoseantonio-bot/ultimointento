@@ -1,12 +1,11 @@
 import React from 'react';
+import PageLayout from '../../../../components/common/PageLayout';
 
 const GastosLista: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Lista</h1>
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Listado completo de todos los gastos.</p>
-    </div>
+    <PageLayout title="Lista" subtitle="Listado completo de todos los gastos.">
+      <p className="text-neutral-600">En construcción. Próximo hito: funcionalidades.</p>
+    </PageLayout>
   );
 };
 
