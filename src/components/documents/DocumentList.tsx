@@ -14,11 +14,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
   loading 
 }) => {
   if (loading) {
-    return <div className="p-4 text-gray-500">Loading documents...</div>;
+    return <div className="p-4 text-gray-500">Cargando documentos...</div>;
   }
 
   if (documents.length === 0) {
-    return <div className="p-4 text-gray-500">No documents found</div>;
+    return <div className="p-4 text-gray-500">No se encontraron documentos</div>;
   }
 
   return (
@@ -33,8 +33,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
           }`}
           onClick={() => onSelectDocument(doc)}
         >
-          <p className="font-medium">{doc.name || `Document ${index + 1}`}</p>
-          <p className="text-sm text-gray-500">{doc.type || 'Unknown type'}</p>
+          <p className="font-medium">{doc.filename || doc.name || `Documento ${index + 1}`}</p>
+          <p className="text-sm text-gray-500">
+            {new Date(doc.uploadDate || Date.now()).toLocaleDateString('es-ES')}
+          </p>
+          <p className="text-xs text-gray-400">{doc.metadata?.status || 'Nuevo'}</p>
         </div>
       ))}
     </div>

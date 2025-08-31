@@ -19,12 +19,12 @@ function App() {
             {/* Placeholder routes for now - will be implemented in next steps */}
             <Route path="inmuebles/*" element={<div className="p-6">Inmuebles - Coming Soon</div>} />
             <Route path="tesoreria/*" element={<div className="p-6">Tesorería - Coming Soon</div>} />
-            <Route path="fiscalidad" element={<div className="p-6">Fiscalidad - Coming Soon</div>} />
+            <Route path="fiscalidad/*" element={<div className="p-6">Fiscalidad - Coming Soon</div>} />
             <Route path="proyeccion/*" element={<div className="p-6">Proyección - Coming Soon</div>} />
-            <Route path="ingresos" element={<div className="p-6">Ingresos - Coming Soon</div>} />
-            <Route path="gastos" element={<div className="p-6">Gastos - Coming Soon</div>} />
+            <Route path="ingresos/*" element={<div className="p-6">Ingresos - Coming Soon</div>} />
+            <Route path="gastos/*" element={<div className="p-6">Gastos - Coming Soon</div>} />
             <Route path="tesoreria-personal/*" element={<div className="p-6">Tesorería Personal - Coming Soon</div>} />
-            <Route path="proyeccion-personal" element={<div className="p-6">Proyección Personal - Coming Soon</div>} />
+            <Route path="proyeccion-personal/*" element={<div className="p-6">Proyección Personal - Coming Soon</div>} />
             <Route path="configuracion/*" element={<div className="p-6">Configuración - Coming Soon</div>} />
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Route>
