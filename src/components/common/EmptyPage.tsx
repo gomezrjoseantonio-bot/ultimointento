@@ -38,10 +38,15 @@ const EmptyPage: React.FC<EmptyPageProps> = ({ title, subtitle, description }) =
               </svg>
             </div>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">En desarrollo</h3>
-          <p className="text-gray-500 max-w-md mx-auto">
-            {description || 'Esta sección está en construcción y estará disponible próximamente.'}
+          <h3 className="text-lg font-medium text-gray-900 mb-2">En construcción</h3>
+          <p className="text-gray-500 max-w-md mx-auto mb-2">
+            Próximo hito: funcionalidades.
           </p>
+          {description && (
+            <p className="text-gray-400 text-sm max-w-md mx-auto">
+              {description}
+            </p>
+          )}
         </div>
       </div>
     </div>

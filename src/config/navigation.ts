@@ -36,7 +36,6 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
       { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
       { name: 'Préstamos', href: '/inmuebles/prestamos', icon: Banknote, module: 'horizon' },
-      { name: 'Gastos & Docs', href: '/inmuebles/gastos-docs', icon: CreditCard, module: 'horizon' },
       { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
     ]
   },
@@ -69,7 +68,7 @@ export const navigationConfig: NavigationItem[] = [
     icon: TrendingUp,
     module: 'horizon',
     subTabs: [
-      { name: 'Inmuebles', href: '/proyeccion/inmuebles', icon: Building, module: 'horizon' },
+      { name: 'Cartera', href: '/proyeccion/cartera', icon: Building, module: 'horizon' },
       { name: 'Consolidado', href: '/proyeccion/consolidado', icon: TrendingUp, module: 'horizon' },
     ]
   },
@@ -140,8 +139,7 @@ export const navigationConfig: NavigationItem[] = [
     icon: Settings,
     module: 'pulse',
     subTabs: [
-      { name: 'Preferencias', href: '/configuracion/preferencias', icon: Settings, module: 'pulse' },
-      { name: 'Datos', href: '/configuracion/datos', icon: Settings, module: 'pulse' },
+      { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'pulse' },
     ]
   },
 ];
