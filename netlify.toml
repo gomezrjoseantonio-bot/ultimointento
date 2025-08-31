@@ -1,6 +1,5 @@
-# Settings for Netlify deployment
 [build]
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = "build"
   
 # Handle SPA routing by redirecting all routes to index.html
