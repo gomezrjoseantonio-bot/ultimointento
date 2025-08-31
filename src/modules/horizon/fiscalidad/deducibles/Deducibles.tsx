@@ -1,12 +1,11 @@
 import React from 'react';
+import PageLayout from '../../../../components/common/PageLayout';
 
 const Deducibles: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Deducibles</h1>
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Gastos deducibles de inversión inmobiliaria.</p>
-    </div>
+    <PageLayout title="Deducibles" subtitle="Gastos deducibles de inversión inmobiliaria.">
+      <p className="text-neutral-600">En construcción. Próximo hito: funcionalidades.</p>
+    </PageLayout>
   );
 };
 

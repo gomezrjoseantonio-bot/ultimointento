@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { initDB } from '../services/db';
+import { initDB, deleteDocumentAndBlob } from '../services/db';
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
@@ -8,6 +8,7 @@ const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [filter, setFilter] = useState('all');
+  const [folderFilter, setFolderFilter] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -92,10 +93,8 @@ const InboxPage: React.FC = () => {
 
   const handleDeleteDocument = async (docId: number) => {
     try {
-      const db = await initDB();
-      const tx = db.transaction('documents', 'readwrite');
-      await tx.store.delete(docId);
-      await tx.done;
+      // Use the new utility function that properly deletes the blob
+      await deleteDocumentAndBlob(docId);
     } catch (error) {
       console.warn('Failed to delete from IndexedDB:', error);
     }
@@ -114,6 +113,12 @@ const InboxPage: React.FC = () => {
   };
 
   const filteredDocuments = documents.filter(doc => {
+    // Apply folder filter
+    if (folderFilter !== 'todos') {
+      const docFolder = doc.metadata?.carpeta?.toLowerCase() || 'otros';
+      if (docFolder !== folderFilter) return false;
+    }
+    
     // Apply type filter
     if (filter !== 'all' && doc.type !== filter) return false;
     
@@ -129,24 +134,46 @@ const InboxPage: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-800">Bandeja de Documentos</h1>
       </div>
       
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white rounded-atlas border border-neutral-200 overflow-hidden">
         <div className="p-4 border-b">
           <DocumentUploader onUploadComplete={handleDocumentUpload} />
         </div>
         
-        <div className="flex flex-col md:flex-row">
-          <div className="w-full md:w-1/3 border-r">
-            <div className="p-4 border-b">
-              <div className="flex space-x-2 mb-2">
+        <div className="flex flex-col lg:flex-row">
+          {/* Fixed width sidebar - 320px */}
+          <div className="w-full lg:w-80 lg:flex-shrink-0 border-r border-neutral-200">
+            {/* Folder section */}
+            <div className="p-4 border-b border-neutral-200">
+              <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
+              <div className="space-y-1">
+                {['Todos', 'Facturas', 'Contratos', 'CAPEX', 'Otros'].map((folder) => (
+                  <button
+                    key={folder}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                      folderFilter === folder.toLowerCase()
+                        ? 'bg-neutral-100 text-neutral-900'
+                        : 'text-neutral-600 hover:bg-neutral-50'
+                    }`}
+                    onClick={() => setFolderFilter(folder.toLowerCase())}
+                  >
+                    {folder}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Search and filters */}
+            <div className="p-4 border-b border-neutral-200">
+              <div className="space-y-3">
                 <input
                   type="text"
                   placeholder="Buscar documentos..."
-                  className="flex-1 border-gray-300 rounded-md shadow-sm"
+                  className="w-full max-w-full border-neutral-200 rounded-atlas focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 <select
-                  className="border-gray-300 rounded-md shadow-sm"
+                  className="w-full border-neutral-200 rounded-atlas focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
@@ -167,9 +194,10 @@ const InboxPage: React.FC = () => {
             />
           </div>
           
-          <div className="w-full md:w-2/3">
+          {/* Main content area - flexible width */}
+          <div className="flex-1 min-w-0">
             {selectedDocument ? (
-              <div className="p-4">
+              <div className="p-6">
                 <DocumentViewer 
                   document={selectedDocument}
                   onAssign={handleAssignDocument}
@@ -177,8 +205,15 @@ const InboxPage: React.FC = () => {
                 />
               </div>
             ) : (
-              <div className="h-96 flex items-center justify-center text-gray-500">
-                Selecciona un documento para ver
+              <div className="h-96 flex flex-col items-center justify-center text-neutral-500 bg-white border border-neutral-200 m-6 rounded-atlas">
+                <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-4 text-neutral-400">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-neutral-600">Selecciona un documento para ver</p>
+                </div>
               </div>
             )}
           </div>
