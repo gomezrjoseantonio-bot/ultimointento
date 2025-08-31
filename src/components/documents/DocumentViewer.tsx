@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
-import { Eye, Trash2, UserCheck } from 'lucide-react';
+import { Eye, Trash2, UserCheck, X, Download } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface DocumentViewerProps {
   document: any;
   onAssign: (documentId: number, entityId: number) => void;
+  onDelete?: (documentId: number) => void;
 }
 
-const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign }) => {
+const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [assignData, setAssignData] = useState({
     destino: 'personal',
     inmueble: '',
@@ -21,12 +25,109 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign }) =
     setShowAssignModal(false);
   };
 
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(document.id);
+      setShowDeleteConfirm(false);
+      toast.success('Documento eliminado.');
+    }
+  };
+
+  const handlePreview = () => {
+    setShowPreviewModal(true);
+  };
+
+  const handleDownload = () => {
+    if (document?.content) {
+      const blob = new Blob([document.content], { type: document.type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = document.filename || 'documento';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const renderPreviewContent = () => {
+    if (!document?.content) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-500">No se puede cargar el contenido del documento</p>
+          <button 
+            onClick={handleDownload}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Descargar
+          </button>
+        </div>
+      );
+    }
+
+    if (document.type === 'application/pdf') {
+      const blob = new Blob([document.content], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      return (
+        <div className="w-full h-96">
+          <object
+            data={url}
+            type="application/pdf"
+            className="w-full h-full"
+          >
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">No se puede previsualizar este PDF en tu navegador</p>
+              <button 
+                onClick={handleDownload}
+                className="px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+              >
+                <Download className="w-4 h-4 inline mr-2" />
+                Descargar
+              </button>
+            </div>
+          </object>
+        </div>
+      );
+    }
+
+    if (document.type.startsWith('image/')) {
+      const blob = new Blob([document.content], { type: document.type });
+      const url = URL.createObjectURL(blob);
+      
+      return (
+        <div className="text-center">
+          <img 
+            src={url} 
+            alt={document.filename} 
+            className="max-w-full max-h-96 mx-auto object-contain"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500 mb-4">No se puede previsualizar este tipo de archivo</p>
+        <button 
+          onClick={handleDownload}
+          className="px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+        >
+          <Download className="w-4 h-4 inline mr-2" />
+          Descargar
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -86,7 +187,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign }) =
 
       {/* Actions */}
       <div className="flex space-x-3">
-        <button className="flex items-center px-4 py-2 text-blue-600 border border-blue-600 rounded-atlas hover:bg-blue-50">
+        <button 
+          className="flex items-center px-4 py-2 text-blue-600 border border-blue-600 rounded-atlas hover:bg-blue-50"
+          onClick={handlePreview}
+        >
           <Eye className="w-4 h-4 mr-2" />
           Ver
         </button>
@@ -97,11 +201,64 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign }) =
           <UserCheck className="w-4 h-4 mr-2" />
           Asignar
         </button>
-        <button className="flex items-center px-4 py-2 text-red-600 border border-red-600 rounded-atlas hover:bg-red-50">
+        <button 
+          className="flex items-center px-4 py-2 text-red-600 border border-red-600 rounded-atlas hover:bg-red-50"
+          onClick={() => setShowDeleteConfirm(true)}
+        >
           <Trash2 className="w-4 h-4 mr-2" />
           Eliminar
         </button>
       </div>
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-atlas w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h4 className="text-lg font-medium">Vista previa del documento</h4>
+              <button 
+                onClick={() => setShowPreviewModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-atlas"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="mb-4">
+                <h5 className="font-medium">{document?.filename || 'Documento'}</h5>
+                <p className="text-sm text-gray-500">{document?.type || 'Tipo desconocido'}</p>
+              </div>
+              {renderPreviewContent()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-atlas p-6 w-full max-w-md">
+            <h4 className="text-lg font-medium mb-4">¿Eliminar documento?</h4>
+            <p className="text-gray-600 mb-6">
+              Se eliminará '{document?.filename || 'el documento'}'. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                className="px-4 py-2 bg-red-600 text-white rounded-atlas hover:bg-red-700"
+                onClick={handleDelete}
+              >
+                Eliminar
+              </button>
+              <button 
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-atlas hover:bg-gray-50"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Assign Modal */}
       {showAssignModal && (

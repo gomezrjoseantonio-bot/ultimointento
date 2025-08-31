@@ -47,7 +47,7 @@ export const navigationConfig: NavigationItem[] = [
     subTabs: [
       { name: 'Radar', href: '/tesoreria/radar', icon: TrendingUp, module: 'horizon' },
       { name: 'Movimientos', href: '/tesoreria/movimientos', icon: CreditCard, module: 'horizon' },
-      { name: 'Reglas & Sweeps', href: '/tesoreria/reglas-sweeps', icon: Settings, module: 'horizon' },
+      { name: 'Automatizaciones', href: '/tesoreria/automatizaciones', icon: Settings, module: 'horizon' },
       { name: 'Alertas', href: '/tesoreria/alertas', icon: Users, module: 'horizon' },
     ]
   },

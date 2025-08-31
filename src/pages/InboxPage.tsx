@@ -90,6 +90,29 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  const handleDeleteDocument = async (docId: number) => {
+    try {
+      const db = await initDB();
+      const tx = db.transaction('documents', 'readwrite');
+      await tx.store.delete(docId);
+      await tx.done;
+    } catch (error) {
+      console.warn('Failed to delete from IndexedDB:', error);
+    }
+    
+    // Remove from inbox list
+    const updatedDocuments = documents.filter(d => d.id !== docId);
+    setDocuments(updatedDocuments);
+    
+    // Update localStorage
+    localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocuments));
+    
+    // If it was selected, deselect it
+    if (selectedDocument && selectedDocument.id === docId) {
+      setSelectedDocument(null);
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     // Apply type filter
     if (filter !== 'all' && doc.type !== filter) return false;
@@ -150,6 +173,7 @@ const InboxPage: React.FC = () => {
                 <DocumentViewer 
                   document={selectedDocument}
                   onAssign={handleAssignDocument}
+                  onDelete={handleDeleteDocument}
                 />
               </div>
             ) : (

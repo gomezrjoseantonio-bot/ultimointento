@@ -5,7 +5,40 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import InboxPage from './pages/InboxPage';
-import EmptyPage from './components/common/EmptyPage';
+
+// Horizon (Investment) Module Components
+import HorizonPanel from './modules/horizon/panel/Panel';
+import Cartera from './modules/horizon/inmuebles/cartera/Cartera';
+import Contratos from './modules/horizon/inmuebles/contratos/Contratos';
+import Prestamos from './modules/horizon/inmuebles/prestamos/Prestamos';
+import Analisis from './modules/horizon/inmuebles/analisis/Analisis';
+import TesRadar from './modules/horizon/tesoreria/radar/Radar';
+import TesMovimientos from './modules/horizon/tesoreria/movimientos/Movimientos';
+import Automatizaciones from './modules/horizon/tesoreria/automatizaciones/Automatizaciones';
+import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
+import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
+import Deducibles from './modules/horizon/fiscalidad/deducibles/Deducibles';
+import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
+import ProyeccionCartera from './modules/horizon/proyeccion/cartera/ProyeccionCartera';
+import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/ProyeccionConsolidado';
+import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
+import PlanFacturacion from './modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
+import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
+
+// Pulse (Personal) Module Components
+import PulsePanel from './modules/pulse/panel/Panel';
+import IngresosLista from './modules/pulse/ingresos/lista/IngresosLista';
+import IngresosNuevo from './modules/pulse/ingresos/nuevo/IngresosNuevo';
+import IngresosImportar from './modules/pulse/ingresos/importar/IngresosImportar';
+import GastosLista from './modules/pulse/gastos/lista/GastosLista';
+import GastosNuevo from './modules/pulse/gastos/nuevo/GastosNuevo';
+import GastosReglas from './modules/pulse/gastos/reglas/GastosReglas';
+import TPRadar from './modules/pulse/tesoreria-personal/radar/TPRadar';
+import TPMovimientos from './modules/pulse/tesoreria-personal/movimientos/TPMovimientos';
+import TPAlertas from './modules/pulse/tesoreria-personal/alertas/TPAlertas';
+import PPPresupuesto from './modules/pulse/proyeccion-personal/presupuesto/PPPresupuesto';
+import PPEscenarios from './modules/pulse/proyeccion-personal/escenarios/PPEscenarios';
+import PulsePreferenciasDatos from './modules/pulse/configuracion/preferencias-datos/PulsePreferenciasDatos';
 
 function App() {
   return (
@@ -20,71 +53,70 @@ function App() {
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
-              <Route index element={<EmptyPage title="Inmuebles" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión integral de tu cartera inmobiliaria." />} />
-              <Route path="cartera" element={<EmptyPage title="Cartera" subtitle="En construcción. Próximo hito: funcionalidades." description="Resumen de todas tus propiedades de inversión." />} />
-              <Route path="contratos" element={<EmptyPage title="Contratos" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de contratos de alquiler y compraventa." />} />
-              <Route path="prestamos" element={<EmptyPage title="Préstamos" subtitle="En construcción. Próximo hito: funcionalidades." description="Seguimiento de financiación inmobiliaria." />} />
-              <Route path="analisis" element={<EmptyPage title="Análisis" subtitle="En construcción. Próximo hito: funcionalidades." description="Análisis de rentabilidad y rendimiento." />} />
+              <Route index element={<HorizonPanel />} />
+              <Route path="cartera" element={<Cartera />} />
+              <Route path="contratos" element={<Contratos />} />
+              <Route path="prestamos" element={<Prestamos />} />
+              <Route path="analisis" element={<Analisis />} />
             </Route>
             
             <Route path="tesoreria">
-              <Route index element={<EmptyPage title="Tesorería" subtitle="En construcción. Próximo hito: funcionalidades." description="Control financiero de inversiones inmobiliarias." />} />
-              <Route path="radar" element={<EmptyPage title="Radar" subtitle="En construcción. Próximo hito: funcionalidades." description="Vista general del estado financiero." />} />
-              <Route path="movimientos" element={<EmptyPage title="Movimientos" subtitle="En construcción. Próximo hito: funcionalidades." description="Historial de transacciones bancarias." />} />
-              <Route path="reglas-sweeps" element={<EmptyPage title="Reglas & Sweeps" subtitle="En construcción. Próximo hito: funcionalidades." description="Automatización de movimientos financieros." />} />
-              <Route path="alertas" element={<EmptyPage title="Alertas" subtitle="En construcción. Próximo hito: funcionalidades." description="Notificaciones de eventos financieros." />} />
+              <Route index element={<HorizonPanel />} />
+              <Route path="radar" element={<TesRadar />} />
+              <Route path="movimientos" element={<TesMovimientos />} />
+              <Route path="automatizaciones" element={<Automatizaciones />} />
+              <Route path="alertas" element={<TesAlertas />} />
             </Route>
             
             <Route path="fiscalidad">
-              <Route index element={<EmptyPage title="Fiscalidad" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión fiscal de inversiones inmobiliarias." />} />
-              <Route path="resumen" element={<EmptyPage title="Resumen" subtitle="En construcción. Próximo hito: funcionalidades." description="Resumen fiscal anual de inversiones." />} />
-              <Route path="deducibles" element={<EmptyPage title="Deducibles" subtitle="En construcción. Próximo hito: funcionalidades." description="Gastos deducibles de inversión inmobiliaria." />} />
-              <Route path="declaraciones" element={<EmptyPage title="Declaraciones" subtitle="En construcción. Próximo hito: funcionalidades." description="Preparación de declaraciones fiscales." />} />
+              <Route index element={<HorizonPanel />} />
+              <Route path="resumen" element={<FisResumen />} />
+              <Route path="deducibles" element={<Deducibles />} />
+              <Route path="declaraciones" element={<Declaraciones />} />
             </Route>
             
             <Route path="proyeccion">
-              <Route index element={<EmptyPage title="Proyección" subtitle="En construcción. Próximo hito: funcionalidades." description="Análisis predictivo de inversiones." />} />
-              <Route path="cartera" element={<EmptyPage title="Cartera" subtitle="En construcción. Próximo hito: funcionalidades." description="Proyecciones de la cartera inmobiliaria." />} />
-              <Route path="consolidado" element={<EmptyPage title="Consolidado" subtitle="En construcción. Próximo hito: funcionalidades." description="Vista consolidada de todas las proyecciones." />} />
+              <Route index element={<HorizonPanel />} />
+              <Route path="cartera" element={<ProyeccionCartera />} />
+              <Route path="consolidado" element={<ProyeccionConsolidado />} />
             </Route>
             
             {/* Pulse (Personal) Routes */}
             <Route path="ingresos">
-              <Route index element={<EmptyPage title="Ingresos" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de ingresos personales." />} />
-              <Route path="lista" element={<EmptyPage title="Lista" subtitle="En construcción. Próximo hito: funcionalidades." description="Listado completo de todos los ingresos." />} />
-              <Route path="nuevo" element={<EmptyPage title="Nuevo" subtitle="En construcción. Próximo hito: funcionalidades." description="Registro de nuevo ingreso." />} />
-              <Route path="importar" element={<EmptyPage title="Importar" subtitle="En construcción. Próximo hito: funcionalidades." description="Importación de ingresos desde archivos." />} />
+              <Route index element={<PulsePanel />} />
+              <Route path="lista" element={<IngresosLista />} />
+              <Route path="nuevo" element={<IngresosNuevo />} />
+              <Route path="importar" element={<IngresosImportar />} />
             </Route>
             
             <Route path="gastos">
-              <Route index element={<EmptyPage title="Gastos" subtitle="En construcción. Próximo hito: funcionalidades." description="Control de gastos personales." />} />
-              <Route path="lista" element={<EmptyPage title="Lista" subtitle="En construcción. Próximo hito: funcionalidades." description="Listado completo de todos los gastos." />} />
-              <Route path="nuevo" element={<EmptyPage title="Nuevo" subtitle="En construcción. Próximo hito: funcionalidades." description="Registro de nuevo gasto." />} />
-              <Route path="reglas" element={<EmptyPage title="Reglas" subtitle="En construcción. Próximo hito: funcionalidades." description="Reglas de categorización automática." />} />
+              <Route index element={<PulsePanel />} />
+              <Route path="lista" element={<GastosLista />} />
+              <Route path="nuevo" element={<GastosNuevo />} />
+              <Route path="reglas" element={<GastosReglas />} />
             </Route>
             
             <Route path="tesoreria-personal">
-              <Route index element={<EmptyPage title="Tesorería Personal" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de finanzas personales." />} />
-              <Route path="radar" element={<EmptyPage title="Radar" subtitle="En construcción. Próximo hito: funcionalidades." description="Vista general de finanzas personales." />} />
-              <Route path="movimientos" element={<EmptyPage title="Movimientos" subtitle="En construcción. Próximo hito: funcionalidades." description="Historial de transacciones personales." />} />
-              <Route path="alertas" element={<EmptyPage title="Alertas" subtitle="En construcción. Próximo hito: funcionalidades." description="Notificaciones financieras personales." />} />
+              <Route index element={<PulsePanel />} />
+              <Route path="radar" element={<TPRadar />} />
+              <Route path="movimientos" element={<TPMovimientos />} />
+              <Route path="alertas" element={<TPAlertas />} />
             </Route>
             
             <Route path="proyeccion-personal">
-              <Route index element={<EmptyPage title="Proyección Personal" subtitle="En construcción. Próximo hito: funcionalidades." description="Planificación financiera personal." />} />
-              <Route path="presupuesto" element={<EmptyPage title="Presupuesto" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión y seguimiento de presupuestos." />} />
-              <Route path="escenarios" element={<EmptyPage title="Escenarios" subtitle="En construcción. Próximo hito: funcionalidades." description="Simulaciones de escenarios financieros." />} />
+              <Route index element={<PulsePanel />} />
+              <Route path="presupuesto" element={<PPPresupuesto />} />
+              <Route path="escenarios" element={<PPEscenarios />} />
             </Route>
             
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
-              <Route index element={<EmptyPage title="Configuración" subtitle="En construcción. Próximo hito: funcionalidades." description="Configuración del sistema." />} />
+              <Route index element={<HorizonPanel />} />
               {/* Horizon configuration */}
-              <Route path="bancos-cuentas" element={<EmptyPage title="Bancos & Cuentas" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de cuentas bancarias." />} />
-              <Route path="plan-facturacion" element={<EmptyPage title="Plan & Facturación" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de suscripción y facturación." />} />
-              <Route path="usuarios-roles" element={<EmptyPage title="Usuarios & Roles" subtitle="En construcción. Próximo hito: funcionalidades." description="Gestión de usuarios y permisos." />} />
-              <Route path="preferencias-datos" element={<EmptyPage title="Preferencias & Datos" subtitle="En construcción. Próximo hito: funcionalidades." description="Configuración de preferencias y datos." />} />
-              {/* Pulse configuration (same route as Horizon for Pulse module) */}
+              <Route path="bancos-cuentas" element={<BancosCuentas />} />
+              <Route path="plan-facturacion" element={<PlanFacturacion />} />
+              <Route path="usuarios-roles" element={<UsuariosRoles />} />
+              <Route path="preferencias-datos" element={<PulsePreferenciasDatos />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/panel" replace />} />
