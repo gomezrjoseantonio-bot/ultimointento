@@ -2,7 +2,6 @@ import React from 'react';
 import { Menu, Bell, UserCircle, Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ModuleSelector from '../common/ModuleSelector';
-import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
