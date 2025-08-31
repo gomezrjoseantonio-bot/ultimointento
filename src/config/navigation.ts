@@ -1,4 +1,4 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users } from 'lucide-react';
+import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -15,6 +15,14 @@ export const navigationConfig: NavigationItem[] = [
     name: 'Panel',
     href: '/panel',
     icon: Home,
+    module: 'shared',
+  },
+  
+  // Bandeja de Documentos - shared across modules
+  {
+    name: 'Bandeja de Documentos',
+    href: '/inbox',
+    icon: Inbox,
     module: 'shared',
   },
   
