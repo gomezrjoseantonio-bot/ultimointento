@@ -1,0 +1,34 @@
+import React from 'react';
+import { useTheme, AppModule } from '../../contexts/ThemeContext';
+
+const ModuleSelector: React.FC = () => {
+  const { currentModule, setCurrentModule } = useTheme();
+
+  return (
+    <div className="flex items-center bg-gray-100 rounded-atlas p-1">
+      <button
+        className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+          currentModule === 'horizon'
+            ? 'bg-brand-navy text-white shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+        onClick={() => setCurrentModule('horizon' as AppModule)}
+      >
+        Horizon
+      </button>
+      <div className="w-px h-4 bg-gray-300 mx-1" />
+      <button
+        className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+          currentModule === 'pulse'
+            ? 'bg-brand-teal text-white shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+        onClick={() => setCurrentModule('pulse' as AppModule)}
+      >
+        Pulse
+      </button>
+    </div>
+  );
+};
+
+export default ModuleSelector;

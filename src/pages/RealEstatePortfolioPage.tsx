@@ -25,7 +25,7 @@ const RealEstatePortfolioPage: React.FC = () => {
   const handleAddProperty = async (property: Omit<Property, 'id'>) => {
     const db = await initDB();
     const id = await db.add('properties', property);
-    const newProperty = { ...property, id };
+    const newProperty = { ...property, id: id as number };
     setProperties([...properties, newProperty]);
     setShowAddForm(false);
   };
@@ -77,7 +77,10 @@ const RealEstatePortfolioPage: React.FC = () => {
             </button>
           </div>
           
-          <PropertyForm onSubmit={handleAddProperty} />
+          <PropertyForm 
+            onSubmit={handleAddProperty}
+            onCancel={() => setShowAddForm(false)}
+          />
         </div>
       )}
       
