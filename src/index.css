@@ -37,6 +37,16 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  background-color: var(--neutral-50);
+}
+
+html {
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 /* Tabular numbers for KPIs */

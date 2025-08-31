@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { initDB } from '../services/db';
+import { initDB, deleteDocumentAndBlob } from '../services/db';
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
@@ -93,10 +93,8 @@ const InboxPage: React.FC = () => {
 
   const handleDeleteDocument = async (docId: number) => {
     try {
-      const db = await initDB();
-      const tx = db.transaction('documents', 'readwrite');
-      await tx.store.delete(docId);
-      await tx.done;
+      // Use the new utility function that properly deletes the blob
+      await deleteDocumentAndBlob(docId);
     } catch (error) {
       console.warn('Failed to delete from IndexedDB:', error);
     }

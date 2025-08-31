@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, Trash2, UserCheck, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useButtonStyles } from '../../hooks/useButtonStyles';
+import { getDocumentBlob, downloadBlob } from '../../services/db';
 
 interface DocumentViewerProps {
   document: any;
@@ -40,17 +41,30 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     setShowPreviewModal(true);
   };
 
-  const handleDownload = () => {
-    if (document?.content) {
-      const blob = new Blob([document.content], { type: document.type });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = document.filename || 'documento';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    try {
+      let blob: Blob | null = null;
+      
+      // Try to get blob from IndexedDB first
+      if (document?.id) {
+        blob = await getDocumentBlob(document.id);
+      }
+      
+      // Fallback to document.content if blob not found in DB
+      if (!blob && document?.content) {
+        blob = new Blob([document.content], { type: document.type });
+      }
+      
+      if (blob) {
+        const filename = document?.filename || 'documento';
+        downloadBlob(blob, filename);
+        toast.success('Descarga iniciada');
+      } else {
+        toast.error('No se pudo encontrar el archivo para descargar');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Error al descargar el archivo');
     }
   };
 
@@ -115,6 +129,33 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             alt={document.filename} 
             className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-atlas"
           />
+        </div>
+      );
+    }
+
+    // For ZIP files and other non-previewable types, show download button
+    const isZip = document.type === 'application/zip' || document.filename?.toLowerCase().endsWith('.zip');
+    const isNonPreviewable = isZip || (!document.type.startsWith('image/') && document.type !== 'application/pdf');
+
+    if (isNonPreviewable) {
+      return (
+        <div className="text-center py-8">
+          <div className="mb-4">
+            <Download className="mx-auto h-12 w-12 text-neutral-400 mb-2" />
+            <p className="text-neutral-500 mb-2">
+              {isZip ? 'Archivo ZIP' : 'Archivo no previsualizable'}
+            </p>
+            <p className="text-sm text-neutral-400">
+              {document.type || 'Tipo de archivo no especificado'}
+            </p>
+          </div>
+          <button 
+            onClick={handleDownload}
+            className={buttonStyles.primary}
+          >
+            <Download className="w-4 h-4 inline mr-2" />
+            Descargar {document.filename}
+          </button>
         </div>
       );
     }
