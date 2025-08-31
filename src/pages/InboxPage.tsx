@@ -14,12 +14,23 @@ const InboxPage: React.FC = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       setLoading(true);
-      const db = await initDB();
-      const docs = await db.getAll('documents');
       
-      // Filter documents that haven't been assigned to entities
-      const inboxDocs = docs.filter(doc => !doc.metadata.entityId);
-      setDocuments(inboxDocs);
+      try {
+        const db = await initDB();
+        const docs = await db.getAll('documents');
+        
+        // Filter documents that haven't been assigned to entities
+        const inboxDocs = docs.filter(doc => !doc.metadata.entityId);
+        setDocuments(inboxDocs);
+      } catch (error) {
+        // Fallback to localStorage if IndexedDB fails
+        const storedDocs = localStorage.getItem('atlas-inbox-documents');
+        if (storedDocs) {
+          const parsedDocs = JSON.parse(storedDocs);
+          setDocuments(parsedDocs);
+        }
+      }
+      
       setLoading(false);
     };
     
@@ -28,28 +39,78 @@ const InboxPage: React.FC = () => {
 
   const handleDocumentUpload = async (newDocuments: any[]) => {
     // Add documents to state
-    setDocuments(prev => [...prev, ...newDocuments]);
+    const updatedDocuments = [...documents, ...newDocuments];
+    setDocuments(updatedDocuments);
+    
+    // Persist to localStorage as backup
+    localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocuments));
+    
+    // Try to persist to IndexedDB
+    try {
+      const db = await initDB();
+      const tx = db.transaction('documents', 'readwrite');
+      
+      for (const doc of newDocuments) {
+        await tx.store.add(doc);
+      }
+      
+      await tx.done;
+    } catch (error) {
+      console.warn('Failed to save to IndexedDB, using localStorage only:', error);
+    }
   };
 
   const handleAssignDocument = async (docId: number, entityId: number) => {
-    const db = await initDB();
-    const tx = db.transaction('documents', 'readwrite');
-    const doc = await tx.store.get(docId);
-    
-    if (doc) {
-      doc.metadata.entityId = entityId;
-      await tx.store.put(doc);
+    try {
+      const db = await initDB();
+      const tx = db.transaction('documents', 'readwrite');
+      const doc = await tx.store.get(docId);
       
-      // Remove from inbox list
-      setDocuments(prev => prev.filter(d => d.id !== docId));
-      
-      // If it was selected, deselect it
-      if (selectedDocument && selectedDocument.id === docId) {
-        setSelectedDocument(null);
+      if (doc) {
+        doc.metadata.entityId = entityId;
+        doc.metadata.status = 'Asignado';
+        await tx.store.put(doc);
       }
+      
+      await tx.done;
+    } catch (error) {
+      console.warn('Failed to update in IndexedDB:', error);
     }
     
-    await tx.done;
+    // Remove from inbox list
+    const updatedDocuments = documents.filter(d => d.id !== docId);
+    setDocuments(updatedDocuments);
+    
+    // Update localStorage
+    localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocuments));
+    
+    // If it was selected, deselect it
+    if (selectedDocument && selectedDocument.id === docId) {
+      setSelectedDocument(null);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: number) => {
+    try {
+      const db = await initDB();
+      const tx = db.transaction('documents', 'readwrite');
+      await tx.store.delete(docId);
+      await tx.done;
+    } catch (error) {
+      console.warn('Failed to delete from IndexedDB:', error);
+    }
+    
+    // Remove from inbox list
+    const updatedDocuments = documents.filter(d => d.id !== docId);
+    setDocuments(updatedDocuments);
+    
+    // Update localStorage
+    localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocuments));
+    
+    // If it was selected, deselect it
+    if (selectedDocument && selectedDocument.id === docId) {
+      setSelectedDocument(null);
+    }
   };
 
   const filteredDocuments = documents.filter(doc => {
@@ -65,7 +126,7 @@ const InboxPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-800">Document Inbox</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">Bandeja de Documentos</h1>
       </div>
       
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -79,7 +140,7 @@ const InboxPage: React.FC = () => {
               <div className="flex space-x-2 mb-2">
                 <input
                   type="text"
-                  placeholder="Search documents..."
+                  placeholder="Buscar documentos..."
                   className="flex-1 border-gray-300 rounded-md shadow-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -89,7 +150,7 @@ const InboxPage: React.FC = () => {
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                 >
-                  <option value="all">All Types</option>
+                  <option value="all">Todos los tipos</option>
                   <option value="application/pdf">PDF</option>
                   <option value="image/jpeg">JPEG</option>
                   <option value="image/png">PNG</option>
@@ -112,11 +173,12 @@ const InboxPage: React.FC = () => {
                 <DocumentViewer 
                   document={selectedDocument}
                   onAssign={handleAssignDocument}
+                  onDelete={handleDeleteDocument}
                 />
               </div>
             ) : (
               <div className="h-96 flex items-center justify-center text-gray-500">
-                Select a document to view
+                Selecciona un documento para ver
               </div>
             )}
           </div>

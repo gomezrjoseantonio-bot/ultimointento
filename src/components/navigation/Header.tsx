@@ -1,6 +1,5 @@
 import React from 'react';
-import { Menu, Bell, UserCircle, Inbox } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Menu, UserCircle } from 'lucide-react';
 import ModuleSelector from '../common/ModuleSelector';
 
 interface HeaderProps {
@@ -35,26 +34,11 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         <div className="flex items-center space-x-4">
           <ModuleSelector />
           
-          <Link
-            to="/inbox"
-            className="p-2 rounded-atlas text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
-            title="Inbox"
-          >
-            <Inbox className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          
-          <button
-            type="button"
-            className="p-2 rounded-atlas text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2"
-          >
-            <Bell className="h-5 w-5" aria-hidden="true" />
-          </button>
-          
           <div className="relative">
             <button className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 rounded-atlas p-1">
               <UserCircle className="h-8 w-8 text-gray-500" />
               <span className="hidden md:inline-block text-sm font-medium text-gray-700">
-                Account
+                Cuenta
               </span>
             </button>
           </div>
