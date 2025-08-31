@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, Trash2, UserCheck, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useButtonStyles } from '../../hooks/useButtonStyles';
 
 interface DocumentViewerProps {
   document: any;
@@ -9,6 +10,7 @@ interface DocumentViewerProps {
 }
 
 const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete }) => {
+  const buttonStyles = useButtonStyles();
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -16,7 +18,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     destino: 'personal',
     inmueble: '',
     habitacion: '',
-    categoria: 'Suministros'
+    categoria: 'Suministros',
+    carpeta: 'otros'
   });
 
   const handleAssign = () => {
@@ -63,10 +66,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     if (!document?.content) {
       return (
         <div className="text-center py-8">
-          <p className="text-gray-500">No se puede cargar el contenido del documento</p>
+          <p className="text-neutral-500">No se puede cargar el contenido del documento</p>
           <button 
             onClick={handleDownload}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+            className={buttonStyles.primary}
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar
@@ -84,13 +87,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <object
             data={url}
             type="application/pdf"
-            className="w-full h-full"
+            className="w-full h-full border border-neutral-200"
           >
             <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No se puede previsualizar este PDF en tu navegador</p>
+              <p className="text-neutral-500 mb-4">No se puede previsualizar este PDF en tu navegador</p>
               <button 
                 onClick={handleDownload}
-                className="px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+                className={buttonStyles.primary}
               >
                 <Download className="w-4 h-4 inline mr-2" />
                 Descargar
@@ -110,7 +113,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <img 
             src={url} 
             alt={document.filename} 
-            className="max-w-full max-h-96 mx-auto object-contain"
+            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-atlas"
           />
         </div>
       );
@@ -118,10 +121,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500 mb-4">No se puede previsualizar este tipo de archivo</p>
+        <p className="text-neutral-500 mb-4">No se puede previsualizar este tipo de archivo</p>
         <button 
           onClick={handleDownload}
-          className="px-4 py-2 bg-blue-600 text-white rounded-atlas hover:bg-blue-700"
+          className={buttonStyles.primary}
         >
           <Download className="w-4 h-4 inline mr-2" />
           Descargar
@@ -133,54 +136,54 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   return (
     <div className="space-y-6">
       {/* Document Info */}
-      <div className="border-b pb-4">
-        <h3 className="text-lg font-medium mb-2">{document?.filename || 'Documento'}</h3>
+      <div className="border-b border-neutral-200 pb-4">
+        <h3 className="text-lg font-medium text-neutral-900 mb-2">{document?.filename || 'Documento'}</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="font-medium text-gray-700">Fecha:</span>
-            <span className="ml-2 text-gray-600">
+            <span className="font-medium text-neutral-700">Fecha:</span>
+            <span className="ml-2 text-neutral-600">
               {new Date(document?.uploadDate || Date.now()).toLocaleDateString('es-ES')}
             </span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Tamaño:</span>
-            <span className="ml-2 text-gray-600">
+            <span className="font-medium text-neutral-700">Tamaño:</span>
+            <span className="ml-2 text-neutral-600">
               {document?.size ? formatFileSize(document.size) : 'N/A'}
             </span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Proveedor:</span>
+            <span className="font-medium text-neutral-700">Proveedor:</span>
             <input 
               type="text" 
-              className="ml-2 border-none bg-transparent text-gray-600 focus:bg-white focus:border-gray-300 rounded px-1"
+              className="ml-2 border-none bg-transparent text-neutral-600 focus:bg-white focus:border-neutral-300 rounded px-1"
               defaultValue={document?.metadata?.provider || ''}
               placeholder="Editar..."
             />
           </div>
           <div>
-            <span className="font-medium text-gray-700">Tipo:</span>
-            <select className="ml-2 border-none bg-transparent text-gray-600 focus:bg-white focus:border-gray-300 rounded">
+            <span className="font-medium text-neutral-700">Tipo:</span>
+            <select className="ml-2 border-none bg-transparent text-neutral-600 focus:bg-white focus:border-neutral-300 rounded">
               <option value="Factura">Factura</option>
               <option value="Contrato">Contrato</option>
               <option value="Recibo">Recibo</option>
             </select>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Estado:</span>
-            <span className="ml-2 text-gray-600">{document?.metadata?.status || 'Nuevo'}</span>
+            <span className="font-medium text-neutral-700">Estado:</span>
+            <span className="ml-2 text-neutral-600">{document?.metadata?.status || 'Nuevo'}</span>
           </div>
           <div>
-            <span className="font-medium text-gray-700">Origen:</span>
-            <span className="ml-2 text-gray-600">{document?.metadata?.origin || 'Subida manual'}</span>
+            <span className="font-medium text-neutral-700">Origen:</span>
+            <span className="ml-2 text-neutral-600">{document?.metadata?.origin || 'Subida manual'}</span>
           </div>
         </div>
       </div>
 
       {/* Preview Area */}
-      <div className="bg-gray-50 rounded-atlas p-8 text-center">
-        <Eye className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-gray-500">Vista previa del documento</p>
-        <p className="text-sm text-gray-400 mt-2">
+      <div className="bg-neutral-50 border border-neutral-200 rounded-atlas p-8 text-center">
+        <Eye className="mx-auto h-12 w-12 text-neutral-500 mb-4" />
+        <p className="text-neutral-600">Vista previa del documento</p>
+        <p className="text-sm text-neutral-400 mt-2">
           {document?.type || 'Tipo de archivo no especificado'}
         </p>
       </div>
@@ -188,21 +191,21 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       {/* Actions */}
       <div className="flex space-x-3">
         <button 
-          className="flex items-center px-4 py-2 text-blue-600 border border-blue-600 rounded-atlas hover:bg-blue-50"
+          className={`${buttonStyles.secondary} flex items-center`}
           onClick={handlePreview}
         >
-          <Eye className="w-4 h-4 mr-2" />
+          <Eye className="w-4 h-4 mr-2 text-neutral-500" />
           Ver
         </button>
         <button 
-          className="flex items-center px-4 py-2 text-green-600 border border-green-600 rounded-atlas hover:bg-green-50"
+          className={`${buttonStyles.primary} flex items-center`}
           onClick={() => setShowAssignModal(true)}
         >
           <UserCheck className="w-4 h-4 mr-2" />
           Asignar
         </button>
         <button 
-          className="flex items-center px-4 py-2 text-red-600 border border-red-600 rounded-atlas hover:bg-red-50"
+          className={`${buttonStyles.dangerOutline} flex items-center`}
           onClick={() => setShowDeleteConfirm(true)}
         >
           <Trash2 className="w-4 h-4 mr-2" />
@@ -239,18 +242,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-atlas p-6 w-full max-w-md">
             <h4 className="text-lg font-medium mb-4">¿Eliminar documento?</h4>
-            <p className="text-gray-600 mb-6">
+            <p className="text-neutral-600 mb-6">
               Se eliminará '{document?.filename || 'el documento'}'. Esta acción no se puede deshacer.
             </p>
             <div className="flex space-x-3">
               <button 
-                className="px-4 py-2 bg-red-600 text-white rounded-atlas hover:bg-red-700"
+                className={buttonStyles.danger}
                 onClick={handleDelete}
               >
                 Eliminar
               </button>
               <button 
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-atlas hover:bg-gray-50"
+                className={buttonStyles.secondary}
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancelar
@@ -315,11 +318,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Categoría
                 </label>
                 <select 
-                  className="w-full border border-gray-300 rounded-atlas px-3 py-2"
+                  className="w-full border border-neutral-200 rounded-atlas px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                   value={assignData.categoria}
                   onChange={(e) => setAssignData({...assignData, categoria: e.target.value})}
                 >
@@ -331,17 +334,33 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                   <option value="Otros">Otros</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Carpeta
+                </label>
+                <select 
+                  className="w-full border border-neutral-200 rounded-atlas px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                  value={assignData.carpeta}
+                  onChange={(e) => setAssignData({...assignData, carpeta: e.target.value})}
+                >
+                  <option value="facturas">Facturas</option>
+                  <option value="contratos">Contratos</option>
+                  <option value="capex">CAPEX</option>
+                  <option value="otros">Otros</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex space-x-3 mt-6">
               <button 
-                className="px-4 py-2 bg-brand-navy text-white rounded-atlas hover:opacity-90"
+                className={buttonStyles.primary}
                 onClick={handleAssign}
               >
                 Guardar
               </button>
               <button 
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-atlas hover:bg-gray-50"
+                className={buttonStyles.secondary}
                 onClick={() => setShowAssignModal(false)}
               >
                 Cancelar

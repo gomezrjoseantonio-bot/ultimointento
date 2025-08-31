@@ -11,13 +11,17 @@
   --brand-navy: #022D5E;
   --brand-teal: #2EB0CB;
   
-  /* Neutrals */
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-muted: #9CA3AF;
-  --border: #E5E7EB;
-  --bg-base: #F8FAFC;
-  --bg-surface: #FFFFFF;
+  /* Neutrals (using Tailwind neutral/slate) */
+  --neutral-50: #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1E293B;
+  --neutral-900: #0F172A;
   
   /* Semantics */
   --success: #16A34A;
@@ -38,4 +42,61 @@ body {
 /* Tabular numbers for KPIs */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Unified Button Styles */
+@layer components {
+  /* Base button styles */
+  .btn-base {
+    @apply inline-flex items-center px-4 py-2 text-sm font-medium rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  /* Primary buttons - use module color */
+  .btn-primary-horizon {
+    @apply btn-base bg-brand-navy text-white hover:bg-navy-800 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary-pulse {
+    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  /* Secondary/Outline buttons */
+  .btn-secondary-horizon {
+    @apply btn-base border border-neutral-300 text-brand-navy bg-white hover:bg-neutral-50 focus:ring-brand-navy;
+  }
+  
+  .btn-secondary-pulse {
+    @apply btn-base border border-neutral-300 text-brand-teal bg-white hover:bg-neutral-50 focus:ring-brand-teal;
+  }
+  
+  /* Ghost buttons */
+  .btn-ghost-horizon {
+    @apply btn-base border-transparent text-brand-navy bg-transparent hover:bg-neutral-50 focus:ring-brand-navy;
+  }
+  
+  .btn-ghost-pulse {
+    @apply btn-base border-transparent text-brand-teal bg-transparent hover:bg-neutral-50 focus:ring-brand-teal;
+  }
+  
+  /* Danger buttons */
+  .btn-danger {
+    @apply btn-base bg-error text-white hover:bg-red-700 focus:ring-error disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-danger-outline {
+    @apply btn-base border border-error text-error bg-white hover:bg-red-50 focus:ring-error;
+  }
+}
+
+/* Clean borders and focus styles */
+@layer base {
+  /* Ensure all borders are solid and use neutral colors */
+  input, select, textarea {
+    @apply border-solid border-neutral-200 focus:border-neutral-300 focus:ring-2 focus:ring-opacity-50;
+  }
+  
+  /* Remove any dotted or dashed borders globally */
+  * {
+    border-style: solid;
+  }
 }
