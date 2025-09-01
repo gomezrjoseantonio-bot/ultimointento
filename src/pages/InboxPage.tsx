@@ -305,13 +305,13 @@ const InboxPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-neutral-900">Bandeja de Documentos</h1>
+        <h1 className="text-2xl font-semibold text-navy-900" style={{ color: '#022D5E' }}>Bandeja de Documentos</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setShowBulkActions(!showBulkActions)}
             className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
               showBulkActions 
-                ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                ? 'bg-neutral-100 border-neutral-300 text-neutral-700' 
                 : 'border-neutral-200 hover:bg-neutral-50'
             }`}
           >
@@ -322,10 +322,10 @@ const InboxPage: React.FC = () => {
       
       {/* H3 requirement - Email log filter notice */}
       {emailLogFilter && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-blue-900">
+              <span className="text-sm font-medium text-neutral-900">
                 Mostrando documentos del email: {emailLogFilter.replace('mock-', 'MOCK-')}
               </span>
             </div>
@@ -334,7 +334,7 @@ const InboxPage: React.FC = () => {
                 setEmailLogFilter('');
                 window.history.replaceState({}, '', '/inbox');
               }}
-              className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-100"
+              className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1 rounded-lg hover:bg-neutral-100"
             >
               Mostrar todos los documentos
             </button>

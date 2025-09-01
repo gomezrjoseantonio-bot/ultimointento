@@ -46,9 +46,8 @@ const GastosCapex: React.FC = () => {
     <PageLayout 
       title="Gastos & CAPEX" 
       subtitle="Capturar, clasificar y prorratear gastos según AEAT; modelar reformas (CAPEX)"
-    >
-      {/* Action Button */}
-      <div className="flex justify-end mb-6">
+      showInfoIcon={true}
+      primaryAction={
         <button
           onClick={handleAddExpense}
           className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
@@ -56,10 +55,10 @@ const GastosCapex: React.FC = () => {
           <PlusIcon className="h-5 w-5 mr-2" />
           Añadir gasto
         </button>
-      </div>
-
-      {/* Segmented Control */}
-      <div className="mb-6">
+      }
+    >
+      {/* Segmented Control - Row 3 with proper spacing */}
+      <div className="mb-3">
         <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
