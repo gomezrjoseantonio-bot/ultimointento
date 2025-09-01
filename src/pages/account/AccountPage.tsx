@@ -97,7 +97,7 @@ const AccountPage: React.FC = () => {
               <p className="text-sm text-neutral-600 mb-3">
                 Exporta todos tus datos personales en un formato legible.
               </p>
-              <button className="px-4 py-2 bg-neutral-900 text-white text-sm rounded-lg hover:bg-neutral-800 transition-colors">
+              <button className="px-4 py-2 bg-neutral-600 text-white text-sm rounded-lg hover:bg-neutral-700 transition-colors">
                 Solicitar exportación
               </button>
             </div>
