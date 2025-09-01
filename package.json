@@ -15,6 +15,7 @@
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.2.7",
     "chart.js": "^4.3.3",
+    "google-auth-library": "^10.3.0",
     "idb": "^7.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.542.0",
@@ -56,6 +57,7 @@
     ]
   },
   "devDependencies": {
+    "@netlify/functions": "^4.2.5",
     "@types/jszip": "^3.4.0"
   }
 }
