@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap, AlertCircle, DollarSign, Building } from 'lucide-react';
+import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap, AlertCircle, DollarSign, Building, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob } from '../../services/db';
-import { processDocumentOCR, getOCRConfig, formatPercentage, shouldSuggestExpense, shouldSuggestCAPEX, getHighConfidenceFields, createExpenseFromOCR } from '../../services/ocrService';
+import { 
+  processDocumentOCR, 
+  getOCRConfig, 
+  formatPercentage, 
+  shouldSuggestExpense, 
+  shouldSuggestCAPEX, 
+  createExpenseFromOCR,
+  getCriticalFieldsStatus,
+  getConfidenceIcon,
+  getApplicableFields,
+  validateInvoiceAmounts,
+  normalizeAmountToSpanish
+} from '../../services/ocrService';
 
 interface DocumentViewerProps {
   document: any;
@@ -172,16 +184,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     toast.success('Todos los campos aplicados');
   };
 
-  // H-OCR: Apply only high confidence fields
+  // H-OCR-FIX: Apply only high confidence and valid fields
   const handleApplySuggestions = () => {
     if (!metadata.ocr?.fields) return;
 
     const config = getOCRConfig();
-    const highConfidenceFields = getHighConfidenceFields(metadata.ocr, config.confidenceThreshold);
+    const applicableFields = getApplicableFields(metadata.ocr, config.confidenceThreshold);
     
     const updatedMetadata = { ...metadata };
     
-    highConfidenceFields.forEach((field: any) => {
+    applicableFields.forEach((field: any) => {
       switch (field.name) {
         case 'proveedor':
           updatedMetadata.proveedor = field.value;
@@ -193,7 +205,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           updatedMetadata.fechaEmision = field.value;
           break;
         case 'importe':
-          updatedMetadata.importe = parseFloat(field.value);
+          updatedMetadata.importe = parseFloat(field.value.replace(',', '.'));
+          break;
+        case 'base':
+          updatedMetadata.base = parseFloat(field.value.replace(',', '.'));
+          break;
+        case 'iva':
+          updatedMetadata.iva = parseFloat(field.value.replace(',', '.'));
           break;
       }
     });
@@ -203,7 +221,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       onUpdate(document.id, { metadata: updatedMetadata });
     }
     
-    toast.success(`${highConfidenceFields.length} campos de alta confianza aplicados`);
+    toast.success(`${applicableFields.length} campos de alta confianza aplicados`);
   };
 
   // H-OCR: Open edit modal with OCR fields
@@ -620,65 +638,163 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </button>
       </div>
 
-      {/* H-OCR: OCR Results Panel */}
+      {/* H-OCR-FIX: Enhanced OCR Results Panel with transparency and validation */}
       {metadata.ocr && (
         <div className="border border-neutral-200 rounded-lg overflow-hidden">
           <div className="bg-neutral-50 px-4 py-3 border-b border-neutral-200">
-            <h4 className="font-medium text-neutral-900">Campos extraídos (OCR)</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-neutral-900">Campos extraídos (OCR)</h4>
+              {/* H-OCR-FIX: Engine information tooltip */}
+              <div className="relative group">
+                <Info className="w-5 h-5 text-neutral-400 hover:text-neutral-600 cursor-help" />
+                <div className="absolute right-0 top-6 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  <div className="space-y-1">
+                    <div><strong>Motor:</strong> {metadata.ocr.engineInfo?.displayName || metadata.ocr.engine}</div>
+                    <div><strong>Descripción:</strong> {metadata.ocr.engineInfo?.description || 'Procesamiento de texto'}</div>
+                    {metadata.ocr.engineInfo?.type === 'vision-fallback' && (
+                      <div className="text-yellow-300 mt-2">⚠️ Se usó OCR genérico. Revisa manualmente proveedor y total.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center gap-4 mt-1 text-sm text-neutral-600">
-              <span>Motor: {metadata.ocr.engine}</span>
+              <span>Motor: {metadata.ocr.engineInfo?.displayName || metadata.ocr.engine}</span>
               <span>Confianza global: {formatPercentage(metadata.ocr.confidenceGlobal * 100)}</span>
               <span>Procesado: {new Date(metadata.ocr.timestamp).toLocaleString('es-ES')}</span>
+              {/* H-OCR-FIX: Multi-page information */}
+              {metadata.ocr.pageInfo && metadata.ocr.pageInfo.totalPages > 1 && (
+                <span>
+                  Página {metadata.ocr.pageInfo.selectedPage}/{metadata.ocr.pageInfo.totalPages} 
+                  (score: {metadata.ocr.pageInfo.pageScore})
+                </span>
+              )}
             </div>
+            {/* H-OCR-FIX: Vision fallback warning */}
+            {metadata.ocr.engineInfo?.type === 'vision-fallback' && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 text-yellow-800 text-sm">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Se usó OCR genérico. Revisa manualmente proveedor y total.</span>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="p-4">
             {metadata.ocr.status === 'completed' && metadata.ocr.fields.length > 0 ? (
               <>
-                {/* OCR Fields List */}
-                <div className="space-y-3 mb-4">
-                  {metadata.ocr.fields.map((field: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                      <div className="flex-1">
-                        <span className="font-medium text-neutral-700 capitalize">
-                          {field.name.replace(/([A-Z])/g, ' $1').trim()}:
-                        </span>
-                        <span className="ml-2 text-neutral-900">{field.value}</span>
+                {(() => {
+                  // H-OCR-FIX: Calculate validation status
+                  const criticalStatus = getCriticalFieldsStatus(metadata.ocr);
+                  const baseField = metadata.ocr.fields.find((f: any) => f.name === 'base');
+                  const ivaField = metadata.ocr.fields.find((f: any) => f.name === 'iva');
+                  const totalField = metadata.ocr.fields.find((f: any) => f.name === 'importe');
+                  
+                  let amountValidation = null;
+                  if (baseField && ivaField && totalField) {
+                    const base = parseFloat(baseField.value.replace(',', '.'));
+                    const iva = parseFloat(ivaField.value.replace(',', '.'));
+                    const total = parseFloat(totalField.value.replace(',', '.'));
+                    amountValidation = validateInvoiceAmounts(base, iva, total);
+                  }
+                  
+                  return (
+                    <>
+                      {/* H-OCR-FIX: Amount validation warning */}
+                      {amountValidation && !amountValidation.isValid && (
+                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-amber-800 text-sm">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>
+                              Total no cuadra: Base + IVA = {normalizeAmountToSpanish(amountValidation.expectedTotal)}, 
+                              diferencia: {normalizeAmountToSpanish(amountValidation.difference)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* H-OCR-FIX: Enhanced OCR Fields List with confidence indicators */}
+                      <div className="space-y-3 mb-4">
+                        {metadata.ocr.fields.map((field: any, index: number) => {
+                          const isCritical = ['proveedor', 'numeroFactura', 'fechaEmision', 'importe'].includes(field.name);
+                          const confidenceIcon = getConfidenceIcon(field.confidence);
+                          
+                          return (
+                            <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
+                              isCritical && field.confidence < 0.80 ? 'bg-red-50 border border-red-200' : 'bg-neutral-50'
+                            }`}>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-medium capitalize ${
+                                    isCritical ? 'text-neutral-900' : 'text-neutral-700'
+                                  }`}>
+                                    {field.name.replace(/([A-Z])/g, ' $1').trim()}:
+                                    {isCritical && <span className="text-red-500 ml-1">*</span>}
+                                  </span>
+                                </div>
+                                <span className="ml-2 text-neutral-900">{field.value}</span>
+                                {field.raw && field.raw !== field.value && (
+                                  <div className="text-xs text-neutral-500 ml-2">
+                                    Original: {field.raw}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right flex items-center gap-2">
+                                <span className="text-lg">{confidenceIcon}</span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${
+                                  field.confidence >= 0.85 ? 'bg-green-100 text-green-700' :
+                                  field.confidence >= 0.70 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {formatPercentage(field.confidence * 100)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="text-right">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          field.confidence >= 0.8 ? 'bg-green-100 text-green-700' :
-                          field.confidence >= 0.6 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {formatPercentage(field.confidence * 100)}
-                        </span>
+                      
+                      {/* H-OCR-FIX: Critical fields notice */}
+                      {!criticalStatus.allCriticalValid && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-red-800 text-sm">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Algunos campos críticos (*) tienen baja confianza o están vacíos</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* H-OCR-FIX: Enhanced OCR Action Buttons with conditional logic */}
+                      <div className="flex flex-wrap gap-3 mb-4">
+                        <button
+                          onClick={handleApplyAllFields}
+                          disabled={!criticalStatus.allCriticalValid}
+                          className={`px-4 py-2 rounded-lg transition-colors ${
+                            criticalStatus.allCriticalValid
+                              ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                              : 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                          }`}
+                          title={!criticalStatus.allCriticalValid ? 'Campos críticos no válidos' : ''}
+                        >
+                          Aplicar todo
+                        </button>
+                        <button
+                          onClick={handleApplySuggestions}
+                          className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                        >
+                          Aplicar sugerencias (≥ umbral)
+                        </button>
+                        <button
+                          onClick={handleEditBeforeApply}
+                          className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                        >
+                          Editar antes de aplicar
+                        </button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {/* OCR Action Buttons */}
-                <div className="flex flex-wrap gap-3 mb-4">
-                  <button
-                    onClick={handleApplyAllFields}
-                    className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
-                  >
-                    Aplicar todo
-                  </button>
-                  <button
-                    onClick={handleApplySuggestions}
-                    className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-                  >
-                    Aplicar sugerencias
-                  </button>
-                  <button
-                    onClick={handleEditBeforeApply}
-                    className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-                  >
-                    Editar antes de aplicar
-                  </button>
-                </div>
+                    </>
+                  );
+                })()}
                 
                 {/* Smart CTAs */}
                 <div className="flex gap-3 pt-3 border-t border-neutral-200">

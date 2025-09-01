@@ -1,10 +1,42 @@
 // H-OCR: OCR Service for Google Document AI integration
 import { OCRResult, OCRField } from './db';
+import { findProviderByNIF, findProviderByNameOrAlias, initializeDefaultProviders } from './providerDirectoryService';
 
 // H-OCR: Configuration interface
 interface OCRConfig {
   autoRun?: boolean;
   confidenceThreshold?: number;
+}
+
+// H-OCR-FIX: Provider blacklist for filtering demo/example terms
+const PROVIDER_BLACKLIST = [
+  'EJEMPLO',
+  'DEMO', 
+  'PLANTILLA',
+  'FACTURA DE EJEMPLO',
+  'MUESTRA',
+  'TEMPLATE',
+  'SAMPLE',
+  'TEST',
+  'PRUEBA'
+];
+
+// H-OCR-FIX: Known provider aliases for Spanish utility companies
+const KNOWN_PROVIDER_ALIASES = {
+  'ENDESA': ['Endesa Energía XXI', 'Endesa Energía', 'ENDESA ENERGIA', 'Endesa S.A.'],
+  'EDP': ['EDP Energía', 'EDP España', 'EDP Comercializadora'],
+  'NATURGY': ['Naturgy Energy Group', 'Gas Natural Fenosa', 'Naturgy Iberia'],
+  'REPSOL': ['Repsol Comercializadora', 'Repsol Gas'],
+  'HOLALUZ': ['Holaluz Energía', 'HOLALUZ-CLIDOM'],
+  'TOTALENERGIES': ['TotalEnergies Gas y Electricidad España', 'Total Energies'],
+  'IBERDROLA': ['Iberdrola Clientes', 'Iberdrola Comercializacion']
+};
+
+// H-OCR-FIX: Engine configuration
+interface OCREngineInfo {
+  type: 'document-ai-invoice' | 'vision-fallback';
+  displayName: string;
+  description: string;
 }
 
 // H-OCR: Mapped invoice fields from Google Document AI
@@ -24,14 +56,240 @@ interface OCRConfig {
 //   cuentaCargo?: string;
 // }
 
-// H-OCR: Format currency in Spanish locale
-export const formatCurrency = (amount: number): string => {
+// H-OCR-FIX: Normalize amounts to Spanish format (comma decimal, dot thousands)
+export const normalizeAmountToSpanish = (amount: string | number): string => {
+  if (typeof amount === 'number') {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
+  
+  // Parse various formats and normalize to Spanish
+  const cleanAmount = amount.toString()
+    .replace(/[^\d,.-]/g, '') // Remove non-numeric chars except comma, dot, dash
+    .trim();
+  
+  if (!cleanAmount) return '0,00';
+  
+  // Try to parse the amount considering different formats
+  let parsedAmount = 0;
+  
+  // Format: 1.234,56 (Spanish)
+  if (/^\d{1,3}(\.\d{3})*,\d{2}$/.test(cleanAmount)) {
+    parsedAmount = parseFloat(cleanAmount.replace(/\./g, '').replace(',', '.'));
+  }
+  // Format: 1,234.56 (English)
+  else if (/^\d{1,3}(,\d{3})*\.\d{2}$/.test(cleanAmount)) {
+    parsedAmount = parseFloat(cleanAmount.replace(/,/g, ''));
+  }
+  // Format: 1234.56 or 1234,56
+  else {
+    parsedAmount = parseFloat(cleanAmount.replace(',', '.'));
+  }
+  
+  if (isNaN(parsedAmount)) return '0,00';
+  
   return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(amount);
+  }).format(parsedAmount);
+};
+
+// H-OCR-FIX: Normalize dates to Spanish format (dd/mm/yyyy)
+export const normalizeDateToSpanish = (date: string): string => {
+  if (!date) return '';
+  
+  try {
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return date; // Return original if invalid
+    
+    return new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(dateObj);
+  } catch {
+    return date; // Return original if parsing fails
+  }
+};
+
+// H-OCR-FIX: Validate invoice amounts (Total ≈ Base + IVA - Discounts)
+export const validateInvoiceAmounts = (base: number, iva: number, total: number, discounts: number = 0): {
+  isValid: boolean;
+  expectedTotal: number;
+  difference: number;
+} => {
+  const expectedTotal = base + iva - discounts;
+  const difference = Math.abs(total - expectedTotal);
+  const tolerance = 0.01; // ±0.01 tolerance as specified
+  
+  return {
+    isValid: difference <= tolerance,
+    expectedTotal,
+    difference
+  };
+};
+
+// H-OCR-FIX: Check if provider name is in blacklist
+export const isProviderBlacklisted = (providerName: string): boolean => {
+  if (!providerName) return false;
+  
+  const upperProvider = providerName.toUpperCase().trim();
+  return PROVIDER_BLACKLIST.some(blacklisted => 
+    upperProvider.includes(blacklisted)
+  );
+};
+
+// H-OCR-FIX: Enhanced provider resolution using directory and sequential pipeline
+export const resolveProviderAdvanced = async (
+  detectedProvider: string,
+  detectedNIF?: string,
+  confidence: number = 0.80
+): Promise<{
+  canonicalName: string;
+  confidence: number;
+  source: 'native' | 'nif-directory' | 'alias' | 'directory-match' | 'original' | 'blacklisted';
+  suggestions?: string[];
+}> => {
+  if (!detectedProvider) {
+    return { canonicalName: '', confidence: 0, source: 'original' };
+  }
+  
+  const upperProvider = detectedProvider.toUpperCase().trim();
+  
+  // Step 1: Check blacklist first
+  if (isProviderBlacklisted(upperProvider)) {
+    return { canonicalName: '', confidence: 0, source: 'blacklisted' };
+  }
+  
+  // Step 2: If this is from native Invoice Parser with high confidence, use it
+  if (confidence >= 0.85) {
+    // Still check against directory for canonical name
+    const directoryMatch = await findProviderByNameOrAlias(detectedProvider);
+    if (directoryMatch) {
+      return { 
+        canonicalName: directoryMatch.canonicalName, 
+        confidence: 0.95, 
+        source: 'native' 
+      };
+    }
+    return { canonicalName: detectedProvider, confidence, source: 'native' };
+  }
+  
+  // Step 3: NIF/CIF lookup in directory
+  if (detectedNIF) {
+    const nifMatch = await findProviderByNIF(detectedNIF);
+    if (nifMatch) {
+      return { 
+        canonicalName: nifMatch.canonicalName, 
+        confidence: 0.90, 
+        source: 'nif-directory' 
+      };
+    }
+  }
+  
+  // Step 4: Directory search by name/alias
+  const directoryMatch = await findProviderByNameOrAlias(detectedProvider);
+  if (directoryMatch) {
+    return { 
+      canonicalName: directoryMatch.canonicalName, 
+      confidence: 0.85, 
+      source: 'directory-match' 
+    };
+  }
+  
+  // Step 5: Fallback to known aliases (legacy method)
+  const aliasMatch = resolveProviderAlias(detectedProvider);
+  if (aliasMatch.canonicalName && aliasMatch.source === 'alias') {
+    return {
+      canonicalName: aliasMatch.canonicalName,
+      confidence: aliasMatch.confidence,
+      source: 'alias'
+    };
+  }
+  
+  // Step 6: If confidence is low, return with suggestions for user confirmation
+  if (confidence < 0.85) {
+    const suggestions = await getProviderSuggestions(detectedProvider);
+    return { 
+      canonicalName: detectedProvider, 
+      confidence, 
+      source: 'original',
+      suggestions 
+    };
+  }
+  
+  // Return original if no match found
+  return { canonicalName: detectedProvider, confidence, source: 'original' };
+};
+
+// H-OCR-FIX: Resolve provider using known aliases (legacy function)
+export const resolveProviderAlias = (detectedProvider: string): {
+  canonicalName: string;
+  confidence: number;
+  source: 'alias' | 'original';
+} => {
+  if (!detectedProvider) {
+    return { canonicalName: '', confidence: 0, source: 'original' };
+  }
+  
+  const upperProvider = detectedProvider.toUpperCase().trim();
+  
+  // Check if it's blacklisted first
+  if (isProviderBlacklisted(upperProvider)) {
+    return { canonicalName: '', confidence: 0, source: 'original' };
+  }
+  
+  // Check against known aliases
+  for (const [canonical, aliases] of Object.entries(KNOWN_PROVIDER_ALIASES)) {
+    // Direct match with canonical name
+    if (upperProvider === canonical) {
+      return { canonicalName: canonical, confidence: 0.95, source: 'alias' };
+    }
+    
+    // Check aliases
+    for (const alias of aliases) {
+      if (upperProvider.includes(alias.toUpperCase()) || alias.toUpperCase().includes(upperProvider)) {
+        return { canonicalName: canonical, confidence: 0.90, source: 'alias' };
+      }
+    }
+  }
+  
+  // Return original if no alias found
+  return { canonicalName: detectedProvider, confidence: 0.80, source: 'original' };
+};
+
+// H-OCR-FIX: Get TOP 3 provider suggestions for low-confidence matches
+export const getProviderSuggestions = async (detectedProvider: string): Promise<string[]> => {
+  try {
+    // Initialize directory if not exists
+    await initializeDefaultProviders();
+    
+    const searchTerm = detectedProvider.toLowerCase();
+    const suggestions: { name: string; score: number }[] = [];
+    
+    // Add known aliases with scoring
+    Object.keys(KNOWN_PROVIDER_ALIASES).forEach(canonical => {
+      const aliases = (KNOWN_PROVIDER_ALIASES as any)[canonical];
+      const score = canonical.toLowerCase().includes(searchTerm) ? 0.8 : 
+                   aliases.some((alias: string) => 
+                     alias.toLowerCase().includes(searchTerm)) ? 0.6 : 0;
+      
+      if (score > 0) {
+        suggestions.push({ name: canonical, score });
+      }
+    });
+    
+    // Sort by score and return top 3
+    return suggestions
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(s => s.name);
+  } catch (error) {
+    console.error('Error getting provider suggestions:', error);
+    return [];
+  }
 };
 
 // H-OCR: Format percentage in Spanish locale
@@ -51,11 +309,30 @@ export const getOCRConfig = (): OCRConfig => {
   };
 };
 
-// H-OCR: Simulate Google Document AI processing (real implementation would call serverless function)
+// H-OCR: Format currency in Spanish locale
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+};
+
+// H-OCR-FIX: Enhanced OCR processing with provider resolution and Spanish normalization
 export const processDocumentOCR = async (documentBlob: Blob, filename: string): Promise<OCRResult> => {
   // Simulate processing delay
   await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
 
+  // Determine engine type (simulate fallback logic)
+  const shouldUseInvoiceParser = filename.toLowerCase().includes('factura') || 
+                                filename.toLowerCase().includes('invoice') ||
+                                filename.toLowerCase().includes('recibo');
+  
+  const engineInfo: OCREngineInfo = shouldUseInvoiceParser && Math.random() > 0.1 
+    ? { type: 'document-ai-invoice', displayName: 'Document AI — Invoice (EU)', description: 'Specialized invoice processor' }
+    : { type: 'vision-fallback', displayName: 'Vision OCR (generic)', description: 'Generic text extraction' };
+  
   // Simulate different outcomes based on file type
   const isInvoice = filename.toLowerCase().includes('factura') || 
                    filename.toLowerCase().includes('invoice') ||
@@ -75,25 +352,52 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
   const fields: OCRField[] = [];
   
   if (isInvoice) {
-    // Mock invoice fields
+    // H-OCR-FIX: Enhanced mock invoice fields with advanced provider resolution
+    const rawProvider = Math.random() > 0.2 ? 'Endesa Energía XXI, S.L.U.' : 'EMPRESA EJEMPLO S.L.'; // 20% chance of example
+    const rawNIF = Math.random() > 0.2 ? 'B82846817' : '';
+    const providerResolution = await resolveProviderAdvanced(rawProvider, rawNIF, 0.95);
+    
+    // Only add provider if not blacklisted
+    if (providerResolution.canonicalName) {
+      fields.push({
+        name: 'proveedor',
+        value: providerResolution.canonicalName,
+        confidence: providerResolution.confidence,
+        raw: rawProvider
+      });
+    }
+    
+    if (rawNIF) {
+      fields.push({ name: 'proveedorNIF', value: rawNIF, confidence: 0.92 });
+    }
+    
     fields.push(
-      { name: 'proveedor', value: 'Endesa Energía XXI, S.L.U.', confidence: 0.95 },
-      { name: 'proveedorNIF', value: 'B82846817', confidence: 0.92 },
       { name: 'numeroFactura', value: 'FE-2024-001234', confidence: 0.98 },
-      { name: 'fechaEmision', value: '2024-01-15', confidence: 0.94 },
-      { name: 'fechaVencimiento', value: '2024-02-15', confidence: 0.89 },
-      { name: 'importe', value: '156.78', confidence: 0.96 },
-      { name: 'base', value: '129.65', confidence: 0.93 },
-      { name: 'iva', value: '27.13', confidence: 0.91 },
+      { name: 'fechaEmision', value: normalizeDateToSpanish('2024-01-15'), confidence: 0.94 },
+      { name: 'fechaVencimiento', value: normalizeDateToSpanish('2024-02-15'), confidence: 0.89 },
+      { name: 'importe', value: normalizeAmountToSpanish(156.78), confidence: 0.96 },
+      { name: 'base', value: normalizeAmountToSpanish(129.65), confidence: 0.93 },
+      { name: 'iva', value: normalizeAmountToSpanish(27.13), confidence: 0.91 },
       { name: 'cups', value: 'ES0031406512345678JY0F', confidence: 0.87 },
       { name: 'direccionSuministro', value: 'Calle Mayor, 123, 28001 Madrid', confidence: 0.85 }
     );
   } else {
     // Generic document fields
+    const rawProvider = Math.random() > 0.3 ? 'Empresa Ejemplo S.L.' : 'Naturgy Energy Group S.A.';
+    const providerResolution = await resolveProviderAdvanced(rawProvider, '', 0.80);
+    
+    if (providerResolution.canonicalName) {
+      fields.push({
+        name: 'proveedor',
+        value: providerResolution.canonicalName,
+        confidence: providerResolution.confidence,
+        raw: rawProvider
+      });
+    }
+    
     fields.push(
-      { name: 'proveedor', value: 'Empresa Ejemplo S.L.', confidence: 0.85 },
-      { name: 'fechaEmision', value: '2024-01-20', confidence: 0.88 },
-      { name: 'importe', value: '245.30', confidence: 0.82 }
+      { name: 'fechaEmision', value: normalizeDateToSpanish('2024-01-20'), confidence: 0.88 },
+      { name: 'importe', value: normalizeAmountToSpanish(245.30), confidence: 0.82 }
     );
   }
 
@@ -105,14 +409,30 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
     );
   }
 
+  // H-OCR-FIX: Simulate multi-page processing
+  const mockPages = [
+    'FACTURA Nº FE-2024-001234\nEndesa Energía XXI, S.L.U.\nNIF: B82846817\nIMPORTE TOTAL: 156,78 €\nIVA: 27,13 €\nBASE: 129,65 €',
+    'CONDICIONES LEGALES\nTérminos y condiciones de suministro\nPolítica de privacidad\nProtección de datos personales',
+    'CUPS: ES0031406512345678JY0F\nDirección: Calle Mayor, 123\n28001 Madrid'
+  ];
+  
+  const pageAnalysis = selectBestPageForExtraction(mockPages);
+
   const globalConfidence = fields.reduce((sum, field) => sum + field.confidence, 0) / fields.length;
 
   return {
-    engine: 'gdocai:invoice',
+    engine: `${engineInfo.type}:${engineInfo.displayName}`,
     timestamp: new Date().toISOString(),
     confidenceGlobal: globalConfidence,
     fields,
-    status: 'completed'
+    status: 'completed',
+    engineInfo, // H-OCR-FIX: Add engine details for transparency
+    pageInfo: {
+      totalPages: mockPages.length,
+      selectedPage: pageAnalysis.bestPageIndex + 1, // 1-based for UI
+      pageScore: pageAnalysis.score,
+      allPageScores: pageAnalysis.allScores
+    }
   };
 };
 
@@ -143,7 +463,133 @@ export const getOCRField = (ocrResult: OCRResult, fieldName: string): OCRField |
   return ocrResult.fields.find(field => field.name === fieldName);
 };
 
-// H-OCR: Filter fields by confidence threshold
+// H-OCR-FIX: Get critical fields and their validation status
+export const getCriticalFieldsStatus = (ocrResult: OCRResult): {
+  fields: { name: string; value: string; confidence: number; isCritical: boolean; isValid: boolean }[];
+  allCriticalValid: boolean;
+  hasEmptyCritical: boolean;
+} => {
+  const CRITICAL_FIELDS = ['proveedor', 'numeroFactura', 'fechaEmision', 'importe'];
+  const CONFIDENCE_THRESHOLD = 0.80;
+  
+  const fieldStatus = ocrResult.fields.map(field => {
+    const isCritical = CRITICAL_FIELDS.includes(field.name);
+    const isValid = field.confidence >= CONFIDENCE_THRESHOLD && field.value.trim() !== '';
+    
+    return {
+      name: field.name,
+      value: field.value,
+      confidence: field.confidence,
+      isCritical,
+      isValid: isCritical ? isValid : true // Non-critical fields are always "valid"
+    };
+  });
+  
+  const criticalFields = fieldStatus.filter(f => f.isCritical);
+  const allCriticalValid = criticalFields.every(f => f.isValid);
+  const hasEmptyCritical = criticalFields.some(f => !f.value.trim());
+  
+  return {
+    fields: fieldStatus,
+    allCriticalValid,
+    hasEmptyCritical
+  };
+};
+
+// H-OCR-FIX: Get confidence icon for field display
+export const getConfidenceIcon = (confidence: number): string => {
+  if (confidence >= 0.85) return '✅';
+  if (confidence >= 0.70) return '⚠️';
+  return '⛔';
+};
+
+// H-OCR-FIX: Multi-page document scoring for better field extraction
+export const scorePageForInvoiceFields = (pageText: string): number => {
+  const keywords = [
+    'FACTURA', 'INVOICE', 'Nº FACTURA', 'INVOICE NUMBER',
+    'IVA', 'VAT', 'TOTAL', 'IMPORTE', 'AMOUNT',
+    'NIF', 'CIF', 'TAX ID',
+    'CUPS', 'IBAN',
+    'FECHA', 'DATE', 'VENCIMIENTO', 'DUE'
+  ];
+  
+  const legalTerms = [
+    'CONDICIONES LEGALES', 'TÉRMINOS Y CONDICIONES', 'LEGAL CONDITIONS',
+    'POLÍTICA DE PRIVACIDAD', 'PRIVACY POLICY', 'PROTECCIÓN DE DATOS',
+    'AVISO LEGAL', 'LEGAL NOTICE', 'CLAUSULAS', 'CLAUSES'
+  ];
+  
+  const upperText = pageText.toUpperCase();
+  
+  // Count keyword matches
+  let keywordScore = 0;
+  keywords.forEach(keyword => {
+    const matches = (upperText.match(new RegExp(keyword, 'g')) || []).length;
+    keywordScore += matches;
+  });
+  
+  // Penalty for legal/privacy pages
+  let legalPenalty = 0;
+  legalTerms.forEach(term => {
+    if (upperText.includes(term)) {
+      legalPenalty += 5; // Heavy penalty for legal content
+    }
+  });
+  
+  // Check for amount patterns (numbers with €, EUR, or decimal patterns)
+  const amountPatterns = [
+    /\d+[.,]\d{2}\s*€/g,
+    /\d+[.,]\d{2}\s*EUR/g,
+    /€\s*\d+[.,]\d{2}/g,
+    /\d{1,3}[.,]\d{3}[.,]\d{2}/g // Large amounts with thousands separator
+  ];
+  
+  let amountScore = 0;
+  amountPatterns.forEach(pattern => {
+    const matches = (pageText.match(pattern) || []).length;
+    amountScore += matches * 2; // Higher weight for amounts
+  });
+  
+  // Final score calculation
+  const score = keywordScore + amountScore - legalPenalty;
+  return Math.max(0, score); // Ensure non-negative
+};
+
+// H-OCR-FIX: Select best page from multi-page document
+export const selectBestPageForExtraction = (pages: string[]): { 
+  bestPageIndex: number; 
+  score: number; 
+  allScores: number[] 
+} => {
+  if (pages.length === 0) {
+    return { bestPageIndex: -1, score: 0, allScores: [] };
+  }
+  
+  if (pages.length === 1) {
+    return { bestPageIndex: 0, score: scorePageForInvoiceFields(pages[0]), allScores: [scorePageForInvoiceFields(pages[0])] };
+  }
+  
+  const scores = pages.map(page => scorePageForInvoiceFields(page));
+  const maxScore = Math.max(...scores);
+  const bestPageIndex = scores.indexOf(maxScore);
+  
+  return {
+    bestPageIndex,
+    score: maxScore,
+    allScores: scores
+  };
+};
+
+// H-OCR-FIX: Get fields suitable for automatic application (high confidence only)
+export const getApplicableFields = (ocrResult: OCRResult, threshold: number = 0.80): OCRField[] => {
+  return ocrResult.fields.filter(field => 
+    field.confidence >= threshold && 
+    field.value.trim() !== '' &&
+    !isProviderBlacklisted(field.name === 'proveedor' ? field.value : '')
+  );
+};
+
+// H-OCR: Filter fields by confidence threshold (legacy function for backward compatibility)
 export const getHighConfidenceFields = (ocrResult: OCRResult, threshold: number = 0.7): OCRField[] => {
   return ocrResult.fields.filter(field => field.confidence >= threshold);
 };
