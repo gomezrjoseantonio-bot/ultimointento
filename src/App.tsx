@@ -24,6 +24,7 @@ import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/Proy
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
 import PlanFacturacion from './modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
+import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
 
 // Pulse (Personal) Module Components
 import PulsePanel from './modules/pulse/panel/Panel';
@@ -118,6 +119,7 @@ function App() {
               <Route path="usuarios-roles" element={<UsuariosRoles />} />
               {/* Shared configuration - available for both modules */}
               <Route path="preferencias-datos" element={<HorizonPreferenciasDatos />} />
+              <Route path="email-entrante" element={<EmailEntrante />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/panel" replace />} />

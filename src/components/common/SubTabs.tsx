@@ -38,6 +38,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Plan & Facturación', path: '/configuracion/plan-facturacion' },
     { label: 'Usuarios & Roles', path: '/configuracion/usuarios-roles' },
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Email entrante', path: '/configuracion/email-entrante' },
   ],
 };
 
@@ -63,6 +64,7 @@ const PULSE_SUBTABS: SubTabsConfig = {
   ],
   configuracion: [
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Email entrante', path: '/configuracion/email-entrante' },
   ],
 };
 
