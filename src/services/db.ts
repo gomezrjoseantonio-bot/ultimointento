@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // H5: Updated for Gastos & CAPEX schema
 
 export interface Property {
   id?: number;
@@ -34,6 +34,23 @@ export interface Property {
     other?: Array<{ concept: string; amount: number; }>;
   };
   documents: number[];
+  // H5: Datos fiscales auxiliares
+  fiscalData?: {
+    cadastralValue?: number;
+    constructionCadastralValue?: number;
+    constructionPercentage?: number;
+    acquisitionDate?: string;
+    contractUse?: 'vivienda-habitual' | 'turistico' | 'otros';
+    housingReduction?: boolean;
+    isAccessory?: boolean;
+    mainPropertyId?: number;
+    accessoryData?: {
+      cadastralReference: string;
+      acquisitionDate: string;
+      cadastralValue: number;
+      constructionCadastralValue: number;
+    };
+  };
 }
 
 export interface Document {
@@ -66,6 +83,122 @@ export interface Contract {
   documents: number[];
 }
 
+// H5: AEAT Tax Classification Types
+export type AEATFiscalType = 
+  | 'financiacion'           // Financing (interests and associated costs)
+  | 'reparacion-conservacion' // Repair & Conservation (R&C)
+  | 'comunidad'              // Community fees
+  | 'suministros'            // Utilities
+  | 'seguros'                // Insurance
+  | 'tributos-locales'       // Local taxes (IBI, waste, lighting; no fines)
+  | 'servicios-personales'   // Personal services (cleaning, external maintenance, etc.)
+  | 'amortizacion-muebles'   // Furniture amortization (10 years)
+  | 'capex-mejora-ampliacion'; // CAPEX (Improvement/Expansion)
+
+export type AEATBox = 
+  | '0105' // Interests/financing
+  | '0106' // R&C
+  | '0109' // Community
+  | '0112' // Personal services
+  | '0113' // Utilities
+  | '0114' // Insurance
+  | '0115' // Local taxes
+  | '0117'; // Furniture amortization
+
+export type ProrationMethod = 'metros-cuadrados' | 'unidades' | 'porcentaje-manual' | 'ocupacion';
+
+export type ExpenseStatus = 'validado' | 'pendiente' | 'por-revisar';
+
+export type ExpenseOrigin = 'manual' | 'inbox';
+
+// H5: Enhanced Expense interface
+export interface ExpenseH5 {
+  id?: number;
+  date: string;
+  provider: string;
+  providerNIF?: string;
+  concept: string;
+  amount: number;
+  fiscalType: AEATFiscalType;
+  aeatBox?: AEATBox;
+  taxYear: number; // Ejercicio de devengo
+  taxIncluded: boolean;
+  propertyId: number;
+  unit: 'completo' | string; // 'completo' or 'habitacion-X'
+  prorationMethod: ProrationMethod;
+  prorationDetail: string; // % or other details based on method
+  status: ExpenseStatus;
+  origin: ExpenseOrigin;
+  documentId?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H5: CAPEX Treatment Types
+export type CAPEXTreatment = 'capex-mejora' | 'mobiliario-10-años' | 'reparacion-conservacion';
+
+export type ReformStatus = 'abierta' | 'cerrada';
+
+// H5: Reform (CAPEX project)
+export interface Reform {
+  id?: number;
+  title: string;
+  propertyId: number;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  status: ReformStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H5: Reform Line Item
+export interface ReformLineItem {
+  id?: number;
+  reformId: number;
+  source: 'documento' | 'manual';
+  documentId?: number;
+  provider: string;
+  providerNIF?: string;
+  concept: string;
+  amount: number;
+  taxIncluded: boolean;
+  treatment: CAPEXTreatment;
+  aeatBoxSuggested?: AEATBox;
+  executionDate: string;
+  prorationMethod: ProrationMethod;
+  prorationDetail: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H5: AEAT Limit and Carryforward tracking
+export interface AEATCarryForward {
+  id?: number;
+  propertyId: number;
+  taxYear: number;
+  totalIncome: number; // Ingresos íntegros del inmueble
+  financingAndRepair: number; // Financiación + R&C
+  limitApplied: number; // min(financingAndRepair, totalIncome)
+  excessAmount: number; // financingAndRepair - limitApplied
+  expirationYear: number; // taxYear + 4
+  remainingAmount: number; // Current remaining amount that can be used
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H5: Rental/Availability days tracking
+export interface PropertyDays {
+  id?: number;
+  propertyId: number;
+  taxYear: number;
+  daysRented: number;
+  daysAvailable: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Legacy Expense interface (keep for backward compatibility)
 export interface Expense {
   id?: number;
   propertyId: number;
@@ -88,7 +221,12 @@ interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
   contracts: Contract;
-  expenses: Expense;
+  expenses: Expense; // Legacy
+  expensesH5: ExpenseH5; // H5: New expense system
+  reforms: Reform; // H5: CAPEX reforms
+  reformLineItems: ReformLineItem; // H5: Reform line items
+  aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
+  propertyDays: PropertyDays; // H5: Rental/availability days
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -118,12 +256,54 @@ export const initDB = async () => {
           contractStore.createIndex('propertyId', 'propertyId', { unique: false });
         }
 
-        // Expenses store
+        // Legacy Expenses store (keep for backward compatibility)
         if (!db.objectStoreNames.contains('expenses')) {
           const expenseStore = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
           expenseStore.createIndex('propertyId', 'propertyId', { unique: false });
           expenseStore.createIndex('category', 'category', { unique: false });
           expenseStore.createIndex('isCapex', 'isCapex', { unique: false });
+        }
+
+        // H5: Enhanced Expenses store
+        if (!db.objectStoreNames.contains('expensesH5')) {
+          const expenseH5Store = db.createObjectStore('expensesH5', { keyPath: 'id', autoIncrement: true });
+          expenseH5Store.createIndex('propertyId', 'propertyId', { unique: false });
+          expenseH5Store.createIndex('fiscalType', 'fiscalType', { unique: false });
+          expenseH5Store.createIndex('taxYear', 'taxYear', { unique: false });
+          expenseH5Store.createIndex('status', 'status', { unique: false });
+          expenseH5Store.createIndex('origin', 'origin', { unique: false });
+          expenseH5Store.createIndex('date', 'date', { unique: false });
+        }
+
+        // H5: Reforms store
+        if (!db.objectStoreNames.contains('reforms')) {
+          const reformStore = db.createObjectStore('reforms', { keyPath: 'id', autoIncrement: true });
+          reformStore.createIndex('propertyId', 'propertyId', { unique: false });
+          reformStore.createIndex('status', 'status', { unique: false });
+        }
+
+        // H5: Reform Line Items store
+        if (!db.objectStoreNames.contains('reformLineItems')) {
+          const reformLineItemStore = db.createObjectStore('reformLineItems', { keyPath: 'id', autoIncrement: true });
+          reformLineItemStore.createIndex('reformId', 'reformId', { unique: false });
+          reformLineItemStore.createIndex('treatment', 'treatment', { unique: false });
+          reformLineItemStore.createIndex('source', 'source', { unique: false });
+        }
+
+        // H5: AEAT Carry Forwards store
+        if (!db.objectStoreNames.contains('aeatCarryForwards')) {
+          const carryForwardStore = db.createObjectStore('aeatCarryForwards', { keyPath: 'id', autoIncrement: true });
+          carryForwardStore.createIndex('propertyId', 'propertyId', { unique: false });
+          carryForwardStore.createIndex('taxYear', 'taxYear', { unique: false });
+          carryForwardStore.createIndex('expirationYear', 'expirationYear', { unique: false });
+        }
+
+        // H5: Property Days store
+        if (!db.objectStoreNames.contains('propertyDays')) {
+          const propertyDaysStore = db.createObjectStore('propertyDays', { keyPath: 'id', autoIncrement: true });
+          propertyDaysStore.createIndex('propertyId', 'propertyId', { unique: false });
+          propertyDaysStore.createIndex('taxYear', 'taxYear', { unique: false });
+          propertyDaysStore.createIndex('property-year', ['propertyId', 'taxYear'], { unique: true });
         }
       }
     });

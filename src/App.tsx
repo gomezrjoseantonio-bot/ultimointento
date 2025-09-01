@@ -40,6 +40,7 @@ import TPAlertas from './modules/pulse/tesoreria-personal/alertas/TPAlertas';
 import PPPresupuesto from './modules/pulse/proyeccion-personal/presupuesto/PPPresupuesto';
 import PPEscenarios from './modules/pulse/proyeccion-personal/escenarios/PPEscenarios';
 import HorizonPreferenciasDatos from './modules/horizon/configuracion/preferencias-datos/PreferenciasDatos';
+import GastosCapex from './modules/horizon/inmuebles/gastos-capex/GastosCapex';
 
 function App() {
   return (
@@ -61,6 +62,7 @@ function App() {
               <Route path="cartera/:id/editar" element={<PropertyForm mode="edit" />} />
               <Route path="contratos" element={<Contratos />} />
               <Route path="prestamos" element={<Prestamos />} />
+              <Route path="gastos-capex" element={<GastosCapex />} />
               <Route path="analisis" element={<Analisis />} />
             </Route>
             

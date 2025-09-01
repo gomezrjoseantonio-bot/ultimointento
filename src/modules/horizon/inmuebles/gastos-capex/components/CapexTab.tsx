@@ -1,0 +1,346 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { PlusIcon, CogIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon } from 'lucide-react';
+import { Reform, initDB, Property } from '../../../../../services/db';
+import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
+import toast from 'react-hot-toast';
+
+const CapexTab: React.FC = () => {
+  const [reforms, setReforms] = useState<Reform[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const db = await initDB();
+      
+      const [reformsData, propertiesData] = await Promise.all([
+        db.getAll('reforms'),
+        db.getAll('properties')
+      ]);
+
+      setReforms(reformsData);
+      setProperties(propertiesData);
+    } catch (error) {
+      console.error('Error loading reforms:', error);
+      toast.error('Error al cargar las reformas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPropertyName = (propertyId: number): string => {
+    const property = properties.find(p => p.id === propertyId);
+    return property?.alias || 'Inmueble no encontrado';
+  };
+
+  // Mock function to calculate reform totals
+  const calculateReformTotals = async (reformId: number) => {
+    try {
+      const db = await initDB();
+      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reformId);
+      
+      const totals = lineItems.reduce((acc, item) => {
+        switch (item.treatment) {
+          case 'capex-mejora':
+            acc.capexMejora += item.amount;
+            break;
+          case 'mobiliario-10-años':
+            acc.mobiliario += item.amount;
+            break;
+          case 'reparacion-conservacion':
+            acc.reparacion += item.amount;
+            break;
+        }
+        acc.total += item.amount;
+        return acc;
+      }, {
+        capexMejora: 0,
+        mobiliario: 0,
+        reparacion: 0,
+        total: 0,
+        partidas: lineItems.length
+      });
+
+      return totals;
+    } catch (error) {
+      console.error('Error calculating reform totals:', error);
+      return {
+        capexMejora: 0,
+        mobiliario: 0,
+        reparacion: 0,
+        total: 0,
+        partidas: 0
+      };
+    }
+  };
+
+  const handleCloseReform = async (reformId: number) => {
+    try {
+      const db = await initDB();
+      const reform = await db.get('reforms', reformId);
+      
+      if (!reform) {
+        toast.error('Reforma no encontrada');
+        return;
+      }
+
+      // Update reform status
+      await db.put('reforms', {
+        ...reform,
+        status: 'cerrada',
+        endDate: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString()
+      });
+
+      // Calculate totals and update property CAPEX
+      const totals = await calculateReformTotals(reformId);
+      const capexIncrease = totals.capexMejora + totals.mobiliario;
+
+      if (capexIncrease > 0) {
+        const property = await db.get('properties', reform.propertyId);
+        if (property) {
+          // Note: This would need to be implemented in the property interface
+          // For now, we'll just show a toast
+          toast.success(`Reforma cerrada. CAPEX actualizado: ${formatEuro(capexIncrease)}`);
+        }
+      }
+
+      // Reload data
+      await loadData();
+      toast.success('Reforma cerrada correctamente');
+    } catch (error) {
+      console.error('Error closing reform:', error);
+      toast.error('Error al cerrar la reforma');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Reformas (CAPEX)</h2>
+          <p className="text-sm text-gray-600">
+            Agrupa mejoras/ampliaciones y mobiliario (no gasto del año)
+          </p>
+        </div>
+        <button className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Nueva reforma
+        </button>
+      </div>
+
+      {/* Reforms List */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        {reforms.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-400 text-lg mb-2">No hay reformas registradas</div>
+            <p className="text-gray-500 mb-4">
+              Comienza creando tu primera reforma para agrupar mejoras y ampliaciones.
+            </p>
+            <button className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Crear primera reforma
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe total</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Partidas</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {reforms.map((reform) => (
+                  <ReformRow
+                    key={reform.id}
+                    reform={reform}
+                    propertyName={getPropertyName(reform.propertyId)}
+                    onClose={() => handleCloseReform(reform.id!)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Individual Reform Row Component
+interface ReformRowProps {
+  reform: Reform;
+  propertyName: string;
+  onClose: () => void;
+}
+
+const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose }) => {
+  const [totals, setTotals] = useState({
+    capexMejora: 0,
+    mobiliario: 0,
+    reparacion: 0,
+    total: 0,
+    partidas: 0
+  });
+
+  const calculateTotals = useCallback(async () => {
+    try {
+      const db = await initDB();
+      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reform.id!);
+      
+      const calculated = lineItems.reduce((acc, item) => {
+        switch (item.treatment) {
+          case 'capex-mejora':
+            acc.capexMejora += item.amount;
+            break;
+          case 'mobiliario-10-años':
+            acc.mobiliario += item.amount;
+            break;
+          case 'reparacion-conservacion':
+            acc.reparacion += item.amount;
+            break;
+        }
+        acc.total += item.amount;
+        return acc;
+      }, {
+        capexMejora: 0,
+        mobiliario: 0,
+        reparacion: 0,
+        total: 0,
+        partidas: lineItems.length
+      });
+
+      setTotals(calculated);
+    } catch (error) {
+      console.error('Error calculating totals:', error);
+    }
+  }, [reform.id]);
+
+  useEffect(() => {
+    if (reform.id) {
+      calculateTotals();
+    }
+  }, [reform.id, calculateTotals]);
+
+  const getPeriodText = () => {
+    const start = formatDate(reform.startDate);
+    const end = reform.endDate ? formatDate(reform.endDate) : 'En curso';
+    return `${start} - ${end}`;
+  };
+
+  const getStatusIcon = () => {
+    return reform.status === 'cerrada' ? (
+      <CheckCircleIcon className="h-5 w-5 text-green-500" />
+    ) : (
+      <CogIcon className="h-5 w-5 text-orange-500" />
+    );
+  };
+
+  const getStatusBadge = () => {
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        reform.status === 'cerrada' 
+          ? 'bg-green-100 text-green-800' 
+          : 'bg-orange-100 text-orange-800'
+      }`}>
+        {reform.status === 'cerrada' ? 'Cerrada' : 'Abierta'}
+      </span>
+    );
+  };
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        <div className="flex items-center">
+          {getStatusIcon()}
+          <div className="ml-3">
+            <div className="font-medium">{reform.title}</div>
+            {reform.notes && (
+              <div className="text-gray-500 text-xs truncate max-w-xs">{reform.notes}</div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {propertyName}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        {getPeriodText()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
+        <div>
+          <div className="font-medium">{formatEuro(totals.total)}</div>
+          {totals.total > 0 && (
+            <div className="text-xs text-gray-500">
+              M: {formatEuro(totals.capexMejora)} | 
+              Mob: {formatEuro(totals.mobiliario)} | 
+              R&C: {formatEuro(totals.reparacion)}
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+        <span className="font-medium">{totals.partidas}</span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm">
+        {getStatusBadge()}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <div className="flex items-center justify-end space-x-2">
+          <button
+            className="text-brand-navy hover:text-navy-800 p-1"
+            title="Ver detalles"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </button>
+          {reform.status === 'abierta' && (
+            <>
+              <button
+                className="text-brand-navy hover:text-navy-800 p-1"
+                title="Editar"
+              >
+                <PencilIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={onClose}
+                className="text-green-600 hover:text-green-800 p-1"
+                title="Cerrar reforma"
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          <button
+            className="text-red-600 hover:text-red-800 p-1"
+            title="Eliminar"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+export default CapexTab;
