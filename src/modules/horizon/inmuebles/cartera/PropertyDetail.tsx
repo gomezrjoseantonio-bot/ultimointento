@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, PencilIcon, DocumentIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { Property, initDB } from '../../../../services/db';
-import { formatEuro, formatDate, formatInteger } from '../../../../utils/formatUtils';
+import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import toast from 'react-hot-toast';
 
@@ -279,6 +279,94 @@ const PropertyDetail: React.FC = () => {
           <span className="text-sm text-neutral-500">—</span>
         </div>
         <p className="text-xs text-neutral-500 mt-2">El cálculo de CAPEX se implementará en H5</p>
+      </div>
+
+      {/* H5: Datos fiscales auxiliares */}
+      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4">Datos fiscales auxiliares</h3>
+        <p className="text-sm text-neutral-600 mb-4">Capturar ahora, calcular en H9</p>
+        
+        <div className="space-y-4">
+          {/* Valores catastrales */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-neutral-600">Valor catastral</div>
+              <div className="text-sm font-medium text-neutral-900">
+                {property.fiscalData?.cadastralValue ? formatEuro(property.fiscalData.cadastralValue) : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-neutral-600">Valor catastral construcción</div>
+              <div className="text-sm font-medium text-neutral-900">
+                {property.fiscalData?.constructionCadastralValue ? formatEuro(property.fiscalData.constructionCadastralValue) : '—'}
+              </div>
+            </div>
+          </div>
+
+          {/* Porcentaje construcción calculado */}
+          {property.fiscalData?.cadastralValue && property.fiscalData?.constructionCadastralValue && (
+            <div>
+              <div className="text-sm text-neutral-600">% construcción (calculado)</div>
+              <div className="text-sm font-medium text-neutral-900">
+                {formatPercentage((property.fiscalData.constructionCadastralValue / property.fiscalData.cadastralValue) * 100)}
+              </div>
+            </div>
+          )}
+
+          {/* Fecha de adquisición */}
+          <div>
+            <div className="text-sm text-neutral-600">Fecha de adquisición</div>
+            <div className="text-sm font-medium text-neutral-900">
+              {property.fiscalData?.acquisitionDate ? formatDate(property.fiscalData.acquisitionDate) : formatDate(property.purchaseDate)}
+            </div>
+          </div>
+
+          {/* Uso del contrato */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-neutral-600">Uso contrato</div>
+              <div className="text-sm font-medium text-neutral-900">
+                {property.fiscalData?.contractUse ? 
+                  (property.fiscalData.contractUse === 'vivienda-habitual' ? 'Vivienda habitual' :
+                   property.fiscalData.contractUse === 'turistico' ? 'Turístico' : 'Otros') : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-neutral-600">¿Reducción vivienda?</div>
+              <div className="text-sm font-medium text-neutral-900">
+                {property.fiscalData?.housingReduction !== undefined ? 
+                  (property.fiscalData.housingReduction ? 'Sí' : 'No') : '—'}
+              </div>
+            </div>
+          </div>
+
+          {/* Inmueble accesorio */}
+          {property.fiscalData?.isAccessory && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="text-sm font-medium text-blue-900 mb-2">Inmueble accesorio</div>
+              {property.fiscalData.mainPropertyId && (
+                <div className="text-xs text-blue-700">
+                  Vinculado a inmueble principal ID: {property.fiscalData.mainPropertyId}
+                </div>
+              )}
+              {property.fiscalData.accessoryData && (
+                <div className="mt-2 space-y-1 text-xs text-blue-700">
+                  <div>Ref. catastral: {property.fiscalData.accessoryData.cadastralReference}</div>
+                  <div>Fecha adquisición: {formatDate(property.fiscalData.accessoryData.acquisitionDate)}</div>
+                  <div>Valor catastral: {formatEuro(property.fiscalData.accessoryData.cadastralValue)}</div>
+                  <div>Valor construcción: {formatEuro(property.fiscalData.accessoryData.constructionCadastralValue)}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Note about editing */}
+          <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-md">
+            <div className="text-xs text-neutral-600">
+              Para editar estos datos fiscales auxiliares, utiliza el botón "Editar" en la parte superior de la página.
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Atajos */}

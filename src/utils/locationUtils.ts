@@ -1,4 +1,5 @@
 // Spanish postal code to location mapping utilities
+import { multiplyCurrency, roundCurrency } from './formatUtils';
 
 export interface LocationData {
   province: string;
@@ -100,10 +101,29 @@ export const getITPRateForCCAA = (ccaa: string): number => {
 
 export const calculateITP = (price: number, ccaa: string): number => {
   const rate = getITPRateForCCAA(ccaa);
-  return price * (rate / 100);
+  return roundCurrency(multiplyCurrency(price, rate / 100));
 };
 
 export const formatCadastralReference = (ref: string): string => {
   // Normalize to uppercase, remove spaces, max 20 chars
   return ref.toUpperCase().replace(/\s/g, '').substring(0, 20);
+};
+
+export const calculateIVA = (price: number): number => {
+  // Standard IVA rate for new construction is 10%
+  return roundCurrency(multiplyCurrency(price, 0.10));
+};
+
+export const getSpecialRegionWarning = (ccaa: string): string | null => {
+  const ccaaLower = ccaa.toLowerCase();
+  
+  if (ccaaLower === 'canarias') {
+    return 'En Canarias aplica IGIC (no IVA). Ajusta el importe si procede.';
+  }
+  
+  if (ccaaLower === 'ceuta' || ccaaLower === 'melilla') {
+    return 'En Ceuta/Melilla aplica IPSI. Ajusta el importe si procede.';
+  }
+  
+  return null;
 };

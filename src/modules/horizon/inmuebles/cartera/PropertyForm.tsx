@@ -7,10 +7,17 @@ import {
   getLocationFromPostalCode, 
   validatePostalCode, 
   calculateITP, 
+  calculateIVA,
   getITPRateForCCAA,
+  getSpecialRegionWarning,
   formatCadastralReference 
 } from '../../../../utils/locationUtils';
-import { formatEuro, parseEuroInput } from '../../../../utils/formatUtils';
+import { 
+  formatEuro, 
+  parseEuroInput,
+  addCurrency
+} from '../../../../utils/formatUtils';
+import MoneyInput from '../../../../components/common/MoneyInput';
 import toast from 'react-hot-toast';
 
 interface PropertyFormProps {
@@ -43,6 +50,22 @@ interface FormData {
     realEstate: string;
     other: Array<{ concept: string; amount: string; }>;
   };
+  // H5: Fiscal auxiliary data
+  fiscalData: {
+    cadastralValue: string;
+    constructionCadastralValue: string;
+    acquisitionDate: string;
+    contractUse: 'vivienda-habitual' | 'turistico' | 'otros' | '';
+    housingReduction: boolean;
+    isAccessory: boolean;
+    mainPropertyId: string;
+    accessoryData: {
+      cadastralReference: string;
+      acquisitionDate: string;
+      cadastralValue: string;
+      constructionCadastralValue: string;
+    };
+  };
 }
 
 const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
@@ -50,6 +73,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
   const { id } = useParams();
   const [loading, setLoading] = useState(false);
   const [itpManual, setItpManual] = useState(false);
+  const [ivaManual, setIvaManual] = useState(false);
   const [ccaaWarning, setCcaaWarning] = useState('');
   
   const [formData, setFormData] = useState<FormData>({
@@ -77,6 +101,21 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       psi: '',
       realEstate: '',
       other: []
+    },
+    fiscalData: {
+      cadastralValue: '',
+      constructionCadastralValue: '',
+      acquisitionDate: '',
+      contractUse: '',
+      housingReduction: false,
+      isAccessory: false,
+      mainPropertyId: '',
+      accessoryData: {
+        cadastralReference: '',
+        acquisitionDate: '',
+        cadastralValue: '',
+        constructionCadastralValue: ''
+      }
     }
   });
 
@@ -124,9 +163,25 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               concept: item.concept,
               amount: item.amount.toString()
             })) || []
+          },
+          fiscalData: {
+            cadastralValue: property.fiscalData?.cadastralValue?.toString() || '',
+            constructionCadastralValue: property.fiscalData?.constructionCadastralValue?.toString() || '',
+            acquisitionDate: property.fiscalData?.acquisitionDate || '',
+            contractUse: property.fiscalData?.contractUse || '',
+            housingReduction: property.fiscalData?.housingReduction || false,
+            isAccessory: property.fiscalData?.isAccessory || false,
+            mainPropertyId: property.fiscalData?.mainPropertyId?.toString() || '',
+            accessoryData: {
+              cadastralReference: property.fiscalData?.accessoryData?.cadastralReference || '',
+              acquisitionDate: property.fiscalData?.accessoryData?.acquisitionDate || '',
+              cadastralValue: property.fiscalData?.accessoryData?.cadastralValue?.toString() || '',
+              constructionCadastralValue: property.fiscalData?.accessoryData?.constructionCadastralValue?.toString() || ''
+            }
           }
         });
         setItpManual(property.acquisitionCosts.itpIsManual || false);
+        setIvaManual(property.acquisitionCosts.ivaIsManual || false);
       }
     } catch (error) {
       console.error('Error loading property:', error);
@@ -167,6 +222,21 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               acquisitionCosts: {
                 ...prev.acquisitionCosts,
                 itp: newItp.toString()
+              }
+            }));
+          }
+        }
+        
+        // Recalculate IVA if not manual
+        if (!ivaManual && formData.transmissionRegime === 'obra-nueva' && formData.acquisitionCosts.price) {
+          const price = parseEuroInput(formData.acquisitionCosts.price);
+          if (price) {
+            const newIva = calculateIVA(price);
+            setFormData(prev => ({
+              ...prev,
+              acquisitionCosts: {
+                ...prev.acquisitionCosts,
+                iva: newIva.toString()
               }
             }));
           }
@@ -215,16 +285,28 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       }
     }));
     
-    // Recalculate ITP if not manual
-    if (!itpManual && formData.transmissionRegime === 'usada' && formData.ccaa) {
-      const price = parseEuroInput(value);
-      if (price && price > 0) {
+    const price = parseEuroInput(value);
+    if (price && price > 0) {
+      // Recalculate ITP if not manual and regime is "usada"
+      if (!itpManual && formData.transmissionRegime === 'usada' && formData.ccaa) {
         const newItp = calculateITP(price, formData.ccaa);
         setFormData(prev => ({
           ...prev,
           acquisitionCosts: {
             ...prev.acquisitionCosts,
             itp: newItp.toString()
+          }
+        }));
+      }
+      
+      // Recalculate IVA if not manual and regime is "obra-nueva"
+      if (!ivaManual && formData.transmissionRegime === 'obra-nueva') {
+        const newIva = calculateIVA(price);
+        setFormData(prev => ({
+          ...prev,
+          acquisitionCosts: {
+            ...prev.acquisitionCosts,
+            iva: newIva.toString()
           }
         }));
       }
@@ -244,6 +326,111 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
     // Mark as manual if user edits
     if (!itpManual) {
       setItpManual(true);
+    }
+  };
+
+  // Handle IVA manual edit
+  const handleIvaChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      acquisitionCosts: {
+        ...prev.acquisitionCosts,
+        iva: value
+      }
+    }));
+    
+    // Mark as manual if user edits
+    if (!ivaManual) {
+      setIvaManual(true);
+    }
+  };
+
+  // Reset ITP to automatic
+  const resetItpAutomatic = () => {
+    setItpManual(false);
+    // Recalculate immediately if we have price and CCAA
+    if (formData.transmissionRegime === 'usada' && formData.ccaa && formData.acquisitionCosts.price) {
+      const price = parseEuroInput(formData.acquisitionCosts.price);
+      if (price && price > 0) {
+        const newItp = calculateITP(price, formData.ccaa);
+        setFormData(prev => ({
+          ...prev,
+          acquisitionCosts: {
+            ...prev.acquisitionCosts,
+            itp: newItp.toString()
+          }
+        }));
+      }
+    }
+  };
+
+  // Reset IVA to automatic
+  const resetIvaAutomatic = () => {
+    setIvaManual(false);
+    // Recalculate immediately if we have price
+    if (formData.transmissionRegime === 'obra-nueva' && formData.acquisitionCosts.price) {
+      const price = parseEuroInput(formData.acquisitionCosts.price);
+      if (price && price > 0) {
+        const newIva = calculateIVA(price);
+        setFormData(prev => ({
+          ...prev,
+          acquisitionCosts: {
+            ...prev.acquisitionCosts,
+            iva: newIva.toString()
+          }
+        }));
+      }
+    }
+  };
+
+  // Handle other cost field changes
+  const handleCostFieldChange = (field: keyof FormData['acquisitionCosts'], value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      acquisitionCosts: {
+        ...prev.acquisitionCosts,
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle transmission regime change
+  const handleTransmissionRegimeChange = (value: 'usada' | 'obra-nueva') => {
+    setFormData(prev => ({ ...prev, transmissionRegime: value }));
+    
+    // Reset manual states when switching regimes
+    if (value === 'usada') {
+      setIvaManual(false); // Reset IVA manual state when switching to usada
+      // Auto-calculate ITP if we have necessary data (always calculate since we just reset manual state)
+      if (formData.ccaa && formData.acquisitionCosts.price) {
+        const price = parseEuroInput(formData.acquisitionCosts.price);
+        if (price && price > 0) {
+          const newItp = calculateITP(price, formData.ccaa);
+          setFormData(prev => ({
+            ...prev,
+            acquisitionCosts: {
+              ...prev.acquisitionCosts,
+              itp: newItp.toString()
+            }
+          }));
+        }
+      }
+    } else if (value === 'obra-nueva') {
+      setItpManual(false); // Reset ITP manual state when switching to obra-nueva
+      // Auto-calculate IVA if we have necessary data (always calculate since we just reset manual state)
+      if (formData.acquisitionCosts.price) {
+        const price = parseEuroInput(formData.acquisitionCosts.price);
+        if (price && price > 0) {
+          const newIva = calculateIVA(price);
+          setFormData(prev => ({
+            ...prev,
+            acquisitionCosts: {
+              ...prev.acquisitionCosts,
+              iva: newIva.toString()
+            }
+          }));
+        }
+      }
     }
   };
 
@@ -280,11 +467,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
     const management = parseEuroInput(formData.acquisitionCosts.management) || 0;
     const psi = parseEuroInput(formData.acquisitionCosts.psi) || 0;
     const realEstate = parseEuroInput(formData.acquisitionCosts.realEstate) || 0;
-    const other = formData.acquisitionCosts.other.reduce((sum, item) => {
-      return sum + (parseEuroInput(item.amount) || 0);
-    }, 0);
     
-    const total = price + tax + notary + registry + management + psi + realEstate + other;
+    // Use precise arithmetic for other costs
+    const otherAmounts = formData.acquisitionCosts.other.map(item => parseEuroInput(item.amount)).filter(amount => amount !== null) as number[];
+    const other = otherAmounts.length > 0 ? addCurrency(...otherAmounts) : 0;
+    
+    // Use precise arithmetic for total calculation
+    const total = addCurrency(price, tax, notary, registry, management, psi, realEstate, other);
     const squareMeters = parseFloat(formData.squareMeters) || 0;
     const pricePerSqm = squareMeters > 0 ? total / squareMeters : 0;
     
@@ -395,6 +584,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
           itp,
           itpIsManual: formData.transmissionRegime === 'usada' ? itpManual : undefined,
           iva,
+          ivaIsManual: formData.transmissionRegime === 'obra-nueva' ? ivaManual : undefined,
           notary: parseEuroInput(formData.acquisitionCosts.notary) || undefined,
           registry: parseEuroInput(formData.acquisitionCosts.registry) || undefined,
           management: parseEuroInput(formData.acquisitionCosts.management) || undefined,
@@ -707,7 +897,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                     name="transmissionRegime"
                     value="usada"
                     checked={formData.transmissionRegime === 'usada'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, transmissionRegime: e.target.value as 'usada' | 'obra-nueva' }))}
+                    onChange={(e) => handleTransmissionRegimeChange(e.target.value as 'usada' | 'obra-nueva')}
                     className="mr-2 text-brand-navy focus:ring-brand-navy"
                   />
                   Vivienda usada (ITP)
@@ -718,7 +908,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                     name="transmissionRegime"
                     value="obra-nueva"
                     checked={formData.transmissionRegime === 'obra-nueva'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, transmissionRegime: e.target.value as 'usada' | 'obra-nueva' }))}
+                    onChange={(e) => handleTransmissionRegimeChange(e.target.value as 'usada' | 'obra-nueva')}
                     className="mr-2 text-brand-navy focus:ring-brand-navy"
                   />
                   Obra nueva (IVA)
@@ -732,18 +922,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Precio de compra *
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.price}
-                    onChange={(e) => handlePriceChange(e.target.value)}
-                    className={`w-full px-3 py-2 pr-8 border rounded-md ${
-                      errors['acquisitionCosts.price'] ? 'border-red-300' : 'border-neutral-300'
-                    } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
-                    placeholder="250.000,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.price}
+                  onChange={(value) => handlePriceChange(value)}
+                  placeholder="250.000,00"
+                  error={!!errors['acquisitionCosts.price']}
+                  aria-label="Precio de compra en euros"
+                />
                 {errors['acquisitionCosts.price'] && (
                   <p className="text-sm text-red-600 mt-1">{errors['acquisitionCosts.price']}</p>
                 )}
@@ -752,19 +937,26 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               {/* ITP (visible si "Usada") */}
               {formData.transmissionRegime === 'usada' && (
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    ITP {itpManual && <span className="bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded text-xs">Manual</span>}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.acquisitionCosts.itp}
-                      onChange={(e) => handleItpChange(e.target.value)}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      placeholder="15.000,00"
-                    />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium text-neutral-700">
+                      ITP {itpManual && <span className="bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded text-xs ml-2">Manual</span>}
+                    </label>
+                    {itpManual && (
+                      <button
+                        type="button"
+                        onClick={resetItpAutomatic}
+                        className="text-xs text-brand-navy hover:text-brand-navy/80 underline"
+                      >
+                        Restablecer automático
+                      </button>
+                    )}
                   </div>
+                  <MoneyInput
+                    value={formData.acquisitionCosts.itp}
+                    onChange={(value) => handleItpChange(value)}
+                    placeholder="15.000,00"
+                    aria-label="ITP en euros"
+                  />
                   {formData.ccaa && (
                     <p className="text-xs text-neutral-500 mt-1">
                       Tipo aplicado: {getITPRateForCCAA(formData.ccaa)}% en {formData.ccaa}. Puedes modificarlo.
@@ -776,25 +968,34 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               {/* IVA (visible si "Obra nueva") */}
               {formData.transmissionRegime === 'obra-nueva' && (
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    IVA
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.acquisitionCosts.iva}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        acquisitionCosts: {
-                          ...prev.acquisitionCosts,
-                          iva: e.target.value
-                        }
-                      }))}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      placeholder="52.500,00"
-                    />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium text-neutral-700">
+                      IVA {ivaManual && <span className="bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded text-xs ml-2">Manual</span>}
+                    </label>
+                    {ivaManual && (
+                      <button
+                        type="button"
+                        onClick={resetIvaAutomatic}
+                        className="text-xs text-brand-navy hover:text-brand-navy/80 underline"
+                      >
+                        Restablecer automático
+                      </button>
+                    )}
                   </div>
+                  <MoneyInput
+                    value={formData.acquisitionCosts.iva}
+                    onChange={(value) => handleIvaChange(value)}
+                    placeholder="25.000,00"
+                    aria-label="IVA en euros"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Tipo aplicado: 10% (obra nueva). Puedes modificarlo.
+                  </p>
+                  {formData.ccaa && getSpecialRegionWarning(formData.ccaa) && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      {getSpecialRegionWarning(formData.ccaa)}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -803,110 +1004,60 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Notaría
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.notary}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        notary: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="1.500,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.notary}
+                  onChange={(value) => handleCostFieldChange('notary', value)}
+                  placeholder="1.500,00"
+                  aria-label="Gastos de notaría en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Registro
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.registry}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        registry: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="800,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.registry}
+                  onChange={(value) => handleCostFieldChange('registry', value)}
+                  placeholder="800,00"
+                  aria-label="Gastos de registro en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Gestoría
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.management}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        management: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="600,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.management}
+                  onChange={(value) => handleCostFieldChange('management', value)}
+                  placeholder="600,00"
+                  aria-label="Gastos de gestoría en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   PSI (personal shopper)
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.psi}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        psi: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="2.000,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.psi}
+                  onChange={(value) => handleCostFieldChange('psi', value)}
+                  placeholder="2.000,00"
+                  aria-label="Gastos de PSI en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Inmobiliaria
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.realEstate}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        realEstate: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="7.500,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.realEstate}
+                  onChange={(value) => handleCostFieldChange('realEstate', value)}
+                  placeholder="7.500,00"
+                  aria-label="Gastos de inmobiliaria en euros"
+                />
               </div>
             </div>
 
@@ -945,13 +1096,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                     className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                     placeholder="Concepto"
                   />
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
+                  <div className="flex-1">
+                    <MoneyInput
                       value={item.amount}
-                      onChange={(e) => {
+                      onChange={(value) => {
                         const newOther = [...formData.acquisitionCosts.other];
-                        newOther[index].amount = e.target.value;
+                        newOther[index].amount = value;
                         setFormData(prev => ({
                           ...prev,
                           acquisitionCosts: {
@@ -960,10 +1110,9 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                           }
                         }));
                       }}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                       placeholder="Importe"
+                      aria-label={`Importe de ${item.concept || 'otro concepto'}`}
                     />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
                   </div>
                   <button
                     type="button"
