@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface MoneyInputProps {
   value: string;
@@ -33,26 +33,8 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
   const [validationError, setValidationError] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
-  // Update display value when prop value changes
-  useEffect(() => {
-    if (!isFocused) {
-      const formatted = formatDisplayValue(value);
-      setDisplayValue(formatted);
-    }
-  }, [value, isFocused]);
-
-  // Format value for display (with Euro symbol and Spanish formatting)
-  const formatDisplayValue = (val: string): string => {
-    if (!val || val === '') return '';
-    
-    const numValue = parseSpanishEuroInput(val);
-    if (numValue === null) return val; // Keep original if can't parse
-    
-    return formatEuroSpanish(numValue);
-  };
-
   // Parse Spanish Euro input - strict Spanish format interpretation
-  const parseSpanishEuroInput = (input: string): number | null => {
+  const parseSpanishEuroInput = useCallback((input: string): number | null => {
     if (!input || input.trim() === '') {
       return null;
     }
@@ -106,17 +88,35 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
       
       return parseFloat(cleanInteger);
     }
-  };
+  }, []);
 
   // Format number to Spanish Euro format
-  const formatEuroSpanish = (amount: number): string => {
+  const formatEuroSpanish = useCallback((amount: number): string => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'EUR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
-  };
+  }, []);
+
+  // Format value for display (with Euro symbol and Spanish formatting)
+  const formatDisplayValue = useCallback((val: string): string => {
+    if (!val || val === '') return '';
+    
+    const numValue = parseSpanishEuroInput(val);
+    if (numValue === null) return val; // Keep original if can't parse
+    
+    return formatEuroSpanish(numValue);
+  }, [parseSpanishEuroInput, formatEuroSpanish]);
+
+  // Update display value when prop value changes
+  useEffect(() => {
+    if (!isFocused) {
+      const formatted = formatDisplayValue(value);
+      setDisplayValue(formatted);
+    }
+  }, [value, isFocused, formatDisplayValue]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
