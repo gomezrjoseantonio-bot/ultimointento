@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { enhancedCSVParser } from '../../services/csvParserService';
 import { ParsedMovement, ParseResult } from '../../types/bankProfiles';
-import { initDB, Account } from '../../services/db';
+import { initDB, Account, AccountDestination } from '../../services/db';
 import { formatEuro, formatDate } from '../../utils/formatUtils';
 import toast from 'react-hot-toast';
 
@@ -48,7 +48,7 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
     bank: '',
     iban: '',
     initialBalance: 0,
-    destination: 'horizon' as 'horizon' | 'pulse'
+    destination: 'horizon' as AccountDestination
   });
 
   const loadData = useCallback(async () => {
@@ -450,7 +450,7 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
               />
               <select
                 value={newAccount.destination}
-                onChange={(e) => setNewAccount(prev => ({ ...prev, destination: e.target.value as 'horizon' | 'pulse' }))}
+                onChange={(e) => setNewAccount(prev => ({ ...prev, destination: e.target.value as AccountDestination }))}
                 className="text-sm border border-neutral-300 rounded px-3 py-2"
               >
                 <option value="horizon">Horizon</option>
