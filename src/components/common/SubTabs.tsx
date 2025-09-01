@@ -16,6 +16,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Cartera', path: '/inmuebles/cartera' },
     { label: 'Contratos', path: '/inmuebles/contratos' },
     { label: 'Préstamos', path: '/inmuebles/prestamos' },
+    { label: 'Gastos & CAPEX', path: '/inmuebles/gastos-capex' },
     { label: 'Análisis', path: '/inmuebles/analisis' },
   ],
   tesoreria: [
