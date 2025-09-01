@@ -19,7 +19,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      {/* Row 1: H1 + CTA */}
+      {/* Row 1: H1 + CTA - 16px spacing to Row 2 */}
       <div className="flex justify-between items-start">
         <PageHeader 
           title={title} 
@@ -33,13 +33,13 @@ const PageLayout: React.FC<PageLayoutProps> = ({
         )}
       </div>
       
-      {/* Row 2: SubTabs */}
-      <div>
+      {/* Row 2: SubTabs - 16px spacing to Row 3 */}
+      <div className="mb-4">
         <SubTabs />
       </div>
       
-      {/* Row 3 & Content: Will be handled by individual pages for segment controls */}
-      <div className="space-y-6">
+      {/* Row 3 & Content: Segment controls with 12px spacing to content */}
+      <div>
         {children}
       </div>
     </div>

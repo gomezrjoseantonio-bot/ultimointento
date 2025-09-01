@@ -114,8 +114,8 @@ const SubTabs: React.FC = () => {
   const borderColorClass = currentModule === 'horizon' ? 'border-brand-navy' : 'border-brand-teal';
   
   return (
-    <div className="mb-6">
-      <div className="flex flex-wrap gap-1">
+    <div className="border-b border-gray-200">
+      <div className="flex flex-wrap gap-6">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
           
@@ -124,17 +124,14 @@ const SubTabs: React.FC = () => {
               key={tab.path}
               onClick={() => navigate(tab.path)}
               className={`
-                px-3 py-2 text-sm font-medium rounded-full transition-colors duration-200 relative
+                px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2
                 ${isActive 
-                  ? `${accentColorClass} bg-transparent` 
-                  : 'text-neutral-600 bg-transparent hover:bg-neutral-50'
+                  ? `${accentColorClass} ${borderColorClass}` 
+                  : 'text-neutral-600 hover:text-neutral-900 border-transparent hover:border-gray-300'
                 }
               `}
             >
               {tab.label}
-              {isActive && (
-                <div className={`absolute -bottom-px left-1/2 transform -translate-x-1/2 w-full h-0.5 ${borderColorClass.replace('border-', 'bg-')}`} />
-              )}
             </button>
           );
         })}
