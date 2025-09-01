@@ -1,7 +1,7 @@
 // ATLAS HOTFIX: QA Dashboard for development testing and validation
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, Clock, FileText, Eye } from 'lucide-react';
-import { telemetry, qaChecklist } from '../../services/telemetryService';
+import { telemetry } from '../../services/telemetryService';
 
 interface QADashboardProps {
   isVisible: boolean;
@@ -146,7 +146,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
                     {Object.entries(sessionData.eventsByType).map(([type, count]) => (
                       <div key={type} className="flex justify-between text-xs mt-1">
                         <span className="capitalize">{type.replace('_', ' ')}:</span>
-                        <span>{count}</span>
+                        <span>{count as number}</span>
                       </div>
                     ))}
                   </div>
@@ -196,7 +196,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
                       <div className="flex items-center gap-2">
                         {getStatusIcon(result.status)}
                         <span className="font-medium text-sm">
-                          {result.checklist.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          {result.checklist.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                         </span>
                       </div>
                       <span className="text-xs uppercase font-medium">

@@ -129,6 +129,7 @@ class EnhancedCSVParser {
     }
 
     return {
+      success: true,
       movements,
       totalRows: data.length,
       errors,
@@ -266,7 +267,7 @@ class EnhancedCSVParser {
       if (isNaN(amount)) throw new Error('Importe inválido');
 
       // Parse value date if present
-      let valueDate: string | undefined;
+      let valueDate: Date | undefined;
       if (valueDateValue) {
         const parsed = this.parseDate(valueDateValue, profile);
         valueDate = parsed || undefined;
@@ -294,14 +295,14 @@ class EnhancedCSVParser {
   /**
    * Parse date with multiple format support
    */
-  private parseDate(value: any, profile: BankProfile): string | null {
+  private parseDate(value: any, profile: BankProfile): Date | null {
     if (!value) return null;
 
     // Handle Excel serial dates
     if (typeof value === 'number' && profile.dateHints?.includes('excel-serial')) {
       const date = XLSX.SSF.parse_date_code(value);
       if (date) {
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+        return new Date(date.y, date.m - 1, date.d); // Note: month is 0-indexed in Date
       }
     }
 
@@ -326,7 +327,7 @@ class EnhancedCSVParser {
   /**
    * Parse date in specific format
    */
-  private parseSpecificDateFormat(dateStr: string, format: string): string | null {
+  private parseSpecificDateFormat(dateStr: string, format: string): Date | null {
     let day: number, month: number, year: number;
 
     if (format === 'dd/mm/yyyy' || format === 'dd-mm-yyyy') {
@@ -353,8 +354,8 @@ class EnhancedCSVParser {
     if (day < 1 || day > 31 || month < 1 || month > 12) return null;
     if (year < 1900 || year > 2100) return null;
 
-    // Return in ISO format
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // Return Date object (month is 0-indexed in Date constructor)
+    return new Date(year, month - 1, day);
   }
 
   /**

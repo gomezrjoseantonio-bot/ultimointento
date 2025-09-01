@@ -45,9 +45,9 @@ const ProfileSeederPage: React.FC = () => {
       const result = await enhancedCSVParser.parseFile(file);
       
       // Extract headers and sample data for analysis
-      const headers = result.metadata.headersOriginal;
-      const sampleData = result.preview.slice(0, 5).map(movement => 
-        Object.values(movement.rawData)
+      const headers = result.metadata.headersOriginal || [];
+      const sampleData = (result.preview || []).slice(0, 5).map(movement => 
+        Object.values(movement.rawData || {})
       );
 
       setPreviewData({

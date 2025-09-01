@@ -67,8 +67,8 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
       
       setPreview({
         movements: result.movements,
-        totalRows: result.totalRows,
-        errors: result.errors,
+        totalRows: result.totalRows || 0,
+        errors: result.errors || [],
         detectedBank: result.detectedBank?.bankKey || 'Generic'
       });
       
@@ -284,8 +284,8 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                     <tbody>
                       {preview.movements.slice(0, 20).map((movement, index) => (
                         <tr key={index} className="border-t border-neutral-100">
-                          <td className="px-4 py-2">{movement.date}</td>
-                          <td className="px-4 py-2">{movement.valueDate || '-'}</td>
+                          <td className="px-4 py-2">{movement.date.toLocaleDateString('es-ES')}</td>
+                          <td className="px-4 py-2">{movement.valueDate ? movement.valueDate.toLocaleDateString('es-ES') : '-'}</td>
                           <td className={`px-4 py-2 text-right font-medium ${
                             movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
