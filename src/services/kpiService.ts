@@ -263,19 +263,26 @@ export const formatRatio = (value: number): string => {
 // KPI Service Class
 export class KPIService {
   private dbName = 'AtlasHorizonDB';
+  private dbVersion = 4; // Match the current DB version
 
   async saveConfiguration(config: KPIConfiguration, module: 'horizon' | 'pulse' = 'horizon'): Promise<void> {
-    const db = await openDB(this.dbName, 3);
-    await db.put('kpiConfigurations', { 
-      id: module, 
-      ...config,
-      updatedAt: new Date().toISOString()
-    });
+    try {
+      const db = await openDB(this.dbName, this.dbVersion);
+      await db.put('kpiConfigurations', { 
+        id: module, 
+        ...config,
+        updatedAt: new Date().toISOString()
+      });
+      console.log(`KPI configuration saved for module: ${module}`);
+    } catch (error) {
+      console.error('Error saving KPI configuration:', error);
+      throw new Error(`Failed to save KPI configuration: ${error}`);
+    }
   }
 
   async getConfiguration(module: 'horizon' | 'pulse' = 'horizon'): Promise<KPIConfiguration> {
     try {
-      const db = await openDB(this.dbName, 3);
+      const db = await openDB(this.dbName, this.dbVersion);
       const config = await db.get('kpiConfigurations', module);
       return config || DEFAULT_KPI_CONFIG;
     } catch (error) {
@@ -286,7 +293,7 @@ export class KPIService {
 
   async calculateKPIsForProperty(propertyId: number, config?: KPIConfiguration): Promise<PropertyKPIData> {
     const actualConfig = config || await this.getConfiguration();
-    const db = await openDB(this.dbName, 3);
+    const db = await openDB(this.dbName, this.dbVersion);
     
     // Get property data
     const property = await db.get('properties', propertyId);

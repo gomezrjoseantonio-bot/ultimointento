@@ -41,8 +41,8 @@ const InboxPage: React.FC = () => {
         const db = await initDB();
         const docs = await db.getAll('documents');
         
-        // Filter documents that haven't been assigned to entities
-        const inboxDocs = docs.filter(doc => !doc.metadata.entityId);
+        // Load all documents from inbox - both assigned and unassigned
+        const inboxDocs = docs; // Show all documents, not just unassigned ones
         setDocuments(inboxDocs);
       } catch (error) {
         // Fallback to localStorage if IndexedDB fails
@@ -98,16 +98,18 @@ const InboxPage: React.FC = () => {
       console.warn('Failed to update in IndexedDB:', error);
     }
     
-    // Remove from inbox list since it's now assigned
-    const updatedDocuments = documents.filter(d => d.id !== docId);
+    // Update document in local state instead of removing it
+    const updatedDocuments = documents.map(d => 
+      d.id === docId ? { ...d, metadata: { ...d.metadata, ...metadata } } : d
+    );
     setDocuments(updatedDocuments);
     
     // Update localStorage
     localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocuments));
     
-    // If it was selected, deselect it
+    // Update selected document if it's the one being assigned
     if (selectedDocument && selectedDocument.id === docId) {
-      setSelectedDocument(null);
+      setSelectedDocument({ ...selectedDocument, metadata: { ...selectedDocument.metadata, ...metadata } });
     }
   };
 

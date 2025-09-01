@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, Trash2, UserCheck, X, Download, Edit2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getDocumentBlob, downloadBlob } from '../../services/db';
+import { getDocumentBlob, downloadBlob, initDB, Property } from '../../services/db';
 
 interface DocumentViewerProps {
   document: any;
@@ -15,6 +15,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
   
   const [metadata, setMetadata] = useState({
     proveedor: document?.metadata?.proveedor || '',
@@ -33,6 +34,23 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     categoria: 'Otros',
     carpeta: 'otros'
   });
+
+  // Load properties when component mounts or when assign modal opens
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const props = await db.getAll('properties');
+        setProperties(props.filter(p => p.state === 'activo')); // Only show active properties
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      }
+    };
+
+    if (showAssignModal) {
+      loadProperties();
+    }
+  }, [showAssignModal]);
 
   useEffect(() => {
     if (document?.metadata) {
@@ -483,7 +501,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                     onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
                   >
                     <option value="">Seleccionar inmueble...</option>
-                    <option value="1">Inmueble de ejemplo</option>
+                    {properties.map(property => (
+                      <option key={property.id} value={property.id}>
+                        {property.alias} - {property.address}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}
@@ -500,7 +522,11 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                       onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
                     >
                       <option value="">Seleccionar inmueble...</option>
-                      <option value="1">Inmueble de ejemplo</option>
+                      {properties.map(property => (
+                        <option key={property.id} value={property.id}>
+                          {property.alias} - {property.address}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
