@@ -210,7 +210,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           </div>
           <button 
             onClick={handleDownload}
-            className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar {document.filename}
@@ -224,7 +224,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <p className="text-neutral-500 mb-4">No se puede previsualizar este tipo de archivo</p>
         <button 
           onClick={handleDownload}
-          className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Download className="w-4 h-4 inline mr-2" />
           Descargar
@@ -354,7 +354,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <div className="mt-4 flex gap-2">
             <button
               onClick={handleSaveMetadata}
-              className="px-4 py-2 text-sm bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Guardar cambios
             </button>
@@ -376,7 +376,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           {document?.type || 'Tipo de archivo no especificado'}
         </p>
         <button 
-          className="mt-4 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           onClick={handlePreview}
         >
           <Eye className="w-4 h-4 inline mr-2" />
@@ -394,7 +394,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           Ver
         </button>
         <button 
-          className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           onClick={() => setShowAssignModal(true)}
         >
           <UserCheck className="w-4 h-4" />
@@ -583,7 +583,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
             <div className="flex gap-3 mt-6">
               <button 
-                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 onClick={handleAssign}
               >
                 {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
