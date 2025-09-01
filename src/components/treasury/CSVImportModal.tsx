@@ -63,13 +63,13 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     
     try {
       const text = await file.text();
-      const result = parseCSV(text);
+      const result = await parseCSV(text);
       
       setPreview({
         movements: result.movements,
         totalRows: result.totalRows,
         errors: result.errors,
-        detectedBank: result.detectedBank
+        detectedBank: result.detectedBank?.bankKey || 'Generic'
       });
       
       if (result.movements.length > 0) {

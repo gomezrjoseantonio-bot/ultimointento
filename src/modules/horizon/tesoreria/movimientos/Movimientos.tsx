@@ -101,7 +101,6 @@ const Movimientos: React.FC = () => {
           amount: parsed.amount,
           description: parsed.description,
           counterparty: parsed.counterparty,
-          reference: parsed.reference,
           status: 'pendiente',
           importBatch: batchId,
           csvRowIndex: parsedMovements.indexOf(parsed),

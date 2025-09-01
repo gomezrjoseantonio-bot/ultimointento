@@ -1,316 +1,506 @@
-// H8: CSV Parser Service for Bank Extracts
-import { Movement } from './db';
-
-export interface BankMapping {
-  dateField: string;
-  valueDateField?: string;
-  amountField: string;
-  descriptionField: string;
-  counterpartyField?: string;
-  referenceField?: string;
-  dateFormat: string;
-  decimalSeparator: ',' | '.';
-  skipRows?: number;
-}
+// H8 REFACTOR: Enhanced CSV/Excel Parser Service with Bank Profile Detection
+import * as XLSX from 'xlsx';
+import { bankProfilesService } from './bankProfilesService';
+import { BankProfile, ParsedMovement, ParseResult } from '../types/bankProfiles';
 
 export interface CSVRow {
   [key: string]: string;
 }
 
-export interface ParsedMovement {
-  date: string;
-  valueDate?: string;
-  amount: number;
-  description: string;
-  counterparty?: string;
-  reference?: string;
-  rawData: CSVRow;
-}
+// File size and row limits for safety
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
+const MAX_ROWS = 50000;
+const HEADER_SEARCH_ROWS = 40;
 
-export interface CSVParseResult {
-  movements: ParsedMovement[];
-  totalRows: number;
-  errors: string[];
-  detectedBank: string;
-  preview: ParsedMovement[];
-}
+class EnhancedCSVParser {
+  
+  /**
+   * Main entry point for parsing CSV/Excel files
+   */
+  async parseFile(file: File): Promise<ParseResult> {
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`Archivo demasiado grande. Máximo permitido: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+    }
 
-// Bank-specific mappings (as specified in requirements)
-const BANK_MAPPINGS: Record<string, BankMapping> = {
-  bbva: {
-    dateField: 'Fecha',
-    valueDateField: 'Fecha valor',
-    amountField: 'Importe',
-    descriptionField: 'Concepto',
-    counterpartyField: 'Oficina / Cajero',
-    dateFormat: 'DD/MM/YYYY',
-    decimalSeparator: ',',
-    skipRows: 0
-  },
-  santander: {
-    dateField: 'Fecha',
-    valueDateField: 'Fecha valor',
-    amountField: 'Importe',
-    descriptionField: 'Concepto',
-    counterpartyField: 'Beneficiario/Ordenante',
-    dateFormat: 'DD/MM/YYYY',
-    decimalSeparator: ',',
-    skipRows: 0
-  },
-  caixa: {
-    dateField: 'Data',
-    valueDateField: 'Data valor',
-    amountField: 'Import',
-    descriptionField: 'Concepte',
-    counterpartyField: 'Contraparte',
-    dateFormat: 'DD/MM/YYYY',
-    decimalSeparator: ',',
-    skipRows: 0
-  },
-  ing: {
-    dateField: 'Fecha',
-    valueDateField: 'Fecha efectiva',
-    amountField: 'Cantidad',
-    descriptionField: 'Descripción',
-    counterpartyField: 'Cuenta contraparte',
-    dateFormat: 'DD-MM-YYYY',
-    decimalSeparator: ',',
-    skipRows: 0
-  },
-  generic: {
-    dateField: 'fecha',
-    valueDateField: 'fecha_valor',
-    amountField: 'importe',
-    descriptionField: 'descripcion',
-    counterpartyField: 'contraparte',
-    dateFormat: 'YYYY-MM-DD',
-    decimalSeparator: '.',
-    skipRows: 0
-  }
-};
+    const fileName = file.name;
+    const mime = file.type;
+    const size = file.size;
 
-// Detect CSV separator
-function detectSeparator(csvText: string): ',' | ';' {
-  const firstLine = csvText.split('\n')[0];
-  const semicolonCount = (firstLine.match(/;/g) || []).length;
-  const commaCount = (firstLine.match(/,/g) || []).length;
-  return semicolonCount > commaCount ? ';' : ',';
-}
+    try {
+      let data: any[][];
+      let sheetName: string | undefined;
 
-// Detect bank from CSV headers
-function detectBank(headers: string[]): string {
-  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
-  
-  // BBVA detection
-  if (normalizedHeaders.includes('fecha') && normalizedHeaders.includes('concepto') && 
-      normalizedHeaders.some(h => h.includes('oficina'))) {
-    return 'bbva';
-  }
-  
-  // Santander detection
-  if (normalizedHeaders.includes('fecha') && normalizedHeaders.includes('concepto') && 
-      normalizedHeaders.some(h => h.includes('beneficiario') || h.includes('ordenante'))) {
-    return 'santander';
-  }
-  
-  // CaixaBank detection
-  if (normalizedHeaders.includes('data') && normalizedHeaders.includes('concepte')) {
-    return 'caixa';
-  }
-  
-  // ING detection
-  if (normalizedHeaders.includes('fecha') && normalizedHeaders.includes('descripción') && 
-      normalizedHeaders.some(h => h.includes('efectiva'))) {
-    return 'ing';
-  }
-  
-  return 'generic';
-}
-
-// Parse date according to format
-function parseDate(dateStr: string, format: string): string {
-  if (!dateStr) return '';
-  
-  const cleanDate = dateStr.trim();
-  
-  try {
-    if (format === 'DD/MM/YYYY' || format === 'DD-MM-YYYY') {
-      const parts = cleanDate.split(/[/\-]/);  // eslint-disable-line no-useless-escape
-      if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
-        const month = parts[1].padStart(2, '0');
-        const year = parts[2];
-        return `${year}-${month}-${day}`;
+      if (this.isExcelFile(file)) {
+        const result = await this.parseExcel(file);
+        data = result.data;
+        sheetName = result.sheetName;
+      } else {
+        data = await this.parseCSV(file);
       }
-    } else if (format === 'YYYY-MM-DD') {
-      return cleanDate; // Already in correct format
+
+      return this.processData(data, {
+        fileName,
+        mime,
+        size,
+        sheetName
+      });
+
+    } catch (error) {
+      throw new Error(`Error procesando archivo: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  } catch (error) {
-    console.warn('Date parsing error:', error);
   }
-  
-  return cleanDate;
-}
 
-// Parse amount according to decimal separator
-function parseAmount(amountStr: string, decimalSeparator: ',' | '.'): number {
-  if (!amountStr) return 0;
-  
-  let cleanAmount = amountStr.trim();
-  
-  // Remove currency symbols and spaces
-  cleanAmount = cleanAmount.replace(/[€$£¥]/g, '').replace(/\s/g, '');
-  
-  // Handle European format (1.234,56) vs US format (1,234.56)
-  if (decimalSeparator === ',') {
-    // European format: remove thousand separators (.), replace decimal separator
-    cleanAmount = cleanAmount.replace(/\./g, '').replace(',', '.');
-  } else {
-    // US format: remove thousand separators (,)
-    cleanAmount = cleanAmount.replace(/,(?=\d{3})/g, '');
-  }
-  
-  const amount = parseFloat(cleanAmount);
-  return isNaN(amount) ? 0 : amount;
-}
-
-// Parse CSV text to rows
-function parseCSVText(csvText: string): CSVRow[] {
-  const separator = detectSeparator(csvText);
-  const lines = csvText.split('\n').filter(line => line.trim());
-  
-  if (lines.length === 0) return [];
-  
-  const headers = lines[0].split(separator).map(h => h.trim().replace(/"/g, ''));
-  const rows: CSVRow[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(separator).map(v => v.trim().replace(/"/g, ''));
-    const row: CSVRow = {};
+  /**
+   * Process the raw data array and detect headers, clean data, and parse movements
+   */
+  private async processData(data: any[][], fileInfo: {
+    fileName: string;
+    mime: string;
+    size: number;
+    sheetName?: string;
+  }): Promise<ParseResult> {
     
-    headers.forEach((header, index) => {
-      row[header] = values[index] || '';
-    });
-    
-    rows.push(row);
-  }
-  
-  return rows;
-}
-
-// Main CSV parsing function
-export function parseCSV(csvText: string): CSVParseResult {
-  const errors: string[] = [];
-  
-  try {
-    // Parse CSV into rows
-    const rows = parseCSVText(csvText);
-    
-    if (rows.length === 0) {
-      return {
-        movements: [],
-        totalRows: 0,
-        errors: ['El archivo CSV está vacío o no tiene el formato correcto'],
-        detectedBank: 'generic',
-        preview: []
-      };
+    if (data.length === 0) {
+      throw new Error('El archivo está vacío');
     }
+
+    // Validate row count
+    if (data.length > MAX_ROWS) {
+      console.warn(`Archivo con ${data.length} filas, procesando en chunks...`);
+      data = data.slice(0, MAX_ROWS);
+    }
+
+    // Step 1: Find real headers (anti-logo/header detection)
+    const headerResult = this.findRealHeaders(data);
+    if (!headerResult) {
+      throw new Error('No se pudieron detectar cabeceras válidas en el archivo');
+    }
+
+    const { headerRow, headers } = headerResult;
     
-    // Detect bank and get mapping
-    const headers = Object.keys(rows[0]);
-    const detectedBank = detectBank(headers);
-    const mapping = BANK_MAPPINGS[detectedBank];
+    // Step 2: Detect bank using global profiles
+    const detectedBank = await bankProfilesService.detectBank(headers);
     
-    // Parse movements
+    if (!detectedBank && !(import.meta as any).env?.DEV) {
+      throw new Error('Banco no soportado aún. Añade perfil al registro global.');
+    }
+
+    // Step 3: Use detected profile or fallback to generic
+    const profile = detectedBank?.profile || await bankProfilesService.getGenericProfile();
+    const headerMapping = bankProfilesService.mapHeaders(headers, profile);
+
+    // Validate required fields
+    if (!headerMapping.date || !headerMapping.amount) {
+      throw new Error('No se encontraron las columnas requeridas (fecha y importe)');
+    }
+
+    // Step 4: Clean and parse data rows
+    const dataRows = data.slice(headerRow + 1);
+    const cleanedRows = this.cleanDataRows(dataRows, profile);
+    
+    // Step 5: Parse movements
     const movements: ParsedMovement[] = [];
-    
-    for (let i = (mapping.skipRows || 0); i < rows.length; i++) {
-      const row = rows[i];
-      
+    const errors: string[] = [];
+    let validRowCount = 0;
+    let invalidRowCount = 0;
+
+    for (let i = 0; i < cleanedRows.length; i++) {
+      const row = cleanedRows[i];
+      const originalRowIndex = headerRow + 1 + i;
+
       try {
-        // Find the mapped fields (case-insensitive)
-        const findField = (fieldName: string): string => {
-          const field = headers.find(h => 
-            h.toLowerCase().trim() === fieldName.toLowerCase().trim()
-          );
-          return field ? row[field] : '';
-        };
-        
-        const dateStr = findField(mapping.dateField);
-        const valueDateStr = mapping.valueDateField ? findField(mapping.valueDateField) : '';
-        const amountStr = findField(mapping.amountField);
-        const description = findField(mapping.descriptionField);
-        const counterparty = mapping.counterpartyField ? findField(mapping.counterpartyField) : '';
-        const reference = mapping.referenceField ? findField(mapping.referenceField) : '';
-        
-        if (!dateStr || !amountStr || !description) {
-          errors.push(`Fila ${i + 1}: Faltan campos obligatorios (fecha, importe, descripción)`);
-          continue;
+        const movement = this.parseMovement(row, headerMapping, profile, originalRowIndex);
+        if (movement) {
+          movements.push(movement);
+          validRowCount++;
+        } else {
+          invalidRowCount++;
         }
-        
-        const parsedDate = parseDate(dateStr, mapping.dateFormat);
-        const parsedValueDate = valueDateStr ? parseDate(valueDateStr, mapping.dateFormat) : undefined;
-        const parsedAmount = parseAmount(amountStr, mapping.decimalSeparator);
-        
-        if (!parsedDate) {
-          errors.push(`Fila ${i + 1}: Fecha inválida: ${dateStr}`);
-          continue;
-        }
-        
-        if (parsedAmount === 0 && amountStr !== '0' && amountStr !== '0,00') {
-          errors.push(`Fila ${i + 1}: Importe inválido: ${amountStr}`);
-          continue;
-        }
-        
-        movements.push({
-          date: parsedDate,
-          valueDate: parsedValueDate,
-          amount: parsedAmount,
-          description: description.trim(),
-          counterparty: counterparty ? counterparty.trim() : undefined,
-          reference: reference ? reference.trim() : undefined,
-          rawData: row
-        });
-        
       } catch (error) {
-        errors.push(`Fila ${i + 1}: Error de procesamiento: ${error}`);
+        errors.push(`Fila ${originalRowIndex + 1}: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        invalidRowCount++;
       }
     }
-    
+
+    // Ensure at least one valid movement
+    if (movements.length === 0) {
+      throw new Error('No se encontraron movimientos válidos en el archivo');
+    }
+
     return {
       movements,
-      totalRows: rows.length,
+      totalRows: data.length,
       errors,
-      detectedBank,
-      preview: movements.slice(0, 20) // First 20 rows for preview
+      detectedBank: detectedBank || undefined,
+      preview: movements.slice(0, 20),
+      metadata: {
+        bankKey: detectedBank?.bankKey,
+        bankVersion: detectedBank?.bankVersion,
+        sheetName: fileInfo.sheetName,
+        headerRow,
+        headersOriginal: headers,
+        rowsImported: validRowCount,
+        rowsOmitted: cleanedRows.length - movements.length,
+        rowsInvalid: invalidRowCount,
+        importedAt: new Date().toISOString(),
+        fileName: fileInfo.fileName,
+        mime: fileInfo.mime,
+        size: fileInfo.size
+      }
     };
+  }
+
+  /**
+   * Find the real header row by looking for rows with >= 2 matches and one must be amount
+   */
+  private findRealHeaders(data: any[][]): { headerRow: number; headers: string[] } | null {
+    const searchRows = Math.min(HEADER_SEARCH_ROWS, data.length);
+
+    for (let i = 0; i < searchRows; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+
+      const headers = row.map(cell => String(cell || '').trim()).filter(h => h);
+      if (headers.length < 2) continue;
+
+      // Check if this looks like a header row by testing with bank profiles
+      const normalizedHeaders = headers.map(h => this.normalizeText(h));
+      
+      // Quick check: does this row have potential field names?
+      const hasDateLike = normalizedHeaders.some(h => 
+        h.includes('fecha') || h.includes('date') || h.includes('data')
+      );
+      const hasAmountLike = normalizedHeaders.some(h => 
+        h.includes('importe') || h.includes('amount') || h.includes('cantidad') || 
+        h.includes('monto') || h.includes('euros') || h.includes('import')
+      );
+
+      if (hasDateLike && hasAmountLike) {
+        return { headerRow: i, headers };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Clean data rows by removing junk patterns and invalid data
+   */
+  private cleanDataRows(rows: any[][], profile: BankProfile): any[][] {
+    const cleanedRows: any[][] = [];
+    let consecutiveInvalid = 0;
+    let validCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      
+      if (this.isJunkRow(row, profile)) {
+        consecutiveInvalid++;
+        // Stop if we have >= 5 valid rows and >= 3 consecutive invalid rows
+        if (validCount >= 5 && consecutiveInvalid >= 3) {
+          break;
+        }
+        continue;
+      }
+
+      cleanedRows.push(row);
+      validCount++;
+      consecutiveInvalid = 0;
+    }
+
+    return cleanedRows;
+  }
+
+  /**
+   * Check if a row should be considered junk/noise
+   */
+  private isJunkRow(row: any[], profile: BankProfile): boolean {
+    if (!row || row.length === 0) return true;
+
+    const rowText = row.join(' ').toLowerCase();
     
-  } catch (error) {
-    return {
-      movements: [],
-      totalRows: 0,
-      errors: [`Error general de procesamiento: ${error}`],
-      detectedBank: 'generic',
-      preview: []
-    };
+    // Check noise patterns
+    for (const pattern of profile.noisePatterns) {
+      if (rowText.includes(pattern.toLowerCase())) {
+        return true;
+      }
+    }
+
+    // Check for separators or empty rows
+    if (rowText.match(/^[\s\-*]+$/)) return true;
+
+    // Check if all cells are empty
+    if (row.every(cell => !cell || String(cell).trim() === '')) return true;
+
+    return false;
+  }
+
+  /**
+   * Parse a single movement from a data row
+   */
+  private parseMovement(
+    row: any[], 
+    mapping: Record<string, number>, 
+    profile: BankProfile,
+    originalRow: number
+  ): ParsedMovement | null {
+    
+    // Extract values
+    const dateValue = row[mapping.date];
+    const valueDateValue = mapping.valueDate !== undefined ? row[mapping.valueDate] : undefined;
+    const amountValue = row[mapping.amount];
+    const descriptionValue = row[mapping.description] || '';
+    const counterpartyValue = mapping.counterparty !== undefined ? row[mapping.counterparty] : undefined;
+
+    // Validate required fields
+    if (!dateValue || !amountValue) return null;
+
+    try {
+      // Parse date
+      const date = this.parseDate(dateValue, profile);
+      if (!date) throw new Error('Fecha inválida');
+
+      // Parse amount
+      const amount = this.parseAmount(amountValue, profile);
+      if (isNaN(amount)) throw new Error('Importe inválido');
+
+      // Parse value date if present
+      let valueDate: string | undefined;
+      if (valueDateValue) {
+        const parsed = this.parseDate(valueDateValue, profile);
+        valueDate = parsed || undefined;
+      }
+
+      return {
+        date,
+        valueDate,
+        amount,
+        description: String(descriptionValue).trim(),
+        counterparty: counterpartyValue ? String(counterpartyValue).trim() : undefined,
+        originalRow,
+        rawData: row.reduce((acc, cell, index) => {
+          acc[`col_${index}`] = cell;
+          return acc;
+        }, {} as Record<string, any>)
+      };
+
+    } catch (error) {
+      console.warn(`Error parsing row ${originalRow}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse date with multiple format support
+   */
+  private parseDate(value: any, profile: BankProfile): string | null {
+    if (!value) return null;
+
+    // Handle Excel serial dates
+    if (typeof value === 'number' && profile.dateHints?.includes('excel-serial')) {
+      const date = XLSX.SSF.parse_date_code(value);
+      if (date) {
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
+      }
+    }
+
+    const dateStr = String(value).trim();
+    if (!dateStr) return null;
+
+    // Try different date formats
+    const formats = profile.dateHints || ['dd/mm/yyyy', 'dd-mm-yyyy'];
+    
+    for (const format of formats) {
+      try {
+        const parsed = this.parseSpecificDateFormat(dateStr, format);
+        if (parsed) return parsed;
+      } catch (error) {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse date in specific format
+   */
+  private parseSpecificDateFormat(dateStr: string, format: string): string | null {
+    let day: number, month: number, year: number;
+
+    if (format === 'dd/mm/yyyy' || format === 'dd-mm-yyyy') {
+      const separator = format.includes('/') ? '/' : '-';
+      const parts = dateStr.split(separator);
+      if (parts.length !== 3) return null;
+
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      year = parseInt(parts[2], 10);
+    } else if (format === 'yyyy-mm-dd') {
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return null;
+
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    } else {
+      return null;
+    }
+
+    // Validate date components
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+    if (year < 1900 || year > 2100) return null;
+
+    // Return in ISO format
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  /**
+   * Parse amount with Spanish formatting support
+   */
+  private parseAmount(value: any, profile: BankProfile): number {
+    if (typeof value === 'number') return value;
+
+    let amountStr = String(value || '').trim();
+    if (!amountStr) return NaN;
+
+    // Remove currency symbols and spaces
+    amountStr = amountStr.replace(/[€$\s]/g, '');
+
+    // Handle Spanish formatting (1.234,56)
+    if (profile.numberFormat.decimal === ',' && profile.numberFormat.thousand === '.') {
+      // Replace thousands separators first, then decimal separator
+      amountStr = amountStr.replace(/\./g, '').replace(/,/g, '.');
+    }
+
+    const amount = parseFloat(amountStr);
+    return isNaN(amount) ? NaN : amount;
+  }
+
+  /**
+   * Check if file is Excel format
+   */
+  private isExcelFile(file: File): boolean {
+    const extension = file.name.toLowerCase().split('.').pop();
+    return ['xlsx', 'xls'].includes(extension || '');
+  }
+
+  /**
+   * Parse Excel file
+   */
+  private async parseExcel(file: File): Promise<{ data: any[][]; sheetName: string }> {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+
+    // Use first sheet or hint from profile
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    if (!worksheet) {
+      throw new Error('No se encontraron hojas válidas en el archivo Excel');
+    }
+
+    // Convert to array of arrays
+    const data = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1, 
+      raw: false,
+      dateNF: 'yyyy-mm-dd' 
+    }) as any[][];
+
+    return { data, sheetName };
+  }
+
+  /**
+   * Parse CSV file
+   */
+  private async parseCSV(file: File): Promise<any[][]> {
+    const text = await file.text();
+    const separator = this.detectSeparator(text);
+    
+    const lines = text.split('\n');
+    const data: any[][] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const row = this.parseCSVLine(line, separator);
+      data.push(row);
+    }
+
+    return data;
+  }
+
+  /**
+   * Parse a single CSV line respecting quotes
+   */
+  private parseCSVLine(line: string, separator: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === separator && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+    return result;
+  }
+
+  /**
+   * Detect CSV separator
+   */
+  private detectSeparator(csvText: string): ',' | ';' {
+    const firstLine = csvText.split('\n')[0];
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    return semicolonCount > commaCount ? ';' : ',';
+  }
+
+  /**
+   * Normalize text for comparison
+   */
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 }
 
-// Check for duplicate movements
-export function findDuplicateMovements(
-  newMovements: ParsedMovement[],
-  existingMovements: Movement[]
-): ParsedMovement[] {
-  return newMovements.filter(newMov => {
-    return existingMovements.some(existing => 
-      existing.date === newMov.date &&
-      existing.amount === newMov.amount &&
-      existing.description === newMov.description
-    );
-  });
+// Export singleton instance
+export const enhancedCSVParser = new EnhancedCSVParser();
+
+// Legacy exports for compatibility
+export type { ParsedMovement, ParseResult } from '../types/bankProfiles';
+
+// Legacy compatibility function
+export async function parseCSV(csvText: string): Promise<ParseResult> {
+  // Create a File-like object from the CSV text
+  const file = new File([csvText], 'import.csv', { type: 'text/csv' });
+  return enhancedCSVParser.parseFile(file);
 }
 
-// Generate import batch ID
+// Legacy compatibility function
 export function generateImportBatchId(): string {
   return `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
