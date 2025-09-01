@@ -49,6 +49,22 @@ interface FormData {
     realEstate: string;
     other: Array<{ concept: string; amount: string; }>;
   };
+  // H5: Fiscal auxiliary data
+  fiscalData: {
+    cadastralValue: string;
+    constructionCadastralValue: string;
+    acquisitionDate: string;
+    contractUse: 'vivienda-habitual' | 'turistico' | 'otros' | '';
+    housingReduction: boolean;
+    isAccessory: boolean;
+    mainPropertyId: string;
+    accessoryData: {
+      cadastralReference: string;
+      acquisitionDate: string;
+      cadastralValue: string;
+      constructionCadastralValue: string;
+    };
+  };
 }
 
 const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
@@ -84,6 +100,21 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       psi: '',
       realEstate: '',
       other: []
+    },
+    fiscalData: {
+      cadastralValue: '',
+      constructionCadastralValue: '',
+      acquisitionDate: '',
+      contractUse: '',
+      housingReduction: false,
+      isAccessory: false,
+      mainPropertyId: '',
+      accessoryData: {
+        cadastralReference: '',
+        acquisitionDate: '',
+        cadastralValue: '',
+        constructionCadastralValue: ''
+      }
     }
   });
 
@@ -131,6 +162,21 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               concept: item.concept,
               amount: item.amount.toString()
             })) || []
+          },
+          fiscalData: {
+            cadastralValue: property.fiscalData?.cadastralValue?.toString() || '',
+            constructionCadastralValue: property.fiscalData?.constructionCadastralValue?.toString() || '',
+            acquisitionDate: property.fiscalData?.acquisitionDate || '',
+            contractUse: property.fiscalData?.contractUse || '',
+            housingReduction: property.fiscalData?.housingReduction || false,
+            isAccessory: property.fiscalData?.isAccessory || false,
+            mainPropertyId: property.fiscalData?.mainPropertyId?.toString() || '',
+            accessoryData: {
+              cadastralReference: property.fiscalData?.accessoryData?.cadastralReference || '',
+              acquisitionDate: property.fiscalData?.accessoryData?.acquisitionDate || '',
+              cadastralValue: property.fiscalData?.accessoryData?.cadastralValue?.toString() || '',
+              constructionCadastralValue: property.fiscalData?.accessoryData?.constructionCadastralValue?.toString() || ''
+            }
           }
         });
         setItpManual(property.acquisitionCosts.itpIsManual || false);
