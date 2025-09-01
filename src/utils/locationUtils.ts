@@ -107,3 +107,22 @@ export const formatCadastralReference = (ref: string): string => {
   // Normalize to uppercase, remove spaces, max 20 chars
   return ref.toUpperCase().replace(/\s/g, '').substring(0, 20);
 };
+
+export const calculateIVA = (price: number): number => {
+  // Standard IVA rate for new construction is 10%
+  return price * 0.10;
+};
+
+export const getSpecialRegionWarning = (ccaa: string): string | null => {
+  const ccaaLower = ccaa.toLowerCase();
+  
+  if (ccaaLower === 'canarias') {
+    return 'En Canarias aplica IGIC (no IVA). Ajusta el importe si procede.';
+  }
+  
+  if (ccaaLower === 'ceuta' || ccaaLower === 'melilla') {
+    return 'En Ceuta/Melilla aplica IPSI. Ajusta el importe si procede.';
+  }
+  
+  return null;
+};

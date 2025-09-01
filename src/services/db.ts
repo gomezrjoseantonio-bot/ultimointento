@@ -25,6 +25,7 @@ export interface Property {
     itp?: number;
     itpIsManual?: boolean;
     iva?: number;
+    ivaIsManual?: boolean;
     notary?: number;
     registry?: number;
     management?: number;

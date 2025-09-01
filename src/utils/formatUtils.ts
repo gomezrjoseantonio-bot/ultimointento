@@ -91,3 +91,42 @@ export const formatDateInput = (dateString: string): string => {
   
   return `${day}/${month}/${year}`;
 };
+
+export const formatPercentage = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '—';
+  }
+  
+  return new Intl.NumberFormat('es-ES', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  }).format(value / 100);
+};
+
+export const parsePercentageInput = (input: string): number | null => {
+  if (!input || input.trim() === '') {
+    return null;
+  }
+  
+  // Remove % symbol and spaces, normalize decimal separator
+  const cleaned = input
+    .replace(/[%\s]/g, '')
+    .replace(/\./g, '') // Remove thousands separator if any
+    .replace(',', '.'); // Change decimal separator to dot
+  
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? null : parsed;
+};
+
+export const formatEuroInput = (input: string): string => {
+  const value = parseEuroInput(input);
+  if (value === null) return '';
+  return formatEuro(value);
+};
+
+export const formatPercentageInput = (input: string): string => {
+  const value = parsePercentageInput(input);
+  if (value === null) return '';
+  return formatPercentage(value);
+};
