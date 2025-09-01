@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard';
 import InboxPage from './pages/InboxPage';
 
 // Horizon (Investment) Module Components
-import HorizonPanel from './modules/horizon/panel/Panel';
 import Cartera from './modules/horizon/inmuebles/cartera/Cartera';
 import Contratos from './modules/horizon/inmuebles/contratos/Contratos';
 import Prestamos from './modules/horizon/inmuebles/prestamos/Prestamos';
@@ -29,7 +28,6 @@ import PropertyForm from './modules/horizon/inmuebles/cartera/PropertyForm';
 import PropertyDetail from './modules/horizon/inmuebles/cartera/PropertyDetail';
 
 // Pulse (Personal) Module Components
-import PulsePanel from './modules/pulse/panel/Panel';
 import IngresosLista from './modules/pulse/ingresos/lista/IngresosLista';
 import IngresosNuevo from './modules/pulse/ingresos/nuevo/IngresosNuevo';
 import IngresosImportar from './modules/pulse/ingresos/importar/IngresosImportar';
@@ -56,7 +54,7 @@ function App() {
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
-              <Route index element={<HorizonPanel />} />
+              <Route index element={<Navigate to="/inmuebles/cartera" replace />} />
               <Route path="cartera" element={<Cartera />} />
               <Route path="cartera/nuevo" element={<PropertyForm mode="create" />} />
               <Route path="cartera/:id" element={<PropertyDetail />} />
@@ -67,7 +65,7 @@ function App() {
             </Route>
             
             <Route path="tesoreria">
-              <Route index element={<HorizonPanel />} />
+              <Route index element={<Navigate to="/tesoreria/radar" replace />} />
               <Route path="radar" element={<TesRadar />} />
               <Route path="movimientos" element={<TesMovimientos />} />
               <Route path="automatizaciones" element={<Automatizaciones />} />
@@ -75,49 +73,49 @@ function App() {
             </Route>
             
             <Route path="fiscalidad">
-              <Route index element={<HorizonPanel />} />
+              <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
               <Route path="resumen" element={<FisResumen />} />
               <Route path="deducibles" element={<Deducibles />} />
               <Route path="declaraciones" element={<Declaraciones />} />
             </Route>
             
             <Route path="proyeccion">
-              <Route index element={<HorizonPanel />} />
+              <Route index element={<Navigate to="/proyeccion/cartera" replace />} />
               <Route path="cartera" element={<ProyeccionCartera />} />
               <Route path="consolidado" element={<ProyeccionConsolidado />} />
             </Route>
             
             {/* Pulse (Personal) Routes */}
             <Route path="ingresos">
-              <Route index element={<PulsePanel />} />
+              <Route index element={<Navigate to="/ingresos/lista" replace />} />
               <Route path="lista" element={<IngresosLista />} />
               <Route path="nuevo" element={<IngresosNuevo />} />
               <Route path="importar" element={<IngresosImportar />} />
             </Route>
             
             <Route path="gastos">
-              <Route index element={<PulsePanel />} />
+              <Route index element={<Navigate to="/gastos/lista" replace />} />
               <Route path="lista" element={<GastosLista />} />
               <Route path="nuevo" element={<GastosNuevo />} />
               <Route path="reglas" element={<GastosReglas />} />
             </Route>
             
             <Route path="tesoreria-personal">
-              <Route index element={<PulsePanel />} />
+              <Route index element={<Navigate to="/tesoreria-personal/radar" replace />} />
               <Route path="radar" element={<TPRadar />} />
               <Route path="movimientos" element={<TPMovimientos />} />
               <Route path="alertas" element={<TPAlertas />} />
             </Route>
             
             <Route path="proyeccion-personal">
-              <Route index element={<PulsePanel />} />
+              <Route index element={<Navigate to="/proyeccion-personal/presupuesto" replace />} />
               <Route path="presupuesto" element={<PPPresupuesto />} />
               <Route path="escenarios" element={<PPEscenarios />} />
             </Route>
             
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
-              <Route index element={<HorizonPanel />} />
+              <Route index element={<Navigate to="/configuracion/bancos-cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
               <Route path="bancos-cuentas" element={<BancosCuentas />} />
               <Route path="plan-facturacion" element={<PlanFacturacion />} />
