@@ -111,7 +111,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const getOriginBadge = (origin: string) => {
     const originMap = {
       'manual': 'bg-blue-100 text-blue-800',
-      'inbox': 'bg-purple-100 text-purple-800'
+      'inbox': 'bg-teal-100 text-teal-800'
     };
     
     const originLabels = {

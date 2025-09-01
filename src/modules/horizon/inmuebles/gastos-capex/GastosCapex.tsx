@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, FileTextIcon, CogIcon, BarChart3Icon } from 'lucide-react';
+import PageLayout from '../../../../components/common/PageLayout';
 import GastosTab from './components/GastosTab';
 import CapexTab from './components/CapexTab';
 import ResumenTab from './components/ResumenTab';
@@ -14,20 +15,17 @@ const GastosCapex: React.FC = () => {
     {
       id: 'gastos' as TabType,
       name: 'Gastos',
-      icon: FileTextIcon,
-      component: GastosTab
+      icon: FileTextIcon
     },
     {
       id: 'capex' as TabType,
       name: 'CAPEX',
-      icon: CogIcon,
-      component: CapexTab
+      icon: CogIcon
     },
     {
       id: 'resumen' as TabType,
       name: 'Resumen',
-      icon: BarChart3Icon,
-      component: ResumenTab
+      icon: BarChart3Icon
     }
   ];
 
@@ -45,49 +43,48 @@ const GastosCapex: React.FC = () => {
   }, [triggerAddExpense]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gastos & CAPEX</h1>
-          <p className="text-gray-600">
-            Capturar, clasificar y prorratear gastos según AEAT; modelar reformas (CAPEX)
-          </p>
-        </div>
+    <PageLayout 
+      title="Gastos & CAPEX" 
+      subtitle="Capturar, clasificar y prorratear gastos según AEAT; modelar reformas (CAPEX)"
+    >
+      {/* Action Button */}
+      <div className="flex justify-end mb-6">
         <button
           onClick={handleAddExpense}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Añadir gasto
         </button>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      {/* Segmented Control */}
+      <div className="mb-6">
+        <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-brand-navy text-brand-navy'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                className={`
+                  inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+                  ${activeTab === tab.id
+                    ? 'bg-white text-brand-navy shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
               >
-                <Icon className={`-ml-0.5 mr-2 h-5 w-5 ${
-                  activeTab === tab.id
-                    ? 'text-brand-navy'
-                    : 'text-gray-400 group-hover:text-gray-500'
+                <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${
+                  activeTab === tab.id ? 'text-brand-navy' : 'text-gray-400'
                 }`} />
                 {tab.name}
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -96,7 +93,7 @@ const GastosCapex: React.FC = () => {
         {activeTab === 'capex' && <CapexTab />}
         {activeTab === 'resumen' && <ResumenTab />}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

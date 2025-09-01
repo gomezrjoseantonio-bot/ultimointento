@@ -111,8 +111,8 @@ const SubTabs: React.FC = () => {
     return null;
   }
   
-  const accentColorClass = currentModule === 'horizon' ? 'text-brand-teal' : 'text-brand-navy';
-  const borderColorClass = currentModule === 'horizon' ? 'border-brand-teal' : 'border-brand-navy';
+  const accentColorClass = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
+  const borderColorClass = currentModule === 'horizon' ? 'border-brand-navy' : 'border-brand-teal';
   
   return (
     <div className="mb-6">
