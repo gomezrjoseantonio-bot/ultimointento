@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Upload, Search, Filter, Edit2, Link, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
-import CSVImportModal from '../../../../components/treasury/CSVImportModal';
-import { initDB, Account, Movement, ImportBatch, Document } from '../../../../services/db';
-import { ParsedMovement, generateImportBatchId } from '../../../../services/csvParserService';
+import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro, formatDate } from '../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 
 const TPMovimientos: React.FC = () => {
-  const [showImportModal, setShowImportModal] = useState(false);
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +28,8 @@ const TPMovimientos: React.FC = () => {
       
       // Load movements for Pulse accounts
       const allMovements = await db.getAll('movements');
-      const pulseMovements = allMovements.filter(mov => 
-        pulseAccounts.some(acc => acc.id === mov.accountId)
+      const pulseMovements = allMovements.filter((mov: Movement) => 
+        pulseAccounts.some((acc: Account) => acc.id === mov.accountId)
       );
       setMovements(pulseMovements);
       
@@ -42,161 +41,14 @@ const TPMovimientos: React.FC = () => {
     }
   };
   
-  const handleCreateAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>): Promise<Account> => {
-    try {
-      const db = await initDB();
-      const now = new Date().toISOString();
-      
-      const account: Account = {
-        ...accountData,
-        createdAt: now,
-        updatedAt: now
-      };
-      
-      const id = await db.add('accounts', account) as number;
-      const createdAccount: Account = { ...account, id };
-      
-      // Update local state
-      setAccounts(prev => [...prev, createdAccount]);
-      
-      return createdAccount;
-    } catch (error) {
-      console.error('Error creating account:', error);
-      throw error;
-    }
-  };
-  
-  const handleImportMovements = async (
-    parsedMovements: ParsedMovement[],
-    accountId: number,
-    skipDuplicates: boolean,
-    csvFile: File
-  ): Promise<void> => {
-    try {
-      const db = await initDB();
-      const now = new Date().toISOString();
-      const batchId = generateImportBatchId();
-      
-      // Filter duplicates if requested
-      let movementsToImport = parsedMovements;
-      if (skipDuplicates) {
-        const existingMovements = movements.filter(m => m.accountId === accountId);
-        movementsToImport = parsedMovements.filter(parsed => {
-          return !existingMovements.some(existing =>
-            existing.date === parsed.date &&
-            existing.amount === parsed.amount &&
-            existing.description === parsed.description
-          );
-        });
-      }
-      
-      // Create movements
-      const newMovements: Movement[] = [];
-      for (let i = 0; i < movementsToImport.length; i++) {
-        const parsed = movementsToImport[i];
-        const movement: Movement = {
-          accountId,
-          date: parsed.date,
-          valueDate: parsed.valueDate,
-          amount: parsed.amount,
-          description: parsed.description,
-          counterparty: parsed.counterparty,
-          status: 'pendiente',
-          importBatch: batchId,
-          csvRowIndex: parsedMovements.indexOf(parsed),
-          createdAt: now,
-          updatedAt: now
-        };
-        
-        const id = await db.add('movements', movement) as number;
-        newMovements.push({ ...movement, id });
-      }
-      
-      // Create import batch record
-      const importBatch: ImportBatch = {
-        id: batchId,
-        filename: csvFile.name,
-        accountId,
-        totalRows: parsedMovements.length,
-        importedRows: movementsToImport.length,
-        skippedRows: parsedMovements.length - movementsToImport.length,
-        duplicatedRows: skipDuplicates ? parsedMovements.length - movementsToImport.length : 0,
-        createdAt: now
-      };
-      
-      await db.add('importBatches', importBatch);
-      
-      // Create inbox document for the CSV extract
-      const csvDocument: Document = {
-        filename: csvFile.name,
-        type: csvFile.type || 'text/csv',
-        size: csvFile.size,
-        lastModified: csvFile.lastModified,
-        content: csvFile,
-        uploadDate: now,
-        metadata: {
-          title: `Extracto bancario - ${csvFile.name}`,
-          description: `Importación automática desde Tesorería Personal`,
-          tipo: 'Extracto bancario',
-          status: 'Asignado',
-          entityType: 'personal',
-          extractMetadata: {
-            bank: 'Detectado automáticamente',
-            totalRows: parsedMovements.length,
-            importedRows: movementsToImport.length,
-            accountId: accountId,
-            importBatchId: batchId,
-            dateRange: parsedMovements.length > 0 ? {
-              from: parsedMovements[parsedMovements.length - 1].date,
-              to: parsedMovements[0].date
-            } : undefined
-          }
-        }
-      };
-      
-      const docId = await db.add('documents', csvDocument) as number;
-      
-      // Update import batch with inbox item ID
-      importBatch.inboxItemId = docId;
-      await db.put('importBatches', importBatch);
-      
-      // Update account balance
-      const account = accounts.find(acc => acc.id === accountId);
-      if (account) {
-        const balanceChange = newMovements.reduce((sum, mov) => sum + mov.amount, 0);
-        account.balance += balanceChange;
-        account.updatedAt = now;
-        await db.put('accounts', account);
-        setAccounts(prev => prev.map(acc => acc.id === accountId ? account : acc));
-      }
-      
-      // Update local state
-      setMovements(prev => [...prev, ...newMovements]);
-      
-      // Show success toast with link to inbox
-      const successMessage = `${movementsToImport.length} movimientos importados correctamente`;
-      toast.success(
-        <div>
-          <div>{successMessage}</div>
-          <button
-            onClick={() => window.location.href = '/inbox'}
-            className="text-sm underline mt-1 hover:no-underline"
-          >
-            Ver en Inbox
-          </button>
-        </div>,
-        { duration: 6000 }
-      );
-      
-    } catch (error) {
-      console.error('Error importing movements:', error);
-      throw error;
-    }
+  const handleNavigateToImport = () => {
+    navigate('/inbox', { state: { showBankStatements: true } });
+    toast('Navega a Inbox para importar extractos bancarios', { icon: '📁' });
   };
   
   if (loading) {
     return (
-      <PageLayout title="Movimientos" subtitle="Historial de transacciones personales.">
+      <PageLayout title="Movimientos" subtitle="Historial de transacciones bancarias.">
         <div className="flex items-center justify-center py-12">
           <div className="text-neutral-500">Cargando...</div>
         </div>
@@ -205,7 +57,7 @@ const TPMovimientos: React.FC = () => {
   }
   
   return (
-    <PageLayout title="Movimientos" subtitle="Historial de transacciones personales.">
+    <PageLayout title="Movimientos" subtitle="Historial de transacciones bancarias.">
       <div className="space-y-6">
         {/* Header with Actions */}
         <div className="flex items-center justify-between">
@@ -219,11 +71,11 @@ const TPMovimientos: React.FC = () => {
               Añadir movimiento
             </button>
             <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#26a0bb] transition-colors"
+              onClick={handleNavigateToImport}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#1d7a8b] transition-colors"
             >
               <Upload className="h-4 w-4" />
-              Importar extracto (CSV)
+              Importar extracto (Inbox)
             </button>
           </div>
         </div>
@@ -276,10 +128,10 @@ const TPMovimientos: React.FC = () => {
               <h3 className="text-lg font-medium mb-2">No hay movimientos</h3>
               <p className="text-sm mb-4">Comienza importando un extracto bancario en formato CSV</p>
               <button
-                onClick={() => setShowImportModal(true)}
-                className="px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#26a0bb] transition-colors"
+                onClick={handleNavigateToImport}
+                className="px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#1d7a8b] transition-colors"
               >
-                Importar extracto CSV
+                Importar extracto (Inbox)
               </button>
             </div>
           ) : (
@@ -357,16 +209,6 @@ const TPMovimientos: React.FC = () => {
           )}
         </div>
       </div>
-      
-      {/* CSV Import Modal */}
-      <CSVImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImportMovements}
-        accounts={accounts}
-        onCreateAccount={handleCreateAccount}
-        destination="pulse"
-      />
     </PageLayout>
   );
 };

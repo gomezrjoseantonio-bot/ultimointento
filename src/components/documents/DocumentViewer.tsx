@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap, AlertCircle, DollarSign, Building, Info } from 'lucide-react';
+import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap, AlertCircle, DollarSign, Building, Info, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob } from '../../services/db';
+import BankStatementDistributor from './BankStatementDistributor';
 import { 
   processDocumentOCR, 
   getOCRConfig, 
@@ -28,6 +29,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  const [showBankDistributor, setShowBankDistributor] = useState(false);
   // H-OCR: OCR state management
   const [isProcessingOCR, setIsProcessingOCR] = useState(false);
   const [showOCREditModal, setShowOCREditModal] = useState(false);
@@ -347,6 +349,43 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Check if document is a bank statement
+  const isBankStatement = () => {
+    return document?.metadata?.tipo?.toLowerCase() === 'extracto bancario' ||
+           document?.metadata?.carpeta?.toLowerCase() === 'extractos';
+  };
+
+  // Check if file type supports bank processing
+  const canProcessBankStatement = () => {
+    if (!document?.filename) return false;
+    const extension = document.filename.toLowerCase().split('.').pop();
+    return ['csv', 'xlsx', 'xls'].includes(extension || '');
+  };
+
+  // Handle bank statement distribution completion
+  const handleDistributionComplete = async (result: any) => {
+    try {
+      // Mark document as assigned
+      const assignmentMetadata = {
+        status: 'Asignado',
+        assignedDate: new Date().toISOString(),
+        tipo: 'Extracto bancario',
+        carpeta: 'extractos',
+        bankDistribution: result.summary
+      };
+
+      onAssign(document.id, assignmentMetadata);
+      setShowBankDistributor(false);
+      
+      toast.success(
+        `Extracto procesado: ${result.summary.horizon} → Horizon, ${result.summary.pulse} → Pulse, ${result.summary.skip} omitidos`
+      );
+    } catch (error) {
+      toast.error('Error procesando la distribución');
+      console.error('Distribution error:', error);
+    }
+  };
+
   const renderPreviewContent = () => {
     if (!document?.content) {
       return (
@@ -614,6 +653,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <Zap className="w-4 h-4" />
           {isProcessingOCR || metadata.ocr?.status === 'processing' ? 'Procesando...' : 'Procesar con OCR'}
         </button>
+        
+        {/* Bank Statement Distributor Button */}
+        {isBankStatement() && canProcessBankStatement() && (
+          <button 
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => setShowBankDistributor(true)}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Distribuir movimientos
+          </button>
+        )}
         
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
@@ -1064,6 +1114,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bank Statement Distributor Modal */}
+      {showBankDistributor && (
+        <BankStatementDistributor
+          document={document}
+          onClose={() => setShowBankDistributor(false)}
+          onComplete={handleDistributionComplete}
+        />
       )}
     </div>
   );

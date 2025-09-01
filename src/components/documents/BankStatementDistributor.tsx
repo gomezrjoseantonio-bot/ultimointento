@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, ChevronUp, ChevronDown, Plus, Eye, X, Building, User, XCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, X } from 'lucide-react';
 import { enhancedCSVParser } from '../../services/csvParserService';
 import { ParsedMovement, ParseResult } from '../../types/bankProfiles';
 import { initDB, Account } from '../../services/db';
@@ -51,11 +51,7 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
     destination: 'horizon' as 'horizon' | 'pulse'
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // Parse the bank statement file
       const result = await enhancedCSVParser.parseFile(document.content);
@@ -80,7 +76,11 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [document.content]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const updateMovementDistribution = (index: number, destination: 'horizon' | 'pulse' | 'skip', accountId?: number) => {
     setDistributions(prev => prev.map((dist, i) => 
@@ -141,6 +141,8 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
         bank: newAccount.bank.trim(),
         iban: newAccount.iban.trim(),
         balance: newAccount.initialBalance,
+        openingBalance: newAccount.initialBalance,
+        currency: 'EUR',
         destination: newAccount.destination,
         isActive: true,
         createdAt: now,
