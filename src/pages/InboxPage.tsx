@@ -21,6 +21,17 @@ const InboxPage: React.FC = () => {
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  // H3 requirement - email log filter
+  const [emailLogFilter, setEmailLogFilter] = useState<string>('');
+
+  useEffect(() => {
+    // H3 requirement - check URL parameters for email log filter
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailLogParam = urlParams.get('emailLog');
+    if (emailLogParam) {
+      setEmailLogFilter(emailLogParam);
+    }
+  }, []);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -213,10 +224,34 @@ const InboxPage: React.FC = () => {
   };
 
   const filteredDocuments = sortDocuments(documents.filter(doc => {
-    // Apply folder filter
+    // Apply folder filter based on H2 requirements
     if (folderFilter !== 'todos') {
-      const docFolder = doc.metadata?.carpeta?.toLowerCase() || 'otros';
-      if (docFolder !== folderFilter) return false;
+      let belongsToFolder = false;
+      
+      switch (folderFilter) {
+        case 'facturas':
+          // Facturas → cualquier documento cuyo Tipo sea "Factura"
+          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'factura';
+          break;
+        case 'contratos':
+          // Contratos → documentos cuyo Tipo sea "Contrato"
+          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
+          break;
+        case 'capex':
+          // CAPEX → documentos con Categoría "Reforma/CAPEX"
+          belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
+          break;
+        case 'otros':
+          // Otros → el resto (no es factura, contrato, ni capex)
+          const tipo = doc.metadata?.tipo?.toLowerCase();
+          const categoria = doc.metadata?.categoria?.toLowerCase();
+          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && categoria !== 'reforma/capex';
+          break;
+        default:
+          belongsToFolder = true;
+      }
+      
+      if (!belongsToFolder) return false;
     }
     
     // Apply type filter
@@ -258,6 +293,11 @@ const InboxPage: React.FC = () => {
       if (dateFrom && docDate < new Date(dateFrom)) return false;
       if (dateTo && docDate > new Date(dateTo + 'T23:59:59')) return false;
     }
+
+    // H3 requirement - apply email log filter
+    if (emailLogFilter) {
+      if (doc.metadata?.emailLogId !== emailLogFilter) return false;
+    }
     
     return true;
   }));
@@ -279,6 +319,28 @@ const InboxPage: React.FC = () => {
           </button>
         </div>
       </div>
+      
+      {/* H3 requirement - Email log filter notice */}
+      {emailLogFilter && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-blue-900">
+                Mostrando documentos del email: {emailLogFilter.replace('mock-', 'MOCK-')}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setEmailLogFilter('');
+                window.history.replaceState({}, '', '/inbox');
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg hover:bg-blue-100"
+            >
+              Mostrar todos los documentos
+            </button>
+          </div>
+        </div>
+      )}
       
       <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
         <div className="p-4 border-b">

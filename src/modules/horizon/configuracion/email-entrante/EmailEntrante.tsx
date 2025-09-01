@@ -39,6 +39,10 @@ interface EmailLog {
   status: 'procesado' | 'sin-adjuntos' | 'rechazado';
   reason?: string;
   isMock?: boolean;
+  // H3 requirement - counters for created, ignored, duplicated documents
+  documentsCreated?: number;
+  documentsIgnored?: number;
+  documentsDuplicated?: number;
 }
 
 const EmailEntrante: React.FC = () => {
@@ -123,6 +127,12 @@ const EmailEntrante: React.FC = () => {
     toast.success('Email copiado al portapapeles');
   };
 
+  // H3 requirement - Navigate to inbox with filter for specific email log
+  const handleViewInInbox = (emailLogId: string) => {
+    // Navigate to inbox with a filter parameter to show only documents from this email log
+    window.location.href = `/inbox?emailLog=${emailLogId}`;
+  };
+
   const regenerateAlias = (aliasId: string) => {
     setAliases(prev => prev.map(alias => {
       if (alias.id === aliasId) {
@@ -146,7 +156,7 @@ const EmailEntrante: React.FC = () => {
     }));
   };
 
-  const handleMockEmailTest = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMockEmailTest = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -155,20 +165,135 @@ const EmailEntrante: React.FC = () => {
       return;
     }
 
-    // Simulate processing
-    const mockLog: EmailLog = {
-      id: `mock-${Date.now()}`,
-      date: new Date(),
-      from: 'prueba@ejemplo.com',
-      subject: `Test con archivo ${file.name}`,
-      alias: aliases[0]?.email || 'test@inbound.atlas.app',
-      attachmentCount: file.name.endsWith('.zip') ? 3 : 1,
-      status: 'procesado',
-      isMock: true
-    };
+    try {
+      let documentsCreated = 0;
+      let documentsIgnored = 0;
+      let documentsDuplicated = 0;
+      const attachmentCount = file.name.endsWith('.zip') ? 2 : 1;
+      const createdDocuments: any[] = [];
 
-    setEmailLogs(prev => [mockLog, ...prev]);
-    toast.success('Email de prueba procesado correctamente');
+      // Simulate document creation from email attachments (H3 requirement)
+      if (file.name.endsWith('.zip')) {
+        // For ZIP files, simulate extracting 2 documents
+        const doc1 = {
+          id: Date.now(),
+          filename: 'Factura-ENERGIA-marzo-2024.pdf',
+          type: 'application/pdf',
+          size: 245760,
+          lastModified: Date.now(),
+          uploadDate: new Date().toISOString(),
+          content: new Blob(['Mock invoice content'], { type: 'application/pdf' }),
+          metadata: {
+            title: 'Factura ENERGIA marzo 2024',
+            description: 'Documento procesado desde email mock',
+            tags: ['email', 'mock'],
+            proveedor: 'prueba@ejemplo.com',
+            tipo: 'Factura',
+            categoria: 'Suministros',
+            destino: 'Personal',
+            status: 'Nuevo',
+            entityType: 'personal',
+            entityId: undefined,
+            notas: 'Procesado desde mock email',
+            emailLogId: `mock-${Date.now()}` // Link to email log
+          }
+        };
+
+        const doc2 = {
+          id: Date.now() + 1,
+          filename: 'Contrato-alquiler-2024.pdf',
+          type: 'application/pdf',
+          size: 156430,
+          lastModified: Date.now(),
+          uploadDate: new Date().toISOString(),
+          content: new Blob(['Mock contract content'], { type: 'application/pdf' }),
+          metadata: {
+            title: 'Contrato alquiler 2024',
+            description: 'Documento procesado desde email mock',
+            tags: ['email', 'mock'],
+            proveedor: 'prueba@ejemplo.com',
+            tipo: 'Contrato',
+            categoria: 'Otros',
+            destino: 'Personal',
+            status: 'Nuevo',
+            entityType: 'personal',
+            entityId: undefined,
+            notas: 'Procesado desde mock email',
+            emailLogId: `mock-${Date.now()}`
+          }
+        };
+
+        createdDocuments.push(doc1, doc2);
+        documentsCreated = 2;
+      } else {
+        // For .eml files, simulate one document
+        const doc = {
+          id: Date.now(),
+          filename: 'Documento-adjunto.pdf',
+          type: 'application/pdf',
+          size: 123456,
+          lastModified: Date.now(),
+          uploadDate: new Date().toISOString(),
+          content: new Blob(['Mock email attachment content'], { type: 'application/pdf' }),
+          metadata: {
+            title: 'Documento adjunto',
+            description: 'Documento procesado desde email mock',
+            tags: ['email', 'mock'],
+            proveedor: 'prueba@ejemplo.com',
+            tipo: 'Factura',
+            categoria: 'Otros',
+            destino: 'Personal',
+            status: 'Nuevo',
+            entityType: 'personal',
+            entityId: undefined,
+            notas: 'Procesado desde mock email',
+            emailLogId: `mock-${Date.now()}`
+          }
+        };
+
+        createdDocuments.push(doc);
+        documentsCreated = 1;
+      }
+
+      // Save documents to IndexedDB (H3 requirement - create real documents)
+      const { initDB } = await import('../../../../services/db');
+      const db = await initDB();
+      const tx = db.transaction('documents', 'readwrite');
+      
+      for (const doc of createdDocuments) {
+        await tx.store.add(doc);
+      }
+      
+      await tx.done;
+
+      // Also save to localStorage as backup
+      const existingDocs = JSON.parse(localStorage.getItem('atlas-inbox-documents') || '[]');
+      const updatedDocs = [...existingDocs, ...createdDocuments];
+      localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocs));
+
+      // Create mock log with proper counters (H3 requirement)
+      const mockLog: EmailLog = {
+        id: `mock-${Date.now()}`,
+        date: new Date(),
+        from: 'prueba@ejemplo.com',
+        subject: `Test con archivo ${file.name}`,
+        alias: aliases[0]?.email || 'test@inbound.atlas.app',
+        attachmentCount,
+        status: 'procesado',
+        isMock: true,
+        // Add counters as required by H3
+        documentsCreated,
+        documentsIgnored,
+        documentsDuplicated
+      };
+
+      setEmailLogs(prev => [mockLog, ...prev]);
+      toast.success(`Email de prueba procesado: ${documentsCreated} documento(s) creado(s) en la Bandeja de Documentos`);
+      
+    } catch (error) {
+      console.error('Error processing mock email:', error);
+      toast.error('Error al procesar el email de prueba');
+    }
     
     // Reset file input
     event.target.value = '';
@@ -424,6 +549,7 @@ Saludos cordiales,
                   <th className="text-left py-3 px-4 font-medium text-neutral-700">Alias</th>
                   <th className="text-left py-3 px-4 font-medium text-neutral-700">Adjuntos</th>
                   <th className="text-left py-3 px-4 font-medium text-neutral-700">Estado</th>
+                  <th className="text-left py-3 px-4 font-medium text-neutral-700">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -440,7 +566,7 @@ Saludos cordiales,
                     <td className="py-3 px-4 text-sm text-neutral-900">
                       {log.from}
                       {log.isMock && (
-                        <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                        <span className="ml-2 px-2 py-0.5 bg-neutral-100 text-neutral-700 text-xs rounded-full">
                           MOCK
                         </span>
                       )}
@@ -453,6 +579,14 @@ Saludos cordiales,
                     </td>
                     <td className="py-3 px-4 text-sm text-neutral-600">
                       {log.attachmentCount}
+                      {/* H3 requirement - show counters */}
+                      {log.documentsCreated !== undefined && (
+                        <div className="text-xs text-neutral-500 mt-1">
+                          Creados: {log.documentsCreated} 
+                          {(log.documentsIgnored || 0) > 0 && `, Ignorados: ${log.documentsIgnored}`}
+                          {(log.documentsDuplicated || 0) > 0 && `, Duplicados: ${log.documentsDuplicated}`}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm">
                       <div className="flex items-center gap-2">
@@ -470,6 +604,19 @@ Saludos cordiales,
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm">
+                      {/* H3 requirement - Ver en Bandeja action */}
+                      {log.status === 'procesado' && (log.documentsCreated || 0) > 0 && (
+                        <button
+                          onClick={() => handleViewInInbox(log.id)}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          title="Ver documentos de este email en la Bandeja"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Ver en Bandeja
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
