@@ -12,7 +12,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle }) => {
   const titleColorClass = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
   
   return (
-    <div className="mb-6">
+    <div>
       <h1 className={`font-semibold tracking-[-0.01em] mb-4 ${titleColorClass} text-[22px] leading-[28px] sm:text-[24px] sm:leading-[30px]`}>
         {title}
       </h1>

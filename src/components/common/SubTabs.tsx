@@ -38,6 +38,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Plan & Facturación', path: '/configuracion/plan-facturacion' },
     { label: 'Usuarios & Roles', path: '/configuracion/usuarios-roles' },
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Email entrante', path: '/configuracion/email-entrante' },
   ],
 };
 
@@ -63,6 +64,7 @@ const PULSE_SUBTABS: SubTabsConfig = {
   ],
   configuracion: [
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Email entrante', path: '/configuracion/email-entrante' },
   ],
 };
 
@@ -131,7 +133,7 @@ const SubTabs: React.FC = () => {
             >
               {tab.label}
               {isActive && (
-                <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 ${borderColorClass} bg-current rounded-full`} />
+                <div className={`absolute -bottom-px left-1/2 transform -translate-x-1/2 w-full h-0.5 ${borderColorClass.replace('border-', 'bg-')}`} />
               )}
             </button>
           );

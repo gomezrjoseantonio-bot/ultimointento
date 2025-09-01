@@ -12,7 +12,9 @@ const PageLayout: React.FC<PageLayoutProps> = ({ title, subtitle, children }) =>
   return (
     <div className="space-y-0">
       <PageHeader title={title} subtitle={subtitle} />
-      <SubTabs />
+      <div className="mt-4">
+        <SubTabs />
+      </div>
       <div className="space-y-6">
         {children}
       </div>
