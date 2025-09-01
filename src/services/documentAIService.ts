@@ -127,6 +127,17 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // Handle new structured error format
+      if (errorData.code && errorData.message) {
+        const structuredError = new Error(errorData.message);
+        (structuredError as any).code = errorData.code;
+        (structuredError as any).status = errorData.status || response.status;
+        (structuredError as any).endpointHost = errorData.endpointHost;
+        throw structuredError;
+      }
+      
+      // Fallback to old format
       throw new Error(errorData.error || `Error HTTP ${response.status}`);
     }
     
@@ -155,13 +166,33 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   
   if (!firstResult) {
     const firstError = apiResponse.results.find((r: any) => r.status === 'error');
+    
+    // Handle new structured error format from individual file processing
+    let errorMessage = 'Error al procesar el documento';
+    if (firstError) {
+      if (firstError.code && firstError.message) {
+        errorMessage = `${firstError.message}`;
+        if (firstError.endpointHost) {
+          errorMessage += ` (${firstError.endpointHost})`;
+        }
+      } else if (firstError.error) {
+        errorMessage = firstError.error;
+      }
+    }
+    
     return {
       engine: 'document-ai-invoice:Error',
       timestamp: new Date().toISOString(),
       confidenceGlobal: 0,
       fields: [],
       status: 'error',
-      error: firstError?.error || 'Error al procesar el documento'
+      error: errorMessage,
+      // Pass through structured error info for UI handling
+      errorDetails: firstError?.code ? {
+        code: firstError.code,
+        status: firstError.status,
+        endpointHost: firstError.endpointHost
+      } : undefined
     };
   }
   
@@ -220,6 +251,24 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
     return ocrResult;
   } catch (error) {
     console.error('OCR Processing Error:', error);
+    
+    // Handle structured errors from the function
+    const structuredError = error as any;
+    if (structuredError.code && structuredError.status) {
+      return {
+        engine: 'document-ai-invoice:Error',
+        timestamp: new Date().toISOString(),
+        confidenceGlobal: 0,
+        fields: [],
+        status: 'error',
+        error: structuredError.message || 'Error desconocido en OCR',
+        errorDetails: {
+          code: structuredError.code,
+          status: structuredError.status,
+          endpointHost: structuredError.endpointHost
+        }
+      };
+    }
     
     return {
       engine: 'document-ai-invoice:Error',

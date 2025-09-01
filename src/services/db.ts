@@ -69,6 +69,11 @@ export interface OCRResult {
   fields: OCRField[];
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
+  errorDetails?: {
+    code: string;
+    status: number;
+    endpointHost?: string;
+  }; // H-OCR-DIAG: Structured error details for UI handling
   engineInfo?: {
     type: 'document-ai-invoice' | 'vision-fallback';
     displayName: string;

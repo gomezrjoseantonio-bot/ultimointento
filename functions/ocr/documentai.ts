@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 
 // H-OCR-FIX: Interface definitions
 interface DocumentAIRequest {
-  document: {
+  document?: {
     content: string; // Base64 encoded
     mimeType: string;
   };
@@ -81,7 +81,7 @@ const ARCHIVE_MIME_TYPES = [
 ];
 
 // H-OCR-FIX: Maximum files to process from archives
-const MAX_ARCHIVE_FILES = 15;
+const MAX_ARCHIVE_FILES = 10;
 
 // H-OCR-FIX: Validate environment configuration
 const validateEnvironment = (): {
@@ -92,7 +92,8 @@ const validateEnvironment = (): {
     'DOC_AI_SA_JSON_B64',
     'DOC_AI_PROJECT_ID', 
     'DOC_AI_LOCATION',
-    'DOC_AI_PROCESSOR_ID'
+    'DOC_AI_PROCESSOR_ID',
+    'DOC_AI_ENDPOINT'
   ];
 
   const missing = requiredVars.filter(varName => !process.env[varName]);
@@ -100,7 +101,7 @@ const validateEnvironment = (): {
   if (missing.length > 0) {
     return {
       isValid: false,
-      error: `OCR: configuración incompleta - faltan variables: ${missing.join(', ')}`
+      error: 'OCR: configuración incompleta'
     };
   }
 
@@ -110,8 +111,9 @@ const validateEnvironment = (): {
 // H-OCR-FIX: Create authenticated Google client
 const createAuthenticatedClient = async (): Promise<GoogleAuth> => {
   try {
+    // Decode without line breaks as specified
     const serviceAccountJson = Buffer.from(
-      process.env.DOC_AI_SA_JSON_B64!,
+      process.env.DOC_AI_SA_JSON_B64!.replace(/\s/g, ''),
       'base64'
     ).toString('utf-8');
     
@@ -219,14 +221,15 @@ const processDocument = async (
   mimeType: string,
   auth: GoogleAuth
 ): Promise<ProcessingResult> => {
-  // ATLAS HOTFIX: Use hardcoded EU endpoint to ensure correct region
-  const endpoint = 'https://eu-documentai.googleapis.com';
-  const processorPath = `projects/${process.env.DOC_AI_PROJECT_ID}/locations/${process.env.DOC_AI_LOCATION}/processors/${process.env.DOC_AI_PROCESSOR_ID}`;
+  // Use specified endpoint and path format
+  const endpoint = `https://${process.env.DOC_AI_ENDPOINT}`;
+  const path = `projects/${process.env.DOC_AI_PROJECT_ID}/locations/${process.env.DOC_AI_LOCATION}/processors/${process.env.DOC_AI_PROCESSOR_ID}:process`;
   
   const base64Content = documentContent.toString('base64');
   
+  // Use rawDocument format as specified
   const requestBody: DocumentAIRequest = {
-    document: {
+    rawDocument: {
       content: base64Content,
       mimeType: mimeType
     }
@@ -236,7 +239,7 @@ const processDocument = async (
     const authClient = await auth.getClient();
     const accessToken = await authClient.getAccessToken();
     
-    const response = await fetch(`${endpoint}/v1/${processorPath}:process`, {
+    const response = await fetch(`${endpoint}/v1/${path}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken.token}`,
@@ -247,7 +250,24 @@ const processDocument = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Document AI API error: ${response.status} - ${errorText}`);
+      let errorObj;
+      try {
+        errorObj = JSON.parse(errorText);
+      } catch {
+        errorObj = { error: { message: errorText } };
+      }
+      
+      // Parse Google API error format
+      const errorMessage = errorObj.error?.message || errorText;
+      const errorStatus = response.status;
+      const endpointHost = process.env.DOC_AI_ENDPOINT || 'eu-documentai.googleapis.com';
+      
+      throw new Error(JSON.stringify({
+        code: 'GOOGLE',
+        status: errorStatus,
+        message: errorMessage,
+        endpointHost
+      }));
     }
 
     const result: DocumentAIResponse = await response.json();
@@ -261,23 +281,37 @@ const processDocument = async (
     };
   } catch (error) {
     console.error('Document AI processing error:', error);
-    throw error;
+    
+    // If it's already a structured error, rethrow
+    if (error instanceof Error && error.message.startsWith('{')) {
+      throw error;
+    }
+    
+    // Otherwise wrap in generic error
+    throw new Error(JSON.stringify({
+      code: 'GOOGLE',
+      status: 500,
+      message: error instanceof Error ? error.message : 'Error desconocido',
+      endpointHost: process.env.DOC_AI_ENDPOINT || 'eu-documentai.googleapis.com'
+    }));
   }
 };
 
 // H-OCR-FIX: Main handler function
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  // ATLAS HOTFIX: Log safely without exposing secrets  
-  const endpointHost = 'eu-documentai.googleapis.com'; // Hardcoded EU endpoint
+  // Log safely without exposing secrets  
+  const endpointHost = process.env.DOC_AI_ENDPOINT || 'eu-documentai.googleapis.com';
   const hasKey = !!process.env.DOC_AI_SA_JSON_B64;
   const projectIsNumber = !isNaN(Number(process.env.DOC_AI_PROJECT_ID));
   const processorIdLen = process.env.DOC_AI_PROCESSOR_ID?.length || 0;
+  const loc = process.env.DOC_AI_LOCATION || '';
   
   console.log('OCR Request:', {
     endpointHost,
     hasKey,
     projectIsNumber,
     processorIdLen,
+    loc,
     method: event.httpMethod
   });
 
@@ -300,7 +334,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     return {
       statusCode: 405,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Método no permitido' })
+      body: JSON.stringify({ 
+        code: 'METHOD_NOT_ALLOWED', 
+        message: 'Método no permitido' 
+      })
     };
   }
 
@@ -310,7 +347,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: envValidation.error })
+      body: JSON.stringify({ 
+        code: 'CONFIG',
+        message: envValidation.error
+      })
     };
   }
 
@@ -322,7 +362,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Se requiere multipart/form-data' })
+        body: JSON.stringify({ 
+          code: 'INVALID_REQUEST',
+          message: 'Se requiere multipart/form-data' 
+        })
       };
     }
 
@@ -339,7 +382,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Formato multipart inválido' })
+        body: JSON.stringify({ 
+          code: 'INVALID_REQUEST',
+          message: 'Formato multipart inválido' 
+        })
       };
     }
 
@@ -375,7 +421,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       return {
         statusCode: 400,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'No se encontró archivo en la solicitud' })
+        body: JSON.stringify({ 
+          code: 'INVALID_REQUEST',
+          message: 'No se encontró archivo en la solicitud' 
+        })
       };
     }
 
@@ -408,7 +457,8 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ 
-          error: `Tipo de archivo no soportado: ${fileMime}. Tipos válidos: ${SUPPORTED_MIME_TYPES.join(', ')}` 
+          code: 'INVALID_ARGUMENT',
+          message: `Tipo de archivo no soportado: ${fileMime}. Tipos válidos: ${SUPPORTED_MIME_TYPES.join(', ')}` 
         })
       };
     }
@@ -418,13 +468,26 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ 
-          error: 'No se encontraron archivos válidos para procesar' 
+          code: 'INVALID_ARGUMENT',
+          message: 'No se encontraron archivos válidos para procesar' 
         })
       };
     }
 
-    // ATLAS HOTFIX: Process all files with telemetry
+    // Process all files and collect results  
     const results: any[] = [];
+    const attachments = filesToProcess.length;
+    
+    // Log processing info safely
+    console.log('Processing files:', {
+      endpointHost,
+      projectIsNumber,
+      processorIdLen,
+      loc,
+      attachments,
+      mimeTypes: filesToProcess.map(f => f.mimeType),
+      sizesKB: filesToProcess.map(f => Math.round(f.content.length / 1024))
+    });
     
     for (const file of filesToProcess) {
       try {
@@ -460,11 +523,34 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         });
       } catch (error) {
         console.error(`Error processing ${file.filename}:`, error);
+        
+        // Parse structured Google API errors
+        let errorResponse;
+        if (error instanceof Error && error.message.startsWith('{')) {
+          try {
+            errorResponse = JSON.parse(error.message);
+          } catch {
+            errorResponse = {
+              code: 'GOOGLE',
+              status: 500,
+              message: error.message,
+              endpointHost
+            };
+          }
+        } else {
+          errorResponse = {
+            code: 'GOOGLE',
+            status: 500,
+            message: error instanceof Error ? error.message : 'Error desconocido',
+            endpointHost
+          };
+        }
+        
         results.push({
           filename: file.filename,
           mimeType: file.mimeType,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Error desconocido'
+          ...errorResponse
         });
       }
     }
@@ -487,8 +573,10 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       statusCode: 500,
       headers: corsHeaders,
       body: JSON.stringify({
-        error: 'Error interno del servidor OCR',
-        message: error instanceof Error ? error.message : 'Error desconocido'
+        code: 'SERVER_ERROR',
+        status: 500,
+        message: 'Error interno del servidor OCR',
+        endpointHost
       })
     };
   }

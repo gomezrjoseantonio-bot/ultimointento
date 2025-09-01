@@ -144,6 +144,140 @@ const selectBestPage = (ocrResult: OCRResult): number => {
   return allPageScores.indexOf(maxScore) + 1; // 1-based indexing
 };
 
+// H-OCR-DIAG: Get error title based on status code
+const getErrorTitle = (status?: number): string => {
+  if (!status) return 'Error OCR';
+  
+  if (status === 401 || status === 403) return 'Permisos/clave';
+  if (status === 404) return 'Processor/ubicación';
+  if (status === 400) return 'Entrada inválida';
+  if (status === 429) return 'Cuota';
+  return 'Error OCR';
+};
+
+// H-OCR-DIAG: Truncate message to max 180 chars
+const truncateMessage = (message: string): string => {
+  return message.length > 180 ? `${message.substring(0, 177)}...` : message;
+};
+
+// H-OCR-DIAG: OCR Error Display Component
+const OcrErrorDisplay: React.FC<{ ocrResult: OCRResult }> = ({ ocrResult }) => {
+  const [showHelp, setShowHelp] = useState(false);
+  
+  const errorTitle = ocrResult.errorDetails ? getErrorTitle(ocrResult.errorDetails.status) : 'Error OCR';
+  const errorMessage = truncateMessage(ocrResult.error || 'Error desconocido');
+  
+  return (
+    <div className="bg-red-50 rounded-xl p-6">
+      <div className="flex items-start space-x-3 text-red-600">
+        <XCircle className="h-5 w-5 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm font-medium">{errorTitle}</p>
+          <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
+          
+          {ocrResult.errorDetails && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowHelp(!showHelp)}
+                className="text-xs text-red-600 hover:text-red-700 underline"
+              >
+                Ver ayuda
+              </button>
+              
+              {showHelp && (
+                <details open className="mt-2 text-xs text-red-600 bg-red-100 rounded p-2">
+                  <summary className="font-medium cursor-pointer">Lista de verificación:</summary>
+                  <ul className="mt-2 space-y-1 list-disc list-inside">
+                    <li>Verifica PROJECT_NUMBER, LOCATION=eu, PROCESSOR_ID, endpoint</li>
+                    <li>Asegura bytes PDF/JPG/PNG (no ZIP directo)</li>
+                    <li>SA con roles/documentai.apiUser</li>
+                    <li>Endpoint: {ocrResult.errorDetails.endpointHost || 'no especificado'}</li>
+                    <li>Código: {ocrResult.errorDetails.code}</li>
+                    <li>Status: {ocrResult.errorDetails.status}</li>
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// H-OCR-DIAG: OCR Self-test Component
+const OcrSelfTest: React.FC = () => {
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
+  const runSelfTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const response = await fetch('/.netlify/functions/ocr/selftest');
+      const result = await response.json();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        ok: false,
+        error: error instanceof Error ? error.message : 'Error al ejecutar selftest'
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
+  return (
+    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="flex items-center gap-2 mb-2">
+        <Info className="h-4 w-4 text-blue-600" />
+        <span className="text-sm font-medium text-blue-800">OCR Self-test (DEV)</span>
+      </div>
+      
+      <button
+        onClick={runSelfTest}
+        disabled={testing}
+        className="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-3 py-1 rounded"
+      >
+        {testing ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+            Probando...
+          </>
+        ) : (
+          'Probar OCR'
+        )}
+      </button>
+
+      {testResult && (
+        <div className={`mt-2 p-2 rounded text-xs ${
+          testResult.ok 
+            ? 'bg-green-100 text-green-700 border border-green-200' 
+            : 'bg-red-100 text-red-700 border border-red-200'
+        }`}>
+          {testResult.ok ? (
+            <div>
+              <div className="font-medium">✓ Configuración OK</div>
+              <div>Endpoint: {testResult.endpointHost}</div>
+              <div>Processor: {testResult.processorPath?.split('/').pop()}</div>
+            </div>
+          ) : (
+            <div>
+              <div className="font-medium">✗ Error en configuración</div>
+              <div>{testResult.error}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [editableFields, setEditableFields] = useState<Record<string, string>>({});
@@ -180,19 +314,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   }
 
   if (ocrResult.status === 'error') {
-    return (
-      <div className="bg-red-50 rounded-xl p-6">
-        <div className="flex items-center space-x-3 text-red-600">
-          <XCircle className="h-5 w-5" />
-          <div>
-            <p className="text-sm font-medium">Error en procesamiento OCR</p>
-            {ocrResult.error && (
-              <p className="text-xs text-red-500 mt-1">{ocrResult.error}</p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <OcrErrorDisplay ocrResult={ocrResult} />;
   }
 
   // H-OCR-FIX: Process fields and create display data
@@ -291,6 +413,9 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
 
   return (
     <div className="bg-white rounded-xl border border-gray-200">
+      {/* OCR Self-test (DEV only) */}
+      <OcrSelfTest />
+      
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
