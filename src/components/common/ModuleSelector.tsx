@@ -1,8 +1,16 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme, AppModule } from '../../contexts/ThemeContext';
 
 const ModuleSelector: React.FC = () => {
   const { currentModule, setCurrentModule } = useTheme();
+  const navigate = useNavigate();
+
+  const handleModuleChange = (module: AppModule) => {
+    setCurrentModule(module);
+    // Navigate to panel when switching modules to ensure valid route
+    navigate('/panel');
+  };
 
   return (
     <div className="flex items-center bg-gray-100 rounded-atlas p-1">
@@ -12,7 +20,7 @@ const ModuleSelector: React.FC = () => {
             ? 'bg-brand-navy text-white shadow-sm'
             : 'text-gray-600 hover:text-gray-900'
         }`}
-        onClick={() => setCurrentModule('horizon' as AppModule)}
+        onClick={() => handleModuleChange('horizon' as AppModule)}
       >
         Horizon
       </button>
@@ -23,7 +31,7 @@ const ModuleSelector: React.FC = () => {
             ? 'bg-brand-teal text-white shadow-sm'
             : 'text-gray-600 hover:text-gray-900'
         }`}
-        onClick={() => setCurrentModule('pulse' as AppModule)}
+        onClick={() => handleModuleChange('pulse' as AppModule)}
       >
         Pulse
       </button>
