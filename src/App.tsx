@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import InboxPage from './pages/InboxPage';
+import AccountPage from './pages/account/AccountPage';
 
 // Horizon (Investment) Module Components
 import Cartera from './modules/horizon/inmuebles/cartera/Cartera';
@@ -21,7 +22,6 @@ import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaracio
 import ProyeccionCartera from './modules/horizon/proyeccion/cartera/ProyeccionCartera';
 import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/ProyeccionConsolidado';
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
-import PlanFacturacion from './modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
 import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
 import PropertyForm from './modules/horizon/inmuebles/cartera/PropertyForm';
@@ -120,11 +120,21 @@ function App() {
               <Route index element={<Navigate to="/configuracion/bancos-cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
               <Route path="bancos-cuentas" element={<BancosCuentas />} />
-              <Route path="plan-facturacion" element={<PlanFacturacion />} />
               <Route path="usuarios-roles" element={<UsuariosRoles />} />
               {/* Shared configuration - available for both modules */}
               <Route path="preferencias-datos" element={<HorizonPreferenciasDatos />} />
               <Route path="email-entrante" element={<EmailEntrante />} />
+              {/* H6: Redirect old plan-facturacion route to new cuenta location */}
+              <Route path="plan-facturacion" element={<Navigate to="/cuenta/plan" replace />} />
+            </Route>
+
+            {/* H6: Account (Cuenta) Routes */}
+            <Route path="cuenta">
+              <Route index element={<Navigate to="/cuenta/perfil" replace />} />
+              <Route path="perfil" element={<AccountPage />} />
+              <Route path="seguridad" element={<AccountPage />} />
+              <Route path="plan" element={<AccountPage />} />
+              <Route path="privacidad" element={<AccountPage />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/panel" replace />} />
