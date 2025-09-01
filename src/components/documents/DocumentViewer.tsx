@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, UserCheck, X, Download, Edit2, Save } from 'lucide-react';
+import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap, AlertCircle, DollarSign, Building } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob } from '../../services/db';
+import { processDocumentOCR, getOCRConfig, formatPercentage, shouldSuggestExpense, shouldSuggestCAPEX, getHighConfidenceFields, createExpenseFromOCR } from '../../services/ocrService';
 
 interface DocumentViewerProps {
   document: any;
@@ -15,6 +16,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  // H-OCR: OCR state management
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
+  const [showOCREditModal, setShowOCREditModal] = useState(false);
+  const [editableOCRFields, setEditableOCRFields] = useState<any>({});
   
   const [metadata, setMetadata] = useState({
     proveedor: document?.metadata?.proveedor || '',
@@ -54,6 +59,212 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       setIsEditingMetadata(false);
       toast.success('Metadatos actualizados');
     }
+  };
+
+  // H-OCR: Process document with OCR
+  const handleOCRProcess = async () => {
+    if (!document?.content) {
+      toast.error('No se pudo acceder al contenido del documento');
+      return;
+    }
+
+    setIsProcessingOCR(true);
+    
+    // Update document status to processing
+    if (onUpdate) {
+      const updatedMetadata = {
+        ...metadata,
+        ocr: {
+          engine: 'gdocai:invoice',
+          timestamp: new Date().toISOString(),
+          confidenceGlobal: 0,
+          fields: [],
+          status: 'processing' as const
+        }
+      };
+      onUpdate(document.id, { metadata: updatedMetadata });
+    }
+
+    try {
+      const ocrResult = await processDocumentOCR(document.content, document.filename);
+      
+      // Add to history if there was a previous result
+      const ocrHistory = metadata.ocrHistory || [];
+      if (metadata.ocr && metadata.ocr.status === 'completed') {
+        ocrHistory.push({
+          timestamp: metadata.ocr.timestamp,
+          engine: metadata.ocr.engine,
+          confidenceGlobal: metadata.ocr.confidenceGlobal,
+          fieldsCount: metadata.ocr.fields.length,
+          status: 'completed'
+        });
+      }
+
+      const updatedMetadata = {
+        ...metadata,
+        ocr: ocrResult,
+        ocrHistory
+      };
+
+      setMetadata(updatedMetadata);
+      
+      if (onUpdate) {
+        onUpdate(document.id, { metadata: updatedMetadata });
+      }
+
+      toast.success(`OCR completado: ${ocrResult.fields.length} campos extraídos`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      const updatedMetadata = {
+        ...metadata,
+        ocr: {
+          engine: 'gdocai:invoice',
+          timestamp: new Date().toISOString(),
+          confidenceGlobal: 0,
+          fields: [],
+          status: 'error' as const,
+          error: errorMessage
+        }
+      };
+
+      setMetadata(updatedMetadata);
+      
+      if (onUpdate) {
+        onUpdate(document.id, { metadata: updatedMetadata });
+      }
+
+      toast.error(`Error en OCR: ${errorMessage}`);
+    } finally {
+      setIsProcessingOCR(false);
+    }
+  };
+
+  // H-OCR: Apply all OCR fields
+  const handleApplyAllFields = () => {
+    if (!metadata.ocr?.fields) return;
+
+    const updatedMetadata = { ...metadata };
+    
+    metadata.ocr.fields.forEach((field: any) => {
+      switch (field.name) {
+        case 'proveedor':
+          updatedMetadata.proveedor = field.value;
+          break;
+        case 'numeroFactura':
+          updatedMetadata.numeroFactura = field.value;
+          break;
+        case 'fechaEmision':
+          updatedMetadata.fechaEmision = field.value;
+          break;
+        case 'importe':
+          updatedMetadata.importe = parseFloat(field.value);
+          break;
+        // Add more field mappings as needed
+      }
+    });
+
+    setMetadata(updatedMetadata);
+    if (onUpdate) {
+      onUpdate(document.id, { metadata: updatedMetadata });
+    }
+    
+    toast.success('Todos los campos aplicados');
+  };
+
+  // H-OCR: Apply only high confidence fields
+  const handleApplySuggestions = () => {
+    if (!metadata.ocr?.fields) return;
+
+    const config = getOCRConfig();
+    const highConfidenceFields = getHighConfidenceFields(metadata.ocr, config.confidenceThreshold);
+    
+    const updatedMetadata = { ...metadata };
+    
+    highConfidenceFields.forEach((field: any) => {
+      switch (field.name) {
+        case 'proveedor':
+          updatedMetadata.proveedor = field.value;
+          break;
+        case 'numeroFactura':
+          updatedMetadata.numeroFactura = field.value;
+          break;
+        case 'fechaEmision':
+          updatedMetadata.fechaEmision = field.value;
+          break;
+        case 'importe':
+          updatedMetadata.importe = parseFloat(field.value);
+          break;
+      }
+    });
+
+    setMetadata(updatedMetadata);
+    if (onUpdate) {
+      onUpdate(document.id, { metadata: updatedMetadata });
+    }
+    
+    toast.success(`${highConfidenceFields.length} campos de alta confianza aplicados`);
+  };
+
+  // H-OCR: Open edit modal with OCR fields
+  const handleEditBeforeApply = () => {
+    if (!metadata.ocr?.fields) return;
+    
+    const fieldsObject: any = {};
+    metadata.ocr.fields.forEach((field: any) => {
+      fieldsObject[field.name] = field.value;
+    });
+    
+    setEditableOCRFields(fieldsObject);
+    setShowOCREditModal(true);
+  };
+
+  // H-OCR: Apply edited OCR fields
+  const handleApplyEditedFields = () => {
+    const updatedMetadata = { ...metadata };
+    
+    Object.entries(editableOCRFields).forEach(([fieldName, value]) => {
+      switch (fieldName) {
+        case 'proveedor':
+          updatedMetadata.proveedor = value as string;
+          break;
+        case 'numeroFactura':
+          updatedMetadata.numeroFactura = value as string;
+          break;
+        case 'fechaEmision':
+          updatedMetadata.fechaEmision = value as string;
+          break;
+        case 'importe':
+          updatedMetadata.importe = parseFloat(value as string) || 0;
+          break;
+      }
+    });
+
+    setMetadata(updatedMetadata);
+    if (onUpdate) {
+      onUpdate(document.id, { metadata: updatedMetadata });
+    }
+    
+    setShowOCREditModal(false);
+    toast.success('Campos editados aplicados');
+  };
+
+  // H-OCR: Create expense from OCR data
+  const handleCreateExpense = () => {
+    if (!metadata.ocr) return;
+    
+    const expenseData = createExpenseFromOCR(metadata.ocr);
+    // Here you would typically open an expense creation modal or navigate to expense creation
+    toast.success('Función "Crear gasto" - próximamente disponible');
+    console.log('Expense data from OCR:', expenseData);
+  };
+
+  // H-OCR: Create CAPEX draft from OCR data
+  const handleCreateCAPEX = () => {
+    if (!metadata.ocr) return;
+    
+    // Here you would typically create a CAPEX draft
+    toast.success('Función "Crear CAPEX (borrador)" - próximamente disponible');
   };
 
   const handleAssign = () => {
@@ -375,6 +586,17 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <Eye className="w-4 h-4" />
           Ver
         </button>
+        
+        {/* H-OCR: Process with OCR button */}
+        <button 
+          className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+          onClick={handleOCRProcess}
+          disabled={isProcessingOCR || metadata.ocr?.status === 'processing'}
+        >
+          <Zap className="w-4 h-4" />
+          {isProcessingOCR || metadata.ocr?.status === 'processing' ? 'Procesando...' : 'Procesar con OCR'}
+        </button>
+        
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
           onClick={() => setShowAssignModal(true)}
@@ -397,6 +619,161 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           Eliminar
         </button>
       </div>
+
+      {/* H-OCR: OCR Results Panel */}
+      {metadata.ocr && (
+        <div className="border border-neutral-200 rounded-lg overflow-hidden">
+          <div className="bg-neutral-50 px-4 py-3 border-b border-neutral-200">
+            <h4 className="font-medium text-neutral-900">Campos extraídos (OCR)</h4>
+            <div className="flex items-center gap-4 mt-1 text-sm text-neutral-600">
+              <span>Motor: {metadata.ocr.engine}</span>
+              <span>Confianza global: {formatPercentage(metadata.ocr.confidenceGlobal * 100)}</span>
+              <span>Procesado: {new Date(metadata.ocr.timestamp).toLocaleString('es-ES')}</span>
+            </div>
+          </div>
+          
+          <div className="p-4">
+            {metadata.ocr.status === 'completed' && metadata.ocr.fields.length > 0 ? (
+              <>
+                {/* OCR Fields List */}
+                <div className="space-y-3 mb-4">
+                  {metadata.ocr.fields.map((field: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                      <div className="flex-1">
+                        <span className="font-medium text-neutral-700 capitalize">
+                          {field.name.replace(/([A-Z])/g, ' $1').trim()}:
+                        </span>
+                        <span className="ml-2 text-neutral-900">{field.value}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          field.confidence >= 0.8 ? 'bg-green-100 text-green-700' :
+                          field.confidence >= 0.6 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {formatPercentage(field.confidence * 100)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* OCR Action Buttons */}
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <button
+                    onClick={handleApplyAllFields}
+                    className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                  >
+                    Aplicar todo
+                  </button>
+                  <button
+                    onClick={handleApplySuggestions}
+                    className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                  >
+                    Aplicar sugerencias
+                  </button>
+                  <button
+                    onClick={handleEditBeforeApply}
+                    className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                  >
+                    Editar antes de aplicar
+                  </button>
+                </div>
+                
+                {/* Smart CTAs */}
+                <div className="flex gap-3 pt-3 border-t border-neutral-200">
+                  {shouldSuggestExpense(metadata.ocr) && (
+                    <button
+                      onClick={handleCreateExpense}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      Crear gasto
+                    </button>
+                  )}
+                  {shouldSuggestCAPEX(metadata.ocr) && (
+                    <button
+                      onClick={handleCreateCAPEX}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Building className="w-4 h-4" />
+                      Crear CAPEX (borrador)
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : metadata.ocr.status === 'error' ? (
+              <div className="text-center py-6">
+                <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                <p className="text-red-600 font-medium">Error al procesar OCR</p>
+                <p className="text-sm text-neutral-600 mt-1">{metadata.ocr.error}</p>
+                <button
+                  onClick={handleOCRProcess}
+                  className="mt-3 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <div className="w-8 h-8 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin mx-auto mb-2"></div>
+                <p className="text-neutral-600">Procesando documento...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* H-OCR: Edit Fields Modal */}
+      {showOCREditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h4 className="text-lg font-medium">Editar campos OCR</h4>
+              <button 
+                onClick={() => setShowOCREditModal(false)}
+                className="p-2 hover:bg-neutral-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div className="space-y-4">
+                {Object.entries(editableOCRFields).map(([fieldName, value]) => (
+                  <div key={fieldName}>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1 capitalize">
+                      {fieldName.replace(/([A-Z])/g, ' $1').trim()}
+                    </label>
+                    <input
+                      type="text"
+                      value={value as string}
+                      onChange={(e) => setEditableOCRFields({
+                        ...editableOCRFields,
+                        [fieldName]: e.target.value
+                      })}
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t flex gap-3">
+              <button
+                onClick={handleApplyEditedFields}
+                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+              >
+                Aplicar campos
+              </button>
+              <button
+                onClick={() => setShowOCREditModal(false)}
+                className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal */}
       {showPreviewModal && (

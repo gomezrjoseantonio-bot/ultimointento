@@ -53,6 +53,33 @@ export interface Property {
   };
 }
 
+// H-OCR: OCR field definition
+export interface OCRField {
+  name: string;
+  value: string;
+  confidence: number; // 0-1
+  raw?: string; // Original raw value before normalization
+}
+
+// H-OCR: OCR result structure
+export interface OCRResult {
+  engine: string; // e.g., "gdocai:invoice"
+  timestamp: string;
+  confidenceGlobal: number; // Overall confidence 0-1
+  fields: OCRField[];
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  error?: string;
+}
+
+// H-OCR: OCR history entry
+export interface OCRHistoryEntry {
+  timestamp: string;
+  engine: string;
+  confidenceGlobal: number;
+  fieldsCount: number;
+  status: 'completed' | 'error';
+}
+
 export interface Document {
   id?: number;
   filename: string;
@@ -66,6 +93,9 @@ export interface Document {
     tags?: string[];
     entityType?: 'property' | 'contract' | 'expense' | 'personal';
     entityId?: number;
+    // H-OCR: OCR metadata
+    ocr?: OCRResult;
+    ocrHistory?: OCRHistoryEntry[];
   };
   uploadDate: string;
 }
