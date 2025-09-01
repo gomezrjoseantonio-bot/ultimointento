@@ -26,6 +26,7 @@ interface PropertyFormProps {
 
 interface FormData {
   alias: string;
+  globalAlias: string; // Global alias that can be shared/referenced across properties
   address: string;
   postalCode: string;
   province: string;
@@ -78,6 +79,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
   
   const [formData, setFormData] = useState<FormData>({
     alias: '',
+    globalAlias: '',
     address: '',
     postalCode: '',
     province: '',
@@ -137,6 +139,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       if (property) {
         setFormData({
           alias: property.alias,
+          globalAlias: property.globalAlias || '', // Use the property directly now
           address: property.address,
           postalCode: property.postalCode,
           province: property.province,
@@ -566,6 +569,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       
       const property: Property = {
         alias: formData.alias.trim(),
+        globalAlias: formData.globalAlias.trim() || undefined,
         address: formData.address.trim(),
         postalCode: formData.postalCode,
         province: formData.province.trim(),
@@ -675,6 +679,22 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               {errors.alias && (
                 <p className="text-sm text-red-600 mt-1">{errors.alias}</p>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Alias Global
+              </label>
+              <input
+                type="text"
+                value={formData.globalAlias}
+                onChange={(e) => setFormData(prev => ({ ...prev, globalAlias: e.target.value }))}
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                placeholder="Ej: Portfolio Centro, Inversión 2024"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                Alias compartido para agrupar o referenciar inmuebles (opcional)
+              </p>
             </div>
 
             <div>

@@ -7,6 +7,7 @@ const DB_VERSION = 4; // H7: Updated for contract enhancements
 export interface Property {
   id?: number;
   alias: string;
+  globalAlias?: string; // Optional global alias for grouping/referencing
   address: string;
   postalCode: string;
   province: string;
