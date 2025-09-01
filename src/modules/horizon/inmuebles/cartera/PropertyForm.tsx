@@ -1026,7 +1026,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
         </div>
 
         {/* Form actions */}
-        <div className="flex justify-end space-x-3">
+        <div className="flex justify-end items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/inmuebles/cartera')}
