@@ -324,15 +324,19 @@ const InboxPage: React.FC = () => {
           // Contratos → documentos cuyo Tipo sea "Contrato"
           belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
           break;
+        case 'extractos':
+          // Extractos bancarios → documentos cuyo Tipo sea "Extracto bancario"
+          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'extracto bancario';
+          break;
         case 'capex':
           // CAPEX → documentos con Categoría "Reforma/CAPEX"
           belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
           break;
         case 'otros':
-          // Otros → el resto (no es factura, contrato, ni capex)
+          // Otros → el resto (no es factura, contrato, extracto bancario, ni capex)
           const tipo = doc.metadata?.tipo?.toLowerCase();
           const categoria = doc.metadata?.categoria?.toLowerCase();
-          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && categoria !== 'reforma/capex';
+          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && tipo !== 'extracto bancario' && categoria !== 'reforma/capex';
           break;
         default:
           belongsToFolder = true;
@@ -486,7 +490,7 @@ const InboxPage: React.FC = () => {
             <div className="p-4 border-b border-neutral-200">
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
               <div className="space-y-1">
-                {['Todos', 'Facturas', 'Contratos', 'CAPEX', 'Otros'].map((folder) => (
+                {['Todos', 'Facturas', 'Contratos', 'Extractos', 'CAPEX', 'Otros'].map((folder) => (
                   <button
                     key={folder}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
@@ -496,7 +500,7 @@ const InboxPage: React.FC = () => {
                     }`}
                     onClick={() => setFolderFilter(folder.toLowerCase())}
                   >
-                    {folder}
+                    {folder === 'Extractos' ? 'Extractos bancarios' : folder}
                   </button>
                 ))}
               </div>
