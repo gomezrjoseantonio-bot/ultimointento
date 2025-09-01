@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 3; // H6: Updated for KPI configurations
+const DB_VERSION = 4; // H7: Updated for contract enhancements
 
 export interface Property {
   id?: number;
@@ -70,17 +70,101 @@ export interface Document {
   uploadDate: string;
 }
 
+// H7: Enhanced Contract interface
 export interface Contract {
   id?: number;
   propertyId: number;
-  type: 'full-property' | 'room';
+  // Property scope
+  scope: 'full-property' | 'units';
+  selectedUnits?: string[]; // For multi-unit properties (e.g., ['H1', 'H2'])
+  type: 'vivienda' | 'habitacion';
+  
+  // Tenant information
+  tenant: {
+    name: string;
+    nif?: string;
+    email?: string;
+  };
+  
+  // Contract dates
   startDate: string;
-  endDate: string;
+  endDate?: string; // Optional for indefinite contracts
+  isIndefinite: boolean;
+  noticePeriodDays?: number;
+  
+  // Financial terms
   monthlyRent: number;
-  deposit: number;
-  guarantees: number;
-  paymentStatus: 'paid' | 'pending' | 'partial';
+  paymentDay: number; // 1-31
+  periodicity: 'monthly'; // Only monthly for now
+  
+  // Rent updates
+  rentUpdate: {
+    type: 'none' | 'fixed-percentage' | 'ipc';
+    fixedPercentage?: number; // For fixed percentage updates
+    ipcPercentage?: number; // Manual IPC percentage
+  };
+  
+  // Deposit and guarantees
+  deposit: {
+    months: number;
+    amount: number; // Calculated but editable
+  };
+  additionalGuarantees?: number;
+  
+  // Services (informational checkboxes)
+  includedServices: {
+    electricity?: boolean;
+    water?: boolean;
+    gas?: boolean;
+    internet?: boolean;
+    cleaning?: boolean;
+    [key: string]: boolean | undefined;
+  };
+  
+  // Notes and status
+  privateNotes?: string;
+  status: 'active' | 'upcoming' | 'terminated';
+  
+  // Documents
   documents: number[];
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H7: Rent calendar entry
+export interface RentCalendar {
+  id?: number;
+  contractId: number;
+  period: string; // YYYY-MM format
+  expectedAmount: number;
+  isProrated: boolean;
+  proratedDays?: number;
+  totalDaysInMonth?: number;
+  notes?: string;
+  createdAt: string;
+}
+
+// H7: Rent payment tracking
+export interface RentPayment {
+  id?: number;
+  contractId: number;
+  period: string; // YYYY-MM format
+  expectedAmount: number;
+  status: 'pending' | 'paid' | 'partial';
+  
+  // Payment details
+  paidAmount?: number;
+  paymentDate?: string;
+  paymentNotes?: string;
+  
+  // Documents
+  receiptDocuments: number[];
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
 }
 
 // H5: AEAT Tax Classification Types
@@ -221,6 +305,8 @@ interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
   contracts: Contract;
+  rentCalendar: RentCalendar; // H7: Rent calendar entries
+  rentPayments: RentPayment; // H7: Rent payment tracking
   expenses: Expense; // Legacy
   expensesH5: ExpenseH5; // H5: New expense system
   reforms: Reform; // H5: CAPEX reforms
@@ -310,6 +396,21 @@ export const initDB = async () => {
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {
           db.createObjectStore('kpiConfigurations', { keyPath: 'id' }); // id will be 'horizon' or 'pulse'
+        }
+
+        // H7: Rent Calendar store
+        if (!db.objectStoreNames.contains('rentCalendar')) {
+          const rentCalendarStore = db.createObjectStore('rentCalendar', { keyPath: 'id', autoIncrement: true });
+          rentCalendarStore.createIndex('contractId', 'contractId', { unique: false });
+          rentCalendarStore.createIndex('period', 'period', { unique: false });
+        }
+
+        // H7: Rent Payments store
+        if (!db.objectStoreNames.contains('rentPayments')) {
+          const rentPaymentsStore = db.createObjectStore('rentPayments', { keyPath: 'id', autoIncrement: true });
+          rentPaymentsStore.createIndex('contractId', 'contractId', { unique: false });
+          rentPaymentsStore.createIndex('period', 'period', { unique: false });
+          rentPaymentsStore.createIndex('status', 'status', { unique: false });
         }
       }
     });
@@ -594,12 +695,14 @@ export const resetAllData = async (): Promise<void> => {
     const db = await initDB();
     
     // Start transaction to clear all stores
-    const tx = db.transaction(['properties', 'documents', 'contracts', 'expenses'], 'readwrite');
+    const tx = db.transaction(['properties', 'documents', 'contracts', 'rentCalendar', 'rentPayments', 'expenses'], 'readwrite');
     
     await Promise.all([
       tx.objectStore('properties').clear(),
       tx.objectStore('documents').clear(),
       tx.objectStore('contracts').clear(),
+      tx.objectStore('rentCalendar').clear(),
+      tx.objectStore('rentPayments').clear(),
       tx.objectStore('expenses').clear(),
     ]);
     
