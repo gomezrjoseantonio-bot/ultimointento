@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 2; // H5: Updated for Gastos & CAPEX schema
+const DB_VERSION = 3; // H6: Updated for KPI configurations
 
 export interface Property {
   id?: number;
@@ -227,6 +227,7 @@ interface AtlasHorizonDB {
   reformLineItems: ReformLineItem; // H5: Reform line items
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
+  kpiConfigurations: any; // H6: KPI configurations
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -304,6 +305,11 @@ export const initDB = async () => {
           propertyDaysStore.createIndex('propertyId', 'propertyId', { unique: false });
           propertyDaysStore.createIndex('taxYear', 'taxYear', { unique: false });
           propertyDaysStore.createIndex('property-year', ['propertyId', 'taxYear'], { unique: true });
+        }
+
+        // H6: KPI Configurations store
+        if (!db.objectStoreNames.contains('kpiConfigurations')) {
+          db.createObjectStore('kpiConfigurations', { keyPath: 'id' }); // id will be 'horizon' or 'pulse'
         }
       }
     });

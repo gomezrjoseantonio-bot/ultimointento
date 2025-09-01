@@ -201,8 +201,8 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
     { label: 'Financiación', amount: expenses.financiacion, color: 'bg-blue-100 border-blue-200' },
     { label: 'R&C', amount: expenses.reparacionConservacion, color: 'bg-green-100 border-green-200' },
     { label: 'Tributos', amount: expenses.tributos, color: 'bg-yellow-100 border-yellow-200' },
-    { label: 'Seguros', amount: expenses.seguros, color: 'bg-purple-100 border-purple-200' },
-    { label: 'Servicios personales', amount: expenses.serviciosPersonales, color: 'bg-indigo-100 border-indigo-200' },
+    { label: 'Seguros', amount: expenses.seguros, color: 'bg-blue-100 border-blue-200' },
+    { label: 'Servicios personales', amount: expenses.serviciosPersonales, color: 'bg-teal-100 border-teal-200' },
     { label: 'CAPEX Mejora', amount: expenses.capexMejora, color: 'bg-orange-100 border-orange-200' },
     { label: 'Mobiliario (10a)', amount: expenses.mobiliario, color: 'bg-pink-100 border-pink-200' }
   ];

@@ -97,7 +97,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
       const now = new Date().toISOString();
       const expenseData: ExpenseH5 = {
         ...formData,
-        id: expense?.id,
+        ...(expense?.id && { id: expense.id }), // Only include id if editing existing expense
         date: formData.date!,
         provider: formData.provider!,
         concept: formData.concept!,

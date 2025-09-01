@@ -11,9 +11,11 @@ interface PageLayoutProps {
 const PageLayout: React.FC<PageLayoutProps> = ({ title, subtitle, children }) => {
   return (
     <div className="space-y-0">
-      <PageHeader title={title} subtitle={subtitle} />
-      <div className="mt-4">
-        <SubTabs />
+      <div className="sticky top-0 z-10 bg-neutral-50 pb-4">
+        <PageHeader title={title} subtitle={subtitle} />
+        <div className="mt-4">
+          <SubTabs />
+        </div>
       </div>
       <div className="space-y-6">
         {children}

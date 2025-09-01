@@ -127,9 +127,9 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     subTabs: [
       { name: 'Bancos & Cuentas', href: '/configuracion/bancos-cuentas', icon: Banknote, module: 'horizon' },
-      { name: 'Plan & Facturación', href: '/configuracion/plan-facturacion', icon: CreditCard, module: 'horizon' },
       { name: 'Usuarios & Roles', href: '/configuracion/usuarios-roles', icon: Users, module: 'horizon' },
       { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'horizon' },
+      { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'horizon' },
     ]
   },
 
@@ -141,6 +141,7 @@ export const navigationConfig: NavigationItem[] = [
     module: 'pulse',
     subTabs: [
       { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'pulse' },
+      { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'pulse' },
     ]
   },
 ];

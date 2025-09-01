@@ -36,7 +36,6 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   ],
   configuracion: [
     { label: 'Bancos & Cuentas', path: '/configuracion/bancos-cuentas' },
-    { label: 'Plan & Facturación', path: '/configuracion/plan-facturacion' },
     { label: 'Usuarios & Roles', path: '/configuracion/usuarios-roles' },
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
     { label: 'Email entrante', path: '/configuracion/email-entrante' },
@@ -111,8 +110,8 @@ const SubTabs: React.FC = () => {
     return null;
   }
   
-  const accentColorClass = currentModule === 'horizon' ? 'text-brand-teal' : 'text-brand-navy';
-  const borderColorClass = currentModule === 'horizon' ? 'border-brand-teal' : 'border-brand-navy';
+  const accentColorClass = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
+  const borderColorClass = currentModule === 'horizon' ? 'border-brand-navy' : 'border-brand-teal';
   
   return (
     <div className="mb-6">
