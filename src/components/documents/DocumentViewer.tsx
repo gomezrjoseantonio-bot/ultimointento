@@ -1,32 +1,76 @@
-import React, { useState } from 'react';
-import { Eye, Trash2, UserCheck, X, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, Trash2, UserCheck, X, Download, Edit2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useButtonStyles } from '../../hooks/useButtonStyles';
 import { getDocumentBlob, downloadBlob } from '../../services/db';
 
 interface DocumentViewerProps {
   document: any;
-  onAssign: (documentId: number, entityId: number) => void;
+  onAssign: (documentId: number, metadata: any) => void;
   onDelete?: (documentId: number) => void;
+  onUpdate?: (documentId: number, updates: any) => void;
 }
 
-const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete }) => {
-  const buttonStyles = useButtonStyles();
+const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete, onUpdate }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false);
+  
+  const [metadata, setMetadata] = useState({
+    proveedor: document?.metadata?.proveedor || '',
+    tipo: document?.metadata?.tipo || 'Factura',
+    categoria: document?.metadata?.categoria || 'Otros',
+    destino: document?.metadata?.destino || 'Personal',
+    notas: document?.metadata?.notas || '',
+    carpeta: document?.metadata?.carpeta || 'otros',
+    ...document?.metadata
+  });
+
   const [assignData, setAssignData] = useState({
-    destino: 'personal',
-    inmueble: '',
-    habitacion: '',
-    categoria: 'Suministros',
+    destino: 'Personal',
+    inmuebleId: '',
+    habitacionId: '',
+    categoria: 'Otros',
     carpeta: 'otros'
   });
 
+  useEffect(() => {
+    if (document?.metadata) {
+      setMetadata({
+        proveedor: document.metadata.proveedor || '',
+        tipo: document.metadata.tipo || 'Factura',
+        categoria: document.metadata.categoria || 'Otros',
+        destino: document.metadata.destino || 'Personal',
+        notas: document.metadata.notas || '',
+        carpeta: document.metadata.carpeta || 'otros',
+        ...document.metadata
+      });
+    }
+  }, [document]);
+
+  const handleSaveMetadata = () => {
+    if (onUpdate) {
+      onUpdate(document.id, { metadata });
+      setIsEditingMetadata(false);
+      toast.success('Metadatos actualizados');
+    }
+  };
+
   const handleAssign = () => {
-    // For now, just use a dummy entity ID
-    onAssign(document.id, 1);
+    const assignmentMetadata = {
+      ...metadata,
+      destino: assignData.destino,
+      categoria: assignData.categoria,
+      carpeta: assignData.carpeta,
+      status: 'Asignado',
+      entityType: assignData.destino.toLowerCase(),
+      entityId: assignData.destino === 'Personal' ? null : (assignData.inmuebleId || null),
+      assignedDate: new Date().toISOString()
+    };
+
+    onAssign(document.id, assignmentMetadata);
     setShowAssignModal(false);
+    toast.success('Documento asignado correctamente');
   };
 
   const handleDelete = () => {
@@ -45,12 +89,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     try {
       let blob: Blob | null = null;
       
-      // Try to get blob from IndexedDB first
       if (document?.id) {
         blob = await getDocumentBlob(document.id);
       }
       
-      // Fallback to document.content if blob not found in DB
       if (!blob && document?.content) {
         blob = new Blob([document.content], { type: document.type });
       }
@@ -83,7 +125,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <p className="text-neutral-500">No se puede cargar el contenido del documento</p>
           <button 
             onClick={handleDownload}
-            className={buttonStyles.primary}
+            className="mt-4 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar
@@ -101,13 +143,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <object
             data={url}
             type="application/pdf"
-            className="w-full h-full border border-neutral-200"
+            className="w-full h-full border border-neutral-200 rounded-lg"
           >
             <div className="text-center py-8">
               <p className="text-neutral-500 mb-4">No se puede previsualizar este PDF en tu navegador</p>
               <button 
                 onClick={handleDownload}
-                className={buttonStyles.primary}
+                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
               >
                 <Download className="w-4 h-4 inline mr-2" />
                 Descargar
@@ -127,13 +169,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <img 
             src={url} 
             alt={document.filename} 
-            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-atlas"
+            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg"
           />
         </div>
       );
     }
 
-    // For ZIP files and other non-previewable types, show download button
     const isZip = document.type === 'application/zip' || document.filename?.toLowerCase().endsWith('.zip');
     const isNonPreviewable = isZip || (!document.type.startsWith('image/') && document.type !== 'application/pdf');
 
@@ -143,7 +184,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <div className="mb-4">
             <Download className="mx-auto h-12 w-12 text-neutral-400 mb-2" />
             <p className="text-neutral-500 mb-2">
-              {isZip ? 'Archivo ZIP' : 'Archivo no previsualizable'}
+              {isZip ? 'Archivo ZIP' : 'Vista previa no disponible'}
             </p>
             <p className="text-sm text-neutral-400">
               {document.type || 'Tipo de archivo no especificado'}
@@ -151,7 +192,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           </div>
           <button 
             onClick={handleDownload}
-            className={buttonStyles.primary}
+            className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar {document.filename}
@@ -165,7 +206,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <p className="text-neutral-500 mb-4">No se puede previsualizar este tipo de archivo</p>
         <button 
           onClick={handleDownload}
-          className={buttonStyles.primary}
+          className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
         >
           <Download className="w-4 h-4 inline mr-2" />
           Descargar
@@ -178,10 +219,20 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     <div className="space-y-6">
       {/* Document Info */}
       <div className="border-b border-neutral-200 pb-4">
-        <h3 className="text-lg font-medium text-neutral-900 mb-2">{document?.filename || 'Documento'}</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-semibold text-neutral-900">{document?.filename || 'Documento'}</h3>
+          <button
+            onClick={() => setIsEditingMetadata(!isEditingMetadata)}
+            className="flex items-center gap-2 px-3 py-1 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          >
+            {isEditingMetadata ? <Save className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+            {isEditingMetadata ? 'Guardar' : 'Editar'}
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="font-medium text-neutral-700">Fecha:</span>
+            <span className="font-medium text-neutral-700">Fecha de subida:</span>
             <span className="ml-2 text-neutral-600">
               {new Date(document?.uploadDate || Date.now()).toLocaleDateString('es-ES')}
             </span>
@@ -192,64 +243,157 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               {document?.size ? formatFileSize(document.size) : 'N/A'}
             </span>
           </div>
+          
+          {/* Editable metadata fields */}
           <div>
             <span className="font-medium text-neutral-700">Proveedor:</span>
-            <input 
-              type="text" 
-              className="ml-2 border-none bg-transparent text-neutral-600 focus:bg-white focus:border-neutral-300 rounded px-1"
-              defaultValue={document?.metadata?.provider || ''}
-              placeholder="Editar..."
-            />
+            {isEditingMetadata ? (
+              <input 
+                type="text" 
+                className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                value={metadata.proveedor}
+                onChange={(e) => setMetadata({...metadata, proveedor: e.target.value})}
+                placeholder="Nombre del proveedor"
+              />
+            ) : (
+              <span className="ml-2 text-neutral-600">{metadata.proveedor || 'Sin especificar'}</span>
+            )}
           </div>
+          
           <div>
             <span className="font-medium text-neutral-700">Tipo:</span>
-            <select className="ml-2 border-none bg-transparent text-neutral-600 focus:bg-white focus:border-neutral-300 rounded">
-              <option value="Factura">Factura</option>
-              <option value="Contrato">Contrato</option>
-              <option value="Recibo">Recibo</option>
-            </select>
+            {isEditingMetadata ? (
+              <select 
+                className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                value={metadata.tipo}
+                onChange={(e) => setMetadata({...metadata, tipo: e.target.value})}
+              >
+                <option value="Contrato">Contrato</option>
+                <option value="Factura">Factura</option>
+                <option value="Recibo">Recibo</option>
+                <option value="Otro">Otro</option>
+              </select>
+            ) : (
+              <span className="ml-2 text-neutral-600">{metadata.tipo}</span>
+            )}
           </div>
+          
+          <div>
+            <span className="font-medium text-neutral-700">Categoría:</span>
+            {isEditingMetadata ? (
+              <select 
+                className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                value={metadata.categoria}
+                onChange={(e) => setMetadata({...metadata, categoria: e.target.value})}
+              >
+                <option value="Suministros">Suministros</option>
+                <option value="Comunidad">Comunidad</option>
+                <option value="Seguro">Seguro</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Reforma/CAPEX">Reforma/CAPEX</option>
+                <option value="Fiscal">Fiscal</option>
+                <option value="Otros">Otros</option>
+              </select>
+            ) : (
+              <span className="ml-2 text-neutral-600">{metadata.categoria}</span>
+            )}
+          </div>
+          
           <div>
             <span className="font-medium text-neutral-700">Estado:</span>
-            <span className="ml-2 text-neutral-600">{document?.metadata?.status || 'Nuevo'}</span>
+            <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+              metadata.status === 'Asignado' 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {metadata.status || 'Nuevo'}
+            </span>
           </div>
+          
           <div>
-            <span className="font-medium text-neutral-700">Origen:</span>
-            <span className="ml-2 text-neutral-600">{document?.metadata?.origin || 'Subida manual'}</span>
+            <span className="font-medium text-neutral-700">Destino:</span>
+            <span className="ml-2 text-neutral-600">{metadata.destino || 'Personal'}</span>
           </div>
         </div>
+        
+        {/* Notes field */}
+        <div className="mt-4">
+          <span className="font-medium text-neutral-700">Notas:</span>
+          {isEditingMetadata ? (
+            <textarea 
+              className="mt-1 w-full border border-neutral-200 rounded px-3 py-2 text-sm"
+              rows={2}
+              value={metadata.notas}
+              onChange={(e) => setMetadata({...metadata, notas: e.target.value})}
+              placeholder="Notas adicionales sobre el documento..."
+            />
+          ) : (
+            <p className="mt-1 text-neutral-600 text-sm">{metadata.notas || 'Sin notas'}</p>
+          )}
+        </div>
+        
+        {isEditingMetadata && (
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={handleSaveMetadata}
+              className="px-4 py-2 text-sm bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            >
+              Guardar cambios
+            </button>
+            <button
+              onClick={() => setIsEditingMetadata(false)}
+              className="px-4 py-2 text-sm border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Preview Area */}
-      <div className="bg-neutral-50 border border-neutral-200 rounded-atlas p-8 text-center">
+      <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-8 text-center">
         <Eye className="mx-auto h-12 w-12 text-neutral-500 mb-4" />
         <p className="text-neutral-600">Vista previa del documento</p>
         <p className="text-sm text-neutral-400 mt-2">
           {document?.type || 'Tipo de archivo no especificado'}
         </p>
+        <button 
+          className="mt-4 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+          onClick={handlePreview}
+        >
+          <Eye className="w-4 h-4 inline mr-2" />
+          Abrir vista previa
+        </button>
       </div>
 
       {/* Actions */}
-      <div className="flex space-x-3">
+      <div className="flex flex-wrap gap-3">
         <button 
-          className={`${buttonStyles.secondary} flex items-center`}
+          className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
           onClick={handlePreview}
         >
-          <Eye className="w-4 h-4 mr-2 text-neutral-500" />
+          <Eye className="w-4 h-4" />
           Ver
         </button>
         <button 
-          className={`${buttonStyles.primary} flex items-center`}
+          className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
           onClick={() => setShowAssignModal(true)}
         >
-          <UserCheck className="w-4 h-4 mr-2" />
-          Asignar
+          <UserCheck className="w-4 h-4" />
+          {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
         </button>
         <button 
-          className={`${buttonStyles.dangerOutline} flex items-center`}
+          className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          onClick={handleDownload}
+        >
+          <Download className="w-4 h-4" />
+          Descargar
+        </button>
+        <button 
+          className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
           onClick={() => setShowDeleteConfirm(true)}
         >
-          <Trash2 className="w-4 h-4 mr-2" />
+          <Trash2 className="w-4 h-4" />
           Eliminar
         </button>
       </div>
@@ -257,12 +401,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       {/* Preview Modal */}
       {showPreviewModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-atlas w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-4 border-b">
               <h4 className="text-lg font-medium">Vista previa del documento</h4>
               <button 
                 onClick={() => setShowPreviewModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-atlas"
+                className="p-2 hover:bg-neutral-100 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -270,7 +414,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex-1 overflow-auto p-4">
               <div className="mb-4">
                 <h5 className="font-medium">{document?.filename || 'Documento'}</h5>
-                <p className="text-sm text-gray-500">{document?.type || 'Tipo desconocido'}</p>
+                <p className="text-sm text-neutral-500">{document?.type || 'Tipo desconocido'}</p>
               </div>
               {renderPreviewContent()}
             </div>
@@ -281,20 +425,20 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-atlas p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h4 className="text-lg font-medium mb-4">¿Eliminar documento?</h4>
             <p className="text-neutral-600 mb-6">
               Se eliminará '{document?.filename || 'el documento'}'. Esta acción no se puede deshacer.
             </p>
-            <div className="flex space-x-3">
+            <div className="flex gap-3">
               <button 
-                className={buttonStyles.danger}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 onClick={handleDelete}
               >
                 Eliminar
               </button>
               <button 
-                className={buttonStyles.secondary}
+                className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancelar
@@ -304,55 +448,72 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </div>
       )}
 
-      {/* Assign Modal */}
+      {/* Enhanced Assign Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-atlas p-6 w-full max-w-md">
-            <h4 className="text-lg font-medium mb-4">Asignar Documento</h4>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h4 className="text-lg font-medium mb-4">
+              {metadata.status === 'Asignado' ? 'Reasignar Documento' : 'Asignar Documento'}
+            </h4>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Destino
                 </label>
                 <select 
-                  className="w-full border border-gray-300 rounded-atlas px-3 py-2"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2"
                   value={assignData.destino}
                   onChange={(e) => setAssignData({...assignData, destino: e.target.value})}
                 >
-                  <option value="personal">Personal</option>
-                  <option value="inmueble">Inmueble</option>
-                  <option value="habitacion">Habitación</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Inmueble">Inmueble</option>
+                  <option value="Habitación">Habitación</option>
                 </select>
               </div>
 
-              {assignData.destino === 'inmueble' && (
+              {assignData.destino === 'Inmueble' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Inmueble
                   </label>
-                  <select className="w-full border border-gray-300 rounded-atlas px-3 py-2">
+                  <select 
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                    value={assignData.inmuebleId}
+                    onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
+                  >
                     <option value="">Seleccionar inmueble...</option>
+                    <option value="1">Inmueble de ejemplo</option>
                   </select>
                 </div>
               )}
 
-              {assignData.destino === 'habitacion' && (
+              {assignData.destino === 'Habitación' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Inmueble
                     </label>
-                    <select className="w-full border border-gray-300 rounded-atlas px-3 py-2">
+                    <select 
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                      value={assignData.inmuebleId}
+                      onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
+                    >
                       <option value="">Seleccionar inmueble...</option>
+                      <option value="1">Inmueble de ejemplo</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
                       Habitación
                     </label>
-                    <select className="w-full border border-gray-300 rounded-atlas px-3 py-2">
+                    <select 
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                      value={assignData.habitacionId}
+                      onChange={(e) => setAssignData({...assignData, habitacionId: e.target.value})}
+                    >
                       <option value="">Seleccionar habitación...</option>
+                      <option value="1">Habitación 1</option>
                     </select>
                   </div>
                 </>
@@ -363,7 +524,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                   Categoría
                 </label>
                 <select 
-                  className="w-full border border-neutral-200 rounded-atlas px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2"
                   value={assignData.categoria}
                   onChange={(e) => setAssignData({...assignData, categoria: e.target.value})}
                 >
@@ -372,6 +533,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                   <option value="Seguro">Seguro</option>
                   <option value="Mantenimiento">Mantenimiento</option>
                   <option value="Reforma/CAPEX">Reforma/CAPEX</option>
+                  <option value="Fiscal">Fiscal</option>
                   <option value="Otros">Otros</option>
                 </select>
               </div>
@@ -381,7 +543,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                   Carpeta
                 </label>
                 <select 
-                  className="w-full border border-neutral-200 rounded-atlas px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                  className="w-full border border-neutral-200 rounded-lg px-3 py-2"
                   value={assignData.carpeta}
                   onChange={(e) => setAssignData({...assignData, carpeta: e.target.value})}
                 >
@@ -393,15 +555,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               </div>
             </div>
 
-            <div className="flex space-x-3 mt-6">
+            <div className="flex gap-3 mt-6">
               <button 
-                className={buttonStyles.primary}
+                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
                 onClick={handleAssign}
               >
-                Guardar
+                {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
               </button>
               <button 
-                className={buttonStyles.secondary}
+                className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
                 onClick={() => setShowAssignModal(false)}
               >
                 Cancelar
