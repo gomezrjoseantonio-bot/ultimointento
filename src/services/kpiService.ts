@@ -1,5 +1,6 @@
 import { openDB } from 'idb';
 import { Property, Contract, ExpenseH5 } from './db';
+import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
 
 export type KPIMetricType = 
   | 'ingresos-anuales'
@@ -231,25 +232,6 @@ export const DEFAULT_KPI_CONFIG: KPIConfiguration = {
     vacancyPercent: 7.5,
     dxcrVisible: false
   }
-};
-
-// Format currency in es-ES format
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
-};
-
-// Format percentage in es-ES format
-export const formatPercentage = (value: number): string => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 2
-  }).format(value / 100);
 };
 
 // Format ratio
@@ -559,9 +541,9 @@ export class KPIService {
 
     switch (unit) {
       case 'currency':
-        return formatCurrency(value);
+        return formatEuro(value);
       case 'percentage':
-        return formatPercentage(value);
+        return formatPercentageUtil(value);
       case 'ratio':
         return formatRatio(value);
       default:
