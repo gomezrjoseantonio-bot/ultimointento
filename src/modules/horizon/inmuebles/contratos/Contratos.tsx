@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { Contract } from '../../../../services/db';
 import ContractsLista from './components/ContractsLista';
 import ContractsNuevo from './components/ContractsNuevo';
 import ContractsCalendario from './components/ContractsCalendario';
@@ -25,28 +26,51 @@ const Contratos: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('lista');
   const [refreshKey, setRefreshKey] = useState(0);
   const [showNewContract, setShowNewContract] = useState(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const { currentModule } = useTheme();
 
   const handleContractCreated = () => {
     setRefreshKey(prev => prev + 1);
     setShowNewContract(false);
+    setEditingContract(null);
     setActiveTab('lista');
+  };
+
+  const handleEditContract = (contract?: Contract) => {
+    if (contract) {
+      setEditingContract(contract);
+      setShowNewContract(true);
+    } else {
+      setEditingContract(null);
+      setShowNewContract(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowNewContract(false);
+    setEditingContract(null);
   };
 
   const renderTabContent = () => {
     if (showNewContract) {
-      return <ContractsNuevo onContractCreated={handleContractCreated} onCancel={() => setShowNewContract(false)} />;
+      return (
+        <ContractsNuevo 
+          editingContract={editingContract}
+          onContractCreated={handleContractCreated} 
+          onCancel={handleCancelEdit} 
+        />
+      );
     }
 
     switch (activeTab) {
       case 'lista':
-        return <ContractsLista key={refreshKey} onEditContract={() => setShowNewContract(true)} />;
+        return <ContractsLista key={refreshKey} onEditContract={handleEditContract} />;
       case 'calendario':
         return <ContractsCalendario key={refreshKey} />;
       case 'cobros':
         return <ContractsCobros key={refreshKey} />;
       default:
-        return <ContractsLista key={refreshKey} onEditContract={() => setShowNewContract(true)} />;
+        return <ContractsLista key={refreshKey} onEditContract={handleEditContract} />;
     }
   };
 
