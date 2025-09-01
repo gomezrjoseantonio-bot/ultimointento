@@ -74,6 +74,12 @@ export interface OCRResult {
     displayName: string;
     description: string;
   }; // H-OCR-FIX: Engine transparency information
+  pageInfo?: {
+    totalPages: number;
+    selectedPage: number;
+    pageScore: number;
+    allPageScores: number[];
+  }; // H-OCR-FIX: Multi-page processing information
 }
 
 // H-OCR: OCR history entry

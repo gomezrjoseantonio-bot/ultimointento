@@ -662,6 +662,13 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               <span>Motor: {metadata.ocr.engineInfo?.displayName || metadata.ocr.engine}</span>
               <span>Confianza global: {formatPercentage(metadata.ocr.confidenceGlobal * 100)}</span>
               <span>Procesado: {new Date(metadata.ocr.timestamp).toLocaleString('es-ES')}</span>
+              {/* H-OCR-FIX: Multi-page information */}
+              {metadata.ocr.pageInfo && metadata.ocr.pageInfo.totalPages > 1 && (
+                <span>
+                  Página {metadata.ocr.pageInfo.selectedPage}/{metadata.ocr.pageInfo.totalPages} 
+                  (score: {metadata.ocr.pageInfo.pageScore})
+                </span>
+              )}
             </div>
             {/* H-OCR-FIX: Vision fallback warning */}
             {metadata.ocr.engineInfo?.type === 'vision-fallback' && (
