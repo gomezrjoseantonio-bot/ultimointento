@@ -69,6 +69,11 @@ export interface OCRResult {
   fields: OCRField[];
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
+  engineInfo?: {
+    type: 'document-ai-invoice' | 'vision-fallback';
+    displayName: string;
+    description: string;
+  }; // H-OCR-FIX: Engine transparency information
 }
 
 // H-OCR: OCR history entry
