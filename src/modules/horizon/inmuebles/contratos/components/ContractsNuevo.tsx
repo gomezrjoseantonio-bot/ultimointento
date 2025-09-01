@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Save, X, Building, User, Calendar, Euro, FileText } from 'lucide-react';
+import { Building, User, Calendar, Euro, FileText } from 'lucide-react';
 import { Property, initDB } from '../../../../../services/db';
 import { saveContract, validateContract } from '../../../../../services/contractService';
 import { formatEuro, parseEuroInput, parsePercentageInput } from '../../../../../utils/formatUtils';
+import FormFooter from '../../../../../components/common/FormFooter';
 import toast from 'react-hot-toast';
 
 interface ContractsNuevoProps {
@@ -245,32 +246,11 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header - No buttons, form pattern */}
+      <div className="flex items-center">
         <div className="flex items-center space-x-3">
           <FileText className="h-6 w-6 text-brand-navy" />
           <h2 className="text-xl font-semibold text-neutral-900">Nuevo contrato</h2>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 text-neutral-600 hover:text-neutral-800 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors"
-          >
-            <X className="h-4 w-4 mr-2 inline" />
-            Cancelar
-          </button>
-          
-          <button
-            type="submit"
-            form="contract-form"
-            disabled={loading}
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="h-4 w-4 mr-2 inline" />
-            {loading ? 'Guardando...' : 'Guardar contrato'}
-          </button>
         </div>
       </div>
 
@@ -660,6 +640,17 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
           />
         </div>
       </form>
+      
+      {/* Form Footer with actions */}
+      <FormFooter
+        onSave={() => {
+          const form = document.getElementById('contract-form') as HTMLFormElement;
+          if (form) form.requestSubmit();
+        }}
+        onCancel={onCancel}
+        saveLabel="Guardar contrato"
+        isSubmitting={loading}
+      />
     </div>
   );
 };

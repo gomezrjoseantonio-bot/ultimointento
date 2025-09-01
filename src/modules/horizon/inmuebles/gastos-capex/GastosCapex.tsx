@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, FileTextIcon, CogIcon, BarChart3Icon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
+import { useTheme } from '../../../../contexts/ThemeContext';
 import GastosTab from './components/GastosTab';
 import CapexTab from './components/CapexTab';
 import ResumenTab from './components/ResumenTab';
@@ -10,6 +11,7 @@ type TabType = 'gastos' | 'capex' | 'resumen';
 const GastosCapex: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('gastos');
   const [triggerAddExpense, setTriggerAddExpense] = useState(false);
+  const { currentModule } = useTheme();
 
   const tabs = [
     {
@@ -46,9 +48,8 @@ const GastosCapex: React.FC = () => {
     <PageLayout 
       title="Gastos & CAPEX" 
       subtitle="Capturar, clasificar y prorratear gastos según AEAT; modelar reformas (CAPEX)"
-    >
-      {/* Action Button */}
-      <div className="flex justify-end mb-6">
+      showInfoIcon={true}
+      primaryAction={
         <button
           onClick={handleAddExpense}
           className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
@@ -56,29 +57,32 @@ const GastosCapex: React.FC = () => {
           <PlusIcon className="h-5 w-5 mr-2" />
           Añadir gasto
         </button>
-      </div>
-
-      {/* Segmented Control */}
-      <div className="mb-6">
+      }
+    >
+      {/* Segmented Control - Row 3 with proper spacing */}
+      <div className="mb-3">
         <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            const activeColor = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
+            
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 role="tab"
-                aria-selected={activeTab === tab.id}
+                aria-selected={isActive}
                 className={`
                   inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
-                  ${activeTab === tab.id
-                    ? 'bg-white text-brand-navy shadow-sm'
+                  ${isActive
+                    ? `bg-white ${activeColor} shadow-sm`
                     : 'text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
                 <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${
-                  activeTab === tab.id ? 'text-brand-navy' : 'text-gray-400'
+                  isActive ? activeColor : 'text-gray-400'
                 }`} />
                 {tab.name}
               </button>

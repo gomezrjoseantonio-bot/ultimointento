@@ -150,7 +150,11 @@ const Cartera: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout title="Cartera" subtitle="Resumen de todas tus propiedades de inversión.">
+      <PageLayout 
+        title="Cartera" 
+        subtitle="Resumen de todas tus propiedades de inversión." 
+        showInfoIcon={true}
+      >
         <div className="flex items-center justify-center min-h-96">
           <div className="text-neutral-600">Cargando propiedades...</div>
         </div>
@@ -159,7 +163,11 @@ const Cartera: React.FC = () => {
   }
 
   return (
-    <PageLayout title="Cartera" subtitle="Resumen de todas tus propiedades de inversión.">
+    <PageLayout 
+      title="Cartera" 
+      subtitle="Resumen de todas tus propiedades de inversión." 
+      showInfoIcon={true}
+    >
       <div className="space-y-6">
         {/* Header with actions */}
         <div className="flex justify-between items-center">

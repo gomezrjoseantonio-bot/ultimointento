@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Menu, UserCircle, ChevronDown, Inbox } from 'lucide-react';
 import ModuleSelector from '../common/ModuleSelector';
 
 interface HeaderProps {
@@ -9,12 +9,15 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
     setAccountMenuOpen(false);
   };
+
+  const isInboxActive = location.pathname === '/inbox';
 
   return (
     <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
@@ -42,6 +45,20 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         
         <div className="flex items-center space-x-4">
           <ModuleSelector />
+          
+          {/* Global Inbox Icon */}
+          <button
+            onClick={() => navigate('/inbox')}
+            className={`p-2 rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+              isInboxActive 
+                ? 'bg-gray-100 text-gray-700' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+            title="Bandeja de Documentos"
+            aria-label="Bandeja de Documentos"
+          >
+            <Inbox className="h-5 w-5" />
+          </button>
           
           <div className="relative">
             <button 

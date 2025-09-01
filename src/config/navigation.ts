@@ -18,14 +18,6 @@ export const navigationConfig: NavigationItem[] = [
     module: 'shared',
   },
   
-  // Bandeja de Documentos - shared across modules
-  {
-    name: 'Bandeja de Documentos',
-    href: '/inbox',
-    icon: Inbox,
-    module: 'shared',
-  },
-  
   // Horizon (Invest) specific navigation
   {
     name: 'Inmuebles',

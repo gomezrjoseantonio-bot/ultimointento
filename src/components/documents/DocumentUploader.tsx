@@ -263,7 +263,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
         Tipos soportados: PDF, JPG, PNG, ZIP (varios archivos a la vez)
       </p>
       <button 
-        className="px-6 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+        className="px-6 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50 transition-colors"
         onClick={() => fileInputRef.current?.click()}
         disabled={isProcessing}
       >

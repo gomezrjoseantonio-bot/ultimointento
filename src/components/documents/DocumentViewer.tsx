@@ -125,7 +125,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <p className="text-neutral-500">No se puede cargar el contenido del documento</p>
           <button 
             onClick={handleDownload}
-            className="mt-4 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+            className="mt-4 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar
@@ -149,7 +149,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               <p className="text-neutral-500 mb-4">No se puede previsualizar este PDF en tu navegador</p>
               <button 
                 onClick={handleDownload}
-                className="px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors"
+                className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
               >
                 <Download className="w-4 h-4 inline mr-2" />
                 Descargar

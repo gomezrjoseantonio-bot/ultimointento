@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
+import { useTheme } from '../../../../contexts/ThemeContext';
 import ContractsLista from './components/ContractsLista';
 import ContractsNuevo from './components/ContractsNuevo';
 import ContractsCalendario from './components/ContractsCalendario';
@@ -24,6 +25,7 @@ const tabs: Tab[] = [
 const Contratos: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('lista');
   const [refreshKey, setRefreshKey] = useState(0);
+  const { currentModule } = useTheme();
 
   const handleContractCreated = () => {
     setRefreshKey(prev => prev + 1);
@@ -49,40 +51,48 @@ const Contratos: React.FC = () => {
     <PageLayout 
       title="Contratos" 
       subtitle="Gestión de contratos de alquiler por inmueble completo o por unidades."
+      showInfoIcon={true}
+      primaryAction={
+        activeTab === 'lista' ? (
+          <button
+            onClick={() => setActiveTab('nuevo')}
+            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Nuevo contrato
+          </button>
+        ) : null
+      }
     >
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <nav className="flex space-x-1">
+      {/* Row 3: Segment Control - 12px spacing to content */}
+      <div className="mb-3">
+        <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const activeColor = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
             
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  isActive
-                    ? 'bg-brand-navy text-white'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
-                }`}
+                role="tab"
+                aria-selected={isActive}
+                className={`
+                  inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
+                  ${isActive
+                    ? `bg-white ${activeColor} shadow-sm`
+                    : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
               >
-                <Icon className="h-4 w-4 mr-2" />
+                <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${
+                  isActive ? activeColor : 'text-gray-400'
+                }`} />
                 {tab.label}
               </button>
             );
           })}
-        </nav>
-        
-        {/* Tab underline for active tab */}
-        <div className="mt-2 h-0.5 bg-neutral-200">
-          <div 
-            className="h-full bg-brand-turquoise transition-all duration-200"
-            style={{
-              width: `${100 / tabs.length}%`,
-              transform: `translateX(${tabs.findIndex(t => t.id === activeTab) * 100}%)`,
-            }}
-          />
         </div>
       </div>
 
