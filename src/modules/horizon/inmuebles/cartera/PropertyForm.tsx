@@ -14,9 +14,10 @@ import {
 } from '../../../../utils/locationUtils';
 import { 
   formatEuro, 
-  formatEuroInput,
-  parseEuroInput 
+  parseEuroInput,
+  addCurrency
 } from '../../../../utils/formatUtils';
+import MoneyInput from '../../../../components/common/MoneyInput';
 import toast from 'react-hot-toast';
 
 interface PropertyFormProps {
@@ -400,8 +401,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
     // Reset manual states when switching regimes
     if (value === 'usada') {
       setIvaManual(false); // Reset IVA manual state when switching to usada
-      // Auto-calculate ITP if we have necessary data
-      if (!itpManual && formData.ccaa && formData.acquisitionCosts.price) {
+      // Auto-calculate ITP if we have necessary data (always calculate since we just reset manual state)
+      if (formData.ccaa && formData.acquisitionCosts.price) {
         const price = parseEuroInput(formData.acquisitionCosts.price);
         if (price && price > 0) {
           const newItp = calculateITP(price, formData.ccaa);
@@ -416,8 +417,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
       }
     } else if (value === 'obra-nueva') {
       setItpManual(false); // Reset ITP manual state when switching to obra-nueva
-      // Auto-calculate IVA if we have necessary data
-      if (!ivaManual && formData.acquisitionCosts.price) {
+      // Auto-calculate IVA if we have necessary data (always calculate since we just reset manual state)
+      if (formData.acquisitionCosts.price) {
         const price = parseEuroInput(formData.acquisitionCosts.price);
         if (price && price > 0) {
           const newIva = calculateIVA(price);
@@ -466,11 +467,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
     const management = parseEuroInput(formData.acquisitionCosts.management) || 0;
     const psi = parseEuroInput(formData.acquisitionCosts.psi) || 0;
     const realEstate = parseEuroInput(formData.acquisitionCosts.realEstate) || 0;
-    const other = formData.acquisitionCosts.other.reduce((sum, item) => {
-      return sum + (parseEuroInput(item.amount) || 0);
-    }, 0);
     
-    const total = price + tax + notary + registry + management + psi + realEstate + other;
+    // Use precise arithmetic for other costs
+    const otherAmounts = formData.acquisitionCosts.other.map(item => parseEuroInput(item.amount)).filter(amount => amount !== null) as number[];
+    const other = otherAmounts.length > 0 ? addCurrency(...otherAmounts) : 0;
+    
+    // Use precise arithmetic for total calculation
+    const total = addCurrency(price, tax, notary, registry, management, psi, realEstate, other);
     const squareMeters = parseFloat(formData.squareMeters) || 0;
     const pricePerSqm = squareMeters > 0 ? total / squareMeters : 0;
     
@@ -919,24 +922,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Precio de compra *
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.price}
-                    onChange={(e) => handlePriceChange(e.target.value)}
-                    onBlur={(e) => {
-                      const formatted = formatEuroInput(e.target.value);
-                      if (formatted !== e.target.value) {
-                        handlePriceChange(formatted);
-                      }
-                    }}
-                    className={`w-full px-3 py-2 pr-8 border rounded-md text-right ${
-                      errors['acquisitionCosts.price'] ? 'border-red-300' : 'border-neutral-300'
-                    } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
-                    placeholder="250.000,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.price}
+                  onChange={(value) => handlePriceChange(value)}
+                  placeholder="250.000,00"
+                  error={!!errors['acquisitionCosts.price']}
+                  aria-label="Precio de compra en euros"
+                />
                 {errors['acquisitionCosts.price'] && (
                   <p className="text-sm text-red-600 mt-1">{errors['acquisitionCosts.price']}</p>
                 )}
@@ -959,22 +951,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                       </button>
                     )}
                   </div>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.acquisitionCosts.itp}
-                      onChange={(e) => handleItpChange(e.target.value)}
-                      onBlur={(e) => {
-                        const formatted = formatEuroInput(e.target.value);
-                        if (formatted !== e.target.value) {
-                          handleItpChange(formatted);
-                        }
-                      }}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent text-right"
-                      placeholder="15.000,00"
-                    />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                  </div>
+                  <MoneyInput
+                    value={formData.acquisitionCosts.itp}
+                    onChange={(value) => handleItpChange(value)}
+                    placeholder="15.000,00"
+                    aria-label="ITP en euros"
+                  />
                   {formData.ccaa && (
                     <p className="text-xs text-neutral-500 mt-1">
                       Tipo aplicado: {getITPRateForCCAA(formData.ccaa)}% en {formData.ccaa}. Puedes modificarlo.
@@ -1000,22 +982,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                       </button>
                     )}
                   </div>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={formData.acquisitionCosts.iva}
-                      onChange={(e) => handleIvaChange(e.target.value)}
-                      onBlur={(e) => {
-                        const formatted = formatEuroInput(e.target.value);
-                        if (formatted !== e.target.value) {
-                          handleIvaChange(formatted);
-                        }
-                      }}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent text-right"
-                      placeholder="25.000,00"
-                    />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                  </div>
+                  <MoneyInput
+                    value={formData.acquisitionCosts.iva}
+                    onChange={(value) => handleIvaChange(value)}
+                    placeholder="25.000,00"
+                    aria-label="IVA en euros"
+                  />
                   <p className="text-xs text-neutral-500 mt-1">
                     Tipo aplicado: 10% (obra nueva). Puedes modificarlo.
                   </p>
@@ -1032,110 +1004,60 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Notaría
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.notary}
-                    onChange={(e) => handleCostFieldChange('notary', e.target.value)}
-                    onBlur={(e) => {
-                      const formatted = formatEuroInput(e.target.value);
-                      if (formatted !== e.target.value) {
-                        handleCostFieldChange('notary', formatted);
-                      }
-                    }}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent text-right"
-                    placeholder="1.500,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.notary}
+                  onChange={(value) => handleCostFieldChange('notary', value)}
+                  placeholder="1.500,00"
+                  aria-label="Gastos de notaría en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Registro
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.registry}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        registry: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="800,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.registry}
+                  onChange={(value) => handleCostFieldChange('registry', value)}
+                  placeholder="800,00"
+                  aria-label="Gastos de registro en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Gestoría
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.management}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        management: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="600,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.management}
+                  onChange={(value) => handleCostFieldChange('management', value)}
+                  placeholder="600,00"
+                  aria-label="Gastos de gestoría en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   PSI (personal shopper)
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.psi}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        psi: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="2.000,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.psi}
+                  onChange={(value) => handleCostFieldChange('psi', value)}
+                  placeholder="2.000,00"
+                  aria-label="Gastos de PSI en euros"
+                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Inmobiliaria
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.acquisitionCosts.realEstate}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      acquisitionCosts: {
-                        ...prev.acquisitionCosts,
-                        realEstate: e.target.value
-                      }
-                    }))}
-                    className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    placeholder="7.500,00"
-                  />
-                  <span className="absolute right-3 top-2 text-neutral-500">€</span>
-                </div>
+                <MoneyInput
+                  value={formData.acquisitionCosts.realEstate}
+                  onChange={(value) => handleCostFieldChange('realEstate', value)}
+                  placeholder="7.500,00"
+                  aria-label="Gastos de inmobiliaria en euros"
+                />
               </div>
             </div>
 
@@ -1174,13 +1096,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                     className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                     placeholder="Concepto"
                   />
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
+                  <div className="flex-1">
+                    <MoneyInput
                       value={item.amount}
-                      onChange={(e) => {
+                      onChange={(value) => {
                         const newOther = [...formData.acquisitionCosts.other];
-                        newOther[index].amount = e.target.value;
+                        newOther[index].amount = value;
                         setFormData(prev => ({
                           ...prev,
                           acquisitionCosts: {
@@ -1189,10 +1110,9 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                           }
                         }));
                       }}
-                      className="w-full px-3 py-2 pr-8 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                       placeholder="Importe"
+                      aria-label={`Importe de ${item.concept || 'otro concepto'}`}
                     />
-                    <span className="absolute right-3 top-2 text-neutral-500">€</span>
                   </div>
                   <button
                     type="button"
