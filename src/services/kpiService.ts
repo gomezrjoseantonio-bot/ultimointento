@@ -419,7 +419,19 @@ export class KPIService {
   }
 
   private calculateIngresosAnuales(contracts: Contract[]): number {
-    const activeContracts = contracts.filter(c => new Date(c.endDate) > new Date());
+    const now = new Date();
+    const activeContracts = contracts.filter(c => {
+      const startDate = new Date(c.startDate);
+      if (startDate > now) return false; // Not started yet
+      
+      if (c.isIndefinite) return true; // Indefinite contracts are active
+      
+      if (c.endDate) {
+        return new Date(c.endDate) > now; // Check if not ended
+      }
+      
+      return true; // If no end date and not indefinite, assume active
+    });
     return activeContracts.reduce((total, contract) => total + (contract.monthlyRent * 12), 0);
   }
 
@@ -517,9 +529,18 @@ export class KPIService {
     if (contracts.length === 0) return 0;
     
     const now = new Date();
-    const activeContracts = contracts.filter(c => 
-      new Date(c.startDate) <= now && new Date(c.endDate) > now
-    );
+    const activeContracts = contracts.filter(c => {
+      const startDate = new Date(c.startDate);
+      if (startDate > now) return false; // Not started yet
+      
+      if (c.isIndefinite) return true; // Indefinite contracts are active
+      
+      if (c.endDate) {
+        return new Date(c.endDate) > now; // Check if not ended
+      }
+      
+      return true; // If no end date and not indefinite, assume active
+    });
     
     return (activeContracts.length / contracts.length) * 100;
   }
