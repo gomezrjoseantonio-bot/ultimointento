@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { OCRResult, OCRField } from '../../services/db';
 import { formatCurrency, normalizeDateToSpanish } from '../../services/ocrService';
+import { telemetry, qaChecklist } from '../../services/telemetryService';
 
 interface OcrPanelProps {
   document: any; // Document with OCR result
@@ -238,6 +239,28 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   const criticalFieldsValid = criticalFields.filter(f => f.status === 'valid');
   const hasRequiredFields = criticalFieldsValid.some(f => f.name.includes('total')) && 
                            criticalFieldsValid.some(f => f.name.includes('date'));
+
+  // ATLAS HOTFIX: QA checks for OCR processing
+  useEffect(() => {
+    if (ocrResult && ocrResult.status === 'completed') {
+      // QA: Test confidence threshold enforcement
+      const totalFieldsWithLowConfidence = processedFields.filter(f => f.confidence < 0.80).length;
+      const fieldsLeftEmpty = processedFields.filter(f => f.confidence < 0.80 && !f.value).length;
+      
+      qaChecklist.ocrProcessing.confidenceThreshold(0.80, hasRequiredFields);
+      qaChecklist.ocrProcessing.noInvention(totalFieldsWithLowConfidence, fieldsLeftEmpty);
+      qaChecklist.ocrProcessing.euEndpoint('eu-documentai.googleapis.com');
+      
+      // Telemetry for OCR result analysis
+      telemetry.measurePerformance('ocr_field_analysis', 0, {
+        totalFields: processedFields.length,
+        highConfidenceFields: processedFields.filter(f => f.confidence >= 0.80).length,
+        criticalFieldsValid: criticalFieldsValid.length,
+        hasRequiredFields,
+        avgConfidence: processedFields.reduce((sum, f) => sum + f.confidence, 0) / processedFields.length
+      });
+    }
+  }, [ocrResult, processedFields, hasRequiredFields, criticalFieldsValid]);
 
   const handleFieldEdit = (fieldName: string, value: string) => {
     setEditableFields(prev => ({

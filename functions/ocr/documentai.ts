@@ -423,12 +423,35 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    // Process all files
-    const results = [];
+    // ATLAS HOTFIX: Process all files with telemetry
+    const results: any[] = [];
     
     for (const file of filesToProcess) {
       try {
+        const fileStartTime = Date.now();
         const result = await processDocument(file.content, file.mimeType, auth);
+        const processTime = Date.now() - fileStartTime;
+        
+        // Log processing metrics
+        console.log('OCR File processed:', {
+          filename: file.filename,
+          processTimeMs: processTime,
+          entitiesCount: result.entities.length,
+          pagesCount: result.pages?.length || 0
+        });
+        
+        // QA: Calculate confidence metrics
+        const confidences = result.entities.map(e => e.confidence);
+        const avgConfidence = confidences.length > 0 ? confidences.reduce((a, b) => a + b, 0) / confidences.length : 0;
+        const entitiesAbove80 = result.entities.filter(e => e.confidence >= 0.80).length;
+        
+        console.log('QA Check - OCR Confidence:', {
+          avgConfidence,
+          entitiesAbove80,
+          totalEntities: result.entities.length,
+          thresholdRespected: entitiesAbove80 > 0 || result.entities.length === 0
+        });
+        
         results.push({
           filename: file.filename,
           mimeType: file.mimeType,

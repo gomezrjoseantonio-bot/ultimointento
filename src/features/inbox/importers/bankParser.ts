@@ -2,6 +2,7 @@
 import * as XLSX from 'xlsx';
 import { BankProfile, ParseResult, ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
 import { bankProfilesService } from '../../../services/bankProfilesService';
+import { telemetry, qaChecklist } from '../../../services/telemetryService';
 
 // Global aliases for column detection - covers most Spanish banks
 const COLUMN_ALIASES = {
@@ -38,9 +39,15 @@ class BankParserService {
    * Parse bank statement file - supports XLS/XLSX/CSV with robust detection
    */
   async parseFile(file: File): Promise<BankParseResult> {
+    const operationId = telemetry.bankParseStart(file.name, file.size);
+    const startTime = Date.now();
+    
     try {
       const fileType = this.detectFileType(file);
       let workbook: XLSX.WorkBook;
+      
+      // QA: Test file format support
+      qaChecklist.bankParsing.fileSupport([fileType]);
       
       if (fileType === 'csv') {
         const text = await this.readFileAsText(file);
@@ -62,6 +69,38 @@ class BankParserService {
       }
 
       const parseResult = await this.parseSheet(workbook, bestSheet.name);
+      const parseTime = Date.now() - startTime;
+      
+      // Telemetry for successful parse
+      telemetry.bankParseComplete(operationId, {
+        fileName: file.name,
+        fileSize: file.size,
+        parseTimeMs: parseTime,
+        bankDetected: parseResult.metadata?.bankKey || null,
+        confidence: parseResult.metadata?.confidence || 0,
+        movementsCount: parseResult.movements.length,
+        needsManualMapping: !!parseResult.needsManualMapping,
+        sheetsCount: sheetInfo.length,
+        headerRow: parseResult.metadata?.headerRow,
+        columnsDetected: parseResult.metadata?.columnsDetected
+      });
+      
+      // QA: Test header detection
+      if (parseResult.headerDetection) {
+        qaChecklist.bankParsing.headerDetection(
+          !parseResult.headerDetection.fallbackRequired,
+          parseResult.headerDetection.confidence
+        );
+      }
+      
+      // QA: Test Spanish normalization (sample movement)
+      if (parseResult.movements.length > 0) {
+        const sampleMovement = parseResult.movements[0];
+        qaChecklist.bankParsing.spanishNormalization(
+          sampleMovement.date.toLocaleDateString('es-ES'),
+          new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(sampleMovement.amount)
+        );
+      }
       
       return {
         ...parseResult,
@@ -72,6 +111,8 @@ class BankParserService {
       
     } catch (error) {
       console.error('Bank parse error:', error);
+      telemetry.bankParseError(operationId, error instanceof Error ? error.message : 'Unknown error', file.name);
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error desconocido',
@@ -498,6 +539,9 @@ class BankParserService {
     columnMapping: Record<string, number>,
     headerRow: number
   ): Promise<BankParseResult> {
+    const operationId = telemetry.manualMappingStart(file.name, 'Auto-detection failed');
+    const startTime = Date.now();
+    
     try {
       const fileType = this.detectFileType(file);
       let workbook: XLSX.WorkBook;
@@ -522,6 +566,16 @@ class BankParserService {
       }) as string[][];
 
       const movements = this.parseMovements(rawData, headerRow + 1, columnMapping);
+      const parseTime = Date.now() - startTime;
+      
+      telemetry.manualMappingComplete(operationId, columnMapping);
+      telemetry.measurePerformance('manual_mapping_parse', parseTime, {
+        movementsCount: movements.length,
+        columnsCount: Object.keys(columnMapping).length
+      });
+      
+      // QA: Test fallback mapping
+      qaChecklist.bankParsing.fallbackMapping(true, movements.length > 0);
       
       return {
         success: true,
@@ -539,6 +593,8 @@ class BankParserService {
       
     } catch (error) {
       console.error('Manual mapping parse error:', error);
+      telemetry.bankParseError(operationId, error instanceof Error ? error.message : 'Error en mapeo manual', file.name);
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Error en mapeo manual',

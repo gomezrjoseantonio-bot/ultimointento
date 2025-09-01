@@ -4,6 +4,7 @@ import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-reac
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
+import QADashboard from '../components/dev/QADashboard';
 import { getOCRConfig, processDocumentOCR } from '../services/ocrService';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,8 @@ const InboxPage: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   // H3 requirement - email log filter
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
+  // ATLAS HOTFIX: QA Dashboard for development
+  const [showQADashboard, setShowQADashboard] = useState(false);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -31,6 +34,12 @@ const InboxPage: React.FC = () => {
     const emailLogParam = urlParams.get('emailLog');
     if (emailLogParam) {
       setEmailLogFilter(emailLogParam);
+    }
+    
+    // ATLAS HOTFIX: Check for QA dashboard query parameter
+    const qaDashboard = urlParams.get('qa') === 'true';
+    if (qaDashboard && process.env.NODE_ENV === 'development') {
+      setShowQADashboard(true);
     }
   }, []);
 
@@ -662,6 +671,14 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* ATLAS HOTFIX: QA Dashboard - Development only */}
+      {process.env.NODE_ENV === 'development' && (
+        <QADashboard
+          isVisible={showQADashboard}
+          onClose={() => setShowQADashboard(false)}
+        />
+      )}
     </div>
   );
 };
