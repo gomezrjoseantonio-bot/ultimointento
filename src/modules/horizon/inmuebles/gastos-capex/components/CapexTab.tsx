@@ -2,12 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PlusIcon, CogIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon } from 'lucide-react';
 import { Reform, initDB, Property } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
+import ReformFormModal from './ReformFormModal';
 import toast from 'react-hot-toast';
 
 const CapexTab: React.FC = () => {
   const [reforms, setReforms] = useState<Reform[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showReformModal, setShowReformModal] = useState(false);
+  const [editingReform, setEditingReform] = useState<Reform | undefined>(undefined);
 
   useEffect(() => {
     loadData();
@@ -36,6 +39,62 @@ const CapexTab: React.FC = () => {
   const getPropertyName = (propertyId: number): string => {
     const property = properties.find(p => p.id === propertyId);
     return property?.alias || 'Inmueble no encontrado';
+  };
+
+  const handleAddReform = () => {
+    setEditingReform(undefined);
+    setShowReformModal(true);
+  };
+
+  const handleEditReform = (reform: Reform) => {
+    setEditingReform(reform);
+    setShowReformModal(true);
+  };
+
+  const handleDeleteReform = async (reformId: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta reforma?')) {
+      return;
+    }
+
+    try {
+      const db = await initDB();
+      
+      // Delete reform line items first
+      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reformId);
+      for (const item of lineItems) {
+        await db.delete('reformLineItems', item.id!);
+      }
+      
+      // Delete reform
+      await db.delete('reforms', reformId);
+      await loadData();
+      toast.success('Reforma eliminada correctamente');
+    } catch (error) {
+      console.error('Error deleting reform:', error);
+      toast.error('Error al eliminar la reforma');
+    }
+  };
+
+  const handleSaveReform = async (reform: Reform) => {
+    try {
+      const db = await initDB();
+      
+      if (reform.id) {
+        // Update existing reform
+        await db.put('reforms', reform);
+        toast.success('Reforma actualizada correctamente');
+      } else {
+        // Create new reform
+        await db.add('reforms', reform);
+        toast.success('Reforma creada correctamente');
+      }
+      
+      await loadData();
+      setShowReformModal(false);
+    } catch (error) {
+      console.error('Error saving reform:', error);
+      toast.error('Error al guardar la reforma');
+    }
   };
 
   // Mock function to calculate reform totals
@@ -137,7 +196,10 @@ const CapexTab: React.FC = () => {
             Agrupa mejoras/ampliaciones y mobiliario (no gasto del año)
           </p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
+        <button
+          onClick={handleAddReform}
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
+        >
           <PlusIcon className="h-5 w-5 mr-2" />
           Nueva reforma
         </button>
@@ -151,7 +213,10 @@ const CapexTab: React.FC = () => {
             <p className="text-gray-500 mb-4">
               Comienza creando tu primera reforma para agrupar mejoras y ampliaciones.
             </p>
-            <button className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
+            <button 
+              onClick={handleAddReform}
+              className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
+            >
               <PlusIcon className="h-5 w-5 mr-2" />
               Crear primera reforma
             </button>
@@ -177,6 +242,8 @@ const CapexTab: React.FC = () => {
                     reform={reform}
                     propertyName={getPropertyName(reform.propertyId)}
                     onClose={() => handleCloseReform(reform.id!)}
+                    onEdit={() => handleEditReform(reform)}
+                    onDelete={() => handleDeleteReform(reform.id!)}
                   />
                 ))}
               </tbody>
@@ -184,6 +251,15 @@ const CapexTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Reform Form Modal */}
+      <ReformFormModal
+        isOpen={showReformModal}
+        onClose={() => setShowReformModal(false)}
+        onSave={handleSaveReform}
+        reform={editingReform}
+        properties={properties}
+      />
     </div>
   );
 };
@@ -193,9 +269,11 @@ interface ReformRowProps {
   reform: Reform;
   propertyName: string;
   onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
-const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose }) => {
+const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, onEdit, onDelete }) => {
   const [totals, setTotals] = useState({
     capexMejora: 0,
     mobiliario: 0,
@@ -317,6 +395,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose }) 
           {reform.status === 'abierta' && (
             <>
               <button
+                onClick={onEdit}
                 className="text-brand-navy hover:text-navy-800 p-1"
                 title="Editar"
               >
@@ -332,6 +411,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose }) 
             </>
           )}
           <button
+            onClick={onDelete}
             className="text-red-600 hover:text-red-800 p-1"
             title="Eliminar"
           >
