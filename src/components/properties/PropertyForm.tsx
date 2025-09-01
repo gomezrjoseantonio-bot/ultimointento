@@ -2,27 +2,34 @@ import React, { useState } from 'react';
 import { Property } from '../../services/db';
 
 interface PropertyFormProps {
-  onSubmit: (property: Property) => void;
+  onSubmit: (property: Omit<Property, 'id'>) => void;
   onCancel: () => void;
 }
 
 const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState<Property>({
+  const [formData, setFormData] = useState<Omit<Property, 'id'>>({
     address: '',
     alias: '',
+    postalCode: '',
+    province: '',
+    municipality: '',
+    ccaa: '',
     purchaseDate: '',
     squareMeters: 0,
     bedrooms: 0,
     bathrooms: 0,
     cadastralReference: '',
+    transmissionRegime: 'usada',
+    state: 'activo',
     acquisitionCosts: {
       price: 0,
-      tax: 0,
+      itp: 0,
       notary: 0,
       registry: 0,
-      agency: 0,
-      realEstateAgent: 0,
-      other: 0,
+      management: 0,
+      psi: 0,
+      realEstate: 0,
+      other: [],
     },
     documents: []
   });

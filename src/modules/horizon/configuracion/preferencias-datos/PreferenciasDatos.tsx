@@ -38,6 +38,16 @@ const PreferenciasDatos: React.FC = () => {
       return;
     }
 
+    // Add confirmation as required by H1
+    const confirmMessage = importMode === 'replace' 
+      ? `¿Estás seguro de que quieres importar este archivo? Esto reemplazará TODOS tus datos actuales con los del archivo ${file.name}. Esta acción no se puede deshacer.`
+      : `¿Quieres fusionar los datos del archivo ${file.name} con tus datos actuales?`;
+    
+    if (!window.confirm(confirmMessage)) {
+      event.target.value = ''; // Reset file input
+      return;
+    }
+
     setIsImporting(true);
     try {
       await importSnapshot(file, importMode);
@@ -85,7 +95,7 @@ const PreferenciasDatos: React.FC = () => {
           {/* Export Snapshot */}
           <div className="space-y-4">
             <div className="border border-neutral-200 rounded-lg p-4">
-              <h3 className="font-medium text-neutral-900 mb-2">Exportar Snapshot</h3>
+              <h3 className="font-medium text-neutral-900 mb-2">Exportar datos (.zip)</h3>
               <p className="text-sm text-neutral-600 mb-4">
                 Descarga un archivo ZIP con todos tus datos y documentos. 
                 Incluye inmuebles, contratos, gastos, documentos y sus archivos originales.
@@ -96,15 +106,16 @@ const PreferenciasDatos: React.FC = () => {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Download className="w-4 h-4" />
-                {isExporting ? 'Exportando...' : 'Exportar Snapshot'}
+                {isExporting ? 'Exportando...' : 'Exportar datos (.zip)'}
               </button>
             </div>
 
             {/* Import Snapshot */}
             <div className="border border-neutral-200 rounded-lg p-4">
-              <h3 className="font-medium text-neutral-900 mb-2">Importar Snapshot</h3>
+              <h3 className="font-medium text-neutral-900 mb-2">Importar datos (.zip)</h3>
               <p className="text-sm text-neutral-600 mb-4">
                 Sube un archivo ZIP exportado previamente para restaurar tus datos.
+                <strong> ¡Importante!</strong> Esto reemplazará todos tus datos actuales.
               </p>
               
               {/* Import Mode Selection */}
