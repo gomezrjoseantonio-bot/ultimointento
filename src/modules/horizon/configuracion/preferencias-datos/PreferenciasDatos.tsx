@@ -1,12 +1,18 @@
 import React from 'react';
+import PageLayout from '../../../../components/common/PageLayout';
+import { useTheme } from '../../../../contexts/ThemeContext';
 
 const PreferenciasDatos: React.FC = () => {
+  const { currentModule } = useTheme();
+  
+  const subtitle = currentModule === 'horizon' 
+    ? 'Configuración de preferencias y datos del módulo Horizon.'
+    : 'Configuración de preferencias y datos del módulo Pulse.';
+  
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Preferencias & Datos</h1>
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-      <p className="text-sm text-gray-500">Configuración de preferencias y datos.</p>
-    </div>
+    <PageLayout title="Preferencias & Datos" subtitle={subtitle}>
+      <p className="text-neutral-600">En construcción. Próximo hito: funcionalidades.</p>
+    </PageLayout>
   );
 };
 

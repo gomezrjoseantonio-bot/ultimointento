@@ -38,7 +38,7 @@ import TPMovimientos from './modules/pulse/tesoreria-personal/movimientos/TPMovi
 import TPAlertas from './modules/pulse/tesoreria-personal/alertas/TPAlertas';
 import PPPresupuesto from './modules/pulse/proyeccion-personal/presupuesto/PPPresupuesto';
 import PPEscenarios from './modules/pulse/proyeccion-personal/escenarios/PPEscenarios';
-import PulsePreferenciasDatos from './modules/pulse/configuracion/preferencias-datos/PulsePreferenciasDatos';
+import HorizonPreferenciasDatos from './modules/horizon/configuracion/preferencias-datos/PreferenciasDatos';
 
 function App() {
   return (
@@ -112,11 +112,12 @@ function App() {
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
               <Route index element={<HorizonPanel />} />
-              {/* Horizon configuration */}
+              {/* Horizon configuration - available only for Horizon */}
               <Route path="bancos-cuentas" element={<BancosCuentas />} />
               <Route path="plan-facturacion" element={<PlanFacturacion />} />
               <Route path="usuarios-roles" element={<UsuariosRoles />} />
-              <Route path="preferencias-datos" element={<PulsePreferenciasDatos />} />
+              {/* Shared configuration - available for both modules */}
+              <Route path="preferencias-datos" element={<HorizonPreferenciasDatos />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/panel" replace />} />

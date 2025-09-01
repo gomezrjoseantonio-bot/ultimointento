@@ -131,7 +131,7 @@ const SubTabs: React.FC = () => {
             >
               {tab.label}
               {isActive && (
-                <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-0.5 ${borderColorClass} bg-current rounded-full`} />
+                <div className={`absolute -bottom-px left-1/2 transform -translate-x-1/2 w-full h-0.5 ${borderColorClass.replace('border-', 'bg-')}`} />
               )}
             </button>
           );
