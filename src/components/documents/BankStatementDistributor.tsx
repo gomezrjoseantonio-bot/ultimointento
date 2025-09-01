@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, X } from 'lucide-react';
-import { enhancedCSVParser } from '../../services/csvParserService';
-import { ParsedMovement, ParseResult } from '../../types/bankProfiles';
+import { Plus, X, FileSpreadsheet, AlertTriangle, CheckCircle } from 'lucide-react';
+import { bankParser } from '../../features/inbox/importers/bankParser';
+import MapColumnsModal from '../../features/inbox/importers/MapColumnsModal';
+import { ParsedMovement, BankParseResult } from '../../types/bankProfiles';
 import { initDB, Account, AccountDestination } from '../../services/db';
 import { formatEuro, formatDate } from '../../utils/formatUtils';
 import toast from 'react-hot-toast';
@@ -34,7 +35,7 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
   onClose,
   onComplete
 }) => {
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [parseResult, setParseResult] = useState<BankParseResult | null>(null);
   const [distributions, setDistributions] = useState<MovementDistribution[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedMovements, setSelectedMovements] = useState<number[]>([]);
@@ -43,6 +44,7 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showMapColumns, setShowMapColumns] = useState(false);
   const [newAccount, setNewAccount] = useState({
     name: '',
     bank: '',
@@ -51,32 +53,47 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
     destination: 'horizon' as AccountDestination
   });
 
+  // ATLAS HOTFIX: Parse bank statement with robust parser
   const loadData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      // Parse the bank statement file
-      const result = await enhancedCSVParser.parseFile(document.content);
+      // Create a File object from the document content
+      const blob = new Blob([document.content], { type: document.type });
+      const file = new File([blob], document.filename, { type: document.type });
+      
+      const result = await bankParser.parseFile(file);
       setParseResult(result);
 
-      // Initialize distributions with all movements set to skip by default
-      const initialDistributions = result.movements.map(movement => ({
-        movement,
-        destination: 'skip' as const,
-        accountId: undefined
-      }));
-      setDistributions(initialDistributions);
+      if (result.success && result.movements.length > 0) {
+        // Initialize distributions with all movements set to skip by default
+        const initialDistributions = result.movements.map(movement => ({
+          movement,
+          destination: 'skip' as const,
+          accountId: undefined
+        }));
+        setDistributions(initialDistributions);
 
-      // Load accounts
-      const db = await initDB();
-      const allAccounts = await db.getAll('accounts');
-      setAccounts(allAccounts);
-
+        // Load accounts
+        const db = await initDB();
+        const allAccounts = await db.getAll('accounts');
+        setAccounts(allAccounts);
+        
+        toast.success(`${result.movements.length} movimiento(s) procesados correctamente`);
+      } else if (result.needsManualMapping) {
+        // Show manual mapping modal - will be handled by the modal
+        setShowMapColumns(true);
+        toast('Detección automática fallida - mapeo manual requerido', { icon: 'ℹ️' });
+      } else {
+        toast.error(result.error || 'Error procesando el extracto bancario');
+      }
+      
     } catch (error) {
       toast.error(`Error procesando extracto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       console.error('Error processing bank statement:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [document.content]);
+  }, [document]);
 
   useEffect(() => {
     loadData();
@@ -211,6 +228,31 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
     }
   };
 
+  // ATLAS HOTFIX: Handle manual mapping confirmation
+  const handleManualMappingConfirm = async (result: BankParseResult) => {
+    setShowMapColumns(false);
+    setParseResult(result);
+    
+    if (result.success && result.movements.length > 0) {
+      // Initialize distributions with all movements set to skip by default
+      const initialDistributions = result.movements.map(movement => ({
+        movement,
+        destination: 'skip' as const,
+        accountId: undefined
+      }));
+      setDistributions(initialDistributions);
+
+      // Load accounts
+      const db = await initDB();
+      const allAccounts = await db.getAll('accounts');
+      setAccounts(allAccounts);
+      
+      toast.success(`${result.movements.length} movimiento(s) procesados con mapeo manual`);
+    } else {
+      toast.error(result.error || 'Error en el mapeo manual');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -254,18 +296,64 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-screen overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
-          <div>
-            <h2 className="text-xl font-semibold text-neutral-900">
-              Distribuidor de Extracto Bancario
-            </h2>
-            <p className="text-sm text-neutral-600 mt-1">
-              {document.filename} • {parseResult.movements.length} movimientos detectados
-              {parseResult.detectedBank && (
-                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                  {parseResult.detectedBank.bankKey}
-                </span>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-neutral-900">
+                Distribuidor de Extracto Bancario
+              </h2>
+              <p className="text-sm text-neutral-600 mt-1">
+                {document.filename} • {parseResult.movements.length} movimiento(s) detectados
+                {parseResult.metadata?.bankName && (
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                    {parseResult.metadata.bankName}
+                  </span>
+                )}
+                {parseResult.metadata?.confidence && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                    {Math.round(parseResult.metadata.confidence * 100)}% confianza
+                  </span>
+                )}
+              </p>
+              {/* ATLAS HOTFIX: Show parsing metadata */}
+              {parseResult.metadata && (
+                <div className="flex items-center gap-4 mt-2 text-xs text-neutral-500">
+                  {parseResult.metadata.headerRow !== undefined && (
+                    <span>Cabecera: fila {parseResult.metadata.headerRow + 1}</span>
+                  )}
+                  {parseResult.metadata.rowsProcessed && (
+                    <span>Procesadas: {parseResult.metadata.rowsProcessed} filas</span>
+                  )}
+                  {parseResult.metadata.columnsDetected && (
+                    <span>Columnas: {parseResult.metadata.columnsDetected}</span>
+                  )}
+                  {parseResult.sheetInfo && parseResult.sheetInfo.length > 1 && (
+                    <span>Hojas: {parseResult.sheetInfo.length}</span>
+                  )}
+                </div>
               )}
-            </p>
+            </div>
+            
+            {/* ATLAS HOTFIX: Show status indicator */}
+            {parseResult.metadata?.bankKey === 'manual' && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <span className="text-sm text-amber-800">Mapeo manual aplicado</span>
+              </div>
+            )}
+            
+            {parseResult.success && parseResult.metadata?.bankName && parseResult.metadata.bankKey !== 'manual' && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-800">Detección automática</span>
+              </div>
+            )}
+            
+            {parseResult.sheetInfo && parseResult.sheetInfo.length > 1 && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-800">Multi-hoja</span>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -509,6 +597,19 @@ const BankStatementDistributor: React.FC<BankStatementDistributorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ATLAS HOTFIX: Manual Column Mapping Modal */}
+      {showMapColumns && parseResult && (
+        <MapColumnsModal
+          isOpen={showMapColumns}
+          onClose={() => setShowMapColumns(false)}
+          onConfirm={handleManualMappingConfirm}
+          file={new File([new Blob([document.content], { type: document.type })], document.filename, { type: document.type })}
+          rawData={parseResult.metadata?.rawData || []}
+          sheetName={parseResult.selectedSheet || 'Sheet1'}
+          headerDetection={parseResult.headerDetection}
+        />
+      )}
     </div>
   );
 };

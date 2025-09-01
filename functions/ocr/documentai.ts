@@ -92,8 +92,7 @@ const validateEnvironment = (): {
     'DOC_AI_SA_JSON_B64',
     'DOC_AI_PROJECT_ID', 
     'DOC_AI_LOCATION',
-    'DOC_AI_PROCESSOR_ID',
-    'DOC_AI_ENDPOINT'
+    'DOC_AI_PROCESSOR_ID'
   ];
 
   const missing = requiredVars.filter(varName => !process.env[varName]);
@@ -220,7 +219,8 @@ const processDocument = async (
   mimeType: string,
   auth: GoogleAuth
 ): Promise<ProcessingResult> => {
-  const endpoint = `https://${process.env.DOC_AI_ENDPOINT}`;
+  // ATLAS HOTFIX: Use hardcoded EU endpoint to ensure correct region
+  const endpoint = 'https://eu-documentai.googleapis.com';
   const processorPath = `projects/${process.env.DOC_AI_PROJECT_ID}/locations/${process.env.DOC_AI_LOCATION}/processors/${process.env.DOC_AI_PROCESSOR_ID}`;
   
   const base64Content = documentContent.toString('base64');
@@ -267,8 +267,8 @@ const processDocument = async (
 
 // H-OCR-FIX: Main handler function
 export const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  // Security: Log safely without exposing secrets
-  const endpointHost = process.env.DOC_AI_ENDPOINT || 'unknown';
+  // ATLAS HOTFIX: Log safely without exposing secrets  
+  const endpointHost = 'eu-documentai.googleapis.com'; // Hardcoded EU endpoint
   const hasKey = !!process.env.DOC_AI_SA_JSON_B64;
   const projectIsNumber = !isNaN(Number(process.env.DOC_AI_PROJECT_ID));
   const processorIdLen = process.env.DOC_AI_PROCESSOR_ID?.length || 0;
