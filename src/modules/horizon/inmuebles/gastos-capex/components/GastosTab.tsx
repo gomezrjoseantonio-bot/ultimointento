@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ExpenseH5, initDB, Property } from '../../../../../services/db';
 import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
+import ExpenseFormModal from './ExpenseFormModal';
 import toast from 'react-hot-toast';
 
-const GastosTab: React.FC = () => {
+interface GastosTabProps {
+  triggerAddExpense?: boolean;
+}
+
+const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState<ExpenseH5[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseH5 | undefined>(undefined);
   const [filters, setFilters] = useState({
     fiscalType: '',
     status: '',
@@ -21,6 +30,20 @@ const GastosTab: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Handle trigger from parent component
+  useEffect(() => {
+    if (triggerAddExpense) {
+      // Check if there are properties available
+      if (properties.length === 0) {
+        toast.error('Primero debes crear un inmueble antes de añadir gastos');
+        return;
+      }
+      
+      setEditingExpense(undefined);
+      setShowExpenseModal(true);
+    }
+  }, [triggerAddExpense, properties.length]);
 
   const loadData = async () => {
     try {
@@ -86,19 +109,124 @@ const GastosTab: React.FC = () => {
   };
 
   const getOriginBadge = (origin: string) => {
+    const originMap = {
+      'manual': 'bg-blue-100 text-blue-800',
+      'inbox': 'bg-purple-100 text-purple-800'
+    };
+    
+    const originLabels = {
+      'manual': 'Manual',
+      'inbox': 'Inbox'
+    };
+
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        origin === 'inbox' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-      }`}>
-        {origin === 'inbox' ? 'Inbox' : 'Manual'}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${originMap[origin as keyof typeof originMap] || 'bg-gray-100 text-gray-800'}`}>
+        {originLabels[origin as keyof typeof originLabels] || origin}
       </span>
     );
+  };
+
+  const handleAddExpense = () => {
+    // Check if there are properties available
+    if (properties.length === 0) {
+      toast.error('Primero debes crear un inmueble antes de añadir gastos');
+      return;
+    }
+    
+    setEditingExpense(undefined);
+    setShowExpenseModal(true);
+  };
+
+  const handleEditExpense = (expense: ExpenseH5) => {
+    setEditingExpense(expense);
+    setShowExpenseModal(true);
+  };
+
+  const handleDuplicateExpense = (expense: ExpenseH5) => {
+    const duplicated = {
+      ...expense,
+      id: undefined,
+      concept: `${expense.concept} (copia)`,
+      date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setEditingExpense(duplicated);
+    setShowExpenseModal(true);
+  };
+
+  const handleDeleteExpense = async (expenseId: number) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+      return;
+    }
+
+    try {
+      const db = await initDB();
+      await db.delete('expensesH5', expenseId);
+      await loadData();
+      toast.success('Gasto eliminado correctamente');
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast.error('Error al eliminar el gasto');
+    }
+  };
+
+  const handleSaveExpense = async (expense: ExpenseH5) => {
+    try {
+      const db = await initDB();
+      
+      if (expense.id) {
+        // Update existing expense
+        await db.put('expensesH5', expense);
+        toast.success('Gasto actualizado correctamente');
+      } else {
+        // Create new expense
+        await db.add('expensesH5', expense);
+        toast.success('Gasto creado correctamente');
+      }
+      
+      await loadData();
+      setShowExpenseModal(false);
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      toast.error('Error al guardar el gasto');
+    }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy"></div>
+      </div>
+    );
+  }
+
+  // Show message when no properties exist
+  if (properties.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="space-y-4">
+          <div className="text-gray-400">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-6 0H3m0 0V9a2 2 0 012-2h4l2 2h4a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">
+              No tienes inmuebles registrados
+            </h3>
+            <p className="text-gray-600 mt-1">
+              Para gestionar gastos, primero necesitas registrar al menos un inmueble.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/inmuebles/cartera')}
+            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Ir a Cartera para crear inmueble
+          </button>
+        </div>
       </div>
     );
   }
@@ -197,7 +325,10 @@ const GastosTab: React.FC = () => {
             <p className="text-gray-500 mb-4">
               Comienza añadiendo tu primer gasto o importa documentos desde la bandeja.
             </p>
-            <button className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
+            <button 
+              onClick={handleAddExpense}
+              className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
+            >
               <PlusIcon className="h-5 w-5 mr-2" />
               Añadir primer gasto
             </button>
@@ -270,18 +401,21 @@ const GastosTab: React.FC = () => {
                           </button>
                         )}
                         <button
+                          onClick={() => handleEditExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
                           title="Editar"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleDuplicateExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
                           title="Duplicar"
                         >
                           <CopyIcon className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleDeleteExpense(expense.id!)}
                           className="text-red-600 hover:text-red-800 p-1"
                           title="Eliminar"
                         >
@@ -296,6 +430,15 @@ const GastosTab: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Expense Form Modal */}
+      <ExpenseFormModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        onSave={handleSaveExpense}
+        expense={editingExpense}
+        properties={properties}
+      />
     </div>
   );
 };

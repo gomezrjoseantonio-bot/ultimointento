@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusIcon, FileTextIcon, CogIcon, BarChart3Icon } from 'lucide-react';
 import GastosTab from './components/GastosTab';
 import CapexTab from './components/CapexTab';
@@ -8,6 +8,7 @@ type TabType = 'gastos' | 'capex' | 'resumen';
 
 const GastosCapex: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('gastos');
+  const [triggerAddExpense, setTriggerAddExpense] = useState(false);
 
   const tabs = [
     {
@@ -30,7 +31,18 @@ const GastosCapex: React.FC = () => {
     }
   ];
 
-  const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component;
+  const handleAddExpense = () => {
+    setActiveTab('gastos');
+    setTriggerAddExpense(true);
+  };
+
+  // Reset trigger after it's been used
+  useEffect(() => {
+    if (triggerAddExpense) {
+      const timer = setTimeout(() => setTriggerAddExpense(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [triggerAddExpense]);
 
   return (
     <div className="space-y-6">
@@ -43,6 +55,7 @@ const GastosCapex: React.FC = () => {
           </p>
         </div>
         <button
+          onClick={handleAddExpense}
           className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
@@ -79,7 +92,9 @@ const GastosCapex: React.FC = () => {
 
       {/* Tab Content */}
       <div className="flex-1">
-        {ActiveComponent && <ActiveComponent />}
+        {activeTab === 'gastos' && <GastosTab triggerAddExpense={triggerAddExpense} />}
+        {activeTab === 'capex' && <CapexTab />}
+        {activeTab === 'resumen' && <ResumenTab />}
       </div>
     </div>
   );
