@@ -1,6 +1,7 @@
 [build]
   command = "npm ci && npm run build"
   publish = "build"
+  functions = "functions"
   
 # Handle SPA routing by redirecting all routes to index.html
 [[redirects]]

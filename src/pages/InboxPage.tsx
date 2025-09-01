@@ -4,6 +4,7 @@ import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-reac
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
+import QADashboard from '../components/dev/QADashboard';
 import { getOCRConfig, processDocumentOCR } from '../services/ocrService';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,8 @@ const InboxPage: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   // H3 requirement - email log filter
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
+  // ATLAS HOTFIX: QA Dashboard for development
+  const [showQADashboard, setShowQADashboard] = useState(false);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -31,6 +34,12 @@ const InboxPage: React.FC = () => {
     const emailLogParam = urlParams.get('emailLog');
     if (emailLogParam) {
       setEmailLogFilter(emailLogParam);
+    }
+    
+    // ATLAS HOTFIX: Check for QA dashboard query parameter
+    const qaDashboard = urlParams.get('qa') === 'true';
+    if (qaDashboard && process.env.NODE_ENV === 'development') {
+      setShowQADashboard(true);
     }
   }, []);
 
@@ -324,15 +333,19 @@ const InboxPage: React.FC = () => {
           // Contratos → documentos cuyo Tipo sea "Contrato"
           belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
           break;
+        case 'extractos':
+          // Extractos bancarios → documentos cuyo Tipo sea "Extracto bancario"
+          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'extracto bancario';
+          break;
         case 'capex':
           // CAPEX → documentos con Categoría "Reforma/CAPEX"
           belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
           break;
         case 'otros':
-          // Otros → el resto (no es factura, contrato, ni capex)
+          // Otros → el resto (no es factura, contrato, extracto bancario, ni capex)
           const tipo = doc.metadata?.tipo?.toLowerCase();
           const categoria = doc.metadata?.categoria?.toLowerCase();
-          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && categoria !== 'reforma/capex';
+          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && tipo !== 'extracto bancario' && categoria !== 'reforma/capex';
           break;
         default:
           belongsToFolder = true;
@@ -486,7 +499,7 @@ const InboxPage: React.FC = () => {
             <div className="p-4 border-b border-neutral-200">
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
               <div className="space-y-1">
-                {['Todos', 'Facturas', 'Contratos', 'CAPEX', 'Otros'].map((folder) => (
+                {['Todos', 'Facturas', 'Contratos', 'Extractos', 'CAPEX', 'Otros'].map((folder) => (
                   <button
                     key={folder}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
@@ -496,7 +509,7 @@ const InboxPage: React.FC = () => {
                     }`}
                     onClick={() => setFolderFilter(folder.toLowerCase())}
                   >
-                    {folder}
+                    {folder === 'Extractos' ? 'Extractos bancarios' : folder}
                   </button>
                 ))}
               </div>
@@ -658,6 +671,14 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* ATLAS HOTFIX: QA Dashboard - Development only */}
+      {process.env.NODE_ENV === 'development' && (
+        <QADashboard
+          isVisible={showQADashboard}
+          onClose={() => setShowQADashboard(false)}
+        />
+      )}
     </div>
   );
 };

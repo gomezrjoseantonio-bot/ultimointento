@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 4; // H7: Updated for contract enhancements
+const DB_VERSION = 5; // H8: Added treasury accounts and movements
 
 export interface Property {
   id?: number;
@@ -107,6 +107,26 @@ export interface Document {
     // H-OCR: OCR metadata
     ocr?: OCRResult;
     ocrHistory?: OCRHistoryEntry[];
+    // H8: Extended metadata for inbox documents
+    proveedor?: string;
+    tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario';
+    categoria?: string;
+    destino?: string;
+    status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado';
+    notas?: string;
+    carpeta?: string;
+    // H8: Bank extract specific metadata
+    extractMetadata?: {
+      bank: string;
+      totalRows: number;
+      importedRows: number;
+      accountId?: number;
+      importBatchId?: string;
+      dateRange?: {
+        from: string;
+        to: string;
+      };
+    };
   };
   uploadDate: string;
 }
@@ -323,6 +343,59 @@ export interface PropertyDays {
   updatedAt: string;
 }
 
+// H8: Treasury Account types
+export type AccountDestination = 'horizon' | 'pulse';
+
+export interface Account {
+  id?: number;
+  name: string;
+  bank: string;
+  iban?: string;
+  destination: AccountDestination;
+  balance: number;
+  openingBalance: number;
+  currency: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H8: Movement types
+export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado';
+
+export interface Movement {
+  id?: number;
+  accountId: number;
+  date: string;
+  valueDate?: string;
+  amount: number;
+  description: string;
+  counterparty?: string;
+  reference?: string;
+  status: MovementStatus;
+  // Reconciliation links
+  expenseIds?: number[]; // For movements linked to expenses
+  reconciliationNotes?: string;
+  // Import metadata
+  importBatch?: string; // ID of the import batch
+  csvRowIndex?: number; // Original row index in CSV
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H8: CSV Import Batch tracking
+export interface ImportBatch {
+  id?: string;
+  filename: string;
+  accountId: number;
+  totalRows: number;
+  importedRows: number;
+  skippedRows: number;
+  duplicatedRows: number;
+  inboxItemId?: number; // Link to the created inbox item
+  createdAt: string;
+}
+
 // Legacy Expense interface (keep for backward compatibility)
 export interface Expense {
   id?: number;
@@ -355,6 +428,9 @@ interface AtlasHorizonDB {
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   kpiConfigurations: any; // H6: KPI configurations
+  accounts: Account; // H8: Treasury accounts
+  movements: Movement; // H8: Bank movements
+  importBatches: ImportBatch; // H8: CSV import tracking
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -452,6 +528,32 @@ export const initDB = async () => {
           rentPaymentsStore.createIndex('contractId', 'contractId', { unique: false });
           rentPaymentsStore.createIndex('period', 'period', { unique: false });
           rentPaymentsStore.createIndex('status', 'status', { unique: false });
+        }
+
+        // H8: Treasury Accounts store
+        if (!db.objectStoreNames.contains('accounts')) {
+          const accountsStore = db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });
+          accountsStore.createIndex('destination', 'destination', { unique: false });
+          accountsStore.createIndex('bank', 'bank', { unique: false });
+          accountsStore.createIndex('isActive', 'isActive', { unique: false });
+        }
+
+        // H8: Treasury Movements store
+        if (!db.objectStoreNames.contains('movements')) {
+          const movementsStore = db.createObjectStore('movements', { keyPath: 'id', autoIncrement: true });
+          movementsStore.createIndex('accountId', 'accountId', { unique: false });
+          movementsStore.createIndex('date', 'date', { unique: false });
+          movementsStore.createIndex('status', 'status', { unique: false });
+          movementsStore.createIndex('importBatch', 'importBatch', { unique: false });
+          // Duplicate detection index
+          movementsStore.createIndex('duplicate-key', ['accountId', 'date', 'amount', 'description'], { unique: false });
+        }
+
+        // H8: Import Batches store
+        if (!db.objectStoreNames.contains('importBatches')) {
+          const importBatchesStore = db.createObjectStore('importBatches', { keyPath: 'id' });
+          importBatchesStore.createIndex('accountId', 'accountId', { unique: false });
+          importBatchesStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       }
     });
