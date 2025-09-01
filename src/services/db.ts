@@ -8,19 +8,29 @@ export interface Property {
   id?: number;
   alias: string;
   address: string;
+  postalCode: string;
+  province: string;
+  municipality: string;
+  ccaa: string;
   purchaseDate: string;
+  cadastralReference?: string;
   squareMeters: number;
   bedrooms: number;
-  bathrooms: number;
-  cadastralReference: string;
+  bathrooms?: number;
+  transmissionRegime: 'usada' | 'obra-nueva';
+  state: 'activo' | 'vendido' | 'baja';
+  notes?: string;
   acquisitionCosts: {
     price: number;
-    tax: number;
-    notary: number;
-    registry: number;
-    agency: number;
-    realEstateAgent: number;
-    other: number;
+    itp?: number;
+    itpIsManual?: boolean;
+    iva?: number;
+    notary?: number;
+    registry?: number;
+    management?: number;
+    psi?: number;
+    realEstate?: number;
+    other?: Array<{ concept: string; amount: number; }>;
   };
   documents: number[];
 }

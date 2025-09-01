@@ -25,6 +25,8 @@ import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/Bancos
 import PlanFacturacion from './modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
 import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
+import PropertyForm from './modules/horizon/inmuebles/cartera/PropertyForm';
+import PropertyDetail from './modules/horizon/inmuebles/cartera/PropertyDetail';
 
 // Pulse (Personal) Module Components
 import PulsePanel from './modules/pulse/panel/Panel';
@@ -56,6 +58,9 @@ function App() {
             <Route path="inmuebles">
               <Route index element={<HorizonPanel />} />
               <Route path="cartera" element={<Cartera />} />
+              <Route path="cartera/nuevo" element={<PropertyForm mode="create" />} />
+              <Route path="cartera/:id" element={<PropertyDetail />} />
+              <Route path="cartera/:id/editar" element={<PropertyForm mode="edit" />} />
               <Route path="contratos" element={<Contratos />} />
               <Route path="prestamos" element={<Prestamos />} />
               <Route path="analisis" element={<Analisis />} />
