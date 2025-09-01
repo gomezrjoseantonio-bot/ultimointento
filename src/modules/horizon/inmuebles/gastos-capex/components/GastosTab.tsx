@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ExpenseH5, initDB, Property } from '../../../../../services/db';
 import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
@@ -11,6 +12,7 @@ interface GastosTabProps {
 }
 
 const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState<ExpenseH5[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +34,16 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   // Handle trigger from parent component
   useEffect(() => {
     if (triggerAddExpense) {
-      handleAddExpense();
+      // Check if there are properties available
+      if (properties.length === 0) {
+        toast.error('Primero debes crear un inmueble antes de añadir gastos');
+        return;
+      }
+      
+      setEditingExpense(undefined);
+      setShowExpenseModal(true);
     }
-  }, [triggerAddExpense]);
+  }, [triggerAddExpense, properties.length]);
 
   const loadData = async () => {
     try {
@@ -118,6 +127,12 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   };
 
   const handleAddExpense = () => {
+    // Check if there are properties available
+    if (properties.length === 0) {
+      toast.error('Primero debes crear un inmueble antes de añadir gastos');
+      return;
+    }
+    
     setEditingExpense(undefined);
     setShowExpenseModal(true);
   };
@@ -182,6 +197,36 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy"></div>
+      </div>
+    );
+  }
+
+  // Show message when no properties exist
+  if (properties.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="space-y-4">
+          <div className="text-gray-400">
+            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-6 0H3m0 0V9a2 2 0 012-2h4l2 2h4a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">
+              No tienes inmuebles registrados
+            </h3>
+            <p className="text-gray-600 mt-1">
+              Para gestionar gastos, primero necesitas registrar al menos un inmueble.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/inmuebles/cartera')}
+            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Ir a Cartera para crear inmueble
+          </button>
+        </div>
       </div>
     );
   }
