@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob, initDB, Property } from '../../services/db';
+import OcrPanel from '../../features/inbox/OcrPanel';
 
 interface DocumentViewerProps {
   document: any;
@@ -350,6 +351,16 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <p className="mt-1 text-neutral-600 text-sm">{metadata.notas || 'Sin notas'}</p>
           )}
         </div>
+        
+        {/* OCR Panel - Show if document has OCR results */}
+        {document?.metadata?.ocr?.status === 'completed' && (
+          <div className="mt-6 pt-6 border-t border-neutral-200">
+            <OcrPanel 
+              document={document}
+              onUpdate={onUpdate}
+            />
+          </div>
+        )}
         
         {isEditingMetadata && (
           <div className="mt-4 flex gap-2">
