@@ -4,6 +4,7 @@ import { Document, Property } from '../../services/db';
 import { suggestAEATClassification, CATEGORY_TO_AEAT, getExerciseStatus, extractExerciseYear } from '../../services/aeatClassificationService';
 import { createTreasuryEventFromDocument, updateTreasuryEventFromDocument } from '../../services/treasuryForecastService';
 import { refreshFiscalSummariesForDocument } from '../../services/fiscalSummaryService';
+import { routeOCRDocumentToTreasury } from '../../services/treasuryCreationService';
 import toast from 'react-hot-toast';
 
 interface DocumentClassificationPanelProps {
@@ -101,6 +102,22 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
       
       // Save document
       await onSave();
+      
+      // H10: Route document to Treasury containers if it has financial data
+      if (updatedFormData.financialData?.amount && document.id) {
+        try {
+          const updatedDocument = { ...document, metadata: updatedFormData };
+          const routingResult = await routeOCRDocumentToTreasury(updatedDocument);
+          
+          if (routingResult.type !== 'none' && routingResult.recordId) {
+            toast.success(`Documento enrutado a ${routingResult.type === 'ingreso' ? 'Ingresos' : routingResult.type === 'gasto' ? 'Gastos' : 'CAPEX'}: ${routingResult.reason}`);
+          }
+        } catch (error) {
+          console.error('Error routing document to treasury:', error);
+          // Don't fail the save if routing fails
+          toast.error('Error al enrutar documento a Tesorería');
+        }
+      }
       
       // Create/update treasury events if it's an assigned expense document
       if (updatedFormData.destino === 'Inmueble' && updatedFormData.financialData?.amount) {

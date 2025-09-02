@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { findEventMovementMatches, reconcileTreasuryEvent } from '../../../../services/treasuryForecastService';
+import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import toast from 'react-hot-toast';
 
@@ -55,8 +56,15 @@ const Movimientos: React.FC = () => {
 
   const loadPotentialMatches = async () => {
     try {
-      const matches = await findEventMovementMatches();
-      setPotentialMatches(matches);
+      // Load both legacy treasury events and new treasury records matches
+      const [eventMatches, recordMatches] = await Promise.all([
+        findEventMovementMatches(),
+        findReconciliationMatches()
+      ]);
+      
+      // Combine both types of matches
+      const allMatches = [...eventMatches, ...recordMatches];
+      setPotentialMatches(allMatches);
     } catch (error) {
       console.error('Error finding matches:', error);
     }
@@ -71,6 +79,22 @@ const Movimientos: React.FC = () => {
     } catch (error) {
       console.error('Error reconciling:', error);
       toast.error('Error al conciliar el movimiento');
+    }
+  };
+
+  const handleReconcileTreasuryRecord = async (
+    recordType: 'ingreso' | 'gasto' | 'capex',
+    recordId: number,
+    movementId: number
+  ) => {
+    try {
+      await reconcileTreasuryRecord(recordType, recordId, movementId);
+      toast.success(`${recordType === 'ingreso' ? 'Ingreso' : recordType === 'gasto' ? 'Gasto' : 'CAPEX'} reconciliado correctamente`);
+      await loadData();
+      await loadPotentialMatches();
+    } catch (error) {
+      console.error('Error reconciling treasury record:', error);
+      toast.error('Error al reconciliar el registro');
     }
   };
   
@@ -171,38 +195,88 @@ const Movimientos: React.FC = () => {
               <div className="space-y-4">
                 {potentialMatches.map((match, index) => (
                   <div key={index} className="bg-white rounded-lg border border-blue-200 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {match.event.description}
+                    {/* Legacy treasury events */}
+                    {match.event && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">
+                                {match.event.description}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                Evento previsto: {formatDate(match.event.predictedDate)} • {formatEuro(match.event.amount)}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              Evento previsto: {formatDate(match.event.predictedDate)} • {formatEuro(match.event.amount)}
+                            <div className="text-center text-gray-400">↔</div>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">
+                                {match.movement.description}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                Movimiento: {formatDate(match.movement.date)} • {formatEuro(Math.abs(match.movement.amount))}
+                              </div>
                             </div>
                           </div>
-                          <div className="text-center text-gray-400">↔</div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {match.movement.description}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              Movimiento: {formatDate(match.movement.date)} • {formatEuro(Math.abs(match.movement.amount))}
-                            </div>
+                          <div className="mt-2 text-sm text-blue-600">
+                            {match.reason}
                           </div>
                         </div>
-                        <div className="mt-2 text-sm text-blue-600">
-                          {match.reason}
-                        </div>
+                        <button
+                          onClick={() => handleReconcile(match.event.id, match.movement.id)}
+                          className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                          Conciliar
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleReconcile(match.event.id, match.movement.id)}
-                        className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      >
-                        Conciliar
-                      </button>
-                    </div>
+                    )}
+                    
+                    {/* New treasury records */}
+                    {match.potentialMatches && (
+                      <div className="space-y-3">
+                        <div className="font-medium text-gray-900 mb-3">
+                          Movimiento: {movements.find(m => m.id === match.movementId)?.description}
+                          <span className="ml-2 text-sm text-gray-500">
+                            ({formatDate(movements.find(m => m.id === match.movementId)?.date || '')} • 
+                            {formatEuro(Math.abs(movements.find(m => m.id === match.movementId)?.amount || 0))})
+                          </span>
+                        </div>
+                        {match.potentialMatches.map((recordMatch: any, recordIndex: number) => (
+                          <div key={recordIndex} className="border-l-4 border-blue-300 pl-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                    recordMatch.type === 'ingreso' ? 'bg-green-100 text-green-800' :
+                                    recordMatch.type === 'gasto' ? 'bg-red-100 text-red-800' :
+                                    'bg-purple-100 text-purple-800'
+                                  }`}>
+                                    {recordMatch.type === 'ingreso' ? 'Ingreso' : 
+                                     recordMatch.type === 'gasto' ? 'Gasto' : 'CAPEX'}
+                                  </span>
+                                  <span className="text-sm font-medium text-gray-900">
+                                    Confianza: {Math.round(recordMatch.confidence * 100)}%
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  {recordMatch.reason}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleReconcileTreasuryRecord(
+                                  recordMatch.type,
+                                  recordMatch.id,
+                                  match.movementId
+                                )}
+                                className="ml-4 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                              >
+                                Conciliar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

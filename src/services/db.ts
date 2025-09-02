@@ -410,8 +410,10 @@ export interface Movement {
   saldo?: number;
   id_import?: string;
   estado_conciliacion?: ReconciliationStatus; // Default to 'sin_conciliar'
-  linked_registro_id?: number; // Link to Ingreso/Gasto/CAPEX record
-  linked_registro_type?: 'ingreso' | 'gasto' | 'capex';
+  linked_registro?: {
+    type: 'ingreso' | 'gasto' | 'capex';
+    id: number;
+  }; // Link to Ingreso/Gasto/CAPEX record
   // Legacy reconciliation links
   expenseIds?: number[]; // For movements linked to expenses
   documentIds?: number[]; // H9: Link to invoices/documents
