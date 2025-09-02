@@ -13,13 +13,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const { currentModule } = useTheme();
   const navigation = getNavigationForModule(currentModule);
 
-  // Dynamic colors based on current module theme
+  // ATLAS brand consistent colors - both modules use navy primary
   const getThemeClasses = () => {
     return {
-      sidebarBg: currentModule === 'horizon' ? 'bg-brand-navy' : 'bg-brand-teal',
-      logoIcon: currentModule === 'horizon' ? 'bg-brand-teal' : 'bg-brand-navy',
-      activeItem: currentModule === 'horizon' ? 'bg-navy-800' : 'bg-teal-600',
-      hoverItem: currentModule === 'horizon' ? 'hover:bg-navy-800' : 'hover:bg-teal-600',
+      sidebarBg: 'bg-brand-navy', // Both modules use navy background
+      logoIcon: 'bg-brand-teal', // Both modules use teal accent for logo
+      activeItem: 'bg-navy-800', // Both modules use darker navy for active
+      hoverItem: 'hover:bg-navy-800', // Both modules use darker navy for hover
     };
   };
 

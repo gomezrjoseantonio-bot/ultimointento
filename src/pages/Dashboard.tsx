@@ -37,9 +37,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-8">
       {/* Module Header */}
       <div className="text-center py-12">
-        <h1 className={`text-4xl font-semibold mb-2 ${
-          currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal'
-        }`}>
+        <h1 className="text-4xl font-semibold mb-2 text-brand-navy">
           {moduleInfo.title}
         </h1>
         <p className="text-xl text-gray-600 mb-4">{moduleInfo.subtitle}</p>
@@ -49,14 +47,8 @@ const Dashboard: React.FC = () => {
       {/* Empty State */}
       <div className="bg-white shadow rounded-atlas border border-gray-200">
         <div className="text-center py-16 px-6">
-          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-            currentModule === 'horizon' 
-              ? 'bg-brand-navy bg-opacity-10' 
-              : 'bg-brand-teal bg-opacity-10'
-          }`}>
-            <Inbox className={`w-8 h-8 ${
-              currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal'
-            }`} />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-brand-navy bg-opacity-10">
+            <Inbox className="w-8 h-8 text-brand-navy" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Empezar</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
@@ -64,13 +56,7 @@ const Dashboard: React.FC = () => {
             {' '}Comienza importando tus datos o agregando nuevas entradas.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button 
-              className={`px-6 py-2 rounded-atlas hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                currentModule === 'horizon' 
-                  ? 'bg-brand-navy text-white focus:ring-brand-navy' 
-                  : 'bg-brand-teal text-white focus:ring-brand-teal'
-              }`}
-            >
+            <button className="px-6 py-2 rounded-atlas hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 bg-brand-navy text-white focus:ring-brand-navy">
               Importar Datos
             </button>
             <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-atlas hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2">

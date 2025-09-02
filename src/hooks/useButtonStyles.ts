@@ -4,19 +4,20 @@ export const useButtonStyles = () => {
   const { currentModule } = useTheme();
   
   const getButtonClasses = () => {
-    const isHorizon = currentModule === 'horizon';
-    
+    // Both modules now use the same button styles (navy primary, teal accent)
     return {
-      primary: isHorizon ? 'btn-primary-horizon' : 'btn-primary-pulse',
-      secondary: isHorizon ? 'btn-secondary-horizon' : 'btn-secondary-pulse',
-      ghost: isHorizon ? 'btn-ghost-horizon' : 'btn-ghost-pulse',
+      primary: 'btn-primary-horizon', // Both use navy primary
+      secondary: 'btn-secondary-horizon', // Both use navy secondary
+      ghost: 'btn-ghost-horizon', // Both use navy ghost
+      accent: 'btn-accent-horizon', // Both use teal accent for secondary positive actions
       danger: 'btn-danger',
       dangerOutline: 'btn-danger-outline',
     };
   };
   
   const getFocusRingColor = () => {
-    return currentModule === 'horizon' ? 'focus:ring-brand-navy' : 'focus:ring-brand-teal';
+    // Both modules use navy as primary focus color
+    return 'focus:ring-brand-navy';
   };
   
   return {

@@ -13,9 +13,7 @@ const EmptyPage: React.FC<EmptyPageProps> = ({ title, subtitle, description }) =
   return (
     <div className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
-        <h1 className={`text-2xl font-semibold ${
-          currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal'
-        }`}>
+        <h1 className="text-2xl font-semibold text-brand-navy">
           {title}
         </h1>
         {subtitle && (
@@ -25,14 +23,8 @@ const EmptyPage: React.FC<EmptyPageProps> = ({ title, subtitle, description }) =
       
       <div className="bg-white shadow rounded-atlas border border-gray-200 p-8">
         <div className="text-center">
-          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-            currentModule === 'horizon' 
-              ? 'bg-brand-navy bg-opacity-10' 
-              : 'bg-brand-teal bg-opacity-10'
-          }`}>
-            <div className={`w-8 h-8 ${
-              currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal'
-            }`}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-brand-navy bg-opacity-10">
+            <div className="w-8 h-8 text-brand-navy">
               <svg fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a2 2 0 014 0v2H6v-2z" clipRule="evenodd" />
               </svg>
