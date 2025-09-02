@@ -1,5 +1,5 @@
-// Netlify Function: OCR self-test (EU Document AI)
-// URL tras deploy: /.netlify/functions/ocr-selftest
+// Netlify Function: OCR self-test (EU)
+// URL: /.netlify/functions/ocr-selftest
 
 export async function handler() {
   const host = process.env.DOC_AI_ENDPOINT;
@@ -8,9 +8,9 @@ export async function handler() {
   const prc  = process.env.DOC_AI_PROCESSOR_ID;
   const hasKey = !!process.env.DOC_AI_SA_JSON_B64;
 
-  const projectIsNumber = !!pid && /^\d+$/.test(pid);
+  const projectIsNumber = !!pid && /^[0-9]+$/.test(pid || "");
 
-  // Si falta alguna variable → devolvemos CONFIG
+  // Config incompleta -> devolvemos CONFIG (no secretos)
   if (!host || !pid || !loc || !prc || !hasKey || !projectIsNumber) {
     return {
       statusCode: 200,
@@ -20,19 +20,20 @@ export async function handler() {
         code: "CONFIG",
         message: "OCR: configuración incompleta",
         details: {
-          hasKey,
+          hasKey: hasKey,
           hasProjectId: !!pid,
-          projectIsNumber,
+          projectIsNumber: projectIsNumber,
           hasLocation: !!loc,
           hasProcessorId: !!prc,
-          hasEndpoint: !!host,
-        },
-      }),
+          hasEndpoint: !!host
+        }
+      })
     };
   }
 
-  // Si todo está bien → devolvemos OK
-  const processorPath = projects/${pid}/locations/${loc}/processors/${prc}:process;
+  // OJO: concatenación clásica para evitar backticks
+  const processorPath =
+    "projects/" + pid + "/locations/" + loc + "/processors/" + prc + ":process";
 
   return {
     statusCode: 200,
@@ -40,9 +41,9 @@ export async function handler() {
     body: JSON.stringify({
       ok: true,
       endpointHost: host,
-      processorPath,
-      projectIsNumber,
-      location: loc,
-    }),
+      processorPath: processorPath,
+      projectIsNumber: projectIsNumber,
+      location: loc
+    })
   };
 }
