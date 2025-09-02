@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 5; // H8: Added treasury accounts and movements
+const DB_VERSION = 6; // H9: Added treasury forecasting and fiscal summaries
 
 export interface Property {
   id?: number;
@@ -111,12 +111,39 @@ export interface Document {
     ocrHistory?: OCRHistoryEntry[];
     // H8: Extended metadata for inbox documents
     proveedor?: string;
-    tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario';
+    tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros';
     categoria?: string;
-    destino?: string;
+    destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado';
     notas?: string;
-    carpeta?: string;
+    carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'capex' | 'otros';
+    // H9: Enhanced fiscal classification
+    aeatClassification?: {
+      fiscalType?: AEATFiscalType;
+      box?: AEATBox;
+      suggested?: boolean;
+      exerciseYear?: number;
+      status?: 'Vivo' | 'Prescrito'; // Based on fiscal year
+    };
+    // H9: Enhanced financial data
+    financialData?: {
+      amount?: number;
+      base?: number;
+      iva?: number;
+      invoiceNumber?: string;
+      issueDate?: string;
+      dueDate?: string;
+      servicePeriod?: {
+        from?: string;
+        to?: string;
+      };
+      serviceAddress?: string;
+      cups?: string;
+      paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
+      iban?: string;
+      predictedPaymentDate?: string;
+      isCapex?: boolean;
+    };
     // H8: Bank extract specific metadata
     extractMetadata?: {
       bank: string;
@@ -358,12 +385,13 @@ export interface Account {
   openingBalance: number;
   currency: string;
   isActive: boolean;
+  minimumBalance?: number; // H9: For treasury alerts
   createdAt: string;
   updatedAt: string;
 }
 
 // H8: Movement types
-export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado';
+export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 
 export interface Movement {
   id?: number;
@@ -377,10 +405,78 @@ export interface Movement {
   status: MovementStatus;
   // Reconciliation links
   expenseIds?: number[]; // For movements linked to expenses
+  documentIds?: number[]; // H9: Link to invoices/documents
   reconciliationNotes?: string;
   // Import metadata
   importBatch?: string; // ID of the import batch
   csvRowIndex?: number; // Original row index in CSV
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H9: Treasury Forecast Events
+export interface TreasuryEvent {
+  id?: number;
+  type: 'income' | 'expense';
+  amount: number;
+  predictedDate: string;
+  description: string;
+  // Source tracking
+  sourceType: 'document' | 'contract' | 'manual';
+  sourceId?: number; // Document ID or Contract ID
+  // Account information
+  accountId?: number;
+  paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
+  iban?: string;
+  // Status
+  status: 'predicted' | 'confirmed' | 'executed';
+  actualDate?: string;
+  actualAmount?: number;
+  movementId?: number; // Link to actual bank movement
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H9: Treasury Recommendations
+export interface TreasuryRecommendation {
+  id?: string;
+  type: 'transfer' | 'alert';
+  severity: 'info' | 'warning' | 'critical';
+  title: string;
+  description: string;
+  // Transfer specific
+  fromAccountId?: number;
+  toAccountId?: number;
+  suggestedAmount?: number;
+  suggestedDate?: string;
+  // Status
+  status: 'active' | 'dismissed' | 'executed';
+  createdAt: string;
+  dismissedAt?: string;
+}
+
+// H9: Fiscal Summary by Property and Year
+export interface FiscalSummary {
+  id?: number;
+  propertyId: number;
+  exerciseYear: number;
+  // AEAT Box totals
+  box0105: number; // Interests/financing
+  box0106: number; // R&C
+  box0109: number; // Community
+  box0112: number; // Personal services
+  box0113: number; // Utilities
+  box0114: number; // Insurance
+  box0115: number; // Local taxes
+  box0117: number; // Furniture amortization
+  capexTotal: number; // Construction value increase
+  // Calculated fields
+  deductibleExcess?: number; // 0105+0106 excess over income
+  constructionValue: number; // Current construction value
+  annualDepreciation: number; // 3% of construction value
+  status: 'Vivo' | 'Prescrito';
+  // Metadata
   createdAt: string;
   updatedAt: string;
 }
@@ -433,6 +529,9 @@ interface AtlasHorizonDB {
   accounts: Account; // H8: Treasury accounts
   movements: Movement; // H8: Bank movements
   importBatches: ImportBatch; // H8: CSV import tracking
+  treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
+  treasuryRecommendations: TreasuryRecommendation; // H9: Treasury recommendations
+  fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -556,6 +655,35 @@ export const initDB = async () => {
           const importBatchesStore = db.createObjectStore('importBatches', { keyPath: 'id' });
           importBatchesStore.createIndex('accountId', 'accountId', { unique: false });
           importBatchesStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // H9: Treasury Events store
+        if (!db.objectStoreNames.contains('treasuryEvents')) {
+          const treasuryEventsStore = db.createObjectStore('treasuryEvents', { keyPath: 'id', autoIncrement: true });
+          treasuryEventsStore.createIndex('type', 'type', { unique: false });
+          treasuryEventsStore.createIndex('predictedDate', 'predictedDate', { unique: false });
+          treasuryEventsStore.createIndex('accountId', 'accountId', { unique: false });
+          treasuryEventsStore.createIndex('status', 'status', { unique: false });
+          treasuryEventsStore.createIndex('sourceType', 'sourceType', { unique: false });
+          treasuryEventsStore.createIndex('sourceId', 'sourceId', { unique: false });
+        }
+
+        // H9: Treasury Recommendations store
+        if (!db.objectStoreNames.contains('treasuryRecommendations')) {
+          const treasuryRecommendationsStore = db.createObjectStore('treasuryRecommendations', { keyPath: 'id' });
+          treasuryRecommendationsStore.createIndex('type', 'type', { unique: false });
+          treasuryRecommendationsStore.createIndex('status', 'status', { unique: false });
+          treasuryRecommendationsStore.createIndex('severity', 'severity', { unique: false });
+          treasuryRecommendationsStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // H9: Fiscal Summaries store
+        if (!db.objectStoreNames.contains('fiscalSummaries')) {
+          const fiscalSummariesStore = db.createObjectStore('fiscalSummaries', { keyPath: 'id', autoIncrement: true });
+          fiscalSummariesStore.createIndex('propertyId', 'propertyId', { unique: false });
+          fiscalSummariesStore.createIndex('exerciseYear', 'exerciseYear', { unique: false });
+          fiscalSummariesStore.createIndex('status', 'status', { unique: false });
+          fiscalSummariesStore.createIndex('property-year', ['propertyId', 'exerciseYear'], { unique: true });
         }
       }
     });
