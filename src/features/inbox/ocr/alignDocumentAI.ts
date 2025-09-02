@@ -1,3 +1,5 @@
+import { parseEsNumber } from '../../../utils/numberUtils';
+
 export type Money = { value: number; currency: string; source: 'ocr'|'derived' };
 export type Confidence = { score: number; sourceId?: string };
 
@@ -10,8 +12,12 @@ const TEXT = (r: any) => {
 const pick = (ents: any[], type: string) => ents.find(e => e.type === type);
 const val = (e: any) => e?.normalizedValue?.text || e?.mentionText || '';
 
-function normMoney(s: string) { 
-  return Number(s.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')) || 0; 
+function normMoney(s: string, normalizedValue?: number, mentionText?: string) { 
+  const result = parseEsNumber(s, {
+    googleNormalizedValue: normalizedValue,
+    mentionText: mentionText
+  });
+  return result.value || 0;
 }
 
 // Regex útiles (ES):

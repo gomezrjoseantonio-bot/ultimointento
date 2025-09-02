@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { parseEsNumber, formatEsPercentage } from '../../utils/numberUtils';
 
 interface PercentInputProps {
   value: string;
@@ -51,53 +52,14 @@ const PercentInput: React.FC<PercentInputProps> = ({
 
   // Parse Spanish percent input - accept both 3.5 and 3,5
   const parseSpanishPercentInput = (input: string): number | null => {
-    if (!input || input.trim() === '') {
-      return null;
-    }
-    
-    // Remove % symbol and spaces
-    let cleaned = input.replace(/[%\s]/g, '');
-    
-    // Replace dot with comma for consistency, then parse
-    cleaned = cleaned.replace('.', ',');
-    
-    // Split by comma to check decimal places
-    const parts = cleaned.split(',');
-    
-    if (parts.length > 2) {
-      return null; // Multiple commas not allowed
-    }
-    
-    if (parts.length === 2) {
-      // Has decimal part
-      const [integerPart, decimalPart] = parts;
-      
-      // Decimal part should be 1-2 digits
-      if (decimalPart.length > 2) {
-        return null;
-      }
-      
-      if (!/^\d+$/.test(integerPart) || !/^\d{1,2}$/.test(decimalPart)) {
-        return null;
-      }
-      
-      return parseFloat(`${integerPart}.${decimalPart}`);
-    } else {
-      // No decimal part
-      if (!/^\d+$/.test(cleaned)) {
-        return null;
-      }
-      
-      return parseFloat(cleaned);
-    }
+    const result = parseEsNumber(input, { allowPercent: true });
+    return result.value;
   };
 
   // Format number to Spanish percentage format
   const formatPercentSpanish = (amount: number): string => {
-    return new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount) + ' %';
+    // Convert to percentage rate (0.035 for 3.5%)
+    return formatEsPercentage(amount / 100);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
