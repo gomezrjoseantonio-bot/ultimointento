@@ -1,22 +1,66 @@
 // H-OCR-FIX: Enhanced OCR Service for Google Document AI integration
 import { OCRResult, OCRField } from './db';
 
-// H-OCR-FIX: Document AI entity type mappings
+// H-OCR-FIX: Document AI entity type mappings for EU Invoice processor
+// Based on Google Document AI EU Invoice processor schema
 const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
+  // Amount fields
   'total_amount': 'total_amount',
-  'purchase_total': 'purchase_total', 
-  'total_monto': 'total_monto',
-  'subtotal': 'subtotal',
-  'net_amount': 'net_amount',
+  'net_amount': 'net_amount', 
+  'subtotal_amount': 'subtotal',
   'tax_amount': 'tax_amount',
+  'total_tax_amount': 'tax_amount',
+  'vat_amount': 'tax_amount',
+  'purchase_total': 'total_amount',
+  'total_monto': 'total_amount',
+  'subtotal': 'subtotal',
+  
+  // Currency
+  'currency': 'currency',
+  
+  // Invoice details
   'invoice_id': 'invoice_id',
+  'invoice_number': 'invoice_id',
+  'document_id': 'invoice_id',
   'invoice_date': 'invoice_date',
-  'date': 'date',
+  'issue_date': 'invoice_date',
+  'date': 'invoice_date',
+  'due_date': 'due_date',
+  'payment_due_date': 'due_date',
+  
+  // Supplier information
   'supplier_name': 'supplier_name',
-  'receiver_name': 'receiver_name',
+  'supplier_address': 'supplier_address',
   'supplier_tax_id': 'supplier_tax_id',
+  'supplier_registration_number': 'supplier_tax_id',
+  'supplier_email': 'supplier_email',
+  'supplier_phone': 'supplier_phone',
+  'vendor_name': 'supplier_name',
+  'vendor_address': 'supplier_address',
+  
+  // Receiver/Customer information  
+  'receiver_name': 'receiver_name',
+  'receiver_address': 'receiver_address',
+  'receiver_tax_id': 'receiver_tax_id',
+  'customer_name': 'receiver_name',
+  'customer_address': 'receiver_address',
+  
+  // Tax details
   'tax_id': 'tax_id',
-  'iban': 'iban'
+  'vat_id': 'supplier_tax_id',
+  'tax_rate': 'tax_rate',
+  'vat_rate': 'tax_rate',
+  
+  // Payment details
+  'iban': 'iban',
+  'account_number': 'iban',
+  'payment_terms': 'payment_terms',
+  
+  // Line items and descriptions
+  'line_item': 'line_item',
+  'line_item_description': 'line_item_description',
+  'line_item_quantity': 'line_item_quantity',
+  'line_item_amount': 'line_item_amount'
 };
 
 // H-OCR-FIX: Format currency value from Document AI
@@ -83,6 +127,11 @@ const formatDateFromDocumentAI = (value: any): string => {
 const processDocumentAIEntity = (entity: any): OCRField | null => {
   const entityType = entity.type?.toLowerCase();
   const mappedType = ENTITY_TYPE_MAPPINGS[entityType];
+  
+  // DEV: Log unmapped entity types for debugging
+  if (!mappedType && process.env.NODE_ENV === 'development') {
+    console.warn('Unmapped entity type:', entityType, 'value:', entity.mentionText);
+  }
   
   if (!mappedType) {
     return null; // Skip unmapped entity types
@@ -186,11 +235,29 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   const fields: OCRField[] = [];
   
   if (firstResult.entities) {
+    // DEV: Log all raw entities for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Document AI entities received:', firstResult.entities.length);
+      firstResult.entities.forEach((entity: any, index: number) => {
+        console.info(`Entity ${index}:`, {
+          type: entity.type,
+          mentionText: entity.mentionText,
+          confidence: entity.confidence,
+          normalizedValue: entity.normalizedValue
+        });
+      });
+    }
+    
     for (const entity of firstResult.entities) {
       const ocrField = processDocumentAIEntity(entity);
       if (ocrField) {
         fields.push(ocrField);
       }
+    }
+    
+    // DEV: Log mapping results
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Mapped fields:', fields.length, 'from', firstResult.entities.length, 'entities');
     }
   }
   
