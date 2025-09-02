@@ -116,17 +116,34 @@ const processDocumentAIEntity = (entity: any): OCRField | null => {
 
 // H-OCR-FIX: Call Document AI Netlify Function
 export const callDocumentAIFunction = async (file: File): Promise<any> => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
   try {
-    const response = await fetch('/.netlify/functions/ocr/documentai', {
+    // Convert file to bytes for direct upload (as per requirements)
+    const fileBytes = await file.arrayBuffer();
+    
+    // DEV telemetry: Log OCR call details
+    if (process.env.NODE_ENV === 'development') {
+      const sizeKB = Math.round(fileBytes.byteLength / 1024);
+      console.log('OCR call → endpoint: /.netlify/functions/ocr-documentai, sizeKB:', sizeKB);
+    }
+    
+    const response = await fetch('/.netlify/functions/ocr-documentai', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/octet-stream'
+      },
+      body: fileBytes
     });
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // Handle specific error codes as requested
+      if ([403, 404, 429].includes(response.status) || errorData.code === 'CONFIG') {
+        const errorCode = errorData.code || response.status.toString();
+        // This will be handled by the calling component to show toast/banner
+        throw new Error(`OCR_ERROR_${errorCode}: ${errorData.message || errorData.error || `Error HTTP ${response.status}`}`);
+      }
+      
       throw new Error(errorData.error || `Error HTTP ${response.status}`);
     }
     

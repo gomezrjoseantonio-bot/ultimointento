@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, UserCheck, X, Download, Edit2, Save } from 'lucide-react';
+import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob, initDB, Property } from '../../services/db';
 
@@ -8,9 +8,10 @@ interface DocumentViewerProps {
   onAssign: (documentId: number, metadata: any) => void;
   onDelete?: (documentId: number) => void;
   onUpdate?: (documentId: number, updates: any) => void;
+  onProcessOCR?: (document: any) => void;
 }
 
-const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete, onUpdate }) => {
+const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onDelete, onUpdate, onProcessOCR }) => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -393,6 +394,31 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <Eye className="w-4 h-4" />
           Ver
         </button>
+        
+        {/* H-OCR: Manual OCR processing button */}
+        {onProcessOCR && (document?.type === 'application/pdf' || document?.type?.startsWith('image/')) && (
+          <button 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              document?.metadata?.ocr?.status === 'processing'
+                ? 'bg-amber-100 text-amber-700 border border-amber-200 cursor-not-allowed'
+                : 'bg-teal-600 text-white hover:bg-teal-700'
+            }`}
+            onClick={() => document?.metadata?.ocr?.status !== 'processing' && onProcessOCR(document)}
+            disabled={document?.metadata?.ocr?.status === 'processing'}
+            title={document?.metadata?.ocr?.status === 'processing' ? 'Procesando OCR...' : 'Procesar documento con OCR'}
+          >
+            <Zap className={`w-4 h-4 ${document?.metadata?.ocr?.status === 'processing' ? 'animate-pulse' : ''}`} />
+            {document?.metadata?.ocr?.status === 'processing' ? 'Procesando...' : 'Procesar con OCR'}
+          </button>
+        )}
+        
+        {/* DEV: Show OCR endpoint */}
+        {process.env.NODE_ENV === 'development' && onProcessOCR && (
+          <div className="flex items-center text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            Endpoint: /.netlify/functions/ocr-documentai
+          </div>
+        )}
+        
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           onClick={() => setShowAssignModal(true)}
