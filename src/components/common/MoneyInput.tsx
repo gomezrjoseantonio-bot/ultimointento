@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { parseEsNumber, formatEsCurrency } from '../../utils/numberUtils';
 
 interface MoneyInputProps {
   value: string;
@@ -35,69 +36,13 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
 
   // Parse Spanish Euro input - strict Spanish format interpretation
   const parseSpanishEuroInput = useCallback((input: string): number | null => {
-    if (!input || input.trim() === '') {
-      return null;
-    }
-    
-    // Remove currency symbols and spaces
-    let cleaned = input.replace(/[€\s]/g, '');
-    
-    // Check for Anglo-Saxon format (comma before dot near end)
-    if (/\d,\d{3}\.\d{1,2}$/.test(cleaned)) {
-      return null; // Will trigger validation error
-    }
-    
-    // Handle the case where we get a decimal number as string (e.g., "9567.8" from calculations)
-    // If it looks like a simple decimal number without formatting, treat the dot as decimal separator
-    if (/^\d+\.\d+$/.test(cleaned) && !cleaned.includes(',')) {
-      return parseFloat(cleaned);
-    }
-    
-    // Split by comma to check for decimal part
-    const parts = cleaned.split(',');
-    
-    if (parts.length > 2) {
-      return null; // Multiple commas not allowed
-    }
-    
-    if (parts.length === 2) {
-      // Has decimal part
-      const [integerPart, decimalPart] = parts;
-      
-      // Decimal part should be 1-2 digits
-      if (decimalPart.length > 2) {
-        return null;
-      }
-      
-      // Remove dots from integer part (thousands separators)
-      const cleanInteger = integerPart.replace(/\./g, '');
-      const cleanDecimal = decimalPart.padEnd(2, '0'); // Pad to 2 digits
-      
-      if (!/^\d+$/.test(cleanInteger) || !/^\d{1,2}$/.test(decimalPart)) {
-        return null;
-      }
-      
-      return parseFloat(`${cleanInteger}.${cleanDecimal}`);
-    } else {
-      // No decimal part - dots are thousands separators
-      const cleanInteger = cleaned.replace(/\./g, '');
-      
-      if (!/^\d+$/.test(cleanInteger)) {
-        return null;
-      }
-      
-      return parseFloat(cleanInteger);
-    }
+    const result = parseEsNumber(input);
+    return result.value;
   }, []);
 
   // Format number to Spanish Euro format
   const formatEuroSpanish = useCallback((amount: number): string => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    return formatEsCurrency(amount);
   }, []);
 
   // Format value for display (with Euro symbol and Spanish formatting)

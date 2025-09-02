@@ -33,6 +33,8 @@ const COLUMN_ALIASES = {
   ]
 };
 
+import { parseEsNumber } from '../../../utils/numberUtils';
+
 class BankParserService {
   
   /**
@@ -455,40 +457,8 @@ class BankParserService {
   private parseSpanishAmount(amountStr: string): number {
     if (!amountStr) return NaN;
     
-    // Clean the amount string - remove currency symbols and spaces
-    let cleaned = amountStr.trim()
-      .replace(/[€$£¥]/g, '') // Remove currency symbols
-      .replace(/\s+/g, '') // Remove spaces
-      .trim();
-    
-    // Handle negative amounts in parentheses
-    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
-      cleaned = '-' + cleaned.slice(1, -1);
-    }
-    
-    // Convert Spanish format (1.234,56) to English format (1234.56)
-    if (cleaned.includes(',')) {
-      // If there's a comma, it's likely the decimal separator
-      const parts = cleaned.split(',');
-      if (parts.length === 2) {
-        const integerPart = parts[0].replace(/\./g, ''); // Remove thousand separators
-        const decimalPart = parts[1];
-        cleaned = integerPart + '.' + decimalPart;
-      }
-    } else if (cleaned.includes('.')) {
-      // Check if dot is thousand separator or decimal
-      const dotIndex = cleaned.lastIndexOf('.');
-      const afterDot = cleaned.substring(dotIndex + 1);
-      
-      if (afterDot.length === 3) {
-        // Likely thousand separator (1.234)
-        cleaned = cleaned.replace(/\./g, '');
-      }
-      // If afterDot.length === 2 or 1, assume it's decimal separator
-    }
-    
-    const result = parseFloat(cleaned);
-    return isNaN(result) ? NaN : result;
+    const result = parseEsNumber(amountStr);
+    return result.value || NaN;
   }
 
   /**

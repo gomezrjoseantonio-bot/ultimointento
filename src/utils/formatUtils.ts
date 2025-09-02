@@ -1,18 +1,12 @@
 // Spanish number formatting utilities
+import { parseEsNumber, formatEsCurrency, formatEsPercentage } from './numberUtils';
 
 export const formatEuro = (amount: number | null | undefined): string => {
   if (amount === null || amount === undefined || isNaN(amount)) {
     return '—';
   }
   
-  // Format with es-ES locale to get comma as decimal separator and dot as thousands separator
-  const formatted = new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-  
-  // Add thin space before euro symbol (U+2009)
-  return `${formatted} €`;
+  return formatEsCurrency(amount);
 };
 
 export const formatNumber = (value: number | null | undefined): string => {
@@ -38,74 +32,13 @@ export const formatInteger = (value: number | null | undefined): string => {
 };
 
 export const parseEuroInput = (input: string): number | null => {
-  if (!input || input.trim() === '') {
-    return null;
-  }
-  
-  // Remove currency symbols and spaces
-  let cleaned = input.replace(/[€\s]/g, '');
-  
-  // Check for Anglo-Saxon format (comma before dot near end)
-  if (/\d,\d{3}\.\d{1,2}$/.test(cleaned)) {
-    return null; // Reject ambiguous Anglo-Saxon format
-  }
-  
-  // Handle the case where we get a decimal number as string (e.g., "9567.8" from calculations)
-  // If it looks like a simple decimal number without formatting, treat the dot as decimal separator
-  if (/^\d+\.\d+$/.test(cleaned) && !cleaned.includes(',')) {
-    return parseFloat(cleaned);
-  }
-  
-  // Split by comma to check for decimal part
-  const parts = cleaned.split(',');
-  
-  if (parts.length > 2) {
-    return null; // Multiple commas not allowed
-  }
-  
-  if (parts.length === 2) {
-    // Has decimal part
-    const [integerPart, decimalPart] = parts;
-    
-    // Decimal part should be 1-2 digits
-    if (decimalPart.length > 2) {
-      return null;
-    }
-    
-    // Remove dots from integer part (thousands separators)
-    const cleanInteger = integerPart.replace(/\./g, '');
-    const cleanDecimal = decimalPart.padEnd(2, '0'); // Pad to 2 digits
-    
-    if (!/^\d+$/.test(cleanInteger) || !/^\d{1,2}$/.test(decimalPart)) {
-      return null;
-    }
-    
-    return parseFloat(`${cleanInteger}.${cleanDecimal}`);
-  } else {
-    // No decimal part - dots are thousands separators
-    const cleanInteger = cleaned.replace(/\./g, '');
-    
-    if (!/^\d+$/.test(cleanInteger)) {
-      return null;
-    }
-    
-    return parseFloat(cleanInteger);
-  }
+  const result = parseEsNumber(input);
+  return result.value;
 };
 
 export const parseNumberInput = (input: string): number | null => {
-  if (!input || input.trim() === '') {
-    return null;
-  }
-  
-  // Remove spaces and normalize decimal separator
-  const cleaned = input
-    .replace(/\s/g, '')
-    .replace(/\./g, '') // Remove thousands separator
-    .replace(',', '.'); // Change decimal separator to dot
-  
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? null : parsed;
+  const result = parseEsNumber(input);
+  return result.value;
 };
 
 export const formatDate = (date: string | Date): string => {
@@ -140,28 +73,12 @@ export const formatPercentage = (value: number | null | undefined): string => {
     return '—';
   }
   
-  // Format percentage with comma decimal separator and thin space before %
-  const formatted = new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-  
-  return `${formatted} %`;
+  return formatEsPercentage(value);
 };
 
 export const parsePercentageInput = (input: string): number | null => {
-  if (!input || input.trim() === '') {
-    return null;
-  }
-  
-  // Remove % symbol and spaces
-  let cleaned = input.replace(/[%\s]/g, '');
-  
-  // Replace comma with dot for parsing
-  cleaned = cleaned.replace(',', '.');
-  
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? null : parsed;
+  const result = parseEsNumber(input, { allowPercent: true });
+  return result.value;
 };
 
 export const formatEuroInput = (input: string): string => {

@@ -1,6 +1,7 @@
 // H-OCR: OCR Service for Google Document AI integration
 import { OCRResult, OCRField } from './db';
 import { findProviderByNIF, findProviderByNameOrAlias, initializeDefaultProviders } from './providerDirectoryService';
+import { parseEsNumber, formatEsCurrency, validateInvoiceHarmony } from '../utils/numberUtils';
 
 // H-OCR-ALIGN: Configuration interface with strict alignment requirements
 interface OCRConfig {
@@ -74,41 +75,13 @@ interface OCREngineInfo {
 // H-OCR-FIX: Normalize amounts to Spanish format (comma decimal, dot thousands)
 export const normalizeAmountToSpanish = (amount: string | number): string => {
   if (typeof amount === 'number') {
-    return new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    return formatEsCurrency(amount).replace(' €', ''); // Remove Euro symbol for display
   }
   
-  // Parse various formats and normalize to Spanish
-  const cleanAmount = amount.toString()
-    .replace(/[^\d,.-]/g, '') // Remove non-numeric chars except comma, dot, dash
-    .trim();
+  const result = parseEsNumber(amount.toString());
+  if (result.value === null) return '0,00';
   
-  if (!cleanAmount) return '0,00';
-  
-  // Try to parse the amount considering different formats
-  let parsedAmount = 0;
-  
-  // Format: 1.234,56 (Spanish)
-  if (/^\d{1,3}(\.\d{3})*,\d{2}$/.test(cleanAmount)) {
-    parsedAmount = parseFloat(cleanAmount.replace(/\./g, '').replace(',', '.'));
-  }
-  // Format: 1,234.56 (English)
-  else if (/^\d{1,3}(,\d{3})*\.\d{2}$/.test(cleanAmount)) {
-    parsedAmount = parseFloat(cleanAmount.replace(/,/g, ''));
-  }
-  // Format: 1234.56 or 1234,56
-  else {
-    parsedAmount = parseFloat(cleanAmount.replace(',', '.'));
-  }
-  
-  if (isNaN(parsedAmount)) return '0,00';
-  
-  return new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(parsedAmount);
+  return formatEsCurrency(result.value).replace(' €', ''); // Remove Euro symbol for display
 };
 
 // H-OCR-FIX: Normalize dates to Spanish format (dd/mm/yyyy)
@@ -135,18 +108,7 @@ export const validateInvoiceAmounts = (base: number, iva: number, total: number,
   expectedTotal: number;
   difference: number;
 } => {
-  const expectedTotal = base + iva - discounts;
-  const difference = Math.abs(total - expectedTotal);
-  const tolerance = 0.01; // ±0.01 tolerance as specified in requirements
-  
-  // Round difference to avoid floating point precision issues
-  const roundedDifference = Math.round(difference * 100) / 100;
-  
-  return {
-    isValid: roundedDifference <= tolerance,
-    expectedTotal,
-    difference: roundedDifference
-  };
+  return validateInvoiceHarmony(base, iva, total, discounts);
 };
 
 // H-OCR-ALIGN: Validate plausible dates according to requirements
