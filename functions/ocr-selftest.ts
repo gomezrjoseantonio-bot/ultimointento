@@ -1,31 +1,46 @@
 // Netlify Function: OCR self-test (EU Document AI)
 // URL: /.netlify/functions/ocr-selftest
-type Json = Record<string, unknown>;
 
-export async function handler() {
-  const host = process.env.DOC_AI_ENDPOINT;
-  const pid  = process.env.DOC_AI_PROJECT_ID;
-  const loc  = process.env.DOC_AI_LOCATION;
-  const prc  = process.env.DOC_AI_PROCESSOR_ID;
-  const hasKey = !!process.env.DOC_AI_SA_JSON_B64;
+export const handler = async () => {
+  const {
+    DOC_AI_ENDPOINT,
+    DOC_AI_PROJECT_ID,
+    DOC_AI_LOCATION,
+    DOC_AI_PROCESSOR_ID,
+    DOC_AI_SA_JSON_B64,
+  } = process.env as Record<string, string | undefined>;
 
-  const projectIsNumber = /^\d+$/.test(String(pid || ""));
+  const host = DOC_AI_ENDPOINT;
+  const pid  = DOC_AI_PROJECT_ID;
+  const loc  = DOC_AI_LOCATION;
+  const prc  = DOC_AI_PROCESSOR_ID;
+  const hasKey = !!DOC_AI_SA_JSON_B64;
+  const projectIsNumber = !!pid && /^\d+$/.test(pid);
 
+  // Config incompleta -> no seguimos
   if (!host || !pid || !loc || !prc || !hasKey || !projectIsNumber) {
     return {
       statusCode: 200,
       headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify({
-        ok: false, code: "CONFIG", message: "OCR: configuración incompleta",
+        ok: false,
+        code: "CONFIG",
+        message: "OCR: configuración incompleta",
         details: {
-          hasKey, hasProjectId: !!pid, projectIsNumber,
-          hasLocation: !!loc, hasProcessorId: !!prc, hasEndpoint: !!host
-        }
-      })
+          hasKey,
+          hasProjectId: !!pid,
+          projectIsNumber,
+          hasLocation: !!loc,
+          hasProcessorId: !!prc,
+          hasEndpoint: !!host,
+        },
+      }),
     };
   }
 
+  // 👇 OJO: backticks ( ` ) para la template literal
   const processorPath = projects/${pid}/locations/${loc}/processors/${prc}:process;
+
   return {
     statusCode: 200,
     headers: { "content-type": "application/json; charset=utf-8" },
@@ -34,7 +49,7 @@ export async function handler() {
       endpointHost: host,
       processorPath,
       projectIsNumber,
-      location: loc
-    })
+      location: loc,
+    }),
   };
-}
+};
