@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckSquare, Square, FileText, Image, Archive, Eye, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { alignDocumentAI } from '../../features/inbox/ocr/alignDocumentAI';
 
 interface DocumentListProps {
   documents: any[];
@@ -56,6 +57,23 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </span>
         );
       case 'completed':
+        // Try to align data to check if we have success:true case
+        try {
+          const aligned = alignDocumentAI(doc.metadata.ocr);
+          if (aligned && (aligned.invoice.total.value > 0 || aligned.supplier.name)) {
+            // Show aligned summary instead of field count
+            return (
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                <CheckCircle className="w-3 h-3" />
+                {aligned.supplier.name ? aligned.supplier.name.substring(0, 15) + (aligned.supplier.name.length > 15 ? '...' : '') : 'Procesado'}
+              </span>
+            );
+          }
+        } catch (error) {
+          // Fallback to original behavior
+          console.debug('Error aligning for display:', error);
+        }
+        // Fallback: show field count
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
             <CheckCircle className="w-3 h-3" />
