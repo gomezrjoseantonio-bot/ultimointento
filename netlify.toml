@@ -6,7 +6,7 @@
   directory = "functions"
   node_bundler = "esbuild"
 
-# Asegura que las rutas de functions no se redirigen a la SPA
+# Evita que la SPA capture rutas de funciones
 [[redirects]]
   from = "/.netlify/functions/*"
   to = "/.netlify/functions/:splat"
