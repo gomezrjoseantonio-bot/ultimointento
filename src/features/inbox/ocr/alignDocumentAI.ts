@@ -1,6 +1,23 @@
 export type Money = { value: number; currency: string; source: 'ocr'|'derived' };
 export type Confidence = { score: number; sourceId?: string };
 
+// Utility functions for extended OCR alignment
+const TEXT = (r: any) => {
+  // Texto plano del documento concatenado (para regex en fallback)
+  return r.text || r.pages?.map((p: any) => p.layout?.textAnchor?.content).join('\n') || '';
+};
+
+const pick = (ents: any[], type: string) => ents.find(e => e.type === type);
+const val = (e: any) => e?.normalizedValue?.text || e?.mentionText || '';
+
+function normMoney(s: string) { 
+  return Number(s.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')) || 0; 
+}
+
+// Regex útiles (ES):
+const RE_IBAN = /\bES\d{2}\s?(?:\d{4}\s?){2}\d{2}\s?\d{10}\b/gi; // IBAN español
+const RE_CUPS = /\bES\d{4}[A-Z0-9]{12,16}\b/gi;                  // CUPS típico
+
 export type AlignedInvoice = {
   supplier: { name?: string; taxId?: string; address?: string; email?: string; phone?: string; };
   receiver?: { name?: string; taxId?: string; address?: string; };
@@ -10,6 +27,15 @@ export type AlignedInvoice = {
     net: Money; tax: Money; total: Money;
     lineCount?: number;
   };
+  service: {
+    serviceAddress?: string;
+    supplyPointId?: string;
+  };
+  payment: {
+    method: 'SEPA' | 'Transfer' | 'Tarjeta' | 'Desconocido';
+    iban?: string;
+    paymentDate?: string;
+  };
   meta: {
     pages: number;
     rawConfidenceSummary: Partial<Record<string, Confidence>>;
@@ -17,25 +43,6 @@ export type AlignedInvoice = {
     blockingErrors: string[];
   };
 };
-
-function parseMoney(txt?: string, fallback = 0): number {
-  if (!txt) return fallback;
-  // Remove currency symbols but preserve decimal separator
-  // First, replace European format (1.234,56) with standard format (1234.56)
-  let cleanTxt = txt.replace(/[^\d,.-]/g, ''); // Remove currency symbols
-  
-  // Handle European decimal format: if there's a comma and it's the last separator, it's decimal
-  if (cleanTxt.includes(',') && cleanTxt.includes('.')) {
-    // Both comma and dot - assume European format (1.234,56)
-    cleanTxt = cleanTxt.replace(/\./g, '').replace(',', '.');
-  } else if (cleanTxt.includes(',') && !cleanTxt.includes('.')) {
-    // Only comma - assume it's decimal separator
-    cleanTxt = cleanTxt.replace(',', '.');
-  }
-  // If only dots, assume US format (1,234.56 or 1234.56)
-  
-  return Number(cleanTxt) || fallback;
-}
 
 export function alignDocumentAI(result: any): AlignedInvoice {
   // Handle both raw DocumentAI result with entities and processed OCRResult with fields
@@ -48,48 +55,83 @@ export function alignDocumentAI(result: any): AlignedInvoice {
                  id: f.name
                })) : [];
   
+  const t = TEXT(result);
   const get = (t: string) => ents.find((e:any) => e.type === t);
-  const val = (t: string) => get(t)?.normalizedValue?.text ?? get(t)?.mentionText ?? '';
+  const valOrig = (t: string) => get(t)?.normalizedValue?.text ?? get(t)?.mentionText ?? '';
   const conf = (t: string): Confidence|undefined =>
     get(t) ? { score: get(t).confidence ?? 0, sourceId: get(t).id } : undefined;
 
-  const currency = (val('currency') || 'EUR').replace('€','EUR');
-  const net  = parseMoney(val('net_amount'));
-  const tax  = parseMoney(val('total_tax_amount'));
-  const tot  = parseMoney(val('total_amount'));
+  // Dirección de servicio: preferir receiver_address; si no, busca palabras clave en texto
+  const serviceAddress =
+    val(pick(ents, 'service_address')) ||
+    val(pick(ents, 'receiver_address')) ||
+    (t.match(/(direcci[oó]n(?: de)? (servicio|suministro|instalaci[oó]n)[:\s]+(.+))/i)?.[3] || '') ||
+    '';
+
+  // CUPS / supply point:
+  const supplyPointId =
+    val(pick(ents, 'supply_point_id')) ||
+    (t.match(RE_CUPS)?.[0] || '');
+
+  // IBAN y método de pago:
+  const iban = (t.match(RE_IBAN)?.[0] || '').replace(/\s+/g, '');
+  let paymentMethod: 'SEPA' | 'Transfer' | 'Tarjeta' | 'Desconocido' = 'Desconocido';
+  if (iban) paymentMethod = 'SEPA';
+  else if (/transferencia|transfer/i.test(t)) paymentMethod = 'Transfer';
+  else if (/tarjeta|visa|mastercard/i.test(t)) paymentMethod = 'Tarjeta';
+
+  // Fechas
+  const invoiceDate = val(pick(ents, 'invoice_date')) || val(pick(ents, 'issue_date')) || '';
+  const dueDate = val(pick(ents, 'due_date')) || '';
+  const explicitPay = (t.match(/(fecha de cargo|fecha de pago)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[2]) || '';
+  const paymentDate = explicitPay || dueDate || invoiceDate || '';
+
+  const currency = (valOrig('currency') || 'EUR').replace('€','EUR');
+  const net  = normMoney(valOrig('net_amount') || '');
+  const tax  = normMoney(valOrig('total_tax_amount') || '');
+  const tot  = normMoney(valOrig('total_amount') || '');
 
   const warnings:string[] = [];
   const blockingErrors:string[] = [];
 
   if (Math.abs((net + tax) - tot) > 0.02) blockingErrors.push('No cuadra: base + impuestos != total');
 
-  const pick = (t:string)=> {
-    const v = val(t);
+  const pickOrig = (t:string)=> {
+    const v = valOrig(t);
     return v || undefined;
   };
 
   return {
     supplier: {
-      name: pick('supplier_name'),
-      taxId: pick('supplier_tax_id')?.toUpperCase(),
-      address: pick('supplier_address'),
-      email: pick('supplier_email')?.replace(/\/+$/,''),
-      phone: pick('supplier_phone'),
+      name: pickOrig('supplier_name'),
+      taxId: pickOrig('supplier_tax_id')?.toUpperCase(),
+      address: pickOrig('supplier_address'),
+      email: pickOrig('supplier_email')?.replace(/\/+$/,''),
+      phone: pickOrig('supplier_phone'),
     },
     receiver: {
-      name: pick('receiver_name'),
-      taxId: pick('receiver_tax_id'),
-      address: pick('receiver_address'),
+      name: pickOrig('receiver_name'),
+      taxId: pickOrig('receiver_tax_id'),
+      address: pickOrig('receiver_address'),
     },
     invoice: {
-      id: pick('invoice_id'),
-      date: (get('invoice_date')?.normalizedValue?.text) || pick('invoice_date'),
-      dueDate: (get('due_date')?.normalizedValue?.text) || pick('due_date'),
+      id: pickOrig('invoice_id'),
+      date: (get('invoice_date')?.normalizedValue?.text) || pickOrig('invoice_date'),
+      dueDate: (get('due_date')?.normalizedValue?.text) || pickOrig('due_date'),
       currency,
       net:   { value: net, currency, source: 'ocr' },
       tax:   { value: tax, currency, source: 'ocr' },
       total: { value: tot, currency, source: 'ocr' },
       lineCount: ents.filter((e:any)=> e.type==='line_item').length || undefined,
+    },
+    service: {
+      serviceAddress,
+      supplyPointId
+    },
+    payment: {
+      method: paymentMethod,
+      iban,
+      paymentDate
     },
     meta: {
       pages: result.pages?.length ?? result.pageInfo?.totalPages ?? result.meta?.pages ?? 1,
