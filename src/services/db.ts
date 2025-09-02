@@ -60,6 +60,7 @@ export interface OCRField {
   value: string;
   confidence: number; // 0-1
   raw?: string; // Original raw value before normalization
+  page?: number; // H-OCR-ALIGN: Page number (1-based) for multi-page support
 }
 
 // H-OCR: OCR result structure

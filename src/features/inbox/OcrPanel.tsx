@@ -1,4 +1,4 @@
-// H-OCR-FIX: OCR Panel for Google Document AI integration
+// H-OCR-ALIGN: OCR Panel for strict 1:1 mapping with Google Document AI
 import React, { useState, useEffect } from 'react';
 import { 
   Eye, 
@@ -12,10 +12,21 @@ import {
   Hash,
   MapPin,
   Info,
-  Loader2
+  Loader2,
+  Bug,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { OCRResult, OCRField } from '../../services/db';
-import { formatCurrency, normalizeDateToSpanish } from '../../services/ocrService';
+import { 
+  formatCurrency, 
+  normalizeDateToSpanish, 
+  OCR_ACCEPT_CONFIDENCE, 
+  validateInvoiceAmounts, 
+  validateInvoiceDates, 
+  checkRequiredFieldsForApply,
+  selectBestPageForExtraction
+} from '../../services/ocrService';
 import { telemetry, qaChecklist } from '../../services/telemetryService';
 
 interface OcrPanelProps {
@@ -32,27 +43,33 @@ interface FieldMapping {
   isCritical: boolean;
 }
 
-// H-OCR-FIX: Field mappings for entity types to display names
+interface ProcessedField extends FieldMapping {
+  value: string;
+  confidence: number;
+  status: 'valid' | 'pending' | 'empty';
+  editable: boolean;
+  page?: number;
+  rawValue?: string; // H-OCR-ALIGN: Raw value for pending fields
+}
+
+// H-OCR-ALIGN: Field mappings for supported entity types (strict 1:1 mapping)
 const FIELD_MAPPINGS: FieldMapping[] = [
   { name: 'total_amount', label: 'Total factura', icon: CreditCard, format: 'currency', isCritical: true },
-  { name: 'purchase_total', label: 'Total factura', icon: CreditCard, format: 'currency', isCritical: true },
-  { name: 'total_monto', label: 'Total factura', icon: CreditCard, format: 'currency', isCritical: true },
   { name: 'subtotal', label: 'Base imponible', icon: CreditCard, format: 'currency', isCritical: false },
   { name: 'net_amount', label: 'Base imponible', icon: CreditCard, format: 'currency', isCritical: false },
   { name: 'tax_amount', label: 'IVA', icon: CreditCard, format: 'currency', isCritical: false },
+  { name: 'tax_rate', label: 'Tipo IVA', icon: CreditCard, format: 'text', isCritical: false },
+  { name: 'currency', label: 'Moneda', icon: CreditCard, format: 'text', isCritical: true },
   { name: 'invoice_id', label: 'Nº factura', icon: Hash, format: 'text', isCritical: true },
   { name: 'invoice_date', label: 'Fecha factura', icon: Calendar, format: 'date', isCritical: true },
-  { name: 'date', label: 'Fecha factura', icon: Calendar, format: 'date', isCritical: true },
+  { name: 'due_date', label: 'Fecha vencimiento', icon: Calendar, format: 'date', isCritical: false },
   { name: 'supplier_name', label: 'Proveedor', icon: Building, format: 'text', isCritical: true },
-  { name: 'receiver_name', label: 'Proveedor', icon: Building, format: 'text', isCritical: true },
   { name: 'supplier_tax_id', label: 'NIF proveedor', icon: FileText, format: 'text', isCritical: false },
-  { name: 'tax_id', label: 'NIF proveedor', icon: FileText, format: 'text', isCritical: false },
-  { name: 'iban', label: 'IBAN', icon: CreditCard, format: 'text', isCritical: false },
 ];
 
-// H-OCR-FIX: Confidence thresholds and colors
+// H-OCR-ALIGN: Confidence thresholds and colors (strict 0.80 threshold)
 const CONFIDENCE_THRESHOLDS = {
-  HIGH: 0.80,
+  HIGH: OCR_ACCEPT_CONFIDENCE, // 0.80 - Only these fields can be auto-applied
   MEDIUM: 0.60
 };
 
@@ -70,8 +87,7 @@ const getConfidenceIcon = (confidence: number) => {
 
 const getConfidenceBadge = (confidence: number): string => {
   if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'OK';
-  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'Pendiente';
-  return 'Pendiente';
+  return 'Pendiente'; // H-OCR-ALIGN: Any field below threshold is "Pendiente"
 };
 
 // H-OCR-FIX: Format field value according to its type
@@ -94,7 +110,7 @@ const formatFieldValue = (value: string, format?: string): string => {
   }
 };
 
-// H-OCR-FIX: Merge and process multiple tax amounts
+// H-OCR-ALIGN: Process multiple tax amounts - sum only if ALL meet threshold
 const processTaxAmounts = (fields: OCRField[]): { value: string; confidence: number; allValid: boolean } => {
   const taxFields = fields.filter(f => f.name === 'tax_amount');
   
@@ -103,14 +119,16 @@ const processTaxAmounts = (fields: OCRField[]): { value: string; confidence: num
   }
   
   if (taxFields.length === 1) {
+    const field = taxFields[0];
+    const isValid = field.confidence >= CONFIDENCE_THRESHOLDS.HIGH;
     return { 
-      value: taxFields[0].value, 
-      confidence: taxFields[0].confidence,
-      allValid: taxFields[0].confidence >= CONFIDENCE_THRESHOLDS.HIGH
+      value: isValid ? field.value : '', // H-OCR-ALIGN: Only show value if confidence is high enough
+      confidence: field.confidence,
+      allValid: isValid
     };
   }
   
-  // Multiple tax amounts - sum them only if all have high confidence
+  // Multiple tax amounts - H-OCR-ALIGN: sum them only if ALL have high confidence
   const allHighConfidence = taxFields.every(f => f.confidence >= CONFIDENCE_THRESHOLDS.HIGH);
   
   if (allHighConfidence) {
@@ -128,28 +146,30 @@ const processTaxAmounts = (fields: OCRField[]): { value: string; confidence: num
     };
   }
   
-  // If not all are high confidence, mark as pending
+  // H-OCR-ALIGN: If not all are high confidence, don't sum - leave empty (no "invention")
   return { value: '', confidence: 0, allValid: false };
 };
 
-// H-OCR-FIX: Get best page for multi-page documents
+// H-OCR-ALIGN: Get best page for multi-page documents based on monetary entities
 const selectBestPage = (ocrResult: OCRResult): number => {
   if (!ocrResult.pageInfo || ocrResult.pageInfo.totalPages <= 1) {
     return 1;
   }
   
-  // Find page with most high-confidence entities
-  const { allPageScores } = ocrResult.pageInfo;
-  const maxScore = Math.max(...allPageScores);
-  return allPageScores.indexOf(maxScore) + 1; // 1-based indexing
+  // Use the enhanced page selection with OCR fields
+  const { bestPageIndex } = selectBestPageForExtraction([], ocrResult.fields);
+  return bestPageIndex + 1; // Convert to 1-based indexing for UI
 };
 
 const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [editableFields, setEditableFields] = useState<Record<string, string>>({});
   const [processingApply, setProcessingApply] = useState(false);
+  const [showRawEntities, setShowRawEntities] = useState(false);
+  const [showDevJson, setShowDevJson] = useState(false);
 
   const ocrResult = document?.metadata?.ocr as OCRResult;
+  const isDev = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     if (ocrResult?.pageInfo) {
@@ -195,9 +215,9 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
     );
   }
 
-  // H-OCR-FIX: Process fields and create display data
-  const processedFields = FIELD_MAPPINGS.map(mapping => {
-    // Find the field in OCR results
+  // H-OCR-ALIGN: Process fields with strict 1:1 mapping - NO "invention"
+  const processedFields: ProcessedField[] = FIELD_MAPPINGS.map(mapping => {
+    // Find the field in OCR results - only exact matches, no substitution
     const ocrField = ocrResult.fields.find(f => f.name === mapping.name);
     
     if (!ocrField) {
@@ -206,7 +226,8 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         value: '',
         confidence: 0,
         status: 'empty' as const,
-        editable: true
+        editable: true,
+        page: undefined
       };
     }
 
@@ -218,49 +239,108 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         value: taxResult.value,
         confidence: taxResult.confidence,
         status: taxResult.allValid ? 'valid' : 'pending' as const,
-        editable: true
+        editable: true,
+        page: ocrField.page
       };
     }
 
-    const formattedValue = formatFieldValue(ocrField.value, mapping.format);
-    const isValid = ocrField.confidence >= CONFIDENCE_THRESHOLDS.HIGH && ocrField.value.trim() !== '';
+    // H-OCR-ALIGN: Only use the field if confidence meets threshold
+    const meetsThreshold = ocrField.confidence >= CONFIDENCE_THRESHOLDS.HIGH;
+    const formattedValue = meetsThreshold ? formatFieldValue(ocrField.value, mapping.format) : '';
     
     return {
       ...mapping,
       value: formattedValue,
       confidence: ocrField.confidence,
-      status: isValid ? 'valid' : 'pending' as const,
-      editable: true
+      status: meetsThreshold ? 'valid' : 'pending' as const,
+      editable: true,
+      page: ocrField.page,
+      rawValue: ocrField.value // Keep raw value for display in pending state
     };
   });
 
-  // H-OCR-FIX: Check if critical fields are valid for "Apply" button
-  const criticalFields = processedFields.filter(f => f.isCritical);
-  const criticalFieldsValid = criticalFields.filter(f => f.status === 'valid');
-  const hasRequiredFields = criticalFieldsValid.some(f => f.name.includes('total')) && 
-                           criticalFieldsValid.some(f => f.name.includes('date'));
+  // H-OCR-ALIGN: Check validation rules for Apply button
+  const requiredFieldsCheck = checkRequiredFieldsForApply(ocrResult.fields);
+  
+  // H-OCR-ALIGN: Validate amount harmony if we have the required fields
+  let amountValidation = { isValid: true, errorMessage: '' };
+  const totalField = processedFields.find(f => f.name === 'total_amount' && f.status === 'valid');
+  const subtotalField = processedFields.find(f => (f.name === 'subtotal' || f.name === 'net_amount') && f.status === 'valid');
+  const taxField = processedFields.find(f => f.name === 'tax_amount' && f.status === 'valid');
+  
+  if (totalField && subtotalField && taxField) {
+    const total = parseFloat(totalField.value.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    const subtotal = parseFloat(subtotalField.value.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    const tax = parseFloat(taxField.value.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    
+    const validation = validateInvoiceAmounts(subtotal, tax, total);
+    if (!validation.isValid) {
+      amountValidation = {
+        isValid: false,
+        errorMessage: `Los importes no cuadran: ${subtotal + tax} ≠ ${total} (diferencia: €${validation.difference.toFixed(2)})`
+      };
+    }
+  }
+  
+  // H-OCR-ALIGN: Validate dates
+  let dateValidation = { isValid: true, errorMessage: '' };
+  const invoiceDateField = processedFields.find(f => f.name === 'invoice_date' && f.status === 'valid');
+  const dueDateField = processedFields.find(f => f.name === 'due_date' && f.status === 'valid');
+  
+  if (invoiceDateField) {
+    const validation = validateInvoiceDates(invoiceDateField.value, dueDateField?.value);
+    if (!validation.invoiceDateValid || !validation.dueDateValid) {
+      dateValidation = {
+        isValid: false,
+        errorMessage: validation.errorMessage || 'Fechas no válidas'
+      };
+    }
+  }
+  
+  // H-OCR-ALIGN: Final check for Apply button
+  const canApply = requiredFieldsCheck.canApply && amountValidation.isValid && dateValidation.isValid;
 
-  // ATLAS HOTFIX: QA checks for OCR processing
+  // H-OCR-ALIGN: QA checks for OCR processing
   useEffect(() => {
     if (ocrResult && ocrResult.status === 'completed') {
       // QA: Test confidence threshold enforcement
-      const totalFieldsWithLowConfidence = processedFields.filter(f => f.confidence < 0.80).length;
-      const fieldsLeftEmpty = processedFields.filter(f => f.confidence < 0.80 && !f.value).length;
+      const totalFieldsWithLowConfidence = processedFields.filter(f => f.confidence < OCR_ACCEPT_CONFIDENCE).length;
+      const fieldsLeftEmpty = processedFields.filter(f => f.confidence < OCR_ACCEPT_CONFIDENCE && !f.value).length;
       
-      qaChecklist.ocrProcessing.confidenceThreshold(0.80, hasRequiredFields);
+      qaChecklist.ocrProcessing.confidenceThreshold(OCR_ACCEPT_CONFIDENCE, canApply);
       qaChecklist.ocrProcessing.noInvention(totalFieldsWithLowConfidence, fieldsLeftEmpty);
       qaChecklist.ocrProcessing.euEndpoint('eu-documentai.googleapis.com');
       
       // Telemetry for OCR result analysis
       telemetry.measurePerformance('ocr_field_analysis', 0, {
         totalFields: processedFields.length,
-        highConfidenceFields: processedFields.filter(f => f.confidence >= 0.80).length,
-        criticalFieldsValid: criticalFieldsValid.length,
-        hasRequiredFields,
-        avgConfidence: processedFields.reduce((sum, f) => sum + f.confidence, 0) / processedFields.length
+        highConfidenceFields: processedFields.filter(f => f.confidence >= OCR_ACCEPT_CONFIDENCE).length,
+        validFields: processedFields.filter(f => f.status === 'valid').length,
+        canApply,
+        avgConfidence: processedFields.reduce((sum, f) => sum + f.confidence, 0) / processedFields.length,
+        amountValidation: amountValidation.isValid,
+        dateValidation: dateValidation.isValid
       });
+      
+      // H-OCR-ALIGN: Save OCR metadata for draft
+      if (canApply) {
+        const ocrMeta = {
+          pageUsed: selectedPage,
+          confidences: {
+            total: totalField?.confidence || 0,
+            subtotal: subtotalField?.confidence || 0,
+            tax: taxField?.confidence || 0
+          },
+          checks: {
+            sumOk: amountValidation.isValid,
+            datesOk: dateValidation.isValid
+          }
+        };
+        // This would be saved with the draft when Apply is clicked
+        telemetry.measurePerformance('ocr_metadata_prepared', 0, ocrMeta);
+      }
     }
-  }, [ocrResult, processedFields, hasRequiredFields, criticalFieldsValid]);
+  }, [ocrResult, processedFields, canApply, selectedPage, amountValidation, dateValidation, totalField, subtotalField, taxField]);
 
   const handleFieldEdit = (fieldName: string, value: string) => {
     setEditableFields(prev => ({
@@ -270,11 +350,11 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   };
 
   const handleApplyToExpense = async () => {
-    if (!hasRequiredFields || !onApplyToExpense) return;
+    if (!canApply || !onApplyToExpense) return;
     
     setProcessingApply(true);
     try {
-      // Prepare OCR data for expense creation
+      // Prepare OCR data for expense creation with metadata
       const ocrData = processedFields.reduce((acc, field) => {
         const finalValue = editableFields[field.name] || field.value;
         if (finalValue) {
@@ -282,6 +362,20 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         }
         return acc;
       }, {} as Record<string, string>);
+
+      // H-OCR-ALIGN: Add OCR metadata (as JSON string)
+      (ocrData as any).ocrMeta = JSON.stringify({
+        pageUsed: selectedPage,
+        confidences: {
+          total: totalField?.confidence || 0,
+          subtotal: subtotalField?.confidence || 0,
+          tax: taxField?.confidence || 0
+        },
+        checks: {
+          sumOk: amountValidation.isValid,
+          datesOk: dateValidation.isValid
+        }
+      });
 
       await onApplyToExpense(ocrData);
     } finally {
@@ -325,6 +419,75 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         </div>
       </div>
 
+      {/* H-OCR-ALIGN: Lateral panel for raw entities */}
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <button
+          onClick={() => setShowRawEntities(!showRawEntities)}
+          className="flex items-center space-x-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+          {showRawEntities ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <span>Entidades detectadas (crudo)</span>
+          <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+            {ocrResult.fields.length} entidades
+          </span>
+        </button>
+        
+        {showRawEntities && (
+          <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confianza</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Página</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {ocrResult.fields.map((field, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-mono text-gray-900">{field.name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate" title={field.value}>
+                      {field.value}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-md ${getConfidenceColor(field.confidence)}`}>
+                        {(field.confidence * 100).toFixed(0)}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {field.page || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* H-OCR-ALIGN: DEV-only JSON viewer */}
+      {isDev && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <button
+            onClick={() => setShowDevJson(!showDevJson)}
+            className="flex items-center space-x-2 text-sm font-medium text-amber-600 hover:text-amber-700"
+          >
+            {showDevJson ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <Bug className="h-4 w-4" />
+            <span>Ver JSON (DEV)</span>
+          </button>
+          
+          {showDevJson && (
+            <div className="mt-4">
+              <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96">
+                {JSON.stringify(ocrResult, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Fields Table */}
       <div className="p-6">
         <div className="overflow-hidden">
@@ -332,9 +495,9 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Campo</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Valor propuesto</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Confianza</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Fuente</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Valor · Confianza</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Página</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -342,6 +505,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                 const FieldIcon = field.icon;
                 const ConfidenceIcon = getConfidenceIcon(field.confidence);
                 const finalValue = editableFields[field.name] || field.value;
+                const displayValue = field.status === 'pending' && field.rawValue ? field.rawValue : finalValue;
                 
                 return (
                   <tr key={index} className="hover:bg-gray-50">
@@ -358,19 +522,37 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     </td>
                     
                     <td className="py-3 px-4">
-                      {field.editable ? (
-                        <input
-                          type="text"
-                          value={finalValue}
-                          onChange={(e) => handleFieldEdit(field.name, e.target.value)}
-                          placeholder={field.status === 'empty' ? 'Pendiente' : ''}
-                          className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 'border-gray-300'
-                          }`}
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-900">{finalValue || '—'}</span>
-                      )}
+                      <div className="space-y-1">
+                        {field.editable ? (
+                          <input
+                            type="text"
+                            value={finalValue}
+                            onChange={(e) => handleFieldEdit(field.name, e.target.value)}
+                            placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
+                            className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
+                              field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
+                            }`}
+                          />
+                        ) : (
+                          <span className="text-sm text-gray-900">{displayValue || '—'}</span>
+                        )}
+                        
+                        {/* H-OCR-ALIGN: Show "value · confidence" format */}
+                        {field.confidence > 0 && (
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span>{displayValue || '—'}</span>
+                            <span>·</span>
+                            <span>{(field.confidence).toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    
+                    <td className="py-3 px-4">
+                      <span className="text-sm text-gray-500">
+                        {field.page || '—'}
+                      </span>
                     </td>
                     
                     <td className="py-3 px-4">
@@ -380,21 +562,12 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                           <span className={`px-2 py-1 text-xs font-medium rounded-md ${getConfidenceColor(field.confidence)}`}>
                             {getConfidenceBadge(field.confidence)}
                           </span>
-                          <span className="text-xs text-gray-500">
-                            {(field.confidence * 100).toFixed(0)}%
-                          </span>
                         </div>
                       ) : (
                         <span className="px-2 py-1 text-xs font-medium rounded-md text-gray-600 bg-gray-50">
                           Pendiente
                         </span>
                       )}
-                    </td>
-                    
-                    <td className="py-3 px-4">
-                      <span className="text-xs text-gray-500 font-mono">
-                        {field.name}
-                      </span>
                     </td>
                   </tr>
                 );
@@ -405,13 +578,34 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
 
         {/* Action Buttons */}
         <div className="mt-6 pt-6 border-t border-gray-200">
+          {/* H-OCR-ALIGN: Show validation errors */}
+          {!amountValidation.isValid && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-red-800">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Los importes no cuadran</span>
+              </div>
+              <p className="text-sm text-red-600 mt-1">{amountValidation.errorMessage}</p>
+            </div>
+          )}
+          
+          {!dateValidation.isValid && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-red-800">
+                <XCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Fechas no plausibles</span>
+              </div>
+              <p className="text-sm text-red-600 mt-1">{dateValidation.errorMessage}</p>
+            </div>
+          )}
+          
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <Info className="h-4 w-4" />
               <span>
-                {hasRequiredFields 
-                  ? 'Campos críticos disponibles. Listo para aplicar.' 
-                  : 'Faltan campos confiables (≥ 0,80) para aplicar automáticamente.'
+                {canApply 
+                  ? 'Todos los controles pasados. Listo para aplicar.' 
+                  : `Falta: ${requiredFieldsCheck.missingFields.join(', ')}`
                 }
               </span>
             </div>
@@ -419,13 +613,13 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <div className="flex space-x-3">
               <button
                 onClick={handleApplyToExpense}
-                disabled={!hasRequiredFields || processingApply}
+                disabled={!canApply || processingApply}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  hasRequiredFields && !processingApply
+                  canApply && !processingApply
                     ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                title={!hasRequiredFields ? 'Faltan campos confiables (≥ 0,80)' : ''}
+                title={!canApply ? `Faltan: ${requiredFieldsCheck.missingFields.join(', ')}` : ''}
               >
                 {processingApply ? (
                   <div className="flex items-center space-x-2">
