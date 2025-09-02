@@ -239,12 +239,12 @@ const InboxPage: React.FC = () => {
         fields: [],
         status: 'completed' as const,
         ocrRaw: response, // Store raw response
-        ocrEntities: response.results?.[0]?.entities || [] // Store raw entities
+        ocrEntities: response.entities || [] // Store raw entities from new format
       };
 
       // If we have entities, process them into fields
-      if (response.results?.[0]?.entities) {
-        const entities = response.results[0].entities;
+      if (response.entities && response.entities.length > 0) {
+        const entities = response.entities;
         ocrResult.fields = entities.map((entity: any) => ({
           name: entity.type || 'unknown',
           value: entity.mentionText || entity.normalizedValue?.text || '',

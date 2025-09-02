@@ -427,7 +427,32 @@ export async function processInvoice(blob: Blob): Promise<any> {
     headers: { 'Content-Type': 'application/octet-stream' },
     body: blob,
   });
+  
   const text = await res.text();
+  
+  // Handle error responses
+  if (!res.ok) {
+    try {
+      const errorData = JSON.parse(text);
+      if (errorData.code && errorData.status && errorData.message) {
+        // Structure error based on backend format
+        if (errorData.code === 'CONFIG') {
+          throw new Error('CONFIG: OCR no configurado correctamente');
+        } else if (res.status === 403) {
+          throw new Error('403: Sin permisos para OCR');
+        } else if (res.status === 404) {
+          throw new Error('404: Servicio OCR no encontrado');
+        } else {
+          throw new Error(`${errorData.status}: ${errorData.message}`);
+        }
+      }
+    } catch (parseError) {
+      // Fallback for malformed error responses
+      throw new Error(`OCR error ${res.status}: ${text.slice(0, 180)}`);
+    }
+  }
+  
+  // Parse successful response
   try { 
     return JSON.parse(text); 
   } catch { 
