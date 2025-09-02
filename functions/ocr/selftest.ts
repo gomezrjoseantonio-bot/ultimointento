@@ -29,7 +29,7 @@ const validateOCREnvironment = (): SelfTestResponse => {
     return {
       ok: false,
       code: "CONFIG",
-      message: `Missing required environment variables: ${missing.join(', ')}`
+      message: "OCR: configuración incompleta"
     };
   }
 
@@ -39,7 +39,7 @@ const validateOCREnvironment = (): SelfTestResponse => {
     return {
       ok: false,
       code: "CONFIG",
-      message: "DOC_AI_PROJECT_ID must be a valid number"
+      message: "OCR: configuración incompleta"
     };
   }
 
@@ -48,7 +48,7 @@ const validateOCREnvironment = (): SelfTestResponse => {
     return {
       ok: false,
       code: "CONFIG",
-      message: "DOC_AI_LOCATION must be set to 'eu'"
+      message: "OCR: configuración incompleta"
     };
   }
 
@@ -58,7 +58,7 @@ const validateOCREnvironment = (): SelfTestResponse => {
     return {
       ok: false,
       code: "CONFIG",
-      message: `DOC_AI_ENDPOINT must be set to '${expectedEndpoint}'`
+      message: "OCR: configuración incompleta"
     };
   }
 
@@ -80,7 +80,7 @@ const validateOCREnvironment = (): SelfTestResponse => {
 
   return {
     ok: true,
-    endpointHost: expectedEndpoint,
+    endpointHost: process.env.DOC_AI_ENDPOINT,
     processorPath
   };
 };
