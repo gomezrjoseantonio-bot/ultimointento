@@ -216,6 +216,43 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
           {ocrResult?.status === 'processing' && (
             <p className="text-sm mt-1">Procesando documento...</p>
           )}
+          {ocrResult?.status === 'error' && (
+            <div className="mt-2">
+              <p className="text-sm text-red-600">Error en el procesamiento OCR</p>
+              {ocrResult.error && (
+                <p className="text-xs text-gray-400 mt-1">{ocrResult.error}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // H-OCR-DEBUG: Show debug info if no fields were extracted but OCR completed
+  if (ocrResult.fields.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="text-center text-gray-500">
+          <Eye className="mx-auto h-8 w-8 mb-2" />
+          <p>OCR completado pero no se encontraron campos</p>
+          <p className="text-sm mt-1">Motor: {ocrResult.engine}</p>
+          <p className="text-sm">Confianza global: {(ocrResult.confidenceGlobal * 100).toFixed(1)}%</p>
+          {isDev && (
+            <div className="mt-4 text-left">
+              <button
+                onClick={() => setShowDevJson(true)}
+                className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded"
+              >
+                Ver respuesta cruda (DEV)
+              </button>
+              {showDevJson && (
+                <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96 mt-2">
+                  {JSON.stringify(ocrResult, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

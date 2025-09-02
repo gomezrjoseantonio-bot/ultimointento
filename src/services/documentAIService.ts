@@ -1,22 +1,66 @@
 // H-OCR-FIX: Enhanced OCR Service for Google Document AI integration
 import { OCRResult, OCRField } from './db';
 
-// H-OCR-FIX: Document AI entity type mappings
+// H-OCR-FIX: Document AI entity type mappings for EU Invoice processor
+// Based on Google Document AI EU Invoice processor schema
 const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
+  // Amount fields
   'total_amount': 'total_amount',
-  'purchase_total': 'purchase_total', 
-  'total_monto': 'total_monto',
-  'subtotal': 'subtotal',
-  'net_amount': 'net_amount',
+  'net_amount': 'net_amount', 
+  'subtotal_amount': 'subtotal',
   'tax_amount': 'tax_amount',
+  'total_tax_amount': 'tax_amount',
+  'vat_amount': 'tax_amount',
+  'purchase_total': 'total_amount',
+  'total_monto': 'total_amount',
+  'subtotal': 'subtotal',
+  
+  // Currency
+  'currency': 'currency',
+  
+  // Invoice details
   'invoice_id': 'invoice_id',
+  'invoice_number': 'invoice_id',
+  'document_id': 'invoice_id',
   'invoice_date': 'invoice_date',
-  'date': 'date',
+  'issue_date': 'invoice_date',
+  'date': 'invoice_date',
+  'due_date': 'due_date',
+  'payment_due_date': 'due_date',
+  
+  // Supplier information
   'supplier_name': 'supplier_name',
-  'receiver_name': 'receiver_name',
+  'supplier_address': 'supplier_address',
   'supplier_tax_id': 'supplier_tax_id',
+  'supplier_registration_number': 'supplier_tax_id',
+  'supplier_email': 'supplier_email',
+  'supplier_phone': 'supplier_phone',
+  'vendor_name': 'supplier_name',
+  'vendor_address': 'supplier_address',
+  
+  // Receiver/Customer information  
+  'receiver_name': 'receiver_name',
+  'receiver_address': 'receiver_address',
+  'receiver_tax_id': 'receiver_tax_id',
+  'customer_name': 'receiver_name',
+  'customer_address': 'receiver_address',
+  
+  // Tax details
   'tax_id': 'tax_id',
-  'iban': 'iban'
+  'vat_id': 'supplier_tax_id',
+  'tax_rate': 'tax_rate',
+  'vat_rate': 'tax_rate',
+  
+  // Payment details
+  'iban': 'iban',
+  'account_number': 'iban',
+  'payment_terms': 'payment_terms',
+  
+  // Line items and descriptions
+  'line_item': 'line_item',
+  'line_item_description': 'line_item_description',
+  'line_item_quantity': 'line_item_quantity',
+  'line_item_amount': 'line_item_amount'
 };
 
 // H-OCR-FIX: Format currency value from Document AI
@@ -83,6 +127,11 @@ const formatDateFromDocumentAI = (value: any): string => {
 const processDocumentAIEntity = (entity: any): OCRField | null => {
   const entityType = entity.type?.toLowerCase();
   const mappedType = ENTITY_TYPE_MAPPINGS[entityType];
+  
+  // DEV: Log unmapped entity types for debugging
+  if (!mappedType && process.env.NODE_ENV === 'development') {
+    console.warn('Unmapped entity type:', entityType, 'value:', entity.mentionText);
+  }
   
   if (!mappedType) {
     return null; // Skip unmapped entity types
@@ -186,11 +235,29 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   const fields: OCRField[] = [];
   
   if (firstResult.entities) {
+    // DEV: Log all raw entities for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Document AI entities received:', firstResult.entities.length);
+      firstResult.entities.forEach((entity: any, index: number) => {
+        console.info(`Entity ${index}:`, {
+          type: entity.type,
+          mentionText: entity.mentionText,
+          confidence: entity.confidence,
+          normalizedValue: entity.normalizedValue
+        });
+      });
+    }
+    
     for (const entity of firstResult.entities) {
       const ocrField = processDocumentAIEntity(entity);
       if (ocrField) {
         fields.push(ocrField);
       }
+    }
+    
+    // DEV: Log mapping results
+    if (process.env.NODE_ENV === 'development') {
+      console.info('Mapped fields:', fields.length, 'from', firstResult.entities.length, 'entities');
     }
   }
   
@@ -225,6 +292,12 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
 // H-OCR-FIX: Main OCR processing function
 export const processDocumentOCR = async (documentBlob: Blob, filename: string): Promise<OCRResult> => {
   try {
+    // DEV: Check for demo/test mode
+    if (process.env.NODE_ENV === 'development' && filename.toLowerCase().includes('demo')) {
+      // Return mock OCR result for testing UI
+      return createMockOCRResult(filename);
+    }
+    
     // Convert blob to file for form data
     const file = new File([documentBlob], filename, { type: documentBlob.type });
     
@@ -247,6 +320,77 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
       error: error instanceof Error ? error.message : 'Error desconocido en OCR'
     };
   }
+};
+
+// H-OCR-DEBUG: Create mock OCR result for testing
+const createMockOCRResult = (filename: string): OCRResult => {
+  return {
+    engine: 'document-ai-invoice:DEMO',
+    timestamp: new Date().toISOString(),
+    confidenceGlobal: 0.87,
+    status: 'completed',
+    fields: [
+      {
+        name: 'supplier_name',
+        value: 'ENDESA ENERGÍA XXI S.L.U.',
+        confidence: 0.95,
+        raw: 'ENDESA ENERGÍA XXI S.L.U.'
+      },
+      {
+        name: 'supplier_tax_id',
+        value: 'B-81948077',
+        confidence: 0.89,
+        raw: 'B-81948077'
+      },
+      {
+        name: 'invoice_id',
+        value: 'FE-2024-001234',
+        confidence: 0.92,
+        raw: 'FE-2024-001234'
+      },
+      {
+        name: 'invoice_date',
+        value: '15/01/2024',
+        confidence: 0.94,
+        raw: '15/01/2024'
+      },
+      {
+        name: 'due_date',
+        value: '15/02/2024',
+        confidence: 0.85,
+        raw: '15/02/2024'
+      },
+      {
+        name: 'total_amount',
+        value: '156,78',
+        confidence: 0.96,
+        raw: '156,78 €'
+      },
+      {
+        name: 'net_amount',
+        value: '129,65',
+        confidence: 0.93,
+        raw: '129,65'
+      },
+      {
+        name: 'tax_amount',
+        value: '27,13',
+        confidence: 0.91,
+        raw: '27,13'
+      },
+      {
+        name: 'currency',
+        value: 'EUR',
+        confidence: 0.99,
+        raw: '€'
+      }
+    ],
+    engineInfo: {
+      type: 'document-ai-invoice',
+      displayName: 'Document AI — Demo Mode',
+      description: 'Mock OCR response for testing'
+    }
+  };
 };
 
 // H-OCR-FIX: Check if OCR suggests expense creation

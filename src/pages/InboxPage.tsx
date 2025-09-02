@@ -5,7 +5,8 @@ import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
 import QADashboard from '../components/dev/QADashboard';
-import { getOCRConfig, processDocumentOCR, processInvoice } from '../services/ocrService';
+import { getOCRConfig } from '../services/ocrService';
+import { processDocumentOCR } from '../services/documentAIService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -223,40 +224,16 @@ const InboxPage: React.FC = () => {
         doc.id === document.id ? processingDoc : doc
       ));
 
-      // Process OCR using new endpoint
-      const response = await processInvoice(blob);
+      // Process OCR using Document AI service 
+      const ocrResult = await processDocumentOCR(blob, document.filename);
       
       // DEV telemetry: Log response
       if (process.env.NODE_ENV === 'development') {
-        console.info('OCR ▶ response', { ok: true, status: 200 });
-      }
-      
-      // Transform response to OCR format for UI
-      const ocrResult = {
-        engine: 'gdocai:invoice',
-        timestamp: new Date().toISOString(),
-        confidenceGlobal: 0.85, // Default confidence
-        fields: [],
-        status: 'completed' as const,
-        ocrRaw: response, // Store raw response
-        ocrEntities: response.entities || [] // Store raw entities from new format
-      };
-
-      // If we have entities, process them into fields
-      if (response.entities && response.entities.length > 0) {
-        const entities = response.entities;
-        ocrResult.fields = entities.map((entity: any) => ({
-          name: entity.type || 'unknown',
-          value: entity.mentionText || entity.normalizedValue?.text || '',
-          confidence: entity.confidence || 0,
-          page: entity.pageAnchor?.pageRefs?.[0]?.page || 1,
-          raw: entity.mentionText || ''
-        }));
-        
-        // Calculate global confidence
-        if (ocrResult.fields.length > 0) {
-          ocrResult.confidenceGlobal = ocrResult.fields.reduce((sum: number, field: any) => sum + field.confidence, 0) / ocrResult.fields.length;
-        }
+        console.info('OCR ▶ response', { 
+          fields: ocrResult.fields?.length || 0,
+          confidence: ocrResult.confidenceGlobal,
+          status: ocrResult.status 
+        });
       }
       
       // Update with results
