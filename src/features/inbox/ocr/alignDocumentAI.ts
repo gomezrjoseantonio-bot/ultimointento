@@ -20,7 +20,21 @@ export type AlignedInvoice = {
 
 function parseMoney(txt?: string, fallback = 0): number {
   if (!txt) return fallback;
-  return Number(txt.replace(/\./g,'').replace(',', '.').replace(/[^\d.-]/g,'')) || fallback;
+  // Remove currency symbols but preserve decimal separator
+  // First, replace European format (1.234,56) with standard format (1234.56)
+  let cleanTxt = txt.replace(/[^\d,.-]/g, ''); // Remove currency symbols
+  
+  // Handle European decimal format: if there's a comma and it's the last separator, it's decimal
+  if (cleanTxt.includes(',') && cleanTxt.includes('.')) {
+    // Both comma and dot - assume European format (1.234,56)
+    cleanTxt = cleanTxt.replace(/\./g, '').replace(',', '.');
+  } else if (cleanTxt.includes(',') && !cleanTxt.includes('.')) {
+    // Only comma - assume it's decimal separator
+    cleanTxt = cleanTxt.replace(',', '.');
+  }
+  // If only dots, assume US format (1,234.56 or 1234.56)
+  
+  return Number(cleanTxt) || fallback;
 }
 
 export function alignDocumentAI(result: any): AlignedInvoice {
