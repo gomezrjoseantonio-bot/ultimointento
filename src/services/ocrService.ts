@@ -139,10 +139,13 @@ export const validateInvoiceAmounts = (base: number, iva: number, total: number,
   const difference = Math.abs(total - expectedTotal);
   const tolerance = 0.01; // ±0.01 tolerance as specified in requirements
   
+  // Round difference to avoid floating point precision issues
+  const roundedDifference = Math.round(difference * 100) / 100;
+  
   return {
-    isValid: difference <= tolerance,
+    isValid: roundedDifference <= tolerance,
     expectedTotal,
-    difference
+    difference: roundedDifference
   };
 };
 
