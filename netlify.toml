@@ -1,20 +1,17 @@
-# --- Build ---
 [build]
   command  = "npm ci && npm run build"
   publish  = "build"
 
-# --- Functions (carpeta donde están tus handlers) ---
 [functions]
   directory    = "functions"
   node_bundler = "esbuild"
 
-# --- SPA routing (válido; NO interfiere con /.netlify/functions/*) ---
 [[redirects]]
   from   = "/*"
   to     = "/index.html"
   status = 200
 
-# --- Security headers ---
+# (Opcional) headers de seguridad que ya tenías:
 [[headers]]
   for = "/*"
   [headers.values]
@@ -22,5 +19,4 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    # Nota: connect-src 'self' permite llamadas a /.netlify/functions/*
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
