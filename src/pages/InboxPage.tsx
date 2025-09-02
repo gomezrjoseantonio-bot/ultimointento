@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { initDB, deleteDocumentAndBlob } from '../services/db';
+import { initDB, deleteDocumentAndBlob, getDocumentBlob } from '../services/db';
 import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-react';
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
 import QADashboard from '../components/dev/QADashboard';
-import { getOCRConfig, processDocumentOCR } from '../services/ocrService';
+import { getOCRConfig, processDocumentOCR, processInvoice } from '../services/ocrService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -181,10 +181,26 @@ const InboxPage: React.FC = () => {
   // H-OCR: Manual OCR processing function
   const handleManualOCR = async (document: any) => {
     try {
+      // Get the blob from IndexedDB/BlobStore or document.content
+      let blob: Blob | null = null;
+      
+      if (document?.id) {
+        blob = await getDocumentBlob(document.id);
+      }
+      
+      if (!blob && document?.content) {
+        blob = new Blob([document.content], { type: document.type });
+      }
+      
+      if (!blob) {
+        toast.error('No se pudo encontrar el archivo para procesar');
+        return;
+      }
+
       // DEV telemetry: Log start of OCR processing
       if (process.env.NODE_ENV === 'development') {
-        const sizeKB = Math.round((document.content?.size || 0) / 1024);
-        console.log(`OCR call → endpoint: /.netlify/functions/ocr-documentai, sizeKB: ${sizeKB}`);
+        const sizeKB = Math.round(blob.size / 1024);
+        console.info('OCR ▶ calling /.netlify/functions/ocr-documentai', { sizeKB });
       }
 
       // Set processing status
@@ -207,8 +223,41 @@ const InboxPage: React.FC = () => {
         doc.id === document.id ? processingDoc : doc
       ));
 
-      // Process OCR
-      const ocrResult = await processDocumentOCR(document.content, document.filename);
+      // Process OCR using new endpoint
+      const response = await processInvoice(blob);
+      
+      // DEV telemetry: Log response
+      if (process.env.NODE_ENV === 'development') {
+        console.info('OCR ▶ response', { ok: true, status: 200 });
+      }
+      
+      // Transform response to OCR format for UI
+      const ocrResult = {
+        engine: 'gdocai:invoice',
+        timestamp: new Date().toISOString(),
+        confidenceGlobal: 0.85, // Default confidence
+        fields: [],
+        status: 'completed' as const,
+        ocrRaw: response, // Store raw response
+        ocrEntities: response.results?.[0]?.entities || [] // Store raw entities
+      };
+
+      // If we have entities, process them into fields
+      if (response.results?.[0]?.entities) {
+        const entities = response.results[0].entities;
+        ocrResult.fields = entities.map((entity: any) => ({
+          name: entity.type || 'unknown',
+          value: entity.mentionText || entity.normalizedValue?.text || '',
+          confidence: entity.confidence || 0,
+          page: entity.pageAnchor?.pageRefs?.[0]?.page || 1,
+          raw: entity.mentionText || ''
+        }));
+        
+        // Calculate global confidence
+        if (ocrResult.fields.length > 0) {
+          ocrResult.confidenceGlobal = ocrResult.fields.reduce((sum: number, field: any) => sum + field.confidence, 0) / ocrResult.fields.length;
+        }
+      }
       
       // Update with results
       const updatedDoc = {
@@ -231,22 +280,36 @@ const InboxPage: React.FC = () => {
         console.warn('Failed to update OCR in IndexedDB:', error);
       }
 
-      toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
+      const entityCount = ocrResult.fields.length;
+      toast.success(`OCR completado para ${document.filename}: ${entityCount} entidades detectadas`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       
-      // Handle specific error codes for toast/banner display
-      if (errorMessage.includes('OCR_ERROR_CONFIG')) {
-        toast.error('CONFIG: OCR no configurado correctamente');
-      } else if (errorMessage.includes('OCR_ERROR_403')) {
-        toast.error('403: Sin permisos para OCR');
-      } else if (errorMessage.includes('OCR_ERROR_404')) {
-        toast.error('404: Servicio OCR no encontrado');
-      } else if (errorMessage.includes('OCR_ERROR_429')) {
-        toast.error('429: Límite de OCR excedido');
-      } else {
-        toast.error(`Error OCR: ${errorMessage}`);
+      // Handle specific error codes/status from backend JSON response
+      let displayMessage = `Error OCR: ${errorMessage}`;
+      
+      try {
+        // Check if error message contains JSON with code/status/message structure
+        if (errorMessage.includes('{') && errorMessage.includes('code')) {
+          const errorData = JSON.parse(errorMessage.substring(errorMessage.indexOf('{')));
+          if (errorData.code && errorData.status && errorData.message) {
+            displayMessage = `${errorData.code}: ${errorData.message}`;
+          }
+        }
+      } catch {
+        // Fallback to specific error patterns
+        if (errorMessage.includes('CONFIG')) {
+          displayMessage = 'CONFIG: OCR no configurado correctamente';
+        } else if (errorMessage.includes('403')) {
+          displayMessage = '403: Sin permisos para OCR';
+        } else if (errorMessage.includes('404')) {
+          displayMessage = '404: Servicio OCR no encontrado';
+        } else if (errorMessage.includes('429')) {
+          displayMessage = '429: Límite de OCR excedido';
+        }
       }
+      
+      toast.error(displayMessage);
       
       // Update with error status
       const errorDoc = {

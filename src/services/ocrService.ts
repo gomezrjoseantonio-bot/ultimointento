@@ -420,6 +420,21 @@ export const getOCRConfig = (): OCRConfig => {
   };
 };
 
+// H-OCR: Process invoice with direct blob upload to Netlify function
+export async function processInvoice(blob: Blob): Promise<any> {
+  const res = await fetch('/.netlify/functions/ocr-documentai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: blob,
+  });
+  const text = await res.text();
+  try { 
+    return JSON.parse(text); 
+  } catch { 
+    throw new Error(`OCR bad JSON: ${text.slice(0,180)}`); 
+  }
+}
+
 // H-OCR: Format currency in Spanish locale
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-ES', {
