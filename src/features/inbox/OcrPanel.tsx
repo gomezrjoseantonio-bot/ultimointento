@@ -27,13 +27,14 @@ import {
   checkRequiredFieldsForApply,
   selectBestPageForExtraction
 } from '../../services/ocrService';
-import { telemetry, qaChecklist } from '../../services/telemetryService';
 import { alignDocumentAI, AlignedInvoice } from './ocr/alignDocumentAI';
+import toast from 'react-hot-toast';
 
 interface OcrPanelProps {
   document: any; // Document with OCR result
   onApplyToExpense?: (ocrData: any) => void;
   onApplyToCAPEX?: (ocrData: any) => void;
+  onUpdate?: (documentId: number, updates: any) => void;
 }
 
 interface FieldMapping {
@@ -162,9 +163,11 @@ const selectBestPage = (ocrResult: OCRResult): number => {
   return bestPageIndex + 1; // Convert to 1-based indexing for UI
 };
 
-const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX }) => {
+const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX, onUpdate }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [editableFields, setEditableFields] = useState<Record<string, string>>({});
+  const [editableServiceFields, setEditableServiceFields] = useState<Record<string, string>>({});
+  const [editablePaymentFields, setEditablePaymentFields] = useState<Record<string, string>>({});
   const [processingApply, setProcessingApply] = useState(false);
   const [showRawEntities, setShowRawEntities] = useState(false);
   const [showDevJson, setShowDevJson] = useState(false);
@@ -200,44 +203,19 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         console.error('Error aligning DocumentAI result:', error);
         setAligned(undefined);
       }
-    } else {
-      setAligned(undefined);
     }
   }, [ocrResult]);
 
-  if (!ocrResult) {
+  // Early return if no OCR result - moved after hooks to comply with rules of hooks
+  if (!ocrResult || ocrResult.status !== 'completed') {
     return (
-      <div className="bg-gray-50 rounded-xl p-6">
-        <div className="flex items-center space-x-3 text-gray-500">
-          <FileText className="h-5 w-5" />
-          <span className="text-sm">No hay datos OCR disponibles</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (ocrResult.status === 'processing') {
-    return (
-      <div className="bg-blue-50 rounded-xl p-6">
-        <div className="flex items-center space-x-3 text-blue-600">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="text-sm font-medium">Procesando documento OCR...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (ocrResult.status === 'error') {
-    return (
-      <div className="bg-red-50 rounded-xl p-6">
-        <div className="flex items-center space-x-3 text-red-600">
-          <XCircle className="h-5 w-5" />
-          <div>
-            <p className="text-sm font-medium">Error en procesamiento OCR</p>
-            {ocrResult.error && (
-              <p className="text-xs text-red-500 mt-1">{ocrResult.error}</p>
-            )}
-          </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="text-center text-gray-500">
+          <Eye className="mx-auto h-8 w-8 mb-2" />
+          <p>No hay datos de OCR disponibles</p>
+          {ocrResult?.status === 'processing' && (
+            <p className="text-sm mt-1">Procesando documento...</p>
+          )}
         </div>
       </div>
     );
@@ -328,53 +306,87 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   // H-OCR-ALIGN: Final check for Apply button
   const canApply = requiredFieldsCheck.canApply && amountValidation.isValid && dateValidation.isValid;
 
-  // H-OCR-ALIGN: QA checks for OCR processing
-  useEffect(() => {
-    if (ocrResult && ocrResult.status === 'completed') {
-      // QA: Test confidence threshold enforcement
-      const totalFieldsWithLowConfidence = processedFields.filter(f => f.confidence < OCR_ACCEPT_CONFIDENCE).length;
-      const fieldsLeftEmpty = processedFields.filter(f => f.confidence < OCR_ACCEPT_CONFIDENCE && !f.value).length;
-      
-      qaChecklist.ocrProcessing.confidenceThreshold(OCR_ACCEPT_CONFIDENCE, canApply);
-      qaChecklist.ocrProcessing.noInvention(totalFieldsWithLowConfidence, fieldsLeftEmpty);
-      qaChecklist.ocrProcessing.euEndpoint('eu-documentai.googleapis.com');
-      
-      // Telemetry for OCR result analysis
-      telemetry.measurePerformance('ocr_field_analysis', 0, {
-        totalFields: processedFields.length,
-        highConfidenceFields: processedFields.filter(f => f.confidence >= OCR_ACCEPT_CONFIDENCE).length,
-        validFields: processedFields.filter(f => f.status === 'valid').length,
-        canApply,
-        avgConfidence: processedFields.reduce((sum, f) => sum + f.confidence, 0) / processedFields.length,
-        amountValidation: amountValidation.isValid,
-        dateValidation: dateValidation.isValid
-      });
-      
-      // H-OCR-ALIGN: Save OCR metadata for draft
-      if (canApply) {
-        const ocrMeta = {
-          pageUsed: selectedPage,
-          confidences: {
-            total: totalField?.confidence || 0,
-            subtotal: subtotalField?.confidence || 0,
-            tax: taxField?.confidence || 0
-          },
-          checks: {
-            sumOk: amountValidation.isValid,
-            datesOk: dateValidation.isValid
-          }
-        };
-        // This would be saved with the draft when Apply is clicked
-        telemetry.measurePerformance('ocr_metadata_prepared', 0, ocrMeta);
-      }
-    }
-  }, [ocrResult, processedFields, canApply, selectedPage, amountValidation, dateValidation, totalField, subtotalField, taxField]);
-
   const handleFieldEdit = (fieldName: string, value: string) => {
     setEditableFields(prev => ({
       ...prev,
       [fieldName]: value
     }));
+  };
+
+  const handleConfirmAndSave = async () => {
+    if (!aligned || !onUpdate) return;
+
+    try {
+      // Get final values from editable fields
+      const finalServiceAddress = editableServiceFields.serviceAddress ?? aligned.service.serviceAddress ?? '';
+      const finalSupplyPointId = editableServiceFields.supplyPointId ?? aligned.service.supplyPointId ?? '';
+      const finalPaymentMethod = editablePaymentFields.method ?? aligned.payment.method;
+      const finalIban = editablePaymentFields.iban ?? aligned.payment.iban ?? '';
+      const finalPaymentDate = editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? '';
+
+      // Create metadata object
+      const extendedMetadata = {
+        ...document.metadata,
+        service: {
+          address: finalServiceAddress,
+          cups: finalSupplyPointId
+        },
+        payment: {
+          method: finalPaymentMethod,
+          iban: finalIban,
+          date: finalPaymentDate
+        }
+      };
+
+      // Generate automatic tags
+      const newTags = [...(document.metadata.tags || [])];
+      
+      // Provider tag
+      if (aligned.supplier.name) {
+        const providerTag = `proveedor/${aligned.supplier.name.toLowerCase().replace(/\s+/g, '-')}`;
+        if (!newTags.includes(providerTag)) {
+          newTags.push(providerTag);
+        }
+      }
+
+      // Payment method tag
+      const paymentTag = `pago/metodo:${finalPaymentMethod}`;
+      if (!newTags.includes(paymentTag)) {
+        newTags.push(paymentTag);
+      }
+
+      // CUPS tag
+      if (finalSupplyPointId) {
+        const cupsTag = `suministro/cups:${finalSupplyPointId}`;
+        if (!newTags.includes(cupsTag)) {
+          newTags.push(cupsTag);
+        }
+      }
+
+      // Payment date forecast tag
+      if (finalPaymentDate) {
+        try {
+          const paymentDateObj = new Date(finalPaymentDate);
+          const yearMonth = `${paymentDateObj.getFullYear()}-${String(paymentDateObj.getMonth() + 1).padStart(2, '0')}`;
+          const forecastTag = `previsión/${yearMonth}`;
+          if (!newTags.includes(forecastTag)) {
+            newTags.push(forecastTag);
+          }
+        } catch (e) {
+          console.warn('Error parsing payment date for forecast tag:', e);
+        }
+      }
+
+      extendedMetadata.tags = newTags;
+
+      // Update document
+      await onUpdate(document.id, { metadata: extendedMetadata });
+      toast.success('Metadatos OCR guardados correctamente');
+
+    } catch (error) {
+      console.error('Error saving OCR metadata:', error);
+      toast.error('Error al guardar los metadatos');
+    }
   };
 
   const handleApplyToExpense = async () => {
@@ -606,7 +618,107 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     <span className="text-sm text-red-800">⚠ {aligned.meta.blockingErrors[0]}</span>
                   </div>
                 )}
+                {/* Amount validation */}
+                {aligned.invoice.net.value > 0 && aligned.invoice.tax.value > 0 && aligned.invoice.total.value > 0 && (
+                  Math.abs((aligned.invoice.net.value + aligned.invoice.tax.value) - aligned.invoice.total.value) <= 0.02 ? (
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                      <span className="text-sm text-green-800">✓ Los importes cuadran correctamente</span>
+                    </div>
+                  ) : (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                      <span className="text-sm text-amber-800">⚠ Revisar importes: {(aligned.invoice.net.value + aligned.invoice.tax.value).toFixed(2)} ≠ {aligned.invoice.total.value.toFixed(2)}</span>
+                    </div>
+                  )
+                )}
               </div>
+            </section>
+
+            {/* Service Section */}
+            <section>
+              <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                <MapPin className="h-5 w-5" />
+                <span>Servicio</span>
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Dirección de servicio:</label>
+                  <input
+                    type="text"
+                    value={editableServiceFields.serviceAddress ?? aligned.service.serviceAddress ?? ''}
+                    onChange={(e) => setEditableServiceFields(prev => ({ ...prev, serviceAddress: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Dirección de instalación o suministro"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">CUPS / Punto de suministro:</label>
+                  <input
+                    type="text"
+                    value={editableServiceFields.supplyPointId ?? aligned.service.supplyPointId ?? ''}
+                    onChange={(e) => setEditableServiceFields(prev => ({ ...prev, supplyPointId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="ES****..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Payment Section */}
+            <section>
+              <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                <CreditCard className="h-5 w-5" />
+                <span>Pago</span>
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Método de pago:</label>
+                  <select
+                    value={editablePaymentFields.method ?? aligned.payment.method}
+                    onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, method: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Desconocido">Desconocido</option>
+                    <option value="SEPA">SEPA / Domiciliación</option>
+                    <option value="Transfer">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">IBAN:</label>
+                  <input
+                    type="text"
+                    value={editablePaymentFields.iban ?? aligned.payment.iban ?? ''}
+                    onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="ES** **** **** ** **********"
+                    pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
+                  />
+                  {(editablePaymentFields.method ?? aligned.payment.method) === 'SEPA' && !(editablePaymentFields.iban ?? aligned.payment.iban) && (
+                    <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
+                      <span className="text-sm text-amber-800">⚠ Falta IBAN para domiciliación SEPA</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Fecha de pago:</label>
+                  <input
+                    type="date"
+                    value={editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? ''}
+                    onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, paymentDate: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Confirm and Save Button */}
+            <section className="pt-6 border-t border-gray-200">
+              <button
+                onClick={() => handleConfirmAndSave()}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Confirmar y guardar metadatos
+              </button>
             </section>
           </div>
         ) : (
