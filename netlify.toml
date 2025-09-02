@@ -1,9 +1,17 @@
 [build]
   command = "npm ci && npm run build"
   publish = "build"
-  functions = "functions"
+
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"
   
-# Handle SPA routing by redirecting all routes to index.html
+# Handle SPA routing by redirecting all routes to index.html, except for Netlify functions
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
