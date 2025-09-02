@@ -7,11 +7,46 @@
 @tailwind utilities;
 
 :root {
-  /* Brand colors (immutable) */
-  --brand-navy: #022D5E;
-  --brand-teal: #2EB0CB;
+  /* Marca ATLAS */
+  --brand-navy: #0F3D62;   /* ATLAS azul marino (logotipo) */
+  --brand-teal: #2EB0CB;   /* ATLAS teal/acento (barra logo) */
+
+  /* Paleta derivada */
+  --text: #0F2433;         /* texto principal */
+  --text-muted: #5B7186;
+  --bg: #F7F9FC;           /* fondo app */
+  --surface: #FFFFFF;      /* tarjetas/paneles */
+  --surface-2: #F2F6FA;
+  --border: #E1E8F0;
+
+  /* Estados (coherentes con marca, sin inventar nuevos primarios) */
+  --success: #2EAF7D;
+  --warning: #F0A202;
+  --danger:  #E35D5D;
+  --info:    var(--brand-teal);
+
+  /* Interacciones */
+  --primary: var(--brand-navy);
+  --primary-contrast: #FFFFFF;
+  --primary-hover: #0C3352;
+  --accent: var(--brand-teal);
+  --accent-hover: #1F9CB7;
+
+  /* Tipografía y ritmo */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-1: 0 1px 2px rgba(15, 61, 98, .06), 0 4px 12px rgba(15, 61, 98, .04);
+  --shadow-2: 0 6px 18px rgba(15, 61, 98, .08);
+
+  /* Controles */
+  --chip-bg: #ECF7FA;          /* chips neutrales (etiquetas OCR, estados) */
+  --chip-text: #0F3D62;
+  --input-bg: var(--surface);
+  --input-focus: var(--accent);
   
-  /* Neutrals (using Tailwind neutral/slate) */
+  /* Legacy neutral colors for backward compatibility */
   --neutral-50: #F8FAFC;
   --neutral-100: #F1F5F9;
   --neutral-200: #E2E8F0;
@@ -22,23 +57,17 @@
   --neutral-700: #334155;
   --neutral-800: #1E293B;
   --neutral-900: #0F172A;
-  
-  /* Semantics */
-  --success: #16A34A;
-  --warning: #F59E0B;
-  --error: #DC2626;
-  --info: #2563EB;
 }
 
-body {
+/* Aplicación rápida (componentes base) */
+html, body { 
+  font-family: var(--font-sans); 
+  color: var(--text); 
+  background: var(--bg); 
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  background-color: var(--neutral-50);
 }
 
 html {
@@ -49,25 +78,135 @@ html {
   min-height: 100vh;
 }
 
+/* ATLAS Component System */
+.card { 
+  background: var(--surface); 
+  border: 1px solid var(--border); 
+  border-radius: var(--radius-lg); 
+  box-shadow: var(--shadow-1); 
+}
+
+.btn { 
+  display: inline-flex; 
+  gap: .5rem; 
+  align-items: center; 
+  border-radius: var(--radius-md); 
+  padding: .6rem .9rem; 
+  font-weight: 600; 
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-primary { 
+  background: var(--primary); 
+  color: var(--primary-contrast); 
+}
+
+.btn-primary:hover { 
+  background: var(--primary-hover); 
+}
+
+.btn-accent { 
+  background: var(--accent); 
+  color: #fff; 
+}
+
+.btn-accent:hover { 
+  background: var(--accent-hover); 
+}
+
+.badge { 
+  border-radius: 999px; 
+  padding: .2rem .6rem; 
+  font-weight: 600; 
+  font-size: .78rem; 
+  display: inline-block;
+}
+
+.badge-success { 
+  background: rgba(46,175,125,.12); 
+  color: #1C7C5A; 
+}
+
+.badge-warning { 
+  background: rgba(240,162,2,.14); 
+  color: #935E00; 
+}
+
+.badge-danger { 
+  background: rgba(227,93,93,.12); 
+  color: #8D2C2C; 
+}
+
+.badge-info { 
+  background: rgba(46,176,203,.12); 
+  color: #126579; 
+}
+
+.chip { 
+  background: var(--chip-bg); 
+  color: var(--chip-text); 
+  border-radius: 999px; 
+  padding: .25rem .6rem; 
+  display: inline-block;
+  font-size: .875rem;
+  font-weight: 500;
+}
+
+.input, select { 
+  background: var(--input-bg); 
+  border: 1px solid var(--border); 
+  border-radius: var(--radius-md); 
+  padding: .55rem .7rem; 
+  font-family: var(--font-sans);
+  color: var(--text);
+  width: 100%;
+}
+
+.input:focus, select:focus { 
+  outline: 2px solid var(--input-focus); 
+  outline-offset: 1px; 
+  border-color: var(--input-focus);
+}
+
+/* Temas por contexto */
+.theme-inbox { 
+  --primary: var(--brand-navy); 
+  --accent: var(--brand-teal); 
+}
+
+.theme-horizon { 
+  --primary: var(--brand-navy); 
+  --accent: var(--brand-teal); 
+}
+
+.theme-pulse { 
+  --primary: var(--brand-navy); 
+  --accent: var(--brand-teal); 
+  /* KPI cards pueden usar --accent */ 
+}
+
 /* Tabular numbers for KPIs */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Unified Button Styles */
+/* Enhanced Component Styles (maintaining compatibility) */
 @layer components {
   /* Base button styles */
   .btn-base {
     @apply inline-flex items-center px-4 py-2 text-sm font-medium rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
   
-  /* Primary buttons - use module color */
+  /* Primary buttons - now use consistent navy for both modules */
   .btn-primary-horizon {
     @apply btn-base bg-brand-navy text-white hover:bg-navy-800 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-primary-pulse {
-    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-brand-navy text-white hover:bg-navy-800 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Secondary/Outline buttons */
@@ -76,7 +215,7 @@ html {
   }
   
   .btn-secondary-pulse {
-    @apply btn-base border border-neutral-300 text-brand-teal bg-white hover:bg-neutral-50 focus:ring-brand-teal;
+    @apply btn-base border border-neutral-300 text-brand-navy bg-white hover:bg-neutral-50 focus:ring-brand-navy;
   }
   
   /* Ghost buttons */
@@ -85,24 +224,40 @@ html {
   }
   
   .btn-ghost-pulse {
-    @apply btn-base border-transparent text-brand-teal bg-transparent hover:bg-neutral-50 focus:ring-brand-teal;
+    @apply btn-base border-transparent text-brand-navy bg-transparent hover:bg-neutral-50 focus:ring-brand-navy;
+  }
+  
+  /* Accent buttons (for secondary positive actions) */
+  .btn-accent-horizon {
+    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-accent-pulse {
+    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */
   .btn-danger {
-    @apply btn-base bg-error text-white hover:bg-red-700 focus:ring-error disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-danger-outline {
-    @apply btn-base border border-error text-error bg-white hover:bg-red-50 focus:ring-error;
+    @apply btn-base border border-red-600 text-red-600 bg-white hover:bg-red-50 focus:ring-red-600;
   }
 }
 
 /* Clean borders and focus styles */
 @layer base {
-  /* Ensure all borders are solid and use neutral colors */
+  /* Ensure all borders are solid and use ATLAS colors */
   input, select, textarea {
-    @apply border-solid border-neutral-200 focus:border-neutral-300 focus:ring-2 focus:ring-opacity-50;
+    @apply border-solid focus:ring-2 focus:ring-opacity-50;
+    border-color: var(--border);
+  }
+  
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--input-focus);
+    outline: 2px solid var(--input-focus);
+    outline-offset: 1px;
   }
   
   /* Remove any dotted or dashed borders globally */

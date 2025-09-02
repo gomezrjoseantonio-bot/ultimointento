@@ -8,7 +8,7 @@ module.exports = {
     extend: {
       colors: {
         // Official ATLAS brand colors (immutable)
-        'brand-navy': '#022D5E',
+        'brand-navy': '#0F3D62',
         'brand-teal': '#2EB0CB',
         
         // Navy palette for Horizon theme
@@ -20,7 +20,7 @@ module.exports = {
           400: '#5d7cb7',
           500: '#3a5998',
           600: '#2a4073',
-          700: '#022D5E', // Official brand navy
+          700: '#0F3D62', // Official brand navy
           800: '#1a2438',
           900: '#0f131c',
         },
@@ -39,11 +39,12 @@ module.exports = {
           900: '#134e4a',
         },
         
-        // Semantic colors
-        success: '#16A34A',
-        warning: '#F59E0B', 
-        error: '#DC2626',
-        info: '#2563EB',
+        // Semantic colors (aligned with ATLAS design system)
+        success: '#2EAF7D',
+        warning: '#F0A202', 
+        error: '#E35D5D',
+        danger: '#E35D5D',
+        info: '#2EB0CB', // Use brand teal for info
         
         // Neutral colors (consistent with CSS variables)
         neutral: {

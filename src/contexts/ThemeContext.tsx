@@ -28,6 +28,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   
   // Theme configuration based on ATLAS requirements
   const getThemeColors = (module: AppModule) => {
+    // Both modules use navy as primary and teal as accent per ATLAS brand guidelines
     switch (module) {
       case 'horizon':
         return {
@@ -36,8 +37,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         };
       case 'pulse':
         return {
-          primaryColor: 'teal', // Teal primary for Pulse (Personal)
-          accentColor: 'navy',  // Navy accent for Pulse
+          primaryColor: 'navy', // Navy primary for Pulse (Personal) - consistent with brand
+          accentColor: 'teal',  // Teal accent for Pulse
         };
       default:
         return {

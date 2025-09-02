@@ -110,8 +110,8 @@ const SubTabs: React.FC = () => {
     return null;
   }
   
-  const accentColorClass = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
-  const borderColorClass = currentModule === 'horizon' ? 'border-brand-navy' : 'border-brand-teal';
+  const accentColorClass = 'text-brand-navy'; // Both modules use navy as primary
+  const borderColorClass = 'border-brand-navy'; // Both modules use navy as primary
   
   return (
     <div className="border-b border-gray-200">
