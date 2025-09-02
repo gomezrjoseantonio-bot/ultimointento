@@ -2,7 +2,7 @@
 // URL: /.netlify/functions/ocr-selftest
 
 export async function handler() {
-  const host = process.env.DOC_AI_ENDPOINT;
+  const host = "eu-documentai.googleapis.com"; // Fixed EU endpoint
   const pid  = process.env.DOC_AI_PROJECT_ID;
   const loc  = process.env.DOC_AI_LOCATION;
   const prc  = process.env.DOC_AI_PROCESSOR_ID;
@@ -11,7 +11,7 @@ export async function handler() {
   const projectIsNumber = !!pid && /^[0-9]+$/.test(pid || "");
 
   // Config incompleta -> devolvemos CONFIG (no secretos)
-  if (!host || !pid || !loc || !prc || !hasKey || !projectIsNumber) {
+  if (!pid || !loc || !prc || !hasKey || !projectIsNumber) {
     return {
       statusCode: 200,
       headers: { "content-type": "application/json; charset=utf-8" },
@@ -25,15 +25,15 @@ export async function handler() {
           projectIsNumber: projectIsNumber,
           hasLocation: !!loc,
           hasProcessorId: !!prc,
-          hasEndpoint: !!host
+          endpointHost: host
         }
       })
     };
   }
 
-  // OJO: concatenación clásica para evitar backticks
+  // Fixed processor path construction for EU region
   const processorPath =
-    "projects/" + pid + "/locations/" + loc + "/processors/" + prc + ":process";
+    "https://eu-documentai.googleapis.com/v1/projects/" + pid + "/locations/" + loc + "/processors/" + prc + ":process";
 
   return {
     statusCode: 200,
