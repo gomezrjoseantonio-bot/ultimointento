@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CalendarIcon, TrendingUpIcon, AlertTriangleIcon } from 'lucide-react';
+import { CalendarIcon, TrendingUpIcon, AlertTriangleIcon, Download } from 'lucide-react';
 import { AEATCarryForward, PropertyDays, initDB, Property } from '../../../../../services/db';
 import { calculateAEATLimits } from '../../../../../utils/aeatUtils';
 import { formatEuro } from '../../../../../utils/formatUtils';
@@ -131,6 +131,69 @@ const ResumenTab: React.FC = () => {
     loadData();
   }, [selectedYear, loadData]);
 
+  // Export to CSV functionality
+  const exportToCSV = () => {
+    try {
+      // Create CSV content
+      const headers = [
+        'Inmueble',
+        'Dirección', 
+        'Año',
+        'Financiación',
+        'R&C',
+        'Tributos',
+        'Seguros',
+        'Servicios Personales',
+        'CAPEX Mejora',
+        'Mobiliario (10a)',
+        'Total Gastos',
+        'Ingresos Íntegros',
+        'Límite AEAT',
+        'Límite Aplicado',
+        'Exceso'
+      ];
+
+      const rows = summaries.map(summary => [
+        summary.property.alias,
+        summary.property.address,
+        selectedYear.toString(),
+        summary.expenses.financiacion.toFixed(2),
+        summary.expenses.reparacionConservacion.toFixed(2),
+        summary.expenses.tributos.toFixed(2),
+        summary.expenses.seguros.toFixed(2),
+        summary.expenses.serviciosPersonales.toFixed(2),
+        summary.expenses.capexMejora.toFixed(2),
+        summary.expenses.mobiliario.toFixed(2),
+        (Object.values(summary.expenses).reduce((a, b) => a + b, 0)).toFixed(2),
+        summary.limits.totalIncome.toFixed(2),
+        summary.limits.limit.toFixed(2),
+        summary.limits.applied.toFixed(2),
+        summary.limits.excess.toFixed(2)
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `gastos-capex-resumen-${selectedYear}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Resumen exportado a CSV correctamente');
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      toast.error('Error al exportar el resumen');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -150,6 +213,14 @@ const ResumenTab: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          <button
+            onClick={exportToCSV}
+            disabled={summaries.length === 0}
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-brand-navy hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </button>
           <CalendarIcon className="h-5 w-5 text-gray-400" />
           <select
             value={selectedYear}

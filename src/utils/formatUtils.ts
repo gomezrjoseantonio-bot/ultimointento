@@ -5,12 +5,14 @@ export const formatEuro = (amount: number | null | undefined): string => {
     return '—';
   }
   
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
+  // Format with es-ES locale to get comma as decimal separator and dot as thousands separator
+  const formatted = new Intl.NumberFormat('es-ES', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+  
+  // Add thin space before euro symbol (U+2009)
+  return `${formatted} €`;
 };
 
 export const formatNumber = (value: number | null | undefined): string => {
@@ -138,11 +140,13 @@ export const formatPercentage = (value: number | null | undefined): string => {
     return '—';
   }
   
-  return new Intl.NumberFormat('es-ES', {
-    style: 'percent',
-    minimumFractionDigits: 1,
+  // Format percentage with comma decimal separator and thin space before %
+  const formatted = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value / 100);
+  }).format(value);
+  
+  return `${formatted} %`;
 };
 
 export const parsePercentageInput = (input: string): number | null => {
@@ -153,38 +157,11 @@ export const parsePercentageInput = (input: string): number | null => {
   // Remove % symbol and spaces
   let cleaned = input.replace(/[%\s]/g, '');
   
-  // Replace dot with comma for consistency, then parse
-  cleaned = cleaned.replace('.', ',');
+  // Replace comma with dot for parsing
+  cleaned = cleaned.replace(',', '.');
   
-  // Split by comma to check decimal places
-  const parts = cleaned.split(',');
-  
-  if (parts.length > 2) {
-    return null; // Multiple commas not allowed
-  }
-  
-  if (parts.length === 2) {
-    // Has decimal part
-    const [integerPart, decimalPart] = parts;
-    
-    // Decimal part should be 1-2 digits
-    if (decimalPart.length > 2) {
-      return null;
-    }
-    
-    if (!/^\d+$/.test(integerPart) || !/^\d{1,2}$/.test(decimalPart)) {
-      return null;
-    }
-    
-    return parseFloat(`${integerPart}.${decimalPart}`);
-  } else {
-    // No decimal part
-    if (!/^\d+$/.test(cleaned)) {
-      return null;
-    }
-    
-    return parseFloat(cleaned);
-  }
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? null : parsed;
 };
 
 export const formatEuroInput = (input: string): string => {

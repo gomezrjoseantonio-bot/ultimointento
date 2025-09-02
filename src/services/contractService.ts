@@ -340,7 +340,7 @@ export const getContractStatus = (contract: Contract): 'active' | 'upcoming' | '
   return 'active';
 };
 
-export const validateContract = (contract: Partial<Contract>): string[] => {
+export const validateContract = async (contract: Partial<Contract>): Promise<string[]> => {
   const errors: string[] = [];
   
   if (!contract.propertyId) {
@@ -379,5 +379,120 @@ export const validateContract = (contract: Partial<Contract>): string[] => {
     errors.push('Los meses de fianza deben ser 0 o mayor');
   }
   
+  // H7: Occupancy validation - check for overlapping contracts
+  if (contract.propertyId && contract.startDate) {
+    const occupancyErrors = await validateOccupancy(contract);
+    errors.push(...occupancyErrors);
+  }
+  
   return errors;
+};
+
+// H7: Occupancy validation to prevent double-booking
+export const validateOccupancy = async (contract: Partial<Contract>): Promise<string[]> => {
+  const errors: string[] = [];
+  
+  if (!contract.propertyId || !contract.startDate) {
+    return errors;
+  }
+  
+  try {
+    const db = await initDB();
+    const existingContracts = await db.getAllFromIndex('contracts', 'propertyId', contract.propertyId);
+    
+    // Filter out the current contract if we're editing
+    const otherContracts = existingContracts.filter(c => c.id !== contract.id);
+    
+    const newStart = new Date(contract.startDate);
+    const newEnd = contract.endDate && !contract.isIndefinite 
+      ? new Date(contract.endDate) 
+      : null; // null means indefinite
+    
+    for (const existing of otherContracts) {
+      // Skip terminated contracts
+      if (existing.status === 'terminated') continue;
+      
+      const existingStart = new Date(existing.startDate);
+      const existingEnd = existing.endDate && !existing.isIndefinite 
+        ? new Date(existing.endDate) 
+        : null; // null means indefinite
+      
+      // Check for scope conflicts
+      let hasConflict = false;
+      let conflictDescription = '';
+      
+      if (contract.scope === 'full-property' || existing.scope === 'full-property') {
+        // If either contract covers the full property, there's a conflict
+        hasConflict = true;
+        conflictDescription = 'inmueble completo';
+      } else if (contract.scope === 'units' && existing.scope === 'units') {
+        // Check for unit overlaps
+        const overlappingUnits = (contract.selectedUnits || []).filter(unit => 
+          (existing.selectedUnits || []).includes(unit)
+        );
+        
+        if (overlappingUnits.length > 0) {
+          hasConflict = true;
+          conflictDescription = `habitación${overlappingUnits.length > 1 ? 'es' : ''} ${overlappingUnits.join(', ')}`;
+        }
+      }
+      
+      if (hasConflict) {
+        // Check for date overlaps
+        const hasDateOverlap = checkDateOverlap(newStart, newEnd, existingStart, existingEnd);
+        
+        if (hasDateOverlap) {
+          const tenantName = existing.tenant?.name || 'Inquilino sin nombre';
+          const dateRange = formatDateRange(existingStart, existingEnd);
+          
+          errors.push(
+            `Conflicto de ocupación: ${conflictDescription} ya está ocupado por ${tenantName} (${dateRange})`
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error validating occupancy:', error);
+    errors.push('Error al validar disponibilidad del inmueble');
+  }
+  
+  return errors;
+};
+
+// Helper function to check if two date ranges overlap
+const checkDateOverlap = (
+  start1: Date, 
+  end1: Date | null, 
+  start2: Date, 
+  end2: Date | null
+): boolean => {
+  // If either contract is indefinite (end is null), we need special handling
+  if (end1 === null && end2 === null) {
+    // Both indefinite - always overlap
+    return true;
+  }
+  
+  if (end1 === null) {
+    // First contract is indefinite - overlaps if second starts before first
+    return start2 >= start1;
+  }
+  
+  if (end2 === null) {
+    // Second contract is indefinite - overlaps if first starts before second
+    return start1 >= start2;
+  }
+  
+  // Both have end dates - standard overlap check
+  return start1 <= end2 && start2 <= end1;
+};
+
+// Helper function to format date range for error messages
+const formatDateRange = (start: Date, end: Date | null): string => {
+  const formatDate = (date: Date) => date.toLocaleDateString('es-ES');
+  
+  if (end === null) {
+    return `desde ${formatDate(start)} (indefinido)`;
+  }
+  
+  return `${formatDate(start)} - ${formatDate(end)}`;
 };

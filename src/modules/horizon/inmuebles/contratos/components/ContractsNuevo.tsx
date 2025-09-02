@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Building, User, Calendar, Euro, FileText } from 'lucide-react';
-import { Property, initDB } from '../../../../../services/db';
-import { saveContract, validateContract } from '../../../../../services/contractService';
+import { Property, Contract, initDB } from '../../../../../services/db';
+import { saveContract, updateContract, validateContract } from '../../../../../services/contractService';
 import { formatEuro, parseEuroInput, parsePercentageInput } from '../../../../../utils/formatUtils';
 import FormFooter from '../../../../../components/common/FormFooter';
 import toast from 'react-hot-toast';
 
 interface ContractsNuevoProps {
+  editingContract?: Contract | null;
   onContractCreated: () => void;
   onCancel: () => void;
 }
@@ -47,43 +48,43 @@ interface FormData {
   privateNotes: string;
 }
 
-const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCancel }) => {
+const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onContractCreated, onCancel }) => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    propertyId: 0,
-    scope: 'full-property',
-    selectedUnits: [],
-    type: 'vivienda',
+    propertyId: editingContract?.propertyId || 0,
+    scope: editingContract?.scope || 'full-property',
+    selectedUnits: editingContract?.selectedUnits || [],
+    type: editingContract?.type || 'vivienda',
     tenant: {
-      name: '',
-      nif: '',
-      email: '',
+      name: editingContract?.tenant?.name || '',
+      nif: editingContract?.tenant?.nif || '',
+      email: editingContract?.tenant?.email || '',
     },
-    startDate: '',
-    endDate: '',
-    isIndefinite: false,
-    noticePeriodDays: '',
-    monthlyRent: '',
-    paymentDay: '1',
+    startDate: editingContract?.startDate || '',
+    endDate: editingContract?.endDate || '',
+    isIndefinite: editingContract?.isIndefinite || false,
+    noticePeriodDays: editingContract?.noticePeriodDays?.toString() || '',
+    monthlyRent: editingContract?.monthlyRent?.toString() || '',
+    paymentDay: editingContract?.paymentDay?.toString() || '1',
     rentUpdate: {
-      type: 'none',
-      fixedPercentage: '',
-      ipcPercentage: '',
+      type: editingContract?.rentUpdate?.type || 'none',
+      fixedPercentage: editingContract?.rentUpdate?.fixedPercentage?.toString() || '',
+      ipcPercentage: editingContract?.rentUpdate?.ipcPercentage?.toString() || '',
     },
     deposit: {
-      months: '2',
-      amount: '',
+      months: editingContract?.deposit?.months?.toString() || '2',
+      amount: editingContract?.deposit?.amount?.toString() || '',
     },
-    additionalGuarantees: '',
+    additionalGuarantees: editingContract?.additionalGuarantees?.toString() || '',
     includedServices: {
-      electricity: false,
-      water: false,
-      gas: false,
-      internet: false,
-      cleaning: false,
+      electricity: editingContract?.includedServices?.electricity || false,
+      water: editingContract?.includedServices?.water || false,
+      gas: editingContract?.includedServices?.gas || false,
+      internet: editingContract?.includedServices?.internet || false,
+      cleaning: editingContract?.includedServices?.cleaning || false,
     },
-    privateNotes: '',
+    privateNotes: editingContract?.privateNotes || '',
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,6 +92,16 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
   useEffect(() => {
     loadProperties();
   }, []);
+
+  // Load selected property when editing
+  useEffect(() => {
+    if (editingContract && properties.length > 0) {
+      const property = properties.find(p => p.id === editingContract.propertyId);
+      if (property) {
+        setSelectedProperty(property);
+      }
+    }
+  }, [editingContract, properties]);
 
   useEffect(() => {
     // Auto-calculate deposit amount when rent or months change
@@ -156,6 +167,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
     const noticePeriodDays = parseInt(formData.noticePeriodDays) || undefined;
 
     const contract = {
+      id: editingContract?.id, // Include ID for editing
       propertyId: formData.propertyId,
       scope: formData.scope,
       selectedUnits: formData.scope === 'units' ? formData.selectedUnits : undefined,
@@ -193,7 +205,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
     };
 
     // Validate contract
-    const validationErrors = validateContract(contract);
+    const validationErrors = await validateContract(contract);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
       return;
@@ -201,12 +213,19 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
 
     setLoading(true);
     try {
-      await saveContract(contract);
-      toast.success('Contrato creado correctamente');
+      if (editingContract?.id) {
+        // Update existing contract
+        await updateContract(editingContract.id, contract);
+        toast.success('Contrato actualizado correctamente');
+      } else {
+        // Create new contract
+        await saveContract(contract);
+        toast.success('Contrato creado correctamente');
+      }
       onContractCreated();
     } catch (error) {
       console.error('Error saving contract:', error);
-      toast.error('Error al guardar el contrato');
+      toast.error(editingContract?.id ? 'Error al actualizar el contrato' : 'Error al guardar el contrato');
     } finally {
       setLoading(false);
     }
@@ -250,7 +269,9 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ onContractCreated, onCa
       <div className="flex items-center">
         <div className="flex items-center space-x-3">
           <FileText className="h-6 w-6 text-brand-navy" />
-          <h2 className="text-xl font-semibold text-neutral-900">Nuevo contrato</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">
+            {editingContract ? 'Editar contrato' : 'Nuevo contrato'}
+          </h2>
         </div>
       </div>
 

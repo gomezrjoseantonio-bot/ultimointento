@@ -1,5 +1,6 @@
 import { openDB } from 'idb';
 import { Property, Contract, ExpenseH5 } from './db';
+import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
 
 export type KPIMetricType = 
   | 'ingresos-anuales'
@@ -233,25 +234,6 @@ export const DEFAULT_KPI_CONFIG: KPIConfiguration = {
   }
 };
 
-// Format currency in es-ES format
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value);
-};
-
-// Format percentage in es-ES format
-export const formatPercentage = (value: number): string => {
-  return new Intl.NumberFormat('es-ES', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 2
-  }).format(value / 100);
-};
-
 // Format ratio
 export const formatRatio = (value: number): string => {
   return new Intl.NumberFormat('es-ES', {
@@ -263,19 +245,26 @@ export const formatRatio = (value: number): string => {
 // KPI Service Class
 export class KPIService {
   private dbName = 'AtlasHorizonDB';
+  private dbVersion = 4; // Match the current DB version
 
   async saveConfiguration(config: KPIConfiguration, module: 'horizon' | 'pulse' = 'horizon'): Promise<void> {
-    const db = await openDB(this.dbName, 3);
-    await db.put('kpiConfigurations', { 
-      id: module, 
-      ...config,
-      updatedAt: new Date().toISOString()
-    });
+    try {
+      const db = await openDB(this.dbName, this.dbVersion);
+      await db.put('kpiConfigurations', { 
+        id: module, 
+        ...config,
+        updatedAt: new Date().toISOString()
+      });
+      console.log(`KPI configuration saved for module: ${module}`);
+    } catch (error) {
+      console.error('Error saving KPI configuration:', error);
+      throw new Error(`Failed to save KPI configuration: ${error}`);
+    }
   }
 
   async getConfiguration(module: 'horizon' | 'pulse' = 'horizon'): Promise<KPIConfiguration> {
     try {
-      const db = await openDB(this.dbName, 3);
+      const db = await openDB(this.dbName, this.dbVersion);
       const config = await db.get('kpiConfigurations', module);
       return config || DEFAULT_KPI_CONFIG;
     } catch (error) {
@@ -286,7 +275,7 @@ export class KPIService {
 
   async calculateKPIsForProperty(propertyId: number, config?: KPIConfiguration): Promise<PropertyKPIData> {
     const actualConfig = config || await this.getConfiguration();
-    const db = await openDB(this.dbName, 3);
+    const db = await openDB(this.dbName, this.dbVersion);
     
     // Get property data
     const property = await db.get('properties', propertyId);
@@ -552,9 +541,9 @@ export class KPIService {
 
     switch (unit) {
       case 'currency':
-        return formatCurrency(value);
+        return formatEuro(value);
       case 'percentage':
-        return formatPercentage(value);
+        return formatPercentageUtil(value);
       case 'ratio':
         return formatRatio(value);
       default:

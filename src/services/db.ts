@@ -7,6 +7,7 @@ const DB_VERSION = 5; // H8: Added treasury accounts and movements
 export interface Property {
   id?: number;
   alias: string;
+  globalAlias?: string; // Optional global alias for grouping/referencing
   address: string;
   postalCode: string;
   province: string;
