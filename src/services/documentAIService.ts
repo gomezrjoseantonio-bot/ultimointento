@@ -183,20 +183,21 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
       body: fileBytes
     });
     
+    const responseData = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
       // Handle specific error codes as requested
-      if ([403, 404, 429].includes(response.status) || errorData.code === 'CONFIG') {
-        const errorCode = errorData.code || response.status.toString();
+      if ([403, 404, 429].includes(response.status) || responseData.code === 'CONFIG') {
+        const errorCode = responseData.code || response.status.toString();
+        const errorMessage = responseData.message || responseData.error || `Error HTTP ${response.status}`;
         // This will be handled by the calling component to show toast/banner
-        throw new Error(`OCR_ERROR_${errorCode}: ${errorData.message || errorData.error || `Error HTTP ${response.status}`}`);
+        throw new Error(`OCR_ERROR_${errorCode}: ${errorMessage}`);
       }
       
-      throw new Error(errorData.error || `Error HTTP ${response.status}`);
+      throw new Error(responseData.message || responseData.error || `Error HTTP ${response.status}`);
     }
     
-    return await response.json();
+    return responseData;
   } catch (error) {
     console.error('Document AI Function Error:', error);
     throw error;

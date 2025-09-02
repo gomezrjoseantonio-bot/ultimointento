@@ -266,31 +266,59 @@ const InboxPage: React.FC = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       
-      // Handle specific error codes/status from backend JSON response
+      // Handle specific OCR error codes from the backend
       let displayMessage = `Error OCR: ${errorMessage}`;
+      let showErrorBanner = false;
       
-      try {
-        // Check if error message contains JSON with code/status/message structure
-        if (errorMessage.includes('{') && errorMessage.includes('code')) {
-          const errorData = JSON.parse(errorMessage.substring(errorMessage.indexOf('{')));
-          if (errorData.code && errorData.status && errorData.message) {
-            displayMessage = `${errorData.code}: ${errorData.message}`;
-          }
+      if (errorMessage.startsWith('OCR_ERROR_')) {
+        const [, errorCode, errorDetail] = errorMessage.match(/OCR_ERROR_([^:]+):\s*(.+)/) || [];
+        
+        switch (errorCode) {
+          case 'CONFIG':
+            displayMessage = 'OCR no configurado correctamente. Contacta al administrador.';
+            showErrorBanner = true;
+            break;
+          case '403':
+            displayMessage = 'Sin permisos para procesar OCR. Verifica la configuración.';
+            showErrorBanner = true;
+            break;
+          case '404':
+            displayMessage = 'Servicio OCR no encontrado. Verifica la configuración.';
+            showErrorBanner = true;
+            break;
+          case '429':
+            displayMessage = 'Límite de procesamiento OCR excedido. Inténtalo más tarde.';
+            break;
+          default:
+            displayMessage = errorDetail || errorMessage;
         }
-      } catch {
-        // Fallback to specific error patterns
-        if (errorMessage.includes('CONFIG')) {
-          displayMessage = 'CONFIG: OCR no configurado correctamente';
-        } else if (errorMessage.includes('403')) {
-          displayMessage = '403: Sin permisos para OCR';
-        } else if (errorMessage.includes('404')) {
-          displayMessage = '404: Servicio OCR no encontrado';
-        } else if (errorMessage.includes('429')) {
-          displayMessage = '429: Límite de OCR excedido';
-        }
+      } else if (errorMessage.includes('CONFIG')) {
+        displayMessage = 'OCR no configurado correctamente';
+        showErrorBanner = true;
+      } else if (errorMessage.includes('403')) {
+        displayMessage = 'Sin permisos para OCR';
+        showErrorBanner = true;
+      } else if (errorMessage.includes('404')) {
+        displayMessage = 'Servicio OCR no encontrado';
+        showErrorBanner = true;
+      } else if (errorMessage.includes('429')) {
+        displayMessage = 'Límite de OCR excedido';
       }
       
-      toast.error(displayMessage);
+      // Show appropriate notification
+      if (showErrorBanner) {
+        toast.error(displayMessage, {
+          duration: 8000,
+          position: 'top-center',
+          style: {
+            background: '#fee2e2',
+            color: '#dc2626',
+            border: '1px solid #fca5a5',
+          },
+        });
+      } else {
+        toast.error(displayMessage);
+      }
       
       // Update with error status
       const errorDoc = {

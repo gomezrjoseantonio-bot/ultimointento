@@ -211,9 +211,35 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         headers: corsHeaders,
         body: JSON.stringify({ 
           success: false,
+          results: [{
+            status: 'error',
+            error: 'Fichero vacío o no recibido',
+            entities: [],
+            pages: []
+          }],
           code: 'INVALID_ARGUMENT',
           status: 400,
           message: 'Fichero vacío o no recibido' 
+        })
+      };
+    }
+
+    // Validate MIME type against supported types
+    if (!SUPPORTED_MIME_TYPES.includes(fileMime)) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: false,
+          results: [{
+            status: 'error',
+            error: `Tipo MIME no soportado: ${fileMime}. Tipos válidos: ${SUPPORTED_MIME_TYPES.join(', ')}`,
+            entities: [],
+            pages: []
+          }],
+          code: 'INVALID_MIME_TYPE',
+          status: 400,
+          message: `Tipo MIME no soportado: ${fileMime}` 
         })
       };
     }
@@ -288,6 +314,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
+          results: [{
+            status: 'error',
+            error: userMessage,
+            entities: [],
+            pages: []
+          }],
           code: errorCode,
           status: response.status,
           message: userMessage
@@ -298,14 +330,18 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Parse successful response
     const result: DocumentAIResponse = JSON.parse(responseText);
     
-    // Return success response in required format
+    // Return success response in required format for documentAIService
     return {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
         success: true,
-        pages: result.document.pages?.length || 0,
-        entities: result.document.entities || [],
+        results: [{
+          status: 'success',
+          entities: result.document.entities || [],
+          pages: result.document.pages || [],
+          text: result.document.text || ''
+        }],
         meta: {
           endpointHost: "eu-documentai.googleapis.com",
           mimeType: fileMime,
@@ -324,6 +360,12 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       headers: corsHeaders,
       body: JSON.stringify({
         success: false,
+        results: [{
+          status: 'error',
+          error: 'Error interno del servidor OCR',
+          entities: [],
+          pages: []
+        }],
         code: 'INTERNAL_ERROR',
         status: 500,
         message: 'Error interno del servidor OCR'
