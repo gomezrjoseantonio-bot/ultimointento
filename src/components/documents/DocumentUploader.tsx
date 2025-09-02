@@ -41,29 +41,53 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
     return { duplicates: duplicateFiles, newFiles };
   };
 
-  const createDocumentFromFile = (file: File, index: number = 0) => ({
-    id: Date.now() + index,
-    filename: file.name,
-    type: file.type || 'application/octet-stream',
-    size: file.size,
-    lastModified: file.lastModified,
-    uploadDate: new Date().toISOString(),
-    content: file,
-    metadata: {
-      title: file.name.split('.')[0],
-      description: '',
-      tags: [],
-      proveedor: '',
-      tipo: 'Factura',
-      categoria: 'Otros',
-      destino: 'Personal',
-      status: 'Nuevo',
-      entityType: 'personal',
-      entityId: undefined,
-      notas: '',
-      carpeta: 'otros'
+  const createDocumentFromFile = (file: File, index: number = 0) => {
+    // Detect if file is a bank statement
+    const isBankStatement = isBankStatementFile(file);
+    
+    return {
+      id: Date.now() + index,
+      filename: file.name,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      lastModified: file.lastModified,
+      uploadDate: new Date().toISOString(),
+      content: file,
+      metadata: {
+        title: file.name.split('.')[0],
+        description: '',
+        tags: [],
+        proveedor: '',
+        tipo: isBankStatement ? 'Extracto bancario' : 'Factura',
+        categoria: 'Otros',
+        destino: 'Personal',
+        status: 'Nuevo',
+        entityType: 'personal',
+        entityId: undefined,
+        notas: '',
+        carpeta: isBankStatement ? 'extractos' : 'otros'
+      }
+    };
+  };
+
+  const isBankStatementFile = (file: File): boolean => {
+    const fileName = file.name.toLowerCase();
+    const extension = fileName.split('.').pop();
+    
+    // Check file extension
+    if (!['csv', 'xlsx', 'xls'].includes(extension || '')) {
+      return false;
     }
-  });
+    
+    // Check file name patterns that suggest bank statements
+    const bankStatementPatterns = [
+      'extracto', 'movimientos', 'transacciones', 'bancario', 'cuenta',
+      'bbva', 'santander', 'ing', 'caixa', 'unicaja', 'openbank', 
+      'revolut', 'bankinter', 'sabadell', 'abanca'
+    ];
+    
+    return bankStatementPatterns.some(pattern => fileName.includes(pattern));
+  };
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files) return;
@@ -72,15 +96,20 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
     const fileArray = Array.from(files);
     
     // Validate file types
-    const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/zip'];
-    const invalidFiles = fileArray.filter(file => 
-      !validTypes.includes(file.type) && 
-      !file.name.toLowerCase().endsWith('.pdf') &&
-      !file.name.toLowerCase().endsWith('.jpg') &&
-      !file.name.toLowerCase().endsWith('.jpeg') &&
-      !file.name.toLowerCase().endsWith('.png') &&
-      !file.name.toLowerCase().endsWith('.zip')
-    );
+    const validTypes = [
+      'application/pdf', 'image/jpeg', 'image/png', 'application/zip',
+      'text/csv', 'application/vnd.ms-excel', 
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+    const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.zip', '.csv', '.xlsx', '.xls'];
+    
+    const invalidFiles = fileArray.filter(file => {
+      const hasValidType = validTypes.includes(file.type);
+      const hasValidExtension = validExtensions.some(ext => 
+        file.name.toLowerCase().endsWith(ext)
+      );
+      return !hasValidType && !hasValidExtension;
+    });
 
     if (invalidFiles.length > 0) {
       toast.error(`Tipos de archivo no soportados: ${invalidFiles.map(f => f.name).join(', ')}`);
@@ -260,7 +289,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
         Arrastra y suelta documentos aquí o haz clic para seleccionar
       </p>
       <p className="text-sm text-neutral-500 mb-4">
-        Tipos soportados: PDF, JPG, PNG, ZIP (varios archivos a la vez)
+        Tipos soportados: PDF, JPG, PNG, ZIP, CSV, XLS, XLSX (varios archivos a la vez)
       </p>
       <button 
         className="px-6 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50 transition-colors"
@@ -273,7 +302,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".pdf,.jpg,.jpeg,.png,.zip"
+        accept=".pdf,.jpg,.jpeg,.png,.zip,.csv,.xlsx,.xls"
         className="hidden"
         onChange={(e) => handleFileUpload(e.target.files)}
       />

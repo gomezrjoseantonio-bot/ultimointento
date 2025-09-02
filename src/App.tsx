@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { bankProfilesService } from './services/bankProfilesService';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import InboxPage from './pages/InboxPage';
@@ -42,7 +43,19 @@ import PPEscenarios from './modules/pulse/proyeccion-personal/escenarios/PPEscen
 import HorizonPreferenciasDatos from './modules/horizon/configuracion/preferencias-datos/PreferenciasDatos';
 import GastosCapex from './modules/horizon/inmuebles/gastos-capex/GastosCapex';
 
+// Development only imports
+const ProfileSeederPage = React.lazy(() => 
+  (import.meta as any).env?.DEV 
+    ? import('./pages/ProfileSeederPage')
+    : Promise.resolve({ default: () => null })
+);
+
 function App() {
+  // Initialize bank profiles on app start
+  React.useEffect(() => {
+    bankProfilesService.loadProfiles().catch(console.error);
+  }, []);
+
   return (
     <ThemeProvider>
       <Router>
@@ -136,6 +149,18 @@ function App() {
               <Route path="plan" element={<AccountPage />} />
               <Route path="privacidad" element={<AccountPage />} />
             </Route>
+            
+            {/* Development only routes */}
+            {(import.meta as any).env?.DEV && (
+              <Route 
+                path="__profiles" 
+                element={
+                  <React.Suspense fallback={<div>Cargando...</div>}>
+                    <ProfileSeederPage />
+                  </React.Suspense>
+                } 
+              />
+            )}
             
             <Route path="*" element={<Navigate to="/panel" replace />} />
           </Route>

@@ -1,0 +1,202 @@
+{
+  "profiles": [
+    {
+      "bankKey": "ING",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha movimiento", "fecha de movimiento", "f. movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "import", "euros"],
+        "description": ["descripcion", "concepto", "detalle", "descripción", "movimiento"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante", "entidad"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "BBVA",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha de operacion", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Santander",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción", "movimiento"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Unicaja",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Openbank",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Revolut",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "date", "fecha operacion", "completed date"],
+        "valueDate": ["fecha valor", "value date", "f. valor"],
+        "amount": ["importe", "amount", "cantidad", "monto", "euros", "eur"],
+        "description": ["descripcion", "description", "concepto", "reference"],
+        "counterparty": ["contraparte", "counterparty", "beneficiario"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy", "yyyy-mm-dd"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Bankinter",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Sabadell",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    },
+    {
+      "bankKey": "Abanca",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "description": ["concepto", "descripcion", "detalle", "descripción"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3
+    }
+  ]
+}

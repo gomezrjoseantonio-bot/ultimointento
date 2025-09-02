@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Square, FileText, Image, Archive } from 'lucide-react';
+import { CheckSquare, Square, FileText, Image, Archive, Eye, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface DocumentListProps {
   documents: any[];
@@ -40,6 +40,43 @@ const DocumentList: React.FC<DocumentListProps> = ({
       return <Archive className="w-4 h-4 text-orange-500" />;
     }
     return <FileText className="w-4 h-4 text-neutral-500" />;
+  };
+
+  // H-OCR: Get OCR status chip
+  const getOCRChip = (doc: any) => {
+    const ocrStatus = doc.metadata?.ocr?.status || 'pending';
+    const fieldsCount = doc.metadata?.ocr?.fields?.length || 0;
+    
+    switch (ocrStatus) {
+      case 'processing':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-neutral-100 text-neutral-700 rounded-full">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            OCR
+          </span>
+        );
+      case 'completed':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+            <CheckCircle className="w-3 h-3" />
+            OCR · {fieldsCount} campos
+          </span>
+        );
+      case 'error':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full" title={doc.metadata?.ocr?.error || 'Error de procesamiento'}>
+            <AlertCircle className="w-3 h-3" />
+            Error
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-neutral-100 text-neutral-600 rounded-full">
+            <Eye className="w-3 h-3" />
+            Pendiente
+          </span>
+        );
+    }
   };
 
   if (loading) {
@@ -114,13 +151,18 @@ const DocumentList: React.FC<DocumentListProps> = ({
                 </div>
                 
                 <div className="flex items-center justify-between mt-2">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    doc.metadata?.status === 'Asignado' 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {doc.metadata?.status || 'Nuevo'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      doc.metadata?.status === 'Asignado' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {doc.metadata?.status || 'Nuevo'}
+                    </span>
+                    
+                    {/* H-OCR: OCR status chip */}
+                    {getOCRChip(doc)}
+                  </div>
                   
                   {doc.metadata?.proveedor && (
                     <span className="text-xs text-neutral-400 truncate max-w-20">

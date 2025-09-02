@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { initDB, deleteDocumentAndBlob } from '../services/db';
-import { Search, SortAsc, SortDesc, Trash2, FolderOpen } from 'lucide-react';
+import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-react';
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
+import QADashboard from '../components/dev/QADashboard';
+import { getOCRConfig, processDocumentOCR } from '../services/ocrService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -23,6 +25,8 @@ const InboxPage: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   // H3 requirement - email log filter
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
+  // ATLAS HOTFIX: QA Dashboard for development
+  const [showQADashboard, setShowQADashboard] = useState(false);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -30,6 +34,12 @@ const InboxPage: React.FC = () => {
     const emailLogParam = urlParams.get('emailLog');
     if (emailLogParam) {
       setEmailLogFilter(emailLogParam);
+    }
+    
+    // ATLAS HOTFIX: Check for QA dashboard query parameter
+    const qaDashboard = urlParams.get('qa') === 'true';
+    if (qaDashboard && process.env.NODE_ENV === 'development') {
+      setShowQADashboard(true);
     }
   }, []);
 
@@ -79,6 +89,92 @@ const InboxPage: React.FC = () => {
       await tx.done;
     } catch (error) {
       console.warn('Failed to save to IndexedDB, using localStorage only:', error);
+    }
+
+    // H-OCR: Auto-OCR processing if enabled
+    const config = getOCRConfig();
+    if (config.autoRun) {
+      for (const doc of newDocuments) {
+        // Only process PDF and image files
+        if (doc.type === 'application/pdf' || doc.type?.startsWith('image/')) {
+          handleAutoOCR(doc);
+        }
+      }
+    }
+  };
+
+  // H-OCR: Auto-OCR processing function
+  const handleAutoOCR = async (document: any) => {
+    try {
+      // Set processing status
+      const processingDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          ocr: {
+            engine: 'gdocai:invoice',
+            timestamp: new Date().toISOString(),
+            confidenceGlobal: 0,
+            fields: [],
+            status: 'processing' as const
+          }
+        }
+      };
+
+      // Update local state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? processingDoc : doc
+      ));
+
+      // Process OCR
+      const ocrResult = await processDocumentOCR(document.content, document.filename);
+      
+      // Update with results
+      const updatedDoc = {
+        ...processingDoc,
+        metadata: {
+          ...processingDoc.metadata,
+          ocr: ocrResult
+        }
+      };
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? updatedDoc : doc
+      ));
+
+      // Update in database
+      try {
+        const db = await initDB();
+        await db.put('documents', updatedDoc);
+      } catch (error) {
+        console.warn('Failed to update OCR in IndexedDB:', error);
+      }
+
+      toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      // Update with error status
+      const errorDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          ocr: {
+            engine: 'gdocai:invoice',
+            timestamp: new Date().toISOString(),
+            confidenceGlobal: 0,
+            fields: [],
+            status: 'error' as const,
+            error: errorMessage
+          }
+        }
+      };
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? errorDoc : doc
+      ));
+
+      console.warn(`Auto-OCR failed for ${document.filename}:`, error);
     }
   };
 
@@ -239,15 +335,19 @@ const InboxPage: React.FC = () => {
           // Contratos → documentos cuyo Tipo sea "Contrato"
           belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
           break;
+        case 'extractos':
+          // Extractos bancarios → documentos cuyo Tipo sea "Extracto bancario"
+          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'extracto bancario';
+          break;
         case 'capex':
           // CAPEX → documentos con Categoría "Reforma/CAPEX"
           belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
           break;
         case 'otros':
-          // Otros → el resto (no es factura, contrato, ni capex)
+          // Otros → el resto (no es factura, contrato, extracto bancario, ni capex)
           const tipo = doc.metadata?.tipo?.toLowerCase();
           const categoria = doc.metadata?.categoria?.toLowerCase();
-          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && categoria !== 'reforma/capex';
+          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && tipo !== 'extracto bancario' && categoria !== 'reforma/capex';
           break;
         default:
           belongsToFolder = true;
@@ -307,7 +407,16 @@ const InboxPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-navy-900" style={{ color: '#022D5E' }}>Bandeja de Documentos</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-navy-900" style={{ color: '#022D5E' }}>Bandeja de Documentos</h1>
+          {/* H-OCR: Help tooltip */}
+          <div className="relative group">
+            <Info className="w-5 h-5 text-neutral-400 hover:text-neutral-600 cursor-help" />
+            <div className="absolute left-0 top-6 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              Sube o reenvía facturas/recibos. Usa 'Procesar con OCR' para pre-rellenar gastos o CAPEX.
+            </div>
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowBulkActions(!showBulkActions)}
@@ -392,7 +501,7 @@ const InboxPage: React.FC = () => {
             <div className="p-4 border-b border-neutral-200">
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
               <div className="space-y-1">
-                {['Todos', 'Facturas', 'Contratos', 'CAPEX', 'Otros'].map((folder) => (
+                {['Todos', 'Facturas', 'Contratos', 'Extractos', 'CAPEX', 'Otros'].map((folder) => (
                   <button
                     key={folder}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
@@ -402,7 +511,7 @@ const InboxPage: React.FC = () => {
                     }`}
                     onClick={() => setFolderFilter(folder.toLowerCase())}
                   >
-                    {folder}
+                    {folder === 'Extractos' ? 'Extractos bancarios' : folder}
                   </button>
                 ))}
               </div>
@@ -564,6 +673,14 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* ATLAS HOTFIX: QA Dashboard - Development only */}
+      {process.env.NODE_ENV === 'development' && (
+        <QADashboard
+          isVisible={showQADashboard}
+          onClose={() => setShowQADashboard(false)}
+        />
+      )}
     </div>
   );
 };
