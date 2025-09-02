@@ -6,12 +6,7 @@
   directory = "functions"
   node_bundler = "esbuild"
   
-# Handle SPA routing by redirecting all routes to index.html, except for Netlify functions
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
+# Handle SPA routing by redirecting all routes to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
