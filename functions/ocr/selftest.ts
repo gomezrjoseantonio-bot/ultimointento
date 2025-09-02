@@ -1,5 +1,5 @@
 // Netlify Function: OCR self-test (EU Document AI)
-// URL tras deploy: /.netlify/functions/ocr-selftest
+// URL: /.netlify/functions/ocr-selftest
 
 type Json = Record<string, unknown>;
 
@@ -28,6 +28,7 @@ export async function handler() {
   }
 
   const processorPath = projects/${pid}/locations/${loc}/processors/${prc}:process;
+
   const body: Json = {
     ok: true,
     endpointHost: host,
@@ -35,6 +36,7 @@ export async function handler() {
     projectIsNumber,
     location: loc
   };
+
   return {
     statusCode: 200,
     headers: { "content-type": "application/json; charset=utf-8" },
