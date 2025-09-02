@@ -1,23 +1,16 @@
 // Netlify Function: OCR self-test (EU Document AI)
-// URL: /.netlify/functions/ocr-selftest
+// URL tras deploy: /.netlify/functions/ocr-selftest
 
-export const handler = async () => {
-  const {
-    DOC_AI_ENDPOINT,
-    DOC_AI_PROJECT_ID,
-    DOC_AI_LOCATION,
-    DOC_AI_PROCESSOR_ID,
-    DOC_AI_SA_JSON_B64,
-  } = process.env as Record<string, string | undefined>;
+export async function handler() {
+  const host = process.env.DOC_AI_ENDPOINT;
+  const pid  = process.env.DOC_AI_PROJECT_ID;
+  const loc  = process.env.DOC_AI_LOCATION;
+  const prc  = process.env.DOC_AI_PROCESSOR_ID;
+  const hasKey = !!process.env.DOC_AI_SA_JSON_B64;
 
-  const host = DOC_AI_ENDPOINT;
-  const pid  = DOC_AI_PROJECT_ID;
-  const loc  = DOC_AI_LOCATION;
-  const prc  = DOC_AI_PROCESSOR_ID;
-  const hasKey = !!DOC_AI_SA_JSON_B64;
   const projectIsNumber = !!pid && /^\d+$/.test(pid);
 
-  // Config incompleta -> no seguimos
+  // Si falta alguna variable → devolvemos CONFIG
   if (!host || !pid || !loc || !prc || !hasKey || !projectIsNumber) {
     return {
       statusCode: 200,
@@ -38,7 +31,7 @@ export const handler = async () => {
     };
   }
 
-  // 👇 OJO: backticks ( ` ) para la template literal
+  // Si todo está bien → devolvemos OK
   const processorPath = projects/${pid}/locations/${loc}/processors/${prc}:process;
 
   return {
@@ -52,4 +45,4 @@ export const handler = async () => {
       location: loc,
     }),
   };
-};
+}
