@@ -45,6 +45,29 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
     // Detect if file is a bank statement
     const isBankStatement = isBankStatementFile(file);
     
+    // Determine folder based on file type and name
+    let carpeta: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'capex' | 'otros' = 'otros';
+    let tipo: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros' = 'Otros';
+    
+    if (isBankStatement) {
+      carpeta = 'extractos';
+      tipo = 'Extracto bancario';
+    } else {
+      const fileName = file.name.toLowerCase();
+      if (fileName.includes('contrato') || fileName.includes('contract')) {
+        carpeta = 'contratos';
+        tipo = 'Contrato';
+      } else if (fileName.includes('factura') || fileName.includes('invoice') || 
+                 file.type === 'application/pdf' || file.type?.startsWith('image/')) {
+        carpeta = 'facturas';
+        tipo = 'Factura';
+      } else if (fileName.includes('obra') || fileName.includes('reforma') || 
+                 fileName.includes('capex') || fileName.includes('mejora')) {
+        carpeta = 'capex';
+        tipo = 'CAPEX';
+      }
+    }
+    
     return {
       id: Date.now() + index,
       filename: file.name,
@@ -58,14 +81,14 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
         description: '',
         tags: [],
         proveedor: '',
-        tipo: isBankStatement ? 'Extracto bancario' : 'Factura',
+        tipo,
         categoria: 'Otros',
         destino: 'Personal',
         status: 'Nuevo',
         entityType: 'personal',
         entityId: undefined,
         notas: '',
-        carpeta: isBankStatement ? 'extractos' : 'otros'
+        carpeta
       }
     };
   };

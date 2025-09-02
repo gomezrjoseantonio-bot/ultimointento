@@ -1,4 +1,4 @@
-import { initDB, FiscalSummary, Document, Property } from './db';
+import { initDB, FiscalSummary, Document } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
 
 /**

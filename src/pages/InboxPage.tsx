@@ -4,6 +4,7 @@ import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-reac
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
+import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import QADashboard from '../components/dev/QADashboard';
 import { getOCRConfig } from '../services/ocrService';
 import { processDocumentOCR } from '../services/documentAIService';
@@ -11,6 +12,7 @@ import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [filter, setFilter] = useState('all');
   const [folderFilter, setFolderFilter] = useState('todos');
@@ -51,10 +53,12 @@ const InboxPage: React.FC = () => {
       try {
         const db = await initDB();
         const docs = await db.getAll('documents');
+        const props = await db.getAll('properties');
         
         // Load all documents from inbox - both assigned and unassigned
         const inboxDocs = docs; // Show all documents, not just unassigned ones
         setDocuments(inboxDocs);
+        setProperties(props);
       } catch (error) {
         // Fallback to localStorage if IndexedDB fails
         const storedDocs = localStorage.getItem('atlas-inbox-documents');
@@ -635,17 +639,24 @@ const InboxPage: React.FC = () => {
             <div className="p-4 border-b border-neutral-200">
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
               <div className="space-y-1">
-                {['Todos', 'Facturas', 'Contratos', 'Extractos', 'CAPEX', 'Otros'].map((folder) => (
+                {[
+                  { key: 'todos', label: 'Todos' },
+                  { key: 'facturas', label: 'Facturas' },
+                  { key: 'contratos', label: 'Contratos' },
+                  { key: 'extractos', label: 'Extractos bancarios' },
+                  { key: 'capex', label: 'CAPEX' },
+                  { key: 'otros', label: 'Otros' }
+                ].map((folder) => (
                   <button
-                    key={folder}
+                    key={folder.key}
                     className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
-                      folderFilter === folder.toLowerCase()
+                      folderFilter === folder.key
                         ? 'bg-neutral-100 text-neutral-900'
                         : 'text-neutral-600 hover:bg-neutral-50'
                     }`}
-                    onClick={() => setFolderFilter(folder.toLowerCase())}
+                    onClick={() => setFolderFilter(folder.key)}
                   >
-                    {folder === 'Extractos' ? 'Extractos bancarios' : folder}
+                    {folder.label}
                   </button>
                 ))}
               </div>
@@ -779,14 +790,38 @@ const InboxPage: React.FC = () => {
           {/* Main content area - flexible width */}
           <div className="flex-1 min-w-0">
             {selectedDocument ? (
-              <div className="p-6">
-                <DocumentViewer 
-                  document={selectedDocument}
-                  onAssign={handleAssignDocument}
-                  onDelete={handleDeleteDocument}
-                  onUpdate={handleUpdateDocument}
-                  onProcessOCR={handleManualOCR}
-                />
+              <div className="flex h-full">
+                {/* Document Viewer - Left side */}
+                <div className="flex-1 border-r border-neutral-200">
+                  <div className="p-6">
+                    <DocumentViewer 
+                      document={selectedDocument}
+                      onAssign={handleAssignDocument}
+                      onDelete={handleDeleteDocument}
+                      onUpdate={handleUpdateDocument}
+                      onProcessOCR={handleManualOCR}
+                    />
+                  </div>
+                </div>
+                
+                {/* Classification Panel - Right side */}
+                <div className="w-96 bg-gray-50 border-l border-neutral-200 overflow-y-auto">
+                  <DocumentClassificationPanel
+                    document={selectedDocument}
+                    properties={properties}
+                    onUpdate={(updates) => {
+                      const updatedDoc = { ...selectedDocument, ...updates };
+                      setSelectedDocument(updatedDoc);
+                      // Update in the documents list as well
+                      setDocuments(prev => prev.map(doc => 
+                        doc.id === selectedDocument.id ? updatedDoc : doc
+                      ));
+                    }}
+                    onSave={async () => {
+                      await handleUpdateDocument(selectedDocument.id, selectedDocument);
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <div className="h-96 flex flex-col items-center justify-center text-neutral-500 bg-white border border-neutral-200 m-6 rounded-lg">

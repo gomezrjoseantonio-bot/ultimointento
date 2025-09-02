@@ -1,5 +1,5 @@
-import { initDB, TreasuryEvent, Document, Account, Movement } from './db';
-import { suggestAEATClassification, isCapexType } from './aeatClassificationService';
+import { initDB, TreasuryEvent, Document, Movement } from './db';
+import { isCapexType } from './aeatClassificationService';
 
 /**
  * Create treasury forecast event from confirmed document
