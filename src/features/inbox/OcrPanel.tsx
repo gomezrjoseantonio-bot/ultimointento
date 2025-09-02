@@ -28,6 +28,7 @@ import {
   selectBestPageForExtraction
 } from '../../services/ocrService';
 import { telemetry, qaChecklist } from '../../services/telemetryService';
+import { alignDocumentAI, AlignedInvoice } from './ocr/alignDocumentAI';
 
 interface OcrPanelProps {
   document: any; // Document with OCR result
@@ -167,6 +168,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   const [processingApply, setProcessingApply] = useState(false);
   const [showRawEntities, setShowRawEntities] = useState(false);
   const [showDevJson, setShowDevJson] = useState(false);
+  const [aligned, setAligned] = useState<AlignedInvoice | undefined>(undefined);
 
   const ocrResult = document?.metadata?.ocr as OCRResult;
   const isDev = process.env.NODE_ENV === 'development';
@@ -174,6 +176,32 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
   useEffect(() => {
     if (ocrResult?.pageInfo) {
       setSelectedPage(selectBestPage(ocrResult));
+    }
+  }, [ocrResult]);
+
+  // Calculate aligned data when OCR result is completed
+  useEffect(() => {
+    if (ocrResult && ocrResult.status === 'completed') {
+      try {
+        const alignedData = alignDocumentAI(ocrResult);
+        setAligned(alignedData);
+        
+        // Telemetry for alignment
+        const confidenceScores = Object.values(alignedData.meta.rawConfidenceSummary)
+          .map(c => c?.score || 0)
+          .filter(s => s > 0);
+        const minConfidence = confidenceScores.length > 0 ? Math.min(...confidenceScores) : 0;
+        
+        console.info('[OCR-ALIGN]', { 
+          total: alignedData.invoice.total.value, 
+          confMin: minConfidence 
+        });
+      } catch (error) {
+        console.error('Error aligning DocumentAI result:', error);
+        setAligned(undefined);
+      }
+    } else {
+      setAligned(undefined);
     }
   }, [ocrResult]);
 
@@ -488,93 +516,187 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         </div>
       )}
 
-      {/* Fields Table */}
+      {/* Conditional Content: Aligned Sections or Fields Table */}
       <div className="p-6">
-        <div className="overflow-hidden">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Campo</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Valor · Confianza</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Página</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {processedFields.map((field, index) => {
-                const FieldIcon = field.icon;
-                const ConfidenceIcon = getConfidenceIcon(field.confidence);
-                const finalValue = editableFields[field.name] || field.value;
-                const displayValue = field.status === 'pending' && field.rawValue ? field.rawValue : finalValue;
-                
-                return (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center space-x-3">
-                        <FieldIcon className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">
-                          {field.label}
-                          {field.isCritical && (
-                            <span className="text-red-500 ml-1">*</span>
-                          )}
-                        </span>
-                      </div>
-                    </td>
-                    
-                    <td className="py-3 px-4">
-                      <div className="space-y-1">
-                        {field.editable ? (
-                          <input
-                            type="text"
-                            value={finalValue}
-                            onChange={(e) => handleFieldEdit(field.name, e.target.value)}
-                            placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
-                            className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                              field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
-                              field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
-                            }`}
-                          />
-                        ) : (
-                          <span className="text-sm text-gray-900">{displayValue || '—'}</span>
-                        )}
-                        
-                        {/* H-OCR-ALIGN: Show "value · confidence" format */}
-                        {field.confidence > 0 && (
-                          <div className="flex items-center space-x-2 text-xs text-gray-500">
-                            <span>{displayValue || '—'}</span>
-                            <span>·</span>
-                            <span>{(field.confidence).toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-gray-500">
-                        {field.page || '—'}
-                      </span>
-                    </td>
-                    
-                    <td className="py-3 px-4">
-                      {field.confidence > 0 ? (
-                        <div className="flex items-center space-x-2">
-                          <ConfidenceIcon className={`h-4 w-4 ${getConfidenceColor(field.confidence).split(' ')[0]}`} />
-                          <span className={`px-2 py-1 text-xs font-medium rounded-md ${getConfidenceColor(field.confidence)}`}>
-                            {getConfidenceBadge(field.confidence)}
+        {aligned ? (
+          /* Aligned Invoice Data Sections */
+          <div className="space-y-6">
+            <section>
+              <h4 className="text-lg font-semibold text-gray-900 mb-3">Proveedor</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Nombre:</span>
+                  <span className="text-sm font-medium">{aligned.supplier.name || '—'}</span>
+                  {aligned.meta.rawConfidenceSummary.supplier_name && aligned.meta.rawConfidenceSummary.supplier_name.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">NIF:</span>
+                  <span className="text-sm font-medium">{aligned.supplier.taxId || '—'}</span>
+                  {aligned.meta.rawConfidenceSummary.supplier_tax_id && aligned.meta.rawConfidenceSummary.supplier_tax_id.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Email:</span>
+                  <span className="text-sm font-medium">{aligned.supplier.email || '—'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Dirección:</span>
+                  <span className="text-sm font-medium">{aligned.supplier.address || '—'}</span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h4 className="text-lg font-semibold text-gray-900 mb-3">Factura</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Nº:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.id || '—'}</span>
+                  {aligned.meta.rawConfidenceSummary.invoice_id && aligned.meta.rawConfidenceSummary.invoice_id.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Fecha:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.date || '—'}</span>
+                  {aligned.meta.rawConfidenceSummary.invoice_date && aligned.meta.rawConfidenceSummary.invoice_date.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Vencimiento:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.dueDate || '—'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Moneda:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.currency}</span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h4 className="text-lg font-semibold text-gray-900 mb-3">Importes</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Base:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.net.value.toFixed(2)} {aligned.invoice.currency}</span>
+                  {aligned.meta.rawConfidenceSummary.net_amount && aligned.meta.rawConfidenceSummary.net_amount.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Impuestos:</span>
+                  <span className="text-sm font-medium">{aligned.invoice.tax.value.toFixed(2)} {aligned.invoice.currency}</span>
+                  {aligned.meta.rawConfidenceSummary.total_tax_amount && aligned.meta.rawConfidenceSummary.total_tax_amount.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">Total:</span>
+                  <span className="text-sm font-bold">{aligned.invoice.total.value.toFixed(2)} {aligned.invoice.currency}</span>
+                  {aligned.meta.rawConfidenceSummary.total_amount && aligned.meta.rawConfidenceSummary.total_amount.score < 0.80 && (
+                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                  )}
+                </div>
+                {aligned.meta.blockingErrors.length > 0 && (
+                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded" role="alert">
+                    <span className="text-sm text-red-800">⚠ {aligned.meta.blockingErrors[0]}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* Fallback: Original Fields Table */
+          <div className="overflow-hidden">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Campo</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Valor · Confianza</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Página</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-900">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {processedFields.map((field, index) => {
+                  const FieldIcon = field.icon;
+                  const ConfidenceIcon = getConfidenceIcon(field.confidence);
+                  const finalValue = editableFields[field.name] || field.value;
+                  const displayValue = field.status === 'pending' && field.rawValue ? field.rawValue : finalValue;
+                  
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center space-x-3">
+                          <FieldIcon className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-900">
+                            {field.label}
+                            {field.isCritical && (
+                              <span className="text-red-500 ml-1">*</span>
+                            )}
                           </span>
                         </div>
-                      ) : (
-                        <span className="px-2 py-1 text-xs font-medium rounded-md text-gray-600 bg-gray-50">
-                          Pendiente
+                      </td>
+                      
+                      <td className="py-3 px-4">
+                        <div className="space-y-1">
+                          {field.editable ? (
+                            <input
+                              type="text"
+                              value={finalValue}
+                              onChange={(e) => handleFieldEdit(field.name, e.target.value)}
+                              placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
+                              className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
+                                field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
+                              }`}
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-900">{displayValue || '—'}</span>
+                          )}
+                          
+                          {/* H-OCR-ALIGN: Show "value · confidence" format */}
+                          {field.confidence > 0 && (
+                            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                              <span>{displayValue || '—'}</span>
+                              <span>·</span>
+                              <span>{(field.confidence).toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      
+                      <td className="py-3 px-4">
+                        <span className="text-sm text-gray-500">
+                          {field.page || '—'}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      
+                      <td className="py-3 px-4">
+                        {field.confidence > 0 ? (
+                          <div className="flex items-center space-x-2">
+                            <ConfidenceIcon className={`h-4 w-4 ${getConfidenceColor(field.confidence).split(' ')[0]}`} />
+                            <span className={`px-2 py-1 text-xs font-medium rounded-md ${getConfidenceColor(field.confidence)}`}>
+                              {getConfidenceBadge(field.confidence)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-medium rounded-md text-gray-600 bg-gray-50">
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-6 pt-6 border-t border-gray-200">
