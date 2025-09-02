@@ -3,21 +3,14 @@
   publish = "build"
 
 [functions]
-  directory = "functions"
-  node_bundler = "esbuild"
+directory = "functions"
+node_bundler = "esbuild"
 
-# Evita que la SPA capture rutas de funciones
+# (Opcional) SPA 200 — esto SÍ es válido y no rompe las functions
 [[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = true
-
-# Handle SPA routing by redirecting all routes to index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+from = "/*"
+to = "/index.html"
+status = 200
 
 # Set security headers
 [[headers]]
