@@ -178,6 +178,100 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  // H-OCR: Manual OCR processing function
+  const handleManualOCR = async (document: any) => {
+    try {
+      // DEV telemetry: Log start of OCR processing
+      if (process.env.NODE_ENV === 'development') {
+        const sizeKB = Math.round((document.content?.size || 0) / 1024);
+        console.log(`OCR call → endpoint: /.netlify/functions/ocr-documentai, sizeKB: ${sizeKB}`);
+      }
+
+      // Set processing status
+      const processingDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          ocr: {
+            engine: 'gdocai:invoice',
+            timestamp: new Date().toISOString(),
+            confidenceGlobal: 0,
+            fields: [],
+            status: 'processing' as const
+          }
+        }
+      };
+
+      // Update local state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? processingDoc : doc
+      ));
+
+      // Process OCR
+      const ocrResult = await processDocumentOCR(document.content, document.filename);
+      
+      // Update with results
+      const updatedDoc = {
+        ...processingDoc,
+        metadata: {
+          ...processingDoc.metadata,
+          ocr: ocrResult
+        }
+      };
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? updatedDoc : doc
+      ));
+
+      // Update in database
+      try {
+        const db = await initDB();
+        await db.put('documents', updatedDoc);
+      } catch (error) {
+        console.warn('Failed to update OCR in IndexedDB:', error);
+      }
+
+      toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      // Handle specific error codes for toast/banner display
+      if (errorMessage.includes('OCR_ERROR_CONFIG')) {
+        toast.error('CONFIG: OCR no configurado correctamente');
+      } else if (errorMessage.includes('OCR_ERROR_403')) {
+        toast.error('403: Sin permisos para OCR');
+      } else if (errorMessage.includes('OCR_ERROR_404')) {
+        toast.error('404: Servicio OCR no encontrado');
+      } else if (errorMessage.includes('OCR_ERROR_429')) {
+        toast.error('429: Límite de OCR excedido');
+      } else {
+        toast.error(`Error OCR: ${errorMessage}`);
+      }
+      
+      // Update with error status
+      const errorDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          ocr: {
+            engine: 'gdocai:invoice',
+            timestamp: new Date().toISOString(),
+            confidenceGlobal: 0,
+            fields: [],
+            status: 'error' as const,
+            error: errorMessage
+          }
+        }
+      };
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? errorDoc : doc
+      ));
+
+      console.warn(`Manual OCR failed for ${document.filename}:`, error);
+    }
+  };
+
   const handleAssignDocument = async (docId: number, metadata: any) => {
     try {
       const db = await initDB();
@@ -651,6 +745,7 @@ const InboxPage: React.FC = () => {
                   onAssign={handleAssignDocument}
                   onDelete={handleDeleteDocument}
                   onUpdate={handleUpdateDocument}
+                  onProcessOCR={handleManualOCR}
                 />
               </div>
             ) : (

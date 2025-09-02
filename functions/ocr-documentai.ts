@@ -310,65 +310,89 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: envValidation.error })
+      body: JSON.stringify({ 
+        code: 'CONFIG',
+        error: envValidation.error,
+        message: envValidation.error
+      })
     };
   }
 
   try {
-    // Parse multipart form data
+    // Parse request based on content type
     const contentType = event.headers['content-type'] || event.headers['Content-Type'] || '';
     
-    if (!contentType.includes('multipart/form-data')) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Se requiere multipart/form-data' })
-      };
-    }
-
-    // Extract file from form data (basic implementation)
-    // Note: In production, you'd use a proper multipart parser
-    const body = event.isBase64Encoded 
-      ? Buffer.from(event.body || '', 'base64')
-      : Buffer.from(event.body || '', 'utf-8');
-
-    // Simple extraction of file content from multipart data
-    // This is a simplified approach - in production use proper multipart parsing
-    const boundary = contentType.split('boundary=')[1];
-    if (!boundary) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Formato multipart inválido' })
-      };
-    }
-
-    const parts = body.toString('binary').split(`--${boundary}`);
     let fileBuffer: Buffer | null = null;
     let fileMime = '';
     let fileName = '';
 
-    for (const part of parts) {
-      if (part.includes('Content-Disposition: form-data') && part.includes('filename=')) {
-        const filenameMatch = part.match(/filename="([^"]+)"/);
-        if (filenameMatch) {
-          fileName = filenameMatch[1];
-        }
-        
-        const contentTypeMatch = part.match(/Content-Type:\s*([^\r\n]+)/);
-        if (contentTypeMatch) {
-          fileMime = contentTypeMatch[1].trim();
-        }
-        
-        const headerEnd = part.indexOf('\r\n\r\n');
-        if (headerEnd !== -1) {
-          const fileContent = part.substring(headerEnd + 4);
-          // Remove trailing boundary markers
-          const cleaned = fileContent.replace(/\r\n--.*$/, '');
-          fileBuffer = Buffer.from(cleaned, 'binary');
-          break;
+    if (contentType.includes('application/octet-stream')) {
+      // Handle direct file upload (new format as per requirements)
+      fileBuffer = event.isBase64Encoded 
+        ? Buffer.from(event.body || '', 'base64')
+        : Buffer.from(event.body || '', 'utf-8');
+      
+      // Try to detect file type from first bytes
+      const header = fileBuffer.slice(0, 4);
+      if (header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46) {
+        fileMime = 'application/pdf';
+        fileName = 'document.pdf';
+      } else if (header[0] === 0xFF && header[1] === 0xD8 && header[2] === 0xFF) {
+        fileMime = 'image/jpeg';
+        fileName = 'document.jpg';
+      } else if (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4E && header[3] === 0x47) {
+        fileMime = 'image/png';
+        fileName = 'document.png';
+      } else {
+        fileMime = 'application/pdf'; // Default fallback
+        fileName = 'document.pdf';
+      }
+    } else if (contentType.includes('multipart/form-data')) {
+      // Handle FormData (legacy support)
+      const body = event.isBase64Encoded 
+        ? Buffer.from(event.body || '', 'base64')
+        : Buffer.from(event.body || '', 'utf-8');
+
+      // Simple extraction of file content from multipart data
+      const boundary = contentType.split('boundary=')[1];
+      if (!boundary) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Formato multipart inválido' })
+        };
+      }
+
+      const parts = body.toString('binary').split(`--${boundary}`);
+
+      for (const part of parts) {
+        if (part.includes('Content-Disposition: form-data') && part.includes('filename=')) {
+          const filenameMatch = part.match(/filename="([^"]+)"/);
+          if (filenameMatch) {
+            fileName = filenameMatch[1];
+          }
+          
+          const contentTypeMatch = part.match(/Content-Type:\s*([^\r\n]+)/);
+          if (contentTypeMatch) {
+            fileMime = contentTypeMatch[1].trim();
+          }
+          
+          const headerEnd = part.indexOf('\r\n\r\n');
+          if (headerEnd !== -1) {
+            const fileContent = part.substring(headerEnd + 4);
+            // Remove trailing boundary markers
+            const cleaned = fileContent.replace(/\r\n--.*$/, '');
+            fileBuffer = Buffer.from(cleaned, 'binary');
+            break;
+          }
         }
       }
+    } else {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Se requiere Content-Type: application/octet-stream o multipart/form-data' })
+      };
     }
 
     if (!fileBuffer) {
