@@ -2,11 +2,26 @@
 import { OCRResult, OCRField } from './db';
 import { findProviderByNIF, findProviderByNameOrAlias, initializeDefaultProviders } from './providerDirectoryService';
 
-// H-OCR: Configuration interface
+// H-OCR-ALIGN: Configuration interface with strict alignment requirements
 interface OCRConfig {
   autoRun?: boolean;
   confidenceThreshold?: number;
 }
+
+// H-OCR-ALIGN: Configurable confidence threshold (default 0.80 as per requirements)
+export const OCR_ACCEPT_CONFIDENCE = parseFloat(
+  process.env.REACT_APP_OCR_CONFIDENCE_THRESHOLD || 
+  localStorage.getItem('OCR_ACCEPT_CONFIDENCE') || 
+  '0.80'
+);
+
+// H-OCR-ALIGN: Supported entity types for 1:1 mapping (only these are accepted)
+export const SUPPORTED_ENTITY_TYPES = [
+  'total_amount', 'subtotal', 'net_amount', 'tax_amount', 'tax_rate', 'currency',
+  'supplier_name', 'supplier_tax_id', 'invoice_id', 'invoice_date', 'due_date'
+] as const;
+
+export type SupportedEntityType = typeof SUPPORTED_ENTITY_TYPES[number];
 
 // H-OCR-FIX: Provider blacklist for filtering demo/example terms
 const PROVIDER_BLACKLIST = [
@@ -114,7 +129,7 @@ export const normalizeDateToSpanish = (date: string): string => {
   }
 };
 
-// H-OCR-FIX: Validate invoice amounts (Total ≈ Base + IVA - Discounts)
+// H-OCR-ALIGN: Validate invoice amounts harmony (Base + IVA ≈ Total ± 0.01)
 export const validateInvoiceAmounts = (base: number, iva: number, total: number, discounts: number = 0): {
   isValid: boolean;
   expectedTotal: number;
@@ -122,12 +137,105 @@ export const validateInvoiceAmounts = (base: number, iva: number, total: number,
 } => {
   const expectedTotal = base + iva - discounts;
   const difference = Math.abs(total - expectedTotal);
-  const tolerance = 0.01; // ±0.01 tolerance as specified
+  const tolerance = 0.01; // ±0.01 tolerance as specified in requirements
   
   return {
     isValid: difference <= tolerance,
     expectedTotal,
     difference
+  };
+};
+
+// H-OCR-ALIGN: Validate plausible dates according to requirements
+export const validateInvoiceDates = (invoiceDate: string, dueDate?: string): {
+  invoiceDateValid: boolean;
+  dueDateValid: boolean;
+  errorMessage?: string;
+} => {
+  try {
+    const today = new Date();
+    const invoice = new Date(invoiceDate);
+    
+    // Check if invoice date is not future > 5 days
+    const maxFutureDate = new Date();
+    maxFutureDate.setDate(today.getDate() + 5);
+    
+    const invoiceDateValid = invoice <= maxFutureDate;
+    let dueDateValid = true;
+    let errorMessage: string | undefined;
+    
+    if (!invoiceDateValid) {
+      errorMessage = 'Fecha factura no puede ser más de 5 días en el futuro';
+    }
+    
+    if (dueDate) {
+      const due = new Date(dueDate);
+      const maxDueDate = new Date(invoice);
+      maxDueDate.setDate(invoice.getDate() + 180); // 180 days max
+      
+      dueDateValid = due >= invoice && due <= maxDueDate;
+      
+      if (!dueDateValid && !errorMessage) {
+        if (due < invoice) {
+          errorMessage = 'Fecha vencimiento debe ser >= fecha factura';
+        } else {
+          errorMessage = 'Fecha vencimiento no puede ser > 180 días después de factura';
+        }
+      }
+    }
+    
+    return {
+      invoiceDateValid,
+      dueDateValid,
+      errorMessage
+    };
+  } catch {
+    return {
+      invoiceDateValid: false,
+      dueDateValid: false,
+      errorMessage: 'Formato de fecha inválido'
+    };
+  }
+};
+
+// H-OCR-ALIGN: Check if required fields for Apply are present and valid
+export const checkRequiredFieldsForApply = (ocrFields: OCRField[]): {
+  hasValidTotal: boolean;
+  hasValidDate: boolean;
+  hasCurrency: boolean;
+  canApply: boolean;
+  missingFields: string[];
+} => {
+  const threshold = OCR_ACCEPT_CONFIDENCE;
+  
+  const totalAmountField = ocrFields.find(f => 
+    f.name === 'total_amount' && f.confidence >= threshold && f.value.trim() !== ''
+  );
+  
+  const invoiceDateField = ocrFields.find(f => 
+    (f.name === 'invoice_date' || f.name === 'date') && 
+    f.confidence >= threshold && f.value.trim() !== ''
+  );
+  
+  const currencyField = ocrFields.find(f => 
+    f.name === 'currency' && f.confidence >= threshold && f.value.trim() !== ''
+  );
+  
+  const hasValidTotal = !!totalAmountField;
+  const hasValidDate = invoiceDateField ? validateInvoiceDates(invoiceDateField.value).invoiceDateValid : false;
+  const hasCurrency = !!currencyField;
+  
+  const missingFields: string[] = [];
+  if (!hasValidTotal) missingFields.push('total_amount');
+  if (!hasValidDate) missingFields.push('invoice_date válida');
+  if (!hasCurrency) missingFields.push('currency');
+  
+  return {
+    hasValidTotal,
+    hasValidDate,
+    hasCurrency,
+    canApply: hasValidTotal && hasValidDate && hasCurrency,
+    missingFields
   };
 };
 
@@ -301,11 +409,11 @@ export const formatPercentage = (value: number): string => {
   }).format(value / 100);
 };
 
-// H-OCR: Get OCR configuration from environment/localStorage
+// H-OCR-ALIGN: Get OCR configuration from environment/localStorage
 export const getOCRConfig = (): OCRConfig => {
   return {
     autoRun: localStorage.getItem('OCR_AUTORUN') === 'true',
-    confidenceThreshold: parseFloat(localStorage.getItem('OCR_CONFIDENCE_THRESHOLD') || '0.7')
+    confidenceThreshold: OCR_ACCEPT_CONFIDENCE
   };
 };
 
@@ -503,7 +611,7 @@ export const getConfidenceIcon = (confidence: number): string => {
   return '⛔';
 };
 
-// H-OCR-FIX: Multi-page document scoring for better field extraction
+// H-OCR-ALIGN: Multi-page document scoring for better field extraction
 export const scorePageForInvoiceFields = (pageText: string): number => {
   const keywords = [
     'FACTURA', 'INVOICE', 'Nº FACTURA', 'INVOICE NUMBER',
@@ -516,50 +624,43 @@ export const scorePageForInvoiceFields = (pageText: string): number => {
   const legalTerms = [
     'CONDICIONES LEGALES', 'TÉRMINOS Y CONDICIONES', 'LEGAL CONDITIONS',
     'POLÍTICA DE PRIVACIDAD', 'PRIVACY POLICY', 'PROTECCIÓN DE DATOS',
-    'AVISO LEGAL', 'LEGAL NOTICE', 'CLAUSULAS', 'CLAUSES'
+    'AVISO LEGAL', 'LEGAL NOTICE', 'DISCLAIMER'
   ];
   
+  const monetaryTerms = [
+    'TOTAL', 'SUBTOTAL', 'IVA', 'IMPORTE', 'AMOUNT', '€', 'EUR',
+    'BASE IMPONIBLE', 'TAXABLE BASE'
+  ];
+  
+  let score = 0;
   const upperText = pageText.toUpperCase();
   
-  // Count keyword matches
-  let keywordScore = 0;
+  // Positive scoring for relevant keywords
   keywords.forEach(keyword => {
     const matches = (upperText.match(new RegExp(keyword, 'g')) || []).length;
-    keywordScore += matches;
+    score += matches * 10;
   });
   
-  // Penalty for legal/privacy pages
-  let legalPenalty = 0;
+  // Extra points for monetary terms (higher weight for H-OCR-ALIGN)
+  monetaryTerms.forEach(term => {
+    const matches = (upperText.match(new RegExp(term, 'g')) || []).length;
+    score += matches * 15;
+  });
+  
+  // Penalty for legal/footer content
   legalTerms.forEach(term => {
-    if (upperText.includes(term)) {
-      legalPenalty += 5; // Heavy penalty for legal content
-    }
+    const matches = (upperText.match(new RegExp(term, 'g')) || []).length;
+    score -= matches * 20;
   });
   
-  // Check for amount patterns (numbers with €, EUR, or decimal patterns)
-  const amountPatterns = [
-    /\d+[.,]\d{2}\s*€/g,
-    /\d+[.,]\d{2}\s*EUR/g,
-    /€\s*\d+[.,]\d{2}/g,
-    /\d{1,3}[.,]\d{3}[.,]\d{2}/g // Large amounts with thousands separator
-  ];
-  
-  let amountScore = 0;
-  amountPatterns.forEach(pattern => {
-    const matches = (pageText.match(pattern) || []).length;
-    amountScore += matches * 2; // Higher weight for amounts
-  });
-  
-  // Final score calculation
-  const score = keywordScore + amountScore - legalPenalty;
-  return Math.max(0, score); // Ensure non-negative
+  return Math.max(0, score);
 };
 
-// H-OCR-FIX: Select best page from multi-page document
-export const selectBestPageForExtraction = (pages: string[]): { 
-  bestPageIndex: number; 
-  score: number; 
-  allScores: number[] 
+// H-OCR-ALIGN: Select best page based on monetary entity coverage + confidence
+export const selectBestPageForExtraction = (pages: string[], ocrFields?: OCRField[]): {
+  bestPageIndex: number;
+  score: number;
+  allScores: number[];
 } => {
   if (pages.length === 0) {
     return { bestPageIndex: -1, score: 0, allScores: [] };
@@ -569,6 +670,34 @@ export const selectBestPageForExtraction = (pages: string[]): {
     return { bestPageIndex: 0, score: scorePageForInvoiceFields(pages[0]), allScores: [scorePageForInvoiceFields(pages[0])] };
   }
   
+  // If we have OCR fields with page info, prioritize pages with monetary entities
+  if (ocrFields && ocrFields.some(f => f.page !== undefined)) {
+    const pageScores = new Array(pages.length).fill(0);
+    
+    ocrFields.forEach(field => {
+      if (field.page !== undefined && field.page >= 1 && field.page <= pages.length) {
+        const pageIndex = field.page - 1; // Convert to 0-based
+        
+        // Higher weight for monetary fields (as per H-OCR-ALIGN requirements)
+        const monetaryFields = ['total_amount', 'subtotal', 'net_amount', 'tax_amount'];
+        const weight = monetaryFields.includes(field.name) ? 20 : 10;
+        
+        // Add confidence-weighted score
+        pageScores[pageIndex] += weight * field.confidence;
+      }
+    });
+    
+    const maxScore = Math.max(...pageScores);
+    const bestPageIndex = pageScores.indexOf(maxScore);
+    
+    return {
+      bestPageIndex,
+      score: maxScore,
+      allScores: pageScores
+    };
+  }
+  
+  // Fallback to text-based scoring
   const scores = pages.map(page => scorePageForInvoiceFields(page));
   const maxScore = Math.max(...scores);
   const bestPageIndex = scores.indexOf(maxScore);
@@ -580,12 +709,13 @@ export const selectBestPageForExtraction = (pages: string[]): {
   };
 };
 
-// H-OCR-FIX: Get fields suitable for automatic application (high confidence only)
-export const getApplicableFields = (ocrResult: OCRResult, threshold: number = 0.80): OCRField[] => {
+// H-OCR-ALIGN: Get fields suitable for automatic application (high confidence only)
+export const getApplicableFields = (ocrResult: OCRResult, threshold: number = OCR_ACCEPT_CONFIDENCE): OCRField[] => {
   return ocrResult.fields.filter(field => 
     field.confidence >= threshold && 
     field.value.trim() !== '' &&
-    !isProviderBlacklisted(field.name === 'proveedor' ? field.value : '')
+    !isProviderBlacklisted(field.name === 'proveedor' ? field.value : '') &&
+    SUPPORTED_ENTITY_TYPES.includes(field.name as SupportedEntityType)
   );
 };
 
