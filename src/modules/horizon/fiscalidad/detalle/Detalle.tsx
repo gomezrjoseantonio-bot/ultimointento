@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Ingreso, Gasto, Contract, Property, IngresoEstado, GastoEstado } from '../../../../services/db';
 import AmortizationDetail from '../../../../components/fiscalidad/AmortizationDetail';
 import { getAEATBoxDisplayName, AEAT_CLASSIFICATION_MAP } from '../../../../services/aeatClassificationService';
+import { findIncomeReconciliationMatches, updateIncomeReconciliationStatus } from '../../../../services/incomeReconciliationService';
 
 type DetalleSection = 'ingresos' | 'gastos' | 'amortizaciones' | 'arrastres';
 
@@ -23,6 +24,8 @@ const Detalle: React.FC = () => {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reconciliationSuggestions, setReconciliationSuggestions] = useState<any[]>([]);
+  const [showReconciliationPanel, setShowReconciliationPanel] = useState(false);
   
   const [filters, setFilters] = useState<DetalleFilters>({
     year: new Date().getFullYear(),
@@ -55,12 +58,27 @@ const Detalle: React.FC = () => {
       setIngresos(ingresosData);
       setGastos(gastosData);
       setProperties(propertiesData);
+
+      // Load reconciliation suggestions for income
+      if (activeSection === 'ingresos') {
+        const suggestions = await findIncomeReconciliationMatches();
+        setReconciliationSuggestions(suggestions);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeSection]);
+
+  const handleReconcileIncome = async (ingresoId: number, movementId: number) => {
+    try {
+      await updateIncomeReconciliationStatus(ingresoId, movementId);
+      await loadData(); // Reload data to reflect changes
+    } catch (error) {
+      console.error('Error reconciling income:', error);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -200,14 +218,54 @@ const Detalle: React.FC = () => {
       return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
     });
 
+    const unreconciledCount = filteredIngresos.filter(i => !i.movement_id).length;
+
     return (
       <div className="space-y-6">
         {renderFilters()}
         
+        {/* Reconciliation Summary */}
+        {reconciliationSuggestions.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <RefreshCw className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">
+                  {reconciliationSuggestions.length} ingresos con sugerencias de conciliación
+                </span>
+              </div>
+              <button
+                onClick={() => setShowReconciliationPanel(!showReconciliationPanel)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {showReconciliationPanel ? 'Ocultar' : 'Ver sugerencias'}
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Ingresos por Contrato</h3>
-            <p className="text-sm text-gray-600">Detalle de ingresos devengados y estado de cobro</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Ingresos por Contrato</h3>
+                <p className="text-sm text-gray-600">
+                  Detalle de ingresos devengados y estado de cobro 
+                  {unreconciledCount > 0 && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                      {unreconciledCount} sin conciliar
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={() => loadData()}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualizar
+              </button>
+            </div>
           </div>
 
           {filteredIngresos.length === 0 ? (
@@ -233,6 +291,9 @@ const Detalle: React.FC = () => {
                       Estado
                     </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Conciliación
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Enlaces
                     </th>
                   </tr>
@@ -240,6 +301,9 @@ const Detalle: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredIngresos.map((ingreso) => {
                     const contract = contracts.find(c => c.id === ingreso.origen_id);
+                    const suggestion = reconciliationSuggestions.find(s => s.ingreso.id === ingreso.id);
+                    const hasReconciliation = !!ingreso.movement_id;
+                    
                     return (
                       <tr key={ingreso.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -258,6 +322,40 @@ const Detalle: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {getStatusChip(ingreso.estado)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {hasReconciliation ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Conciliado
+                            </span>
+                          ) : suggestion && suggestion.potentialMovements.length > 0 ? (
+                            <div className="flex flex-col space-y-1">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                <AlertCircle className="w-3 h-3 mr-1" />
+                                {suggestion.potentialMovements.length} sugerencias
+                              </span>
+                              {showReconciliationPanel && (
+                                <div className="space-y-1">
+                                  {suggestion.potentialMovements.slice(0, 1).map((match: any, idx: number) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
+                                      className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                                      title={`Confianza: ${match.confidence}% - ${match.reason}`}
+                                    >
+                                      Conciliar ({match.confidence}%)
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Pendiente
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <div className="flex items-center justify-center space-x-2">
