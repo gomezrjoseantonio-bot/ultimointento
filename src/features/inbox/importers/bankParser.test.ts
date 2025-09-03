@@ -286,6 +286,43 @@ describe('BankParserService', () => {
       expect(result).toBe('xlsx');
     });
   });
+  
+  describe('Duplicate Detection Integration', () => {
+    test('should detect duplicates in parsed movements', () => {
+      const testData = [
+        ['Fecha', 'Concepto', 'Importe'],
+        ['15/01/2024', 'Transferencia', '100,50'],
+        ['16/01/2024', 'Pago nómina', '1.500,00'],
+        ['15/01/2024', 'Transferencia', '100,50'] // Duplicate
+      ];
+
+      const columns = { date: 0, description: 1, amount: 2 };
+      const movements = (parser as any).parseMovements(testData, 1, columns);
+      
+      expect(movements).toHaveLength(3);
+      expect(movements[0].isDuplicate).toBe(true);
+      expect(movements[1].isDuplicate).toBe(false);
+      expect(movements[2].isDuplicate).toBe(true);
+      
+      // Should have same hash for duplicates
+      expect(movements[0].duplicateHash).toBe(movements[2].duplicateHash);
+    });
+    
+    test('should handle currency detection', () => {
+      const testData = [
+        ['Fecha', 'Concepto', 'Importe', 'Divisa'],
+        ['15/01/2024', 'Transferencia USD', '100,50', 'USD'],
+        ['16/01/2024', 'Pago EUR', '1.500,00', 'EUR']
+      ];
+
+      const columns = { date: 0, description: 1, amount: 2, currency: 3 };
+      const movements = (parser as any).parseMovements(testData, 1, columns);
+      
+      expect(movements).toHaveLength(2);
+      expect(movements[0].currency).toBe('USD'); // Non-EUR currency stored
+      expect(movements[1].currency).toBeUndefined(); // EUR currency not stored
+    });
+  });
 });
 
 describe('Bank-Specific QA Tests', () => {

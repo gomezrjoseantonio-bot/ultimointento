@@ -46,6 +46,7 @@ const COLUMN_ALIASES = {
 };
 
 import { parseEsNumber } from '../../../utils/numberUtils';
+import { detectDuplicates } from '../../../utils/duplicateDetection';
 
 export class BankParserService {
   
@@ -329,6 +330,7 @@ export class BankParserService {
       try {
         const movement = this.parseMovementRow(rowData, columns);
         if (movement) {
+          movement.originalRow = row; // Track original row number
           movements.push(movement);
         }
       } catch (error) {
@@ -337,7 +339,10 @@ export class BankParserService {
       }
     }
     
-    return movements;
+    // Detect duplicates according to requirements: hash by (date_posted + amount + description_normalized)
+    const movementsWithDuplicates = detectDuplicates(movements);
+    
+    return movementsWithDuplicates;
   }
 
   /**
@@ -406,6 +411,7 @@ export class BankParserService {
     const balance = columns.balance !== undefined ? this.parseSpanishAmount(rowData[columns.balance]?.trim() || '') : undefined;
     const reference = columns.reference !== undefined ? rowData[columns.reference]?.trim() : undefined;
     const counterparty = columns.counterparty !== undefined ? rowData[columns.counterparty]?.trim() : undefined;
+    const currency = columns.currency !== undefined ? rowData[columns.currency]?.trim() : undefined;
     
     return {
       date,
@@ -415,6 +421,7 @@ export class BankParserService {
       balance: !isNaN(balance!) ? balance : undefined,
       reference,
       counterparty,
+      currency: currency && currency !== 'EUR' ? currency : undefined, // Only store non-EUR currencies
       raw: rowData.join('|') // For debugging
     };
   }

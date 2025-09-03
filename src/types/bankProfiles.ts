@@ -39,6 +39,9 @@ export interface ParsedMovement {
   originalRow?: number;
   rawData?: Record<string, any>;
   raw?: string; // ATLAS HOTFIX: Raw row data for debugging
+  isDuplicate?: boolean; // Flag for duplicate detection
+  duplicateHash?: string; // Hash for duplicate detection
+  currency?: string; // Currency if detected
 }
 
 export interface BankDetectionResult {
