@@ -128,8 +128,8 @@ describe('Treasury Creation Service QA Tests', () => {
       expect(result.length).toBeGreaterThanOrEqual(1);
       
       // Verify that income records have correct payment dates
-      const addCalls = mockDB.add.mock.calls.filter(call => call[0] === 'ingresos');
-      addCalls.forEach(call => {
+      const addCalls = mockDB.add.mock.calls.filter((call: any) => call[0] === 'ingresos');
+      addCalls.forEach((call: any) => {
         const ingresoData = call[1];
         expect(ingresoData.fecha_emision).toMatch(/^\d{4}-\d{2}-01$/); // Should be 1st of month
         expect(ingresoData.fecha_prevista_cobro).toMatch(/^\d{4}-\d{2}-01$/);
@@ -142,12 +142,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Inactive Tenant', email: 'inactive@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'inactive',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: { type: 'none' },
+        deposit: { months: 2, amount: 2000 },
+        includedServices: {},
+        status: 'terminated',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
