@@ -54,7 +54,7 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/fiscalidad/resumen', icon: Calculator, module: 'horizon' },
-      { name: 'Deducibles', href: '/fiscalidad/deducibles', icon: TrendingUp, module: 'horizon' },
+      { name: 'Detalle', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
       { name: 'Declaraciones', href: '/fiscalidad/declaraciones', icon: Settings, module: 'horizon' },
     ]
   },

@@ -22,7 +22,7 @@ import TesMovimientos from './modules/horizon/tesoreria/movimientos/Movimientos'
 import Automatizaciones from './modules/horizon/tesoreria/automatizaciones/Automatizaciones';
 import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
 import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
-import Deducibles from './modules/horizon/fiscalidad/deducibles/Deducibles';
+import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
 import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
 import ProyeccionCartera from './modules/horizon/proyeccion/cartera/ProyeccionCartera';
 import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/ProyeccionConsolidado';
@@ -97,7 +97,7 @@ function App() {
             <Route path="fiscalidad">
               <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
               <Route path="resumen" element={<FisResumen />} />
-              <Route path="deducibles" element={<Deducibles />} />
+              <Route path="detalle" element={<Detalle />} />
               <Route path="declaraciones" element={<Declaraciones />} />
             </Route>
             
