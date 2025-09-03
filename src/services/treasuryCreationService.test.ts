@@ -54,12 +54,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'John Doe', email: 'john@example.com' },
-        monthlyRent: 1200,
-        paymentDay: 15,
-        status: 'active',
         startDate: today.toISOString().split('T')[0],
         endDate: nextYear.toISOString().split('T')[0],
+        isIndefinite: false,
+        monthlyRent: 1200,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: { type: 'none' },
+        deposit: { months: 2, amount: 2400 },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: today.toISOString(),
         updatedAt: today.toISOString()
       };
@@ -92,12 +100,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Jane Smith', email: 'jane@example.com' },
-        monthlyRent: 800,
-        paymentDay: 1, // First day of month
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-03-31', // 3-month contract
+        isIndefinite: false,
+        monthlyRent: 800,
+        paymentDay: 1, // First day of month
+        periodicity: 'monthly',
+        rentUpdate: { type: 'none' },
+        deposit: { months: 2, amount: 1600 },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -151,12 +167,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 999, // Non-existent property
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Test Tenant', email: 'test@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: { type: 'none' },
+        deposit: { months: 2, amount: 2000 },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -628,12 +652,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Test Tenant', email: 'test@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: { type: 'none' },
+        deposit: { months: 2, amount: 2000 },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
