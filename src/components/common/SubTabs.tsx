@@ -30,7 +30,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   ],
   fiscalidad: [
     { label: 'Resumen', path: '/fiscalidad/resumen' },
-    { label: 'Deducibles', path: '/fiscalidad/deducibles' },
+    { label: 'Detalle', path: '/fiscalidad/detalle' },
     { label: 'Declaraciones', path: '/fiscalidad/declaraciones' },
   ],
   proyeccion: [
