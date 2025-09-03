@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { initDB, Ingreso, Gasto, Contract, IngresoEstado, GastoEstado } from '../../../../services/db';
+import { initDB, Ingreso, Gasto, Contract, Property, IngresoEstado, GastoEstado } from '../../../../services/db';
+import AmortizationDetail from '../../../../components/fiscalidad/AmortizationDetail';
 
 type DetalleSection = 'ingresos' | 'gastos' | 'amortizaciones' | 'arrastres';
 
@@ -19,6 +20,7 @@ const Detalle: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
   const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [filters, setFilters] = useState<DetalleFilters>({
@@ -41,15 +43,17 @@ const Detalle: React.FC = () => {
     setLoading(true);
     try {
       const db = await initDB();
-      const [contractsData, ingresosData, gastosData] = await Promise.all([
+      const [contractsData, ingresosData, gastosData, propertiesData] = await Promise.all([
         db.getAll('contracts'),
         db.getAll('ingresos'),
-        db.getAll('gastos')
+        db.getAll('gastos'),
+        db.getAll('properties')
       ]);
       
       setContracts(contractsData);
       setIngresos(ingresosData);
       setGastos(gastosData);
+      setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -354,39 +358,46 @@ const Detalle: React.FC = () => {
     );
   };
 
-  const renderAmortizacionesSection = () => (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Amortizaciones</h3>
-        
-        <div className="space-y-6">
-          {/* Inmuebles Section */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-md font-medium text-gray-900 mb-3">
-              Inmuebles (3% anual)
-            </h4>
-            <div className="text-center py-8 text-gray-500">
-              <Calculator className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-              <p>Funcionalidad en desarrollo</p>
-              <p className="text-sm">Base fiscal editable en ficha, % construcción, 3% anual prorrateado por días arrendados</p>
-            </div>
-          </div>
+  const renderAmortizacionesSection = () => {
+    // Filter properties based on current filters
+    const filteredProperties = properties.filter(property => {
+      if (filters.propertyId !== 'todos' && property.id !== filters.propertyId) {
+        return false;
+      }
+      
+      // Only show properties with AEAT amortization data configured
+      return property.aeatAmortization && property.aeatAmortization.acquisitionType;
+    });
 
-          {/* Mobiliario/CAPEX Section */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h4 className="text-md font-medium text-gray-900 mb-3">
-              Mobiliario/CAPEX (10 años)
-            </h4>
+    if (filteredProperties.length === 0) {
+      return (
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Amortizaciones AEAT</h3>
             <div className="text-center py-8 text-gray-500">
               <Calculator className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-              <p>Funcionalidad en desarrollo</p>
-              <p className="text-sm">Importe original, inicio, años restantes, importe aplicado este año</p>
+              <p>No hay inmuebles con datos de amortización AEAT configurados</p>
+              <p className="text-sm mt-2">
+                Configure los datos de amortización AEAT en la ficha de cada inmueble para ver los cálculos detallados.
+              </p>
             </div>
           </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {filteredProperties.map((property) => (
+          <AmortizationDetail
+            key={`amortization-${property.id}`}
+            propertyId={property.id!}
+            exerciseYear={filters.year}
+          />
+        ))}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderArrastresSection = () => (
     <div className="space-y-6">
