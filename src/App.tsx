@@ -13,6 +13,7 @@ import Cartera from './modules/horizon/inmuebles/cartera/Cartera';
 import Contratos from './modules/horizon/inmuebles/contratos/Contratos';
 import Prestamos from './modules/horizon/inmuebles/prestamos/Prestamos';
 import Analisis from './modules/horizon/inmuebles/analisis/Analisis';
+import Tesoreria from './modules/horizon/tesoreria/Tesoreria';
 import TesRadar from './modules/horizon/tesoreria/radar/Radar';
 import TesIngresos from './modules/horizon/tesoreria/ingresos/Ingresos';
 import TesGastos from './modules/horizon/tesoreria/gastos/Gastos';
@@ -83,7 +84,7 @@ function App() {
             </Route>
             
             <Route path="tesoreria">
-              <Route index element={<Navigate to="/tesoreria/radar" replace />} />
+              <Route index element={<Tesoreria />} />
               <Route path="radar" element={<TesRadar />} />
               <Route path="ingresos" element={<TesIngresos />} />
               <Route path="gastos" element={<TesGastos />} />
