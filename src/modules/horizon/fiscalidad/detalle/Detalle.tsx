@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info } from 'lucide-react';
+import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Ingreso, Gasto, Contract, Property, IngresoEstado, GastoEstado } from '../../../../services/db';
 import AmortizationDetail from '../../../../components/fiscalidad/AmortizationDetail';
+import { getAEATBoxDisplayName, AEAT_CLASSIFICATION_MAP } from '../../../../services/aeatClassificationService';
 
 type DetalleSection = 'ingresos' | 'gastos' | 'amortizaciones' | 'arrastres';
 
@@ -80,17 +81,44 @@ const Detalle: React.FC = () => {
 
   const getStatusChip = (status: IngresoEstado | GastoEstado) => {
     const statusMap = {
-      'previsto': { label: 'Prevista', color: 'bg-yellow-100 text-yellow-800' },
-      'cobrado': { label: 'Cobrada', color: 'bg-green-100 text-green-800' },
-      'incompleto': { label: 'Parcialmente cobrada', color: 'bg-orange-100 text-orange-800' },
-      'completo': { label: 'Completo', color: 'bg-blue-100 text-blue-800' },
-      'pagado': { label: 'Pagado', color: 'bg-green-100 text-green-800' }
+      'previsto': { 
+        label: 'Prevista', 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: Clock 
+      },
+      'cobrado': { 
+        label: 'Cobrada', 
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: CheckCircle 
+      },
+      'incompleto': { 
+        label: 'Parcialmente cobrada', 
+        color: 'bg-orange-100 text-orange-800 border-orange-200',
+        icon: AlertCircle 
+      },
+      'completo': { 
+        label: 'Completo', 
+        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: CheckCircle 
+      },
+      'pagado': { 
+        label: 'Pagado', 
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: CheckCircle 
+      }
     };
     
-    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, color: 'bg-gray-100 text-gray-800' };
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { 
+      label: status, 
+      color: 'bg-gray-100 text-gray-800 border-gray-200',
+      icon: AlertCircle 
+    };
+    
+    const IconComponent = statusInfo.icon;
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusInfo.color}`}>
+        <IconComponent className="w-3 h-3" />
         {statusInfo.label}
       </span>
     );
@@ -292,10 +320,10 @@ const Detalle: React.FC = () => {
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-gray-900">
-                        {category}
+                        Casilla {AEAT_CLASSIFICATION_MAP[category as keyof typeof AEAT_CLASSIFICATION_MAP]} - {getAEATBoxDisplayName(AEAT_CLASSIFICATION_MAP[category as keyof typeof AEAT_CLASSIFICATION_MAP])}
                       </h4>
                       <span className="text-sm font-semibold text-gray-900">
-                        Total: {formatCurrency(total)}
+                        Total: {formatCurrency(total)} ({categoryGastos.length} facturas)
                       </span>
                     </div>
                   </div>
@@ -306,6 +334,7 @@ const Detalle: React.FC = () => {
                         <tr>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Fecha</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Proveedor</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Inmueble</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Base</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">IVA</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Total</th>
@@ -314,38 +343,57 @@ const Detalle: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {categoryGastos.map((gasto) => (
-                          <tr key={gasto.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-sm text-gray-900">
-                              {formatDate(gasto.fecha_emision)}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-900">
-                              {gasto.proveedor_nombre}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                              {gasto.base ? formatCurrency(gasto.base) : '—'}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                              {gasto.iva ? formatCurrency(gasto.iva) : '—'}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
-                              {formatCurrency(gasto.total)}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              {getStatusChip(gasto.estado)}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              {gasto.source_doc_id && (
-                                <button
-                                  title="Ver documento"
-                                  className="text-blue-600 hover:text-blue-800"
-                                >
-                                  <ExternalLink className="h-4 w-4" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        {categoryGastos.map((gasto) => {
+                          const property = properties.find(p => p.id === gasto.destino_id);
+                          return (
+                            <tr key={gasto.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {formatDate(gasto.fecha_emision)}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                <div className="font-medium">{gasto.proveedor_nombre}</div>
+                                {gasto.proveedor_nif && (
+                                  <div className="text-xs text-gray-500">{gasto.proveedor_nif}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900">
+                                {property ? property.alias : 'No asignado'}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                                {gasto.base ? formatCurrency(gasto.base) : '—'}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                                {gasto.iva ? formatCurrency(gasto.iva) : '—'}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 text-right font-medium">
+                                {formatCurrency(gasto.total)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                {getStatusChip(gasto.estado)}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <div className="flex items-center justify-center space-x-2">
+                                  {gasto.movement_id && (
+                                    <button
+                                      title="Ver conciliación bancaria"
+                                      className="text-green-600 hover:text-green-800"
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </button>
+                                  )}
+                                  {gasto.source_doc_id && (
+                                    <button
+                                      title="Ver documento"
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
