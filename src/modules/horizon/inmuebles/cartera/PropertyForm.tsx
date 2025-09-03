@@ -18,6 +18,7 @@ import {
   addCurrency
 } from '../../../../utils/formatUtils';
 import MoneyInput from '../../../../components/common/MoneyInput';
+import PropertyImprovements from '../../../../components/fiscalidad/PropertyImprovements';
 import toast from 'react-hot-toast';
 
 interface PropertyFormProps {
@@ -1657,6 +1658,17 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
             </div>
           </div>
         </div>
+
+        {/* Mejoras del inmueble - only show when editing */}
+        {mode === 'edit' && id && (
+          <PropertyImprovements 
+            propertyId={parseInt(id)}
+            onImprovementsChange={() => {
+              // Optionally refresh fiscal calculations when improvements change
+              console.log('Improvements updated for property', id);
+            }}
+          />
+        )}
 
         {/* Estado y notas */}
         <div className="bg-white rounded-lg border border-neutral-200 p-6">
