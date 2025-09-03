@@ -1,11 +1,34 @@
-import React, { useState } from 'react';
-import { BarChart3, FileText, Calculator, TrendingDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
+import { initDB, Ingreso, Gasto, Contract, IngresoEstado, GastoEstado } from '../../../../services/db';
 
 type DetalleSection = 'ingresos' | 'gastos' | 'amortizaciones' | 'arrastres';
 
+interface DetalleFilters {
+  year: number;
+  propertyId: number | 'todos';
+  searchTerm: string;
+  status: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
 const Detalle: React.FC = () => {
   const [activeSection, setActiveSection] = useState<DetalleSection>('ingresos');
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [ingresos, setIngresos] = useState<Ingreso[]>([]);
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [filters, setFilters] = useState<DetalleFilters>({
+    year: new Date().getFullYear(),
+    propertyId: 'todos',
+    searchTerm: '',
+    status: 'all',
+    dateFrom: '',
+    dateTo: ''
+  });
 
   const sections = [
     { id: 'ingresos' as DetalleSection, label: 'Ingresos', icon: BarChart3 },
@@ -14,40 +37,395 @@ const Detalle: React.FC = () => {
     { id: 'arrastres' as DetalleSection, label: 'Arrastres', icon: TrendingDown },
   ];
 
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const db = await initDB();
+      const [contractsData, ingresosData, gastosData] = await Promise.all([
+        db.getAll('contracts'),
+        db.getAll('ingresos'),
+        db.getAll('gastos')
+      ]);
+      
+      setContracts(contractsData);
+      setIngresos(ingresosData);
+      setGastos(gastosData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('es-ES');
+  };
+
+  const getStatusChip = (status: IngresoEstado | GastoEstado) => {
+    const statusMap = {
+      'previsto': { label: 'Prevista', color: 'bg-yellow-100 text-yellow-800' },
+      'cobrado': { label: 'Cobrada', color: 'bg-green-100 text-green-800' },
+      'incompleto': { label: 'Parcialmente cobrada', color: 'bg-orange-100 text-orange-800' },
+      'completo': { label: 'Completo', color: 'bg-blue-100 text-blue-800' },
+      'pagado': { label: 'Pagado', color: 'bg-green-100 text-green-800' }
+    };
+    
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, color: 'bg-gray-100 text-gray-800' };
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+        {statusInfo.label}
+      </span>
+    );
+  };
+
+  const renderFilters = () => (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Búsqueda</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              value={filters.searchTerm}
+              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+              placeholder="Buscar..."
+              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Todos</option>
+            {activeSection === 'ingresos' && (
+              <>
+                <option value="previsto">Prevista</option>
+                <option value="cobrado">Cobrada</option>
+                <option value="incompleto">Parcialmente cobrada</option>
+              </>
+            )}
+            {activeSection === 'gastos' && (
+              <>
+                <option value="completo">Completo</option>
+                <option value="pagado">Pagado</option>
+                <option value="incompleto">Incompleto</option>
+              </>
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Desde</label>
+          <input
+            type="date"
+            value={filters.dateFrom}
+            onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Hasta</label>
+          <input
+            type="date"
+            value={filters.dateTo}
+            onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderIngresosSection = () => {
+    const filteredIngresos = ingresos.filter(ingreso => {
+      const matchesSearch = !filters.searchTerm || 
+        ingreso.proveedor_contraparte.toLowerCase().includes(filters.searchTerm.toLowerCase());
+      const matchesStatus = filters.status === 'all' || ingreso.estado === filters.status;
+      const matchesDateFrom = !filters.dateFrom || ingreso.fecha_emision >= filters.dateFrom;
+      const matchesDateTo = !filters.dateTo || ingreso.fecha_emision <= filters.dateTo;
+      
+      return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
+    });
+
+    return (
+      <div className="space-y-6">
+        {renderFilters()}
+        
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Ingresos por Contrato</h3>
+            <p className="text-sm text-gray-600">Detalle de ingresos devengados y estado de cobro</p>
+          </div>
+
+          {filteredIngresos.length === 0 ? (
+            <div className="text-center py-12">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-500">No hay ingresos para mostrar con los filtros seleccionados</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fecha Devengo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contrato/Inquilino
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Importe
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Enlaces
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredIngresos.map((ingreso) => {
+                    const contract = contracts.find(c => c.id === ingreso.origen_id);
+                    return (
+                      <tr key={ingreso.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatDate(ingreso.fecha_emision)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {contract?.tenant?.name || ingreso.proveedor_contraparte}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Contrato #{contract?.id || 'No encontrado'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                          {formatCurrency(ingreso.importe)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {getStatusChip(ingreso.estado)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                          <div className="flex items-center justify-center space-x-2">
+                            {ingreso.movement_id && (
+                              <button
+                                title="Ver conciliación"
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </button>
+                            )}
+                            {contract && (
+                              <button
+                                title="Ver contrato"
+                                className="text-green-600 hover:text-green-800"
+                              >
+                                <FileText className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderGastosSection = () => {
+    const gastosGrouped = gastos.reduce((acc, gasto) => {
+      const category = gasto.categoria_AEAT;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(gasto);
+      return acc;
+    }, {} as Record<string, Gasto[]>);
+
+    return (
+      <div className="space-y-6">
+        {renderFilters()}
+        
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Gastos Deducibles AEAT (0105-0117)</h3>
+            <p className="text-sm text-gray-600">Clasificación por categorías con totales</p>
+          </div>
+
+          <div className="space-y-6 p-6">
+            {Object.entries(gastosGrouped).map(([category, categoryGastos]) => {
+              const total = categoryGastos.reduce((sum, gasto) => sum + gasto.total, 0);
+              
+              return (
+                <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        {category}
+                      </h4>
+                      <span className="text-sm font-semibold text-gray-900">
+                        Total: {formatCurrency(total)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Fecha</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Proveedor</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Base</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">IVA</th>
+                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Total</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Estado</th>
+                          <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">Enlaces</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {categoryGastos.map((gasto) => (
+                          <tr key={gasto.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {formatDate(gasto.fecha_emision)}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900">
+                              {gasto.proveedor_nombre}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                              {gasto.base ? formatCurrency(gasto.base) : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                              {gasto.iva ? formatCurrency(gasto.iva) : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                              {formatCurrency(gasto.total)}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {getStatusChip(gasto.estado)}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              {gasto.source_doc_id && (
+                                <button
+                                  title="Ver documento"
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAmortizacionesSection = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Amortizaciones</h3>
+        
+        <div className="space-y-6">
+          {/* Inmuebles Section */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="text-md font-medium text-gray-900 mb-3">
+              Inmuebles (3% anual)
+            </h4>
+            <div className="text-center py-8 text-gray-500">
+              <Calculator className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+              <p>Funcionalidad en desarrollo</p>
+              <p className="text-sm">Base fiscal editable en ficha, % construcción, 3% anual prorrateado por días arrendados</p>
+            </div>
+          </div>
+
+          {/* Mobiliario/CAPEX Section */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="text-md font-medium text-gray-900 mb-3">
+              Mobiliario/CAPEX (10 años)
+            </h4>
+            <div className="text-center py-8 text-gray-500">
+              <Calculator className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+              <p>Funcionalidad en desarrollo</p>
+              <p className="text-sm">Importe original, inicio, años restantes, importe aplicado este año</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderArrastresSection = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Arrastres</h3>
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <Info className="h-4 w-4" />
+            <span title="Aplicable hasta 4 ejercicios">Límite 4 años</span>
+          </div>
+        </div>
+        
+        <div className="text-center py-12 text-gray-500">
+          <TrendingDown className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <p className="text-lg">Funcionalidad en desarrollo</p>
+          <p className="text-sm">Categoría AEAT, original, aplicado este año, pendiente, año límite</p>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderSectionContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      );
+    }
+
     switch (activeSection) {
       case 'ingresos':
-        return (
-          <div className="text-center py-12">
-            <BarChart3 className="w-16 h-16 mx-auto mb-4 text-blue-500" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Ingresos</h3>
-            <p className="text-gray-600">Detalle de ingresos devengados y estado de cobro por contrato.</p>
-          </div>
-        );
+        return renderIngresosSection();
       case 'gastos':
-        return (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 mx-auto mb-4 text-red-500" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Gastos AEAT</h3>
-            <p className="text-gray-600">Clasificación detallada de gastos por casillas AEAT (0105-0117).</p>
-          </div>
-        );
+        return renderGastosSection();
       case 'amortizaciones':
-        return (
-          <div className="text-center py-12">
-            <Calculator className="w-16 h-16 mx-auto mb-4 text-purple-500" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Amortizaciones</h3>
-            <p className="text-gray-600">Amortización de inmuebles (3%) y mobiliario/CAPEX (10 años).</p>
-          </div>
-        );
+        return renderAmortizacionesSection();
       case 'arrastres':
-        return (
-          <div className="text-center py-12">
-            <TrendingDown className="w-16 h-16 mx-auto mb-4 text-orange-500" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Arrastres</h3>
-            <p className="text-gray-600">Excesos deducibles aplicables en ejercicios futuros (hasta 4 años).</p>
-          </div>
-        );
+        return renderArrastresSection();
       default:
         return null;
     }
@@ -68,7 +446,7 @@ const Detalle: React.FC = () => {
                   onClick={() => setActiveSection(section.id)}
                   className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-100 text-blue-700'
+                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
@@ -81,9 +459,7 @@ const Detalle: React.FC = () => {
         </div>
 
         {/* Section Content */}
-        <div className="bg-white rounded-lg border border-gray-200 min-h-96">
-          {renderSectionContent()}
-        </div>
+        {renderSectionContent()}
       </div>
     </PageLayout>
   );
