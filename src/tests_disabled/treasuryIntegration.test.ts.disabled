@@ -82,12 +82,22 @@ describe('Treasury Integration Tests - End-to-End Scenarios', () => {
       };
 
       const property: Property = { 
-        id: 101, 
-        name: 'Apartamento Centro',
+        alias: 'Apartamento Centro',
         address: 'Calle Mayor 123',
-        type: 'apartment',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        postalCode: '28001',
+        province: 'Madrid',
+        municipality: 'Madrid',
+        ccaa: 'Madrid',
+        purchaseDate: '2024-01-01',
+        squareMeters: 85,
+        bedrooms: 3,
+        bathrooms: 2,
+        transmissionRegime: 'usada',
+        state: 'activo',
+        acquisitionCosts: {
+          price: 350000
+        },
+        documents: []
       };
 
       mockDB.get.mockResolvedValue(property);
