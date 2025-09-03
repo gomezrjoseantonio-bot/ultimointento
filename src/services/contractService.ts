@@ -1,4 +1,5 @@
 import { initDB, Contract, RentCalendar, RentPayment } from './db';
+import { generateIncomeFromContract } from './treasuryCreationService';
 
 // Contract management service for H7 functionality
 
@@ -17,6 +18,17 @@ export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' |
   // Generate rent calendar and payments
   await generateRentCalendar(contractId as number, contract);
   await generateRentPayments(contractId as number, contract);
+  
+  // H10: Generate Treasury income records for active contracts
+  if (contract.status === 'active') {
+    try {
+      const fullContract = { ...newContract, id: contractId as number };
+      await generateIncomeFromContract(fullContract);
+    } catch (error) {
+      console.error('Error generating income from contract:', error);
+      // Don't fail the contract creation if Treasury generation fails
+    }
+  }
   
   return contractId as number;
 };
@@ -41,6 +53,31 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
   if (updates.startDate || updates.endDate || updates.monthlyRent || updates.isIndefinite) {
     await regenerateRentCalendar(id, updatedContract);
     await regenerateRentPayments(id, updatedContract);
+  }
+  
+  // H10: Regenerate Treasury income records for status changes
+  if (updates.status === 'active' || updates.monthlyRent || updates.startDate || updates.endDate) {
+    try {
+      // Remove existing income records for this contract
+      const db = await initDB();
+      const existingIngresos = await db.getAll('ingresos');
+      const contractIngresos = existingIngresos.filter(i => 
+        i.origen === 'contrato_id' && i.origen_id === id
+      );
+      
+      for (const ingreso of contractIngresos) {
+        if (ingreso.id) {
+          await db.delete('ingresos', ingreso.id);
+        }
+      }
+      
+      // Generate new income records if contract is active
+      if (updatedContract.status === 'active') {
+        await generateIncomeFromContract(updatedContract);
+      }
+    } catch (error) {
+      console.error('Error regenerating income from contract:', error);
+    }
   }
 };
 

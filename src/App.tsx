@@ -14,6 +14,9 @@ import Contratos from './modules/horizon/inmuebles/contratos/Contratos';
 import Prestamos from './modules/horizon/inmuebles/prestamos/Prestamos';
 import Analisis from './modules/horizon/inmuebles/analisis/Analisis';
 import TesRadar from './modules/horizon/tesoreria/radar/Radar';
+import TesIngresos from './modules/horizon/tesoreria/ingresos/Ingresos';
+import TesGastos from './modules/horizon/tesoreria/gastos/Gastos';
+import TesCAPEX from './modules/horizon/tesoreria/capex/CAPEX';
 import TesMovimientos from './modules/horizon/tesoreria/movimientos/Movimientos';
 import Automatizaciones from './modules/horizon/tesoreria/automatizaciones/Automatizaciones';
 import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
@@ -82,6 +85,9 @@ function App() {
             <Route path="tesoreria">
               <Route index element={<Navigate to="/tesoreria/radar" replace />} />
               <Route path="radar" element={<TesRadar />} />
+              <Route path="ingresos" element={<TesIngresos />} />
+              <Route path="gastos" element={<TesGastos />} />
+              <Route path="capex" element={<TesCAPEX />} />
               <Route path="movimientos" element={<TesMovimientos />} />
               <Route path="automatizaciones" element={<Automatizaciones />} />
               <Route path="alertas" element={<TesAlertas />} />

@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 6; // H9: Added treasury forecasting and fiscal summaries
+const DB_VERSION = 7; // H10: Added Treasury containers (Ingresos, Gastos, CAPEX) and enhanced Movements
 
 export interface Property {
   id?: number;
@@ -393,6 +393,9 @@ export interface Account {
 // H8: Movement types
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
 
+// H10: Treasury reconciliation status
+export type ReconciliationStatus = 'sin_conciliar' | 'conciliado';
+
 export interface Movement {
   id?: number;
   accountId: number;
@@ -403,7 +406,15 @@ export interface Movement {
   counterparty?: string;
   reference?: string;
   status: MovementStatus;
-  // Reconciliation links
+  // H10: Enhanced reconciliation fields
+  saldo?: number;
+  id_import?: string;
+  estado_conciliacion?: ReconciliationStatus; // Default to 'sin_conciliar'
+  linked_registro?: {
+    type: 'ingreso' | 'gasto' | 'capex';
+    id: number;
+  }; // Link to Ingreso/Gasto/CAPEX record
+  // Legacy reconciliation links
   expenseIds?: number[]; // For movements linked to expenses
   documentIds?: number[]; // H9: Link to invoices/documents
   reconciliationNotes?: string;
@@ -454,6 +465,71 @@ export interface TreasuryRecommendation {
   status: 'active' | 'dismissed' | 'executed';
   createdAt: string;
   dismissedAt?: string;
+}
+
+// H10: Treasury Ingreso (Income) types
+export type IngresoOrigen = 'contrato_id' | 'nomina_id' | 'doc_id';
+export type IngresoDestino = 'personal' | 'inmueble_id';
+export type IngresoEstado = 'previsto' | 'cobrado' | 'incompleto';
+
+export interface Ingreso {
+  id?: number;
+  origen: IngresoOrigen;
+  origen_id?: number; // ID del contrato, nómina o documento
+  proveedor_contraparte: string;
+  fecha_emision: string;
+  fecha_prevista_cobro: string;
+  importe: number;
+  moneda: 'EUR' | 'USD' | 'GBP';
+  destino: IngresoDestino;
+  destino_id?: number; // ID del inmueble si aplica
+  estado: IngresoEstado;
+  movement_id?: number; // Link to reconciled movement
+  from_doc?: boolean; // Flag for exceptional income from documents
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H10: Treasury Gasto (Expense) types  
+export type GastoEstado = 'completo' | 'incompleto' | 'pagado';
+export type GastoDestino = 'personal' | 'inmueble_id';
+
+export interface Gasto {
+  id?: number;
+  proveedor_nombre: string;
+  proveedor_nif?: string;
+  fecha_emision: string;
+  fecha_pago_prevista: string;
+  total: number;
+  base?: number;
+  iva?: number;
+  categoria_AEAT: AEATFiscalType;
+  destino: GastoDestino;
+  destino_id?: number; // ID del inmueble si aplica
+  estado: GastoEstado;
+  movement_id?: number; // Link to reconciled movement
+  source_doc_id?: number; // Link to source document
+  createdAt: string;
+  updatedAt: string;
+}
+
+// H10: Treasury CAPEX types
+export type CAPEXTipo = 'mejora' | 'ampliacion' | 'mobiliario';
+export type CAPEXEstado = 'completo' | 'incompleto' | 'pagado' | 'amortizando';
+
+export interface CAPEX {
+  id?: number;
+  inmueble_id: number;
+  proveedor: string;
+  fecha_emision: string;
+  total: number;
+  tipo: CAPEXTipo;
+  anos_amortizacion: number; // Años de amortización
+  estado: CAPEXEstado;
+  movement_id?: number; // Link to reconciled movement
+  source_doc_id?: number; // Link to source document
+  createdAt: string;
+  updatedAt: string;
 }
 
 // H9: Fiscal Summary by Property and Year
@@ -532,6 +608,9 @@ interface AtlasHorizonDB {
   treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
   treasuryRecommendations: TreasuryRecommendation; // H9: Treasury recommendations
   fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
+  ingresos: Ingreso; // H10: Treasury income records
+  gastos: Gasto; // H10: Treasury expense records
+  capex: CAPEX; // H10: Treasury CAPEX records
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -684,6 +763,38 @@ export const initDB = async () => {
           fiscalSummariesStore.createIndex('exerciseYear', 'exerciseYear', { unique: false });
           fiscalSummariesStore.createIndex('status', 'status', { unique: false });
           fiscalSummariesStore.createIndex('property-year', ['propertyId', 'exerciseYear'], { unique: true });
+        }
+
+        // H10: Treasury Ingresos store
+        if (!db.objectStoreNames.contains('ingresos')) {
+          const ingresosStore = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
+          ingresosStore.createIndex('origen', 'origen', { unique: false });
+          ingresosStore.createIndex('estado', 'estado', { unique: false });
+          ingresosStore.createIndex('fecha_prevista_cobro', 'fecha_prevista_cobro', { unique: false });
+          ingresosStore.createIndex('destino', 'destino', { unique: false });
+          ingresosStore.createIndex('movement_id', 'movement_id', { unique: false });
+        }
+
+        // H10: Treasury Gastos store
+        if (!db.objectStoreNames.contains('gastos')) {
+          const gastosStore = db.createObjectStore('gastos', { keyPath: 'id', autoIncrement: true });
+          gastosStore.createIndex('categoria_AEAT', 'categoria_AEAT', { unique: false });
+          gastosStore.createIndex('estado', 'estado', { unique: false });
+          gastosStore.createIndex('fecha_pago_prevista', 'fecha_pago_prevista', { unique: false });
+          gastosStore.createIndex('destino', 'destino', { unique: false });
+          gastosStore.createIndex('movement_id', 'movement_id', { unique: false });
+          gastosStore.createIndex('source_doc_id', 'source_doc_id', { unique: false });
+        }
+
+        // H10: Treasury CAPEX store
+        if (!db.objectStoreNames.contains('capex')) {
+          const capexStore = db.createObjectStore('capex', { keyPath: 'id', autoIncrement: true });
+          capexStore.createIndex('inmueble_id', 'inmueble_id', { unique: false });
+          capexStore.createIndex('tipo', 'tipo', { unique: false });
+          capexStore.createIndex('estado', 'estado', { unique: false });
+          capexStore.createIndex('fecha_emision', 'fecha_emision', { unique: false });
+          capexStore.createIndex('movement_id', 'movement_id', { unique: false });
+          capexStore.createIndex('source_doc_id', 'source_doc_id', { unique: false });
         }
       }
     });
