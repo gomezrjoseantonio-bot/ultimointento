@@ -4,6 +4,7 @@ import { Search, SortAsc, SortDesc, Trash2, FolderOpen, Info } from 'lucide-reac
 import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import DocumentList from '../components/documents/DocumentList';
+import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import QADashboard from '../components/dev/QADashboard';
 import { getOCRConfig } from '../services/ocrService';
@@ -18,6 +19,11 @@ const InboxPage: React.FC = () => {
   const [folderFilter, setFolderFilter] = useState('todos');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  // H3: New queue-style filters
+  const [queueStatusFilter, setQueueStatusFilter] = useState('all');
+  const [tipoFilter, setTipoFilter] = useState('all');
+  const [origenFilter, setOrigenFilter] = useState('all');
+  const [isQueueView, setIsQueueView] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
@@ -488,38 +494,55 @@ const InboxPage: React.FC = () => {
   };
 
   const filteredDocuments = sortDocuments(documents.filter(doc => {
-    // Apply folder filter based on H2 requirements
-    if (folderFilter !== 'todos') {
-      let belongsToFolder = false;
-      
-      switch (folderFilter) {
-        case 'facturas':
-          // Facturas → cualquier documento cuyo Tipo sea "Factura"
-          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'factura';
-          break;
-        case 'contratos':
-          // Contratos → documentos cuyo Tipo sea "Contrato"
-          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
-          break;
-        case 'extractos':
-          // Extractos bancarios → documentos cuyo Tipo sea "Extracto bancario"
-          belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'extracto bancario';
-          break;
-        case 'capex':
-          // CAPEX → documentos con Categoría "Reforma/CAPEX"
-          belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
-          break;
-        case 'otros':
-          // Otros → el resto (no es factura, contrato, extracto bancario, ni capex)
-          const tipo = doc.metadata?.tipo?.toLowerCase();
-          const categoria = doc.metadata?.categoria?.toLowerCase();
-          belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && tipo !== 'extracto bancario' && categoria !== 'reforma/capex';
-          break;
-        default:
-          belongsToFolder = true;
+    // H3: Apply queue filters instead of folder logic when in queue view
+    if (isQueueView) {
+      // Queue Status filter (Pendiente, Incompleto, Importado, Error, Duplicado)
+      if (queueStatusFilter !== 'all') {
+        const docStatus = (doc.metadata?.queueStatus || doc.metadata?.status || 'Pendiente').toLowerCase();
+        if (docStatus !== queueStatusFilter.toLowerCase()) return false;
       }
       
-      if (!belongsToFolder) return false;
+      // Tipo filter
+      if (tipoFilter !== 'all') {
+        const docTipo = (doc.metadata?.tipo || 'Otros').toLowerCase();
+        if (docTipo !== tipoFilter.toLowerCase()) return false;
+      }
+      
+      // Origen filter (Upload/Email)
+      if (origenFilter !== 'all') {
+        const isFromEmail = !!doc.metadata?.emailLogId;
+        if (origenFilter === 'email' && !isFromEmail) return false;
+        if (origenFilter === 'upload' && isFromEmail) return false;
+      }
+    } else {
+      // Legacy folder logic for backwards compatibility
+      if (folderFilter !== 'todos') {
+        let belongsToFolder = false;
+        
+        switch (folderFilter) {
+          case 'facturas':
+            belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'factura';
+            break;
+          case 'contratos':
+            belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'contrato';
+            break;
+          case 'extractos':
+            belongsToFolder = doc.metadata?.tipo?.toLowerCase() === 'extracto bancario';
+            break;
+          case 'capex':
+            belongsToFolder = doc.metadata?.categoria?.toLowerCase() === 'reforma/capex';
+            break;
+          case 'otros':
+            const tipo = doc.metadata?.tipo?.toLowerCase();
+            const categoria = doc.metadata?.categoria?.toLowerCase();
+            belongsToFolder = tipo !== 'factura' && tipo !== 'contrato' && tipo !== 'extracto bancario' && categoria !== 'reforma/capex';
+            break;
+          default:
+            belongsToFolder = true;
+        }
+        
+        if (!belongsToFolder) return false;
+      }
     }
     
     // Apply type filter
@@ -574,12 +597,35 @@ const InboxPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-navy-900" style={{ color: '#022D5E' }}>Bandeja de Documentos</h1>
-          {/* H-OCR: Help tooltip */}
+          <h1 className="text-2xl font-semibold text-neutral-900">Inbox</h1>
+          {/* H3: View toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsQueueView(true)}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                isQueueView 
+                  ? 'bg-neutral-900 text-white' 
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              Cola
+            </button>
+            <button
+              onClick={() => setIsQueueView(false)}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                !isQueueView 
+                  ? 'bg-neutral-900 text-white' 
+                  : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              Lista
+            </button>
+          </div>
+          {/* H3: Help tooltip */}
           <div className="relative group">
             <Info className="w-5 h-5 text-neutral-400 hover:text-neutral-600 cursor-help" />
             <div className="absolute left-0 top-6 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              Sube o reenvía facturas/recibos. Usa 'Procesar con OCR' para pre-rellenar gastos o CAPEX.
+              Cola de entrada única para documentos con auto-guardado y redirección automática.
             </div>
           </div>
         </div>
@@ -663,32 +709,86 @@ const InboxPage: React.FC = () => {
               </div>
             )}
 
-            {/* Folder section */}
-            <div className="p-4 border-b border-neutral-200">
-              <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
-              <div className="space-y-1">
-                {[
-                  { key: 'todos', label: 'Todos' },
-                  { key: 'facturas', label: 'Facturas' },
-                  { key: 'contratos', label: 'Contratos' },
-                  { key: 'extractos', label: 'Extractos bancarios' },
-                  { key: 'capex', label: 'CAPEX' },
-                  { key: 'otros', label: 'Otros' }
-                ].map((folder) => (
-                  <button
-                    key={folder.key}
-                    className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
-                      folderFilter === folder.key
-                        ? 'bg-neutral-100 text-neutral-900'
-                        : 'text-neutral-600 hover:bg-neutral-50'
-                    }`}
-                    onClick={() => setFolderFilter(folder.key)}
-                  >
-                    {folder.label}
-                  </button>
-                ))}
+            {/* H3: Queue filters or legacy folder section based on view */}
+            {isQueueView ? (
+              <div className="p-4 border-b border-neutral-200">
+                <h4 className="text-sm font-medium text-neutral-700 mb-3">Filtros</h4>
+                <div className="space-y-3">
+                  {/* Estado filter */}
+                  <div>
+                    <label className="block text-xs text-neutral-600 mb-1">Estado</label>
+                    <select
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                      value={queueStatusFilter}
+                      onChange={(e) => setQueueStatusFilter(e.target.value)}
+                    >
+                      <option value="all">Todos los estados</option>
+                      <option value="pendiente">Pendiente</option>
+                      <option value="incompleto">Incompleto</option>
+                      <option value="importado">Importado</option>
+                      <option value="error">Error</option>
+                      <option value="duplicado">Duplicado</option>
+                    </select>
+                  </div>
+                  
+                  {/* Tipo filter */}
+                  <div>
+                    <label className="block text-xs text-neutral-600 mb-1">Tipo</label>
+                    <select
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                      value={tipoFilter}
+                      onChange={(e) => setTipoFilter(e.target.value)}
+                    >
+                      <option value="all">Todos los tipos</option>
+                      <option value="factura">Factura</option>
+                      <option value="extracto bancario">Extracto bancario</option>
+                      <option value="contrato">Contrato</option>
+                      <option value="otros">Otros</option>
+                    </select>
+                  </div>
+                  
+                  {/* Origen filter */}
+                  <div>
+                    <label className="block text-xs text-neutral-600 mb-1">Origen</label>
+                    <select
+                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                      value={origenFilter}
+                      onChange={(e) => setOrigenFilter(e.target.value)}
+                    >
+                      <option value="all">Todos los orígenes</option>
+                      <option value="upload">Upload</option>
+                      <option value="email">Email</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-4 border-b border-neutral-200">
+                <h4 className="text-sm font-medium text-neutral-700 mb-3">Carpetas</h4>
+                <div className="space-y-1">
+                  {[
+                    { key: 'todos', label: 'Todos' },
+                    { key: 'facturas', label: 'Facturas' },
+                    { key: 'contratos', label: 'Contratos' },
+                    { key: 'extractos', label: 'Extractos bancarios' },
+                    { key: 'capex', label: 'CAPEX' },
+                    { key: 'otros', label: 'Otros' }
+                  ].map((folder) => (
+                    <button
+                      key={folder.key}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${
+                        folderFilter === folder.key
+                          ? 'bg-neutral-100 text-neutral-900'
+                          : 'text-neutral-600 hover:bg-neutral-50'
+                      }`}
+                      onClick={() => setFolderFilter(folder.key)}
+                    >
+                      {folder.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             
             {/* Enhanced search and filters */}
             <div className="p-4 border-b border-neutral-200">
@@ -804,15 +904,30 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
             
-            <DocumentList 
-              documents={filteredDocuments}
-              selectedId={selectedDocument?.id}
-              onSelectDocument={setSelectedDocument}
-              loading={loading}
-              selectedDocuments={selectedDocuments}
-              onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}
-              showBulkActions={showBulkActions}
-            />
+            {/* H3: Render InboxQueue or DocumentList based on view */}
+            {isQueueView ? (
+              <div className="flex-1 p-4">
+                <InboxQueue 
+                  documents={filteredDocuments}
+                  selectedId={selectedDocument?.id}
+                  onSelectDocument={setSelectedDocument}
+                  loading={loading}
+                  selectedDocuments={selectedDocuments}
+                  onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}
+                  showBulkActions={showBulkActions}
+                />
+              </div>
+            ) : (
+              <DocumentList 
+                documents={filteredDocuments}
+                selectedId={selectedDocument?.id}
+                onSelectDocument={setSelectedDocument}
+                loading={loading}
+                selectedDocuments={selectedDocuments}
+                onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}
+                showBulkActions={showBulkActions}
+              />
+            )}
           </div>
           
           {/* Main content area - flexible width */}
