@@ -42,31 +42,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
   };
 
   const createDocumentFromFile = (file: File, index: number = 0) => {
-    // Detect if file is a bank statement
-    const isBankStatement = isBankStatementFile(file);
-    
-    // Determine folder based on file type and name
-    let carpeta: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'capex' | 'otros' = 'otros';
-    let tipo: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros' = 'Otros';
-    
-    if (isBankStatement) {
-      carpeta = 'extractos';
-      tipo = 'Extracto bancario';
-    } else {
-      const fileName = file.name.toLowerCase();
-      if (fileName.includes('contrato') || fileName.includes('contract')) {
-        carpeta = 'contratos';
-        tipo = 'Contrato';
-      } else if (fileName.includes('factura') || fileName.includes('invoice') || 
-                 file.type === 'application/pdf' || file.type?.startsWith('image/')) {
-        carpeta = 'facturas';
-        tipo = 'Factura';
-      } else if (fileName.includes('obra') || fileName.includes('reforma') || 
-                 fileName.includes('capex') || fileName.includes('mejora')) {
-        carpeta = 'capex';
-        tipo = 'CAPEX';
-      }
-    }
+    // H8 Issue 2: Enhanced automatic file classification
+    const classification = classifyFileOnUpload(file);
     
     return {
       id: Date.now() + index,
@@ -81,16 +58,77 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
         description: '',
         tags: [],
         proveedor: '',
-        tipo,
+        tipo: classification.tipo,
         categoria: 'Otros',
         destino: 'Personal',
-        status: 'Nuevo',
+        status: 'pendiente', // H8: Default status is pendiente
+        queueStatus: 'pendiente',
         entityType: 'personal',
         entityId: undefined,
+        confidence: classification.confidence,
+        clasificacion_automatica: true,
+        tipo_detectado: classification.tipo, // H8: Store detected type
         notas: '',
-        carpeta
+        origen: 'upload' // H8: Mark as upload origin
       }
     };
+  };
+
+  // H8 Issue 2: Enhanced file type detection with OCR patterns
+  const classifyFileOnUpload = (file: File): { tipo: string, confidence: number } => {
+    const fileName = file.name.toLowerCase();
+    
+    // Factura detection: PDF/JPG/PNG/ZIP/EML with invoice patterns
+    if (isInvoiceFile(file, fileName)) {
+      return { tipo: 'Factura', confidence: 0.85 };
+    }
+    
+    // Extracto detection: XLS/XLSX/CSV/TXT with bank patterns
+    if (isBankStatementFile(file)) {
+      return { tipo: 'Extracto bancario', confidence: 0.90 };
+    }
+    
+    // Contrato detection: PDF with contract patterns
+    if (isContractFile(file, fileName)) {
+      return { tipo: 'Contrato', confidence: 0.75 };
+    }
+    
+    // Default to Otros for unclassified
+    return { tipo: 'Otros', confidence: 0.50 };
+  };
+
+  // H8: Invoice file detection
+  const isInvoiceFile = (file: File, fileName: string): boolean => {
+    const invoiceExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'zip', 'eml'];
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    if (!invoiceExtensions.includes(extension || '')) {
+      return false;
+    }
+    
+    // Check filename patterns
+    const invoicePatterns = [
+      'factura', 'invoice', 'bill', 'receipt', 'recibo', 
+      'ticket', 'compra', 'purchase', 'gasto', 'expense'
+    ];
+    
+    return invoicePatterns.some(pattern => fileName.includes(pattern)) ||
+           file.type === 'application/pdf' || 
+           file.type?.startsWith('image/');
+  };
+
+  // H8: Contract file detection  
+  const isContractFile = (file: File, fileName: string): boolean => {
+    if (file.type !== 'application/pdf') {
+      return false;
+    }
+    
+    const contractPatterns = [
+      'contrato', 'contract', 'acuerdo', 'agreement', 
+      'convenio', 'rental', 'lease', 'alquiler', 'arrendamiento'
+    ];
+    
+    return contractPatterns.some(pattern => fileName.includes(pattern));
   };
 
   const isBankStatementFile = (file: File): boolean => {
