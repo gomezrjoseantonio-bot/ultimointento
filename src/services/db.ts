@@ -570,7 +570,7 @@ export interface Gasto {
 }
 
 // H10: Treasury CAPEX types
-export type CAPEXTipo = 'mejora' | 'ampliacion' | 'mobiliario';
+export type CAPEXTipo = 'mejora' | 'ampliacion' | 'mobiliario' | 'reparacion';
 export type CAPEXEstado = 'completo' | 'incompleto' | 'pagado' | 'amortizando';
 
 export interface CAPEX {

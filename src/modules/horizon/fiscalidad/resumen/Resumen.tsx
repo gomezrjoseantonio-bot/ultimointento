@@ -4,6 +4,8 @@ import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property, FiscalSummary } from '../../../../services/db';
 import { getFiscalSummary, exportFiscalData } from '../../../../services/fiscalSummaryService';
 import { formatEuro, getAEATBoxDisplayName } from '../../../../services/aeatClassificationService';
+import { calculateCurrentYearAccruedIncome } from '../../../../services/incomeReconciliationService';
+import { getCAPEXAmortizationSummary } from '../../../../services/capexClassificationService';
 
 interface PropertyFiscalData {
   property: Property;
@@ -13,6 +15,15 @@ interface PropertyFiscalData {
   amortizaciones: number;
   arrastres: number;
   neto: number;
+  // Enhanced income status breakdown
+  cobrado?: number;
+  pendiente?: number;
+  parcialmenteCobrado?: number;
+  impagado?: number;
+  // Enhanced amortization breakdown
+  amortizacionInmueble?: number;
+  amortizacionMejoras?: number;
+  amortizacionMobiliario?: number;
 }
 
 const Resumen: React.FC = () => {
@@ -54,6 +65,12 @@ const Resumen: React.FC = () => {
         try {
           const fiscalSummary = await getFiscalSummary(property.id, selectedYear);
           
+          // Calculate enhanced income breakdown
+          const incomeBreakdown = await calculateCurrentYearAccruedIncome(property.id, selectedYear);
+          
+          // Calculate enhanced amortization breakdown  
+          const capexSummary = await getCAPEXAmortizationSummary(property.id, selectedYear);
+          
           // Calculate metrics for this property
           const gastos = (fiscalSummary.box0105 || 0) + (fiscalSummary.box0106 || 0) + 
                        (fiscalSummary.box0109 || 0) + (fiscalSummary.box0112 || 0) + 
@@ -62,17 +79,25 @@ const Resumen: React.FC = () => {
           
           const amortizaciones = fiscalSummary.annualDepreciation || 0;
           const arrastres = 0; // TODO: Implement carryforward calculation
-          const ingresos = 0; // TODO: Implement income calculation from contracts
-          const neto = ingresos - gastos - amortizaciones - arrastres;
+          const neto = incomeBreakdown.cobrado - gastos - amortizaciones - arrastres;
           
           propertiesData.push({
             property,
             fiscalSummary,
-            ingresos,
+            ingresos: incomeBreakdown.total,
             gastos,
             amortizaciones,
             arrastres,
-            neto
+            neto,
+            // Enhanced income breakdown
+            cobrado: incomeBreakdown.cobrado,
+            pendiente: incomeBreakdown.previsto + incomeBreakdown.impagado,
+            parcialmenteCobrado: incomeBreakdown.parcialmenteCobrado,
+            impagado: incomeBreakdown.impagado,
+            // Enhanced amortization breakdown
+            amortizacionInmueble: capexSummary.propertyAmortization,
+            amortizacionMejoras: capexSummary.improvementAmortization,
+            amortizacionMobiliario: capexSummary.furnitureAmortization
           });
         } catch (error) {
           console.error(`Error loading data for property ${property.alias}:`, error);
@@ -83,7 +108,14 @@ const Resumen: React.FC = () => {
             gastos: 0,
             amortizaciones: 0,
             arrastres: 0,
-            neto: 0
+            neto: 0,
+            cobrado: 0,
+            pendiente: 0,
+            parcialmenteCobrado: 0,
+            impagado: 0,
+            amortizacionInmueble: 0,
+            amortizacionMejoras: 0,
+            amortizacionMobiliario: 0
           });
         }
       }
@@ -213,8 +245,10 @@ const Resumen: React.FC = () => {
     const totalGastos = allPropertiesData.reduce((sum, data) => sum + data.gastos, 0);
     const totalAmortizaciones = allPropertiesData.reduce((sum, data) => sum + data.amortizaciones, 0);
     const totalArrastres = allPropertiesData.reduce((sum, data) => sum + data.arrastres, 0);
-    const cobrado = totalIngresos; // TODO: Implement actual cobrado/pendiente calculation
-    const pendiente = 0; // TODO: Implement actual cobrado/pendiente calculation
+    
+    // Enhanced income calculation with actual status
+    const cobrado = allPropertiesData.reduce((sum, data) => sum + (data.cobrado || 0), 0);
+    const pendiente = allPropertiesData.reduce((sum, data) => sum + (data.pendiente || 0), 0);
     const netoFiscal = cobrado - totalGastos - totalAmortizaciones - totalArrastres;
     
     return {
@@ -224,7 +258,11 @@ const Resumen: React.FC = () => {
       gastosDeducibles: totalGastos,
       amortizacionesAplicadas: totalAmortizaciones,
       arrastresAplicados: totalArrastres,
-      netoFiscal
+      netoFiscal,
+      // Enhanced amortization breakdown
+      amortizacionInmueble: allPropertiesData.reduce((sum, data) => sum + (data.amortizacionInmueble || 0), 0),
+      amortizacionMejoras: allPropertiesData.reduce((sum, data) => sum + (data.amortizacionMejoras || 0), 0),
+      amortizacionMobiliario: allPropertiesData.reduce((sum, data) => sum + (data.amortizacionMobiliario || 0), 0)
     };
   };
 
@@ -356,6 +394,35 @@ const Resumen: React.FC = () => {
                       );
                     })()}
                   </div>
+                  
+                  {/* Enhanced Amortization Breakdown */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <h4 className="text-md font-medium text-gray-900 mb-4">Detalle Amortizaciones</h4>
+                    <div className="grid grid-cols-3 gap-6">
+                      {(() => {
+                        const kpis = getGlobalKPIs();
+                        if (!kpis) return null;
+                        
+                        return (
+                          <>
+                            <div className="text-center">
+                              <div className="text-lg font-semibold text-blue-700">{formatCurrency(kpis.amortizacionInmueble || 0)}</div>
+                              <div className="text-xs text-gray-600">Amort. Inmueble</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-semibold text-green-700">{formatCurrency(kpis.amortizacionMejoras || 0)}</div>
+                              <div className="text-xs text-gray-600">Amort. Mejoras</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-lg font-semibold text-orange-700">{formatCurrency(kpis.amortizacionMobiliario || 0)}</div>
+                              <div className="text-xs text-gray-600">Amort. Mobiliario</div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-gray-900">{formatCurrency(getGlobalKPIs()?.netoFiscal || 0)}</div>
