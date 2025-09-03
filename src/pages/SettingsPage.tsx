@@ -9,6 +9,7 @@ import {
   initializeDefaultProviders,
   type ProviderDirectoryEntry 
 } from '../services/providerDirectoryService';
+import { getAutoSaveConfig, setAutoSaveConfig, toggleAutoSave } from '../services/autoSaveService';
 
 const SettingsPage: React.FC = () => {
   const [providers, setProviders] = useState<ProviderDirectoryEntry[]>([]);
@@ -20,6 +21,8 @@ const SettingsPage: React.FC = () => {
     nif: '',
     aliases: ''
   });
+  // H3: Auto-save configuration state
+  const [autoSaveConfig, setAutoSaveConfigState] = useState(getAutoSaveConfig());
 
   useEffect(() => {
     loadProviders();
@@ -94,6 +97,20 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       toast.error('Error al eliminar proveedor');
     }
+  };
+
+  // H3: Auto-save configuration handlers
+  const handleToggleAutoSave = () => {
+    const newEnabled = toggleAutoSave();
+    setAutoSaveConfigState(prev => ({ ...prev, enabled: newEnabled }));
+    toast.success(`Auto-guardado ${newEnabled ? 'activado' : 'desactivado'}`);
+  };
+
+  const handleUpdateAutoSaveConfig = (updates: any) => {
+    const newConfig = { ...autoSaveConfig, ...updates };
+    setAutoSaveConfig(newConfig);
+    setAutoSaveConfigState(newConfig);
+    toast.success('Configuración actualizada');
   };
 
   return (
@@ -300,6 +317,183 @@ const SettingsPage: React.FC = () => {
               <span>50%</span>
               <span>80%</span>
               <span>100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* H3: Auto-save Configuration Section */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Auto-guardado (H3+H8)</h2>
+        <div className="space-y-6">
+          {/* Main toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Auto-guardado activado</p>
+              <p className="text-sm text-gray-500">
+                {autoSaveConfig.enabled 
+                  ? 'Todos los documentos se procesan y archivan automáticamente' 
+                  : 'Solo documentos claros se archivan, documentos dudosos quedan pendientes'
+                }
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={autoSaveConfig.enabled}
+                onChange={handleToggleAutoSave}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* Destination routing */}
+          <div>
+            <p className="font-medium text-gray-900 mb-3">Destinos de archivado</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Facturas</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={autoSaveConfig.destinations.facturas}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    destinations: { ...autoSaveConfig.destinations, facturas: e.target.value }
+                  })}
+                >
+                  <option value="tesoreria-gastos">Tesorería → Gastos</option>
+                  <option value="tesoreria-capex">Tesorería → CAPEX</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Extractos bancarios</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={autoSaveConfig.destinations.extractos}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    destinations: { ...autoSaveConfig.destinations, extractos: e.target.value }
+                  })}
+                >
+                  <option value="tesoreria-movimientos">Tesorería → Movimientos</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Contratos</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={autoSaveConfig.destinations.contratos}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    destinations: { ...autoSaveConfig.destinations, contratos: e.target.value }
+                  })}
+                >
+                  <option value="horizon-contratos">Horizon → Contratos</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Otros documentos</label>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={autoSaveConfig.destinations.otros}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    destinations: { ...autoSaveConfig.destinations, otros: e.target.value }
+                  })}
+                >
+                  <option value="archivo-general">Archivo General</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Clear criteria for auto-save OFF mode */}
+          {!autoSaveConfig.enabled && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="font-medium text-amber-900 mb-2">Criterios CLARO (modo auto-guardado OFF)</p>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="font-medium text-amber-800">Facturas CLARAS requieren:</p>
+                  <ul className="list-disc list-inside text-amber-700 mt-1 space-y-1">
+                    <li>Proveedor resuelto</li>
+                    <li>Total y fecha válidos</li>
+                    <li>Clasificación fiscal segura (≥80%)</li>
+                    <li>Inmueble/personal definido</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium text-amber-800">Extractos CLAROS requieren:</p>
+                  <ul className="list-disc list-inside text-amber-700 mt-1 space-y-1">
+                    <li>Plantilla de banco válida</li>
+                    <li>Fechas/decimales consistentes</li>
+                    <li>Cuenta identificada</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Confidence thresholds */}
+          <div>
+            <p className="font-medium text-gray-900 mb-3">Umbrales de confianza mínimos</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Facturas</label>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="1" 
+                  step="0.05" 
+                  value={autoSaveConfig.confidenceThresholds.factura}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    confidenceThresholds: { 
+                      ...autoSaveConfig.confidenceThresholds, 
+                      factura: parseFloat(e.target.value) 
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="text-center text-xs text-gray-500 mt-1">
+                  {Math.round(autoSaveConfig.confidenceThresholds.factura * 100)}%
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Extractos</label>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="1" 
+                  step="0.05" 
+                  value={autoSaveConfig.confidenceThresholds.extracto}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    confidenceThresholds: { 
+                      ...autoSaveConfig.confidenceThresholds, 
+                      extracto: parseFloat(e.target.value) 
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="text-center text-xs text-gray-500 mt-1">
+                  {Math.round(autoSaveConfig.confidenceThresholds.extracto * 100)}%
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Contratos</label>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="1" 
+                  step="0.05" 
+                  value={autoSaveConfig.confidenceThresholds.contrato}
+                  onChange={(e) => handleUpdateAutoSaveConfig({
+                    confidenceThresholds: { 
+                      ...autoSaveConfig.confidenceThresholds, 
+                      contrato: parseFloat(e.target.value) 
+                    }
+                  })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="text-center text-xs text-gray-500 mt-1">
+                  {Math.round(autoSaveConfig.confidenceThresholds.contrato * 100)}%
+                </div>
+              </div>
             </div>
           </div>
         </div>
