@@ -167,7 +167,7 @@ const Movimientos: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={handleNavigateToImport}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700"
             >
               <Upload className="w-4 h-4" />
               Importar Extractos

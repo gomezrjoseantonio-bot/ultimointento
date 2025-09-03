@@ -5,8 +5,13 @@ export interface BankProfile {
     date: string[];
     valueDate: string[];
     amount: string[];
+    cargo?: string[]; // Debit column (for banks using separate cargo/abono)
+    abono?: string[]; // Credit column (for banks using separate cargo/abono)
     description: string[];
     counterparty: string[];
+    balance?: string[]; // Balance column
+    currency?: string[]; // Currency column
+    reference?: string[]; // Reference/ID column
   };
   noisePatterns: string[];
   numberFormat: {
@@ -16,6 +21,7 @@ export interface BankProfile {
   dateHints?: ('excel-serial' | 'dd/mm/yyyy' | 'dd-mm-yyyy' | 'yyyy-mm-dd')[];
   sheetNameHint?: string;
   minScore: number;
+  useCargoAbono?: boolean; // Flag to indicate if bank uses separate cargo/abono columns
 }
 
 export interface BankProfilesData {
@@ -33,6 +39,9 @@ export interface ParsedMovement {
   originalRow?: number;
   rawData?: Record<string, any>;
   raw?: string; // ATLAS HOTFIX: Raw row data for debugging
+  isDuplicate?: boolean; // Flag for duplicate detection
+  duplicateHash?: string; // Hash for duplicate detection
+  currency?: string; // Currency if detected
 }
 
 export interface BankDetectionResult {

@@ -1,14 +1,19 @@
 {
   "profiles": [
     {
-      "bankKey": "ING",
+      "bankKey": "ABANCA",
       "bankVersion": "2025.01.15",
       "headerAliases": {
-        "date": ["fecha", "fecha movimiento", "fecha de movimiento", "f. movimiento", "f. operacion"],
-        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "import", "euros"],
-        "description": ["descripcion", "concepto", "detalle", "descripción", "movimiento"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante", "entidad"]
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov", "fecha movimiento"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor", "f valor"],
+        "amount": ["importe", "importe (€)", "importe eur", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle", "descripcion ampliada", "observaciones"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante", "entidad"],
+        "balance": ["saldo", "saldo disponible", "saldo actual", "saldo tras"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -20,17 +25,23 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
     },
     {
       "bankKey": "BBVA",
-      "bankVersion": "2025.01.15",
+      "bankVersion": "2025.01.15", 
       "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha de operacion", "f. operacion"],
-        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor", "f valor"],
+        "amount": ["importe", "importe (€)", "importe eur", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle", "movimiento"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual", "saldo tras"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -42,17 +53,23 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
     },
     {
       "bankKey": "Santander",
       "bankVersion": "2025.01.15",
       "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
         "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción", "movimiento"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+        "amount": ["importe", "importe eur", "importe (€)", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle", "movimiento"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual", "saldo tras"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -64,17 +81,23 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
     },
     {
       "bankKey": "Unicaja",
       "bankVersion": "2025.01.15",
       "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
         "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+        "amount": ["importe", "importe (€)", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -86,17 +109,105 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
+    },
+    {
+      "bankKey": "Sabadell",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "importe (€)", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3,
+      "useCargoAbono": true
+    },
+    {
+      "bankKey": "Bankinter",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "importe (€)", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle", "observaciones"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3,
+      "useCargoAbono": true
+    },
+    {
+      "bankKey": "ING",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha movimiento", "fecha de movimiento", "f. movimiento", "f. operacion", "date"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "import", "euros", "amount"],
+        "description": ["descripcion", "concepto", "detalle", "descripción", "movimiento", "description"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante", "entidad"],
+        "balance": ["saldo", "saldo disponible", "saldo actual", "balance"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "reference"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3,
+      "useCargoAbono": false
     },
     {
       "bankKey": "Openbank",
       "bankVersion": "2025.01.15",
       "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
         "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
+        "amount": ["importe", "cantidad", "monto", "euros", "amount"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle", "description"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual", "balance"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "reference"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -108,7 +219,36 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
+    },
+    {
+      "bankKey": "CaixaBank",
+      "bankVersion": "2025.01.15",
+      "headerAliases": {
+        "date": ["fecha", "fecha operacion", "fecha operación", "f. operacion", "f. operación", "fecha mov"],
+        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
+        "amount": ["importe", "cantidad", "monto", "euros"],
+        "cargo": ["cargo", "cargos", "debito", "débito"],
+        "abono": ["abono", "abonos", "credito", "crédito"],
+        "description": ["concepto", "descripcion", "descripción", "detalle"],
+        "counterparty": ["contraparte", "beneficiario", "ordenante"],
+        "balance": ["saldo", "saldo disponible", "saldo actual"],
+        "currency": ["divisa", "moneda", "currency"],
+        "reference": ["referencia", "ref", "numero operacion", "número operación"]
+      },
+      "noisePatterns": [
+        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
+        "subtotal", "total", "totales", "página", "page", "extracto", 
+        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
+      ],
+      "numberFormat": {
+        "decimal": ",",
+        "thousand": "."
+      },
+      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
+      "minScore": 3,
+      "useCargoAbono": true
     },
     {
       "bankKey": "Revolut",
@@ -117,8 +257,13 @@
         "date": ["fecha", "date", "fecha operacion", "completed date"],
         "valueDate": ["fecha valor", "value date", "f. valor"],
         "amount": ["importe", "amount", "cantidad", "monto", "euros", "eur"],
+        "cargo": ["paid out", "cargo", "debito"],
+        "abono": ["paid in", "abono", "credito"],
         "description": ["descripcion", "description", "concepto", "reference"],
-        "counterparty": ["contraparte", "counterparty", "beneficiario"]
+        "counterparty": ["contraparte", "counterparty", "beneficiario"],
+        "balance": ["saldo", "balance"],
+        "currency": ["currency", "divisa", "moneda"],
+        "reference": ["reference", "referencia", "ref"]
       },
       "noisePatterns": [
         "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
@@ -130,73 +275,8 @@
         "thousand": "."
       },
       "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy", "yyyy-mm-dd"],
-      "minScore": 3
-    },
-    {
-      "bankKey": "Bankinter",
-      "bankVersion": "2025.01.15",
-      "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
-        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
-      },
-      "noisePatterns": [
-        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
-        "subtotal", "total", "totales", "página", "page", "extracto", 
-        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
-      ],
-      "numberFormat": {
-        "decimal": ",",
-        "thousand": "."
-      },
-      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
-    },
-    {
-      "bankKey": "Sabadell",
-      "bankVersion": "2025.01.15",
-      "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
-        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
-      },
-      "noisePatterns": [
-        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
-        "subtotal", "total", "totales", "página", "page", "extracto", 
-        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
-      ],
-      "numberFormat": {
-        "decimal": ",",
-        "thousand": "."
-      },
-      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
-    },
-    {
-      "bankKey": "Abanca",
-      "bankVersion": "2025.01.15",
-      "headerAliases": {
-        "date": ["fecha", "fecha operacion", "fecha movimiento", "f. operacion"],
-        "valueDate": ["fecha valor", "fecha de valor", "f. valor"],
-        "amount": ["importe", "cantidad", "monto", "euros"],
-        "description": ["concepto", "descripcion", "detalle", "descripción"],
-        "counterparty": ["contraparte", "beneficiario", "ordenante"]
-      },
-      "noisePatterns": [
-        "saldo inicial", "saldo final", "saldo anterior", "saldo actual", 
-        "subtotal", "total", "totales", "página", "page", "extracto", 
-        "periodo", "desde", "hasta", "nº de cuenta", "iban", "titular", "oficina"
-      ],
-      "numberFormat": {
-        "decimal": ",",
-        "thousand": "."
-      },
-      "dateHints": ["dd/mm/yyyy", "dd-mm-yyyy"],
-      "minScore": 3
+      "minScore": 3,
+      "useCargoAbono": true
     }
   ]
 }

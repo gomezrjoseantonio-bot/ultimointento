@@ -72,7 +72,7 @@ const TPMovimientos: React.FC = () => {
             </button>
             <button
               onClick={handleNavigateToImport}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#1d7a8b] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
             >
               <Upload className="h-4 w-4" />
               Importar extracto (Inbox)
@@ -129,7 +129,7 @@ const TPMovimientos: React.FC = () => {
               <p className="text-sm mb-4">Comienza importando un extracto bancario en formato CSV</p>
               <button
                 onClick={handleNavigateToImport}
-                className="px-4 py-2 bg-[#2EB0CB] text-white rounded-lg hover:bg-[#1d7a8b] transition-colors"
+                className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors"
               >
                 Importar extracto (Inbox)
               </button>
