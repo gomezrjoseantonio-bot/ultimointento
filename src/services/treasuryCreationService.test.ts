@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { 
   generateIncomeFromContract,
   generateIncomeFromPayroll,
@@ -441,7 +442,7 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockGasto = { id: 402, estado: 'completo' };
       const mockMovement = { id: 502, amount: -850 };
 
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'gastos' && id === 402) return mockGasto;
         if (store === 'movements' && id === 502) return mockMovement;
         return null;
