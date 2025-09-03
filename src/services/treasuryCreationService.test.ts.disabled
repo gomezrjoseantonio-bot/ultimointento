@@ -526,7 +526,7 @@ describe('Treasury Creation Service QA Tests', () => {
           amount: 1200, 
           date: '2024-01-15',
           description: 'Rent payment John Doe',
-          estado_conciliacion: 'pendiente'
+          estado_conciliacion: 'sin_conciliar'
         }
       ];
 
@@ -571,7 +571,7 @@ describe('Treasury Creation Service QA Tests', () => {
           amount: -850, 
           date: '2024-01-10',
           description: 'Electric Company payment',
-          estado_conciliacion: 'pendiente'
+          estado_conciliacion: 'sin_conciliar'
         }
       ];
 
@@ -646,7 +646,7 @@ describe('Treasury Creation Service QA Tests', () => {
           amount: 1200, 
           date: '2024-01-15',
           description: 'Rent payment',
-          estado_conciliacion: 'pendiente'
+          estado_conciliacion: 'sin_conciliar'
         }
       ];
 
