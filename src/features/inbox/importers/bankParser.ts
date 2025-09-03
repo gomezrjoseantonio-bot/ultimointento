@@ -6,26 +6,38 @@ import { telemetry, qaChecklist } from '../../../services/telemetryService';
 
 // Global aliases for column detection - covers most Spanish banks
 const COLUMN_ALIASES = {
-  date: [
-    'fecha', 'f valor', 'fecha valor', 'fecha operacion', 'fecha operación', 
-    'f operacion', 'f operación', 'f. valor', 'date', 'fecha mov', 'fecha movimiento',
-    'f. operacion', 'f. operación', 'fecha de operacion', 'fecha de operación'
-  ],
+  // Order matters - more specific patterns first
   valueDate: [
     'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor'
   ],
+  date: [
+    'fecha', 'fecha operacion', 'fecha operación', 
+    'f operacion', 'f operación', 'f. operacion', 'f. operación', 'date', 
+    'fecha mov', 'fecha movimiento', 'fecha de operacion', 'fecha de operación',
+    'completed date' // Revolut
+  ],
   amount: [
-    'importe', 'importe (€)', 'importe eur', 'cantidad', 'cargo', 'abono', 
-    'amount', 'monto', 'valor', 'euros', 'eur', 'movimiento', 'saldo movimiento'
+    'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto', 'valor', 
+    'euros', 'eur', 'movimiento', 'saldo movimiento', 'amount'
+  ],
+  cargo: [
+    'cargo', 'cargos', 'debito', 'débito', 'debe', 'debit', 'paid out'
+  ],
+  abono: [
+    'abono', 'abonos', 'credito', 'crédito', 'haber', 'credit', 'paid in'
   ],
   description: [
     'concepto', 'descripcion', 'descripción', 'detalle', 'descripcion ampliada',
     'detalle operacion', 'detalle operación', 'description', 'observaciones',
-    'motivo', 'referencia', 'concepto operacion', 'concepto operación'
+    'motivo', 'referencia', 'concepto operacion', 'concepto operación',
+    'description' // Revolut
   ],
   balance: [
     'saldo', 'saldo disponible', 'saldo tras', 'saldo después', 'balance',
     'saldo final', 'saldo resultante', 'saldo actual'
+  ],
+  currency: [
+    'divisa', 'moneda', 'currency', 'coin', 'curr'
   ],
   reference: [
     'referencia', 'ref', 'numero operacion', 'número operación', 'reference',
@@ -35,7 +47,7 @@ const COLUMN_ALIASES = {
 
 import { parseEsNumber } from '../../../utils/numberUtils';
 
-class BankParserService {
+export class BankParserService {
   
   /**
    * Parse bank statement file - supports XLS/XLSX/CSV with robust detection
@@ -262,17 +274,24 @@ class BankParserService {
       for (let col = 0; col < normalizedRow.length; col++) {
         const cellText = normalizedRow[col];
         
+        // Track if this column was already matched to avoid double-matching
+        let matched = false;
+        
         for (const [columnType, aliases] of Object.entries(COLUMN_ALIASES)) {
-          if (aliases.some(alias => this.normalizeText(alias) === cellText)) {
+          if (!matched && aliases.some(alias => this.normalizeText(alias) === cellText)) {
             detectedColumns[columnType] = col;
             score++;
+            matched = true;
             break;
           }
         }
       }
       
-      // Valid header row must have at least 2 matches and include amount
-      if (score >= 2 && detectedColumns.amount !== undefined) {
+      // Valid header row must have at least 2 matches and include amount OR cargo+abono
+      const hasAmountInfo = detectedColumns.amount !== undefined || 
+                           (detectedColumns.cargo !== undefined && detectedColumns.abono !== undefined);
+      
+      if (score >= 2 && hasAmountInfo) {
         return {
           headerRow: row,
           dataStartRow: row + 1,
@@ -331,18 +350,16 @@ class BankParserService {
     
     // Extract required fields
     const dateCol = columns.date;
-    const amountCol = columns.amount;
     const descCol = columns.description;
     
-    if (dateCol === undefined || amountCol === undefined) {
-      return null; // Missing required columns
+    if (dateCol === undefined) {
+      return null; // Missing required date column
     }
     
     const dateStr = rowData[dateCol]?.trim();
-    const amountStr = rowData[amountCol]?.trim();
     const description = rowData[descCol]?.trim() || 'Sin descripción';
     
-    if (!dateStr || !amountStr) {
+    if (!dateStr) {
       return null; // Missing required data
     }
     
@@ -352,10 +369,35 @@ class BankParserService {
       return null; // Invalid date
     }
     
-    // Parse and validate amount
-    const amount = this.parseSpanishAmount(amountStr);
-    if (isNaN(amount)) {
-      return null; // Invalid amount
+    // Handle amount parsing - either single amount column or separate cargo/abono
+    let amount: number;
+    
+    if (columns.cargo !== undefined && columns.abono !== undefined) {
+      // Banco uses separate cargo/abono columns: amount = abono - cargo
+      const cargoStr = rowData[columns.cargo]?.trim() || '0';
+      const abonoStr = rowData[columns.abono]?.trim() || '0';
+      
+      const cargo = this.parseSpanishAmount(cargoStr);
+      const abono = this.parseSpanishAmount(abonoStr);
+      
+      if (isNaN(cargo) && isNaN(abono)) {
+        return null; // Both invalid
+      }
+      
+      amount = (isNaN(abono) ? 0 : abono) - (isNaN(cargo) ? 0 : cargo);
+    } else if (columns.amount !== undefined) {
+      // Single amount column
+      const amountStr = rowData[columns.amount]?.trim();
+      if (!amountStr) {
+        return null; // Missing amount
+      }
+      
+      amount = this.parseSpanishAmount(amountStr);
+      if (isNaN(amount)) {
+        return null; // Invalid amount
+      }
+    } else {
+      return null; // No amount columns found
     }
     
     // Optional fields
@@ -363,6 +405,7 @@ class BankParserService {
     const valueDate = valueDateStr ? this.parseSpanishDate(valueDateStr) : undefined;
     const balance = columns.balance !== undefined ? this.parseSpanishAmount(rowData[columns.balance]?.trim() || '') : undefined;
     const reference = columns.reference !== undefined ? rowData[columns.reference]?.trim() : undefined;
+    const counterparty = columns.counterparty !== undefined ? rowData[columns.counterparty]?.trim() : undefined;
     
     return {
       date,
@@ -371,6 +414,7 @@ class BankParserService {
       valueDate: valueDate || date,
       balance: !isNaN(balance!) ? balance : undefined,
       reference,
+      counterparty,
       raw: rowData.join('|') // For debugging
     };
   }
@@ -418,18 +462,15 @@ class BankParserService {
         let day: number, month: number, year: number;
         
         if (part3.length === 4) {
-          // dd/mm/yyyy or yyyy/mm/dd
-          if (parseInt(part1) > 12) {
-            // Likely yyyy/mm/dd
-            year = parseInt(part1);
-            month = parseInt(part2);
-            day = parseInt(part3);
-          } else {
-            // dd/mm/yyyy
-            day = parseInt(part1);
-            month = parseInt(part2);
-            year = parseInt(part3);
-          }
+          // yyyy format in part3 - this is dd/mm/yyyy
+          day = parseInt(part1);
+          month = parseInt(part2);
+          year = parseInt(part3);
+        } else if (part1.length === 4) {
+          // yyyy format in part1 - this is yyyy/mm/dd
+          year = parseInt(part1);
+          month = parseInt(part2);
+          day = parseInt(part3);
         } else {
           // dd/mm/yy - assume 20xx for years 00-30, 19xx for 31-99
           day = parseInt(part1);
