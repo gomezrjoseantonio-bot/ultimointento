@@ -8,6 +8,7 @@ import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import QADashboard from '../components/dev/QADashboard';
 import { getOCRConfig } from '../services/ocrService';
+import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
 import toast from 'react-hot-toast';
 
@@ -102,16 +103,99 @@ const InboxPage: React.FC = () => {
       console.warn('Failed to save to IndexedDB, using localStorage only:', error);
     }
 
-    // H-OCR: Auto-OCR processing if enabled
-    const config = getOCRConfig();
-    if (config.autoRun) {
-      for (const doc of newDocuments) {
-        // Only process PDF and image files
-        if (doc.type === 'application/pdf' || doc.type?.startsWith('image/')) {
-          handleAutoOCR(doc);
-        }
+    // H3: Auto-save processing for each document
+    const autoSaveConfig = getAutoSaveConfig();
+
+    for (const doc of newDocuments) {
+      // H-OCR: Auto-OCR processing if enabled
+      const ocrConfig = getOCRConfig();
+      if (ocrConfig.autoRun && (doc.type === 'application/pdf' || doc.type?.startsWith('image/'))) {
+        handleAutoOCR(doc);
+        // Auto-save will be handled after OCR completes
+      } else {
+        // Process auto-save immediately for non-OCR documents
+        await handleAutoSaveDocument(doc);
       }
     }
+
+    // H3: Show summary toast for auto-save OFF mode
+    if (!autoSaveConfig.enabled && newDocuments.length > 1) {
+      // Count final results after processing
+      setTimeout(() => {
+        const finalCounts = countDocumentsByStatus();
+        if (finalCounts.archived > 0 || finalCounts.pending > 0) {
+          toast(`${finalCounts.archived} archivados · ${finalCounts.pending} pendientes · ${finalCounts.error} errores`, {
+            duration: 4000,
+            icon: 'ℹ️'
+          });
+        }
+      }, 1000);
+    }
+  };
+
+  // H3: Auto-save document processing
+  const handleAutoSaveDocument = async (document: any) => {
+    try {
+      // Classify the document
+      const classification = await classifyDocument(document);
+      
+      // Apply auto-save logic
+      const result = await autoSaveDocument(document, classification);
+      
+      // Update document status and metadata
+      const updatedDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          queueStatus: result.newStatus,
+          classification: classification,
+          autoSaveResult: result,
+          processedAt: new Date().toISOString()
+        }
+      };
+      
+      // Update document in state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? updatedDoc : doc
+      ));
+      
+      // Show appropriate toast
+      if (result.success) {
+        toast.success(result.message, { duration: 3000 });
+        
+        // H3: Remove from inbox if successfully archived (auto-save ON or clear in OFF mode)
+        if (result.newStatus === 'importado') {
+          setTimeout(() => {
+            setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+            const updatedList = documents.filter(doc => doc.id !== document.id);
+            localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedList));
+          }, 2000); // Show success message for 2 seconds before removing
+        }
+      } else {
+        if (result.newStatus === 'error') {
+          toast.error(result.message);
+        } else {
+          // For pending/incomplete, don't show error toast, just update status
+          console.log('Document pending:', result.message);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error in auto-save processing:', error);
+      toast.error('Error procesando documento');
+    }
+  };
+
+  // H3: Count documents by final status for summary
+  const countDocumentsByStatus = () => {
+    const counts = { archived: 0, pending: 0, error: 0 };
+    documents.forEach(doc => {
+      const status = doc.metadata?.queueStatus || 'pendiente';
+      if (status === 'importado') counts.archived++;
+      else if (status === 'error') counts.error++;
+      else counts.pending++;
+    });
+    return counts;
   };
 
   // H-OCR: Auto-OCR processing function
@@ -162,6 +246,9 @@ const InboxPage: React.FC = () => {
       }
 
       toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
+      
+      // H3: Trigger auto-save after OCR completion
+      await handleAutoSaveDocument(updatedDoc);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       
