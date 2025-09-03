@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 7; // H10: Added Treasury containers (Ingresos, Gastos, CAPEX) and enhanced Movements
+const DB_VERSION = 8; // H9-FISCAL: Added PropertyImprovement store and enhanced AEAT amortization
 
 export interface Property {
   id?: number;
@@ -52,6 +52,62 @@ export interface Property {
       constructionCadastralValue: number;
     };
   };
+  // H9-FISCAL: AEAT Amortization data
+  aeatAmortization?: {
+    // Acquisition type and dates
+    acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
+    firstAcquisitionDate: string; // fecha_adquisición (primera)
+    transmissionDate?: string; // fecha_transmisión (if applicable)
+    
+    // Cadastral values proportional to ownership
+    cadastralValue: number; // VC proporcional a la titularidad
+    constructionCadastralValue: number; // VCc proporcional a la titularidad
+    constructionPercentage: number; // % construcción sobre VC (VCc / VC)
+    
+    // Oneroso acquisition costs
+    onerosoAcquisition?: {
+      acquisitionAmount: number; // importe de adquisición
+      acquisitionExpenses: number; // gastos y tributos (notaría, registro, ITP/IVA, gestoría...)
+    };
+    
+    // Lucrativo acquisition costs  
+    lucrativoAcquisition?: {
+      isdValue: number; // valor ISD (sin exceder valor de mercado)
+      isdTax: number; // impuesto ISD satisfecho
+      inherentExpenses: number; // gastos inherentes
+    };
+    
+    // Special cases configuration
+    specialCase?: {
+      type: 'usufructo-temporal' | 'usufructo-vitalicio' | 'diferenciado' | 'parcial-alquiler' | 
+            'cambio-porcentaje' | 'sin-valor-catastral' | 'ultimo-ano' | 'porcentaje-menor';
+      // Usufructo específico
+      usufructoDuration?: number; // años para temporal
+      maxDeductibleIncome?: number; // tope por rendimientos íntegros
+      // Parcial alquiler
+      rentedPercentage?: number; // porcentaje alquilado
+      // Sin valor catastral
+      estimatedLandPercentage?: number; // porcentaje estimado de suelo (default 10%)
+      // Porcentaje manual
+      customPercentage?: number; // porcentaje < 3%
+      manualAmount?: number; // importe manual en casos especiales
+    };
+  };
+}
+
+// H9-FISCAL: Property improvements for AEAT amortization
+export interface PropertyImprovement {
+  id?: number;
+  propertyId: number;
+  year: number; // año de la mejora
+  amount: number; // importe de la mejora
+  date?: string; // fecha opcional
+  daysInYear?: number; // días de amortización del año (si la mejora es del propio año)
+  providerNIF?: string; // NIF proveedor (opcional)
+  description: string; // descripción de la mejora
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
 }
 
 // H-OCR: OCR field definition
@@ -552,6 +608,30 @@ export interface FiscalSummary {
   constructionValue: number; // Current construction value
   annualDepreciation: number; // 3% of construction value
   status: 'Vivo' | 'Prescrito';
+  // H9-FISCAL: AEAT Amortization details
+  aeatAmortization?: {
+    // Rental days information
+    daysRented: number; // días de arrendamiento en el año
+    daysAvailable: number; // días disponibles (365/366)
+    
+    // Base calculation
+    calculationMethod: 'general' | 'special'; // regla general vs casos especiales
+    baseAmount: number; // base amortizable (mayor entre coste construcción y VCc)
+    percentageApplied: number; // porcentaje aplicado (3% por defecto)
+    
+    // Amount breakdown
+    propertyAmortization: number; // amortización del inmueble
+    improvementsAmortization: number; // amortización de mejoras
+    furnitureAmortization: number; // amortización de mobiliario
+    totalAmortization: number; // total amortización
+    
+    // Special cases
+    specialCaseJustification?: string; // justificación del caso especial
+    
+    // Historical tracking for future sales
+    accumulatedStandard: number; // acumulado al 3% (para minoración futura)
+    accumulatedActual: number; // acumulado real deducido
+  };
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -601,6 +681,7 @@ interface AtlasHorizonDB {
   reformLineItems: ReformLineItem; // H5: Reform line items
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
+  propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
   kpiConfigurations: any; // H6: KPI configurations
   accounts: Account; // H8: Treasury accounts
   movements: Movement; // H8: Bank movements
@@ -688,6 +769,14 @@ export const initDB = async () => {
           propertyDaysStore.createIndex('propertyId', 'propertyId', { unique: false });
           propertyDaysStore.createIndex('taxYear', 'taxYear', { unique: false });
           propertyDaysStore.createIndex('property-year', ['propertyId', 'taxYear'], { unique: true });
+        }
+
+        // H9-FISCAL: Property Improvements store
+        if (!db.objectStoreNames.contains('propertyImprovements')) {
+          const propertyImprovementsStore = db.createObjectStore('propertyImprovements', { keyPath: 'id', autoIncrement: true });
+          propertyImprovementsStore.createIndex('propertyId', 'propertyId', { unique: false });
+          propertyImprovementsStore.createIndex('year', 'year', { unique: false });
+          propertyImprovementsStore.createIndex('property-year', ['propertyId', 'year'], { unique: false });
         }
 
         // H6: KPI Configurations store

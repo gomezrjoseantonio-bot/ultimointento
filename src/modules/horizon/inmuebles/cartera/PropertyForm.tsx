@@ -18,6 +18,7 @@ import {
   addCurrency
 } from '../../../../utils/formatUtils';
 import MoneyInput from '../../../../components/common/MoneyInput';
+import PropertyImprovements from '../../../../components/fiscalidad/PropertyImprovements';
 import toast from 'react-hot-toast';
 
 interface PropertyFormProps {
@@ -66,6 +67,32 @@ interface FormData {
       cadastralValue: string;
       constructionCadastralValue: string;
     };
+  };
+  // H9-FISCAL: AEAT Amortization data
+  aeatAmortization: {
+    acquisitionType: 'onerosa' | 'lucrativa' | 'mixta' | '';
+    firstAcquisitionDate: string;
+    transmissionDate: string;
+    cadastralValue: string;
+    constructionCadastralValue: string;
+    constructionPercentage: string;
+    // Oneroso acquisition
+    onerosoAcquisitionAmount: string;
+    onerosoAcquisitionExpenses: string;
+    // Lucrativo acquisition  
+    lucrativoIsdValue: string;
+    lucrativoIsdTax: string;
+    lucrativoInherentExpenses: string;
+    // Special case
+    specialCaseType: '' | 'usufructo-temporal' | 'usufructo-vitalicio' | 'diferenciado' | 
+                     'parcial-alquiler' | 'cambio-porcentaje' | 'sin-valor-catastral' | 
+                     'ultimo-ano' | 'porcentaje-menor';
+    usufructoDuration: string;
+    maxDeductibleIncome: string;
+    rentedPercentage: string;
+    estimatedLandPercentage: string;
+    customPercentage: string;
+    manualAmount: string;
   };
 }
 
@@ -118,6 +145,26 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
         cadastralValue: '',
         constructionCadastralValue: ''
       }
+    },
+    aeatAmortization: {
+      acquisitionType: '',
+      firstAcquisitionDate: '',
+      transmissionDate: '',
+      cadastralValue: '',
+      constructionCadastralValue: '',
+      constructionPercentage: '',
+      onerosoAcquisitionAmount: '',
+      onerosoAcquisitionExpenses: '',
+      lucrativoIsdValue: '',
+      lucrativoIsdTax: '',
+      lucrativoInherentExpenses: '',
+      specialCaseType: '',
+      usufructoDuration: '',
+      maxDeductibleIncome: '',
+      rentedPercentage: '',
+      estimatedLandPercentage: '10',
+      customPercentage: '',
+      manualAmount: ''
     }
   });
 
@@ -181,6 +228,26 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               cadastralValue: property.fiscalData?.accessoryData?.cadastralValue?.toString() || '',
               constructionCadastralValue: property.fiscalData?.accessoryData?.constructionCadastralValue?.toString() || ''
             }
+          },
+          aeatAmortization: {
+            acquisitionType: property.aeatAmortization?.acquisitionType || '',
+            firstAcquisitionDate: property.aeatAmortization?.firstAcquisitionDate || '',
+            transmissionDate: property.aeatAmortization?.transmissionDate || '',
+            cadastralValue: property.aeatAmortization?.cadastralValue?.toString() || '',
+            constructionCadastralValue: property.aeatAmortization?.constructionCadastralValue?.toString() || '',
+            constructionPercentage: property.aeatAmortization?.constructionPercentage?.toString() || '',
+            onerosoAcquisitionAmount: property.aeatAmortization?.onerosoAcquisition?.acquisitionAmount?.toString() || '',
+            onerosoAcquisitionExpenses: property.aeatAmortization?.onerosoAcquisition?.acquisitionExpenses?.toString() || '',
+            lucrativoIsdValue: property.aeatAmortization?.lucrativoAcquisition?.isdValue?.toString() || '',
+            lucrativoIsdTax: property.aeatAmortization?.lucrativoAcquisition?.isdTax?.toString() || '',
+            lucrativoInherentExpenses: property.aeatAmortization?.lucrativoAcquisition?.inherentExpenses?.toString() || '',
+            specialCaseType: property.aeatAmortization?.specialCase?.type || '',
+            usufructoDuration: property.aeatAmortization?.specialCase?.usufructoDuration?.toString() || '',
+            maxDeductibleIncome: property.aeatAmortization?.specialCase?.maxDeductibleIncome?.toString() || '',
+            rentedPercentage: property.aeatAmortization?.specialCase?.rentedPercentage?.toString() || '',
+            estimatedLandPercentage: property.aeatAmortization?.specialCase?.estimatedLandPercentage?.toString() || '10',
+            customPercentage: property.aeatAmortization?.specialCase?.customPercentage?.toString() || '',
+            manualAmount: property.aeatAmortization?.specialCase?.manualAmount?.toString() || ''
           }
         });
         setItpManual(property.acquisitionCosts.itpIsManual || false);
@@ -601,7 +668,34 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
               amount: parseEuroInput(item.amount) || 0
             }))
         },
-        documents: []
+        documents: [],
+        // AEAT Amortization data
+        aeatAmortization: formData.aeatAmortization.acquisitionType ? {
+          acquisitionType: formData.aeatAmortization.acquisitionType as 'onerosa' | 'lucrativa' | 'mixta',
+          firstAcquisitionDate: formData.aeatAmortization.firstAcquisitionDate,
+          transmissionDate: formData.aeatAmortization.transmissionDate || undefined,
+          cadastralValue: parseEuroInput(formData.aeatAmortization.cadastralValue) || 0,
+          constructionCadastralValue: parseEuroInput(formData.aeatAmortization.constructionCadastralValue) || 0,
+          constructionPercentage: parseFloat(formData.aeatAmortization.constructionPercentage) || 0,
+          onerosoAcquisition: (formData.aeatAmortization.acquisitionType === 'onerosa' || formData.aeatAmortization.acquisitionType === 'mixta') ? {
+            acquisitionAmount: parseEuroInput(formData.aeatAmortization.onerosoAcquisitionAmount) || 0,
+            acquisitionExpenses: parseEuroInput(formData.aeatAmortization.onerosoAcquisitionExpenses) || 0
+          } : undefined,
+          lucrativoAcquisition: (formData.aeatAmortization.acquisitionType === 'lucrativa' || formData.aeatAmortization.acquisitionType === 'mixta') ? {
+            isdValue: parseEuroInput(formData.aeatAmortization.lucrativoIsdValue) || 0,
+            isdTax: parseEuroInput(formData.aeatAmortization.lucrativoIsdTax) || 0,
+            inherentExpenses: parseEuroInput(formData.aeatAmortization.lucrativoInherentExpenses) || 0
+          } : undefined,
+          specialCase: formData.aeatAmortization.specialCaseType ? {
+            type: formData.aeatAmortization.specialCaseType as any,
+            usufructoDuration: formData.aeatAmortization.usufructoDuration ? parseInt(formData.aeatAmortization.usufructoDuration) : undefined,
+            maxDeductibleIncome: parseEuroInput(formData.aeatAmortization.maxDeductibleIncome) || undefined,
+            rentedPercentage: formData.aeatAmortization.rentedPercentage ? parseFloat(formData.aeatAmortization.rentedPercentage) : undefined,
+            estimatedLandPercentage: formData.aeatAmortization.estimatedLandPercentage ? parseFloat(formData.aeatAmortization.estimatedLandPercentage) : undefined,
+            customPercentage: formData.aeatAmortization.customPercentage ? parseFloat(formData.aeatAmortization.customPercentage) : undefined,
+            manualAmount: parseEuroInput(formData.aeatAmortization.manualAmount) || undefined
+          } : undefined
+        } : undefined
       };
       
       const db = await initDB();
@@ -1158,6 +1252,423 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
             </div>
           </div>
         </div>
+
+        {/* Amortización AEAT */}
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <h3 className="text-lg font-semibold text-neutral-900">Amortización (AEAT)</h3>
+            <div className="group relative">
+              <button type="button" className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-medium hover:bg-blue-200 transition-colors">
+                i
+              </button>
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg shadow-lg">
+                <p className="mb-2"><strong>¿De dónde saco estos datos?</strong></p>
+                <ul className="space-y-1 text-xs">
+                  <li>• <strong>Recibo IBI:</strong> Valor catastral (VC) y VC construcción</li>
+                  <li>• <strong>Escritura:</strong> Precio y gastos de adquisición</li>
+                  <li>• <strong>ISD:</strong> Valor y impuesto satisfecho (herencias/donaciones)</li>
+                  <li>• <strong>Facturas:</strong> Mejoras realizadas por año</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            {/* Tipo de adquisición */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
+                Tipo de adquisición *
+              </label>
+              <div className="flex gap-4">
+                {[
+                  { value: 'onerosa', label: 'Onerosa (compra)' },
+                  { value: 'lucrativa', label: 'Lucrativa (herencia/donación)' },
+                  { value: 'mixta', label: 'Mixta (ambas)' }
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center">
+                    <input
+                      type="radio"
+                      name="acquisitionType"
+                      value={option.value}
+                      checked={formData.aeatAmortization.acquisitionType === option.value}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, acquisitionType: e.target.value as any }
+                      }))}
+                      className="w-4 h-4 text-brand-navy bg-neutral-100 border-neutral-300 focus:ring-brand-navy focus:ring-2"
+                    />
+                    <span className="ml-2 text-sm text-neutral-700">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Fechas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Fecha adquisición (primera) *
+                </label>
+                <input
+                  type="date"
+                  value={formData.aeatAmortization.firstAcquisitionDate}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    aeatAmortization: { ...prev.aeatAmortization, firstAcquisitionDate: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Fecha transmisión (si aplica)
+                </label>
+                <input
+                  type="date"
+                  value={formData.aeatAmortization.transmissionDate}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    aeatAmortization: { ...prev.aeatAmortization, transmissionDate: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Valores catastrales */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Valor catastral (VC) *
+                </label>
+                <MoneyInput
+                  value={formData.aeatAmortization.cadastralValue}
+                  onChange={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      aeatAmortization: { ...prev.aeatAmortization, cadastralValue: value }
+                    }));
+                    // Auto-calculate construction percentage
+                    const vc = parseEuroInput(value) || 0;
+                    const vcc = parseEuroInput(formData.aeatAmortization.constructionCadastralValue) || 0;
+                    if (vc > 0 && vcc > 0) {
+                      const percentage = ((vcc / vc) * 100).toFixed(2);
+                      setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, constructionPercentage: percentage }
+                      }));
+                    }
+                  }}
+                  placeholder="150.000,00"
+                  aria-label="Valor catastral en euros"
+                />
+                <p className="text-xs text-neutral-500 mt-1">Del recibo IBI más reciente</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  VC construcción (VCc) *
+                </label>
+                <MoneyInput
+                  value={formData.aeatAmortization.constructionCadastralValue}
+                  onChange={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      aeatAmortization: { ...prev.aeatAmortization, constructionCadastralValue: value }
+                    }));
+                    // Auto-calculate construction percentage
+                    const vc = parseEuroInput(formData.aeatAmortization.cadastralValue) || 0;
+                    const vcc = parseEuroInput(value) || 0;
+                    if (vc > 0 && vcc > 0) {
+                      const percentage = ((vcc / vc) * 100).toFixed(2);
+                      setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, constructionPercentage: percentage }
+                      }));
+                    }
+                  }}
+                  placeholder="120.000,00"
+                  aria-label="Valor catastral construcción en euros"
+                />
+                <p className="text-xs text-neutral-500 mt-1">Proporcional a la titularidad</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  % Construcción
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={formData.aeatAmortization.constructionPercentage}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    aeatAmortization: { ...prev.aeatAmortization, constructionPercentage: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                  placeholder="80,00"
+                />
+                <p className="text-xs text-neutral-500 mt-1">VCc / VC (auto-calculado)</p>
+              </div>
+            </div>
+
+            {/* Adquisición onerosa */}
+            {(formData.aeatAmortization.acquisitionType === 'onerosa' || formData.aeatAmortization.acquisitionType === 'mixta') && (
+              <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+                <h4 className="font-medium text-neutral-900 mb-3">Adquisición onerosa</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Importe adquisición
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.onerosoAcquisitionAmount}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, onerosoAcquisitionAmount: value }
+                      }))}
+                      placeholder="300.000,00"
+                      aria-label="Importe adquisición onerosa"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Gastos y tributos
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.onerosoAcquisitionExpenses}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, onerosoAcquisitionExpenses: value }
+                      }))}
+                      placeholder="25.000,00"
+                      aria-label="Gastos y tributos adquisición"
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">Notaría, registro, ITP/IVA, gestoría...</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Adquisición lucrativa */}
+            {(formData.aeatAmortization.acquisitionType === 'lucrativa' || formData.aeatAmortization.acquisitionType === 'mixta') && (
+              <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+                <h4 className="font-medium text-neutral-900 mb-3">Adquisición lucrativa</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Valor ISD
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.lucrativoIsdValue}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, lucrativoIsdValue: value }
+                      }))}
+                      placeholder="250.000,00"
+                      aria-label="Valor ISD"
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">Sin exceder valor de mercado</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Impuesto ISD
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.lucrativoIsdTax}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, lucrativoIsdTax: value }
+                      }))}
+                      placeholder="15.000,00"
+                      aria-label="Impuesto ISD satisfecho"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Gastos inherentes
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.lucrativoInherentExpenses}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, lucrativoInherentExpenses: value }
+                      }))}
+                      placeholder="2.000,00"
+                      aria-label="Gastos inherentes"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Casos especiales */}
+            <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+              <h4 className="font-medium text-neutral-900 mb-3">Casos especiales (opcional)</h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Tipo de caso especial
+                  </label>
+                  <select
+                    value={formData.aeatAmortization.specialCaseType}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      aeatAmortization: { ...prev.aeatAmortization, specialCaseType: e.target.value as any }
+                    }))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                  >
+                    <option value="">Ninguno (regla general)</option>
+                    <option value="usufructo-temporal">Usufructo temporal</option>
+                    <option value="usufructo-vitalicio">Usufructo vitalicio</option>
+                    <option value="diferenciado">Suelo y construcción diferenciados</option>
+                    <option value="parcial-alquiler">Solo parte del inmueble alquilada</option>
+                    <option value="cambio-porcentaje">Cambio porcentaje propiedad en ejercicio</option>
+                    <option value="sin-valor-catastral">Sin valor catastral</option>
+                    <option value="ultimo-ano">Último año amortización</option>
+                    <option value="porcentaje-menor">Porcentaje voluntario &lt; 3%</option>
+                  </select>
+                </div>
+
+                {/* Campos específicos por tipo de caso especial */}
+                {formData.aeatAmortization.specialCaseType === 'usufructo-temporal' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Duración (años)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.aeatAmortization.usufructoDuration}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          aeatAmortization: { ...prev.aeatAmortization, usufructoDuration: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                        placeholder="10"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Tope rendimientos íntegros
+                      </label>
+                      <MoneyInput
+                        value={formData.aeatAmortization.maxDeductibleIncome}
+                        onChange={(value) => setFormData(prev => ({
+                          ...prev,
+                          aeatAmortization: { ...prev.aeatAmortization, maxDeductibleIncome: value }
+                        }))}
+                        placeholder="12.000,00"
+                        aria-label="Tope por rendimientos íntegros"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {formData.aeatAmortization.specialCaseType === 'parcial-alquiler' && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Porcentaje alquilado (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.aeatAmortization.rentedPercentage}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, rentedPercentage: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                      placeholder="30,00"
+                    />
+                  </div>
+                )}
+
+                {formData.aeatAmortization.specialCaseType === 'sin-valor-catastral' && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Estimación suelo (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.aeatAmortization.estimatedLandPercentage}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, estimatedLandPercentage: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                      placeholder="10,00"
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">Por defecto 10%. Se aplicará 3% sobre el resto (construcción)</p>
+                  </div>
+                )}
+
+                {formData.aeatAmortization.specialCaseType === 'porcentaje-menor' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Porcentaje deseado (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="3"
+                        value={formData.aeatAmortization.customPercentage}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          aeatAmortization: { ...prev.aeatAmortization, customPercentage: e.target.value }
+                        }))}
+                        className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                        placeholder="2,00"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                        <strong>Aviso:</strong> Se guardará 3% para efectos de minoración en futuras ventas
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.aeatAmortization.specialCaseType && (
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Importe manual (casos especiales)
+                    </label>
+                    <MoneyInput
+                      value={formData.aeatAmortization.manualAmount}
+                      onChange={(value) => setFormData(prev => ({
+                        ...prev,
+                        aeatAmortization: { ...prev.aeatAmortization, manualAmount: value }
+                      }))}
+                      placeholder="8.500,00"
+                      aria-label="Importe manual para casos especiales"
+                    />
+                    <p className="text-xs text-neutral-500 mt-1">Solo si no se puede calcular automáticamente</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mejoras del inmueble - only show when editing */}
+        {mode === 'edit' && id && (
+          <PropertyImprovements 
+            propertyId={parseInt(id)}
+            onImprovementsChange={() => {
+              // Optionally refresh fiscal calculations when improvements change
+              console.log('Improvements updated for property', id);
+            }}
+          />
+        )}
 
         {/* Estado y notas */}
         <div className="bg-white rounded-lg border border-neutral-200 p-6">

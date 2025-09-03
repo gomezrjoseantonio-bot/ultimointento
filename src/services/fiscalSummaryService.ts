@@ -1,5 +1,6 @@
 import { initDB, FiscalSummary, Document } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
+import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 
 /**
  * Calculate or update fiscal summary for a property and year
@@ -65,10 +66,17 @@ export const calculateFiscalSummary = async (
     }
   }
 
-  // Get property to calculate construction value and depreciation
+  // Get property to calculate construction value and depreciation using AEAT rules
   const property = await db.get('properties', propertyId);
-  if (property) {
-    // Base construction value from property data
+  if (property && property.aeatAmortization) {
+    // Use AEAT amortization calculation
+    const updatedSummary = await updateFiscalSummaryWithAEAT(propertyId, exerciseYear);
+    // Merge with our calculated summary, preserving AEAT calculations
+    summary.constructionValue = updatedSummary.constructionValue;
+    summary.annualDepreciation = updatedSummary.annualDepreciation;
+    summary.aeatAmortization = updatedSummary.aeatAmortization;
+  } else if (property) {
+    // Fallback to legacy calculation for properties without AEAT data
     const baseConstructionValue = property.fiscalData?.constructionCadastralValue || 
                                  (property.acquisitionCosts.price * 0.7); // 70% estimate if no cadastral value
 
