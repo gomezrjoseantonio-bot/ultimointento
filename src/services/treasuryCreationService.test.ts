@@ -54,12 +54,25 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'John Doe', email: 'john@example.com' },
-        monthlyRent: 1200,
-        paymentDay: 15,
-        status: 'active',
         startDate: today.toISOString().split('T')[0],
         endDate: nextYear.toISOString().split('T')[0],
+        isIndefinite: false,
+        monthlyRent: 1200,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2400
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: today.toISOString(),
         updatedAt: today.toISOString()
       };
@@ -92,12 +105,25 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Jane Smith', email: 'jane@example.com' },
-        monthlyRent: 800,
-        paymentDay: 1, // First day of month
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-03-31', // 3-month contract
+        isIndefinite: false,
+        monthlyRent: 800,
+        paymentDay: 1, // First day of month
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 1600
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -112,8 +138,8 @@ describe('Treasury Creation Service QA Tests', () => {
       expect(result.length).toBeGreaterThanOrEqual(1);
       
       // Verify that income records have correct payment dates
-      const addCalls = mockDB.add.mock.calls.filter(call => call[0] === 'ingresos');
-      addCalls.forEach(call => {
+      const addCalls = mockDB.add.mock.calls.filter((call: any) => call[0] === 'ingresos');
+      addCalls.forEach((call: any) => {
         const ingresoData = call[1];
         expect(ingresoData.fecha_emision).toMatch(/^\d{4}-\d{2}-01$/); // Should be 1st of month
         expect(ingresoData.fecha_prevista_cobro).toMatch(/^\d{4}-\d{2}-01$/);
@@ -126,12 +152,25 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Inactive Tenant', email: 'inactive@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'inactive',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2000
+        },
+        includedServices: {},
+        status: 'terminated',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -151,12 +190,25 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 999, // Non-existent property
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Test Tenant', email: 'test@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2000
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -228,17 +280,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 301,
         filename: 'renovation-invoice.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock pdf content']),
         metadata: {
           tipo: 'CAPEX',
           financialData: { amount: 5000 },
           aeatClassification: { fiscalType: 'capex-mejora-ampliacion' },
           proveedor: 'Construction Co',
           entityType: 'property',
-          entityId: 1
+          entityId: 1,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(301);
@@ -264,15 +319,18 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 302,
         filename: 'rental-receipt.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock pdf content']),
         metadata: {
           financialData: { amount: 1200 },
           proveedor: 'Inquilino Juan',
           entityType: 'property',
-          entityId: 2
+          entityId: 2,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(302);
@@ -299,6 +357,10 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 303,
         filename: 'utility-bill.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock pdf content']),
         metadata: {
           financialData: { 
             amount: 150,
@@ -308,11 +370,10 @@ describe('Treasury Creation Service QA Tests', () => {
           aeatClassification: { fiscalType: 'suministros' },
           proveedor: 'Electric Company',
           entityType: 'property',
-          entityId: 1
+          entityId: 1,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(303);
@@ -341,13 +402,16 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 304,
         filename: 'contract.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock pdf content']),
         metadata: {
           // No financialData or amount = 0
-          proveedor: 'Legal Firm'
+          proveedor: 'Legal Firm',
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       // Act
@@ -367,7 +431,7 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockIngreso = { id: 401, estado: 'previsto' };
       const mockMovement = { id: 501, amount: 1200 };
 
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'ingresos' && id === 401) return mockIngreso;
         if (store === 'movements' && id === 501) return mockMovement;
         return null;
@@ -397,7 +461,7 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockGasto = { id: 402, estado: 'completo' };
       const mockMovement = { id: 502, amount: -850 };
 
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'gastos' && id === 402) return mockGasto;
         if (store === 'movements' && id === 502) return mockMovement;
         return null;
@@ -427,7 +491,7 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockCapex = { id: 403, estado: 'completo' };
       const mockMovement = { id: 503, amount: -15000 };
 
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'capex' && id === 403) return mockCapex;
         if (store === 'movements' && id === 503) return mockMovement;
         return null;
@@ -475,7 +539,7 @@ describe('Treasury Creation Service QA Tests', () => {
         }
       ];
 
-      mockDB.getAll.mockImplementation((store) => {
+      mockDB.getAll.mockImplementation((store: any) => {
         if (store === 'movements') return mockMovements;
         if (store === 'ingresos') return mockIngresos;
         if (store === 'gastos') return [];
@@ -520,7 +584,7 @@ describe('Treasury Creation Service QA Tests', () => {
         }
       ];
 
-      mockDB.getAll.mockImplementation((store) => {
+      mockDB.getAll.mockImplementation((store: any) => {
         if (store === 'movements') return mockMovements;
         if (store === 'gastos') return mockGastos;
         if (store === 'ingresos') return [];
@@ -559,7 +623,7 @@ describe('Treasury Creation Service QA Tests', () => {
         }
       ];
 
-      mockDB.getAll.mockImplementation((store) => {
+      mockDB.getAll.mockImplementation((store: any) => {
         if (store === 'movements') return mockMovements;
         if (store === 'ingresos') return mockIngresos;
         if (store === 'gastos') return [];
@@ -601,7 +665,7 @@ describe('Treasury Creation Service QA Tests', () => {
         }
       ];
 
-      mockDB.getAll.mockImplementation((store) => {
+      mockDB.getAll.mockImplementation((store: any) => {
         if (store === 'movements') return mockMovements;
         if (store === 'ingresos') return mockIngresos;
         if (store === 'gastos') return [];
@@ -628,12 +692,25 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockContract: Contract = {
         id: 1,
         propertyId: 1,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Test Tenant', email: 'test@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2000
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -647,7 +724,7 @@ describe('Treasury Creation Service QA Tests', () => {
     test('should handle missing movement during reconciliation', async () => {
       // Arrange
       const mockIngreso = { id: 1001, estado: 'previsto' };
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'ingresos' && id === 1001) return mockIngreso;
         if (store === 'movements' && id === 999) return null; // Movement not found
         return null;

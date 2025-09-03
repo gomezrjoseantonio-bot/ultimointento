@@ -58,12 +58,25 @@ describe('Treasury Integration Tests - End-to-End Scenarios', () => {
       const rentalContract: Contract = {
         id: 1,
         propertyId: 101,
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'María García', email: 'maria@example.com' },
-        monthlyRent: 1200,
-        paymentDay: 5,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1200,
+        paymentDay: 5,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2400
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
@@ -487,12 +500,25 @@ describe('Treasury Integration Tests - End-to-End Scenarios', () => {
       const contract: Contract = {
         id: 10,
         propertyId: 999, // Non-existent property
+        scope: 'full-property',
+        type: 'vivienda',
         tenant: { name: 'Test Tenant', email: 'test@example.com' },
-        monthlyRent: 1000,
-        paymentDay: 15,
-        status: 'active',
         startDate: '2024-01-01',
         endDate: '2024-12-31',
+        isIndefinite: false,
+        monthlyRent: 1000,
+        paymentDay: 15,
+        periodicity: 'monthly',
+        rentUpdate: {
+          type: 'none'
+        },
+        deposit: {
+          months: 2,
+          amount: 2000
+        },
+        includedServices: {},
+        status: 'active',
+        documents: [],
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
