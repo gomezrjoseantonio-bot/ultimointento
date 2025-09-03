@@ -260,17 +260,20 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 301,
         filename: 'renovation-invoice.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock content']),
         metadata: {
           tipo: 'CAPEX',
           financialData: { amount: 5000 },
           aeatClassification: { fiscalType: 'capex-mejora-ampliacion' },
           proveedor: 'Construction Co',
           entityType: 'property',
-          entityId: 1
+          entityId: 1,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(301);
@@ -296,15 +299,18 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 302,
         filename: 'rental-receipt.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock content']),
         metadata: {
           financialData: { amount: 1200 },
           proveedor: 'Inquilino Juan',
           entityType: 'property',
-          entityId: 2
+          entityId: 2,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(302);
@@ -331,6 +337,10 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 303,
         filename: 'utility-bill.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock content']),
         metadata: {
           financialData: { 
             amount: 150,
@@ -340,11 +350,10 @@ describe('Treasury Creation Service QA Tests', () => {
           aeatClassification: { fiscalType: 'suministros' },
           proveedor: 'Electric Company',
           entityType: 'property',
-          entityId: 1
+          entityId: 1,
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       mockDB.add.mockResolvedValue(303);
@@ -373,13 +382,16 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockDocument: Document = {
         id: 304,
         filename: 'contract.pdf',
+        type: 'application/pdf',
+        size: 1024,
+        lastModified: Date.now(),
+        content: new Blob(['mock content']),
         metadata: {
           // No financialData or amount = 0
-          proveedor: 'Legal Firm'
+          proveedor: 'Legal Firm',
+          status: 'Procesado'
         },
-        status: 'completed',
-        createdAt: '2024-01-01T00:00:00Z',
-        updatedAt: '2024-01-01T00:00:00Z'
+        uploadDate: '2024-01-01T00:00:00Z'
       };
 
       // Act
@@ -399,7 +411,7 @@ describe('Treasury Creation Service QA Tests', () => {
       const mockIngreso = { id: 401, estado: 'previsto' };
       const mockMovement = { id: 501, amount: 1200 };
 
-      mockDB.get.mockImplementation((store, id) => {
+      mockDB.get.mockImplementation((store: any, id: any) => {
         if (store === 'ingresos' && id === 401) return mockIngreso;
         if (store === 'movements' && id === 501) return mockMovement;
         return null;
