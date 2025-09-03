@@ -15,10 +15,7 @@ const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [filter, setFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  // H8: Queue-style filters (only approved filters)
+  // H8: Queue-style filters (only approved filters - Estado, Tipo, Origen)
   const [queueStatusFilter, setQueueStatusFilter] = useState('all');
   const [tipoFilter, setTipoFilter] = useState('all');
   const [origenFilter, setOrigenFilter] = useState('all');
@@ -28,8 +25,6 @@ const InboxPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   // H3 requirement - email log filter
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
   // ATLAS HOTFIX: QA Dashboard for development
@@ -115,26 +110,63 @@ const InboxPage: React.FC = () => {
       }
     }
 
-    // H3: Show summary toast for auto-save OFF mode
+    // H5: Show summary toast for auto-save OFF mode (Issue 5)
     if (!autoSaveConfig.enabled && newDocuments.length > 1) {
       // Count final results after processing
       setTimeout(() => {
-        const finalCounts = countDocumentsByStatus();
-        if (finalCounts.archived > 0 || finalCounts.pending > 0) {
-          toast(`${finalCounts.archived} archivados · ${finalCounts.pending} pendientes · ${finalCounts.error} errores`, {
-            duration: 4000,
-            icon: 'ℹ️'
-          });
-        }
-      }, 1000);
+        // Calculate counts for this batch
+        let batchArchived = 0;
+        let batchPending = 0; 
+        let batchError = 0;
+        
+        newDocuments.forEach(doc => {
+          const currentDoc = documents.find(d => d.id === doc.id);
+          const status = currentDoc?.metadata?.queueStatus || 'pendiente';
+          
+          if (status === 'importado') batchArchived++;
+          else if (status === 'error') batchError++;
+          else batchPending++;
+        });
+        
+        // H5: Show summary in the format required
+        toast(`${batchArchived} archivados · ${batchPending} pendientes · ${batchError} errores`, {
+          duration: 6000,
+          icon: 'ℹ️'
+        });
+      }, 2000); // Wait for processing to complete
     }
   };
 
-  // H3: Auto-save document processing
+  // H3: Auto-save document processing with enhanced duplicate detection
   const handleAutoSaveDocument = async (document: any) => {
     try {
-      // Classify the document
-      const classification = await classifyDocument(document);
+      // Classify the document with duplicate detection
+      const classification = await classifyDocument(document, documents);
+      
+      // H6: Check if document is a duplicate
+      if (classification.metadata?.duplicateDetected) {
+        // Update document status to duplicate
+        const updatedDoc = {
+          ...document,
+          metadata: {
+            ...document.metadata,
+            queueStatus: 'duplicado',
+            classification: classification,
+            processedAt: new Date().toISOString()
+          }
+        };
+        
+        // Update document in state
+        setDocuments(prev => prev.map(doc => 
+          doc.id === document.id ? updatedDoc : doc
+        ));
+        
+        toast.error(`Documento duplicado: ${document.filename}`, { 
+          duration: 4000,
+          icon: '⚠️' 
+        });
+        return;
+      }
       
       // Apply auto-save logic
       const result = await autoSaveDocument(document, classification);
@@ -181,18 +213,6 @@ const InboxPage: React.FC = () => {
       console.error('Error in auto-save processing:', error);
       toast.error('Error procesando documento');
     }
-  };
-
-  // H3: Count documents by final status for summary
-  const countDocumentsByStatus = () => {
-    const counts = { archived: 0, pending: 0, error: 0 };
-    documents.forEach(doc => {
-      const status = doc.metadata?.queueStatus || 'pendiente';
-      if (status === 'importado') counts.archived++;
-      else if (status === 'error') counts.error++;
-      else counts.pending++;
-    });
-    return counts;
   };
 
   // H-OCR: Auto-OCR processing function
@@ -599,25 +619,6 @@ const InboxPage: React.FC = () => {
       if (origenFilter === 'upload' && isFromEmail) return false;
     }
     
-    // Apply type filter
-    if (filter !== 'all') {
-      if (filter === 'image' && !doc.type?.startsWith('image/')) return false;
-      if (filter === 'pdf' && doc.type !== 'application/pdf') return false;
-      if (filter === 'zip' && doc.type !== 'application/zip') return false;
-    }
-
-    // Apply category filter
-    if (categoryFilter !== 'all') {
-      const docCategory = doc.metadata?.categoria?.toLowerCase() || 'otros';
-      if (docCategory !== categoryFilter.toLowerCase()) return false;
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      const docStatus = doc.metadata?.status?.toLowerCase() || 'nuevo';
-      if (docStatus !== statusFilter.toLowerCase()) return false;
-    }
-    
     // Apply search term (search in filename, provider, and notes)
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -630,13 +631,6 @@ const InboxPage: React.FC = () => {
           !notes.includes(searchLower)) {
         return false;
       }
-    }
-
-    // Apply date range filter
-    if (dateFrom || dateTo) {
-      const docDate = new Date(doc.uploadDate || 0);
-      if (dateFrom && docDate < new Date(dateFrom)) return false;
-      if (dateTo && docDate > new Date(dateTo + 'T23:59:59')) return false;
     }
 
     // H3 requirement - apply email log filter
@@ -806,67 +800,6 @@ const InboxPage: React.FC = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                </div>
-
-                {/* Type filter */}
-                <select
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                >
-                  <option value="all">Todos los tipos</option>
-                  <option value="pdf">PDF</option>
-                  <option value="image">Imágenes</option>
-                  <option value="zip">ZIP</option>
-                </select>
-
-                {/* Status filter */}
-                <select
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">Todos los estados</option>
-                  <option value="nuevo">Nuevo</option>
-                  <option value="asignado">Asignado</option>
-                </select>
-
-                {/* Category filter */}
-                <select
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                  <option value="all">Todas las categorías</option>
-                  <option value="suministros">Suministros</option>
-                  <option value="comunidad">Comunidad</option>
-                  <option value="seguro">Seguro</option>
-                  <option value="mantenimiento">Mantenimiento</option>
-                  <option value="reforma/capex">Reforma/CAPEX</option>
-                  <option value="fiscal">Fiscal</option>
-                  <option value="otros">Otros</option>
-                </select>
-
-                {/* Date range filters */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Desde</label>
-                    <input
-                      type="date"
-                      className="w-full border border-neutral-200 rounded-lg px-2 py-1 text-sm focus:border-neutral-300"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-neutral-600 mb-1">Hasta</label>
-                    <input
-                      type="date"
-                      className="w-full border border-neutral-200 rounded-lg px-2 py-1 text-sm focus:border-neutral-300"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                    />
-                  </div>
                 </div>
               </div>
             </div>
