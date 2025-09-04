@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Search, Link, Check, X, AlertTriangle } from 'lucide-react';
+import { Search, Link, Check, X, AlertTriangle } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { findEventMovementMatches, reconcileTreasuryEvent } from '../../../../services/treasuryForecastService';
 import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
-import { treasuryAPI } from '../../../../services/treasuryApiService';
-import CSVImportModal from '../../../../components/treasury/CSVImportModal';
 import toast from 'react-hot-toast';
 
 const Movimientos: React.FC = () => {
@@ -18,7 +16,6 @@ const Movimientos: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showReconciliation, setShowReconciliation] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   
   // Load accounts and movements on component mount
   useEffect(() => {
@@ -99,53 +96,6 @@ const Movimientos: React.FC = () => {
     }
   };
   
-  const handleNavigateToImport = () => {
-    setShowImportModal(true);
-  };
-
-  const handleImport = async (movements: any[], accountId: number, skipDuplicates: boolean, csvFile: File) => {
-    try {
-      const result = await treasuryAPI.import.importTransactions(csvFile, accountId, skipDuplicates);
-      
-      // Show success message with details
-      const message = `✅ ${result.inserted} movimientos importados`;
-      const details = [];
-      if (result.duplicates > 0) details.push(`${result.duplicates} duplicados`);
-      if (result.reconciled && result.reconciled > 0) details.push(`${result.reconciled} conciliados`);
-      if (result.pendingReview && result.pendingReview > 0) details.push(`${result.pendingReview} pendientes de revisión`);
-      
-      toast.success(details.length > 0 ? `${message} • ${details.join(' • ')}` : message);
-      
-      // Reload movements
-      await loadData();
-      
-    } catch (error) {
-      console.error('Import error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al importar movimientos');
-      throw error; // Re-throw to let modal handle it
-    }
-  };
-
-  const handleCreateAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const newAccount = await treasuryAPI.accounts.createAccount({
-        alias: accountData.name,
-        bank: accountData.bank,
-        iban: accountData.iban,
-        includeInConsolidated: true,
-        openingBalance: accountData.openingBalance
-      });
-      
-      // Reload accounts
-      await loadData();
-      
-      return newAccount;
-    } catch (error) {
-      console.error('Create account error:', error);
-      throw error;
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'conciliado': return 'bg-green-100 text-green-800';
@@ -208,14 +158,6 @@ const Movimientos: React.FC = () => {
         {/* Actions Bar */}
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-2">
-            <button
-              onClick={handleNavigateToImport}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700"
-            >
-              <Upload className="w-4 h-4" />
-              Importar Extractos
-            </button>
-            
             <button
               onClick={() => setShowReconciliation(!showReconciliation)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
@@ -481,16 +423,6 @@ const Movimientos: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* CSV Import Modal */}
-      <CSVImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImport}
-        accounts={accounts.filter(acc => acc.isActive)}
-        onCreateAccount={handleCreateAccount}
-        destination="horizon"
-      />
     </PageLayout>
   );
 };
