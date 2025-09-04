@@ -11,7 +11,7 @@ import H8DemoComponent from '../components/dev/H8DemoComponent';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
-import { isBankStatementFile } from '../utils/bankDetection';
+import { detectDocumentType } from '../services/documentTypeDetectionService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -88,26 +88,69 @@ const InboxPage: React.FC = () => {
   }, []);
 
   const handleDocumentUpload = async (newDocuments: any[]) => {
-    // Check if any uploaded document is a bank statement
+    // Enhanced auto-processing with document type detection
     for (const doc of newDocuments) {
       try {
         // Create a File object from the document to check
         const blob = new Blob([doc.content], { type: doc.type });
         const file = new File([blob], doc.filename, { type: doc.type });
         
-        if (await isBankStatementFile(file)) {
-          // Show bank statement modal instead of regular processing
-          setBankStatementFile(file);
-          setShowBankStatementModal(true);
-          return; // Don't process as regular document
+        // Detect document type using enhanced detection service
+        const detection = await detectDocumentType(file, doc.filename);
+        
+        // Check if it's a bank statement that should be auto-imported
+        if (detection.shouldSkipOCR && detection.tipo === 'Extracto bancario') {
+          const autoSaveConfig = getAutoSaveConfig();
+          
+          if (autoSaveConfig.enabled) {
+            // Auto-import bank statement
+            setBankStatementFile(file);
+            setShowBankStatementModal(true);
+            
+            // Update document status to processing
+            doc.metadata = {
+              ...doc.metadata,
+              queueStatus: 'importado',
+              detection,
+              processedAt: new Date().toISOString()
+            };
+          } else {
+            // Show mini-wizard for account selection (manual)
+            setBankStatementFile(file);
+            setShowBankStatementModal(true);
+            
+            // Keep as pending for manual processing
+            doc.metadata = {
+              ...doc.metadata,
+              queueStatus: 'pendiente',
+              detection,
+              reason: 'Bank statement detected - needs account selection'
+            };
+          }
+          continue; // Don't process as regular document
         }
+        
+        // Set initial document metadata with detection results
+        doc.metadata = {
+          ...doc.metadata,
+          detection,
+          queueStatus: 'pendiente',
+          tipo: detection.tipo
+        };
+        
       } catch (error) {
-        console.warn('Bank statement detection failed for file:', doc.filename, error);
-        // Continue with regular processing if detection fails
+        console.warn('Document type detection failed for file:', doc.filename, error);
+        
+        // Set error status
+        doc.metadata = {
+          ...doc.metadata,
+          queueStatus: 'error',
+          error: 'Document type detection failed'
+        };
       }
     }
     
-    // Add documents to state (regular processing)
+    // Add documents to state
     const updatedDocuments = [...documents, ...newDocuments];
     setDocuments(updatedDocuments);
     
@@ -128,22 +171,37 @@ const InboxPage: React.FC = () => {
       console.warn('Failed to save to IndexedDB, using localStorage only:', error);
     }
 
-    // H3: Auto-save processing for each document
+    // Auto-processing based on configuration and document type
     const autoSaveConfig = getAutoSaveConfig();
+    const ocrConfig = getOCRConfig();
 
     for (const doc of newDocuments) {
-      // H-OCR: Auto-OCR processing if enabled
-      const ocrConfig = getOCRConfig();
-      if (ocrConfig.autoRun && (doc.type === 'application/pdf' || doc.type?.startsWith('image/'))) {
-        handleAutoOCR(doc);
-        // Auto-save will be handled after OCR completes
+      const detection = doc.metadata?.detection;
+      
+      if (!detection) continue;
+      
+      // Skip documents that are already processed (bank statements)
+      if (doc.metadata?.queueStatus === 'importado') continue;
+      
+      // Auto-OCR for invoices/contracts if enabled
+      if (detection.tipo === 'Factura' || detection.tipo === 'Contrato') {
+        if (ocrConfig.autoRun && autoSaveConfig.enabled) {
+          handleAutoOCR(doc);
+          // Auto-save will be handled after OCR completes
+        } else if (ocrConfig.autoRun) {
+          handleAutoOCR(doc);
+          // Manual save mode - OCR but don't auto-save
+        } else {
+          // Process auto-save immediately for non-OCR documents
+          await handleAutoSaveDocument(doc);
+        }
       } else {
-        // Process auto-save immediately for non-OCR documents
+        // Other document types - process immediately
         await handleAutoSaveDocument(doc);
       }
     }
 
-    // H5: Show summary toast for auto-save OFF mode (Issue 5)
+    // Show summary toast for auto-save OFF mode
     if (!autoSaveConfig.enabled && newDocuments.length > 1) {
       // Count final results after processing
       setTimeout(() => {
@@ -161,7 +219,7 @@ const InboxPage: React.FC = () => {
           else batchPending++;
         });
         
-        // H5: Show summary in the format required
+        // Show summary in the required format
         toast(`${batchArchived} archivados · ${batchPending} pendientes · ${batchError} errores`, {
           duration: 6000,
           icon: 'ℹ️'
@@ -274,12 +332,14 @@ const InboxPage: React.FC = () => {
       // Process OCR
       const ocrResult = await processDocumentOCR(document.content, document.filename);
       
-      // Update with results
+      // Update with results and set status as processed
       const updatedDoc = {
         ...processingDoc,
         metadata: {
           ...processingDoc.metadata,
-          ocr: ocrResult
+          ocr: ocrResult,
+          queueStatus: 'procesado_ocr', // Set status to indicate OCR completed
+          processedAt: new Date().toISOString()
         }
       };
 
@@ -297,8 +357,11 @@ const InboxPage: React.FC = () => {
 
       toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
       
-      // H3: Trigger auto-save after OCR completion
-      await handleAutoSaveDocument(updatedDoc);
+      // Auto-save after OCR completion (if auto-save is enabled)
+      const autoSaveConfig = getAutoSaveConfig();
+      if (autoSaveConfig.enabled) {
+        await handleAutoSaveDocument(updatedDoc);
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       
@@ -807,6 +870,7 @@ const InboxPage: React.FC = () => {
                   >
                     <option value="all">Todos los estados</option>
                     <option value="pendiente">Pendiente</option>
+                    <option value="procesado">Procesado (OCR)</option>
                     <option value="incompleto">Incompleto</option>
                     <option value="importado">Importado</option>
                     <option value="error">Error</option>
