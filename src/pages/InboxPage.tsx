@@ -6,6 +6,9 @@ import DocumentUploader from '../components/documents/DocumentUploader';
 import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import BankStatementModal from '../components/inbox/BankStatementModal';
+import PendingQueue from '../components/inbox/PendingQueue';
+import BankStatementWizard from '../components/inbox/BankStatementWizard';
+import ReformInvoiceEditor from '../components/inbox/ReformInvoiceEditor';
 import QADashboard from '../components/dev/QADashboard';
 import H8DemoComponent from '../components/dev/H8DemoComponent';
 import AutoSaveToggle from '../components/documents/AutoSaveToggle';
@@ -13,6 +16,7 @@ import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
 import { detectDocumentType } from '../services/documentTypeDetectionService';
+import { validateDocumentForPending } from '../services/documentValidationService';
 import { showError } from '../services/toastService';
 import { ZipProcessingResult } from '../services/zipProcessingService';
 import toast from 'react-hot-toast';
@@ -40,6 +44,12 @@ const InboxPage: React.FC = () => {
   // Bank statement modal for detected extracts
   const [showBankStatementModal, setShowBankStatementModal] = useState(false);
   const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
+  // AUTOGUARDADO OFF: New states for pending queue
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [showBankWizard, setShowBankWizard] = useState(false);
+  const [wizardFile, setWizardFile] = useState<File | null>(null);
+  const [showReformEditor, setShowReformEditor] = useState(false);
+  const [reformDocument, setReformDocument] = useState<any>(null);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -60,6 +70,10 @@ const InboxPage: React.FC = () => {
     if (h8Demo && process.env.NODE_ENV === 'development') {
       setShowH8Demo(true);
     }
+
+    // Initialize AutoSave state
+    const autoSaveConfig = getAutoSaveConfig();
+    setAutoSaveEnabled(autoSaveConfig.enabled);
   }, []);
 
   useEffect(() => {
@@ -140,13 +154,25 @@ const InboxPage: React.FC = () => {
           continue; // Don't process as regular document
         }
         
-        // Set initial document metadata with detection results
+        // Set initial document metadata with detection results and validation
         doc.metadata = {
           ...doc.metadata,
           detection,
           queueStatus: 'pendiente',
           tipo: detection.tipo
         };
+
+        // AUTOGUARDADO OFF: Run validation to determine blocking reasons
+        if (!autoSaveEnabled) {
+          const validation = validateDocumentForPending({
+            document: doc,
+            existingDocuments: documents
+          });
+          
+          doc.metadata.validation = validation;
+          doc.metadata.blockingReasons = validation.blockingReasons;
+          doc.metadata.isReadyToPublish = validation.isReadyToPublish;
+        }
         
       } catch (error) {
         console.warn('Document type detection failed for file:', doc.filename, error);
@@ -812,6 +838,157 @@ const InboxPage: React.FC = () => {
     return true;
   }));
 
+  // AUTOGUARDADO OFF: Convert documents to pending format
+  const pendingDocuments = filteredDocuments.map(doc => ({
+    id: doc.id,
+    filename: doc.filename,
+    type: doc.type,
+    size: doc.size || 0,
+    uploadDate: doc.uploadDate || new Date().toISOString(),
+    documentType: doc.metadata?.tipo || 'Otros',
+    amount: doc.metadata?.importe || doc.metadata?.financialData?.amount,
+    date: doc.metadata?.fecha || doc.metadata?.financialData?.issueDate,
+    provider: doc.metadata?.proveedor || doc.metadata?.provider,
+    inmueble: doc.metadata?.inmueble,
+    account: doc.metadata?.account,
+    ocrConfidence: doc.metadata?.ocr?.confidenceGlobal,
+    blockingReasons: doc.metadata?.blockingReasons || [],
+    isReadyToPublish: doc.metadata?.isReadyToPublish || false,
+    thumbnail: doc.thumbnail
+  }));
+
+  // AUTOGUARDADO OFF: Handler functions for pending queue
+  const handlePendingSelectDocument = (doc: any) => {
+    const originalDoc = documents.find(d => d.id === doc.id);
+    setSelectedDocument(originalDoc);
+  };
+
+  const handlePendingPublishDocument = async (doc: any) => {
+    const originalDoc = documents.find(d => d.id === doc.id);
+    if (originalDoc) {
+      // Simulate publishing logic
+      await handleAutoSaveDocument(originalDoc);
+      toast.success(`Documento ${doc.filename} publicado`);
+    }
+  };
+
+  const handlePendingPublishBatch = async (docs: any[]) => {
+    for (const doc of docs) {
+      await handlePendingPublishDocument(doc);
+    }
+    toast.success(`${docs.length} documentos publicados`);
+  };
+
+  const handleAssignInmueble = (docs: any[]) => {
+    // TODO: Open inmueble assignment modal
+    toast('Asignación de inmueble próximamente', { icon: 'ℹ️' });
+  };
+
+  const handleAssignAccount = (docs: any[]) => {
+    // TODO: Open account assignment modal  
+    toast('Asignación de cuenta próximamente', { icon: 'ℹ️' });
+  };
+
+  const handleChooseCategory = (docs: any[]) => {
+    // TODO: Open category selection modal
+    toast('Selección de categoría próximamente', { icon: 'ℹ️' });
+  };
+
+  const handleAdjustAmounts = (docs: any[]) => {
+    // TODO: Open amount adjustment modal
+    toast('Ajuste de importes próximamente', { icon: 'ℹ️' });
+  };
+
+  const handleSplitReform = (doc: any) => {
+    const originalDoc = documents.find(d => d.id === doc.id);
+    setReformDocument(originalDoc);
+    setShowReformEditor(true);
+  };
+
+  const handleMapColumns = (doc: any) => {
+    const originalDoc = documents.find(d => d.id === doc.id);
+    if (originalDoc && originalDoc.content) {
+      const blob = new Blob([originalDoc.content], { type: originalDoc.type });
+      const file = new File([blob], originalDoc.filename, { type: originalDoc.type });
+      setWizardFile(file);
+      setShowBankWizard(true);
+    }
+  };
+
+  const handleDiscardDocuments = async (docs: any[]) => {
+    if (window.confirm(`¿Eliminar ${docs.length} documento(s)?`)) {
+      for (const doc of docs) {
+        await handleDeleteDocument(doc.id);
+      }
+      toast.success(`${docs.length} documento(s) eliminados`);
+    }
+  };
+
+  const handleAutoSaveConfigChange = (enabled: boolean) => {
+    setAutoSaveEnabled(enabled);
+    
+    // Re-validate all documents when toggling AutoSave
+    if (!enabled) {
+      const updatedDocuments = documents.map(doc => {
+        const validation = validateDocumentForPending({
+          document: doc,
+          existingDocuments: documents
+        });
+        
+        return {
+          ...doc,
+          metadata: {
+            ...doc.metadata,
+            validation,
+            blockingReasons: validation.blockingReasons,
+            isReadyToPublish: validation.isReadyToPublish
+          }
+        };
+      });
+      
+      setDocuments(updatedDocuments);
+    }
+  };
+
+  const handleReformSplit = (splitData: any) => {
+    if (reformDocument) {
+      // Update document with split data
+      const updatedDoc = {
+        ...reformDocument,
+        metadata: {
+          ...reformDocument.metadata,
+          reformSplit: splitData,
+          isReadyToPublish: true,
+          blockingReasons: []
+        }
+      };
+      
+      setDocuments(prev => prev.map(doc => 
+        doc.id === reformDocument.id ? updatedDoc : doc
+      ));
+      
+      setSelectedDocument(updatedDoc);
+      setShowReformEditor(false);
+      setReformDocument(null);
+      
+      toast.success('Reparto de reforma guardado');
+    }
+  };
+
+  const handleBankWizardComplete = (result: any) => {
+    setShowBankWizard(false);
+    setWizardFile(null);
+    
+    if (result.success) {
+      toast.success(`${result.movementsCreated} movimientos importados`);
+      if (result.templateSaved) {
+        toast.success('Plantilla de banco guardada para futuras importaciones');
+      }
+    } else {
+      toast.error('Error en la importación');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -827,7 +1004,7 @@ const InboxPage: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <div className="mr-4">
-            <AutoSaveToggle />
+            <AutoSaveToggle onConfigChange={handleAutoSaveConfigChange} />
           </div>
           <button
             onClick={() => setShowBulkActions(!showBulkActions)}
@@ -1017,26 +1194,43 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
             
-            {/* H8: Single queue view - no legacy document list */}
+            {/* H8: Conditional queue view based on AutoSave setting */}
             <div className="flex-1 p-4">
-              <InboxQueue 
-                documents={filteredDocuments}
-                selectedId={selectedDocument?.id}
-                onSelectDocument={setSelectedDocument}
-                onDeleteDocument={handleDeleteDocument}
-                onAssignDocument={(doc) => {
-                  setSelectedDocument(doc);
-                  // TODO: Open assignment modal or navigate to assignment
-                }}
-                onDownloadDocument={(doc) => {
-                  // TODO: Implement download functionality
-                  console.log('Download document:', doc.filename);
-                }}
-                loading={loading}
-                selectedDocuments={selectedDocuments}
-                onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}
-                showBulkActions={showBulkActions}
-              />
+              {!autoSaveEnabled ? (
+                <PendingQueue
+                  documents={pendingDocuments}
+                  onSelectDocument={handlePendingSelectDocument}
+                  onPublishDocument={handlePendingPublishDocument}
+                  onPublishBatch={handlePendingPublishBatch}
+                  onAssignInmueble={handleAssignInmueble}
+                  onAssignAccount={handleAssignAccount}
+                  onChooseCategory={handleChooseCategory}
+                  onAdjustAmounts={handleAdjustAmounts}
+                  onSplitReform={handleSplitReform}
+                  onMapColumns={handleMapColumns}
+                  onDiscard={handleDiscardDocuments}
+                  loading={loading}
+                />
+              ) : (
+                <InboxQueue 
+                  documents={filteredDocuments}
+                  selectedId={selectedDocument?.id}
+                  onSelectDocument={setSelectedDocument}
+                  onDeleteDocument={handleDeleteDocument}
+                  onAssignDocument={(doc) => {
+                    setSelectedDocument(doc);
+                    // TODO: Open assignment modal or navigate to assignment
+                  }}
+                  onDownloadDocument={(doc) => {
+                    // TODO: Implement download functionality
+                    console.log('Download document:', doc.filename);
+                  }}
+                  loading={loading}
+                  selectedDocuments={selectedDocuments}
+                  onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}
+                  showBulkActions={showBulkActions}
+                />
+              )}
             </div>
           </div>
           
@@ -1111,6 +1305,28 @@ const InboxPage: React.FC = () => {
         }}
         file={bankStatementFile}
         onImportComplete={handleBankStatementImportComplete}
+      />
+
+      {/* AUTOGUARDADO OFF: Bank Statement Wizard */}
+      <BankStatementWizard
+        isOpen={showBankWizard}
+        onClose={() => {
+          setShowBankWizard(false);
+          setWizardFile(null);
+        }}
+        file={wizardFile}
+        onComplete={handleBankWizardComplete}
+      />
+
+      {/* AUTOGUARDADO OFF: Reform Invoice Editor */}
+      <ReformInvoiceEditor
+        isOpen={showReformEditor}
+        onClose={() => {
+          setShowReformEditor(false);
+          setReformDocument(null);
+        }}
+        document={reformDocument}
+        onSave={handleReformSplit}
       />
       
       {/* ATLAS HOTFIX: QA Dashboard - Development only */}
