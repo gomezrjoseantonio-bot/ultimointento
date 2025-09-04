@@ -1,21 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { exportSnapshot, importSnapshot, resetAllData } from '../../../../services/db';
-import { Download, Trash2, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Download, Trash2, AlertTriangle, BarChart3, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import KpiBuilder from '../../../../components/kpi/KpiBuilder';
+import DashboardConfig from '../../../../components/dashboard/DashboardConfig';
 
-type PreferencesTab = 'datos' | 'kpis';
+type PreferencesTab = 'datos' | 'kpis' | 'panel';
 
 const PreferenciasDatos: React.FC = () => {
   const { currentModule } = useTheme();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<PreferencesTab>('datos');
   const [isImporting, setIsImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSecondConfirm, setShowSecondConfirm] = useState(false);
   const [importMode, setImportMode] = useState<'replace' | 'merge'>('replace');
+
+  // Handle URL hash for tab navigation
+  useEffect(() => {
+    const hash = location.hash.replace('#', '') as PreferencesTab;
+    if (['datos', 'kpis', 'panel'].includes(hash)) {
+      setActiveTab(hash);
+    }
+  }, [location.hash]);
   
   const subtitle = currentModule === 'horizon' 
     ? 'Configuración de preferencias y datos del módulo Horizon.'
@@ -102,6 +113,20 @@ const PreferenciasDatos: React.FC = () => {
           >
             Datos & Snapshots
             {activeTab === 'datos' && (
+              <div className={`absolute -bottom-px left-1/2 transform -translate-x-1/2 w-full h-0.5 bg-${accentColor}`} />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('panel')}
+            className={`px-4 py-2 text-sm font-medium rounded-full transition-colors duration-200 relative flex items-center gap-2 ${
+              activeTab === 'panel'
+                ? `text-${accentColor} bg-transparent`
+                : 'text-neutral-600 bg-transparent hover:bg-neutral-50'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Panel
+            {activeTab === 'panel' && (
               <div className={`absolute -bottom-px left-1/2 transform -translate-x-1/2 w-full h-0.5 bg-${accentColor}`} />
             )}
           </button>
@@ -281,6 +306,12 @@ const PreferenciasDatos: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'panel' && (
+        <div>
+          <DashboardConfig />
         </div>
       )}
 
