@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Banknote, Edit, Plus, AlertTriangle } from 'lucide-react';
-import { initDB, Account } from '../../../../services/db';
+import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown } from 'lucide-react';
+import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
+import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
+
+interface AccountProjection {
+  currentBalance: number;
+  projectedBalance: number;
+  projectedBalance7d: number;
+  movements: Movement[];
+  status: 'healthy' | 'warning' | 'critical';
+}
 
 const CuentasPanel: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
+  const [accountProjection, setAccountProjection] = useState<AccountProjection | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showImport, setShowImport] = useState(false);
 
   const loadAccounts = async () => {
     try {
@@ -17,6 +29,41 @@ const CuentasPanel: React.FC = () => {
       console.error('Error loading accounts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAccountDetails = async (account: Account) => {
+    try {
+      const db = await initDB();
+      
+      // Get movements for this account
+      const allMovements = await db.getAll('movements');
+      const accountMovements = allMovements.filter(mov => mov.accountId === account.id);
+      
+      // Get projections for this specific account
+      const { accountBalances } = await getTreasuryProjections(30, [account.id!]);
+      const { accountBalances: sevenDayBalances } = await getTreasuryProjections(7, [account.id!]);
+      
+      const currentBalance = account.balance;
+      const projectedBalance = accountBalances.get(account.id!)?.projected || currentBalance;
+      const projectedBalance7d = sevenDayBalances.get(account.id!)?.projected || currentBalance;
+      
+      // Determine status
+      const minimumBalance = account.minimumBalance || 200;
+      let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+      
+      if (projectedBalance < 0) status = 'critical';
+      else if (projectedBalance < minimumBalance) status = 'warning';
+      
+      setAccountProjection({
+        currentBalance,
+        projectedBalance,
+        projectedBalance7d,
+        movements: accountMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10),
+        status
+      });
+    } catch (error) {
+      console.error('Error loading account details:', error);
     }
   };
 
@@ -63,6 +110,246 @@ const CuentasPanel: React.FC = () => {
     );
   }
 
+  // Individual Account View
+  if (selectedAccount) {
+    return (
+      <div className="space-y-6">
+        {/* Account Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                setSelectedAccount(null);
+                setAccountProjection(null);
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{selectedAccount.name}</h2>
+              <p className="text-sm text-gray-500">{selectedAccount.bank} • {selectedAccount.iban?.slice(-4)}</p>
+            </div>
+          </div>
+          <button className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50">
+            <Edit className="w-4 h-4 mr-2" />
+            Editar Cuenta
+          </button>
+        </div>
+
+        {/* Account Overview */}
+        {accountProjection && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center">
+                <Banknote className="w-8 h-8 text-brand-teal mr-3" />
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Saldo Actual</div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {formatEuro(accountProjection.currentBalance)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex items-center">
+                  {accountProjection.projectedBalance7d > accountProjection.currentBalance ? (
+                    <TrendingUp className="w-8 h-8 text-green-500 mr-3" />
+                  ) : (
+                    <TrendingDown className="w-8 h-8 text-red-500 mr-3" />
+                  )}
+                  <div>
+                    <div className="text-sm font-medium text-gray-500">Proyección 7d</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {formatEuro(accountProjection.projectedBalance7d)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex items-center">
+                  {accountProjection.projectedBalance > accountProjection.currentBalance ? (
+                    <TrendingUp className="w-8 h-8 text-green-500 mr-3" />
+                  ) : (
+                    <TrendingDown className="w-8 h-8 text-red-500 mr-3" />
+                  )}
+                  <div>
+                    <div className="text-sm font-medium text-gray-500">Proyección 30d</div>
+                    <div className="text-2xl font-bold text-gray-900">
+                      {formatEuro(accountProjection.projectedBalance)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className={`p-2 rounded-lg ${getStatusColor(accountProjection.status)} mr-3`}>
+                  {getStatusIcon(accountProjection.status)}
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Estado</div>
+                  <div className="text-lg font-semibold">
+                    {accountProjection.status === 'healthy' ? 'Saludable' : 
+                     accountProjection.status === 'warning' ? 'Atención' : 'Crítico'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Movements */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Movimientos Recientes</h3>
+          </div>
+          
+          {accountProjection && accountProjection.movements.length > 0 ? (
+            <div className="divide-y divide-gray-200">
+              {accountProjection.movements.map((movement, index) => (
+                <div key={movement.id || index} className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex-shrink-0">
+                        {movement.amount > 0 ? (
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-green-600" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <TrendingDown className="w-4 h-4 text-red-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {movement.description || 'Movimiento'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {new Date(movement.date).toLocaleDateString('es-ES')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`text-lg font-semibold ${
+                      movement.amount > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {movement.amount > 0 ? '+' : ''}{formatEuro(movement.amount)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              <p>No hay movimientos recientes para esta cuenta</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Import Modal
+  if (showImport) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowImport(false)}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Importar Cuenta</h2>
+              <p className="text-sm text-gray-500">Añade una nueva cuenta manualmente o importa desde extracto</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Cuenta Manual</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta</label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  placeholder="ej. Cuenta Corriente Principal"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Banco</label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  placeholder="ej. Banco Santander"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  placeholder="ES91 2100 0418 4502 0005 1332"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Mínimo</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  placeholder="200.00"
+                />
+              </div>
+              <button className="w-full bg-brand-navy text-white py-3 px-4 rounded-lg hover:bg-navy-800">
+                Crear Cuenta
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Importar desde Extracto</h3>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg font-medium text-gray-900 mb-2">Arrastra tu extracto aquí</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Formatos soportados: PDF, Excel (XLS, XLSX), CSV
+              </p>
+              <button className="bg-brand-navy text-white py-2 px-4 rounded-lg hover:bg-navy-800">
+                Seleccionar Archivo
+              </button>
+            </div>
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Tip:</strong> El sistema detectará automáticamente el saldo inicial y los movimientos del extracto para configurar la cuenta.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -73,10 +360,19 @@ const CuentasPanel: React.FC = () => {
             Gestión de cuentas, saldos y configuración bancaria
           </p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy">
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Cuenta
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Importar
+          </button>
+          <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy">
+            <Plus className="w-4 h-4 mr-2" />
+            Nueva Cuenta
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -135,7 +431,10 @@ const CuentasPanel: React.FC = () => {
             <Banknote className="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No hay cuentas configuradas</h3>
             <p className="text-gray-500 mb-4">Agrega tu primera cuenta bancaria para comenzar.</p>
-            <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800">
+            <button 
+              onClick={() => setShowImport(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Agregar Cuenta
             </button>
@@ -147,7 +446,14 @@ const CuentasPanel: React.FC = () => {
               const minimumBalance = account.minimumBalance || 200;
               
               return (
-                <div key={account.id} className="p-6 hover:bg-gray-50">
+                <div 
+                  key={account.id} 
+                  className="p-6 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => {
+                    setSelectedAccount(account);
+                    loadAccountDetails(account);
+                  }}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <div className={`p-2 rounded-lg border ${getStatusColor(status)}`}>
@@ -175,9 +481,18 @@ const CuentasPanel: React.FC = () => {
                           {status === 'healthy' ? 'Saludable' : 
                            status === 'warning' ? 'Atención' : 'Crítico'}
                         </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Ver proyección 30d →
+                        </div>
                       </div>
                       
-                      <button className="p-2 text-gray-400 hover:text-gray-600">
+                      <button 
+                        className="p-2 text-gray-400 hover:text-gray-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle edit action
+                        }}
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
                     </div>

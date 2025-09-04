@@ -4,6 +4,49 @@ import { initDB, Account } from '../../../../services/db';
 import { getTreasuryProjections, generateTreasuryRecommendations } from '../../../../services/treasuryForecastService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 
+// Simple Mini Chart Component
+const MiniBalanceChart: React.FC<{ 
+  current: number; 
+  projected7d: number; 
+  projected30d: number; 
+}> = ({ current, projected7d, projected30d }) => {
+  const data = [current, projected7d, projected30d];
+  const maxValue = Math.max(...data);
+  const minValue = Math.min(...data);
+  const range = maxValue - minValue || 1;
+  
+  // Normalize values to 0-40 range for SVG height
+  const normalizedData = data.map(value => 40 - ((value - minValue) / range) * 40);
+  
+  const pathData = normalizedData
+    .map((y, i) => `${i === 0 ? 'M' : 'L'} ${i * 25} ${y}`)
+    .join(' ');
+  
+  return (
+    <div className="w-16 h-10">
+      <svg width="50" height="40" className="overflow-visible">
+        <path
+          d={pathData}
+          stroke={projected30d >= current ? '#10b981' : '#ef4444'}
+          strokeWidth="2"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {normalizedData.map((y, i) => (
+          <circle
+            key={i}
+            cx={i * 25}
+            cy={y}
+            r="2"
+            fill={projected30d >= current ? '#10b981' : '#ef4444'}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+};
+
 interface TreasuryProjection {
   currentBalance: number;
   projectedBalance7d: number;
@@ -195,9 +238,18 @@ const RadarPanel: React.FC = () => {
       {/* Global Summary */}
       {projection && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Resumen Global</h3>
-            <p className="text-sm text-gray-500">Fecha hoy: {new Date().toLocaleDateString('es-ES')} — Saldo global: {formatEuro(projection.currentBalance)}</p>
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Resumen Global</h3>
+                <p className="text-sm text-gray-500">Fecha hoy: {new Date().toLocaleDateString('es-ES')} — Saldo global: {formatEuro(projection.currentBalance)}</p>
+              </div>
+              <MiniBalanceChart
+                current={projection.currentBalance}
+                projected7d={projection.projectedBalance7d}
+                projected30d={projection.projectedBalance30d}
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -211,6 +263,10 @@ const RadarPanel: React.FC = () => {
                 )}
                 Proyección +7d
               </div>
+              <div className="text-xs text-gray-400 mt-1">
+                {projection.projectedBalance7d > projection.currentBalance ? '+' : ''}
+                {formatEuro(projection.projectedBalance7d - projection.currentBalance)} respecto a hoy
+              </div>
             </div>
             
             <div className="text-center">
@@ -223,6 +279,10 @@ const RadarPanel: React.FC = () => {
                 )}
                 Proyección +30d
               </div>
+              <div className="text-xs text-gray-400 mt-1">
+                {projection.projectedBalance30d > projection.currentBalance ? '+' : ''}
+                {formatEuro(projection.projectedBalance30d - projection.currentBalance)} respecto a hoy
+              </div>
             </div>
             
             <div className="text-center">
@@ -230,6 +290,9 @@ const RadarPanel: React.FC = () => {
               <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
                 <AlertTriangle className="w-4 h-4 text-orange-500" />
                 Cuentas en riesgo
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Saldo proyectado &lt; mínimo
               </div>
             </div>
           </div>
@@ -258,6 +321,11 @@ const RadarPanel: React.FC = () => {
                     <div className={`text-sm px-2 py-1 rounded-full ${getStatusColor(status)}`}>
                       +30d: {formatEuro(projectedBalance)}
                       {status === 'critical' && ' ⚠️'}
+                      {status === 'warning' && ' ⚠️'}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {projectedBalance > account.balance ? '+' : ''}
+                      {formatEuro(projectedBalance - account.balance)} vs hoy
                     </div>
                   </div>
                 </div>
