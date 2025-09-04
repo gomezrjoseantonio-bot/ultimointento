@@ -6,6 +6,7 @@ import DocumentUploader from '../components/documents/DocumentUploader';
 import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import QADashboard from '../components/dev/QADashboard';
+import H8DemoComponent from '../components/dev/H8DemoComponent';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
@@ -29,6 +30,8 @@ const InboxPage: React.FC = () => {
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
   // ATLAS HOTFIX: QA Dashboard for development
   const [showQADashboard, setShowQADashboard] = useState(false);
+  // H8: Demo component for development
+  const [showH8Demo, setShowH8Demo] = useState(false);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -42,6 +45,12 @@ const InboxPage: React.FC = () => {
     const qaDashboard = urlParams.get('qa') === 'true';
     if (qaDashboard && process.env.NODE_ENV === 'development') {
       setShowQADashboard(true);
+    }
+    
+    // H8: Check for H8 demo query parameter
+    const h8Demo = urlParams.get('h8') === 'true';
+    if (h8Demo && process.env.NODE_ENV === 'development') {
+      setShowH8Demo(true);
     }
   }, []);
 
@@ -910,6 +919,11 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* H8: Demo Component - Development only */}
+      {process.env.NODE_ENV === 'development' && showH8Demo && (
+        <H8DemoComponent />
+      )}
       
       {/* ATLAS HOTFIX: QA Dashboard - Development only */}
       {process.env.NODE_ENV === 'development' && (
