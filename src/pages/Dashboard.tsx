@@ -16,10 +16,10 @@ const Dashboard: React.FC = () => {
         };
       case 'pulse':
         return {
-          title: 'Pulse — Personal',
-          subtitle: 'Gestión de Finanzas Personales',
+          title: 'Pulse — Gestión',
+          subtitle: 'Plataforma de Gestión Operativa',
           accentColor: 'brand-teal',
-          description: 'Controla tus finanzas personales, rastrea gastos y planifica tu futuro financiero.',
+          description: 'Gestiona contratos, firmas digitales, cobros, automatizaciones y tareas operativas.',
         };
       default:
         return {
@@ -52,8 +52,8 @@ const Dashboard: React.FC = () => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">Empezar</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            Tu {currentModule === 'horizon' ? 'cartera de inversiones' : 'panel de finanzas personales'} está vacío. 
-            {' '}Comienza importando tus datos o agregando nuevas entradas.
+            Tu {currentModule === 'horizon' ? 'cartera de inversiones' : 'plataforma de gestión'} está vacía. 
+            {' '}Comienza {currentModule === 'horizon' ? 'importando tus datos o agregando nuevas entradas' : 'creando contratos y configurando automatizaciones'}.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button className="px-6 py-2 rounded-atlas hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 bg-brand-navy text-white focus:ring-brand-navy">

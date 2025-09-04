@@ -32,18 +32,17 @@ import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailE
 import PropertyForm from './modules/horizon/inmuebles/cartera/PropertyForm';
 import PropertyDetail from './modules/horizon/inmuebles/cartera/PropertyDetail';
 
-// Pulse (Personal) Module Components
-import IngresosLista from './modules/pulse/ingresos/lista/IngresosLista';
-import IngresosNuevo from './modules/pulse/ingresos/nuevo/IngresosNuevo';
-import IngresosImportar from './modules/pulse/ingresos/importar/IngresosImportar';
-import GastosLista from './modules/pulse/gastos/lista/GastosLista';
-import GastosNuevo from './modules/pulse/gastos/nuevo/GastosNuevo';
-import GastosReglas from './modules/pulse/gastos/reglas/GastosReglas';
-import TPRadar from './modules/pulse/tesoreria-personal/radar/TPRadar';
-import TPMovimientos from './modules/pulse/tesoreria-personal/movimientos/TPMovimientos';
-import TPAlertas from './modules/pulse/tesoreria-personal/alertas/TPAlertas';
-import PPPresupuesto from './modules/pulse/proyeccion-personal/presupuesto/PPPresupuesto';
-import PPEscenarios from './modules/pulse/proyeccion-personal/escenarios/PPEscenarios';
+// Personal section (within Horizon)
+import Personal from './modules/horizon/personal/Personal';
+
+// Pulse (Management) Module Components
+import ContratosLista from './modules/pulse/contratos/lista/ContratosLista';
+import FirmasPendientes from './modules/pulse/firmas/pendientes/FirmasPendientes';
+import CobrosPendientes from './modules/pulse/cobros/pendientes/CobrosPendientes';
+import AutomatizacionesReglas from './modules/pulse/automatizaciones/reglas/AutomatizacionesReglas';
+import TareasPendientes from './modules/pulse/tareas/pendientes/TareasPendientes';
+
+// Legacy Pulse (Personal) Module Components - Keep for migration
 import HorizonPreferenciasDatos from './modules/horizon/configuracion/preferencias-datos/PreferenciasDatos';
 import GastosCapex from './modules/horizon/inmuebles/gastos-capex/GastosCapex';
 
@@ -107,32 +106,78 @@ function App() {
               <Route path="consolidado" element={<ProyeccionConsolidado />} />
             </Route>
             
-            {/* Pulse (Personal) Routes */}
+            {/* Personal section (within Horizon) */}
+            <Route path="personal">
+              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="resumen" element={<Personal />} />
+              <Route path="cuentas" element={<Personal />} />
+              <Route path="movimientos" element={<Personal />} />
+              <Route path="presupuesto" element={<Personal />} />
+              <Route path="reglas" element={<Personal />} />
+            </Route>
+            
+            {/* Pulse (Management) Routes */}
+            <Route path="contratos">
+              <Route index element={<Navigate to="/contratos/lista" replace />} />
+              <Route path="lista" element={<ContratosLista />} />
+              <Route path="nuevo" element={<ContratosLista />} />
+              <Route path="gestion" element={<ContratosLista />} />
+            </Route>
+            
+            <Route path="firmas">
+              <Route index element={<Navigate to="/firmas/pendientes" replace />} />
+              <Route path="pendientes" element={<FirmasPendientes />} />
+              <Route path="completadas" element={<FirmasPendientes />} />
+              <Route path="plantillas" element={<FirmasPendientes />} />
+            </Route>
+            
+            <Route path="cobros">
+              <Route index element={<Navigate to="/cobros/pendientes" replace />} />
+              <Route path="pendientes" element={<CobrosPendientes />} />
+              <Route path="conciliacion" element={<CobrosPendientes />} />
+              <Route path="historico" element={<CobrosPendientes />} />
+            </Route>
+            
+            <Route path="automatizaciones">
+              <Route index element={<Navigate to="/automatizaciones/reglas" replace />} />
+              <Route path="reglas" element={<AutomatizacionesReglas />} />
+              <Route path="flujos" element={<AutomatizacionesReglas />} />
+              <Route path="historial" element={<AutomatizacionesReglas />} />
+            </Route>
+            
+            <Route path="tareas">
+              <Route index element={<Navigate to="/tareas/pendientes" replace />} />
+              <Route path="pendientes" element={<TareasPendientes />} />
+              <Route path="completadas" element={<TareasPendientes />} />
+              <Route path="programadas" element={<TareasPendientes />} />
+            </Route>
+
+            {/* Legacy Personal Routes - Keep for backward compatibility */}
             <Route path="ingresos">
-              <Route index element={<Navigate to="/ingresos/lista" replace />} />
-              <Route path="lista" element={<IngresosLista />} />
-              <Route path="nuevo" element={<IngresosNuevo />} />
-              <Route path="importar" element={<IngresosImportar />} />
+              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="lista" element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="nuevo" element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="importar" element={<Navigate to="/personal/resumen" replace />} />
             </Route>
             
             <Route path="gastos">
-              <Route index element={<Navigate to="/gastos/lista" replace />} />
-              <Route path="lista" element={<GastosLista />} />
-              <Route path="nuevo" element={<GastosNuevo />} />
-              <Route path="reglas" element={<GastosReglas />} />
+              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="lista" element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="nuevo" element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="reglas" element={<Navigate to="/personal/reglas" replace />} />
             </Route>
             
             <Route path="tesoreria-personal">
-              <Route index element={<Navigate to="/tesoreria-personal/radar" replace />} />
-              <Route path="radar" element={<TPRadar />} />
-              <Route path="movimientos" element={<TPMovimientos />} />
-              <Route path="alertas" element={<TPAlertas />} />
+              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="radar" element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="movimientos" element={<Navigate to="/personal/movimientos" replace />} />
+              <Route path="alertas" element={<Navigate to="/personal/reglas" replace />} />
             </Route>
             
             <Route path="proyeccion-personal">
-              <Route index element={<Navigate to="/proyeccion-personal/presupuesto" replace />} />
-              <Route path="presupuesto" element={<PPPresupuesto />} />
-              <Route path="escenarios" element={<PPEscenarios />} />
+              <Route index element={<Navigate to="/personal/presupuesto" replace />} />
+              <Route path="presupuesto" element={<Navigate to="/personal/presupuesto" replace />} />
+              <Route path="escenarios" element={<Navigate to="/personal/presupuesto" replace />} />
             </Route>
             
             {/* Shared Configuration Routes */}

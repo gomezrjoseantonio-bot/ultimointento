@@ -66,48 +66,75 @@ export const navigationConfig: NavigationItem[] = [
     ]
   },
   
-  // Pulse (Personal) specific navigation
+  // Personal section within Horizon (neutral styling)
   {
-    name: 'Ingresos',
-    href: '/ingresos',
-    icon: DollarSign,
+    name: 'Personal',
+    href: '/personal',
+    icon: Users,
+    module: 'horizon',
+    subTabs: [
+      { name: 'Resumen', href: '/personal/resumen', icon: Home, module: 'horizon' },
+      { name: 'Cuentas', href: '/personal/cuentas', icon: Banknote, module: 'horizon' },
+      { name: 'Movimientos', href: '/personal/movimientos', icon: CreditCard, module: 'horizon' },
+      { name: 'Presupuesto', href: '/personal/presupuesto', icon: TrendingUp, module: 'horizon' },
+      { name: 'Reglas', href: '/personal/reglas', icon: Settings, module: 'horizon' },
+    ]
+  },
+  
+  // Pulse (Management) specific navigation
+  {
+    name: 'Contratos',
+    href: '/contratos',
+    icon: Users,
     module: 'pulse',
     subTabs: [
-      { name: 'Lista', href: '/ingresos/lista', icon: DollarSign, module: 'pulse' },
-      { name: 'Nuevo', href: '/ingresos/nuevo', icon: DollarSign, module: 'pulse' },
-      { name: 'Importar', href: '/ingresos/importar', icon: DollarSign, module: 'pulse' },
+      { name: 'Lista', href: '/contratos/lista', icon: Users, module: 'pulse' },
+      { name: 'Nuevo', href: '/contratos/nuevo', icon: Users, module: 'pulse' },
+      { name: 'Gestión', href: '/contratos/gestion', icon: Settings, module: 'pulse' },
     ]
   },
   {
-    name: 'Gastos',
-    href: '/gastos',
+    name: 'Firmas',
+    href: '/firmas',
     icon: CreditCard,
     module: 'pulse',
     subTabs: [
-      { name: 'Lista', href: '/gastos/lista', icon: CreditCard, module: 'pulse' },
-      { name: 'Nuevo', href: '/gastos/nuevo', icon: CreditCard, module: 'pulse' },
-      { name: 'Reglas', href: '/gastos/reglas', icon: Settings, module: 'pulse' },
+      { name: 'Pendientes', href: '/firmas/pendientes', icon: CreditCard, module: 'pulse' },
+      { name: 'Completadas', href: '/firmas/completadas', icon: CreditCard, module: 'pulse' },
+      { name: 'Plantillas', href: '/firmas/plantillas', icon: Settings, module: 'pulse' },
     ]
   },
   {
-    name: 'Tesorería Personal',
-    href: '/tesoreria-personal',
-    icon: Banknote,
+    name: 'Cobros',
+    href: '/cobros',
+    icon: DollarSign,
     module: 'pulse',
     subTabs: [
-      { name: 'Radar', href: '/tesoreria-personal/radar', icon: TrendingUp, module: 'pulse' },
-      { name: 'Movimientos', href: '/tesoreria-personal/movimientos', icon: CreditCard, module: 'pulse' },
-      { name: 'Alertas', href: '/tesoreria-personal/alertas', icon: Users, module: 'pulse' },
+      { name: 'Pendientes', href: '/cobros/pendientes', icon: DollarSign, module: 'pulse' },
+      { name: 'Conciliación', href: '/cobros/conciliacion', icon: Banknote, module: 'pulse' },
+      { name: 'Histórico', href: '/cobros/historico', icon: TrendingUp, module: 'pulse' },
     ]
   },
   {
-    name: 'Proyección Personal',
-    href: '/proyeccion-personal',
+    name: 'Automatizaciones',
+    href: '/automatizaciones',
+    icon: Settings,
+    module: 'pulse',
+    subTabs: [
+      { name: 'Reglas', href: '/automatizaciones/reglas', icon: Settings, module: 'pulse' },
+      { name: 'Flujos', href: '/automatizaciones/flujos', icon: TrendingUp, module: 'pulse' },
+      { name: 'Historial', href: '/automatizaciones/historial', icon: Users, module: 'pulse' },
+    ]
+  },
+  {
+    name: 'Tareas',
+    href: '/tareas',
     icon: TrendingUp,
     module: 'pulse',
     subTabs: [
-      { name: 'Presupuesto', href: '/proyeccion-personal/presupuesto', icon: TrendingUp, module: 'pulse' },
-      { name: 'Escenarios', href: '/proyeccion-personal/escenarios', icon: TrendingUp, module: 'pulse' },
+      { name: 'Pendientes', href: '/tareas/pendientes', icon: TrendingUp, module: 'pulse' },
+      { name: 'Completadas', href: '/tareas/completadas', icon: TrendingUp, module: 'pulse' },
+      { name: 'Programadas', href: '/tareas/programadas', icon: Settings, module: 'pulse' },
     ]
   },
   
