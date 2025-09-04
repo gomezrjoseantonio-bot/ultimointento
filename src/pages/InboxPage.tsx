@@ -6,13 +6,10 @@ import DocumentUploader from '../components/documents/DocumentUploader';
 import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
 import QADashboard from '../components/dev/QADashboard';
-import AutoSaveToggle from '../components/documents/AutoSaveToggle';
-import QueueStatusComponent from '../components/documents/QueueStatusComponent';
+import H8DemoComponent from '../components/dev/H8DemoComponent';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
-import { detectDocumentType, shouldAutoOCR, getProcessingPipeline } from '../services/documentTypeDetectionService';
-import { enqueueOCR, subscribeToOCRQueue, QueueJob } from '../services/ocrQueueService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -33,9 +30,8 @@ const InboxPage: React.FC = () => {
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
   // ATLAS HOTFIX: QA Dashboard for development
   const [showQADashboard, setShowQADashboard] = useState(false);
-  // H8: Queue management state
-  const [queueJobs, setQueueJobs] = useState<QueueJob[]>([]);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  // H8: Demo component for development
+  const [showH8Demo, setShowH8Demo] = useState(false);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -49,6 +45,12 @@ const InboxPage: React.FC = () => {
     const qaDashboard = urlParams.get('qa') === 'true';
     if (qaDashboard && process.env.NODE_ENV === 'development') {
       setShowQADashboard(true);
+    }
+    
+    // H8: Check for H8 demo query parameter
+    const h8Demo = urlParams.get('h8') === 'true';
+    if (h8Demo && process.env.NODE_ENV === 'development') {
+      setShowH8Demo(true);
     }
   }, []);
 
@@ -78,36 +80,6 @@ const InboxPage: React.FC = () => {
     };
     
     loadDocuments();
-
-    // H8: Subscribe to OCR queue changes
-    const unsubscribeQueue = subscribeToOCRQueue((jobs) => {
-      setQueueJobs(jobs);
-      
-      // Update documents with OCR results from completed jobs
-      jobs.forEach(job => {
-        if (job.status === 'OK' && job.result) {
-          setDocuments(prev => prev.map(doc => 
-            doc.id === job.documentId 
-              ? {
-                  ...doc,
-                  metadata: {
-                    ...doc.metadata,
-                    ocr: job.result
-                  }
-                }
-              : doc
-          ));
-        }
-      });
-    });
-
-    // H8: Load autosave configuration
-    const config = getAutoSaveConfig();
-    setAutoSaveEnabled(config.enabled);
-
-    return () => {
-      unsubscribeQueue();
-    };
   }, []);
 
   const handleDocumentUpload = async (newDocuments: any[]) => {
@@ -132,139 +104,23 @@ const InboxPage: React.FC = () => {
       console.warn('Failed to save to IndexedDB, using localStorage only:', error);
     }
 
-    // H8: Process each document with enhanced type detection and auto-OCR queue
+    // H3: Auto-save processing for each document
+    const autoSaveConfig = getAutoSaveConfig();
+
     for (const doc of newDocuments) {
-      try {
-        // H8: Step 1 - Detect document type BEFORE OCR
-        const detectionResult = await detectDocumentType(doc.content, doc.filename);
-        
-        // Update document metadata with detection results
-        const docWithDetection = {
-          ...doc,
-          metadata: {
-            ...doc.metadata,
-            tipo_detectado: detectionResult.tipo,
-            detection_confidence: detectionResult.confidence,
-            detection_reason: detectionResult.reason,
-            detected_tokens: detectionResult.tokens
-          }
-        };
-
-        // H8: Step 2 - Choose processing pipeline
-        const pipeline = getProcessingPipeline(detectionResult);
-        
-        switch (pipeline) {
-          case 'bank-parser':
-            // H8: Skip OCR for bank statements, send to bank parser
-            console.info('Bank statement detected, skipping OCR:', doc.filename);
-            await handleBankStatementProcessing(docWithDetection);
-            break;
-            
-          case 'ocr':
-            // H8: Enqueue for background OCR processing
-            console.info('Enqueueing for auto-OCR:', doc.filename);
-            const jobId = enqueueOCR(doc.id, doc.filename, doc.content);
-            
-            // Update document with queue job reference
-            setDocuments(prev => prev.map(d => 
-              d.id === doc.id 
-                ? {
-                    ...d,
-                    metadata: {
-                      ...d.metadata,
-                      ocrJobId: jobId,
-                      ocrStatus: 'PENDING'
-                    }
-                  }
-                : d
-            ));
-            break;
-            
-          case 'manual':
-            // H8: No automatic processing, keep for manual review
-            console.info('Manual processing required:', doc.filename);
-            await handleManualProcessing(docWithDetection);
-            break;
-        }
-        
-      } catch (error) {
-        console.error('Error processing document:', doc.filename, error);
-        toast.error(`Error procesando ${doc.filename}`);
-      }
-    }
-
-    // H8: Show processing summary
-    const totalDocs = newDocuments.length;
-    const autoOcrDocs = newDocuments.filter(doc => 
-      shouldAutoOCR({ tipo: doc.metadata?.tipo_detectado || 'Unknown', confidence: 0.5, shouldSkipOCR: false, reason: '' })
-    ).length;
-    const bankDocs = newDocuments.filter(doc => 
-      doc.metadata?.tipo_detectado === 'Extracto bancario'
-    ).length;
-    
-    toast.success(
-      `${totalDocs} documento(s) subido(s). ${autoOcrDocs} en cola OCR, ${bankDocs} procesados como extractos.`,
-      { duration: 4000 }
-    );
-  };
-
-  // H8: Helper function for bank statement processing
-  const handleBankStatementProcessing = async (document: any) => {
-    try {
-      // Mark as bank statement and set status
-      const updatedDoc = {
-        ...document,
-        metadata: {
-          ...document.metadata,
-          status: 'Procesado',
-          carpeta: 'extractos'
-        }
-      };
-
-      // Update document state
-      setDocuments(prev => prev.map(doc => 
-        doc.id === document.id ? updatedDoc : doc
-      ));
-
-      // Apply autosave if enabled
-      const config = getAutoSaveConfig();
-      if (config.enabled) {
-        // Auto-move to extractos folder
-        toast.success(`Extracto bancario guardado automáticamente: ${document.filename}`);
+      // H-OCR: Auto-OCR processing if enabled
+      const ocrConfig = getOCRConfig();
+      if (ocrConfig.autoRun && (doc.type === 'application/pdf' || doc.type?.startsWith('image/'))) {
+        handleAutoOCR(doc);
+        // Auto-save will be handled after OCR completes
       } else {
-        // Leave pending for review
-        toast.info(`Extracto bancario pendiente de revisión: ${document.filename}`);
+        // Process auto-save immediately for non-OCR documents
+        await handleAutoSaveDocument(doc);
       }
-    } catch (error) {
-      console.error('Error processing bank statement:', error);
-      toast.error(`Error procesando extracto: ${document.filename}`);
     }
-  };
 
-  // H8: Helper function for manual processing documents
-  const handleManualProcessing = async (document: any) => {
-    try {
-      // Mark as requiring manual review
-      const updatedDoc = {
-        ...document,
-        metadata: {
-          ...document.metadata,
-          status: 'Pendiente de revisar',
-          carpeta: 'otros'
-        }
-      };
-
-      // Update document state
-      setDocuments(prev => prev.map(doc => 
-        doc.id === document.id ? updatedDoc : doc
-      ));
-
-      toast.info(`Documento marcado para revisión manual: ${document.filename}`);
-    } catch (error) {
-      console.error('Error in manual processing:', error);
-      toast.error(`Error en procesamiento manual: ${document.filename}`);
-    }
-  };
+    // H5: Show summary toast for auto-save OFF mode (Issue 5)
+    if (!autoSaveConfig.enabled && newDocuments.length > 1) {
       // Count final results after processing
       setTimeout(() => {
         // Calculate counts for this batch
@@ -1063,6 +919,11 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* H8: Demo Component - Development only */}
+      {process.env.NODE_ENV === 'development' && showH8Demo && (
+        <H8DemoComponent />
+      )}
       
       {/* ATLAS HOTFIX: QA Dashboard - Development only */}
       {process.env.NODE_ENV === 'development' && (
