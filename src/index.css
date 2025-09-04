@@ -11,6 +11,10 @@
   --brand-navy: #0F3D62;   /* ATLAS azul marino (logotipo) */
   --brand-teal: #2EB0CB;   /* ATLAS teal/acento (barra logo) */
 
+  /* Horizon Module specific colors */
+  --horizon-navy: #022D5E;  /* Horizon primary navy */
+  --horizon-teal: #2EB0CB;  /* Horizon accent teal */
+
   /* Paleta derivada */
   --text: #0F2433;         /* texto principal */
   --text-muted: #5B7186;
@@ -263,5 +267,52 @@ html {
   /* Remove any dotted or dashed borders globally */
   * {
     border-style: solid;
+  }
+}
+
+/* Horizon Module Styles - AUTOGUARDADO OFF */
+@layer components {
+  .horizon-pending-queue {
+    @apply bg-white rounded-xl border border-neutral-200 shadow-sm;
+  }
+  
+  .horizon-primary {
+    background-color: var(--horizon-navy);
+    color: white;
+  }
+  
+  .horizon-primary:hover {
+    background-color: #011e42;
+  }
+  
+  .horizon-accent {
+    background-color: var(--horizon-teal);
+    color: white;
+  }
+  
+  .horizon-accent:hover {
+    background-color: #2693ab;
+  }
+  
+  .horizon-secondary {
+    @apply border border-neutral-300 text-gray-700 bg-white hover:bg-neutral-50;
+    border-color: var(--horizon-navy);
+    color: var(--horizon-navy);
+  }
+  
+  .horizon-badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .horizon-badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .horizon-badge-error {
+    @apply bg-red-100 text-red-800;
+  }
+  
+  .horizon-badge-info {
+    @apply bg-blue-100 text-blue-800;
   }
 }

@@ -37,15 +37,15 @@ const AutoSaveToggle: React.FC<AutoSaveToggleProps> = ({ onConfigChange }) => {
   };
 
   return (
-    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl border border-neutral-200">
       <div className="flex items-center">
         <button
           onClick={handleToggle}
           disabled={isLoading}
           className={`
             relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
-            transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-            ${isEnabled ? 'bg-blue-600' : 'bg-gray-200'}
+            transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2
+            ${isEnabled ? 'bg-teal-500 focus:ring-teal-400' : 'bg-gray-200 focus:ring-gray-400'}
             ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
           `}
           role="switch"
@@ -76,9 +76,9 @@ const AutoSaveToggle: React.FC<AutoSaveToggleProps> = ({ onConfigChange }) => {
       
       <div className="flex items-center">
         <span className={`
-          inline-flex px-2 py-1 text-xs font-medium rounded-full
+          inline-flex px-3 py-1 text-xs font-medium rounded-full
           ${isEnabled 
-            ? 'bg-green-100 text-green-800' 
+            ? 'bg-teal-100 text-teal-800' 
             : 'bg-yellow-100 text-yellow-800'
           }
         `}>
