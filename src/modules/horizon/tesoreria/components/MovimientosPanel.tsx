@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Link, Plus, X } from 'lucide-react';
+import { Search, Link, Plus, X, Edit2, Trash2 } from 'lucide-react';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
-import toast from 'react-hot-toast';
+import { emitTreasuryEvent } from '../../../../services/treasuryEventsService';
+import { showSuccess, showError, showCommonError } from '../../../../services/toastService';
 
 const MovimientosPanel: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -15,6 +16,8 @@ const MovimientosPanel: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showReconciliation, setShowReconciliation] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Movement | null>(null);
   const [newMovement, setNewMovement] = useState({
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -52,7 +55,7 @@ const MovimientosPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Error loading treasury data:', error);
-      toast.error('Error al cargar los datos');
+      showCommonError('NETWORK_ERROR', 'Error al cargar los datos de tesorería');
     } finally {
       setLoading(false);
     }
@@ -64,7 +67,7 @@ const MovimientosPanel: React.FC = () => {
       setPotentialMatches(matches);
     } catch (error) {
       console.error('Error loading reconciliation matches:', error);
-      toast.error('Error al cargar sugerencias de conciliación');
+      showError('Error al cargar sugerencias de conciliación', 'Intenta recargar la página');
     }
   };
 
@@ -81,7 +84,7 @@ const MovimientosPanel: React.FC = () => {
   const handleCreateManualMovement = async () => {
     try {
       if (!newMovement.date || !newMovement.description || !newMovement.amount || !newMovement.accountId) {
-        toast.error('Por favor, completa todos los campos obligatorios');
+        showCommonError('VALIDATION_ERROR', 'Por favor, completa todos los campos obligatorios');
         return;
       }
 
@@ -100,9 +103,16 @@ const MovimientosPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      await db.add('movements', movement);
+      const addedMovement = await db.add('movements', movement);
+      const completeMovement = { ...movement, id: addedMovement as number };
       
-      toast.success('Movimiento creado exitosamente');
+      // Emit domain event
+      await emitTreasuryEvent({
+        type: 'MOVEMENT_CREATED',
+        payload: { movement: completeMovement }
+      });
+      
+      showSuccess('Movimiento creado exitosamente');
       setShowManualEntry(false);
       setNewMovement({
         date: new Date().toISOString().split('T')[0],
@@ -115,8 +125,105 @@ const MovimientosPanel: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error creating movement:', error);
-      toast.error('Error al crear el movimiento');
+      showCommonError('SAVE_ERROR', 'Error al crear el movimiento');
     }
+  };
+
+  const handleEditMovement = (movement: Movement) => {
+    setEditingMovement(movement);
+    setNewMovement({
+      date: movement.date,
+      description: movement.description,
+      amount: movement.amount.toString(),
+      accountId: movement.accountId.toString(),
+      counterparty: movement.counterparty || ''
+    });
+    setShowManualEntry(true);
+  };
+
+  const handleUpdateMovement = async () => {
+    if (!editingMovement) return;
+    
+    try {
+      if (!newMovement.date || !newMovement.description || !newMovement.amount || !newMovement.accountId) {
+        showCommonError('VALIDATION_ERROR', 'Por favor, completa todos los campos obligatorios');
+        return;
+      }
+
+      const db = await initDB();
+      
+      // Store previous movement for domain event
+      const previousMovement = { ...editingMovement };
+      
+      // Update movement
+      const updatedMovement: Movement = {
+        ...editingMovement,
+        accountId: parseInt(newMovement.accountId),
+        date: newMovement.date,
+        description: newMovement.description,
+        amount: parseFloat(newMovement.amount),
+        counterparty: newMovement.counterparty || undefined,
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.put('movements', updatedMovement);
+      
+      // Emit domain event
+      await emitTreasuryEvent({
+        type: 'MOVEMENT_UPDATED',
+        payload: { movement: updatedMovement, previousMovement }
+      });
+      
+      showSuccess('Movimiento actualizado exitosamente');
+      setShowManualEntry(false);
+      setEditingMovement(null);
+      setNewMovement({
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: '',
+        accountId: '',
+        counterparty: ''
+      });
+      
+      await loadData();
+    } catch (error) {
+      console.error('Error updating movement:', error);
+      showCommonError('SAVE_ERROR', 'Error al actualizar el movimiento');
+    }
+  };
+
+  const handleDeleteMovement = async (movement: Movement) => {
+    try {
+      const db = await initDB();
+      
+      // Delete movement
+      await db.delete('movements', movement.id!);
+      
+      // Emit domain event
+      await emitTreasuryEvent({
+        type: 'MOVEMENT_DELETED',
+        payload: { movement }
+      });
+      
+      showSuccess('Movimiento eliminado exitosamente');
+      setShowDeleteConfirm(null);
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting movement:', error);
+      showCommonError('SAVE_ERROR', 'Error al eliminar el movimiento');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingMovement(null);
+    setShowManualEntry(false);
+    setNewMovement({
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      amount: '',
+      accountId: '',
+      counterparty: ''
+    });
   };
 
   // Filter movements
@@ -265,9 +372,11 @@ const MovimientosPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Crear Movimiento Manual</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingMovement ? 'Editar Movimiento' : 'Crear Movimiento Manual'}
+              </h3>
               <button
-                onClick={() => setShowManualEntry(false)}
+                onClick={cancelEdit}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
@@ -348,16 +457,62 @@ const MovimientosPanel: React.FC = () => {
             
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowManualEntry(false)}
+                onClick={cancelEdit}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={handleCreateManualMovement}
+                onClick={editingMovement ? handleUpdateMovement : handleCreateManualMovement}
                 className="flex-1 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
               >
-                Crear Movimiento
+                {editingMovement ? 'Actualizar Movimiento' : 'Crear Movimiento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Confirmar Eliminación</h3>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-600 mb-4">
+                ¿Estás seguro de que deseas eliminar este movimiento?
+              </p>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm font-medium text-gray-900">
+                  {showDeleteConfirm.description}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {formatEuro(showDeleteConfirm.amount)} - {new Date(showDeleteConfirm.date).toLocaleDateString('es-ES')}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteMovement(showDeleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Eliminar
               </button>
             </div>
           </div>
@@ -390,6 +545,9 @@ const MovimientosPanel: React.FC = () => {
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
                 </th>
               </tr>
             </thead>
@@ -437,6 +595,24 @@ const MovimientosPanel: React.FC = () => {
                           </span>
                         </div>
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEditMovement(movement)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Editar movimiento"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(movement)}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Eliminar movimiento"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

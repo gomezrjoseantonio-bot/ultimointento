@@ -55,6 +55,14 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
             Pendiente
           </span>
         );
+      case 'procesado':
+      case 'procesado_ocr':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+            <CheckCircle className="w-3 h-3" />
+            Procesado (OCR)
+          </span>
+        );
       case 'incompleto':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full">

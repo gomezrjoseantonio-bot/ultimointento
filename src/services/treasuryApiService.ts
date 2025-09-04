@@ -12,6 +12,7 @@
 import { initDB, Account, Movement, ImportBatch } from './db';
 import { parseCSV } from './csvParserService';
 import { performAutoReconciliation } from './treasuryCreationService';
+import { emitTreasuryEvent } from './treasuryEventsService';
 
 // IBAN validation regex (simplified European format)
 const IBAN_REGEX = /^[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}$/;
@@ -242,6 +243,12 @@ export class TreasuryImportAPI {
         await db.add('movements', movement);
         results.inserted++;
         importBatch.importedRows++;
+
+        // Emit domain event for movement creation
+        await emitTreasuryEvent({
+          type: 'MOVEMENT_CREATED',
+          payload: { movement: { ...movement, id: Date.now() + results.inserted } }
+        });
 
       } catch (error) {
         console.error('Error importing movement:', error);

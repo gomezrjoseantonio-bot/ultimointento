@@ -3,6 +3,7 @@ import { ArrowUpCircle, ArrowDownCircle, AlertTriangle, CheckCircle, TrendingUp,
 import { initDB, Account } from '../../../../services/db';
 import { getTreasuryProjections, generateTreasuryRecommendations } from '../../../../services/treasuryForecastService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
+import { addEventListener, removeEventListener } from '../../../../services/treasuryEventsService';
 
 // Simple Mini Chart Component
 const MiniBalanceChart: React.FC<{ 
@@ -164,6 +165,22 @@ const RadarPanel: React.FC = () => {
     loadTreasuryData();
   }, [selectedModule, loadTreasuryData]);
 
+  // Listen for treasury events to update Radar in real-time
+  useEffect(() => {
+    const handleTreasuryEvent = async () => {
+      console.log('🔄 Radar: Treasury event detected, refreshing data...');
+      await loadTreasuryData();
+    };
+
+    // Add event listener
+    addEventListener(handleTreasuryEvent);
+
+    // Cleanup on unmount
+    return () => {
+      removeEventListener(handleTreasuryEvent);
+    };
+  }, [loadTreasuryData]);
+
   const getAccountProjectedBalance = (account: Account): number => {
     if (!projection) return account.balance;
     const balance = projection.accountBalances.get(account.id!);
@@ -179,11 +196,11 @@ const RadarPanel: React.FC = () => {
     return 'healthy';
   };
 
-  const getStatusColor = (status: 'healthy' | 'warning' | 'critical'): string => {
+  const getStatusIndicator = (status: 'healthy' | 'warning' | 'critical'): string => {
     switch (status) {
-      case 'critical': return 'text-red-600 bg-red-50';
-      case 'warning': return 'text-orange-600 bg-orange-50';
-      case 'healthy': return 'text-green-600 bg-green-50';
+      case 'critical': return '🔴'; // Red circle
+      case 'warning': return '🟡'; // Yellow circle  
+      case 'healthy': return '🟢'; // Green circle
     }
   };
 
@@ -191,7 +208,7 @@ const RadarPanel: React.FC = () => {
     switch (severity) {
       case 'critical': return <AlertTriangle className="w-5 h-5 text-red-500" />;
       case 'warning': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-      case 'info': return <CheckCircle className="w-5 h-5 text-blue-500" />;
+      case 'info': return <CheckCircle className="w-5 h-5 text-[#35C0CF]" />; // Turquoise Atlas
     }
   };
 
@@ -208,8 +225,8 @@ const RadarPanel: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">Radar Tesorería</h2>
-        <p className="text-sm text-gray-500 mt-1">
+        <h2 className="text-xl font-semibold text-[#0D2B52]">Radar Tesorería</h2>
+        <p className="text-sm text-gray-600 mt-1">
           Vista general del estado financiero y proyecciones
         </p>
       </div>
@@ -226,8 +243,8 @@ const RadarPanel: React.FC = () => {
             onClick={() => setSelectedModule(module.key)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedModule === module.key
-                ? 'bg-brand-navy text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-[#0D2B52] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-[#35C0CF] hover:text-white'
             }`}
           >
             {module.label}
@@ -253,9 +270,9 @@ const RadarPanel: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance7d)}</div>
-              <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+            <div className="text-center p-4 bg-gradient-to-br from-[#35C0CF]/10 to-[#35C0CF]/5 rounded-lg">
+              <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance7d)}</div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance7d > projection.currentBalance ? (
                   <TrendingUp className="w-4 h-4 text-green-500" />
                 ) : (
@@ -263,15 +280,15 @@ const RadarPanel: React.FC = () => {
                 )}
                 Proyección +7d
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div className="text-xs text-gray-500 mt-1">
                 {projection.projectedBalance7d > projection.currentBalance ? '+' : ''}
                 {formatEuro(projection.projectedBalance7d - projection.currentBalance)} respecto a hoy
               </div>
             </div>
             
-            <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance30d)}</div>
-              <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+            <div className="text-center p-4 bg-gradient-to-br from-[#0D2B52]/10 to-[#0D2B52]/5 rounded-lg">
+              <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance30d)}</div>
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance30d > projection.currentBalance ? (
                   <TrendingUp className="w-4 h-4 text-green-500" />
                 ) : (
@@ -279,20 +296,35 @@ const RadarPanel: React.FC = () => {
                 )}
                 Proyección +30d
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div className="text-xs text-gray-500 mt-1">
                 {projection.projectedBalance30d > projection.currentBalance ? '+' : ''}
                 {formatEuro(projection.projectedBalance30d - projection.currentBalance)} respecto a hoy
               </div>
             </div>
             
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{projection.accountsAtRisk}</div>
-              <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
-                Cuentas en riesgo
+            <div className={`text-center p-4 rounded-lg ${
+              projection.accountsAtRisk > 0 
+                ? 'bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200' 
+                : 'bg-gradient-to-br from-green-50 to-green-100'
+            }`}>
+              <div className={`text-3xl font-bold ${
+                projection.accountsAtRisk > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {projection.accountsAtRisk}
               </div>
-              <div className="text-xs text-gray-400 mt-1">
-                Saldo proyectado &lt; mínimo
+              <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
+                {projection.accountsAtRisk > 0 ? (
+                  <AlertTriangle className="w-4 h-4 text-red-500" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                )}
+                {projection.accountsAtRisk > 0 ? 'Cuentas en riesgo' : 'Todas saludables'}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {projection.accountsAtRisk > 0 
+                  ? 'Saldo proyectado < mínimo' 
+                  : 'Todas por encima del mínimo'
+                }
               </div>
             </div>
           </div>
@@ -307,27 +339,56 @@ const RadarPanel: React.FC = () => {
             {accounts.map(account => {
               const status = getAccountStatus(account);
               const projectedBalance = getAccountProjectedBalance(account);
+              const minimumBalance = account.minimumBalance || 200;
               
               return (
-                <div key={account.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{account.name}</div>
-                    <div className="text-sm text-gray-500">{account.bank}</div>
+                <div key={account.id} className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
+                  status === 'critical' 
+                    ? 'border-red-200 bg-red-50' 
+                    : status === 'warning' 
+                    ? 'border-orange-200 bg-orange-50'
+                    : 'border-green-200 bg-green-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{getStatusIndicator(status)}</span>
+                        <div>
+                          <div className="font-semibold text-[#0D2B52]">{account.name}</div>
+                          <div className="text-sm text-gray-600">{account.bank}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-[#0D2B52]">
+                        {formatEuro(account.balance)}
+                      </div>
+                      <div className="text-sm text-gray-600">Saldo hoy</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      Hoy: {formatEuro(account.balance)}
+                  
+                  <div className="mt-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">
+                        Proyección 30d: <span className={`font-bold ${
+                          projectedBalance >= account.balance ? 'text-green-600' : 'text-red-600'
+                        }`}>{formatEuro(projectedBalance)}</span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Mínimo: {formatEuro(minimumBalance)}
+                      </div>
                     </div>
-                    <div className={`text-sm px-2 py-1 rounded-full ${getStatusColor(status)}`}>
-                      +30d: {formatEuro(projectedBalance)}
-                      {status === 'critical' && ' ⚠️'}
-                      {status === 'warning' && ' ⚠️'}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {projectedBalance > account.balance ? '+' : ''}
-                      {formatEuro(projectedBalance - account.balance)} vs hoy
-                    </div>
+                    
+                    <button className="text-xs text-[#35C0CF] hover:text-[#0D2B52] font-medium transition-colors">
+                      Ver proyección 30d →
+                    </button>
                   </div>
+                  
+                  <MiniBalanceChart
+                    current={account.balance}
+                    projected7d={projectedBalance}
+                    projected30d={projectedBalance}
+                  />
                 </div>
               );
             })}
