@@ -989,6 +989,15 @@ const InboxPage: React.FC = () => {
                 documents={filteredDocuments}
                 selectedId={selectedDocument?.id}
                 onSelectDocument={setSelectedDocument}
+                onDeleteDocument={handleDeleteDocument}
+                onAssignDocument={(doc) => {
+                  setSelectedDocument(doc);
+                  // TODO: Open assignment modal or navigate to assignment
+                }}
+                onDownloadDocument={(doc) => {
+                  // TODO: Implement download functionality
+                  console.log('Download document:', doc.filename);
+                }}
                 loading={loading}
                 selectedDocuments={selectedDocuments}
                 onToggleDocumentSelection={showBulkActions ? toggleDocumentSelection : undefined}

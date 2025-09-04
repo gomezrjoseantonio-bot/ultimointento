@@ -1,11 +1,16 @@
 import React from 'react';
-import { FileText, Image, Archive, Eye, AlertCircle, CheckCircle, MoreHorizontal, Mail, Upload } from 'lucide-react';
+import { FileText, Image, Archive, Mail, Upload } from 'lucide-react';
 import { alignDocumentAI } from '../../features/inbox/ocr/alignDocumentAI';
+import StatusChip from '../inbox/StatusChip';
+import DocumentActions from '../inbox/DocumentActions';
 
 interface InboxQueueProps {
   documents: any[];
   selectedId?: number;
   onSelectDocument: (document: any) => void;
+  onDeleteDocument?: (documentId: number) => void;
+  onAssignDocument?: (document: any) => void;
+  onDownloadDocument?: (document: any) => void;
   loading: boolean;
   selectedDocuments?: number[];
   onToggleDocumentSelection?: (docId: number) => void;
@@ -15,7 +20,10 @@ interface InboxQueueProps {
 const InboxQueue: React.FC<InboxQueueProps> = ({ 
   documents, 
   selectedId, 
-  onSelectDocument, 
+  onSelectDocument,
+  onDeleteDocument,
+  onAssignDocument,
+  onDownloadDocument,
   loading,
   selectedDocuments = [],
   onToggleDocumentSelection,
@@ -44,61 +52,20 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
   };
 
   // H3: Get document status with new states (Pendiente, Incompleto, Importado, Error, Duplicado)
-  const getStatusChip = (doc: any) => {
-    const status = doc.metadata?.queueStatus || doc.metadata?.status || 'Pendiente';
+  const getStatusWithWarnings = (doc: any) => {
+    const status = doc.metadata?.queueStatus || doc.metadata?.status || 'pendiente';
+    const warnings = [];
     
-    switch (status.toLowerCase()) {
-      case 'pendiente':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full">
-            <Eye className="w-3 h-3" />
-            Pendiente
-          </span>
-        );
-      case 'procesado':
-      case 'procesado_ocr':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-            <CheckCircle className="w-3 h-3" />
-            Procesado (OCR)
-          </span>
-        );
-      case 'incompleto':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full">
-            <AlertCircle className="w-3 h-3" />
-            Incompleto
-          </span>
-        );
-      case 'importado':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-            <CheckCircle className="w-3 h-3" />
-            Importado
-          </span>
-        );
-      case 'error':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">
-            <AlertCircle className="w-3 h-3" />
-            Error
-          </span>
-        );
-      case 'duplicado':
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-neutral-100 text-neutral-700 rounded-full">
-            <AlertCircle className="w-3 h-3" />
-            Duplicado
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full">
-            <Eye className="w-3 h-3" />
-            Pendiente
-          </span>
-        );
+    // Add warnings based on document analysis
+    if (doc.metadata?.classification?.doubts) {
+      warnings.push(...doc.metadata.classification.doubts);
     }
+    
+    if (doc.metadata?.autoSaveResult?.warnings) {
+      warnings.push(...doc.metadata.autoSaveResult.warnings);
+    }
+    
+    return { status, warnings };
   };
 
   // H3: Get origin indicator (Upload/Email)
@@ -278,7 +245,10 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                   {doc.metadata?.tipo || 'Otros'}
                 </td>
                 <td className="py-3 px-4">
-                  {getStatusChip(doc)}
+                  {(() => {
+                    const { status, warnings } = getStatusWithWarnings(doc);
+                    return <StatusChip status={status} warnings={warnings} />;
+                  })()}
                 </td>
                 <td className="py-3 px-4 text-sm text-neutral-600">
                   {getSupplierOrBank(doc)}
@@ -293,9 +263,13 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                   {getOriginChip(doc)}
                 </td>
                 <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                  <button className="p-1 hover:bg-neutral-100 rounded text-neutral-400 hover:text-neutral-600">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <DocumentActions
+                    document={doc}
+                    onView={onSelectDocument}
+                    onAssign={onAssignDocument}
+                    onDelete={onDeleteDocument}
+                    onDownload={onDownloadDocument}
+                  />
                 </td>
               </tr>
             );
