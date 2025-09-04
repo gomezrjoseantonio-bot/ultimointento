@@ -104,7 +104,7 @@ export const toggleAutoSave = (): boolean => {
   return newEnabled;
 };
 
-// H3: Document classification and auto-save logic
+// FIX-DOCS: Enhanced document classification and auto-save logic
 export interface ClassificationResult {
   type: 'factura' | 'extracto' | 'contrato' | 'otros';
   confidence: number;
@@ -128,6 +128,12 @@ export interface ClassificationResult {
     suggestedDestination?: string; // H8: Enhanced metadata
     isCapex?: boolean; // H8: CAPEX detection
     warningMessage?: string; // H8: Low confidence warning
+    // FIX-DOCS: Document type flags for enhanced processing
+    isReform?: boolean; // Reform invoice (multiple entries)
+    isReceipt?: boolean; // Receipt (Treasury + Expense)
+    isLoanDocumentation?: boolean; // Loan costs
+    isAcquisitionCost?: boolean; // Property acquisition costs
+    isFiscalDocument?: boolean; // Tax/fiscal documentation
   };
 }
 
@@ -185,7 +191,9 @@ export const classifyDocument = async (document: any, existingDocuments: any[] =
   const filename = document.filename?.toLowerCase() || '';
   const ocrData = document.metadata?.ocr;
 
-  // H3: Issue 3 - Enhanced type detection for immediate processing
+  // FIX-DOCS: Enhanced type detection for all 7 document types
+  
+  // 1. Facturas de gasto corriente
   if (filename.includes('factura') || filename.includes('invoice') || 
       document.metadata?.tipo?.toLowerCase() === 'factura') {
     type = 'factura';
@@ -202,16 +210,80 @@ export const classifyDocument = async (document: any, existingDocuments: any[] =
         metadata: { ...metadata, duplicateDetected: true }
       } as ClassificationResult;
     }
-    
-  } else if (filename.includes('extracto') || filename.includes('movimientos') ||
-             filename.includes('xlsx') || filename.includes('csv') ||
-             document.metadata?.tipo?.toLowerCase() === 'extracto bancario') {
-    type = 'extracto';
+  }
+  
+  // 2. Facturas de reforma (with reform keywords)
+  else if (filename.includes('reforma') || filename.includes('mejora') || 
+           filename.includes('ampliacion') || filename.includes('mobiliario') ||
+           document.metadata?.tipo?.toLowerCase() === 'factura-reforma') {
+    type = 'factura';
     confidence = 0.8;
-  } else if (filename.includes('contrato') || filename.includes('contract') ||
-             document.metadata?.tipo?.toLowerCase() === 'contrato') {
+    metadata.isReform = true;
+    document.metadata.tipo = 'factura-reforma'; // Mark for reform processing
+  }
+  
+  // 3. Recibos (domiciliaciones, TPV, etc.)
+  else if (filename.includes('recibo') || filename.includes('domiciliacion') ||
+           filename.includes('tpv') || filename.includes('cargo') ||
+           document.metadata?.tipo?.toLowerCase() === 'recibo') {
+    type = 'factura'; // Process as expense but mark as receipt
+    confidence = 0.8;
+    metadata.isReceipt = true;
+    document.metadata.tipo = 'recibo';
+  }
+  
+  // 4. Contratos (alquiler, seguros, etc.)
+  else if (filename.includes('contrato') || filename.includes('contract') ||
+           filename.includes('alquiler') || filename.includes('seguro') ||
+           document.metadata?.tipo?.toLowerCase() === 'contrato') {
     type = 'contrato';
     confidence = 0.6;
+  }
+  
+  // 5. Documentación de préstamo
+  else if (filename.includes('prestamo') || filename.includes('hipoteca') ||
+           filename.includes('tasacion') || filename.includes('notaria') ||
+           filename.includes('broker') || filename.includes('apertura') ||
+           document.metadata?.tipo?.toLowerCase() === 'prestamo') {
+    type = 'factura'; // Process as expense but mark as loan documentation
+    confidence = 0.7;
+    metadata.isLoanDocumentation = true;
+    document.metadata.tipo = 'prestamo';
+  }
+  
+  // 6. Costes de adquisición
+  else if (filename.includes('escritura') || filename.includes('adquisicion') ||
+           filename.includes('itp') || filename.includes('registro') ||
+           filename.includes('compra') || 
+           document.metadata?.tipo?.toLowerCase() === 'adquisicion') {
+    type = 'factura'; // Process as expense but mark as acquisition cost
+    confidence = 0.8;
+    metadata.isAcquisitionCost = true;
+    document.metadata.tipo = 'adquisicion';
+  }
+  
+  // 7. Documentación fiscal / Otros
+  else if (filename.includes('ibi') || filename.includes('aeat') ||
+           filename.includes('catastral') || filename.includes('hacienda') ||
+           document.metadata?.tipo?.toLowerCase() === 'fiscal') {
+    type = 'otros';
+    confidence = 0.7;
+    metadata.isFiscalDocument = true;
+    document.metadata.tipo = 'fiscal';
+  }
+  
+  // Bank extracts
+  else if (filename.includes('extracto') || filename.includes('movimientos') ||
+           filename.includes('xlsx') || filename.includes('csv') ||
+           document.metadata?.tipo?.toLowerCase() === 'extracto bancario') {
+    type = 'extracto';
+    confidence = 0.8;
+  }
+  
+  // Default to otros
+  else {
+    type = 'otros';
+    confidence = 0.5;
   }
 
   // H3: Enhanced classification with OCR data for Invoice processing
@@ -422,7 +494,7 @@ export const classifyDocument = async (document: any, existingDocuments: any[] =
   };
 };
 
-// H3: Auto-save document to destination with enhanced Issue 4 & 5 behavior
+// FIX-DOCS: Enhanced auto-save with complete document ingestion
 export const autoSaveDocument = async (document: any, classification: ClassificationResult): Promise<{
   success: boolean;
   destination?: string;
@@ -433,53 +505,25 @@ export const autoSaveDocument = async (document: any, classification: Classifica
   
   try {
     if (config.enabled) {
-      // H4: Issue 4 - Auto-save ON - process and archive everything
+      // FIX-DOCS: Auto-save ON - process and create structured entries with document attachments
       if (classification.isClear) {
-        // Archive directly to destination
-        const destination = classification.suggestedDestination;
+        // Use the new document ingestion service
+        const { processDocumentIngestion } = await import('./documentIngestionService');
+        const ingestionResult = await processDocumentIngestion(document);
         
-        // H3: Simulate saving to different destinations based on type
-        switch (destination) {
-          case 'tesoreria-gastos':
-            return {
-              success: true,
-              destination: 'Tesorería > Gastos',
-              message: '✓ Guardado en Gastos',
-              newStatus: 'importado'
-            };
-          case 'tesoreria-capex':
-            return {
-              success: true,
-              destination: 'Tesorería > CAPEX',
-              message: '✓ Guardado en CAPEX',
-              newStatus: 'importado'
-            };
-          case 'tesoreria-movimientos':
-            // H4: Show import count for bank extracts
-            const movementCount = Math.floor(Math.random() * 20) + 1;
-            return {
-              success: true,
-              destination: 'Tesorería > Movimientos',
-              message: `✓ Importado ${movementCount} movimientos`,
-              newStatus: 'importado'
-            };
-          case 'horizon-contratos':
-            // H3: Contracts → derive to Horizon > Contratos (draft if incomplete)
-            const isComplete = classification.confidence >= 0.80;
-            return {
-              success: true,
-              destination: 'Horizon > Contratos',
-              message: isComplete ? '✓ Guardado en Contratos' : '✓ Guardado como borrador en Contratos',
-              newStatus: 'importado'
-            };
-          default:
-            // H3: Others → archive in References
-            return {
-              success: true,
-              destination: 'Archivo > Referencias',
-              message: '✓ Archivado en Referencias',
-              newStatus: 'importado'
-            };
+        if (ingestionResult.success) {
+          return {
+            success: true,
+            destination: ingestionResult.destination,
+            message: ingestionResult.message,
+            newStatus: 'importado'
+          };
+        } else {
+          return {
+            success: false,
+            message: `Error en procesamiento: ${ingestionResult.message}`,
+            newStatus: 'error'
+          };
         }
       } else {
         // H4: If missing data → archived as Incomplete with alert in destination
@@ -492,34 +536,24 @@ export const autoSaveDocument = async (document: any, classification: Classifica
     } else {
       // H5: Issue 5 - Auto-save OFF - Golden rule: CLEAR → archive, DOUBTS → pending
       if (classification.isClear) {
-        // CLEAR → archive directly (disappears from Inbox)
-        const destination = classification.suggestedDestination;
-        let friendlyDestination = '';
+        // CLEAR → archive directly using document ingestion service
+        const { processDocumentIngestion } = await import('./documentIngestionService');
+        const ingestionResult = await processDocumentIngestion(document);
         
-        switch (destination) {
-          case 'tesoreria-gastos':
-            friendlyDestination = 'Tesorería > Gastos';
-            break;
-          case 'tesoreria-capex':
-            friendlyDestination = 'Tesorería > CAPEX';
-            break;
-          case 'tesoreria-movimientos':
-            friendlyDestination = 'Tesorería > Movimientos';
-            break;
-          case 'horizon-contratos':
-            friendlyDestination = 'Horizon > Contratos';
-            break;
-          default:
-            friendlyDestination = 'Archivo > Referencias';
-            break;
+        if (ingestionResult.success) {
+          return {
+            success: true,
+            destination: ingestionResult.destination,
+            message: ingestionResult.message,
+            newStatus: 'importado'
+          };
+        } else {
+          return {
+            success: false,
+            message: `Error: ${ingestionResult.message}`,
+            newStatus: 'error'
+          };
         }
-        
-        return {
-          success: true,
-          destination: friendlyDestination,
-          message: `✓ Archivado en ${friendlyDestination}`,
-          newStatus: 'importado'
-        };
       } else {
         // DOUBTS → stay pending in Inbox with visible reasons
         return {
