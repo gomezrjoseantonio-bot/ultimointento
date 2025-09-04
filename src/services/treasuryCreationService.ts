@@ -433,22 +433,31 @@ export const findReconciliationMatches = async (): Promise<{
 };
 
 // Calculate match confidence between movement and treasury record
+// Enhanced with AEAT criteria: ±0.50€, -10/+45 days, provider≈match
 const calculateMatchConfidence = (movement: any, record: any, type: 'ingreso' | 'gasto' | 'capex'): number => {
   let confidence = 0;
+  let autoReconcile = true; // Track if meets auto-reconciliation criteria
 
-  // Amount matching
+  // Amount matching - AEAT criteria: ±0.50€
   const movementAmount = Math.abs(movement.amount);
   const recordAmount = type === 'ingreso' ? record.importe : record.total;
+  const amountDiff = Math.abs(movementAmount - recordAmount);
   
-  if (movementAmount === recordAmount) {
+  if (amountDiff === 0) {
     confidence += 0.5; // Exact amount match
-  } else if (Math.abs(movementAmount - recordAmount) / recordAmount < 0.01) {
-    confidence += 0.4; // Very close amount (1% difference)
-  } else if (Math.abs(movementAmount - recordAmount) / recordAmount < 0.05) {
-    confidence += 0.2; // Close amount (5% difference)
+  } else if (amountDiff <= 0.50) {
+    confidence += 0.45; // Within ±0.50€ - AEAT auto-reconciliation criteria
+  } else if (amountDiff <= 2.00) {
+    confidence += 0.3; // Close amount but not auto-reconcilable
+    autoReconcile = false;
+  } else if (amountDiff / recordAmount < 0.05) {
+    confidence += 0.2; // Close percentage but not auto-reconcilable
+    autoReconcile = false;
+  } else {
+    autoReconcile = false;
   }
 
-  // Date matching
+  // Date matching - AEAT criteria: -10/+45 days
   const movementDate = new Date(movement.date);
   const recordDate = new Date(
     type === 'ingreso' ? record.fecha_prevista_cobro : 
@@ -456,44 +465,136 @@ const calculateMatchConfidence = (movement: any, record: any, type: 'ingreso' | 
     record.fecha_emision
   );
   
-  const daysDiff = Math.abs((movementDate.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysDiff = (movementDate.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
   
   if (daysDiff === 0) {
     confidence += 0.3; // Same date
-  } else if (daysDiff <= 3) {
-    confidence += 0.2; // Within 3 days
-  } else if (daysDiff <= 7) {
-    confidence += 0.1; // Within a week
+  } else if (daysDiff >= -10 && daysDiff <= 45) {
+    confidence += 0.25; // Within AEAT auto-reconciliation window
+  } else if (Math.abs(daysDiff) <= 7) {
+    confidence += 0.2; // Close date but outside auto-reconciliation window
+    autoReconcile = false;
+  } else if (Math.abs(daysDiff) <= 30) {
+    confidence += 0.1; // Moderate date difference
+    autoReconcile = false;
+  } else {
+    autoReconcile = false;
   }
 
-  // Description matching
+  // Provider/Description matching - AEAT criteria: provider≈match
   const description = movement.description.toLowerCase();
   const recordProvider = (
     type === 'ingreso' ? record.proveedor_contraparte :
     type === 'gasto' ? record.proveedor_nombre :
     record.proveedor
-  ).toLowerCase();
+  )?.toLowerCase() || '';
   
-  if (description.includes(recordProvider) || recordProvider.includes(description)) {
-    confidence += 0.2;
+  // Enhanced provider matching with fuzzy logic
+  const providerMatchScore = calculateProviderMatch(description, recordProvider);
+  
+  if (providerMatchScore >= 0.8) {
+    confidence += 0.2; // Strong provider match
+  } else if (providerMatchScore >= 0.6) {
+    confidence += 0.15; // Good provider match but may not be auto-reconcilable
+    autoReconcile = false;
+  } else if (providerMatchScore >= 0.3) {
+    confidence += 0.05; // Weak provider match
+    autoReconcile = false;
+  } else {
+    autoReconcile = false;
+  }
+
+  // Boost confidence if meets all AEAT auto-reconciliation criteria
+  if (autoReconcile && confidence >= 0.8) {
+    confidence = Math.min(confidence + 0.1, 1.0); // Bonus for auto-reconcilable matches
   }
 
   return Math.min(confidence, 1); // Cap at 1.0
 };
 
-// Generate match reason description
+// Enhanced provider matching with fuzzy logic
+const calculateProviderMatch = (description: string, provider: string): number => {
+  if (!description || !provider) return 0;
+  
+  // Exact match
+  if (description === provider) return 1.0;
+  
+  // One contains the other
+  if (description.includes(provider) || provider.includes(description)) {
+    return 0.8;
+  }
+  
+  // Word-based matching
+  const descWords = description.split(/\s+/).filter(w => w.length > 2);
+  const provWords = provider.split(/\s+/).filter(w => w.length > 2);
+  
+  if (descWords.length === 0 || provWords.length === 0) return 0;
+  
+  let matchingWords = 0;
+  for (const word of descWords) {
+    if (provWords.some(pw => pw.includes(word) || word.includes(pw))) {
+      matchingWords++;
+    }
+  }
+  
+  const wordMatchRatio = matchingWords / Math.max(descWords.length, provWords.length);
+  
+  // Levenshtein-like similarity for short strings
+  if (provider.length <= 10 && description.length <= 10) {
+    const similarity = 1 - (levenshteinDistance(description, provider) / Math.max(description.length, provider.length));
+    return Math.max(wordMatchRatio, similarity * 0.7);
+  }
+  
+  return wordMatchRatio * 0.9;
+};
+
+// Simple Levenshtein distance calculation
+const levenshteinDistance = (str1: string, str2: string): number => {
+  const matrix = [];
+  
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  return matrix[str2.length][str1.length];
+};
+
+// Generate match reason description with AEAT criteria details
 const getMatchReason = (movement: any, record: any, type: 'ingreso' | 'gasto' | 'capex'): string => {
   const reasons: string[] = [];
   
   const movementAmount = Math.abs(movement.amount);
   const recordAmount = type === 'ingreso' ? record.importe : record.total;
+  const amountDiff = Math.abs(movementAmount - recordAmount);
   
-  if (movementAmount === recordAmount) {
-    reasons.push('Importe exacto');
-  } else if (Math.abs(movementAmount - recordAmount) / recordAmount < 0.05) {
-    reasons.push('Importe similar');
+  // Amount reasoning
+  if (amountDiff === 0) {
+    reasons.push('💰 Importe exacto');
+  } else if (amountDiff <= 0.50) {
+    reasons.push(`💰 Importe ±${amountDiff.toFixed(2)}€ (AEAT auto)`);
+  } else if (amountDiff <= 2.00) {
+    reasons.push(`💰 Importe ±${amountDiff.toFixed(2)}€`);
   }
   
+  // Date reasoning
   const movementDate = new Date(movement.date);
   const recordDate = new Date(
     type === 'ingreso' ? record.fecha_prevista_cobro : 
@@ -501,11 +602,132 @@ const getMatchReason = (movement: any, record: any, type: 'ingreso' | 'gasto' | 
     record.fecha_emision
   );
   
-  const daysDiff = Math.abs((movementDate.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysDiff = (movementDate.getTime() - recordDate.getTime()) / (1000 * 60 * 60 * 24);
   
-  if (daysDiff <= 3) {
-    reasons.push('Fecha cercana');
+  if (daysDiff === 0) {
+    reasons.push('📅 Fecha exacta');
+  } else if (daysDiff >= -10 && daysDiff <= 45) {
+    const sign = daysDiff > 0 ? '+' : '';
+    reasons.push(`📅 ${sign}${Math.round(daysDiff)}d (AEAT auto)`);
+  } else if (Math.abs(daysDiff) <= 30) {
+    const sign = daysDiff > 0 ? '+' : '';
+    reasons.push(`📅 ${sign}${Math.round(daysDiff)}d`);
   }
   
-  return reasons.join(', ') || 'Coincidencia parcial';
+  // Provider reasoning
+  const description = movement.description.toLowerCase();
+  const recordProvider = (
+    type === 'ingreso' ? record.proveedor_contraparte :
+    type === 'gasto' ? record.proveedor_nombre :
+    record.proveedor
+  )?.toLowerCase() || '';
+  
+  const providerMatch = calculateProviderMatch(description, recordProvider);
+  if (providerMatch >= 0.8) {
+    reasons.push('🏢 Proveedor coincide');
+  } else if (providerMatch >= 0.6) {
+    reasons.push('🏢 Proveedor similar');
+  } else if (providerMatch >= 0.3) {
+    reasons.push('🏢 Proveedor parcial');
+  }
+  
+  return reasons.join(' • ') || '🔍 Coincidencia detectada';
+};
+
+/**
+ * Perform automatic reconciliation for high-confidence matches
+ * Returns number of automatically reconciled records
+ */
+export const performAutoReconciliation = async (): Promise<{
+  reconciled: number;
+  details: Array<{
+    movementId: number;
+    recordType: 'ingreso' | 'gasto' | 'capex';
+    recordId: number;
+    confidence: number;
+    reason: string;
+  }>;
+}> => {
+  const matches = await findReconciliationMatches();
+  const reconciled: any[] = [];
+  
+  for (const match of matches) {
+    // Only auto-reconcile if there's exactly one high-confidence match
+    const highConfidenceMatches = match.potentialMatches.filter(m => m.confidence >= 0.85);
+    
+    if (highConfidenceMatches.length === 1) {
+      const bestMatch = highConfidenceMatches[0];
+      
+      try {
+        await reconcileTreasuryRecord(bestMatch.type, bestMatch.id, match.movementId);
+        reconciled.push({
+          movementId: match.movementId,
+          recordType: bestMatch.type,
+          recordId: bestMatch.id,
+          confidence: bestMatch.confidence,
+          reason: bestMatch.reason
+        });
+      } catch (error) {
+        console.error('Auto-reconciliation failed:', error);
+      }
+    }
+  }
+  
+  return {
+    reconciled: reconciled.length,
+    details: reconciled
+  };
+};
+
+/**
+ * Mark treasury record as paid without bank statement (cash/card payment)
+ */
+export const markAsPaidWithoutStatement = async (
+  recordType: 'ingreso' | 'gasto' | 'capex',
+  recordId: number,
+  paymentMethod: 'Efectivo' | 'Tarjeta' | 'Otros',
+  paymentDate: string,
+  notes?: string
+): Promise<void> => {
+  const db = await initDB();
+  
+  try {
+    if (recordType === 'ingreso') {
+      const ingreso = await db.get('ingresos', recordId);
+      if (ingreso) {
+        ingreso.estado = 'cobrado';
+        ingreso.movement_id = -1; // Special ID to indicate paid without statement
+        ingreso.updatedAt = new Date().toISOString();
+        await db.put('ingresos', ingreso);
+      }
+    } else if (recordType === 'gasto') {
+      const gasto = await db.get('gastos', recordId);
+      if (gasto) {
+        gasto.estado = 'pagado';
+        gasto.movement_id = -1; // Special ID to indicate paid without statement
+        gasto.metodo_pago = paymentMethod;
+        gasto.fecha_pago_efectivo = paymentDate;
+        gasto.notas_pago = notes;
+        gasto.updatedAt = new Date().toISOString();
+        await db.put('gastos', gasto);
+      }
+    } else if (recordType === 'capex') {
+      const capex = await db.get('capex', recordId);
+      if (capex) {
+        capex.estado = 'completo';
+        capex.movement_id = -1; // Special ID to indicate paid without statement
+        capex.metodo_pago = paymentMethod;
+        capex.fecha_pago_efectivo = paymentDate;
+        capex.notas_pago = notes;
+        capex.updatedAt = new Date().toISOString();
+        await db.put('capex', capex);
+      }
+    }
+
+    toast.success(`Marcado como pagado ${paymentMethod.toLowerCase()}`);
+  } catch (error) {
+    console.error('Error marking as paid without statement:', error);
+    toast.error('Error al marcar como pagado');
+    throw error;
+  }
 };
