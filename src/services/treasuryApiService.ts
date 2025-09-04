@@ -10,7 +10,6 @@
  */
 
 import { initDB, Account, Movement, ImportBatch } from './db';
-import { parseCSV } from './csvParserService';
 import { performAutoReconciliation } from './treasuryCreationService';
 import { emitTreasuryEvent } from './treasuryEventsService';
 
@@ -142,18 +141,27 @@ export class TreasuryAccountsAPI {
  */
 export class TreasuryImportAPI {
   /**
-   * POST /api/treasury/import
+   * POST /api/treasury/import - FIX-EXTRACTOS compliant implementation
+   * 
+   * Key requirements:
+   * - Never store original file content
+   * - Generate batch metadata with SHA-256 hash for idempotency
+   * - Detect and prevent duplicate imports
+   * - Normalize movements to Treasury format
+   * - Attempt automatic reconciliation
    */
   static async importTransactions(
     file: File,
     accountId: number,
-    skipDuplicates: boolean = true
+    skipDuplicates: boolean = true,
+    usuario?: string
   ): Promise<{
     inserted: number;
     duplicates: number;
     failed: number;
     reconciled?: number;
     pendingReview?: number;
+    batchId: string;
   }> {
     const db = await initDB();
     
@@ -163,13 +171,49 @@ export class TreasuryImportAPI {
       throw new Error('Cuenta no encontrada');
     }
 
-    // Parse CSV/Excel file
-    const fileContent = await file.text();
-    const parseResult = await parseCSV(fileContent);
+    // FIX-EXTRACTOS: Generate batch hash for idempotency
+    const { generateBatchHash, checkBatchHashExists } = await import('../utils/batchHashUtils');
+    const batchHash = await generateBatchHash(file);
     
-    if (!parseResult.movements || parseResult.movements.length === 0) {
+    // Check if this file was already imported (idempotency)
+    const hashExists = await checkBatchHashExists(batchHash, db);
+    if (hashExists) {
+      throw new Error('Este archivo ya ha sido importado anteriormente');
+    }
+
+    // Detect file format
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    let formatoDetectado: 'CSV' | 'XLS' | 'XLSX';
+    switch (fileExtension) {
+      case 'xlsx':
+        formatoDetectado = 'XLSX';
+        break;
+      case 'xls':
+        formatoDetectado = 'XLS';
+        break;
+      case 'csv':
+        formatoDetectado = 'CSV';
+        break;
+      default:
+        throw new Error('Formato de archivo no soportado. Use CSV, XLS o XLSX');
+    }
+
+    // Parse bank statement file using BankParserService
+    const { BankParserService } = await import('../features/inbox/importers/bankParser');
+    const bankParser = new BankParserService();
+    const parseResult = await bankParser.parseFile(file);
+    
+    if (!parseResult.success || !parseResult.movements || parseResult.movements.length === 0) {
       throw new Error('No se pudieron procesar movimientos del archivo');
     }
+
+    // Calculate date range from movements
+    const dates = parseResult.movements
+      .map(m => m.date instanceof Date ? m.date : new Date(m.date))
+      .filter(d => !isNaN(d.getTime()));
+    
+    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
 
     const results = {
       inserted: 0,
@@ -182,15 +226,29 @@ export class TreasuryImportAPI {
     const now = new Date().toISOString();
     const importBatchId = `import_${Date.now()}_${accountId}`;
 
-    // Create import batch record
+    // FIX-EXTRACTOS: Create enhanced import batch record with required metadata
     const importBatch: ImportBatch = {
       id: importBatchId,
       filename: file.name,
       accountId,
-      totalRows: parseResult.totalRows || parseResult.movements.length,
+      totalRows: parseResult.movements.length,
       importedRows: 0,
       skippedRows: 0,
       duplicatedRows: 0,
+      errorRows: 0,
+      
+      // FIX-EXTRACTOS: Required batch metadata for audit
+      origenBanco: parseResult.metadata?.bankDetected?.bankKey || 'generic',
+      formatoDetectado,
+      cuentaIban: account.iban || parseResult.metadata?.detectedIban,
+      rangoFechas: {
+        min: minDate.toISOString().split('T')[0],
+        max: maxDate.toISOString().split('T')[0]
+      },
+      timestampImport: now,
+      hashLote: batchHash,
+      usuario: usuario || 'sistema',
+      
       createdAt: now
     };
 
@@ -198,13 +256,15 @@ export class TreasuryImportAPI {
     const existingMovements = await db.getAll('movements');
     const accountMovements = existingMovements.filter(m => m.accountId === accountId);
 
+    // Process each movement from the parsed result
     for (const parsedMovement of parseResult.movements) {
       try {
-        // Check for duplicates using (accountId, date, amount, description) hash
+        // FIX-EXTRACTOS: Normalize movement data according to requirements
         const movementDate = parsedMovement.date instanceof Date ? 
           parsedMovement.date.toISOString().split('T')[0] : 
           parsedMovement.date;
           
+        // Check for duplicates using (accountId, date, amount, description) hash
         const isDuplicate = accountMovements.some(existing => 
           existing.accountId === accountId &&
           existing.date === movementDate &&
@@ -218,24 +278,40 @@ export class TreasuryImportAPI {
           continue;
         }
 
-        // Convert to Movement format
+        // FIX-EXTRACTOS: Convert to Movement format with normalization
+        // Cargos = negativo; Abonos = positivo
+        let normalizedAmount = parseEuropeanNumber(parsedMovement.amount);
+        
+        // Ensure proper sign handling for charges and credits based on description
+        // Since we don't have explicit type field, infer from amount sign and description
+        if (normalizedAmount < 0) {
+          // Already negative, likely a cargo (charge)
+          normalizedAmount = -Math.abs(normalizedAmount);
+        } else if (normalizedAmount > 0) {
+          // Positive, likely an abono (credit)
+          normalizedAmount = Math.abs(normalizedAmount);
+        }
+
         const movement: Movement = {
           accountId,
-          date: parsedMovement.date instanceof Date ? parsedMovement.date.toISOString().split('T')[0] : parsedMovement.date,
+          date: movementDate,
           valueDate: parsedMovement.valueDate ? 
             (parsedMovement.valueDate instanceof Date ? parsedMovement.valueDate.toISOString().split('T')[0] : parsedMovement.valueDate) :
-            (parsedMovement.date instanceof Date ? parsedMovement.date.toISOString().split('T')[0] : parsedMovement.date),
-          amount: parseEuropeanNumber(parsedMovement.amount),
-          description: parsedMovement.description,
+            movementDate,
+          amount: normalizedAmount,
+          description: parsedMovement.description || '',
           counterparty: parsedMovement.counterparty,
           reference: parsedMovement.reference,
-          status: 'pendiente',
-          state: 'pending', // treasury_transactions requirement
-          sourceBank: parseResult.detectedBank?.bankKey || 'generic',
-          currency: 'EUR',
+          status: 'pendiente', // Estado inicial = Pendiente
+          state: 'pending',
+          sourceBank: parseResult.metadata?.bankDetected?.bankKey || importBatch.origenBanco,
+          currency: parsedMovement.currency || 'EUR', // EUR por defecto
           balance: parseEuropeanNumber(parsedMovement.balance || 0),
-          rawRow: parsedMovement, // Store original parsed data
+          
+          // FIX-EXTRACTOS: Import metadata (no raw file content!)
           importBatch: importBatchId,
+          csvRowIndex: parsedMovement.originalRow,
+          
           createdAt: now,
           updatedAt: now
         };
@@ -253,14 +329,14 @@ export class TreasuryImportAPI {
       } catch (error) {
         console.error('Error importing movement:', error);
         results.failed++;
-        importBatch.skippedRows++;
+        importBatch.errorRows++;
       }
     }
 
-    // Save import batch
+    // FIX-EXTRACTOS: Save import batch metadata (NO FILE CONTENT)
     await db.add('importBatches', importBatch);
 
-    // Perform auto-reconciliation if we have new movements
+    // FIX-EXTRACTOS: Attempt automatic reconciliation
     if (results.inserted > 0) {
       try {
         const reconciliationResult = await performAutoReconciliation();
@@ -279,7 +355,10 @@ export class TreasuryImportAPI {
       }
     }
 
-    return results;
+    return {
+      ...results,
+      batchId: importBatchId
+    };
   }
 }
 

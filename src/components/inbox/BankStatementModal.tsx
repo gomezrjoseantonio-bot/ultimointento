@@ -15,6 +15,7 @@ interface BankStatementModalProps {
     failed: number;
     reconciled?: number;
     pendingReview?: number;
+    batchId: string;
   }) => void;
 }
 
@@ -89,23 +90,38 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
     try {
       setIsLoading(true);
-      const result = await treasuryAPI.import.importTransactions(file, selectedAccountId as number, true);
+      
+      // FIX-EXTRACTOS: Enhanced import with user tracking
+      const result = await treasuryAPI.import.importTransactions(
+        file, 
+        selectedAccountId as number, 
+        true, // skipDuplicates
+        'usuario' // TODO: Get actual user from context
+      );
       
       onImportComplete(result);
       
-      // Show success message
+      // Show success message with batch info
       const message = `✅ ${result.inserted} movimientos importados`;
       const details = [];
       if (result.duplicates > 0) details.push(`${result.duplicates} duplicados`);
       if (result.reconciled && result.reconciled > 0) details.push(`${result.reconciled} conciliados`);
       if (result.pendingReview && result.pendingReview > 0) details.push(`${result.pendingReview} pendientes`);
+      if (result.batchId) details.push(`Lote: ${result.batchId.split('_')[1]}`);
       
       toast.success(details.length > 0 ? `${message} • ${details.join(' • ')}` : message);
       
       onClose();
     } catch (error) {
       console.error('Import error:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al importar movimientos');
+      const errorMessage = error instanceof Error ? error.message : 'Error al importar movimientos';
+      
+      // FIX-EXTRACTOS: Special handling for idempotency errors
+      if (errorMessage.includes('ya ha sido importado')) {
+        toast.error('⚠️ Este archivo ya fue importado anteriormente');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }

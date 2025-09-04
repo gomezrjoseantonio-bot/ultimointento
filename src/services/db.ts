@@ -479,7 +479,10 @@ export interface Movement {
   sourceBank?: string; // source_bank field
   currency?: string; // currency field  
   balance?: number; // balance field (different from saldo)
-  rawRow?: any; // raw_row field for storing original CSV data
+  
+  // FIX-EXTRACTOS: REMOVED rawRow to comply with privacy requirements
+  // rawRow?: any; // REMOVED - never store original file data
+  
   // H10: Enhanced reconciliation fields
   saldo?: number;
   id_import?: string;
@@ -492,9 +495,9 @@ export interface Movement {
   expenseIds?: number[]; // For movements linked to expenses
   documentIds?: number[]; // H9: Link to invoices/documents
   reconciliationNotes?: string;
-  // Import metadata
+  // Import metadata (FIX-EXTRACTOS compliant - no file content)
   importBatch?: string; // ID of the import batch
-  csvRowIndex?: number; // Original row index in CSV
+  csvRowIndex?: number; // Original row index in CSV (metadata only)
   createdAt: string;
   updatedAt: string;
 }
@@ -655,7 +658,7 @@ export interface FiscalSummary {
   updatedAt: string;
 }
 
-// H8: CSV Import Batch tracking
+// H8: CSV Import Batch tracking - Enhanced for FIX-EXTRACTOS requirements
 export interface ImportBatch {
   id?: string;
   filename: string;
@@ -664,6 +667,21 @@ export interface ImportBatch {
   importedRows: number;
   skippedRows: number;
   duplicatedRows: number;
+  errorRows: number; // New: count of failed rows
+  
+  // FIX-EXTRACTOS: Required batch metadata for audit
+  origenBanco: string; // Detected bank origin (e.g., 'bbva', 'santander', 'generic')
+  formatoDetectado: 'CSV' | 'XLS' | 'XLSX'; // Detected format
+  cuentaIban?: string; // Account IBAN from file or user selection
+  rangoFechas: {
+    min: string; // ISO date format yyyy-mm-dd
+    max: string; // ISO date format yyyy-mm-dd
+  };
+  timestampImport: string; // ISO timestamp of import
+  hashLote: string; // SHA-256 hash of file content for idempotency
+  usuario?: string; // User who performed the import
+  
+  // Legacy fields
   inboxItemId?: number; // Link to the created inbox item
   createdAt: string;
 }
