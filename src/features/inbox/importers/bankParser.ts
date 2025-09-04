@@ -487,7 +487,6 @@ export class BankParserService {
     if (!rowData || rowData.length === 0) return true;
     
     let suspiciousCells = 0;
-    const totalCells = rowData.length;
     
     for (const cell of rowData) {
       const cellStr = String(cell || '').trim();
