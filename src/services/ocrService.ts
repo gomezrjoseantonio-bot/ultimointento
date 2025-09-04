@@ -377,7 +377,8 @@ export const formatPercentage = (value: number): string => {
 // H-OCR-ALIGN: Get OCR configuration from environment/localStorage
 export const getOCRConfig = (): OCRConfig => {
   return {
-    autoRun: localStorage.getItem('OCR_AUTORUN') === 'true',
+    // Default to true for auto-OCR as per requirements - facturas should OCR automatically
+    autoRun: localStorage.getItem('OCR_AUTORUN') !== 'false', // Default true unless explicitly disabled
     confidenceThreshold: OCR_ACCEPT_CONFIDENCE
   };
 };

@@ -54,8 +54,11 @@ export interface ZipProcessingResult {
 // Supported file types for ZIP processing
 const SUPPORTED_EXTENSIONS = [
   '.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', 
-  '.csv', '.xls', '.xlsx', '.txt'
+  '.csv', '.xls', '.xlsx', '.txt', '.eml' // Add EML support as per requirements
 ];
+
+// Maximum number of files to extract from ZIP/EML as per requirements
+const MAX_ATTACHMENTS = 50;
 
 /**
  * Process a ZIP file and create package with child documents
@@ -78,7 +81,8 @@ export async function processZipFile(
       unsupportedTypes: [] as string[]
     };
 
-    // Process each file in the ZIP
+    // Process each file in the ZIP (up to 50 attachments as per requirements)
+    let processedCount = 0;
     for (const [relativePath, zipEntry] of Object.entries(zipContent.files)) {
       // Skip directories and hidden files
       if (zipEntry.dir || relativePath.startsWith('.') || relativePath.includes('__MACOSX')) {
@@ -86,6 +90,12 @@ export async function processZipFile(
       }
 
       summary.totalFiles++;
+
+      // Enforce 50-file limit
+      if (processedCount >= MAX_ATTACHMENTS) {
+        summary.skippedFiles++;
+        continue;
+      }
 
       try {
         // Check if file type is supported
@@ -132,6 +142,7 @@ export async function processZipFile(
 
         children.push(childDoc);
         summary.validFiles++;
+        processedCount++; // Increment processed count for 50-file limit
         
         if (!summary.supportedTypes.includes(extension)) {
           summary.supportedTypes.push(extension);

@@ -266,6 +266,27 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   const globalConfidence = fields.length > 0 
     ? fields.reduce((sum, field) => sum + field.confidence, 0) / fields.length
     : 0;
+
+  // Add invoice validation - Base + VAT ≈ Total (±0.01€)
+  const validationWarnings: string[] = [];
+  const baseAmount = parseFloat(fields.find(f => f.name === 'net_amount' || f.name === 'subtotal')?.value || '0');
+  const taxAmount = parseFloat(fields.find(f => f.name === 'tax_amount')?.value || '0');
+  const totalAmount = parseFloat(fields.find(f => f.name === 'total_amount')?.value || '0');
+  
+  if (baseAmount > 0 && taxAmount > 0 && totalAmount > 0) {
+    const calculatedTotal = baseAmount + taxAmount;
+    const difference = Math.abs(totalAmount - calculatedTotal);
+    
+    // Round difference to 2 decimal places to avoid floating point precision issues
+    const roundedDifference = Math.round(difference * 100) / 100;
+    
+    // Use > 0.01 to allow exactly ±0.01€ difference as per requirements
+    if (roundedDifference > 0.01) {
+      validationWarnings.push(
+        `Totales no cuadran: Base ${baseAmount.toFixed(2)} + IVA ${taxAmount.toFixed(2)} = ${calculatedTotal.toFixed(2)} ≠ Total ${totalAmount.toFixed(2)} (diferencia: ${roundedDifference.toFixed(2)}€)`
+      );
+    }
+  }
   
   // Prepare page information
   const pageInfo = firstResult.pages ? {
@@ -281,6 +302,7 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
     confidenceGlobal: globalConfidence,
     fields,
     status: 'completed',
+    validationWarnings, // Add warnings to OCR result
     engineInfo: {
       type: 'document-ai-invoice',
       displayName: 'Document AI — Invoice (EU)',
