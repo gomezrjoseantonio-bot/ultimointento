@@ -146,6 +146,7 @@ export class BankParserService {
     totalRows: number;
     previewRows: any[];
     totalMovements: number;
+    duplicateCount?: number; // Add duplicate count to type
     error?: string;
     needsManualMapping?: boolean;
     availableColumns?: string[];
@@ -196,7 +197,7 @@ export class BankParserService {
         });
       }
       
-      // Add up to 5 data rows
+      // Add up to 5 data rows for preview
       const maxPreview = Math.min(headerRow + 6, rawData.length);
       for (let i = headerRow + 1; i < maxPreview; i++) {
         if (rawData[i] && rawData[i].some(cell => cell && cell.toString().trim())) {
@@ -207,8 +208,24 @@ export class BankParserService {
         }
       }
 
-      // Calculate total movements (data rows after header)
-      const totalMovements = Math.max(0, rawData.length - headerRow - 1);
+      // Parse all movements to get accurate count and duplicate detection
+      let totalMovements = 0;
+      let duplicateCount = 0;
+      
+      if (!headerDetection.fallbackRequired && headerDetection.detectedColumns) {
+        try {
+          const movements = this.parseMovements(rawData, headerDetection.dataStartRow, headerDetection.detectedColumns);
+          totalMovements = movements.length;
+          duplicateCount = movements.filter(m => m.isDuplicate).length;
+        } catch (error) {
+          console.warn('Error parsing movements for preview:', error);
+          // Fallback to simple row count
+          totalMovements = Math.max(0, rawData.length - headerRow - 1);
+        }
+      } else {
+        // Fallback to simple row count when manual mapping needed
+        totalMovements = Math.max(0, rawData.length - headerRow - 1);
+      }
 
       return {
         success: true,
@@ -217,6 +234,7 @@ export class BankParserService {
         totalRows: rawData.length,
         previewRows,
         totalMovements,
+        duplicateCount, // Add duplicate count for preview
         needsManualMapping: !bankDetection || headerDetection.fallbackRequired,
         availableColumns: rawData[headerRow] || []
       };
@@ -228,7 +246,8 @@ export class BankParserService {
         error: error instanceof Error ? error.message : 'Error desconocido',
         totalRows: 0,
         previewRows: [],
-        totalMovements: 0
+        totalMovements: 0,
+        duplicateCount: 0
       };
     }
   }
@@ -401,14 +420,18 @@ export class BankParserService {
   }
 
   /**
-   * Robust header detection - scans up to 60 rows to find real headers
+   * Robust header detection - scans first 20 rows to find real headers
+   * Ignores rows with >40% images/logos/long strings as per requirements
    */
   private detectHeaders(data: string[][]): HeaderDetectionResult {
-    const maxScanRows = Math.min(60, data.length);
+    const maxScanRows = Math.min(20, data.length); // As per requirements: scan first 20 rows
     
     for (let row = 0; row < maxScanRows; row++) {
       const rowData = data[row];
       if (!rowData || rowData.length < 2) continue;
+      
+      // Skip rows with >40% cells with images, logos or strings very long without spaces
+      if (this.isLogoOrImageRow(rowData)) continue;
       
       const normalizedRow = rowData.map(cell => this.normalizeText(cell));
       const detectedColumns: Record<string, number> = {};
@@ -431,16 +454,17 @@ export class BankParserService {
         }
       }
       
-      // Valid header row must have at least 2 matches and include amount OR cargo+abono
+      // Valid header row must have at least 3 matches (increased threshold) and include date + amount info
+      const hasDateInfo = detectedColumns.date !== undefined || detectedColumns.valueDate !== undefined;
       const hasAmountInfo = detectedColumns.amount !== undefined || 
                            (detectedColumns.cargo !== undefined && detectedColumns.abono !== undefined);
       
-      if (score >= 2 && hasAmountInfo) {
+      if (score >= 3 && hasDateInfo && hasAmountInfo) {
         return {
           headerRow: row,
           dataStartRow: row + 1,
           detectedColumns,
-          confidence: Math.min(score / 4, 1), // Max confidence at 4+ matches
+          confidence: Math.min(score / 6, 1), // Max confidence at 6+ matches
           fallbackRequired: false
         };
       }
@@ -454,6 +478,47 @@ export class BankParserService {
       confidence: 0,
       fallbackRequired: true
     };
+  }
+
+  /**
+   * Check if row contains logos, images or very long strings without spaces (>40% threshold)
+   */
+  private isLogoOrImageRow(rowData: string[]): boolean {
+    if (!rowData || rowData.length === 0) return true;
+    
+    let suspiciousCells = 0;
+    const totalCells = rowData.length;
+    
+    for (const cell of rowData) {
+      const cellStr = String(cell || '').trim();
+      
+      // Empty cells are neutral
+      if (!cellStr) continue;
+      
+      // Very long strings without spaces (likely encoded images/logos)
+      if (cellStr.length > 50 && !cellStr.includes(' ')) {
+        suspiciousCells++;
+        continue;
+      }
+      
+      // Common image/logo indicators
+      const logoPatterns = [
+        /^data:image/, // Base64 images
+        /\.png|\.jpg|\.jpeg|\.gif|\.svg/i, // Image extensions
+        /^[A-Za-z0-9+/]{50,}={0,2}$/, // Base64 encoded data
+        /^\s*\[imagen\]|\[logo\]|\[image\]/i, // Placeholder text
+      ];
+      
+      if (logoPatterns.some(pattern => pattern.test(cellStr))) {
+        suspiciousCells++;
+      }
+    }
+    
+    // If >40% of non-empty cells are suspicious, skip this row
+    const nonEmptyCells = rowData.filter(cell => String(cell || '').trim()).length;
+    if (nonEmptyCells === 0) return true;
+    
+    return (suspiciousCells / nonEmptyCells) > 0.4;
   }
 
   /**
