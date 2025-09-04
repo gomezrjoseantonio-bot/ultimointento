@@ -3,6 +3,8 @@ import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, Tre
 import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
+import { treasuryAPI, validateIBAN, parseEuropeanNumber } from '../../../../services/treasuryApiService';
+import toast from 'react-hot-toast';
 
 interface AccountProjection {
   currentBalance: number;
@@ -18,6 +20,17 @@ const CuentasPanel: React.FC = () => {
   const [accountProjection, setAccountProjection] = useState<AccountProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [showImport, setShowImport] = useState(false);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  
+  // New account form state
+  const [newAccountForm, setNewAccountForm] = useState({
+    alias: '',
+    bank: '',
+    iban: '',
+    openingBalance: '',
+    minimumBalance: '',
+    includeInConsolidated: true
+  });
 
   const loadAccounts = async () => {
     try {
@@ -92,6 +105,77 @@ const CuentasPanel: React.FC = () => {
       case 'critical': return <AlertTriangle className="w-4 h-4 text-red-500" />;
       case 'warning': return <AlertTriangle className="w-4 h-4 text-orange-500" />;
       case 'healthy': return <Banknote className="w-4 h-4 text-green-500" />;
+    }
+  };
+
+  // New account form handlers
+  const handleNewAccountChange = (field: string, value: string | boolean) => {
+    setNewAccountForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCreateAccount = async () => {
+    // Validation
+    if (!newAccountForm.alias.trim()) {
+      toast.error('El alias de la cuenta es obligatorio');
+      return;
+    }
+    
+    if (!newAccountForm.bank.trim()) {
+      toast.error('El banco es obligatorio');
+      return;
+    }
+
+    if (newAccountForm.iban && !validateIBAN(newAccountForm.iban)) {
+      toast.error('Formato de IBAN inválido');
+      return;
+    }
+
+    try {
+      setIsCreatingAccount(true);
+      
+      const accountData = {
+        alias: newAccountForm.alias.trim(),
+        bank: newAccountForm.bank.trim(),
+        iban: newAccountForm.iban.trim() || undefined,
+        includeInConsolidated: newAccountForm.includeInConsolidated,
+        openingBalance: parseEuropeanNumber(newAccountForm.openingBalance),
+        openingBalanceDate: new Date().toISOString()
+      };
+
+      const newAccount = await treasuryAPI.accounts.createAccount(accountData);
+      
+      // Update minimum balance if specified
+      if (newAccountForm.minimumBalance) {
+        const db = await initDB();
+        const updatedAccount = {
+          ...newAccount,
+          minimumBalance: parseEuropeanNumber(newAccountForm.minimumBalance)
+        };
+        await db.put('accounts', updatedAccount);
+      }
+
+      toast.success('Cuenta creada correctamente');
+      
+      // Reset form and reload accounts
+      setNewAccountForm({
+        alias: '',
+        bank: '',
+        iban: '',
+        openingBalance: '',
+        minimumBalance: '',
+        includeInConsolidated: true
+      });
+      setShowImport(false);
+      await loadAccounts();
+      
+    } catch (error) {
+      console.error('Error creating account:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al crear la cuenta');
+    } finally {
+      setIsCreatingAccount(false);
     }
   };
 
@@ -280,49 +364,80 @@ const CuentasPanel: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Cuenta Manual</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta *</label>
                 <input
                   type="text"
+                  value={newAccountForm.alias}
+                  onChange={(e) => handleNewAccountChange('alias', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
                   placeholder="ej. Cuenta Corriente Principal"
+                  disabled={isCreatingAccount}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Banco</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Banco *</label>
                 <input
                   type="text"
+                  value={newAccountForm.bank}
+                  onChange={(e) => handleNewAccountChange('bank', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
                   placeholder="ej. Banco Santander"
+                  disabled={isCreatingAccount}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN (opcional)</label>
                 <input
                   type="text"
+                  value={newAccountForm.iban}
+                  onChange={(e) => handleNewAccountChange('iban', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
                   placeholder="ES91 2100 0418 4502 0005 1332"
+                  disabled={isCreatingAccount}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  value={newAccountForm.openingBalance}
+                  onChange={(e) => handleNewAccountChange('openingBalance', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
-                  placeholder="0.00"
+                  placeholder="1.234,56"
+                  disabled={isCreatingAccount}
                 />
+                <p className="text-xs text-gray-500 mt-1">Formato europeo: 1.234,56</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Mínimo</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  value={newAccountForm.minimumBalance}
+                  onChange={(e) => handleNewAccountChange('minimumBalance', e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
-                  placeholder="200.00"
+                  placeholder="200,00"
+                  disabled={isCreatingAccount}
                 />
               </div>
-              <button className="w-full bg-brand-navy text-white py-3 px-4 rounded-lg hover:bg-navy-800">
-                Crear Cuenta
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="includeInConsolidated"
+                  checked={newAccountForm.includeInConsolidated}
+                  onChange={(e) => handleNewAccountChange('includeInConsolidated', e.target.checked)}
+                  className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-gray-300 rounded"
+                  disabled={isCreatingAccount}
+                />
+                <label htmlFor="includeInConsolidated" className="ml-2 block text-sm text-gray-700">
+                  Incluir en consolidado
+                </label>
+              </div>
+              <button 
+                onClick={handleCreateAccount}
+                disabled={isCreatingAccount}
+                className="w-full bg-brand-navy text-white py-3 px-4 rounded-lg hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingAccount ? 'Creando...' : 'Crear Cuenta'}
               </button>
             </div>
           </div>
@@ -422,8 +537,17 @@ const CuentasPanel: React.FC = () => {
 
       {/* Accounts List */}
       <div className="bg-white rounded-lg border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg font-medium text-gray-900">Detalle de Cuentas</h3>
+          {accounts.length > 0 && (
+            <button 
+              onClick={() => setShowImport(true)}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nueva Cuenta
+            </button>
+          )}
         </div>
         
         {accounts.length === 0 ? (

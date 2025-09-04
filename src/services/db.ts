@@ -433,12 +433,14 @@ export type AccountDestination = 'horizon' | 'pulse';
 
 export interface Account {
   id?: number;
-  name: string;
+  name: string; // Will serve as 'alias' in the requirements
   bank: string;
   iban?: string;
   destination: AccountDestination;
   balance: number;
   openingBalance: number;
+  openingBalanceDate?: string; // New field for treasury_accounts requirement
+  includeInConsolidated?: boolean; // New field for treasury_accounts requirement
   currency: string;
   isActive: boolean;
   minimumBalance?: number; // H9: For treasury alerts
@@ -446,8 +448,9 @@ export interface Account {
   updatedAt: string;
 }
 
-// H8: Movement types
+// H8: Movement types - enhanced to match treasury_transactions requirements
 export type MovementStatus = 'pendiente' | 'parcial' | 'conciliado' | 'no-documentado';
+export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New field for treasury_transactions
 
 // H10: Treasury reconciliation status
 export type ReconciliationStatus = 'sin_conciliar' | 'conciliado';
@@ -455,13 +458,19 @@ export type ReconciliationStatus = 'sin_conciliar' | 'conciliado';
 export interface Movement {
   id?: number;
   accountId: number;
-  date: string;
-  valueDate?: string;
+  date: string; // booking_date in treasury_transactions
+  valueDate?: string; // value_date in treasury_transactions
   amount: number;
   description: string;
   counterparty?: string;
   reference?: string;
   status: MovementStatus;
+  // Treasury_transactions specific fields
+  state?: TransactionState; // 'pending'|'reconciled'|'ignored'
+  sourceBank?: string; // source_bank field
+  currency?: string; // currency field  
+  balance?: number; // balance field (different from saldo)
+  rawRow?: any; // raw_row field for storing original CSV data
   // H10: Enhanced reconciliation fields
   saldo?: number;
   id_import?: string;
