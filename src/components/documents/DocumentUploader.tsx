@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { processZipFile, ZipProcessingResult } from '../../services/zipProcessingService';
 
 interface DocumentUploaderProps {
   onUploadComplete: (documents: any[]) => void;
+  onZipProcessed?: (result: ZipProcessingResult) => void;
   existingDocuments?: any[];
 }
 
@@ -13,7 +15,11 @@ interface DuplicateFile {
   action: 'replace' | 'keep-both' | 'skip' | null;
 }
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, existingDocuments = [] }) => {
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({ 
+  onUploadComplete, 
+  onZipProcessed,
+  existingDocuments = [] 
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [duplicates, setDuplicates] = useState<DuplicateFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -186,11 +192,86 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onUploadComplete, e
       return;
     }
 
-    // Process new files directly
-    if (newFiles.length > 0) {
-      const newDocuments = newFiles.map((file, index) => createDocumentFromFile(file, index));
+    // Separate ZIP files from regular files
+    const zipFiles = newFiles.filter(file => file.type === 'application/zip' || file.name.toLowerCase().endsWith('.zip'));
+    const regularFiles = newFiles.filter(file => file.type !== 'application/zip' && !file.name.toLowerCase().endsWith('.zip'));
+
+    // Process regular files
+    if (regularFiles.length > 0) {
+      const newDocuments = regularFiles.map((file, index) => createDocumentFromFile(file, index));
       onUploadComplete(newDocuments);
-      toast.success(`${newFiles.length} documento(s) subido(s) correctamente`);
+      toast.success(`${regularFiles.length} documento(s) subido(s) correctamente`);
+    }
+
+    // Process ZIP files
+    for (const zipFile of zipFiles) {
+      try {
+        toast.loading(`Procesando ZIP: ${zipFile.name}...`, { id: zipFile.name });
+        
+        const result = await processZipFile(zipFile);
+        
+        // Convert ZIP children to regular documents format
+        const zipDocuments = result.children.map(child => ({
+          id: child.id,
+          filename: child.filename,
+          content: child.content,
+          type: child.type,
+          size: child.size,
+          uploadDate: child.uploadDate,
+          metadata: {
+            ...child.metadata,
+            zipPackageId: result.package.id,
+            originalPath: child.originalPath,
+            origen: 'upload'
+          }
+        }));
+
+        // Add the package record itself as a document
+        const packageDocument = {
+          id: result.package.id,
+          filename: result.package.filename,
+          content: await result.package.originalZip.arrayBuffer(),
+          type: 'application/zip',
+          size: result.package.originalZip.size,
+          uploadDate: result.package.uploadDate,
+          metadata: {
+            isZipPackage: true,
+            childCount: result.children.length,
+            queueStatus: 'importado', // ZIP packages are considered processed
+            ...result.package.metadata
+          }
+        };
+
+        // Notify about ZIP processing
+        if (onZipProcessed) {
+          onZipProcessed(result);
+        }
+
+        // Add all documents (children + package) to the inbox
+        onUploadComplete([packageDocument, ...zipDocuments]);
+
+        toast.success(
+          `ZIP procesado: ${result.summary.validFiles} archivos válidos de ${result.summary.totalFiles} total`,
+          { id: zipFile.name, duration: 5000 }
+        );
+
+        // Show detailed summary
+        if (result.summary.skippedFiles > 0 || result.summary.failedFiles > 0) {
+          const details = [];
+          if (result.summary.skippedFiles > 0) details.push(`${result.summary.skippedFiles} omitidos`);
+          if (result.summary.failedFiles > 0) details.push(`${result.summary.failedFiles} errores`);
+          
+          toast(`Detalles: ${details.join(', ')}`, {
+            icon: 'ℹ️',
+            duration: 4000
+          });
+        }
+
+      } catch (error) {
+        toast.error(`Error procesando ZIP ${zipFile.name}: ${error instanceof Error ? error.message : 'Error desconocido'}`, {
+          id: zipFile.name
+        });
+      }
     }
     
     setIsProcessing(false);
