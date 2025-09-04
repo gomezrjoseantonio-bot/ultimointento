@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, UserCircle, ChevronDown, Inbox } from 'lucide-react';
-import ModuleSelector from '../common/ModuleSelector';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -11,13 +11,21 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const { currentModule, setCurrentModule } = useTheme();
 
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
     setAccountMenuOpen(false);
   };
 
+  const handleModuleChange = (module: 'horizon' | 'pulse') => {
+    setCurrentModule(module);
+    navigate('/panel');
+  };
+
   const isInboxActive = location.pathname === '/inbox';
+  const isHorizonActive = currentModule === 'horizon';
+  const isPulseActive = currentModule === 'pulse';
 
   return (
     <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
@@ -44,21 +52,46 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <ModuleSelector />
+          {/* Direct Module Navigation */}
+          <nav className="flex items-center bg-gray-100 rounded-atlas p-1">
+            <button
+              className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+                isHorizonActive
+                  ? 'bg-brand-navy text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              onClick={() => handleModuleChange('horizon')}
+            >
+              Horizon
+            </button>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <button
+              className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+                isPulseActive
+                  ? 'bg-brand-teal text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+              onClick={() => handleModuleChange('pulse')}
+            >
+              Pulse
+            </button>
+          </nav>
           
-          {/* Global Inbox Icon */}
-          <button
-            onClick={() => navigate('/inbox')}
-            className={`p-2 rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
-              isInboxActive 
-                ? 'bg-gray-100 text-gray-700' 
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}
-            title="Bandeja de Documentos"
-            aria-label="Bandeja de Documentos"
-          >
-            <Inbox className="h-5 w-5" />
-          </button>
+          {/* Bandeja de entrada - only shown in Horizon */}
+          {isHorizonActive && (
+            <button
+              onClick={() => navigate('/inbox')}
+              className={`p-2 rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
+                isInboxActive 
+                  ? 'bg-gray-100 text-gray-700' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+              title="Bandeja de Documentos"
+              aria-label="Bandeja de Documentos"
+            >
+              <Inbox className="h-5 w-5" />
+            </button>
+          )}
           
           <div className="relative">
             <button 
