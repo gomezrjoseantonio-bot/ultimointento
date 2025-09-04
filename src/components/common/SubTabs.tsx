@@ -20,13 +20,10 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Análisis', path: '/inmuebles/analisis' },
   ],
   tesoreria: [
-    { label: 'Radar', path: '/tesoreria/radar' },
-    { label: 'Ingresos', path: '/tesoreria/ingresos' },
-    { label: 'Gastos', path: '/tesoreria/gastos' },
-    { label: 'CAPEX', path: '/tesoreria/capex' },
-    { label: 'Movimientos', path: '/tesoreria/movimientos' },
-    { label: 'Automatizaciones', path: '/tesoreria/automatizaciones' },
-    { label: 'Alertas', path: '/tesoreria/alertas' },
+    { label: 'Radar', path: '/tesoreria#radar' },
+    { label: 'Cuentas', path: '/tesoreria#cuentas' },
+    { label: 'Movimientos', path: '/tesoreria#movimientos' },
+    { label: 'Automatizaciones', path: '/tesoreria#automatizaciones' },
   ],
   fiscalidad: [
     { label: 'Resumen', path: '/fiscalidad/resumen' },

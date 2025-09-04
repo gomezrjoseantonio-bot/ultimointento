@@ -38,13 +38,10 @@ export const navigationConfig: NavigationItem[] = [
     icon: Banknote,
     module: 'horizon',
     subTabs: [
+      { name: 'Radar', href: '/tesoreria#radar', icon: TrendingUp, module: 'horizon' },
+      { name: 'Cuentas', href: '/tesoreria#cuentas', icon: Banknote, module: 'horizon' },
       { name: 'Movimientos', href: '/tesoreria#movimientos', icon: CreditCard, module: 'horizon' },
-      { name: 'Gastos', href: '/tesoreria#gastos', icon: CreditCard, module: 'horizon' },
-      { name: 'CAPEX', href: '/tesoreria#capex', icon: Calculator, module: 'horizon' },
-      { name: 'Ingresos', href: '/tesoreria#ingresos', icon: DollarSign, module: 'horizon' },
-      { name: 'Radar', href: '/tesoreria/radar', icon: TrendingUp, module: 'horizon' },
-      { name: 'Automatizaciones', href: '/tesoreria/automatizaciones', icon: Settings, module: 'horizon' },
-      { name: 'Alertas', href: '/tesoreria/alertas', icon: Users, module: 'horizon' },
+      { name: 'Automatizaciones', href: '/tesoreria#automatizaciones', icon: Settings, module: 'horizon' },
     ]
   },
   {
