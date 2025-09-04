@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Search, Link } from 'lucide-react';
+import { Upload, Search, Link, Plus, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
@@ -16,6 +16,14 @@ const MovimientosPanel: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showReconciliation, setShowReconciliation] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [newMovement, setNewMovement] = useState({
+    date: new Date().toISOString().split('T')[0],
+    description: '',
+    amount: '',
+    accountId: '',
+    counterparty: ''
+  });
   
   // Load accounts and movements on component mount
   useEffect(() => {
@@ -76,6 +84,47 @@ const MovimientosPanel: React.FC = () => {
     }
   };
 
+  const handleCreateManualMovement = async () => {
+    try {
+      if (!newMovement.date || !newMovement.description || !newMovement.amount || !newMovement.accountId) {
+        toast.error('Por favor, completa todos los campos obligatorios');
+        return;
+      }
+
+      const db = await initDB();
+      
+      // Create movement
+      const movement: Omit<Movement, 'id'> = {
+        accountId: parseInt(newMovement.accountId),
+        date: newMovement.date,
+        description: newMovement.description,
+        amount: parseFloat(newMovement.amount),
+        counterparty: newMovement.counterparty || undefined,
+        estado_conciliacion: 'sin_conciliar',
+        status: 'pendiente',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.add('movements', movement);
+      
+      toast.success('Movimiento creado exitosamente');
+      setShowManualEntry(false);
+      setNewMovement({
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: '',
+        accountId: '',
+        counterparty: ''
+      });
+      
+      await loadData();
+    } catch (error) {
+      console.error('Error creating movement:', error);
+      toast.error('Error al crear el movimiento');
+    }
+  };
+
   // Filter movements
   const filteredMovements = movements.filter(movement => {
     const matchesAccount = selectedAccount === 'all' || movement.accountId.toString() === selectedAccount;
@@ -117,6 +166,14 @@ const MovimientosPanel: React.FC = () => {
           >
             <Upload className="w-4 h-4" />
             Importar Extractos
+          </button>
+          
+          <button
+            onClick={() => setShowManualEntry(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Entrada Manual
           </button>
           
           <button
@@ -213,6 +270,110 @@ const MovimientosPanel: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Manual Entry Modal */}
+      {showManualEntry && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Crear Movimiento Manual</h3>
+              <button
+                onClick={() => setShowManualEntry(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha *
+                </label>
+                <input
+                  type="date"
+                  value={newMovement.date}
+                  onChange={(e) => setNewMovement(prev => ({ ...prev, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cuenta *
+                </label>
+                <select
+                  value={newMovement.accountId}
+                  onChange={(e) => setNewMovement(prev => ({ ...prev, accountId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                >
+                  <option value="">Seleccionar cuenta</option>
+                  {accounts.map(account => (
+                    <option key={account.id} value={account.id?.toString()}>
+                      {account.name} - {account.iban?.slice(-4)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Concepto *
+                </label>
+                <input
+                  type="text"
+                  value={newMovement.description}
+                  onChange={(e) => setNewMovement(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descripción del movimiento"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Importe * (positivo para ingresos, negativo para gastos)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newMovement.amount}
+                  onChange={(e) => setNewMovement(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Contraparte (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newMovement.counterparty}
+                  onChange={(e) => setNewMovement(prev => ({ ...prev, counterparty: e.target.value }))}
+                  placeholder="Nombre de la entidad o persona"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowManualEntry(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateManualMovement}
+                className="flex-1 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
+              >
+                Crear Movimiento
+              </button>
+            </div>
           </div>
         </div>
       )}
