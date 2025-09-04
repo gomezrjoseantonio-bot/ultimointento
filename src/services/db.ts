@@ -398,6 +398,13 @@ export interface ReformLineItem {
   executionDate: string;
   prorationMethod: ProrationMethod;
   prorationDetail: string;
+  // H-OCR-REFORM: Enhanced breakdown fields
+  baseAmount?: number; // Base amount before tax
+  ivaRate?: number; // VAT rate (21, 10, 4, 0)
+  ivaAmount?: number; // VAT amount
+  categorizationConfidence?: number; // OCR categorization confidence (0-1)
+  fechaFinObra?: string; // For 'mejora' items - completion date
+  fechaAltaMobiliario?: string; // For 'mobiliario' items - installation date
   createdAt: string;
   updatedAt: string;
 }

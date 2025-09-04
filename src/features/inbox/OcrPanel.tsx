@@ -35,6 +35,7 @@ interface OcrPanelProps {
   onApplyToExpense?: (ocrData: any) => void;
   onApplyToCAPEX?: (ocrData: any) => void;
   onUpdate?: (documentId: number, updates: any) => void;
+  setShowInvoiceBreakdown?: (show: boolean) => void; // H-OCR-REFORM: For invoice breakdown modal
 }
 
 interface FieldMapping {
@@ -163,7 +164,7 @@ const selectBestPage = (ocrResult: OCRResult): number => {
   return bestPageIndex + 1; // Convert to 1-based indexing for UI
 };
 
-const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX, onUpdate }) => {
+const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX, onUpdate, setShowInvoiceBreakdown }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [editableFields, setEditableFields] = useState<Record<string, string>>({});
   const [editableServiceFields, setEditableServiceFields] = useState<Record<string, string>>({});
@@ -882,6 +883,15 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             </div>
             
             <div className="flex space-x-3">
+              {/* H-OCR-REFORM: Invoice breakdown button for reform invoices */}
+              <button
+                onClick={() => setShowInvoiceBreakdown?.(true)}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                title="Desglosar factura en Mejora, R&C y Mobiliario"
+              >
+                Desglose reforma
+              </button>
+              
               <button
                 onClick={handleApplyToExpense}
                 disabled={!canApply || processingApply}

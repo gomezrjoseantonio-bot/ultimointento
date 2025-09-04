@@ -3,6 +3,7 @@ import { Eye, Trash2, UserCheck, X, Download, Edit2, Save, Zap } from 'lucide-re
 import toast from 'react-hot-toast';
 import { getDocumentBlob, downloadBlob, initDB, Property } from '../../services/db';
 import OcrPanel from '../../features/inbox/OcrPanel';
+import InvoiceBreakdownModal from '../InvoiceBreakdownModal';
 
 interface DocumentViewerProps {
   document: any;
@@ -18,6 +19,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [showInvoiceBreakdown, setShowInvoiceBreakdown] = useState(false); // H-OCR-REFORM: For invoice breakdown modal
   
   const [metadata, setMetadata] = useState({
     proveedor: document?.metadata?.proveedor || '',
@@ -136,6 +138,81 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // H-OCR-REFORM: Handle invoice breakdown save
+  const handleInvoiceBreakdownSave = async (breakdown: any) => {
+    try {
+      // Save breakdown as CAPEX reform with line items
+      const db = await initDB();
+      
+      // Create reform record
+      const now = new Date().toISOString();
+      const reform = {
+        title: `Reforma - ${document.filename}`,
+        propertyId: breakdown.inmuebleId,
+        startDate: now.split('T')[0],
+        endDate: breakdown.fechaFinObra || undefined,
+        notes: `Desglose automático de factura. Proveedor: ${breakdown.proveedorSugerido || 'No especificado'}`,
+        status: 'abierta' as const,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const reformId = await db.add('reforms', reform);
+      
+      // Create line items for each category
+      for (const lineItem of breakdown.lineItems) {
+        const capexTreatment = lineItem.category === 'mejora' ? 'capex-mejora' :
+                             lineItem.category === 'mobiliario' ? 'mobiliario-10-años' :
+                             'reparacion-conservacion';
+        
+        const reformLineItem = {
+          reformId,
+          source: 'documento' as const,
+          documentId: document.id,
+          provider: breakdown.proveedorSugerido || 'Proveedor no identificado',
+          providerNIF: '',
+          concept: lineItem.description,
+          amount: lineItem.totalAmount,
+          taxIncluded: true,
+          treatment: capexTreatment,
+          executionDate: lineItem.category === 'mejora' ? (breakdown.fechaFinObra || now.split('T')[0]) :
+                        lineItem.category === 'mobiliario' ? (breakdown.fechaAltaMobiliario || now.split('T')[0]) :
+                        now.split('T')[0],
+          prorationMethod: 'manual' as const,
+          prorationDetail: `IVA ${lineItem.ivaRate}%`,
+          // H-OCR-REFORM: Enhanced breakdown fields
+          baseAmount: lineItem.baseAmount,
+          ivaRate: lineItem.ivaRate,
+          ivaAmount: lineItem.ivaAmount,
+          categorizationConfidence: lineItem.confidence || 0,
+          fechaFinObra: lineItem.category === 'mejora' ? breakdown.fechaFinObra : undefined,
+          fechaAltaMobiliario: lineItem.category === 'mobiliario' ? breakdown.fechaAltaMobiliario : undefined,
+          createdAt: now,
+          updatedAt: now
+        };
+
+        await db.add('reformLineItems', reformLineItem);
+      }
+
+      toast.success('Desglose guardado como reforma CAPEX');
+      
+      // Update document metadata to link to reform
+      if (onUpdate) {
+        onUpdate(document.id, {
+          metadata: {
+            ...document.metadata,
+            status: 'Asignado',
+            categoria: 'Reforma/CAPEX',
+            reformId
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error saving invoice breakdown:', error);
+      toast.error('Error al guardar el desglose');
+    }
   };
 
   const renderPreviewContent = () => {
@@ -358,6 +435,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <OcrPanel 
               document={document}
               onUpdate={onUpdate}
+              setShowInvoiceBreakdown={setShowInvoiceBreakdown}
             />
           </div>
         )}
@@ -634,6 +712,18 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             </div>
           </div>
         </div>
+      )}
+
+      {/* H-OCR-REFORM: Invoice Breakdown Modal */}
+      {showInvoiceBreakdown && (
+        <InvoiceBreakdownModal
+          isOpen={showInvoiceBreakdown}
+          onClose={() => setShowInvoiceBreakdown(false)}
+          onSave={handleInvoiceBreakdownSave}
+          document={document}
+          properties={properties}
+          ocrResult={document?.metadata?.ocr}
+        />
       )}
     </div>
   );
