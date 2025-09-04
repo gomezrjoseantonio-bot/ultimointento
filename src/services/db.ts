@@ -444,6 +444,7 @@ export interface Account {
   currency: string;
   isActive: boolean;
   minimumBalance?: number; // H9: For treasury alerts
+  isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
   createdAt: string;
   updatedAt: string;
 }
