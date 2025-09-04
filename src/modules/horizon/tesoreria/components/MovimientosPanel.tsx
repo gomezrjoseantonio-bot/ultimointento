@@ -4,7 +4,7 @@ import { initDB, Account, Movement } from '../../../../services/db';
 import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { emitTreasuryEvent } from '../../../../services/treasuryEventsService';
-import toast from 'react-hot-toast';
+import { showSuccess, showError, showCommonError } from '../../../../services/toastService';
 
 const MovimientosPanel: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -55,7 +55,7 @@ const MovimientosPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Error loading treasury data:', error);
-      toast.error('Error al cargar los datos');
+      showCommonError('NETWORK_ERROR', 'Error al cargar los datos de tesorería');
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ const MovimientosPanel: React.FC = () => {
       setPotentialMatches(matches);
     } catch (error) {
       console.error('Error loading reconciliation matches:', error);
-      toast.error('Error al cargar sugerencias de conciliación');
+      showError('Error al cargar sugerencias de conciliación', 'Intenta recargar la página');
     }
   };
 
@@ -84,7 +84,7 @@ const MovimientosPanel: React.FC = () => {
   const handleCreateManualMovement = async () => {
     try {
       if (!newMovement.date || !newMovement.description || !newMovement.amount || !newMovement.accountId) {
-        toast.error('Por favor, completa todos los campos obligatorios');
+        showCommonError('VALIDATION_ERROR', 'Por favor, completa todos los campos obligatorios');
         return;
       }
 
@@ -112,7 +112,7 @@ const MovimientosPanel: React.FC = () => {
         payload: { movement: completeMovement }
       });
       
-      toast.success('Movimiento creado exitosamente');
+      showSuccess('Movimiento creado exitosamente');
       setShowManualEntry(false);
       setNewMovement({
         date: new Date().toISOString().split('T')[0],
@@ -125,7 +125,7 @@ const MovimientosPanel: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error creating movement:', error);
-      toast.error('Error al crear el movimiento');
+      showCommonError('SAVE_ERROR', 'Error al crear el movimiento');
     }
   };
 
@@ -146,7 +146,7 @@ const MovimientosPanel: React.FC = () => {
     
     try {
       if (!newMovement.date || !newMovement.description || !newMovement.amount || !newMovement.accountId) {
-        toast.error('Por favor, completa todos los campos obligatorios');
+        showCommonError('VALIDATION_ERROR', 'Por favor, completa todos los campos obligatorios');
         return;
       }
 
@@ -174,7 +174,7 @@ const MovimientosPanel: React.FC = () => {
         payload: { movement: updatedMovement, previousMovement }
       });
       
-      toast.success('Movimiento actualizado exitosamente');
+      showSuccess('Movimiento actualizado exitosamente');
       setShowManualEntry(false);
       setEditingMovement(null);
       setNewMovement({
@@ -188,7 +188,7 @@ const MovimientosPanel: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error updating movement:', error);
-      toast.error('Error al actualizar el movimiento');
+      showCommonError('SAVE_ERROR', 'Error al actualizar el movimiento');
     }
   };
 
@@ -205,12 +205,12 @@ const MovimientosPanel: React.FC = () => {
         payload: { movement }
       });
       
-      toast.success('Movimiento eliminado exitosamente');
+      showSuccess('Movimiento eliminado exitosamente');
       setShowDeleteConfirm(null);
       await loadData();
     } catch (error) {
       console.error('Error deleting movement:', error);
-      toast.error('Error al eliminar el movimiento');
+      showCommonError('SAVE_ERROR', 'Error al eliminar el movimiento');
     }
   };
 

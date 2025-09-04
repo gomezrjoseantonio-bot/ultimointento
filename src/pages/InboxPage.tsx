@@ -12,6 +12,7 @@ import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
 import { detectDocumentType } from '../services/documentTypeDetectionService';
+import { showError } from '../services/toastService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -252,10 +253,7 @@ const InboxPage: React.FC = () => {
           doc.id === document.id ? updatedDoc : doc
         ));
         
-        toast.error(`Documento duplicado: ${document.filename}`, { 
-          duration: 4000,
-          icon: '⚠️' 
-        });
+        showError(`Documento duplicado: ${document.filename}`, 'Verifica si es una versión diferente o elimina uno de los archivos');
         return;
       }
       
