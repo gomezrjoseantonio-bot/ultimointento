@@ -147,7 +147,8 @@ function validateInvoice(
   
   requiredFields.forEach(field => {
     const value = getFieldValue(metadata, ocrResult, field);
-    if (!value || value.trim() === '') {
+    const stringValue = String(value || '');
+    if (!value || stringValue.trim() === '') {
       blockingReasons.push({
         type: 'error',
         code: `MISSING_${field.toUpperCase()}`,
@@ -223,7 +224,8 @@ function validateContract(
   
   requiredFields.forEach(field => {
     const value = getFieldValue(metadata, ocrResult, field);
-    if (!value || value.trim() === '') {
+    const stringValue = String(value || '');
+    if (!value || stringValue.trim() === '') {
       blockingReasons.push({
         type: 'error',
         code: `MISSING_${field.toUpperCase()}`,
@@ -301,14 +303,14 @@ function validateGenericDocument(
 function getFieldValue(metadata: any, ocrResult: any, fieldName: string): string {
   // Try metadata first
   if (metadata[fieldName]) {
-    return metadata[fieldName];
+    return String(metadata[fieldName]);
   }
   
   // Try OCR fields
   if (ocrResult?.fields) {
     const field = ocrResult.fields.find((f: any) => f.name === fieldName);
     if (field?.value) {
-      return field.value;
+      return String(field.value);
     }
   }
   
