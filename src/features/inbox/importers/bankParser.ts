@@ -65,7 +65,7 @@ export class BankParserService {
       
       if (fileType === 'csv') {
         const text = await this.readFileAsText(file);
-        workbook = this.parseCSV(text);
+        workbook = this.parseCSVEnhanced(text);
       } else if (fileType === 'xlsx' || fileType === 'xls') {
         const buffer = await this.readFileAsArrayBuffer(file);
         workbook = XLSX.read(buffer, { type: 'array' });
@@ -132,6 +132,103 @@ export class BankParserService {
         error: error instanceof Error ? error.message : 'Error desconocido',
         movements: [],
         metadata: {}
+      };
+    }
+  }
+
+  /**
+   * Preview bank statement file - returns first 5 rows with bank detection and total count
+   */
+  async previewFile(file: File): Promise<{
+    success: boolean;
+    bankDetected?: string;
+    confidence?: number;
+    totalRows: number;
+    previewRows: any[];
+    totalMovements: number;
+    error?: string;
+    needsManualMapping?: boolean;
+    availableColumns?: string[];
+  }> {
+    try {
+      const fileType = this.detectFileType(file);
+      let workbook: XLSX.WorkBook;
+      
+      if (fileType === 'csv') {
+        const text = await this.readFileAsText(file);
+        workbook = this.parseCSVEnhanced(text);
+      } else if (fileType === 'xlsx' || fileType === 'xls') {
+        const buffer = await this.readFileAsArrayBuffer(file);
+        workbook = XLSX.read(buffer, { type: 'array' });
+      } else {
+        throw new Error(`Formato no soportado: ${file.type}`);
+      }
+
+      // Get sheet information and select best sheet
+      const sheetInfo = this.getSheetInfo(workbook);
+      const bestSheet = sheetInfo.find(s => s.hasData) || sheetInfo[0];
+      if (!bestSheet) {
+        throw new Error('No se encontraron hojas con datos');
+      }
+
+      const worksheet = workbook.Sheets[bestSheet.name];
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1, 
+        defval: '', 
+        raw: false 
+      }) as string[][];
+
+      // Detect headers and bank
+      const headerDetection = this.detectHeaders(rawData);
+      const bankDetection = headerDetection.detectedColumns && Object.keys(headerDetection.detectedColumns).length > 0
+        ? await bankProfilesService.detectBank(rawData[headerDetection.headerRow] || [])
+        : null;
+
+      // Get preview rows (headers + first 5 data rows)
+      const headerRow = headerDetection.headerRow;
+      const previewRows = [];
+      
+      // Add header row
+      if (rawData[headerRow]) {
+        previewRows.push({
+          rowType: 'header',
+          data: rawData[headerRow]
+        });
+      }
+      
+      // Add up to 5 data rows
+      const maxPreview = Math.min(headerRow + 6, rawData.length);
+      for (let i = headerRow + 1; i < maxPreview; i++) {
+        if (rawData[i] && rawData[i].some(cell => cell && cell.toString().trim())) {
+          previewRows.push({
+            rowType: 'data',
+            data: rawData[i]
+          });
+        }
+      }
+
+      // Calculate total movements (data rows after header)
+      const totalMovements = Math.max(0, rawData.length - headerRow - 1);
+
+      return {
+        success: true,
+        bankDetected: bankDetection?.bankKey,
+        confidence: bankDetection?.confidence,
+        totalRows: rawData.length,
+        previewRows,
+        totalMovements,
+        needsManualMapping: !bankDetection || headerDetection.fallbackRequired,
+        availableColumns: rawData[headerRow] || []
+      };
+
+    } catch (error) {
+      console.error('Bank preview error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+        totalRows: 0,
+        previewRows: [],
+        totalMovements: 0
       };
     }
   }
@@ -234,6 +331,53 @@ export class BankParserService {
     }
 
     return XLSX.read(text, { type: 'string', FS: bestDelimiter });
+  }
+
+  /**
+   * Enhanced CSV parsing with improved delimiter detection and European decimal support
+   */
+  private parseCSVEnhanced(text: string): XLSX.WorkBook {
+    // Detect delimiter more robustly
+    const delimiters = [',', ';', '\t', '|'];
+    let bestDelimiter = ',';
+    let maxScore = 0;
+
+    for (const delimiter of delimiters) {
+      const lines = text.split('\n').slice(0, 10); // Check more lines
+      let score = 0;
+      
+      for (const line of lines) {
+        const fields = line.split(delimiter);
+        // Score based on consistent field count and typical bank data patterns
+        if (fields.length >= 3 && fields.length <= 15) { // Reasonable field count
+          score += fields.length;
+          
+          // Bonus for fields that look like dates, amounts, or descriptions
+          for (const field of fields) {
+            const trimmed = field.trim();
+            // Date patterns
+            if (/^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(trimmed)) score += 2;
+            // Amount patterns (European format)
+            if (/^-?[\d.,]+\s*€?$/.test(trimmed)) score += 2;
+            // Long description patterns
+            if (trimmed.length > 10 && /[a-zA-Z]/.test(trimmed)) score += 1;
+          }
+        }
+      }
+      
+      if (score > maxScore) {
+        maxScore = score;
+        bestDelimiter = delimiter;
+      }
+    }
+
+    console.log(`CSV delimiter detected: "${bestDelimiter}" (score: ${maxScore})`);
+    
+    return XLSX.read(text, { 
+      type: 'string', 
+      FS: bestDelimiter,
+      raw: false // Enable type inference for better number parsing
+    });
   }
 
   /**
