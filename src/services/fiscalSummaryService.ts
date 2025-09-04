@@ -217,7 +217,7 @@ export const exportFiscalData = async (
 };
 
 /**
- * Calculate carryforward amounts for deductible excess
+ * Calculate carryforward amounts for deductible excess with proper AEAT 4-year limit
  */
 export const calculateCarryForwards = async (
   propertyId: number
@@ -226,19 +226,95 @@ export const calculateCarryForwards = async (
   excessAmount: number;
   remainingAmount: number;
   expirationYear: number;
+  appliedThisYear?: number;
+  expiresThisYear?: boolean;
 }>> => {
   const summaries = await getPropertyFiscalSummaries(propertyId);
   const currentYear = new Date().getFullYear();
   
-  // Get summaries with deductible excess from last 4 years
+  // Get summaries with deductible excess from last 4 years that haven't expired
   const excessSummaries = summaries
-    .filter(s => s.deductibleExcess && s.deductibleExcess > 0 && s.exerciseYear >= currentYear - 4)
+    .filter(s => s.deductibleExcess && s.deductibleExcess > 0 && 
+                s.exerciseYear >= currentYear - 4 && 
+                s.exerciseYear + 4 >= currentYear) // Not expired yet
     .sort((a, b) => a.exerciseYear - b.exerciseYear);
 
-  return excessSummaries.map(summary => ({
-    exerciseYear: summary.exerciseYear,
-    excessAmount: summary.deductibleExcess || 0,
-    remainingAmount: summary.deductibleExcess || 0, // TODO: Calculate actual remaining after applying to future income
-    expirationYear: summary.exerciseYear + 4
-  }));
+  // Get income data to calculate how much can be applied
+  const db = await initDB();
+  const allIngresos = await db.getAll('ingresos');
+  
+  const result = [];
+  
+  for (const summary of excessSummaries) {
+    const expirationYear = summary.exerciseYear + 4;
+    const expiresThisYear = expirationYear === currentYear;
+    
+    // Calculate income from this property for years after the excess was generated
+    const yearsToApply = Array.from(
+      { length: 4 }, 
+      (_, i) => summary.exerciseYear + 1 + i
+    ).filter(year => year <= currentYear);
+    
+    let totalApplied = 0;
+    let appliedThisYear = 0;
+    
+    for (const year of yearsToApply) {
+      const yearIncome = allIngresos
+        .filter(ingreso => {
+          const incomeDate = new Date(ingreso.fecha_emision);
+          return incomeDate.getFullYear() === year && 
+                 ingreso.destino === 'inmueble_id' && 
+                 ingreso.destino_id === propertyId &&
+                 ingreso.estado === 'cobrado';
+        })
+        .reduce((sum, ingreso) => sum + ingreso.importe, 0);
+      
+      // Calculate expenses that compete with carryforwards (financing + repairs)
+      const yearSummary = summaries.find(s => s.exerciseYear === year);
+      const competingExpenses = yearSummary ? (yearSummary.box0105 + yearSummary.box0106) : 0;
+      
+      // Available income after competing expenses for carryforward application
+      const availableForCarryforward = Math.max(0, yearIncome - competingExpenses);
+      const remainingExcess = (summary.deductibleExcess || 0) - totalApplied;
+      const canApply = Math.min(availableForCarryforward, remainingExcess);
+      
+      if (canApply > 0) {
+        totalApplied += canApply;
+        if (year === currentYear) {
+          appliedThisYear = canApply;
+        }
+      }
+    }
+    
+    const remainingAmount = Math.max(0, (summary.deductibleExcess || 0) - totalApplied);
+    
+    result.push({
+      exerciseYear: summary.exerciseYear,
+      excessAmount: summary.deductibleExcess || 0,
+      remainingAmount,
+      expirationYear,
+      appliedThisYear,
+      expiresThisYear
+    });
+  }
+  
+  return result;
+};
+
+/**
+ * Get total carryforwards applied in current year for KPI
+ */
+export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Promise<number> => {
+  const db = await initDB();
+  const properties = propertyId ? [propertyId] : 
+    (await db.getAll('properties')).filter(p => p.state === 'activo').map(p => p.id!);
+  
+  let totalApplied = 0;
+  
+  for (const propId of properties) {
+    const carryForwards = await calculateCarryForwards(propId);
+    totalApplied += carryForwards.reduce((sum, cf) => sum + (cf.appliedThisYear || 0), 0);
+  }
+  
+  return totalApplied;
 };

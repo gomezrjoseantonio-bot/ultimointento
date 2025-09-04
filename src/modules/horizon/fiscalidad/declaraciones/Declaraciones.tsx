@@ -55,15 +55,6 @@ const Declaraciones: React.FC = () => {
     localStorage.setItem('fiscalidad-export-history', JSON.stringify(updatedHistory));
   };
 
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
@@ -75,6 +66,9 @@ const Declaraciones: React.FC = () => {
   };
 
   const generatePDFContent = (propertyData: any, year: number): string => {
+    const formatEsCurrency = (num: number): string => 
+      num.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+
     return `DECLARACIÓN FISCAL - EJERCICIO ${year}
 
 ====================
@@ -82,76 +76,231 @@ DATOS DEL INMUEBLE
 ====================
 Alias: ${propertyData.property?.alias || 'N/A'}
 Dirección: ${propertyData.property?.address || 'N/A'}
+Código Postal: ${propertyData.property?.postalCode || 'N/A'}
+Provincia: ${propertyData.property?.province || 'N/A'}
 Referencia Catastral: ${propertyData.property?.cadastralReference || 'N/A'}
+Superficie: ${propertyData.property?.squareMeters || 'N/A'} m²
 
 ====================
-RESUMEN FISCAL
+RESUMEN FISCAL ANUAL
 ====================
-Ingresos Devengados: ${formatCurrency(propertyData.ingresos || 0)}
-Gastos Deducibles: ${formatCurrency(propertyData.gastos || 0)}
-Amortizaciones: ${formatCurrency(propertyData.amortizaciones || 0)}
-Arrastres Aplicados: ${formatCurrency(propertyData.arrastres || 0)}
-NETO FISCAL: ${formatCurrency(propertyData.neto || 0)}
+INGRESOS:
+  Rentas devengadas: ${formatEsCurrency(propertyData.ingresos || 0)}
+  Otros ingresos: ${formatEsCurrency(propertyData.otrosIngresos || 0)}
+  TOTAL INGRESOS: ${formatEsCurrency((propertyData.ingresos || 0) + (propertyData.otrosIngresos || 0))}
+
+GASTOS DEDUCIBLES:
+  Financiación (0105): ${formatEsCurrency(propertyData.fiscalSummary?.box0105 || 0)}
+  Reparación y Conservación (0106): ${formatEsCurrency(propertyData.fiscalSummary?.box0106 || 0)}
+  Comunidad de Propietarios (0109): ${formatEsCurrency(propertyData.fiscalSummary?.box0109 || 0)}
+  Servicios Personales (0112): ${formatEsCurrency(propertyData.fiscalSummary?.box0112 || 0)}
+  Suministros (0113): ${formatEsCurrency(propertyData.fiscalSummary?.box0113 || 0)}
+  Seguros (0114): ${formatEsCurrency(propertyData.fiscalSummary?.box0114 || 0)}
+  Tributos Locales (0115): ${formatEsCurrency(propertyData.fiscalSummary?.box0115 || 0)}
+  Amortización Mobiliario (0117): ${formatEsCurrency(propertyData.fiscalSummary?.box0117 || 0)}
+  TOTAL GASTOS: ${formatEsCurrency(propertyData.gastos || 0)}
+
+AMORTIZACIÓN:
+  Valor construcción: ${formatEsCurrency(propertyData.fiscalSummary?.constructionValue || 0)}
+  Amortización anual (3%): ${formatEsCurrency(propertyData.amortizaciones || 0)}
+
+ARRASTRES DE PÉRDIDAS:
+  Aplicados este ejercicio: ${formatEsCurrency(propertyData.arrastresAplicados || 0)}
+  Generados este ejercicio: ${formatEsCurrency(propertyData.arrastresGenerados || 0)}
+  Saldo pendiente: ${formatEsCurrency(propertyData.arrastresPendientes || 0)}
+
+RESULTADO FISCAL:
+  Base imponible: ${formatEsCurrency(propertyData.neto || 0)}
+  Estado: ${(propertyData.neto || 0) >= 0 ? 'GANANCIA' : 'PÉRDIDA'}
 
 ====================
-DETALLE CASILLAS AEAT
+DETALLE ARRASTRES AEAT
 ====================
-Casilla 0105 (Financiación): ${formatCurrency(propertyData.fiscalSummary?.box0105 || 0)}
-Casilla 0106 (R&C): ${formatCurrency(propertyData.fiscalSummary?.box0106 || 0)}
-Casilla 0109 (Comunidad): ${formatCurrency(propertyData.fiscalSummary?.box0109 || 0)}
-Casilla 0112 (Servicios Personales): ${formatCurrency(propertyData.fiscalSummary?.box0112 || 0)}
-Casilla 0113 (Suministros): ${formatCurrency(propertyData.fiscalSummary?.box0113 || 0)}
-Casilla 0114 (Seguros): ${formatCurrency(propertyData.fiscalSummary?.box0114 || 0)}
-Casilla 0115 (Tributos Locales): ${formatCurrency(propertyData.fiscalSummary?.box0115 || 0)}
-Casilla 0117 (Amortización Muebles): ${formatCurrency(propertyData.fiscalSummary?.box0117 || 0)}
+${propertyData.carryForwards?.map((cf: any) => 
+  `Ejercicio ${cf.exerciseYear}: ${formatEsCurrency(cf.remainingAmount)} (caduca ${cf.expirationYear})`
+).join('\n') || 'No hay arrastres pendientes'}
 
 ====================
-INFORMACIÓN ADICIONAL
+INFORMACIÓN TÉCNICA
 ====================
-Estado del Ejercicio: ${propertyData.fiscalSummary?.status || 'N/A'}
-Fecha de Generación: ${new Date().toLocaleDateString('es-ES')}
+Estado del Ejercicio: ${propertyData.fiscalSummary?.status || 'Vivo'}
+Método de Cálculo: ${propertyData.fiscalSummary?.aeatAmortization?.calculationMethod === 'special' ? 'Caso Especial' : 'Regla General'}
+Días de Arrendamiento: ${propertyData.fiscalSummary?.aeatAmortization?.daysRented || 'N/A'}
+Días Disponibles: ${propertyData.fiscalSummary?.aeatAmortization?.daysAvailable || 'N/A'}
+
+====================
+METADATOS
+====================
+Fecha de Generación: ${new Date().toLocaleDateString('es-ES', { 
+  day: '2-digit', 
+  month: '2-digit', 
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})}
 Usuario: Sistema
+Versión: H9 Fiscalidad
+Formato: es-ES
 
-Este documento ha sido generado automáticamente por el sistema.
+Este documento ha sido generado automáticamente por el sistema Atlas Horizon.
+Para mayor información, consulte los documentos fuente y extractos bancarios.
 `;
   };
 
   const generateExcelData = (propertyData: any, year: number) => {
     const workbook = XLSX.utils.book_new();
 
-    // Resumen sheet
+    // Función para formatear números en formato español
+    const formatEsNumber = (num: number): string => 
+      typeof num === 'number' ? num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00';
+
+    // 1. Hoja Resumen
     const resumenData = [
       ['DECLARACIÓN FISCAL - EJERCICIO', year],
+      ['Inmueble', propertyData.property?.alias || 'N/A'],
+      ['Dirección', propertyData.property?.address || 'N/A'],
+      ['Código Postal', propertyData.property?.postalCode || 'N/A'],
+      ['Provincia', propertyData.property?.province || 'N/A'],
+      ['Referencia Catastral', propertyData.property?.cadastralReference || 'N/A'],
+      ['Superficie (m²)', propertyData.property?.squareMeters || 'N/A'],
       [''],
-      ['INMUEBLE', propertyData.property?.alias || 'N/A'],
-      ['DIRECCIÓN', propertyData.property?.address || 'N/A'],
+      ['CONCEPTO', 'IMPORTE (€)', 'OBSERVACIONES'],
+      ['INGRESOS'],
+      ['Rentas devengadas', formatEsNumber(propertyData.ingresos || 0), 'Ingresos por alquiler'],
+      ['Otros ingresos', formatEsNumber(propertyData.otrosIngresos || 0), 'Fianzas, penalizaciones, etc.'],
+      ['TOTAL INGRESOS', formatEsNumber((propertyData.ingresos || 0) + (propertyData.otrosIngresos || 0)), ''],
       [''],
-      ['CONCEPTO', 'IMPORTE'],
-      ['Ingresos Devengados', propertyData.ingresos || 0],
-      ['Gastos Deducibles', propertyData.gastos || 0],
-      ['Amortizaciones', propertyData.amortizaciones || 0],
-      ['Arrastres Aplicados', propertyData.arrastres || 0],
-      ['NETO FISCAL', propertyData.neto || 0]
+      ['GASTOS DEDUCIBLES'],
+      ['Intereses y Financiación (0105)', formatEsNumber(propertyData.fiscalSummary?.box0105 || 0), 'Préstamos hipotecarios'],
+      ['Reparación y Conservación (0106)', formatEsNumber(propertyData.fiscalSummary?.box0106 || 0), 'Mantenimiento y reparaciones'],
+      ['Comunidad de Propietarios (0109)', formatEsNumber(propertyData.fiscalSummary?.box0109 || 0), 'Gastos de comunidad'],
+      ['Servicios Personales (0112)', formatEsNumber(propertyData.fiscalSummary?.box0112 || 0), 'Administración, gestoría'],
+      ['Suministros (0113)', formatEsNumber(propertyData.fiscalSummary?.box0113 || 0), 'Agua, luz, gas'],
+      ['Seguros (0114)', formatEsNumber(propertyData.fiscalSummary?.box0114 || 0), 'Seguros del inmueble'],
+      ['Tributos Locales (0115)', formatEsNumber(propertyData.fiscalSummary?.box0115 || 0), 'IBI, basuras'],
+      ['Amortización Mobiliario (0117)', formatEsNumber(propertyData.fiscalSummary?.box0117 || 0), 'Muebles y enseres'],
+      ['TOTAL GASTOS', formatEsNumber(propertyData.gastos || 0), ''],
+      [''],
+      ['AMORTIZACIÓN'],
+      ['Valor construcción', formatEsNumber(propertyData.fiscalSummary?.constructionValue || 0), 'Base amortizable'],
+      ['Amortización anual (3%)', formatEsNumber(propertyData.amortizaciones || 0), 'Depreciación del inmueble'],
+      [''],
+      ['ARRASTRES DE PÉRDIDAS'],
+      ['Aplicados este ejercicio', formatEsNumber(propertyData.arrastresAplicados || 0), 'De ejercicios anteriores'],
+      ['Generados este ejercicio', formatEsNumber(propertyData.arrastresGenerados || 0), 'Para ejercicios futuros'],
+      ['Saldo pendiente', formatEsNumber(propertyData.arrastresPendientes || 0), 'Disponible hasta 4 años'],
+      [''],
+      ['RESULTADO FISCAL'],
+      ['BASE IMPONIBLE', formatEsNumber(propertyData.neto || 0), (propertyData.neto || 0) >= 0 ? 'GANANCIA' : 'PÉRDIDA'],
+      [''],
+      ['INFORMACIÓN TÉCNICA'],
+      ['Estado del ejercicio', propertyData.fiscalSummary?.status || 'Vivo', ''],
+      ['Días de arrendamiento', propertyData.fiscalSummary?.aeatAmortization?.daysRented || 'N/A', ''],
+      ['Días disponibles', propertyData.fiscalSummary?.aeatAmortization?.daysAvailable || 'N/A', ''],
+      ['Método de cálculo', propertyData.fiscalSummary?.aeatAmortization?.calculationMethod === 'special' ? 'Caso Especial' : 'Regla General', '']
     ];
     
     const resumenSheet = XLSX.utils.aoa_to_sheet(resumenData);
-    XLSX.utils.book_append_sheet(workbook, resumenSheet, 'Resumen');
-
-    // AEAT Boxes sheet
-    const aeatData = [
-      ['CASILLA AEAT', 'DESCRIPCIÓN', 'IMPORTE'],
-      ['0105', 'Intereses y Financiación', propertyData.fiscalSummary?.box0105 || 0],
-      ['0106', 'Reparación y Conservación', propertyData.fiscalSummary?.box0106 || 0],
-      ['0109', 'Comunidad', propertyData.fiscalSummary?.box0109 || 0],
-      ['0112', 'Servicios Personales', propertyData.fiscalSummary?.box0112 || 0],
-      ['0113', 'Suministros', propertyData.fiscalSummary?.box0113 || 0],
-      ['0114', 'Seguros', propertyData.fiscalSummary?.box0114 || 0],
-      ['0115', 'Tributos Locales', propertyData.fiscalSummary?.box0115 || 0],
-      ['0117', 'Amortización Muebles', propertyData.fiscalSummary?.box0117 || 0]
+    
+    // Configurar anchos de columna
+    resumenSheet['!cols'] = [
+      { wch: 30 }, // Concepto
+      { wch: 15 }, // Importe
+      { wch: 40 }  // Observaciones
     ];
     
-    const aeatSheet = XLSX.utils.aoa_to_sheet(aeatData);
-    XLSX.utils.book_append_sheet(workbook, aeatSheet, 'Casillas AEAT');
+    XLSX.utils.book_append_sheet(workbook, resumenSheet, 'Resumen');
+
+    // 2. Hoja Arrastres Detalle
+    if (propertyData.carryForwards && propertyData.carryForwards.length > 0) {
+      const arrastresData = [
+        ['DETALLE DE ARRASTRES DE PÉRDIDAS'],
+        [''],
+        ['Ejercicio Origen', 'Pérdida Original (€)', 'Aplicado ' + year + ' (€)', 'Saldo Pendiente (€)', 'Año Caducidad', 'Estado'],
+        ...propertyData.carryForwards.map((cf: any) => [
+          cf.exerciseYear,
+          formatEsNumber(cf.excessAmount),
+          formatEsNumber(cf.appliedThisYear || 0),
+          formatEsNumber(cf.remainingAmount),
+          cf.expirationYear,
+          cf.expiresThisYear ? 'Caduca ' + year : cf.remainingAmount > 0 ? 'Disponible' : 'Agotado'
+        ])
+      ];
+      
+      const arrastresSheet = XLSX.utils.aoa_to_sheet(arrastresData);
+      arrastresSheet['!cols'] = [
+        { wch: 15 }, // Ejercicio
+        { wch: 18 }, // Pérdida Original
+        { wch: 18 }, // Aplicado
+        { wch: 18 }, // Saldo Pendiente
+        { wch: 15 }, // Año Caducidad
+        { wch: 15 }  // Estado
+      ];
+      
+      XLSX.utils.book_append_sheet(workbook, arrastresSheet, 'Arrastres');
+    }
+
+    // 3. Hoja Ingresos Detalle (si hay datos)
+    if (propertyData.ingresosDetalle && propertyData.ingresosDetalle.length > 0) {
+      const ingresosData = [
+        ['DETALLE DE INGRESOS'],
+        [''],
+        ['Fecha Emisión', 'Concepto', 'Inquilino', 'Importe (€)', 'Estado', 'Fecha Cobro', 'Método'],
+        ...propertyData.ingresosDetalle.map((ing: any) => [
+          ing.fecha_emision,
+          ing.concepto || 'Renta mensual',
+          ing.proveedor_contraparte,
+          formatEsNumber(ing.importe),
+          ing.estado,
+          ing.fecha_cobro || '',
+          ing.metodo_cobro || ''
+        ])
+      ];
+      
+      const ingresosSheet = XLSX.utils.aoa_to_sheet(ingresosData);
+      XLSX.utils.book_append_sheet(workbook, ingresosSheet, 'Ingresos');
+    }
+
+    // 4. Hoja Gastos Detalle (si hay datos)
+    if (propertyData.gastosDetalle && propertyData.gastosDetalle.length > 0) {
+      const gastosData = [
+        ['DETALLE DE GASTOS'],
+        [''],
+        ['Fecha Emisión', 'Proveedor', 'Concepto', 'Casilla AEAT', 'Base (€)', 'IVA (€)', 'Total (€)', 'Estado'],
+        ...propertyData.gastosDetalle.map((gasto: any) => [
+          gasto.fecha_emision,
+          gasto.proveedor_nombre,
+          gasto.concepto || '',
+          gasto.categoria_AEAT,
+          formatEsNumber(gasto.base || 0),
+          formatEsNumber(gasto.iva || 0),
+          formatEsNumber(gasto.total),
+          gasto.estado
+        ])
+      ];
+      
+      const gastosSheet = XLSX.utils.aoa_to_sheet(gastosData);
+      XLSX.utils.book_append_sheet(workbook, gastosSheet, 'Gastos');
+    }
+
+    // 5. Hoja Metadatos
+    const metadatosData = [
+      ['METADATOS DE EXPORTACIÓN'],
+      [''],
+      ['Campo', 'Valor'],
+      ['Fecha de generación', new Date().toLocaleString('es-ES')],
+      ['Usuario', 'Sistema'],
+      ['Versión', 'H9 Fiscalidad'],
+      ['Formato números', 'es-ES'],
+      ['Formato fechas', 'dd/mm/aaaa'],
+      ['Moneda', 'EUR'],
+      ['Ejercicio fiscal', year],
+      ['Inmueble', propertyData.property?.alias || 'N/A'],
+      ['ID Inmueble', propertyData.property?.id || 'N/A']
+    ];
+    
+    const metadatosSheet = XLSX.utils.aoa_to_sheet(metadatosData);
+    XLSX.utils.book_append_sheet(workbook, metadatosSheet, 'Metadatos');
 
     return workbook;
   };
@@ -161,33 +310,138 @@ Este documento ha sido generado automáticamente por el sistema.
       metadata: {
         exerciseYear: year,
         generatedAt: new Date().toISOString(),
-        version: '1.0',
-        scope: selectedProperty === 'todos' ? 'all-properties' : 'single-property'
+        generatedBy: 'Atlas Horizon H9 Fiscalidad',
+        version: '2.0',
+        format: 'es-ES',
+        currency: 'EUR',
+        scope: selectedProperty === 'todos' ? 'all-properties' : 'single-property',
+        exportId: `FISCAL_${year}_${Date.now()}`,
+        locale: {
+          language: 'es',
+          country: 'ES',
+          numberFormat: '#.##0,00',
+          dateFormat: 'dd/mm/yyyy'
+        }
       },
       property: {
         id: propertyData.property?.id,
         alias: propertyData.property?.alias,
         address: propertyData.property?.address,
-        cadastralReference: propertyData.property?.cadastralReference
+        postalCode: propertyData.property?.postalCode,
+        province: propertyData.property?.province,
+        municipality: propertyData.property?.municipality,
+        ccaa: propertyData.property?.ccaa,
+        cadastralReference: propertyData.property?.cadastralReference,
+        squareMeters: propertyData.property?.squareMeters,
+        bedrooms: propertyData.property?.bedrooms,
+        state: propertyData.property?.state,
+        purchaseDate: propertyData.property?.purchaseDate,
+        acquisitionCosts: propertyData.property?.acquisitionCosts
       },
       fiscalSummary: {
-        ingresos: propertyData.ingresos || 0,
-        gastos: propertyData.gastos || 0,
-        amortizaciones: propertyData.amortizaciones || 0,
-        arrastres: propertyData.arrastres || 0,
-        neto: propertyData.neto || 0
+        ingresos: {
+          rentasDevengadas: propertyData.ingresos || 0,
+          otrosIngresos: propertyData.otrosIngresos || 0,
+          total: (propertyData.ingresos || 0) + (propertyData.otrosIngresos || 0)
+        },
+        gastos: {
+          financiacion: propertyData.fiscalSummary?.box0105 || 0,
+          reparacionConservacion: propertyData.fiscalSummary?.box0106 || 0,
+          comunidad: propertyData.fiscalSummary?.box0109 || 0,
+          serviciosPersonales: propertyData.fiscalSummary?.box0112 || 0,
+          suministros: propertyData.fiscalSummary?.box0113 || 0,
+          seguros: propertyData.fiscalSummary?.box0114 || 0,
+          tributosLocales: propertyData.fiscalSummary?.box0115 || 0,
+          amortizacionMobiliario: propertyData.fiscalSummary?.box0117 || 0,
+          total: propertyData.gastos || 0
+        },
+        amortizacion: {
+          valorConstruccion: propertyData.fiscalSummary?.constructionValue || 0,
+          porcentajeAnual: 3.0,
+          importeAnual: propertyData.amortizaciones || 0,
+          metodoCaloculo: propertyData.fiscalSummary?.aeatAmortization?.calculationMethod || 'general'
+        },
+        arrastres: {
+          aplicadosEsteEjercicio: propertyData.arrastresAplicados || 0,
+          generadosEsteEjercicio: propertyData.arrastresGenerados || 0,
+          saldoPendiente: propertyData.arrastresPendientes || 0,
+          detalle: propertyData.carryForwards || []
+        },
+        resultado: {
+          baseImponible: propertyData.neto || 0,
+          tipo: (propertyData.neto || 0) >= 0 ? 'GANANCIA' : 'PERDIDA',
+          estado: propertyData.fiscalSummary?.status || 'Vivo'
+        }
       },
       aeatBoxes: {
-        box0105: propertyData.fiscalSummary?.box0105 || 0,
-        box0106: propertyData.fiscalSummary?.box0106 || 0,
-        box0109: propertyData.fiscalSummary?.box0109 || 0,
-        box0112: propertyData.fiscalSummary?.box0112 || 0,
-        box0113: propertyData.fiscalSummary?.box0113 || 0,
-        box0114: propertyData.fiscalSummary?.box0114 || 0,
-        box0115: propertyData.fiscalSummary?.box0115 || 0,
-        box0117: propertyData.fiscalSummary?.box0117 || 0
+        '0105': {
+          descripcion: 'Intereses y gastos de financiación',
+          importe: propertyData.fiscalSummary?.box0105 || 0,
+          categoria: 'financiacion'
+        },
+        '0106': {
+          descripcion: 'Reparación y conservación',
+          importe: propertyData.fiscalSummary?.box0106 || 0,
+          categoria: 'reparacion-conservacion'
+        },
+        '0109': {
+          descripcion: 'Comunidad de propietarios',
+          importe: propertyData.fiscalSummary?.box0109 || 0,
+          categoria: 'comunidad'
+        },
+        '0112': {
+          descripcion: 'Servicios personales',
+          importe: propertyData.fiscalSummary?.box0112 || 0,
+          categoria: 'servicios-personales'
+        },
+        '0113': {
+          descripcion: 'Suministros',
+          importe: propertyData.fiscalSummary?.box0113 || 0,
+          categoria: 'suministros'
+        },
+        '0114': {
+          descripcion: 'Seguros',
+          importe: propertyData.fiscalSummary?.box0114 || 0,
+          categoria: 'seguros'
+        },
+        '0115': {
+          descripcion: 'Tributos y tasas',
+          importe: propertyData.fiscalSummary?.box0115 || 0,
+          categoria: 'tributos'
+        },
+        '0117': {
+          descripcion: 'Amortización del mobiliario',
+          importe: propertyData.fiscalSummary?.box0117 || 0,
+          categoria: 'amortizacion-muebles'
+        }
       },
-      status: propertyData.fiscalSummary?.status || 'N/A'
+      technicalInfo: {
+        diasArrendamiento: propertyData.fiscalSummary?.aeatAmortization?.daysRented || null,
+        diasDisponibles: propertyData.fiscalSummary?.aeatAmortization?.daysAvailable || null,
+        porcentajeOcupacion: propertyData.fiscalSummary?.aeatAmortization?.daysRented && propertyData.fiscalSummary?.aeatAmortization?.daysAvailable 
+          ? (propertyData.fiscalSummary.aeatAmortization.daysRented / propertyData.fiscalSummary.aeatAmortization.daysAvailable * 100).toFixed(2)
+          : null,
+        estadoEjercicio: propertyData.fiscalSummary?.status || 'Vivo',
+        limiteAEAT: {
+          aplicado: true,
+          descripcion: 'Límite del 50% de los rendimientos íntegros para gastos financiación y reparación',
+          ejerciciosArrastre: 4
+        }
+      },
+      detalleDatos: {
+        ingresos: propertyData.ingresosDetalle || [],
+        gastos: propertyData.gastosDetalle || [],
+        movimientosBancarios: propertyData.movimientosDetalle || [],
+        documentos: propertyData.documentosVinculados || []
+      },
+      trazabilidad: {
+        fechaGeneracion: new Date().toISOString(),
+        usuario: 'Sistema',
+        propiedadesProcesadas: selectedProperty === 'todos' ? properties.length : 1,
+        documentosVinculados: propertyData.documentosVinculados?.length || 0,
+        conciliacionesRealizadas: propertyData.conciliacionesCount || 0,
+        validacionesPasadas: true
+      }
     };
   };
 
