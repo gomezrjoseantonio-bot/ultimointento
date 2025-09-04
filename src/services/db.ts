@@ -127,6 +127,7 @@ export interface OCRResult {
   fields: OCRField[];
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
+  validationWarnings?: string[]; // Validation warnings for Base + VAT ≈ Total checks
   engineInfo?: {
     type: 'document-ai-invoice' | 'vision-fallback';
     displayName: string;

@@ -362,7 +362,13 @@ const InboxPage: React.FC = () => {
         console.warn('Failed to update OCR in IndexedDB:', error);
       }
 
-      toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos`);
+      // Show OCR completion message with validation warnings if any
+      const hasWarnings = ocrResult.validationWarnings && ocrResult.validationWarnings.length > 0;
+      if (hasWarnings) {
+        toast.error(`OCR completado con advertencias para ${document.filename}: ${ocrResult.validationWarnings?.[0]}`);
+      } else {
+        toast.success(`OCR completado para ${document.filename}: ${ocrResult.fields.length} campos extraídos`);
+      }
       
       // Auto-save after OCR completion (if auto-save is enabled)
       const autoSaveConfig = getAutoSaveConfig();
@@ -567,16 +573,44 @@ const InboxPage: React.FC = () => {
   }) => {
     // Close the modal
     setShowBankStatementModal(false);
+    
+    // Mark the bank statement file as imported and remove from inbox
+    if (bankStatementFile) {
+      setDocuments(prev => prev.map(doc => {
+        if (doc.filename === bankStatementFile.name) {
+          return {
+            ...doc,
+            metadata: {
+              ...doc.metadata,
+              queueStatus: 'importado', // Mark as imported to exit inbox
+              processedAt: new Date().toISOString(),
+              importSummary: summary
+            }
+          };
+        }
+        return doc;
+      }));
+
+      // Remove from inbox after showing success message
+      setTimeout(() => {
+        setDocuments(prev => prev.filter(doc => doc.filename !== bankStatementFile.name));
+      }, 2000);
+    }
+    
     setBankStatementFile(null);
     
-    // Show comprehensive summary
-    const message = `Extracto importado: ${summary.inserted} movimientos`;
+    // Show comprehensive summary with Spanish formatting as per requirements
+    const message = `Importados ${summary.inserted} movimientos`;
     const details = [];
-    if (summary.duplicates > 0) details.push(`${summary.duplicates} duplicados`);
+    if (summary.duplicates > 0) details.push(`${summary.duplicates} duplicados omitidos`);
     if (summary.reconciled && summary.reconciled > 0) details.push(`${summary.reconciled} conciliados`);
     if (summary.pendingReview && summary.pendingReview > 0) details.push(`${summary.pendingReview} pendientes`);
     
-    toast.success(details.length > 0 ? `${message} • ${details.join(' • ')}` : message, {
+    const fullMessage = details.length > 0 
+      ? `${message}. ${details.join(', ')}. Ya están en Tesorería > Movimientos.`
+      : `${message}. Ya están en Tesorería > Movimientos.`;
+    
+    toast.success(fullMessage, {
       duration: 5000
     });
     
