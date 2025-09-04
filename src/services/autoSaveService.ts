@@ -1,4 +1,4 @@
-// H3: Auto-save configuration service for Issue 2 & 3
+// H8: Enhanced auto-save configuration service with H8 requirements
 export interface AutoSaveConfig {
   enabled: boolean;
   destinations: {
@@ -8,7 +8,7 @@ export interface AutoSaveConfig {
     otros: 'archivo-general';
   };
   confidenceThresholds: {
-    factura: number; // Minimum confidence for auto-classification
+    factura: number; // H8: ≥0.80 as per requirements
     extracto: number;
     contrato: number;
   };
@@ -31,10 +31,14 @@ export interface AutoSaveConfig {
       requireValidDates: boolean;
     };
   };
+  // H8: New settings for auto-OCR behavior
+  autoOcrEnabled: boolean;
+  capexThresholdAmount: number; // Amount threshold for CAPEX detection (e.g., 300€)
+  showWarningOnLowConfidence: boolean; // Show "Revisar: confianza baja" warning
 }
 
 export const DEFAULT_AUTOSAVE_CONFIG: AutoSaveConfig = {
-  enabled: false, // Default OFF as per Issue 3
+  enabled: false, // H8: Default OFF as per Issue 3
   destinations: {
     facturas: 'tesoreria-gastos',
     extractos: 'tesoreria-movimientos',
@@ -42,7 +46,7 @@ export const DEFAULT_AUTOSAVE_CONFIG: AutoSaveConfig = {
     otros: 'archivo-general'
   },
   confidenceThresholds: {
-    factura: 0.80, // ≥0.80 as per requirements
+    factura: 0.80, // H8: ≥0.80 as per requirements
     extracto: 0.75,
     contrato: 0.70
   },
@@ -64,7 +68,11 @@ export const DEFAULT_AUTOSAVE_CONFIG: AutoSaveConfig = {
       requireValidParties: true,
       requireValidDates: true
     }
-  }
+  },
+  // H8: New auto-OCR settings
+  autoOcrEnabled: true, // H8: Auto-OCR enabled by default
+  capexThresholdAmount: 300, // H8: 300€ threshold for CAPEX detection
+  showWarningOnLowConfidence: true // H8: Show warnings for low confidence
 };
 
 export const getAutoSaveConfig = (): AutoSaveConfig => {
@@ -117,6 +125,9 @@ export interface ClassificationResult {
     category?: string;
     entityType?: 'personal' | 'inmueble';
     duplicateDetected?: boolean;
+    suggestedDestination?: string; // H8: Enhanced metadata
+    isCapex?: boolean; // H8: CAPEX detection
+    warningMessage?: string; // H8: Low confidence warning
   };
 }
 
@@ -260,6 +271,17 @@ export const classifyDocument = async (document: any, existingDocuments: any[] =
       console.warn('Error processing OCR data for invoice classification:', error);
       doubts.push('Error procesando OCR');
     }
+  }
+
+  // H8: Enhanced destination classification with CAPEX detection
+  const enhancedClassification = classifyDestination(ocrData, metadata, type, confidence, config);
+  type = enhancedClassification.type as ClassificationResult['type'];
+  confidence = enhancedClassification.confidence;
+  if (enhancedClassification.suggestedDestination) {
+    metadata.suggestedDestination = enhancedClassification.suggestedDestination;
+  }
+  if (enhancedClassification.doubts) {
+    doubts.push(...enhancedClassification.doubts);
   }
 
   // H3: Enhanced classification for bank extracts
@@ -515,4 +537,109 @@ export const autoSaveDocument = async (document: any, classification: Classifica
       newStatus: 'error'
     };
   }
+};
+
+// H8: Enhanced destination classification with CAPEX and contract detection
+const classifyDestination = (
+  ocrData: any,
+  metadata: any,
+  currentType: string,
+  currentConfidence: number,
+  config: AutoSaveConfig
+): {
+  type: string;
+  confidence: number;
+  suggestedDestination?: string;
+  doubts?: string[];
+} => {
+  const doubts: string[] = [];
+  let type = currentType;
+  let confidence = currentConfidence;
+  let suggestedDestination: string | undefined;
+
+  // H8: CAPEX detection based on keywords and amount
+  if (type === 'factura' && ocrData?.status === 'completed') {
+    const textContent = ocrData.fields
+      ?.map((field: any) => field.value?.toLowerCase() || '')
+      .join(' ') || '';
+    
+    const capexKeywords = [
+      'obra', 'reforma', 'proyecto', 'presupuesto', 'carpintería',
+      'instalación', 'climatización', 'construcción', 'reparación',
+      'mejora', 'renovación', 'ampliación'
+    ];
+    
+    const hasCapexKeywords = capexKeywords.some(keyword => 
+      textContent.includes(keyword)
+    );
+    
+    const amount = metadata.totalAmount || metadata.amount || 0;
+    const isHighAmount = amount > config.capexThresholdAmount;
+    
+    if (hasCapexKeywords && isHighAmount) {
+      // Suggest CAPEX instead of regular expense
+      suggestedDestination = 'tesoreria-capex';
+      metadata.isCapex = true;
+      confidence = Math.min(confidence + 0.10, 1.0);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.info('CAPEX detected:', { keywords: hasCapexKeywords, amount, threshold: config.capexThresholdAmount });
+      }
+    }
+  }
+
+  // H8: Contract detection enhancement
+  if (ocrData?.status === 'completed') {
+    const textContent = ocrData.fields
+      ?.map((field: any) => field.value?.toLowerCase() || '')
+      .join(' ') || '';
+    
+    const contractKeywords = [
+      'contrato', 'arrendamiento', 'anexo', 'hipoteca', 'préstamo',
+      'contract', 'lease', 'amendment', 'mortgage', 'loan',
+      'acuerdo', 'agreement', 'términos', 'terms'
+    ];
+    
+    const hasContractKeywords = contractKeywords.some(keyword =>
+      textContent.includes(keyword)
+    );
+    
+    if (hasContractKeywords && type !== 'contrato') {
+      type = 'contrato';
+      confidence = Math.max(confidence, 0.75);
+      suggestedDestination = config.destinations.contratos;
+    }
+  }
+
+  // H8: Apply preference hierarchy (Contratos > Extractos > CAPEX > Facturas > Otros)
+  if (!suggestedDestination) {
+    switch (type) {
+      case 'contrato':
+        suggestedDestination = config.destinations.contratos;
+        break;
+      case 'extracto':
+        suggestedDestination = config.destinations.extractos;
+        break;
+      case 'factura':
+        suggestedDestination = metadata.isCapex 
+          ? 'tesoreria-capex' 
+          : config.destinations.facturas;
+        break;
+      default:
+        suggestedDestination = config.destinations.otros;
+    }
+  }
+
+  // H8: Add warning for low confidence if enabled
+  if (config.showWarningOnLowConfidence && confidence < 0.80) {
+    metadata.warningMessage = 'Revisar: confianza baja';
+    doubts.push('Confianza baja');
+  }
+
+  return {
+    type,
+    confidence,
+    suggestedDestination,
+    doubts: doubts.length > 0 ? doubts : undefined
+  };
 };
