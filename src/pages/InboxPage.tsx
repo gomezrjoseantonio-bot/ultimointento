@@ -8,20 +8,22 @@ import DocumentClassificationPanel from '../components/documents/DocumentClassif
 import BankStatementModal from '../components/inbox/BankStatementModal';
 import QADashboard from '../components/dev/QADashboard';
 import H8DemoComponent from '../components/dev/H8DemoComponent';
+import AutoSaveToggle from '../components/documents/AutoSaveToggle';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
 import { detectDocumentType } from '../services/documentTypeDetectionService';
 import { showError } from '../services/toastService';
+import { ZipProcessingResult } from '../services/zipProcessingService';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [properties, setProperties] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  // H8: Queue-style filters (only approved filters - Estado, Tipo, Origen)
+  // Bandeja de entrada filters: Todos, Facturas, Contratos, Extractos, Otros, Pendientes
+  const [inboxFilter, setInboxFilter] = useState('todos');
   const [queueStatusFilter, setQueueStatusFilter] = useState('all');
-  const [tipoFilter, setTipoFilter] = useState('all');
   const [origenFilter, setOrigenFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -87,6 +89,13 @@ const InboxPage: React.FC = () => {
     
     loadDocuments();
   }, []);
+
+  // Handle ZIP processing completion
+  const handleZipProcessed = (result: ZipProcessingResult) => {
+    console.log('ZIP processed:', result);
+    // Additional ZIP-specific processing can be added here
+    // The documents are already added via onUploadComplete
+  };
 
   const handleDocumentUpload = async (newDocuments: any[]) => {
     // Enhanced auto-processing with document type detection
@@ -718,18 +727,26 @@ const InboxPage: React.FC = () => {
   };
 
   const filteredDocuments = sortDocuments(documents.filter(doc => {
-    // H8: Apply only approved queue filters (Estado, Tipo, Origen)
+    // Bandeja de entrada filters: Todos, Facturas, Contratos, Extractos, Otros, Pendientes
+    
+    // Main filter categories
+    if (inboxFilter !== 'todos') {
+      const docTipo = (doc.metadata?.tipo || 'otros').toLowerCase();
+      
+      if (inboxFilter === 'facturas' && !['factura', 'recibo', 'mejora', 'mobiliario'].includes(docTipo)) return false;
+      if (inboxFilter === 'contratos' && docTipo !== 'contrato') return false;
+      if (inboxFilter === 'extractos' && docTipo !== 'extracto bancario') return false;
+      if (inboxFilter === 'otros' && ['factura', 'recibo', 'mejora', 'mobiliario', 'contrato', 'extracto bancario'].includes(docTipo)) return false;
+      if (inboxFilter === 'pendientes') {
+        const status = (doc.metadata?.queueStatus || 'pendiente').toLowerCase();
+        if (!['pendiente', 'incompleto', 'error'].includes(status)) return false;
+      }
+    }
     
     // Estado filter (Pendiente, Incompleto, Importado, Error, Duplicado)
     if (queueStatusFilter !== 'all') {
       const docStatus = (doc.metadata?.queueStatus || doc.metadata?.status || 'pendiente').toLowerCase();
       if (docStatus !== queueStatusFilter.toLowerCase()) return false;
-    }
-    
-    // Tipo filter (Facturas, Extractos, Contratos, Otros)
-    if (tipoFilter !== 'all') {
-      const docTipo = (doc.metadata?.tipo || 'otros').toLowerCase();
-      if (docTipo !== tipoFilter.toLowerCase()) return false;
     }
     
     // Origen filter (Upload/Email)
@@ -765,8 +782,8 @@ const InboxPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-neutral-900">Inbox</h1>
-          {/* H8: Single queue view - no toggles needed */}
+          <h1 className="text-2xl font-semibold text-neutral-900">Bandeja de entrada</h1>
+          {/* Inbox info tooltip */}
           <div className="relative group">
             <Info className="w-5 h-5 text-neutral-400 hover:text-neutral-600 cursor-help" />
             <div className="absolute left-0 top-6 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
@@ -775,6 +792,9 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          <div className="mr-4">
+            <AutoSaveToggle />
+          </div>
           <button
             onClick={() => setShowBulkActions(!showBulkActions)}
             className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
@@ -814,6 +834,7 @@ const InboxPage: React.FC = () => {
         <div className="p-4 border-b">
           <DocumentUploader 
             onUploadComplete={handleDocumentUpload} 
+            onZipProcessed={handleZipProcessed}
             existingDocuments={documents}
           />
         </div>
@@ -854,10 +875,27 @@ const InboxPage: React.FC = () => {
               </div>
             )}
 
-            {/* H8: Only approved filters (Estado, Tipo, Origen) */}
+            {/* Bandeja de entrada main filters */}
             <div className="p-4 border-b border-neutral-200">
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Filtros</h4>
               <div className="space-y-3">
+                {/* Main category filter */}
+                <div>
+                  <label className="block text-xs text-neutral-600 mb-1">Categoría</label>
+                  <select
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    value={inboxFilter}
+                    onChange={(e) => setInboxFilter(e.target.value)}
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="facturas">Facturas</option>
+                    <option value="contratos">Contratos</option>
+                    <option value="extractos">Extractos</option>
+                    <option value="otros">Otros</option>
+                    <option value="pendientes">Pendientes</option>
+                  </select>
+                </div>
+                
                 {/* Estado filter */}
                 <div>
                   <label className="block text-xs text-neutral-600 mb-1">Estado</label>
@@ -873,22 +911,6 @@ const InboxPage: React.FC = () => {
                     <option value="importado">Importado</option>
                     <option value="error">Error</option>
                     <option value="duplicado">Duplicado</option>
-                  </select>
-                </div>
-                
-                {/* Tipo filter */}
-                <div>
-                  <label className="block text-xs text-neutral-600 mb-1">Tipo</label>
-                  <select
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                    value={tipoFilter}
-                    onChange={(e) => setTipoFilter(e.target.value)}
-                  >
-                    <option value="all">Todos los tipos</option>
-                    <option value="factura">Factura</option>
-                    <option value="extracto bancario">Extracto bancario</option>
-                    <option value="contrato">Contrato</option>
-                    <option value="otros">Otros</option>
                   </select>
                 </div>
                 
