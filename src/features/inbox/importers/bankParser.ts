@@ -1,8 +1,10 @@
 // ATLAS HOTFIX: Robust Bank Statement Parser - XLS/XLSX/CSV with header detection and fallback
 import * as XLSX from 'xlsx';
-import { BankProfile, ParseResult, ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
+import { ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
 import { bankProfilesService } from '../../../services/bankProfilesService';
 import { telemetry, qaChecklist } from '../../../services/telemetryService';
+import { parseEsNumber } from '../../../utils/numberUtils';
+import { detectDuplicates } from '../../../utils/duplicateDetection';
 
 // Global aliases for column detection - covers most Spanish banks
 const COLUMN_ALIASES = {
@@ -44,9 +46,6 @@ const COLUMN_ALIASES = {
     'num operacion', 'núm operación', 'id operacion', 'id operación'
   ]
 };
-
-import { parseEsNumber } from '../../../utils/numberUtils';
-import { detectDuplicates } from '../../../utils/duplicateDetection';
 
 export class BankParserService {
   
@@ -453,13 +452,13 @@ export class BankParserService {
     if (!dateStr) return null;
     
     // Clean the date string
-    const cleaned = dateStr.trim().replace(/[^\d\/\-\.]/g, '');
+    const cleaned = dateStr.trim().replace(/[^\d/\-.]/g, '');
     
     // Try common Spanish formats
     const formats = [
-      /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/, // dd/mm/yyyy
-      /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/, // dd/mm/yy
-      /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/, // yyyy/mm/dd
+      /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/, // dd/mm/yyyy
+      /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2})$/, // dd/mm/yy
+      /^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/, // yyyy/mm/dd
     ];
     
     for (const format of formats) {

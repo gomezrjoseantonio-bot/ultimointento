@@ -5,11 +5,13 @@ import DocumentViewer from '../components/documents/DocumentViewer';
 import DocumentUploader from '../components/documents/DocumentUploader';
 import InboxQueue from '../components/documents/InboxQueue';
 import DocumentClassificationPanel from '../components/documents/DocumentClassificationPanel';
+import BankStatementModal from '../components/inbox/BankStatementModal';
 import QADashboard from '../components/dev/QADashboard';
 import H8DemoComponent from '../components/dev/H8DemoComponent';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
 import { processDocumentOCR } from '../services/documentAIService';
+import { isBankStatementFile } from '../utils/bankDetection';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -32,6 +34,9 @@ const InboxPage: React.FC = () => {
   const [showQADashboard, setShowQADashboard] = useState(false);
   // H8: Demo component for development
   const [showH8Demo, setShowH8Demo] = useState(false);
+  // Bank statement modal for detected extracts
+  const [showBankStatementModal, setShowBankStatementModal] = useState(false);
+  const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
 
   useEffect(() => {
     // H3 requirement - check URL parameters for email log filter
@@ -83,7 +88,26 @@ const InboxPage: React.FC = () => {
   }, []);
 
   const handleDocumentUpload = async (newDocuments: any[]) => {
-    // Add documents to state
+    // Check if any uploaded document is a bank statement
+    for (const doc of newDocuments) {
+      try {
+        // Create a File object from the document to check
+        const blob = new Blob([doc.content], { type: doc.type });
+        const file = new File([blob], doc.filename, { type: doc.type });
+        
+        if (await isBankStatementFile(file)) {
+          // Show bank statement modal instead of regular processing
+          setBankStatementFile(file);
+          setShowBankStatementModal(true);
+          return; // Don't process as regular document
+        }
+      } catch (error) {
+        console.warn('Bank statement detection failed for file:', doc.filename, error);
+        // Continue with regular processing if detection fails
+      }
+    }
+    
+    // Add documents to state (regular processing)
     const updatedDocuments = [...documents, ...newDocuments];
     setDocuments(updatedDocuments);
     
@@ -461,6 +485,32 @@ const InboxPage: React.FC = () => {
 
       console.warn(`Manual OCR failed for ${document.filename}:`, error);
     }
+  };
+
+  // Handle bank statement import completion
+  const handleBankStatementImportComplete = (summary: {
+    inserted: number;
+    duplicates: number;
+    failed: number;
+    reconciled?: number;
+    pendingReview?: number;
+  }) => {
+    // Close the modal
+    setShowBankStatementModal(false);
+    setBankStatementFile(null);
+    
+    // Show comprehensive summary
+    const message = `Extracto importado: ${summary.inserted} movimientos`;
+    const details = [];
+    if (summary.duplicates > 0) details.push(`${summary.duplicates} duplicados`);
+    if (summary.reconciled && summary.reconciled > 0) details.push(`${summary.reconciled} conciliados`);
+    if (summary.pendingReview && summary.pendingReview > 0) details.push(`${summary.pendingReview} pendientes`);
+    
+    toast.success(details.length > 0 ? `${message} • ${details.join(' • ')}` : message, {
+      duration: 5000
+    });
+    
+    // The file doesn't get added to Inbox since it was processed directly
   };
 
   const handleAssignDocument = async (docId: number, metadata: any) => {
@@ -924,6 +974,17 @@ const InboxPage: React.FC = () => {
       {process.env.NODE_ENV === 'development' && showH8Demo && (
         <H8DemoComponent />
       )}
+
+      {/* Bank Statement Import Modal */}
+      <BankStatementModal
+        isOpen={showBankStatementModal}
+        onClose={() => {
+          setShowBankStatementModal(false);
+          setBankStatementFile(null);
+        }}
+        file={bankStatementFile}
+        onImportComplete={handleBankStatementImportComplete}
+      />
       
       {/* ATLAS HOTFIX: QA Dashboard - Development only */}
       {process.env.NODE_ENV === 'development' && (
