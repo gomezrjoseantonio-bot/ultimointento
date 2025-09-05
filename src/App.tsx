@@ -24,9 +24,9 @@ import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
 import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
 import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
 import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
-import ProyeccionPresupuesto from './modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto';
 import ProyeccionComparativa from './modules/horizon/proyeccion/comparativa/ProyeccionComparativa';
 import ProyeccionEscenarios from './modules/horizon/proyeccion/escenarios/ProyeccionEscenarios';
+import ProyeccionBase from './modules/horizon/proyeccion/base/ProyeccionBase';
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
 import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
@@ -102,12 +102,16 @@ function App() {
             </Route>
             
             <Route path="proyeccion">
-              <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
+              <Route index element={<Navigate to="/proyeccion/base" replace />} />
               <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
-              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativa" replace />} />
-              <Route path="presupuesto" element={<ProyeccionPresupuesto />} />
-              <Route path="comparativa" element={<ProyeccionComparativa />} />
-              <Route path="escenarios" element={<ProyeccionEscenarios />} />
+              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativas" replace />} />
+              {/* Legacy routes for backward compatibility */}
+              <Route path="presupuesto" element={<Navigate to="/proyeccion/base" replace />} />
+              <Route path="escenarios" element={<Navigate to="/proyeccion/simulaciones" replace />} />
+              {/* New structure */}
+              <Route path="base" element={<ProyeccionBase />} />
+              <Route path="simulaciones" element={<ProyeccionEscenarios />} />
+              <Route path="comparativas" element={<ProyeccionComparativa />} />
             </Route>
             
             {/* Personal section (within Horizon) */}
