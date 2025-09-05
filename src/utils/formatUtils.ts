@@ -1,12 +1,13 @@
 // Spanish number formatting utilities
-import { parseEsNumber, formatEsCurrency, formatEsPercentage } from './numberUtils';
+import { parseEsNumber, formatEsPercentage } from './numberUtils';
+import { formatSpanishCurrency, formatSpanishDate } from '../services/spanishFormattingService';
 
 export const formatEuro = (amount: number | null | undefined): string => {
   if (amount === null || amount === undefined || isNaN(amount)) {
     return '—';
   }
   
-  return formatEsCurrency(amount);
+  return formatSpanishCurrency(amount);
 };
 
 export const formatNumber = (value: number | null | undefined): string => {
@@ -44,14 +45,8 @@ export const parseNumberInput = (input: string): number | null => {
 export const formatDate = (date: string | Date): string => {
   if (!date) return '—';
   
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(dateObj.getTime())) return '—';
-  
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).format(dateObj);
+  const result = formatSpanishDate(date);
+  return result === 'Fecha inválida' ? '—' : result;
 };
 
 export const formatDateInput = (dateString: string): string => {
