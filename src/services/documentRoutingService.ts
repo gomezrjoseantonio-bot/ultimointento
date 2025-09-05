@@ -1,5 +1,7 @@
-// Document Routing Service for Bandeja de entrada
-// Handles automatic routing of documents to their proper destinations
+// ATLAS HORIZON - Document Routing Service
+// Handles automatic routing of documents to their proper destinations following exact requirements
+
+import { RoutingDestinationResult, InboxItem, OCRExtractionResult, ClassificationResult, PropertyDetectionResult } from '../types/inboxTypes';
 
 export interface RoutingDestination {
   module: 'tesoreria' | 'fiscalidad' | 'inmuebles' | 'personal';
@@ -15,6 +17,212 @@ export interface RoutingResult {
   requiresManualAssignment?: boolean;
   missingFields?: string[];
 }
+
+/**
+ * Route document following ATLAS HORIZON requirements
+ */
+export async function routeInboxDocument(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  classification: ClassificationResult,
+  propertyDetection: PropertyDetectionResult
+): Promise<RoutingDestinationResult> {
+  
+  console.log(`[Routing] Processing ${classification.subtype} document:`, {
+    supplier: ocrData.supplier_name,
+    amount: ocrData.total_amount,
+    property: propertyDetection.inmueble_id
+  });
+
+  switch (classification.subtype) {
+    case 'suministro':
+      return await routeSuministro(item, ocrData, propertyDetection);
+    
+    case 'recibo':
+      return await routeRecibo(item, ocrData, propertyDetection);
+    
+    case 'reforma':
+      return await routeReforma(item, ocrData, propertyDetection);
+    
+    case 'factura_generica':
+      return await routeFacturaGenerica(item, ocrData, propertyDetection);
+    
+    default:
+      return {
+        success: false,
+        requiresReview: true,
+        errorMessage: `Tipo de documento no soportado: ${classification.subtype}`
+      };
+  }
+}
+
+/**
+ * 4.1 Suministro → Inmuebles > Gastos > Suministros (o Personal > Gastos si no hay inmueble)
+ */
+async function routeSuministro(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  propertyDetection: PropertyDetectionResult
+): Promise<RoutingDestinationResult> {
+  
+  try {
+    const gasto = {
+      tipo: 'Suministros',
+      proveedor: ocrData.supplier_name,
+      cif: ocrData.supplier_tax_id,
+      importe_total: ocrData.total_amount,
+      fecha_emision: ocrData.issue_date,
+      fecha_prevista_cargo: ocrData.due_or_charge_date || null,
+      inmueble_id: propertyDetection.inmueble_id,
+      adjuntos: [item.fileUrl],
+      notas: {
+        service_address: ocrData.service_address,
+        iban_mask: ocrData.iban_mask,
+        ocr_meta_optional: ocrData.metadata,
+        inbox_id: item.id
+      }
+    };
+
+    // Create the expense in the appropriate section
+    const gastoId = await createGasto(gasto);
+    
+    const path = propertyDetection.inmueble_id 
+      ? 'Inmuebles › Gastos › Suministros'
+      : 'Personal › Gastos › Suministros';
+
+    console.log(`[Routing] Created suministro gasto: ${gastoId} in ${path}`);
+
+    return {
+      success: true,
+      requiresReview: false,
+      destRef: {
+        kind: 'gasto',
+        id: gastoId,
+        path
+      }
+    };
+
+  } catch (error) {
+    console.error('[Routing] Error creating suministro gasto:', error);
+    return {
+      success: false,
+      requiresReview: false,
+      errorMessage: 'Error al crear gasto de suministro'
+    };
+  }
+}
+
+/**
+ * 4.2 Recibo (sin desglose) → Tesorería > Movimientos
+ */
+async function routeRecibo(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  propertyDetection: PropertyDetectionResult
+): Promise<RoutingDestinationResult> {
+  
+  try {
+    const movimiento = {
+      fecha: ocrData.due_or_charge_date || ocrData.issue_date || item.createdAt.toISOString().split('T')[0],
+      descripcion: `Recibo ${ocrData.supplier_name}`,
+      importe: -(ocrData.total_amount || 0), // Negative for expense
+      cuenta_detectada: await detectAccountByIBAN(ocrData.iban_mask),
+      contrapartida: ocrData.supplier_name,
+      notas: {
+        iban_mask: ocrData.iban_mask,
+        source: 'recibo_pdf',
+        inbox_id: item.id
+      },
+      adjuntos: [item.fileUrl]
+    };
+
+    const movimientoId = await createMovimiento(movimiento);
+    
+    console.log(`[Routing] Created recibo movimiento: ${movimientoId}`);
+
+    return {
+      success: true,
+      requiresReview: false,
+      destRef: {
+        kind: 'movimiento',
+        id: movimientoId,
+        path: 'Tesorería › Movimientos'
+      }
+    };
+
+  } catch (error) {
+    console.error('[Routing] Error creating recibo movimiento:', error);
+    return {
+      success: false,
+      requiresReview: false,
+      errorMessage: 'Error al crear movimiento de recibo'
+    };
+  }
+}
+
+/**
+ * 4.3 Reforma → Requires fiscal category selection
+ */
+async function routeReforma(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  propertyDetection: PropertyDetectionResult
+): Promise<RoutingDestinationResult> {
+  
+  // Always requires manual review for fiscal category
+  return {
+    success: false,
+    requiresReview: true,
+    reviewReason: 'Categoría fiscal requerida: Mejora | Mobiliario | Reparación y Conservación'
+  };
+}
+
+/**
+ * 4.4 Factura genérica → Requires manual classification
+ */
+async function routeFacturaGenerica(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  propertyDetection: PropertyDetectionResult
+): Promise<RoutingDestinationResult> {
+  
+  return {
+    success: false,
+    requiresReview: true,
+    reviewReason: 'Clasificación manual requerida: Suministros | Reforma | Otro gasto'
+  };
+}
+
+/**
+ * Mock function to create gasto (replace with actual implementation)
+ */
+async function createGasto(gastoData: any): Promise<string> {
+  // TODO: Integrate with actual gasto creation service
+  console.log('[Routing] Creating gasto:', gastoData);
+  return 'gasto_' + Date.now();
+}
+
+/**
+ * Mock function to create movimiento (replace with actual implementation)
+ */
+async function createMovimiento(movimientoData: any): Promise<string> {
+  // TODO: Integrate with actual movimiento creation service
+  console.log('[Routing] Creating movimiento:', movimientoData);
+  return 'mov_' + Date.now();
+}
+
+/**
+ * Detect account by IBAN mask
+ */
+async function detectAccountByIBAN(ibanMask?: string): Promise<string | null> {
+  if (!ibanMask) return null;
+  
+  // TODO: Query accounts database to find matching account
+  // For now, return null (account will need to be selected manually)
+  return null;
+}
+
+// Legacy functions (keep for backward compatibility)
 
 /**
  * Route a document to its appropriate destination based on classification
