@@ -29,7 +29,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['fake pdf content']),
       metadata: {
-        tipo: 'invoice',
+        tipo: 'Factura' as const,
         proveedor: 'Wekiwi',
         financialData: {
           amount: 29.35,
@@ -37,7 +37,10 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
           dueDate: '2025-01-15'
         },
         ocr: {
-          status: 'completed',
+          engine: 'gdocai:invoice',
+          timestamp: new Date().toISOString(),
+          confidenceGlobal: 0.92,
+          status: 'completed' as const,
           fields: [
             { name: 'total_amount', value: '29.35', confidence: 0.95 },
             { name: 'supplier_name', value: 'Wekiwi', confidence: 0.88 }
@@ -71,7 +74,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['fake excel content']),
       metadata: {
-        tipo: 'bank_statement',
+        tipo: 'Extracto bancario' as const,
         extractMetadata: {
           bank: 'BBVA',
           totalRows: 25,
@@ -105,7 +108,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       size: 1024,
       lastModified: Date.now(),
       content: new Blob(['fake pdf content']),
-      metadata: { tipo: 'invoice' },
+      metadata: { tipo: 'Factura' as const },
       uploadDate: new Date().toISOString()
     };
 
@@ -121,8 +124,12 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['fecha,concepto,importe\n2025-01-01,Test,100.00']),
       metadata: { 
-        tipo: 'bank_statement',
-        extractMetadata: { importedRows: 1 }
+        tipo: 'Extracto bancario' as const,
+        extractMetadata: { 
+          bank: 'BBVA',
+          totalRows: 1,
+          importedRows: 1 
+        }
       },
       uploadDate: new Date().toISOString()
     };
@@ -149,7 +156,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['col1,col2,col3\ndata1,data2,data3']),
       metadata: { 
-        tipo: 'bank_statement',
+        tipo: 'Extracto bancario' as const,
         extractMetadata: { 
           bank: 'unknown',
           totalRows: 1,
@@ -180,7 +187,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['content']),
       metadata: { 
-        tipo: 'invoice',
+        tipo: 'Factura' as const,
         financialData: { amount: 100 }
       },
       uploadDate: new Date().toISOString()
@@ -208,7 +215,7 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
       lastModified: Date.now(),
       content: new Blob(['content']),
       metadata: { 
-        tipo: 'invoice',
+        tipo: 'Factura' as const,
         financialData: { amount: 1234.56 }
       },
       uploadDate: new Date().toISOString()
