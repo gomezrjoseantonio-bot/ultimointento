@@ -92,3 +92,33 @@ if (process.env.NODE_ENV === 'development') {
   (window as any).testH8 = testH8Integration;
   console.log('🔧 H8 test available as window.testH8()');
 }
+
+// Jest Tests
+describe('H8 Auto-OCR Integration', () => {
+  test('should complete H8 integration test', async () => {
+    const result = await testH8Integration();
+    
+    expect(result.documentTypeDetection).toBe(true);
+    expect(result.ocrQueue).toBe(true);
+    expect(result.autoSaveConfig).toBe(true);
+    expect(result.spanishNumberParsing).toBe(true);
+    expect(result.endToEndProcessing).toBe(true);
+  });
+  
+  test('should detect document types correctly', async () => {
+    const csvFile = new File(['account,date,amount\\n123,2024-01-01,100.50'], 'extracto-bbva.csv', { type: 'text/csv' });
+    const bankResult = await detectDocumentType(csvFile);
+    
+    expect(bankResult).toBeDefined();
+    expect(bankResult.tipo).toBeDefined();
+  });
+  
+  test('should parse Spanish numbers correctly', () => {
+    const testAmounts = ['49,10', '1.234,56', '156,78 €', '0,50'];
+    
+    testAmounts.forEach(amount => {
+      const result = parseEsNumber(amount);
+      expect(result.value).not.toBeNull();
+    });
+  });
+});

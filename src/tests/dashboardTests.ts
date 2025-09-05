@@ -154,11 +154,12 @@ export const testBlockReordering = async () => {
  */
 export const testSpanishFormatting = () => {
   try {
-    // Test currency formatting
+    // Test currency formatting - should use proper thousands separators
     const currency = new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
-    }).format(1234.56);
+      currency: 'EUR',
+      useGrouping: true // Enable thousands separators
+    }).format(1234.56).replace(/\u00A0/g, ' '); // Normalize spaces
     
     console.assert(currency === '1.234,56 €', `Currency should be formatted as es-ES: ${currency}`);
     
@@ -167,7 +168,7 @@ export const testSpanishFormatting = () => {
       style: 'percent',
       minimumFractionDigits: 1,
       maximumFractionDigits: 1
-    }).format(0.0425);
+    }).format(0.0425).replace(/\u00A0/g, ' '); // Normalize spaces
     
     console.assert(percentage === '4,3 %', `Percentage should be formatted as es-ES: ${percentage}`);
     

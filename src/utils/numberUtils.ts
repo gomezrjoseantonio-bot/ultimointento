@@ -169,11 +169,12 @@ export function parseEsNumber(input: string, opts: ParseOptions = {}): ParseResu
  */
 export function formatEsCurrency(amount: number): string {
   return new Intl.NumberFormat('es-ES', {
-    style: 'decimal',
+    style: 'currency',
+    currency: 'EUR',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: true, // Enable thousands separators
-  }).format(amount) + ' €';
+  }).format(amount);
 }
 
 /**
