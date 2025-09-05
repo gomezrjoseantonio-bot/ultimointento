@@ -78,18 +78,18 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pass': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'fail': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      case 'pass': return <CheckCircle className="h-4 w-4 text-[#16A34A]" />; // Verde OK según guía
+      case 'fail': return <XCircle className="h-4 w-4 text-[#DC2626]" />; // Rojo error según guía
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-[#EAB308]" />; // Amarillo warning según guía
       default: return <AlertTriangle className="h-4 w-4 text-gray-400" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pass': return 'bg-green-50 text-green-700 border-green-200';
-      case 'fail': return 'bg-red-50 text-red-700 border-red-200';
-      case 'warning': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'pass': return 'bg-green-50 text-[#16A34A] border-green-200'; // Verde OK según guía
+      case 'fail': return 'bg-red-50 text-[#DC2626] border-red-200'; // Rojo error según guía
+      case 'warning': return 'bg-amber-50 text-[#EAB308] border-amber-200'; // Amarillo warning según guía
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };

@@ -7,9 +7,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Official ATLAS brand colors (immutable)
-        'brand-navy': '#0F3D62',
-        'brand-teal': '#2EB0CB',
+        // Official ATLAS brand colors - Atlas Horizon Style Guide
+        'brand-navy': '#0E2A47',  // Azul marino Horizon - color base principal
+        'brand-teal': '#00B8C4',  // Turquesa Pulse - reservado solo para Pulse
+        
+        // Horizon colors (primary navy)
+        'horizon-navy': '#0E2A47',
         
         // Navy palette for Horizon theme
         navy: {
@@ -20,18 +23,18 @@ module.exports = {
           400: '#5d7cb7',
           500: '#3a5998',
           600: '#2a4073',
-          700: '#0F3D62', // Official brand navy
-          800: '#1a2438',
-          900: '#0f131c',
+          700: '#0E2A47', // Official Horizon navy
+          800: '#0a1f35',
+          900: '#071829',
         },
         
-        // Teal palette for Pulse theme  
+        // Teal palette for Pulse theme (NO usar en Horizon)
         teal: {
           50: '#f0fdfc',
           100: '#ccfbf7',
           200: '#99f6ee',
           300: '#5eebe3',
-          400: '#2EB0CB', // Official brand teal
+          400: '#00B8C4', // Official Pulse teal - NO usar en Horizon
           500: '#14b8a6',
           600: '#0d9488',
           700: '#0f766e',
@@ -39,38 +42,38 @@ module.exports = {
           900: '#134e4a',
         },
         
-        // Semantic colors (aligned with ATLAS design system)
-        success: '#2EAF7D',
-        warning: '#F0A202', 
-        error: '#E35D5D',
-        danger: '#E35D5D',
-        info: '#2EB0CB', // Use brand teal for info
+        // Semantic colors (Atlas Horizon Style Guide)
+        success: '#16A34A',   // Verde OK, validado, conciliado
+        warning: '#EAB308',   // Amarillo warning, pendiente
+        error: '#DC2626',     // Rojo error, descuadre
+        danger: '#DC2626',    // Alias para error
+        info: '#00B8C4',      // Usar teal para info (solo Pulse)
         
-        // Neutral colors (consistent with CSS variables)
+        // Neutral colors (Atlas Horizon Style Guide)
         neutral: {
-          50: '#F8FAFC',
-          100: '#F1F5F9',
+          50: '#FFFFFF',     // Blanco
+          100: '#F3F4F6',    // Gris claro - fondos neutros secundarios
           200: '#E2E8F0',
           300: '#CBD5E1',
           400: '#94A3B8',
-          500: '#64748B',
+          500: '#6B7280',    // Gris medio - textos secundarios, labels
           600: '#475569',
           700: '#334155',
           800: '#1E293B',
-          900: '#0F172A',
+          900: '#111827',    // Negro - texto alto contraste
           950: '#020617',
         },
         gray: {
-          50: '#F8FAFC',   // bg-base
-          100: '#F1F5F9',
+          50: '#FFFFFF',     // Blanco según guía
+          100: '#F3F4F6',    // Gris claro según guía
           200: '#E2E8F0',
           300: '#CBD5E1',
           400: '#94A3B8',
-          500: '#64748B',
+          500: '#6B7280',    // Gris medio según guía
           600: '#475569',
           700: '#334155',
           800: '#1E293B',
-          900: '#0F172A',
+          900: '#111827',    // Negro según guía
           950: '#020617',
         }
       },
