@@ -26,6 +26,7 @@ import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
 import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
 import ProyeccionCartera from './modules/horizon/proyeccion/cartera/ProyeccionCartera';
 import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/ProyeccionConsolidado';
+import ProyeccionPresupuesto from './modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto';
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
 import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
@@ -104,6 +105,7 @@ function App() {
               <Route index element={<Navigate to="/proyeccion/cartera" replace />} />
               <Route path="cartera" element={<ProyeccionCartera />} />
               <Route path="consolidado" element={<ProyeccionConsolidado />} />
+              <Route path="presupuesto" element={<ProyeccionPresupuesto />} />
             </Route>
             
             {/* Personal section (within Horizon) */}
