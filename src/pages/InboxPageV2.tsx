@@ -17,7 +17,7 @@ interface InboxDocument {
   status: DocumentStatus;
   
   // Extracted fields
-  tipo: 'Factura' | 'Recibo' | 'Extracto' | 'Contrato' | 'Otro';
+  tipo: 'Factura' | 'Recibo' | 'Extracto' | 'Contrato' | 'Archivo' | 'Otro';
   proveedor?: string;
   importe?: number;
   fecha?: string;
@@ -40,6 +40,7 @@ const InboxPageV2: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'todos' | DocumentStatus>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('72h');
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // Load initial data
   useEffect(() => {
@@ -152,12 +153,24 @@ const InboxPageV2: React.FC = () => {
     // Simulate OCR and classification
     setTimeout(() => {
       const processed = { ...document };
+      processed.logs.push({ timestamp: new Date().toISOString(), action: 'OCR realizado' });
       
-      // Simple classification based on filename
-      if (document.filename.toLowerCase().includes('luz') || 
-          document.filename.toLowerCase().includes('agua') ||
-          document.filename.toLowerCase().includes('gas')) {
+      // Enhanced classification based on filename and business rules
+      const filename = document.filename.toLowerCase();
+      
+      // 1. Suministros (Luz/Agua/Gas/Telco) - Auto-save
+      if (filename.includes('luz') || filename.includes('iberdrola') || 
+          filename.includes('agua') || filename.includes('gas') || 
+          filename.includes('telefon') || filename.includes('movistar') ||
+          filename.includes('endesa') || filename.includes('aqualia')) {
+        
         processed.tipo = 'Factura';
+        processed.proveedor = filename.includes('iberdrola') ? 'Iberdrola' : 
+                             filename.includes('endesa') ? 'Endesa' :
+                             filename.includes('aqualia') ? 'Aqualia' : 'Proveedor Suministro';
+        processed.importe = 50 + Math.random() * 200; // Mock amount
+        processed.fecha = new Date().toISOString().split('T')[0];
+        processed.iban = `****${Math.floor(1000 + Math.random() * 9000)}`;
         processed.destino = 'Inmuebles › Gastos › Suministros';
         processed.status = 'guardado_automatico';
         processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
@@ -165,28 +178,95 @@ const InboxPageV2: React.FC = () => {
           { timestamp: new Date().toISOString(), action: 'Clasificado como suministro' },
           { timestamp: new Date().toISOString(), action: 'Archivado automáticamente' }
         );
-      } else if (document.filename.toLowerCase().includes('reforma')) {
+        toast.success(`${document.filename} procesado y archivado automáticamente`);
+        
+      // 2. Reformas/Compras - Require category selection
+      } else if (filename.includes('reforma') || filename.includes('obra') || 
+                 filename.includes('compra') || filename.includes('material')) {
+        
         processed.tipo = 'Factura';
+        processed.proveedor = 'Reformas García';
+        processed.importe = 1000 + Math.random() * 5000; // Mock amount
+        processed.fecha = new Date().toISOString().split('T')[0];
         processed.status = 'revision_requerida';
         processed.blockingReasons = ['Categoría fiscal requerida: Mejora/Mobiliario/Reparación y Conservación'];
         processed.logs.push(
           { timestamp: new Date().toISOString(), action: 'Clasificado como reforma' },
           { timestamp: new Date().toISOString(), action: 'Pendiente de categorización' }
         );
-      } else {
-        processed.status = 'revision_requerida';
-        processed.blockingReasons = ['Destino requerido'];
+        
+      // 3. Recibos simples - Auto-save to Tesorería
+      } else if (filename.includes('recibo') || filename.includes('ticket') || 
+                 filename.includes('comprobante')) {
+        
+        processed.tipo = 'Recibo';
+        processed.proveedor = 'Emisor Recibo';
+        processed.importe = 10 + Math.random() * 100; // Mock amount
+        processed.fecha = new Date().toISOString().split('T')[0];
+        processed.iban = `****${Math.floor(1000 + Math.random() * 9000)}`;
+        processed.destino = 'Tesorería › Movimientos';
+        processed.status = 'guardado_automatico';
+        processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
         processed.logs.push(
-          { timestamp: new Date().toISOString(), action: 'Pendiente de clasificación' }
+          { timestamp: new Date().toISOString(), action: 'Clasificado como recibo simple' },
+          { timestamp: new Date().toISOString(), action: 'Movimiento creado en Tesorería' }
+        );
+        toast.success(`${document.filename} procesado - movimiento creado en Tesorería`);
+        
+      // 4. Extractos bancarios - Process movements, don't keep as document
+      } else if (filename.includes('extracto') || filename.includes('bank') || 
+                 processed.type.includes('csv') || processed.type.includes('xlsx')) {
+        
+        processed.tipo = 'Extracto';
+        processed.destino = 'Tesorería › Movimientos';
+        processed.status = 'guardado_automatico';
+        processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+        processed.logs.push(
+          { timestamp: new Date().toISOString(), action: 'Extracto bancario procesado' },
+          { timestamp: new Date().toISOString(), action: `${3 + Math.floor(Math.random() * 10)} movimientos importados` }
+        );
+        toast.success(`${document.filename} procesado - ${3 + Math.floor(Math.random() * 10)} movimientos importados`);
+        
+      // 5. Contratos - Auto-save to Inmuebles › Contratos
+      } else if (filename.includes('contrato') || filename.includes('contract') ||
+                 processed.type.includes('docx')) {
+        
+        processed.tipo = 'Contrato';
+        processed.inmueble = 'Propiedad definida';
+        processed.destino = 'Inmuebles › Contratos';
+        processed.status = 'guardado_automatico';
+        processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+        processed.logs.push(
+          { timestamp: new Date().toISOString(), action: 'Clasificado como contrato' },
+          { timestamp: new Date().toISOString(), action: 'Archivado en Inmuebles › Contratos' }
+        );
+        toast.success(`${document.filename} procesado y archivado en Contratos`);
+        
+      // 6. ZIP/EML files - Decompress and process each attachment
+      } else if (processed.type.includes('zip') || processed.type.includes('eml')) {
+        
+        processed.tipo = 'Archivo';
+        processed.status = 'guardado_automatico';
+        processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+        processed.logs.push(
+          { timestamp: new Date().toISOString(), action: 'Archivo descomprimido' },
+          { timestamp: new Date().toISOString(), action: `${2 + Math.floor(Math.random() * 5)} documentos extraídos y procesados` }
+        );
+        toast.success(`${document.filename} descomprimido - ${2 + Math.floor(Math.random() * 5)} documentos procesados`);
+        
+      // 7. Otros - Always ask for destination
+      } else {
+        processed.tipo = 'Otro';
+        processed.status = 'revision_requerida';
+        processed.blockingReasons = ['Destino requerido: seleccionar Inmueble/Personal'];
+        processed.logs.push(
+          { timestamp: new Date().toISOString(), action: 'Pendiente de clasificación' },
+          { timestamp: new Date().toISOString(), action: 'Requiere selección de destino' }
         );
       }
       
       setDocuments(prev => prev.map(doc => doc.id === document.id ? processed : doc));
-      
-      if (processed.status === 'guardado_automatico') {
-        toast.success(`${document.filename} procesado y archivado automáticamente`);
-      }
-    }, 1000);
+    }, 1500); // Longer processing time for better UX
   };
 
   // Filter documents
@@ -262,10 +342,39 @@ const InboxPageV2: React.FC = () => {
   };
 
   const handleCompleteAndArchive = (doc: InboxDocument) => {
-    // For demo purposes, just mark as completed
+    // Check if it's a reform document needing category selection
+    if (doc.blockingReasons?.some(r => r.includes('Categoría fiscal'))) {
+      if (!selectedCategory) {
+        toast.error('Selecciona una categoría fiscal');
+        return;
+      }
+      
+      // Update document with selected category
+      const updated = {
+        ...doc,
+        status: 'guardado_automatico' as DocumentStatus,
+        destino: `Inmuebles › Gastos › ${selectedCategory}`,
+        expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+        blockingReasons: undefined,
+        logs: [
+          ...doc.logs,
+          { timestamp: new Date().toISOString(), action: `Categoría seleccionada: ${selectedCategory}` },
+          { timestamp: new Date().toISOString(), action: 'Completado y archivado' }
+        ]
+      };
+      
+      setDocuments(prev => prev.map(d => d.id === doc.id ? updated : d));
+      setSelectedDocument(updated);
+      setSelectedCategory(''); // Reset selection
+      toast.success(`Documento categorizado como ${selectedCategory} y archivado`);
+      return;
+    }
+    
+    // For other types, just mark as completed
     const updated = {
       ...doc,
       status: 'guardado_automatico' as DocumentStatus,
+      destino: doc.destino || 'Documentos',
       expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
       blockingReasons: undefined,
       logs: [
@@ -419,7 +528,10 @@ const InboxPageV2: React.FC = () => {
                     className={`hover:bg-gray-50 cursor-pointer ${
                       selectedDocument?.id === doc.id ? 'bg-blue-50' : ''
                     }`}
-                    onClick={() => setSelectedDocument(doc)}
+                    onClick={() => {
+                      setSelectedDocument(doc);
+                      setSelectedCategory(''); // Reset category selection
+                    }}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
@@ -559,7 +671,11 @@ const InboxPageV2: React.FC = () => {
                       <label className="block text-sm font-medium text-yellow-800">
                         Categoría fiscal:
                       </label>
-                      <select className="w-full p-2 border border-yellow-300 rounded">
+                      <select 
+                        className="w-full p-2 border border-yellow-300 rounded"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                      >
                         <option value="">Seleccionar categoría</option>
                         <option value="mejora">Mejora</option>
                         <option value="mobiliario">Mobiliario</option>
