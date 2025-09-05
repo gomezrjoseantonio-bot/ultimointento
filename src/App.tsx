@@ -24,10 +24,9 @@ import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
 import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
 import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
 import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
-import ProyeccionCartera from './modules/horizon/proyeccion/cartera/ProyeccionCartera';
-import ProyeccionConsolidado from './modules/horizon/proyeccion/consolidado/ProyeccionConsolidado';
 import ProyeccionPresupuesto from './modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto';
 import ProyeccionComparativa from './modules/horizon/proyeccion/comparativa/ProyeccionComparativa';
+import ProyeccionEscenarios from './modules/horizon/proyeccion/escenarios/ProyeccionEscenarios';
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
 import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
@@ -103,11 +102,12 @@ function App() {
             </Route>
             
             <Route path="proyeccion">
-              <Route index element={<Navigate to="/proyeccion/cartera" replace />} />
-              <Route path="cartera" element={<ProyeccionCartera />} />
-              <Route path="consolidado" element={<ProyeccionConsolidado />} />
+              <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
+              <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
+              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativa" replace />} />
               <Route path="presupuesto" element={<ProyeccionPresupuesto />} />
               <Route path="comparativa" element={<ProyeccionComparativa />} />
+              <Route path="escenarios" element={<ProyeccionEscenarios />} />
             </Route>
             
             {/* Personal section (within Horizon) */}
