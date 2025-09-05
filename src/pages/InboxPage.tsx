@@ -11,6 +11,7 @@ import BankStatementWizard from '../components/inbox/BankStatementWizard';
 import ReformInvoiceEditor from '../components/inbox/ReformInvoiceEditor';
 import QADashboard from '../components/dev/QADashboard';
 import H8DemoComponent from '../components/dev/H8DemoComponent';
+import DiagnosticDashboard from '../components/dev/DiagnosticDashboard';
 import AutoSaveToggle from '../components/documents/AutoSaveToggle';
 import { getOCRConfig } from '../services/ocrService';
 import { getAutoSaveConfig, classifyDocument, autoSaveDocument } from '../services/autoSaveService';
@@ -19,6 +20,9 @@ import { detectDocumentType } from '../services/documentTypeDetectionService';
 import { validateDocumentForPending } from '../services/documentValidationService';
 import { showError } from '../services/toastService';
 import { ZipProcessingResult } from '../services/zipProcessingService';
+import { processDocumentIngestion } from '../services/documentIngestionService';
+import { telemetry } from '../services/telemetryService';
+import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
@@ -264,9 +268,76 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  // Enhanced auto-processing using the new ingestion service with diagnostic events
+  const handleEnhancedDocumentProcessing = async (document: any) => {
+    try {
+      // Check environment flags first
+      if (!isAutoRouteEnabled()) {
+        toast.error('Auto-routing disabled in environment configuration');
+        return;
+      }
+
+      // Use the enhanced document ingestion service
+      const result = await processDocumentIngestion(document);
+      
+      // Update document status and metadata
+      const updatedDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          queueStatus: result.success ? 'importado' : 'error',
+          ingestionResult: result,
+          processedAt: new Date().toISOString()
+        }
+      };
+      
+      // Update document in state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? updatedDoc : doc
+      ));
+      
+      // Show result message
+      if (result.success) {
+        toast.success(result.message, { duration: 4000 });
+        
+        // Remove from inbox after successful processing (72h simulation)
+        setTimeout(() => {
+          setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+        }, 3000); // 3 seconds instead of 72h for demo purposes
+      } else {
+        toast.error(result.message);
+      }
+      
+    } catch (error) {
+      console.error('Enhanced document processing failed:', error);
+      toast.error(`Error procesando documento: ${error}`);
+      
+      // Mark as error
+      const errorDoc = {
+        ...document,
+        metadata: {
+          ...document.metadata,
+          queueStatus: 'error',
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          processedAt: new Date().toISOString()
+        }
+      };
+
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? errorDoc : doc
+      ));
+    }
+  };
+
   // H3: Auto-save document processing with enhanced duplicate detection
   const handleAutoSaveDocument = async (document: any) => {
     try {
+      // Use enhanced processing if flags are enabled
+      if (isAutoRouteEnabled()) {
+        return await handleEnhancedDocumentProcessing(document);
+      }
+
+      // Fallback to legacy auto-save logic
       // Classify the document with duplicate detection
       const classification = await classifyDocument(document, documents);
       
@@ -1336,6 +1407,9 @@ const InboxPage: React.FC = () => {
           onClose={() => setShowQADashboard(false)}
         />
       )}
+
+      {/* Diagnostic Dashboard - Shows EVENT logs for 5-minute checklist */}
+      <DiagnosticDashboard />
     </div>
   );
 };

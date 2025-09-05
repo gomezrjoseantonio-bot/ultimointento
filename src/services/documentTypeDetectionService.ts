@@ -304,7 +304,8 @@ export const getDetectionExplanation = (result: DetectionResult): string => {
 // H8: Check if document should trigger auto-OCR
 export const shouldAutoOCR = (detectionResult: DetectionResult): boolean => {
   return !detectionResult.shouldSkipOCR && 
-         ['invoice', 'Contrato', 'other'].includes(detectionResult.tipo);
+         ['invoice', 'Contrato', 'other'].includes(detectionResult.tipo) &&
+         detectionResult.confidence > 0.5; // Only auto-OCR if we have reasonable confidence
 };
 
 // H8: Get processing pipeline for document type
@@ -358,6 +359,17 @@ export const detectBankStatementHeuristic = async (file: File): Promise<Detectio
           detectedColumns: detectedBankingCols,
           heuristicScore: detectedBankingCols.length / bankingColumns.length
         };
+      } else {
+        // CSV but without clear banking headers - still likely a bank statement
+        return {
+          tipo: 'bank_statement',
+          confidence: 0.75,
+          shouldSkipOCR: true,
+          reason: 'CSV format suggests bank statement (headers need verification)',
+          tokens: [extension || 'unknown'],
+          columnCount: columns.length,
+          detectedColumns: detectedBankingCols
+        };
       }
     }
     
@@ -378,7 +390,8 @@ export const detectBankStatementHeuristic = async (file: File): Promise<Detectio
       confidence: 0.60,
       shouldSkipOCR: true,
       reason: 'Spreadsheet format suggests bank statement (content analysis failed)',
-      tokens: [extension || 'unknown']
+      tokens: [extension || 'unknown'],
+      columnCount: 3 // Default estimate
     };
   }
 };

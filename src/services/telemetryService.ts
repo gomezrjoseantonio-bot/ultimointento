@@ -321,6 +321,11 @@ class TelemetryService {
       .reverse(); // Most recent first
   }
 
+  // Clear all events (for testing)
+  clearEvents(): void {
+    this.events = [];
+  }
+
   // Get session summary for debugging
   getSessionSummary(): {
     sessionId: string;
