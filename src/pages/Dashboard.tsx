@@ -147,16 +147,16 @@ const Dashboard: React.FC = () => {
               Tu {currentModule === 'horizon' ? 'cartera de inversiones' : 'plataforma de gestión'} está vacía. 
               {' '}Comienza {currentModule === 'horizon' ? 'importando tus datos o agregando nuevas entradas' : 'creando contratos y configurando automatizaciones'}.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <button 
                 onClick={() => navigate('/inmuebles/cartera/nuevo')}
-                className="px-6 py-2 rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 bg-navy-900 text-white focus:ring-navy-900"
+                className="px-6 py-3 rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 bg-navy-900 text-white focus:ring-navy-900 w-full sm:w-auto"
               >
                 Agregar Inmueble
               </button>
               <button 
                 onClick={() => navigate('/inbox')}
-                className="px-6 py-2 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900 focus:ring-offset-2"
+                className="px-6 py-3 border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors focus:outline-none focus:ring-2 focus:ring-navy-900 focus:ring-offset-2 w-full sm:w-auto"
               >
                 Importar Datos
               </button>
@@ -184,42 +184,36 @@ const Dashboard: React.FC = () => {
     .filter(block => block.isActive)
     .sort((a, b) => a.position - b.position);
 
-  const getGridColumns = () => {
-    const blockCount = activeBlocks.length;
-    if (blockCount <= 2) return 'md:grid-cols-2';
-    if (blockCount <= 4) return 'md:grid-cols-2 lg:grid-cols-2';
-    return 'md:grid-cols-2 lg:grid-cols-3'; // For 5+ blocks
-  };
-
   return (
     <div className="space-y-8">
       {/* Dashboard Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-navy-900">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-navy-900">
             {moduleInfo.title}
           </h1>
-          <p className="text-lg text-neutral-600 mt-1">{moduleInfo.subtitle}</p>
-          <div className="flex items-center space-x-4 mt-2 text-sm text-neutral-500">
+          <p className="text-base sm:text-lg text-neutral-600 mt-1">{moduleInfo.subtitle}</p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-sm text-neutral-500">
             <span>{propertyCount} inmueble{propertyCount !== 1 ? 's' : ''}</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>Preset {config.preset === 'preset-a' ? 'A' : 'B'}</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span>{activeBlocks.length} bloque{activeBlocks.length !== 1 ? 's' : ''} activos</span>
           </div>
         </div>
         
         <button
           onClick={handleConfigureClick}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors self-start sm:self-center"
         >
           <Settings className="w-4 h-4" />
-          Configurar Panel
+          <span className="hidden sm:inline">Configurar Panel</span>
+          <span className="sm:hidden">Configurar</span>
         </button>
       </div>
 
       {/* Dashboard Grid */}
-      <div className={`grid grid-cols-1 ${getGridColumns()} gap-6`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         {activeBlocks.map((blockConfig) => (
           <div key={blockConfig.id}>
             {renderBlock(blockConfig)}

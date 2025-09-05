@@ -49,11 +49,11 @@ const DashboardConfig: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [propertyCount, setPropertyCount] = useState(0);
 
-  // Setup sensors for drag and drop
+  // Setup sensors for drag and drop with better touch support
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // Minimum drag distance for touch devices
       },
     }),
     useSensor(KeyboardSensor, {
@@ -286,11 +286,11 @@ const DashboardConfig: React.FC = () => {
           ${!block.isActive ? 'opacity-50' : ''}
         `}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <button
             {...attributes}
             {...listeners}
-            className="text-neutral-400 hover:text-neutral-600 cursor-grab active:cursor-grabbing"
+            className="text-neutral-400 hover:text-neutral-600 cursor-grab active:cursor-grabbing p-1 -m-1 touch-manipulation"
             aria-label="Reordenar bloque"
           >
             <GripVertical className="w-5 h-5" />
@@ -300,20 +300,20 @@ const DashboardConfig: React.FC = () => {
             {getBlockIcon(block.id)}
           </div>
 
-          <div className="flex-1">
-            <div className="font-medium text-neutral-900">{block.name}</div>
-            <div className="text-sm text-neutral-600">{block.description}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-neutral-900 truncate">{block.name}</div>
+            <div className="text-sm text-neutral-600 truncate">{block.description}</div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="flex items-center cursor-pointer">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <label className="flex items-center cursor-pointer touch-manipulation">
               <input
                 type="checkbox"
                 checked={block.isActive}
                 onChange={() => handleBlockToggle(block.id)}
-                className={`rounded text-${accentColor} focus:ring-${accentColor}`}
+                className={`rounded text-${accentColor} focus:ring-${accentColor} w-4 h-4`}
               />
-              <span className="ml-2 text-sm text-neutral-700">
+              <span className="ml-2 text-sm text-neutral-700 hidden sm:inline">
                 {block.isActive ? 'Activo' : 'Inactivo'}
               </span>
             </label>
@@ -330,40 +330,42 @@ const DashboardConfig: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-neutral-900">Configuración del Panel</h2>
-          <p className="text-neutral-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-semibold text-neutral-900">Configuración del Panel</h2>
+          <p className="text-neutral-600 mt-1 text-sm sm:text-base">
             Personaliza tu dashboard añadiendo, quitando y reordenando bloques.
           </p>
-          <div className="text-sm text-neutral-500 mt-2">
+          <div className="text-xs sm:text-sm text-neutral-500 mt-2">
             <span>{propertyCount} inmueble{propertyCount !== 1 ? 's' : ''}</span>
             <span className="mx-2">•</span>
             <span>Preset recomendado: {propertyCount <= 3 ? 'A (≤3 inmuebles)' : 'B (>3 inmuebles)'}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={handlePreview}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
             <Eye className="w-4 h-4" />
-            Vista previa
+            <span className="hidden sm:inline">Vista previa</span>
+            <span className="sm:hidden">Vista</span>
           </button>
           
           <button
             onClick={handleResetToDefault}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Restaurar por defecto
+            <span className="hidden sm:inline">Restaurar por defecto</span>
+            <span className="sm:hidden">Restaurar</span>
           </button>
 
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`inline-flex items-center gap-2 px-4 py-2 bg-${accentColor} text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50`}
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 bg-${accentColor} text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50`}
           >
             <Save className="w-4 h-4" />
             {isSaving ? 'Guardando...' : 'Guardar'}
@@ -371,11 +373,11 @@ const DashboardConfig: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
         {/* Active Dashboard Blocks */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">Mi Dashboard</h3>
-          <p className="text-neutral-600 mb-6">
+          <p className="text-neutral-600 mb-6 text-sm sm:text-base">
             Arrastra para reordenar los bloques o desmárcalos para ocultarlos.
           </p>
 

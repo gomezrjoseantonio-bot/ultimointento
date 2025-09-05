@@ -37,11 +37,11 @@ const KpiBuilder: React.FC = () => {
   const [previewData, setPreviewData] = useState<PropertyKPIData | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
-  // Setup sensors for drag and drop
+  // Setup sensors for drag and drop with better touch support
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // Minimum drag distance for touch devices
       },
     }),
     useSensor(KeyboardSensor, {
