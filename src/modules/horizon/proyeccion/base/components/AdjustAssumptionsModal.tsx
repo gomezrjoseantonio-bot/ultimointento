@@ -83,7 +83,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Rent Growth */}
             <div>
               <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                Crecimiento rentas anual: {formatPercentage(formData.rentGrowth)}
+                Crecimiento rentas anual: {formatPercentage(formData.rentGrowth / 100)}
               </label>
               <input
                 type="range"
@@ -106,7 +106,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Expense Inflation */}
             <div>
               <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                Inflación gastos anual: {formatPercentage(formData.expenseInflation)}
+                Inflación gastos anual: {formatPercentage(formData.expenseInflation / 100)}
               </label>
               <input
                 type="range"
@@ -129,7 +129,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Property Appreciation */}
             <div>
               <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                Revalorización activos anual: {formatPercentage(formData.propertyAppreciation)}
+                Revalorización activos anual: {formatPercentage(formData.propertyAppreciation / 100)}
               </label>
               <input
                 type="range"
@@ -152,7 +152,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Vacancy Rate */}
             <div>
               <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                Vacancia: {formatPercentage(formData.vacancyRate)}
+                Vacancia: {formatPercentage(formData.vacancyRate / 100)}
               </label>
               <input
                 type="range"
@@ -175,7 +175,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             {/* Reference Rate */}
             <div>
               <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                Tipo de interés de referencia: {formatPercentage(formData.referenceRate)}
+                Tipo de interés de referencia: {formatPercentage(formData.referenceRate / 100)}
               </label>
               <input
                 type="range"

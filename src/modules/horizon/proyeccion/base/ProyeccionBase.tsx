@@ -152,31 +152,31 @@ const ProyeccionBase: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="text-center">
               <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
-                {formatPercentage(assumptions.rentGrowth)}
+                {formatPercentage(assumptions.rentGrowth / 100)}
               </p>
               <p className="text-sm text-[#6B7280]">Crecimiento rentas</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
-                {formatPercentage(assumptions.expenseInflation)}
+                {formatPercentage(assumptions.expenseInflation / 100)}
               </p>
               <p className="text-sm text-[#6B7280]">Inflación gastos</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
-                {formatPercentage(assumptions.propertyAppreciation)}
+                {formatPercentage(assumptions.propertyAppreciation / 100)}
               </p>
               <p className="text-sm text-[#6B7280]">Revalorización activos</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
-                {formatPercentage(assumptions.vacancyRate)}
+                {formatPercentage(assumptions.vacancyRate / 100)}
               </p>
               <p className="text-sm text-[#6B7280]">Vacancia</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
-                {formatPercentage(assumptions.referenceRate)}
+                {formatPercentage(assumptions.referenceRate / 100)}
               </p>
               <p className="text-sm text-[#6B7280]">Tipo de interés ref.</p>
             </div>

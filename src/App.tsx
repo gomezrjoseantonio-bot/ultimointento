@@ -25,7 +25,7 @@ import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
 import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
 import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
 import ProyeccionComparativa from './modules/horizon/proyeccion/comparativa/ProyeccionComparativa';
-import ProyeccionEscenarios from './modules/horizon/proyeccion/escenarios/ProyeccionEscenarios';
+import ProyeccionSimulaciones from './modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones';
 import ProyeccionBase from './modules/horizon/proyeccion/base/ProyeccionBase';
 import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
 import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
@@ -110,7 +110,7 @@ function App() {
               <Route path="escenarios" element={<Navigate to="/proyeccion/simulaciones" replace />} />
               {/* New structure */}
               <Route path="base" element={<ProyeccionBase />} />
-              <Route path="simulaciones" element={<ProyeccionEscenarios />} />
+              <Route path="simulaciones" element={<ProyeccionSimulaciones />} />
               <Route path="comparativas" element={<ProyeccionComparativa />} />
             </Route>
             
