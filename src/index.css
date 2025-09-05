@@ -11,30 +11,32 @@
   --brand-navy: #0E2A47;   /* ATLAS azul marino actualizado según guía Horizon */
   --brand-teal: #00B8C4;   /* ATLAS teal/acento actualizado */
 
-  /* Horizon Module specific colors */
-  --horizon-navy: #0E2A47;  /* Horizon primary navy - color base principal */
-  --horizon-teal: #00B8C4;  /* Reservado solo para Pulse, NO usar en Horizon */
+  /* Horizon Module - Strict Color Palette */
+  --horizon-primary: #0A2A57;      /* Primary navy as per requirements */
+  --horizon-primary-hover: #0C356B; /* Hover state as per requirements */
+  --horizon-bg-soft: #EAF1F8;      /* Soft background as per requirements */
+  
+  /* NO TURQUOISE - Reserved for Pulse only */
+  
+  /* Paleta derivada para Horizon */
+  --text: #0D1B2A;         /* Neutral dark text */
+  --text-muted: #475569;   /* Muted text */
+  --bg: #FFFFFF;           /* White background */
+  --surface: #FFFFFF;      /* White surface */
+  --surface-2: #F8FAFC;    /* Light neutral surface */
+  --border: #E2E8F0;       /* Border color */
 
-  /* Paleta derivada */
-  --text: #111827;         /* texto principal - negro alto contraste según guía */
-  --text-muted: #6B7280;   /* textos secundarios según guía */
-  --bg: #FFFFFF;           /* fondo app - blanco según guía */
-  --surface: #FFFFFF;      /* tarjetas/paneles - blanco según guía */
-  --surface-2: #F3F4F6;    /* fondos neutros secundarios según guía */
-  --border: #E1E8F0;
+  /* Estados semánticos según especificación */
+  --success: #16A34A;      /* Verde éxito ✅ */
+  --warning: #F59E0B;      /* Amarillo advertencia ⚠ */
+  --danger: #DC2626;       /* Rojo error ⛔ */
+  --info: var(--horizon-primary);
 
-  /* Estados semánticos según guía Atlas Horizon */
-  --success: #16A34A;    /* Verde OK, validado, conciliado */
-  --warning: #EAB308;    /* Amarillo warning, pendiente de revisión */
-  --danger:  #DC2626;    /* Rojo error, descuadre */
-  --info:    var(--brand-teal);
-
-  /* Interacciones */
-  --primary: var(--horizon-navy);  /* Usar navy Horizon como primary */
+  /* Interacciones - Solo Horizon */
+  --primary: var(--horizon-primary);
   --primary-contrast: #FFFFFF;
-  --primary-hover: #1a4059;        /* Navy hover calculado */
-  --accent: var(--brand-teal);     /* Solo para Pulse */
-  --accent-hover: #008a94;
+  --primary-hover: var(--horizon-primary-hover);
+  /* NO accent colors - strictly Horizon only */
 
   /* Tipografía y ritmo */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
