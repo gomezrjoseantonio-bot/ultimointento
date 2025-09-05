@@ -1,6 +1,7 @@
 // ATLAS HOTFIX: Development Telemetry Service - Safe logging for debugging
+// Extended with diagnostic events for 5-minute checklist
 interface TelemetryEvent {
-  type: 'bank_parse' | 'ocr_process' | 'manual_mapping' | 'error' | 'performance';
+  type: 'bank_parse' | 'ocr_process' | 'manual_mapping' | 'error' | 'performance' | 'diagnostic';
   action: string;
   metadata?: Record<string, any>;
   timestamp: string;
@@ -29,6 +30,15 @@ interface OCRProcessMetrics {
   confidenceAvg: number;
   criticalFieldsValid: boolean;
   errorMessage?: string;
+}
+
+interface DiagnosticEvent {
+  documentId: string;
+  documentType: string;
+  fileName: string;
+  event: 'PARSED' | 'ROUTED' | 'OCR_DONE' | 'MOVEMENT_CREATED' | 'ERROR';
+  destination?: string;
+  metadata?: Record<string, any>;
 }
 
 class TelemetryService {
@@ -220,6 +230,95 @@ class TelemetryService {
         details: details?.substring(0, 100)
       }
     });
+  }
+
+  // Diagnostic events for 5-minute checklist
+  emitDiagnosticEvent(event: DiagnosticEvent): void {
+    const eventName = `EVENT:${event.event}`;
+    this.log({
+      type: 'diagnostic',
+      action: eventName,
+      metadata: {
+        ...event,
+        timestamp: new Date().toISOString()
+      }
+    });
+    
+    // Also log to console for easy debugging
+    if (this.isDev) {
+      console.log(`🔍 ${eventName}`, {
+        document: `${event.fileName} (${event.documentType})`,
+        destination: event.destination,
+        metadata: event.metadata
+      });
+    }
+  }
+
+  // Convenience methods for common diagnostic events
+  emitParsedEvent(documentId: string, documentType: string, fileName: string, metadata?: Record<string, any>): void {
+    this.emitDiagnosticEvent({
+      documentId,
+      documentType,
+      fileName,
+      event: 'PARSED',
+      metadata
+    });
+  }
+
+  emitRoutedEvent(documentId: string, documentType: string, fileName: string, destination: string, metadata?: Record<string, any>): void {
+    this.emitDiagnosticEvent({
+      documentId,
+      documentType,
+      fileName,
+      event: 'ROUTED',
+      destination,
+      metadata
+    });
+  }
+
+  emitOCRDoneEvent(documentId: string, fileName: string, metadata?: Record<string, any>): void {
+    this.emitDiagnosticEvent({
+      documentId,
+      documentType: 'invoice', // OCR is primarily for invoices
+      fileName,
+      event: 'OCR_DONE',
+      metadata
+    });
+  }
+
+  emitMovementCreatedEvent(documentId: string, fileName: string, movementsCount: number, metadata?: Record<string, any>): void {
+    this.emitDiagnosticEvent({
+      documentId,
+      documentType: 'bank_statement',
+      fileName,
+      event: 'MOVEMENT_CREATED',
+      metadata: {
+        ...metadata,
+        movementsCount
+      }
+    });
+  }
+
+  emitErrorEvent(documentId: string, documentType: string, fileName: string, error: string, metadata?: Record<string, any>): void {
+    this.emitDiagnosticEvent({
+      documentId,
+      documentType,
+      fileName,
+      event: 'ERROR',
+      metadata: {
+        ...metadata,
+        error
+      }
+    });
+  }
+
+  // Get diagnostic events for dashboard
+  getDiagnosticEvents(limit: number = 50): DiagnosticEvent[] {
+    return this.events
+      .filter(e => e.type === 'diagnostic')
+      .slice(-limit)
+      .map(e => e.metadata as DiagnosticEvent)
+      .reverse(); // Most recent first
   }
 
   // Get session summary for debugging
