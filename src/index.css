@@ -8,33 +8,33 @@
 
 :root {
   /* Marca ATLAS */
-  --brand-navy: #0F3D62;   /* ATLAS azul marino (logotipo) */
-  --brand-teal: #2EB0CB;   /* ATLAS teal/acento (barra logo) */
+  --brand-navy: #0E2A47;   /* ATLAS azul marino actualizado según guía Horizon */
+  --brand-teal: #00B8C4;   /* ATLAS teal/acento actualizado */
 
   /* Horizon Module specific colors */
-  --horizon-navy: #022D5E;  /* Horizon primary navy */
-  --horizon-teal: #2EB0CB;  /* Horizon accent teal */
+  --horizon-navy: #0E2A47;  /* Horizon primary navy - color base principal */
+  --horizon-teal: #00B8C4;  /* Reservado solo para Pulse, NO usar en Horizon */
 
   /* Paleta derivada */
-  --text: #0F2433;         /* texto principal */
-  --text-muted: #5B7186;
-  --bg: #F7F9FC;           /* fondo app */
-  --surface: #FFFFFF;      /* tarjetas/paneles */
-  --surface-2: #F2F6FA;
+  --text: #111827;         /* texto principal - negro alto contraste según guía */
+  --text-muted: #6B7280;   /* textos secundarios según guía */
+  --bg: #FFFFFF;           /* fondo app - blanco según guía */
+  --surface: #FFFFFF;      /* tarjetas/paneles - blanco según guía */
+  --surface-2: #F3F4F6;    /* fondos neutros secundarios según guía */
   --border: #E1E8F0;
 
-  /* Estados (coherentes con marca, sin inventar nuevos primarios) */
-  --success: #2EAF7D;
-  --warning: #F0A202;
-  --danger:  #E35D5D;
+  /* Estados semánticos según guía Atlas Horizon */
+  --success: #16A34A;    /* Verde OK, validado, conciliado */
+  --warning: #EAB308;    /* Amarillo warning, pendiente de revisión */
+  --danger:  #DC2626;    /* Rojo error, descuadre */
   --info:    var(--brand-teal);
 
   /* Interacciones */
-  --primary: var(--brand-navy);
+  --primary: var(--horizon-navy);  /* Usar navy Horizon como primary */
   --primary-contrast: #FFFFFF;
-  --primary-hover: #0C3352;
-  --accent: var(--brand-teal);
-  --accent-hover: #1F9CB7;
+  --primary-hover: #1a4059;        /* Navy hover calculado */
+  --accent: var(--brand-teal);     /* Solo para Pulse */
+  --accent-hover: #008a94;
 
   /* Tipografía y ritmo */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";

@@ -206,9 +206,9 @@ const RadarPanel: React.FC = () => {
 
   const getSeverityIcon = (severity: 'info' | 'warning' | 'critical') => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-      case 'info': return <CheckCircle className="w-5 h-5 text-[#35C0CF]" />; // Turquoise Atlas
+      case 'critical': return <AlertTriangle className="w-5 h-5 text-[#DC2626]" />; // Rojo error según guía
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-[#EAB308]" />; // Amarillo warning según guía
+      case 'info': return <CheckCircle className="w-5 h-5 text-[#16A34A]" />; // Verde OK según guía
     }
   };
 
@@ -225,7 +225,7 @@ const RadarPanel: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-[#0D2B52]">Radar Tesorería</h2>
+        <h2 className="text-xl font-semibold text-[#0E2A47]">Radar Tesorería</h2>
         <p className="text-sm text-gray-600 mt-1">
           Vista general del estado financiero y proyecciones
         </p>
@@ -243,8 +243,8 @@ const RadarPanel: React.FC = () => {
             onClick={() => setSelectedModule(module.key)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedModule === module.key
-                ? 'bg-[#0D2B52] text-white shadow-sm'
-                : 'bg-gray-100 text-gray-700 hover:bg-[#35C0CF] hover:text-white'
+                ? 'bg-[#0E2A47] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-[#0E2A47] hover:text-white'
             }`}
           >
             {module.label}
