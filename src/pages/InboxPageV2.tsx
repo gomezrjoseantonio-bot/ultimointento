@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Eye, RotateCcw, Trash2, CheckCircle, AlertTriangle, XCircle,
-  FileText, Image, FileSpreadsheet, Archive, File
+  FileText, Image, FileSpreadsheet, Archive, File, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BankStatementModal from '../components/inbox/BankStatementModal';
 
 // Document state types as per requirements
 type DocumentStatus = 'guardado_automatico' | 'revision_requerida' | 'error';
@@ -41,6 +42,10 @@ const InboxPageV2: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('72h');
   const [selectedCategory, setSelectedCategory] = useState('');
+  
+  // Bank statement modal
+  const [showBankStatementModal, setShowBankStatementModal] = useState(false);
+  const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -118,6 +123,7 @@ const InboxPageV2: React.FC = () => {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/vnd.ms-excel',
+        'text/csv',
         'application/zip',
         'message/rfc822'
       ];
@@ -127,7 +133,26 @@ const InboxPageV2: React.FC = () => {
         return;
       }
 
-      // Create new document entry
+      // Detect bank statements by file type and name
+      const filename = file.name.toLowerCase();
+      const isBankStatement = 
+        file.type.includes('csv') || 
+        file.type.includes('excel') || 
+        file.type.includes('spreadsheet') ||
+        filename.includes('extracto') ||
+        filename.includes('movimientos') ||
+        filename.includes('bank') ||
+        filename.includes('bancario');
+
+      if (isBankStatement) {
+        // Open bank statement modal
+        setBankStatementFile(file);
+        setShowBankStatementModal(true);
+        toast.success(`Extracto bancario detectado: ${file.name}`);
+        return;
+      }
+
+      // Create new document entry for regular files
       const newDoc: InboxDocument = {
         id: Date.now().toString() + Math.random(),
         filename: file.name,
@@ -331,6 +356,22 @@ const InboxPageV2: React.FC = () => {
     processDocument(doc);
   };
 
+  const handleView = (doc: InboxDocument) => {
+    // Open document in side panel
+    setSelectedDocument(doc);
+    setSelectedCategory(''); // Reset category selection
+    
+    // For better UX, scroll the side panel into view on mobile
+    if (window.innerWidth < 1024) { // lg breakpoint
+      setTimeout(() => {
+        const detailPanel = document.querySelector('[data-testid="detail-panel"]');
+        if (detailPanel) {
+          detailPanel.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  };
+
   const handleDelete = (doc: InboxDocument) => {
     if (window.confirm(`¿Eliminar ${doc.filename}?`)) {
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
@@ -391,23 +432,23 @@ const InboxPageV2: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header compacto */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold" style={{ color: '#0A2A57' }}>
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-start sm:items-center">
+          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: '#0A2A57' }}>
             Bandeja de entrada
           </h1>
           <div className="relative">
             <input
               type="file"
               multiple
-              accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
+              accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.csv,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="hidden"
               id="file-upload"
             />
             <label
               htmlFor="file-upload"
-              className="flex items-center gap-2 px-4 py-2 text-white rounded-lg cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
               style={{ backgroundColor: '#0A2A57' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0C356B'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0A2A57'}
@@ -420,49 +461,50 @@ const InboxPageV2: React.FC = () => {
       </div>
 
       {/* Barra de utilidades */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex flex-col lg:flex-row gap-4">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+        <div className="flex flex-col gap-4">
           {/* Buscador global */}
-          <div className="flex-1 relative">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar por proveedor, importe, IBAN, inmueble, ID..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Segmented control de estado */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          {/* Segmented control de estado - Responsive */}
+          <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
             {([
               { key: 'todos', label: 'Todos', count: statusCounts.todos },
-              { key: 'guardado_automatico', label: 'Guardado automático ✅', count: statusCounts.guardado_automatico },
-              { key: 'revision_requerida', label: 'Revisión requerida ⚠', count: statusCounts.revision_requerida },
+              { key: 'guardado_automatico', label: 'Guardado ✅', count: statusCounts.guardado_automatico },
+              { key: 'revision_requerida', label: 'Revisión ⚠', count: statusCounts.revision_requerida },
               { key: 'error', label: 'Error ⛔', count: statusCounts.error }
             ] as const).map(({ key, label, count }) => (
               <button
                 key={key}
                 onClick={() => setStatusFilter(key)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors flex-1 sm:flex-none ${
                   statusFilter === key
                     ? 'bg-white shadow-sm text-gray-900'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {label} ({count})
+                <span className="hidden sm:inline">{label} ({count})</span>
+                <span className="sm:hidden">{label.split(' ')[0]} ({count})</span>
               </button>
             ))}
           </div>
 
           {/* Filtros adicionales */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 sm:flex-none"
               defaultValue=""
             >
-              <option value="">Todos los tipos</option>
+              <option value="">Tipos</option>
               <option value="factura">Factura</option>
               <option value="recibo">Recibo</option>
               <option value="extracto">Extracto</option>
@@ -471,13 +513,13 @@ const InboxPageV2: React.FC = () => {
             </select>
             
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 sm:flex-none"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
             >
-              <option value="72h">Últimas 72 h</option>
-              <option value="7d">Última semana</option>
-              <option value="30d">Último mes</option>
+              <option value="72h">72h</option>
+              <option value="7d">7 días</option>
+              <option value="30d">30 días</option>
               <option value="all">Todos</option>
             </select>
           </div>
@@ -485,38 +527,38 @@ const InboxPageV2: React.FC = () => {
       </div>
 
       {/* Contenido principal */}
-      <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Tabla principal */}
-        <div className="flex-1 bg-white">
+        <div className="flex-1 bg-white min-w-0">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tipo
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                     Proveedor/Emisor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Importe
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                     Fecha doc.
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                     Inmueble/Personal
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">
                     IBAN detectado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                     Destino final
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
@@ -533,28 +575,28 @@ const InboxPageV2: React.FC = () => {
                       setSelectedCategory(''); // Reset category selection
                     }}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {getFileIcon(doc.filename, doc.type)}
                         <span className="text-sm text-gray-900">{doc.tipo}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
                       {doc.proveedor || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatAmount(doc.importe)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden md:table-cell">
                       {formatDate(doc.fecha)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden lg:table-cell">
                       {doc.inmueble || 'Personal'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 hidden xl:table-cell">
                       {doc.iban || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer"
@@ -564,7 +606,7 @@ const InboxPageV2: React.FC = () => {
                         </span>
                       ) : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {getStatusIcon(doc.status)}
                         <span className="text-sm">
@@ -573,14 +615,15 @@ const InboxPageV2: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex gap-1 sm:gap-2">
                         <button 
                           className="text-blue-600 hover:text-blue-900"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedDocument(doc);
+                            handleView(doc);
                           }}
+                          title="Ver documento"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
@@ -590,6 +633,7 @@ const InboxPageV2: React.FC = () => {
                             e.stopPropagation();
                             handleReprocess(doc);
                           }}
+                          title="Reprocesar"
                         >
                           <RotateCcw className="w-4 h-4" />
                         </button>
@@ -599,6 +643,7 @@ const InboxPageV2: React.FC = () => {
                             e.stopPropagation();
                             handleDelete(doc);
                           }}
+                          title="Eliminar"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -617,13 +662,24 @@ const InboxPageV2: React.FC = () => {
           )}
         </div>
 
-        {/* Vista de detalle (panel lateral) */}
+        {/* Vista de detalle (panel lateral) - Responsive */}
         {selectedDocument && (
-          <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {selectedDocument.filename}
-              </h3>
+          <div 
+            data-testid="detail-panel"
+            className="w-full lg:w-80 xl:w-96 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 overflow-y-auto"
+          >
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-lg font-medium text-gray-900 pr-4">
+                  {selectedDocument.filename}
+                </h3>
+                <button
+                  onClick={() => setSelectedDocument(null)}
+                  className="lg:hidden text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               
               {/* Document viewer area */}
               <div className="mb-6 p-4 bg-gray-100 rounded-lg">
@@ -719,6 +775,21 @@ const InboxPageV2: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* Bank Statement Modal */}
+      <BankStatementModal
+        isOpen={showBankStatementModal}
+        onClose={() => {
+          setShowBankStatementModal(false);
+          setBankStatementFile(null);
+        }}
+        file={bankStatementFile}
+        onImportComplete={(summary) => {
+          toast.success(`✅ ${summary.inserted} movimientos importados`);
+          setShowBankStatementModal(false);
+          setBankStatementFile(null);
+        }}
+      />
     </div>
   );
 };

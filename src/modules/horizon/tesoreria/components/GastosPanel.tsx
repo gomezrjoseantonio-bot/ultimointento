@@ -71,6 +71,26 @@ const GastosPanel: React.FC = () => {
       return;
     }
 
+    // Business logic validation: Personal expenses cannot be assigned to properties
+    if (formData.destino === 'personal' && formData.destino_id !== 0) {
+      toast.error('Los gastos personales no pueden asignarse a un inmueble específico');
+      return;
+    }
+
+    // Business logic validation: Property expenses must have a valid property selected
+    if (formData.destino === 'inmueble_id' && formData.destino_id === 0) {
+      toast.error('Debes seleccionar un inmueble para gastos asociados a propiedades');
+      return;
+    }
+
+    // Business logic validation: Some categories should typically be property-related
+    if (formData.categoria_AEAT === 'suministros' && formData.destino === 'personal') {
+      const shouldProceed = window.confirm(
+        '⚠️ Los suministros suelen estar asociados a inmuebles. ¿Estás seguro de que es un gasto personal?'
+      );
+      if (!shouldProceed) return;
+    }
+
     try {
       const db = await initDB();
       const newGasto: Gasto = {
@@ -83,7 +103,9 @@ const GastosPanel: React.FC = () => {
       
       // Create toast message following the requirement
       const categoryName = formData.categoria_AEAT.charAt(0).toUpperCase() + formData.categoria_AEAT.slice(1);
-      toast.success(`✓ Guardado en Tesorería > Gastos: ${formatEuro(formData.total)} — ${formData.proveedor_nombre} / ${categoryName}`);
+      const destinoName = formData.destino === 'personal' ? 'Personal' : 
+                         properties.find(p => p.id === formData.destino_id)?.alias || 'Inmueble';
+      toast.success(`✓ Guardado en Tesorería > Gastos: ${formatEuro(formData.total)} — ${formData.proveedor_nombre} / ${categoryName} / ${destinoName}`);
       
       setShowForm(false);
       resetForm();
@@ -108,6 +130,15 @@ const GastosPanel: React.FC = () => {
       destino_id: 0,
       estado: 'completo'
     });
+  };
+
+  // Helper function to handle destino changes
+  const handleDestinoChange = (newDestino: GastoDestino) => {
+    setFormData(prev => ({
+      ...prev,
+      destino: newDestino,
+      destino_id: newDestino === 'personal' ? 0 : prev.destino_id // Clear property selection for personal
+    }));
   };
 
   const getStatusColor = (estado: string) => {
@@ -477,7 +508,7 @@ const GastosPanel: React.FC = () => {
                   <select
                     required
                     value={formData.destino}
-                    onChange={(e) => setFormData({...formData, destino: e.target.value as GastoDestino})}
+                    onChange={(e) => handleDestinoChange(e.target.value as GastoDestino)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="personal">Personal</option>
