@@ -5,7 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
-import InboxPage from './pages/InboxPage';
+import InboxPageV2 from './pages/InboxPageV2';
 import AccountPage from './pages/account/AccountPage';
 
 // Horizon (Investment) Module Components
@@ -67,7 +67,7 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={<Dashboard />} />
-            <Route path="inbox" element={<InboxPage />} />
+            <Route path="inbox" element={<InboxPageV2 />} />
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
