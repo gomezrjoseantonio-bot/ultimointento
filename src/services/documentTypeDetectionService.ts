@@ -286,55 +286,57 @@ const analyzePDFContent = async (file: File): Promise<DetectionResult> => {
         // Determine type based on token density
         if (bankingTokens.length >= 3) {
           resolve({
-            tipo: 'bank_statement', // Use standardized type name
+            documentType: 'extracto_banco',
             confidence: Math.min(0.85 + (bankingTokens.length * 0.02), 0.98),
             shouldSkipOCR: true,
             reason: 'Multiple banking tokens detected in PDF content',
-            tokens: bankingTokens,
-            heuristicScore: bankingTokens.length / BANKING_TOKENS.length
+            triggers: bankingTokens
           });
         } else if (contractTokens.length >= 2) {
           resolve({
-            tipo: 'Contrato',
+            documentType: 'otros',
             confidence: Math.min(0.75 + (contractTokens.length * 0.03), 0.95),
             shouldSkipOCR: false,
             reason: 'Contract tokens detected in PDF content',
-            tokens: contractTokens
+            triggers: contractTokens
           });
         } else if (invoiceTokens.length >= 2) {
           resolve({
-            tipo: 'invoice', // Use standardized type name
+            documentType: 'factura',
             confidence: Math.min(0.70 + (invoiceTokens.length * 0.03), 0.90),
             shouldSkipOCR: false,
             reason: 'Invoice tokens detected in PDF content',
-            tokens: invoiceTokens
+            triggers: invoiceTokens
           });
         } else {
           // Inconclusive from content analysis - default to invoice for PDFs
           resolve({
-            tipo: 'invoice', // Default to invoice for PDFs
+            documentType: 'factura',
             confidence: 0.50,
             shouldSkipOCR: false,
-            reason: 'PDF format suggests potential invoice (insufficient tokens for confident detection)'
+            reason: 'PDF format suggests potential invoice (insufficient tokens for confident detection)',
+            triggers: []
           });
         }
         
       } catch (error) {
         resolve({
-          tipo: 'Unknown',
+          documentType: 'otros',
           confidence: 0,
           shouldSkipOCR: false,
-          reason: 'PDF analysis failed'
+          reason: 'PDF analysis failed',
+          triggers: []
         });
       }
     };
     
     reader.onerror = () => {
       resolve({
-        tipo: 'Unknown',
+        documentType: 'otros',
         confidence: 0,
         shouldSkipOCR: false,
-        reason: 'Failed to read PDF file'
+        reason: 'Failed to read PDF file',
+        triggers: []
       });
     };
     
@@ -361,11 +363,11 @@ const detectByFilenameAndMime = (fileName: string, mimeType: string): DetectionR
   const hasInvoicePattern = invoicePatterns.some(pattern => fileName.includes(pattern));
   if (hasInvoicePattern) {
     return {
-      tipo: 'invoice', // Use standardized type name
+      documentType: 'factura',
       confidence: 0.75,
       shouldSkipOCR: false,
       reason: 'Invoice filename pattern detected',
-      tokens: invoicePatterns.filter(p => fileName.includes(p))
+      triggers: invoicePatterns.filter(p => fileName.includes(p))
     };
   }
   
@@ -373,44 +375,44 @@ const detectByFilenameAndMime = (fileName: string, mimeType: string): DetectionR
   const hasContractPattern = contractPatterns.some(pattern => fileName.includes(pattern));
   if (hasContractPattern) {
     return {
-      tipo: 'Contrato', 
+      documentType: 'otros',
       confidence: 0.70,
       shouldSkipOCR: false,
       reason: 'Contract filename pattern detected',
-      tokens: contractPatterns.filter(p => fileName.includes(p))
+      triggers: contractPatterns.filter(p => fileName.includes(p))
     };
   }
   
   // Check MIME types for potential invoices
   if (mimeType === 'application/pdf' || mimeType?.startsWith('image/')) {
     return {
-      tipo: 'invoice', // Use standardized type name - default for PDFs/images
+      documentType: 'factura',
       confidence: 0.60,
       shouldSkipOCR: false,
       reason: 'PDF or image format suggests potential invoice',
-      tokens: [mimeType]
+      triggers: [mimeType || 'unknown']
     };
   }
   
   // Default to other documents
   return {
-    tipo: 'other', // Use standardized type name
+    documentType: 'otros',
     confidence: 0.50,
     shouldSkipOCR: false,
     reason: 'No specific patterns detected',
-    tokens: []
+    triggers: []
   };
 };
 
 // H8: Get detection confidence explanation
 export const getDetectionExplanation = (result: DetectionResult): string => {
-  const { tipo, confidence, reason, tokens } = result;
+  const { documentType, confidence, reason, triggers } = result;
   
-  let explanation = `Detectado como "${tipo}" con ${(confidence * 100).toFixed(0)}% confianza.\n`;
+  let explanation = `Detectado como "${documentType}" con ${(confidence * 100).toFixed(0)}% confianza.\n`;
   explanation += `Razón: ${reason}\n`;
   
-  if (tokens && tokens.length > 0) {
-    explanation += `Tokens encontrados: ${tokens.join(', ')}`;
+  if (triggers && triggers.length > 0) {
+    explanation += `Triggers encontrados: ${triggers.join(', ')}`;
   }
   
   return explanation;
@@ -419,13 +421,13 @@ export const getDetectionExplanation = (result: DetectionResult): string => {
 // H8: Check if document should trigger auto-OCR
 export const shouldAutoOCR = (detectionResult: DetectionResult): boolean => {
   return !detectionResult.shouldSkipOCR && 
-         ['invoice', 'Contrato', 'other'].includes(detectionResult.tipo) &&
+         ['factura', 'otros'].includes(detectionResult.documentType) &&
          detectionResult.confidence > 0.5; // Only auto-OCR if we have reasonable confidence
 };
 
 // H8: Get processing pipeline for document type
 export const getProcessingPipeline = (detectionResult: DetectionResult): 'ocr' | 'bank-parser' | 'manual' => {
-  if (detectionResult.shouldSkipOCR && detectionResult.tipo === 'bank_statement') {
+  if (detectionResult.shouldSkipOCR && detectionResult.documentType === 'extracto_banco') {
     return 'bank-parser';
   }
   
@@ -443,10 +445,11 @@ export const detectBankStatementHeuristic = async (file: File): Promise<Detectio
   
   if (!['csv', 'xls', 'xlsx'].includes(extension || '')) {
     return {
-      tipo: 'other',
+      documentType: 'otros',
       confidence: 0,
       shouldSkipOCR: false,
-      reason: 'Not a spreadsheet format'
+      reason: 'Not a spreadsheet format',
+      triggers: []
     };
   }
   
@@ -465,48 +468,41 @@ export const detectBankStatementHeuristic = async (file: File): Promise<Detectio
       
       if (detectedBankingCols.length >= 3) {
         return {
-          tipo: 'bank_statement',
+          documentType: 'extracto_banco',
           confidence: 0.90,
           shouldSkipOCR: true,
           reason: 'CSV with 3+ banking columns detected (fecha, concepto, importe)',
-          tokens: detectedBankingCols,
-          columnCount: columns.length,
-          detectedColumns: detectedBankingCols,
-          heuristicScore: detectedBankingCols.length / bankingColumns.length
+          triggers: detectedBankingCols
         };
       } else {
         // CSV but without clear banking headers - still likely a bank statement
         return {
-          tipo: 'bank_statement',
+          documentType: 'extracto_banco',
           confidence: 0.75,
           shouldSkipOCR: true,
           reason: 'CSV format suggests bank statement (headers need verification)',
-          tokens: [extension || 'unknown'],
-          columnCount: columns.length,
-          detectedColumns: detectedBankingCols
+          triggers: [extension || 'unknown']
         };
       }
     }
     
     // For XLS/XLSX, return probable bank statement if it has the right structure
     return {
-      tipo: 'bank_statement',
+      documentType: 'extracto_banco',
       confidence: 0.75,
       shouldSkipOCR: true,
       reason: 'Spreadsheet format suggests bank statement (needs header verification)',
-      tokens: [extension || 'unknown'],
-      columnCount: 4 // Estimated
+      triggers: [extension || 'unknown']
     };
     
   } catch (error) {
     // Fallback to basic detection
     return {
-      tipo: 'bank_statement',
+      documentType: 'extracto_banco',
       confidence: 0.60,
       shouldSkipOCR: true,
       reason: 'Spreadsheet format suggests bank statement (content analysis failed)',
-      tokens: [extension || 'unknown'],
-      columnCount: 3 // Default estimate
+      triggers: [extension || 'unknown']
     };
   }
 };

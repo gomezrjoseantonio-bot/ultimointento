@@ -49,7 +49,7 @@ export async function extractOCRFields(fileUrl: string, mime: string): Promise<O
           break;
         case 'due_date':
         case 'due_or_charge_date':
-          extractedData.due_or_charge_date = formatDateToISO(field.value);
+          extractedData.due_date = formatDateToISO(field.value);
           break;
         case 'service_address':
         case 'receiver_address':

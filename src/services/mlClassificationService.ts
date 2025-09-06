@@ -137,6 +137,7 @@ class MLClassificationService {
    */
   private getDefaultClassification(): ClassificationResult {
     return {
+      documentType: 'factura',
       subtype: 'factura_generica',
       confidence: 0.1,
       matchedKeywords: [],
