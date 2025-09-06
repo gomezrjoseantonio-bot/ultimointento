@@ -32,7 +32,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   ],
   proyeccion: [
     { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
-    { label: 'Comparativa', path: '/proyeccion/comparativa' },
+    { label: 'Comparativas', path: '/proyeccion/comparativa' },
     { label: 'Escenarios', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
