@@ -433,10 +433,47 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// H-OCR-FIX: Enhanced OCR processing with provider resolution and Spanish normalization
+// H-OCR-FIX: Enhanced OCR processing with real Document AI integration
 export const processDocumentOCR = async (documentBlob: Blob, filename: string): Promise<OCRResult> => {
+  console.log('🔍 Starting OCR processing with Document AI:', filename);
+  
+  try {
+    // Try to use real Document AI first
+    const { callDocumentAIFunction, processDocumentAIResponse } = await import('./documentAIService');
+    
+    // Convert blob to File if needed
+    const file = documentBlob instanceof File ? documentBlob : new File([documentBlob], filename);
+    
+    // Call Document AI
+    const documentAIResponse = await callDocumentAIFunction(file);
+    const ocrResult = processDocumentAIResponse(documentAIResponse, filename);
+    
+    if (ocrResult.status === 'completed') {
+      console.log('✅ Real Document AI processing successful');
+      return ocrResult;
+    } else {
+      throw new Error(ocrResult.error || 'Document AI processing failed');
+    }
+    
+  } catch (error) {
+    console.warn('⚠️ Document AI failed, using fallback:', error instanceof Error ? error.message : error);
+    
+    // Check if it's a configuration error
+    if (error instanceof Error && error.message.includes('CONFIG')) {
+      console.warn('📝 Document AI not configured, using mock fallback');
+    }
+    
+    // Fallback to mock data
+    return await processDocumentOCRFallback(filename);
+  }
+};
+
+// Fallback OCR processing with mock data when Document AI is not available
+async function processDocumentOCRFallback(filename: string): Promise<OCRResult> {
+  console.warn('🔄 Using fallback mock OCR processing');
+  
   // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
+  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
 
   // Determine engine type (simulate fallback logic)
   const shouldUseInvoiceParser = filename.toLowerCase().includes('factura') || 
@@ -444,8 +481,8 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
                                 filename.toLowerCase().includes('recibo');
   
   const engineInfo: OCREngineInfo = shouldUseInvoiceParser && Math.random() > 0.1 
-    ? { type: 'document-ai-invoice', displayName: 'Document AI — Invoice (EU)', description: 'Specialized invoice processor' }
-    : { type: 'vision-fallback', displayName: 'Vision OCR (generic)', description: 'Generic text extraction' };
+    ? { type: 'document-ai-invoice', displayName: 'Document AI — Invoice (EU) [FALLBACK]', description: 'Fallback mock processor' }
+    : { type: 'vision-fallback', displayName: 'Vision OCR (generic) [FALLBACK]', description: 'Fallback mock processor' };
   
   // Simulate different outcomes based on file type
   const isInvoice = filename.toLowerCase().includes('factura') || 
@@ -457,8 +494,8 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
                                filename.toLowerCase().includes('construccion') ||
                                filename.toLowerCase().includes('material');
 
-  if (Math.random() < 0.1) {
-    // 10% chance of error
+  if (Math.random() < 0.05) {
+    // 5% chance of error (reduced for fallback)
     throw new Error('Error al procesar el documento: archivo no válido o dañado');
   }
 
