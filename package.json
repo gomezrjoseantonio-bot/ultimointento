@@ -20,6 +20,8 @@
     "chart.js": "^4.3.3",
     "google-auth-library": "^10.3.0",
     "idb": "^7.1.1",
+    "jspdf": "^3.0.2",
+    "jspdf-autotable": "^5.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.542.0",
     "react": "^18.2.0",
