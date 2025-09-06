@@ -2,6 +2,23 @@
 // Implements exact triggers: factura/recibo_sepa → OCR, extracto_banco → skip OCR
 // Following exact requirements from problem statement
 
+// Token definitions for content analysis
+const BANKING_TOKENS = [
+  'saldo', 'movimiento', 'transaccion', 'transferencia', 'adeudo', 'abono',
+  'fecha valor', 'concepto', 'importe', 'debe', 'haber', 'cuenta corriente',
+  'extracto', 'statement', 'balance', 'disponible', 'retenido'
+];
+
+const INVOICE_TOKENS = [
+  'factura', 'invoice', 'total', 'iva', 'base imponible', 'neto',
+  'proveedor', 'cliente', 'fecha emision', 'vencimiento', 'numero factura'
+];
+
+const CONTRACT_TOKENS = [
+  'contrato', 'contract', 'clausula', 'firmante', 'vigencia',
+  'por la presente', 'acuerdan', 'condiciones'
+];
+
 export interface DetectionResult {
   // Exact document types per requirements
   documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros';
@@ -197,10 +214,12 @@ const detectBankStatement = (file: File, fileName: string, mimeType: string): De
     
     if (hasBankPattern) {
       return {
-        tipo: 'bank_statement', // Use standardized type name
+        documentType: 'extracto_banco',
         confidence: 0.95,
         shouldSkipOCR: true,
         reason: 'Bank export file format detected',
+        triggers: [extension!, ...bankFilePatterns.filter(p => fileName.includes(p))],
+        tipo: 'bank_statement', // Legacy compatibility
         tokens: [extension!, ...bankFilePatterns.filter(p => fileName.includes(p))]
       };
     }
@@ -209,23 +228,27 @@ const detectBankStatement = (file: File, fileName: string, mimeType: string): De
     // This is a simple check for CSV/spreadsheet files
     if (['csv', 'xls', 'xlsx'].includes(extension || '')) {
       return {
-        tipo: 'bank_statement', // Use standardized type name
+        documentType: 'extracto_banco',
         confidence: 0.80,
         shouldSkipOCR: true,
         reason: 'Spreadsheet format suggests bank export (3+ columns expected)',
+        triggers: [extension!],
+        tipo: 'bank_statement', // Legacy compatibility
         tokens: [extension!],
         heuristicScore: 0.8,
-        columnCount: 3 // Estimated minimum for bank statements
+        columnCount: 3
       };
     }
   }
   
   // Not a bank statement
   return {
-    tipo: 'Unknown',
+    documentType: 'otros',
     confidence: 0,
     shouldSkipOCR: false,
-    reason: 'Not a bank statement format'
+    reason: 'Not a bank statement format',
+    triggers: [],
+    tipo: 'Unknown' // Legacy compatibility
   };
 };
 

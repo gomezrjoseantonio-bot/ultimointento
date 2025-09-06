@@ -249,23 +249,3 @@ async function findPropertyByCUPS(cups: string): Promise<any | null> {
   // This would search for a property that has this CUPS in its metadata
   return null;
 }
-
-/**
- * Get explanation for detection result
- */
-export function getDetectionExplanation(result: PropertyDetectionResult): string {
-  if (!result.inmueble_id) {
-    return 'No se pudo identificar el inmueble automáticamente';
-  }
-  
-  const confidence = Math.round(result.confidence * 100);
-  
-  switch (result.matchMethod) {
-    case 'cups':
-      return `Inmueble identificado por CUPS (${confidence}% confianza): ${result.matchedText}`;
-    case 'address':
-      return `Inmueble identificado por dirección (${confidence}% confianza)`;
-    default:
-      return `Inmueble identificado (${confidence}% confianza)`;
-  }
-}

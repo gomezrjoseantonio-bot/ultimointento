@@ -62,6 +62,7 @@ export async function testInboxProcessing() {
     const mockFileUrl = 'blob:mock-file-url';
     const docId = await inboxProcessingService.createAndEnqueue(
       mockFileUrl,
+      'test-document.pdf',
       'application/pdf',
       1024576,
       'upload'

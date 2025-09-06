@@ -38,6 +38,7 @@ export async function processEmailWithAttachments(
         // Create InboxItem and enqueue for processing
         const docId = await inboxProcessingService.createAndEnqueue(
           fileUrl,
+          attachment.name || 'email-attachment',
           attachment.type,
           attachment.size,
           'email',
