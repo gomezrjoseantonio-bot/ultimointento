@@ -393,7 +393,7 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
   }
   
   if (!contract.isIndefinite && !contract.endDate) {
-    errors.push('Debe especificar fecha de fin o marcar como indefinido');
+    errors.push('Debe especificar una fecha de fin del contrato o marcar la opción "Contrato indefinido"');
   }
   
   if (contract.startDate && contract.endDate && !contract.isIndefinite) {

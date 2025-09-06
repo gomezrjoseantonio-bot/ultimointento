@@ -35,10 +35,9 @@ const TesAlertas = React.lazy(() => import('./modules/horizon/tesoreria/alertas/
 const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen/Resumen'));
 const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
 const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
-const ProyeccionComparativas = React.lazy(() => import('./modules/horizon/proyeccion/comparativas/ProyeccionComparativas'));
-const ProyeccionSimulaciones = React.lazy(() => import('./modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones'));
-const ProyeccionBase = React.lazy(() => import('./modules/horizon/proyeccion/base/ProyeccionBase'));
 const ProyeccionPresupuesto = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto'));
+const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
+const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const BancosCuentas = React.lazy(() => import('./modules/horizon/configuracion/bancos-cuentas/BancosCuentas'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
@@ -190,32 +189,31 @@ function App() {
             </Route>
             
             <Route path="proyeccion">
-              <Route index element={<Navigate to="/proyeccion/base" replace />} />
+              <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
               <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
-              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativas" replace />} />
-              {/* Legacy routes for backward compatibility */}
+              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativa" replace />} />
+              
+              {/* Main proyeccion tabs */}
               <Route path="presupuesto" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <ProyeccionPresupuesto />
                 </React.Suspense>
               } />
-              <Route path="escenarios" element={<Navigate to="/proyeccion/simulaciones" replace />} />
-              {/* New structure */}
-              <Route path="base" element={
+              <Route path="comparativa" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ProyeccionBase />
+                  <ProyeccionComparativa />
                 </React.Suspense>
               } />
-              <Route path="simulaciones" element={
+              <Route path="escenarios" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ProyeccionSimulaciones />
+                  <ProyeccionEscenarios />
                 </React.Suspense>
               } />
-              <Route path="comparativas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <ProyeccionComparativas />
-                </React.Suspense>
-              } />
+              
+              {/* Legacy routes for backward compatibility */}
+              <Route path="base" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="simulaciones" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="comparativas" element={<Navigate to="/proyeccion/escenarios" replace />} />
             </Route>
             
             {/* Personal section (within Horizon) */}

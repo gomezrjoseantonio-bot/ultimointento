@@ -479,6 +479,9 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               />
               <span className="ml-2 text-sm text-neutral-700">Contrato indefinido</span>
             </label>
+            <p className="text-xs text-neutral-500 mt-1 ml-6">
+              Si marca esta opción, no necesita especificar fecha de fin
+            </p>
           </div>
         </div>
 

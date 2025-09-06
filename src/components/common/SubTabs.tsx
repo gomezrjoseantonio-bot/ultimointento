@@ -31,9 +31,9 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Declaraciones', path: '/fiscalidad/declaraciones' },
   ],
   proyeccion: [
-    { label: 'Base', path: '/proyeccion/base' },
-    { label: 'Simulaciones', path: '/proyeccion/simulaciones' },
-    { label: 'Comparativas', path: '/proyeccion/comparativas' },
+    { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
+    { label: 'Comparativa', path: '/proyeccion/comparativa' },
+    { label: 'Escenarios', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
     { label: 'Bancos & Cuentas', path: '/configuracion/bancos-cuentas' },
