@@ -71,12 +71,26 @@ export class UnifiedOCRService {
         body: fileBuffer
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('JSON parsing error:', jsonError);
+        // Try to read as text to see what the actual response is
+        const textResponse = await response.text();
+        console.error('Raw response:', textResponse);
+        
+        return {
+          success: false,
+          error: `Error parsing OCR response: ${jsonError}. Raw response: ${textResponse.substring(0, 200)}...`,
+          status: response.status
+        };
+      }
 
       if (!response.ok) {
         return {
           success: false,
-          error: result.message || 'Error en el procesamiento OCR',
+          error: result.message || result.error || 'Error en el procesamiento OCR',
           code: result.code,
           status: response.status
         };

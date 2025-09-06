@@ -132,7 +132,7 @@ const UnifiedInboxPage: React.FC = () => {
       return <FileText className="h-6 w-6 text-red-500" />;
     }
     if (['jpg', 'jpeg', 'png', 'heic'].includes(extension || '')) {
-      return <Image className="h-6 w-6 text-blue-500" />;
+      return <Image className="h-6 w-6" style={{ color: 'var(--horizon-primary)' }} />;
     }
     if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
       return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
@@ -172,7 +172,10 @@ const UnifiedInboxPage: React.FC = () => {
               />
               <label
                 htmlFor="file-upload"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white cursor-pointer"
+                style={{ backgroundColor: 'var(--horizon-primary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary)'}
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Subir documentos
@@ -201,7 +204,17 @@ const UnifiedInboxPage: React.FC = () => {
                 placeholder="Buscar documentos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ 
+                  '--tw-ring-color': 'var(--horizon-primary)',
+                  borderColor: '#d1d5db'
+                } as React.CSSProperties}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--horizon-primary)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
               />
             </div>
           </div>
@@ -209,7 +222,17 @@ const UnifiedInboxPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'todos' | DocumentStatus)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{ 
+              '--tw-ring-color': 'var(--horizon-primary)',
+              borderColor: '#d1d5db'
+            } as React.CSSProperties}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = 'var(--horizon-primary)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#d1d5db';
+            }}
           >
             <option value="todos">Todos los estados</option>
             <option value="guardado_automatico">Auto-guardado</option>

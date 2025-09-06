@@ -149,10 +149,10 @@ export class UnifiedDocumentProcessor {
         doc.status = 'revision_requerida';
         doc.destinationPath = 'Revisión';
         doc.destination = 'Asignar cuenta bancaria';
-        doc.blockingReasons = ['No se detectó IBAN/cuenta: seleccionar manualmente'];
+        doc.blockingReasons = ['El archivo no contiene suficientes datos - asignar cuenta manualmente'];
         
-        this.addLog(doc, 'No se detectó cuenta bancaria');
-        toast.error('⚠️ Revisión necesaria - Asignar cuenta', { id: doc.id });
+        this.addLog(doc, 'No se detectó cuenta bancaria en el archivo');
+        toast.error('⚠️ Revisión necesaria - El archivo no contiene suficientes datos', { id: doc.id });
         return;
       }
 
