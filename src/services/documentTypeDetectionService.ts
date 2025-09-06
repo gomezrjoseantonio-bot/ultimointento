@@ -1,61 +1,41 @@
-// H8: Enhanced Document Type Detection Service
-// Implements MIME + filename + heuristic detection for banking vs invoice documents
-// Extended with improved classification for the diagnostic checklist
+// ATLAS HORIZON - Document Type Detection Service  
+// Implements exact triggers: factura/recibo_sepa → OCR, extracto_banco → skip OCR
+// Following exact requirements from problem statement
 
 export interface DetectionResult {
-  tipo: string;
+  // Exact document types per requirements
+  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros';
   confidence: number;
   shouldSkipOCR: boolean;
   reason: string;
+  triggers: string[];
+  // Legacy compatibility
+  tipo?: string;
   tokens?: string[];
-  // Enhanced detection metadata
   heuristicScore?: number;
   columnCount?: number;
   detectedColumns?: string[];
 }
 
-// H8: Banking tokens for heuristic detection
-const BANKING_TOKENS = [
-  // Spanish banking terms
-  'IBAN', 'Saldo', 'Apunte', 'Concepto', 'Fecha valor', 'Extracto', 
-  'Cuenta', 'Oficina', 'SWIFT', 'Movimientos', 'Transferencia',
-  'Domiciliación', 'Recibo', 'Cargo', 'Abono', 'Comisión',
-  
-  // English banking terms  
-  'Statement', 'Balance', 'Transaction', 'Account', 'Branch',
-  'Wire', 'ACH', 'Direct Debit', 'Credit', 'Debit',
-  
-  // Known Spanish bank headers
-  'BBVA', 'Santander', 'CaixaBank', 'Bankia', 'Sabadell',
-  'ING', 'Openbank', 'Bankinter', 'Unicaja', 'Cajamar',
-  'Kutxabank', 'EVO Banco', 'Banco Popular', 'Banco Pastor',
-  
-  // Common banking file patterns
-  'movimientos', 'extracto', 'cuentas', 'posiciones'
-];
+// Utility function to convert legacy tipo to documentType
+const mapTipoToDocumentType = (tipo: string): 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros' => {
+  switch (tipo.toLowerCase()) {
+    case 'bank_statement':
+    case 'extracto':
+      return 'extracto_banco';
+    case 'invoice':
+    case 'factura':
+      return 'factura';
+    case 'recibo':
+      return 'recibo_sepa';
+    case 'contrato':
+    case 'other':
+    default:
+      return 'otros';
+  }
+};
 
-// H8: Invoice/Receipt tokens
-const INVOICE_TOKENS = [
-  // Spanish invoice terms
-  'Factura', 'Recibo', 'NIF', 'CIF', 'Total', 'Base imponible', 
-  'IVA', 'Proveedor', 'Cliente', 'Número factura', 'Fecha factura',
-  'Vencimiento', 'Importe', 'Concepto facturación',
-  
-  // English invoice terms
-  'Invoice', 'Bill', 'Receipt', 'VAT', 'Tax ID', 'Supplier',
-  'Customer', 'Invoice Number', 'Invoice Date', 'Due Date',
-  'Amount', 'Total Amount', 'Net Amount', 'Tax Amount'
-];
-
-// H8: Contract tokens
-const CONTRACT_TOKENS = [
-  'Contrato', 'Contract', 'Arrendamiento', 'Lease', 'Anexo', 
-  'Amendment', 'Hipoteca', 'Mortgage', 'Préstamo', 'Loan',
-  'Acuerdo', 'Agreement', 'Términos', 'Terms', 'Condiciones',
-  'Conditions'
-];
-
-// H8: Detect document type with enhanced heuristics
+// Updated detection function following exact requirements
 export const detectDocumentType = async (
   file: File, 
   filename: string = file.name
@@ -63,13 +43,25 @@ export const detectDocumentType = async (
   const fileName = filename.toLowerCase();
   const mimeType = file.type;
   
-  // Step 1: Check for obvious bank statement files first
-  const bankStatementResult = detectBankStatement(file, fileName, mimeType);
-  if (bankStatementResult.shouldSkipOCR) {
-    return bankStatementResult;
+  // 1. EXTRACTO_BANCO detection (skip OCR) - highest priority
+  const bankResult = detectBankStatement(file, fileName, mimeType);
+  if (bankResult.shouldSkipOCR) {
+    return bankResult;
   }
   
-  // Step 2: For PDFs, do content-based heuristic detection
+  // 2. RECIBO_SEPA detection (launch OCR)
+  const reciboResult = detectReciboSepa(fileName, mimeType);
+  if (reciboResult.documentType === 'recibo_sepa') {
+    return reciboResult;
+  }
+  
+  // 3. FACTURA detection (launch OCR)  
+  const facturaResult = detectFactura(fileName, mimeType);
+  if (facturaResult.documentType === 'factura') {
+    return facturaResult;
+  }
+  
+  // 4. For PDFs, do content-based analysis
   if (mimeType === 'application/pdf' && file.size > 0) {
     try {
       const pdfHeuristic = await analyzePDFContent(file);
@@ -78,12 +70,112 @@ export const detectDocumentType = async (
       }
     } catch (error) {
       console.warn('PDF content analysis failed:', error);
-      // Continue with filename-based detection
     }
   }
   
-  // Step 3: Filename and MIME type based detection
-  return detectByFilenameAndMime(fileName, mimeType);
+  // 5. Default to OTROS (launch OCR)
+  return {
+    documentType: 'otros',
+    confidence: 0.5,
+    shouldSkipOCR: false,
+    reason: 'No specific patterns detected - default to otros',
+    triggers: ['unknown_type'],
+    tipo: 'other'
+  };
+};
+
+// Detect RECIBO_SEPA documents
+const detectReciboSepa = (fileName: string, mimeType: string): DetectionResult => {
+  const reciboTriggers = [
+    'recibo', 'adeudo', 'sepa', 'domiciliacion',
+    'cuota', 'subscription', 'periodico', 'mensual'
+  ];
+  
+  const matches = reciboTriggers.filter(trigger => fileName.includes(trigger));
+  
+  if (matches.length > 0) {
+    return {
+      documentType: 'recibo_sepa',
+      confidence: 0.85,
+      shouldSkipOCR: false,
+      reason: `SEPA receipt detected based on: ${matches.join(', ')}`,
+      triggers: matches,
+      tipo: 'recibo'
+    };
+  }
+  
+  return {
+    documentType: 'otros',
+    confidence: 0,
+    shouldSkipOCR: false,
+    reason: 'Not a SEPA receipt',
+    triggers: [],
+    tipo: 'other'
+  };
+};
+
+// Detect FACTURA documents
+const detectFactura = (fileName: string, mimeType: string): DetectionResult => {
+  const facturaTriggers = [
+    'factura', 'invoice', 'bill', 'reforma', 'obra',
+    'suministro', 'luz', 'agua', 'gas', 'telefon',
+    'internet', 'fibra', 'electricidad', 'energia'
+  ];
+  
+  const utilityProviders = [
+    'iberdrola', 'endesa', 'naturgy', 'totalenergies',
+    'holaluz', 'wekiwi', 'vodafone', 'movistar', 'orange',
+    'telefonica', 'yoigo', 'pepephone', 'aqualia'
+  ];
+  
+  const facturaMatches = facturaTriggers.filter(trigger => fileName.includes(trigger));
+  const providerMatches = utilityProviders.filter(provider => fileName.includes(provider));
+  const allMatches = [...facturaMatches, ...providerMatches];
+  
+  if (allMatches.length > 0) {
+    return {
+      documentType: 'factura',
+      confidence: 0.9,
+      shouldSkipOCR: false,
+      reason: `Invoice detected based on: ${allMatches.join(', ')}`,
+      triggers: allMatches,
+      tipo: 'invoice'
+    };
+  }
+  
+  // PDF files are likely invoices
+  if (mimeType === 'application/pdf') {
+    return {
+      documentType: 'factura',
+      confidence: 0.7,
+      shouldSkipOCR: false,
+      reason: 'PDF document, likely invoice',
+      triggers: ['pdf_format'],
+      tipo: 'invoice'
+    };
+  }
+  
+  // Image files are likely invoices/receipts
+  const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/tiff'];
+  if (imageTypes.includes(mimeType)) {
+    return {
+      documentType: 'factura',
+      confidence: 0.6,
+      shouldSkipOCR: false,
+      reason: 'Image document, likely invoice/receipt',
+      triggers: ['image_format'],
+      tipo: 'invoice'
+    };
+  }
+  
+  return {
+    documentType: 'otros',
+    confidence: 0,
+    shouldSkipOCR: false,
+    reason: 'Not a recognizable invoice',
+    triggers: [],
+    tipo: 'other'
+  };
 };
 
 // H8: Detect bank statements (should skip OCR)
