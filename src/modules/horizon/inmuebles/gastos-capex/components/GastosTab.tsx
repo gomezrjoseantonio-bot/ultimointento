@@ -5,6 +5,7 @@ import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../.
 import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
+import { createSampleUnifiedExpenses } from '../../../../../demo/unifiedExpensesDemo';
 import toast from 'react-hot-toast';
 
 interface GastosTabProps {
@@ -75,7 +76,26 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         db.getAll('properties')
       ]);
 
-      setExpenses(expensesData);
+      // UNICORNIO REFACTOR: Migrate legacy expenses to unified structure
+      const migratedExpenses = expensesData.map(expense => {
+        if (!expense.tipo_gasto) {
+          // Auto-migrate legacy expenses
+          return {
+            ...expense,
+            tipo_gasto: 'otros' as TipoGasto,
+            destino: 'inmueble' as const,
+            destino_id: expense.propertyId,
+            estado_conciliacion: 'pendiente' as EstadoConciliacion,
+            currency: expense.currency || 'EUR'
+          };
+        }
+        return expense;
+      });
+
+      // Add demo data if no expenses exist
+      const finalExpenses = migratedExpenses.length === 0 ? createSampleUnifiedExpenses() : migratedExpenses;
+
+      setExpenses(finalExpenses);
       setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
@@ -99,7 +119,17 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     const matchesOrigen = !filters.origen || expense.origin === filters.origen;
     const matchesEstadoConciliacion = !filters.estado_conciliacion || expense.estado_conciliacion === filters.estado_conciliacion;
     const matchesDestino = !filters.destino || expense.destino === filters.destino;
-    const matchesProperty = !filters.propertyId || propertyId === parseInt(filters.propertyId);
+    
+    // Handle property filter including 'personal'
+    let matchesProperty = true;
+    if (filters.propertyId) {
+      if (filters.propertyId === 'personal') {
+        matchesProperty = expense.destino === 'personal';
+      } else {
+        matchesProperty = propertyId === parseInt(filters.propertyId);
+      }
+    }
+    
     const matchesDateRange = 
       (!filters.startDate || expense.date >= filters.startDate) &&
       (!filters.endDate || expense.date <= filters.endDate);
@@ -290,6 +320,46 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   return (
     <div className="space-y-6">
+      {/* KPIs Panel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Total Gastos</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {formatEuro(filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">% Conciliado</div>
+          <div className="text-2xl font-bold text-green-600">
+            {filteredExpenses.length ? Math.round((filteredExpenses.filter(e => e.estado_conciliacion === 'conciliado').length / filteredExpenses.length) * 100) : 0}%
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Suministros</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto?.startsWith('suministro_') || e.tipo_gasto === 'internet').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Reparación/Conservación</div>
+          <div className="text-2xl font-bold text-orange-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'reparacion_conservacion').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Mejora</div>
+          <div className="text-2xl font-bold text-purple-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mejora').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Mobiliario</div>
+          <div className="text-2xl font-bold text-indigo-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mobiliario').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
