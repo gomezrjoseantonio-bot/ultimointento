@@ -19,7 +19,28 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [documentBlob, setDocumentBlob] = useState<Blob | null>(null);
   const [showInvoiceBreakdown, setShowInvoiceBreakdown] = useState(false); // H-OCR-REFORM: For invoice breakdown modal
+  
+  // Load document blob for preview
+  useEffect(() => {
+    const loadDocumentBlob = async () => {
+      if (document?.id) {
+        try {
+          const blob = await getDocumentBlob(document.id);
+          setDocumentBlob(blob);
+        } catch (error) {
+          console.error('Error loading document blob:', error);
+        }
+      } else if (document?.content) {
+        // Fallback to content field if available
+        const blob = new Blob([document.content], { type: document.type });
+        setDocumentBlob(blob);
+      }
+    };
+    
+    loadDocumentBlob();
+  }, [document?.id, document?.content, document?.type]);
   
   const [metadata, setMetadata] = useState({
     proveedor: document?.metadata?.proveedor || '',
@@ -216,7 +237,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   };
 
   const renderPreviewContent = () => {
-    if (!document?.content) {
+    if (!documentBlob) {
       return (
         <div className="text-center py-8">
           <p className="text-neutral-500">No se puede cargar el contenido del documento</p>
@@ -232,8 +253,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     }
 
     if (document.type === 'application/pdf') {
-      const blob = new Blob([document.content], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(documentBlob);
       
       return (
         <div className="w-full h-96">
@@ -258,8 +278,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     }
 
     if (document.type.startsWith('image/')) {
-      const blob = new Blob([document.content], { type: document.type });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(documentBlob);
       
       return (
         <div className="text-center">

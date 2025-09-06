@@ -7,7 +7,7 @@ import MainLayout from './layouts/MainLayout';
 
 // Core pages - keep as direct imports for critical path
 import Dashboard from './pages/Dashboard';
-import InboxPageV2 from './pages/InboxPageV2';
+import InboxPage from './pages/InboxPage';
 import AccountPage from './pages/account/AccountPage';
 
 // Loading component for better UX
@@ -79,7 +79,7 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={<Dashboard />} />
-            <Route path="inbox" element={<InboxPageV2 />} />
+            <Route path="inbox" element={<InboxPage />} />
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">

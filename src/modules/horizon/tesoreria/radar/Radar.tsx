@@ -147,9 +147,9 @@ const Radar: React.FC = () => {
 
   const getSeverityIcon = (severity: 'info' | 'warning' | 'critical') => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-orange-500" />;
-      case 'info': return <CheckCircle className="w-5 h-5 text-blue-500" />;
+      case 'critical': return <AlertTriangle className="w-5 h-5 text-[#DC2626]" />; // Rojo error según guía
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-[#EAB308]" />; // Amarillo warning según guía  
+      case 'info': return <CheckCircle className="w-5 h-5 text-[#16A34A]" />; // Verde OK según guía
     }
   };
 

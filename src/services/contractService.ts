@@ -412,7 +412,7 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
     errors.push('El día de cobro debe estar entre 1 y 31');
   }
   
-  if (!contract.deposit?.months || contract.deposit.months < 0) {
+  if (contract.deposit?.months !== undefined && contract.deposit.months < 0) {
     errors.push('Los meses de fianza deben ser 0 o mayor');
   }
   

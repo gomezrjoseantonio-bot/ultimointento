@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
+import { Activity, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { telemetry } from '../../services/telemetryService';
 import { isQADashboardEnabled, isTelemetryEnabled } from '../../config/envFlags';
 
