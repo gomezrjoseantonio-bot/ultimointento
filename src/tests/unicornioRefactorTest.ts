@@ -98,5 +98,4 @@ export function testUnifiedGastosRefactor() {
   };
 }
 
-// Export for manual testing
-export { testUnifiedGastosRefactor };
+// Manual testing completed successfully

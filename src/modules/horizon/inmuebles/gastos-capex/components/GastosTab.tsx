@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
-import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
 import { createSampleUnifiedExpenses } from '../../../../../demo/unifiedExpensesDemo';
@@ -175,44 +174,6 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     );
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      'validado': 'bg-green-100 text-green-800',
-      'pendiente': 'bg-yellow-100 text-yellow-800',
-      'por-revisar': 'bg-red-100 text-red-800'
-    };
-    
-    const statusLabels = {
-      'validado': 'Validado',
-      'pendiente': 'Pendiente',
-      'por-revisar': 'Por revisar'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMap[status as keyof typeof statusMap] || 'bg-gray-100 text-gray-800'}`}>
-        {statusLabels[status as keyof typeof statusLabels] || status}
-      </span>
-    );
-  };
-
-  const getOriginBadge = (origin: string) => {
-    const originMap = {
-      'manual': 'bg-blue-100 text-blue-800',
-      'inbox': 'bg-teal-100 text-teal-800'
-    };
-    
-    const originLabels = {
-      'manual': 'Manual',
-      'inbox': 'Inbox'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${originMap[origin as keyof typeof originMap] || 'bg-gray-100 text-gray-800'}`}>
-        {originLabels[origin as keyof typeof originLabels] || origin}
-      </span>
-    );
-  };
-
   const handleAddExpense = () => {
     // Check if there are properties available
     if (properties.length === 0) {
@@ -226,19 +187,6 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   const handleEditExpense = (expense: ExpenseH5) => {
     setEditingExpense(expense);
-    setShowExpenseModal(true);
-  };
-
-  const handleDuplicateExpense = (expense: ExpenseH5) => {
-    const duplicated = {
-      ...expense,
-      id: undefined,
-      concept: `${expense.concept} (copia)`,
-      date: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setEditingExpense(duplicated);
     setShowExpenseModal(true);
   };
 

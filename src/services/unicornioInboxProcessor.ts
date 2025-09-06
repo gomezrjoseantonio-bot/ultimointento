@@ -5,7 +5,7 @@ import { DocumentType, detectDocType } from './unicornioDocumentDetection';
 import { detectUtilityType } from './utilityDetectionService';
 import { calculateDocumentFingerprint } from './documentFingerprintingService';
 import { inferExpenseType } from './expenseTypeInferenceService';
-import { ExpenseH5, TipoGasto } from './db';
+import { TipoGasto } from './db';
 
 export interface ProcessingResult {
   success: boolean;
@@ -178,7 +178,7 @@ async function processUtilityBill(
   // Expense type inference
   const typeInference = inferExpenseType({
     proveedor_nombre: ocrData.proveedor_nombre,
-    utility_type: utilityType,
+    utility_type: utilityType || undefined,
     source_type: 'invoice'
   });
   addLog(`Tipo de gasto inferido: ${typeInference.tipo_gasto} (${Math.round(typeInference.confidence * 100)}%)`);
