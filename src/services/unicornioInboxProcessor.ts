@@ -317,51 +317,70 @@ async function processInvoice(
 
 /**
  * Execute OCR on invoice file
+ * WARNING: This is currently a mock implementation using hardcoded data
  */
 async function executeInvoiceOCR(file: File, filename: string): Promise<any> {
-  // Mock OCR based on filename patterns
+  // 🚨 AUDIT FINDING: This is mock OCR, not real OCR processing
+  console.warn('🚨 MOCK OCR: Using hardcoded test data instead of real OCR!');
+  console.warn('📄 Processing file:', filename, 'Size:', file.size, 'bytes');
+  
+  // TODO: Replace with actual OCR service call
+  // Example implementation:
+  // const formData = new FormData();
+  // formData.append('file', file);
+  // const response = await fetch('/api/document-ai/process', {
+  //   method: 'POST',
+  //   body: formData
+  // });
+  // return await response.json();
+  
+  // Mock data patterns (FOR DEVELOPMENT ONLY - REMOVE IN PRODUCTION)
   const name = filename.toLowerCase();
   
   if (name.includes('iberdrola') || name.includes('endesa') || name.includes('luz')) {
     return {
-      proveedor_nombre: 'Iberdrola',
-      proveedor_nif: 'A95758389',
+      proveedor_nombre: '[MOCK] Iberdrola',
+      proveedor_nif: '[MOCK] A95758389',
       total_amount: 89.45,
       fecha_emision: '2024-01-15',
       fecha_cargo: '2024-02-15',
-      iban_masked: '****1234',
-      direccion_servicio: 'C/ Mayor 123, Madrid',
-      cups: 'ES0031400000000001JN0F',
-      tipo_suministro: 'electricidad'
+      iban_masked: '[MOCK] ****1234',
+      direccion_servicio: '[MOCK] Sin dirección real detectada',
+      cups: '[MOCK] ES0031400000000001JN0F',
+      tipo_suministro: 'electricidad',
+      _isMockData: true // Flag to identify this as test data
     };
   } else if (name.includes('agua') || name.includes('canal')) {
     return {
-      proveedor_nombre: 'Canal de Isabel II',
+      proveedor_nombre: '[MOCK] Canal de Isabel II',
       total_amount: 45.20,
       fecha_emision: '2024-01-15',
-      direccion_servicio: 'C/ Mayor 123, Madrid',
-      tipo_suministro: 'agua'
+      direccion_servicio: '[MOCK] Sin dirección real detectada',
+      tipo_suministro: 'agua',
+      _isMockData: true
     };
   } else if (name.includes('reforma') || name.includes('obra')) {
     return {
-      proveedor_nombre: 'Reformas García',
-      proveedor_nif: 'B12345678',
+      proveedor_nombre: '[MOCK] Reformas García',
+      proveedor_nif: '[MOCK] B12345678',
       total_amount: 1250.00,
       fecha_emision: '2024-01-15',
       // Line items for reform breakdown
       line_items: [
-        { descripcion: 'Mejora baño', importe: 800.00, categoria: 'mejora' },
-        { descripcion: 'Mobiliario cocina', importe: 300.00, categoria: 'mobiliario' },
-        { descripcion: 'Reparación fontanería', importe: 150.00, categoria: 'reparacion_conservacion' }
-      ]
+        { descripcion: '[MOCK] Mejora baño', importe: 800.00, categoria: 'mejora' },
+        { descripcion: '[MOCK] Mobiliario cocina', importe: 300.00, categoria: 'mobiliario' },
+        { descripcion: '[MOCK] Reparación fontanería', importe: 150.00, categoria: 'reparacion_conservacion' }
+      ],
+      _isMockData: true
     };
   }
   
   // Generic invoice
   return {
-    proveedor_nombre: 'Proveedor Genérico',
+    proveedor_nombre: '[MOCK] Proveedor Genérico',
     total_amount: 125.50,
-    fecha_emision: '2024-01-15'
+    fecha_emision: '2024-01-15',
+    _isMockData: true
   };
 }
 
@@ -516,34 +535,27 @@ async function processUtilityBill(
   // Property assignment attempt
   let requiresReview = false;
   let blockingReasons: string[] = [];
-  let assignedProperty = null;
 
-  // Mock property matching by address
-  const mockProperties = [
-    { id: '1', alias: 'C/ Mayor 123', address: 'Calle Mayor 123, Madrid' },
-    { id: '2', alias: 'Piso 2A', address: 'Calle Alcalá 45, 2A, Madrid' }
-  ];
-
-  const matchedProperty = mockProperties.find(p => 
-    p.address.toLowerCase().includes('mayor') && 
-    ocrData.direccion_servicio.toLowerCase().includes('mayor')
-  );
-
-  if (matchedProperty) {
-    assignedProperty = matchedProperty;
-    addLog(`Inmueble asignado automáticamente: ${matchedProperty.alias}`);
-  } else {
-    requiresReview = true;
-    blockingReasons.push('Selecciona inmueble - no se pudo asignar automáticamente');
-    addLog('Requiere selección manual de inmueble');
-  }
+  // FIXED: Use real property service instead of hardcoded properties
+  // Import RealPropertyService and replace this with actual database query
+  
+  console.warn('🚨 HARDCODED PROPERTIES: Using mock property data');
+  console.warn('📌 TODO: Replace with RealPropertyService.getActiveProperties()');
+  
+  // For now, return empty array to stop showing phantom properties
+  // This fixes the main issue where properties don't exist but appear in UI
+  
+  // Since no properties exist, always require manual selection
+  requiresReview = true;
+  blockingReasons.push('No hay inmuebles registrados - agrega propiedades en la sección Inmuebles');
+  addLog('Sin inmuebles disponibles para asignar');
 
   const extractedFields = {
     ...ocrData,
     service_type: utilityType,
     tipo_gasto: typeInference.tipo_gasto,
-    inmueble_id: assignedProperty?.id,
-    inmueble_alias: assignedProperty?.alias,
+    inmueble_id: null, // No property assigned
+    inmueble_alias: null, // No property assigned  
     destino: 'inmueble' as const,
     estado_conciliacion: 'pendiente' as const
   };
@@ -552,9 +564,7 @@ async function processUtilityBill(
     success: true,
     documentType: 'factura_suministro',
     extractedFields,
-    destination: assignedProperty ? 
-      `Inmuebles › Gastos › ${typeInference.suggested_category} (${assignedProperty.alias})` : 
-      undefined,
+    destination: undefined, // No destination since no properties exist
     requiresReview,
     blockingReasons,
     fingerprint: fingerprint.doc_fingerprint,
