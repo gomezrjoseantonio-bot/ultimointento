@@ -13,8 +13,8 @@ const MainLayout: React.FC = () => {
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         <Header setSidebarOpen={setSidebarOpen} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 min-h-0">
-          <div className="container mx-auto h-full">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0">
+          <div className="container mx-auto h-full max-w-7xl">
             <Outlet />
           </div>
         </main>

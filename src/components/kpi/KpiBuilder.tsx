@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useTheme } from '../../contexts/ThemeContext';
 import { 
   KPIConfiguration, 
@@ -22,6 +36,18 @@ const KpiBuilder: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<PropertyKPIData | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
+  // Setup sensors for drag and drop with better touch support
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Minimum drag distance for touch devices
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Load configuration on mount
   useEffect(() => {
@@ -75,17 +101,22 @@ const KpiBuilder: React.FC = () => {
     });
   };
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    const newOrder = Array.from(config.metricOrder);
-    const [reorderedItem] = newOrder.splice(result.source.index, 1);
-    newOrder.splice(result.destination.index, 0, reorderedItem);
+    if (!over) return;
 
-    setConfig(prev => ({
-      ...prev,
-      metricOrder: newOrder
-    }));
+    if (active.id !== over.id) {
+      const oldIndex = config.metricOrder.findIndex((metric) => metric === active.id);
+      const newIndex = config.metricOrder.findIndex((metric) => metric === over.id);
+
+      const newOrder = arrayMove(config.metricOrder, oldIndex, newIndex);
+
+      setConfig(prev => ({
+        ...prev,
+        metricOrder: newOrder
+      }));
+    }
   };
 
   const handleParameterChange = (key: keyof KPIConfiguration['parameters'], value: any) => {
@@ -213,57 +244,52 @@ const KpiBuilder: React.FC = () => {
           Arrastra para reordenar las métricas o usa los checkboxes para activarlas/desactivarlas.
         </p>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="metrics">
-            {(provided) => (
-              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                {config.metricOrder.map((metricId, index) => {
-                  const metric = KPI_METRICS[metricId];
-                  const isActive = config.activeMetrics.includes(metricId);
-                  
-                  return (
-                    <Draggable key={metricId} draggableId={metricId} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-shadow ${
-                            snapshot.isDragging 
-                              ? 'border-brand-navy shadow-lg' 
-                              : 'border-neutral-200 hover:border-neutral-300'
-                          } ${isActive ? 'bg-neutral-50' : 'bg-white opacity-60'}`}
-                        >
-                          <div {...provided.dragHandleProps} className="text-neutral-400">
-                            <GripVertical className="w-5 h-5" />
-                          </div>
-                          
-                          <input
-                            type="checkbox"
-                            checked={isActive}
-                            onChange={() => handleMetricToggle(metricId)}
-                            className={`rounded text-${accentColor} focus:ring-${accentColor}`}
-                          />
-                          
-                          <div className="flex-1">
-                            <div className="font-medium text-neutral-900">{metric.name}</div>
-                            <div className="text-sm text-neutral-600">{metric.description}</div>
-                          </div>
-                          
-                          <div className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
-                            {metric.unit === 'currency' && '€'}
-                            {metric.unit === 'percentage' && '%'}
-                            {metric.unit === 'ratio' && 'x'}
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  );
-                })}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={config.metricOrder}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {config.metricOrder.map((metricId) => {
+                const metric = KPI_METRICS[metricId];
+                const isActive = config.activeMetrics.includes(metricId);
+                
+                return (
+                  <div
+                    key={metricId}
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-shadow border-neutral-200 hover:border-neutral-300 ${isActive ? 'bg-neutral-50' : 'bg-white opacity-60'}`}
+                  >
+                    <div className="text-neutral-400">
+                      <GripVertical className="w-5 h-5" />
+                    </div>
+                    
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={() => handleMetricToggle(metricId)}
+                      className={`rounded text-${accentColor} focus:ring-${accentColor}`}
+                    />
+                    
+                    <div className="flex-1">
+                      <div className="font-medium text-neutral-900">{metric.name}</div>
+                      <div className="text-sm text-neutral-600">{metric.description}</div>
+                    </div>
+                    
+                    <div className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded">
+                      {metric.unit === 'currency' && '€'}
+                      {metric.unit === 'percentage' && '%'}
+                      {metric.unit === 'ratio' && 'x'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Additional available metrics */}
         <div className="mt-6 pt-6 border-t border-neutral-200">

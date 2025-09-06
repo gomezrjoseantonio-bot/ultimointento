@@ -4,48 +4,59 @@ import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import MainLayout from './layouts/MainLayout';
+
+// Core pages - keep as direct imports for critical path
 import Dashboard from './pages/Dashboard';
 import InboxPageV2 from './pages/InboxPageV2';
 import AccountPage from './pages/account/AccountPage';
 
+// Loading component for better UX
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+    <span className="ml-2 text-gray-600">Cargando...</span>
+  </div>
+);
+
+// Lazy-loaded components for route-based code splitting
 // Horizon (Investment) Module Components
-import Cartera from './modules/horizon/inmuebles/cartera/Cartera';
-import Contratos from './modules/horizon/inmuebles/contratos/Contratos';
-import Prestamos from './modules/horizon/inmuebles/prestamos/Prestamos';
-import Analisis from './modules/horizon/inmuebles/analisis/Analisis';
-import Tesoreria from './modules/horizon/tesoreria/Tesoreria';
-import TesRadar from './modules/horizon/tesoreria/radar/Radar';
-import TesIngresos from './modules/horizon/tesoreria/ingresos/Ingresos';
-import TesGastos from './modules/horizon/tesoreria/gastos/Gastos';
-import TesCAPEX from './modules/horizon/tesoreria/capex/CAPEX';
-import TesMovimientos from './modules/horizon/tesoreria/movimientos/Movimientos';
-import Automatizaciones from './modules/horizon/tesoreria/automatizaciones/Automatizaciones';
-import TesAlertas from './modules/horizon/tesoreria/alertas/Alertas';
-import FisResumen from './modules/horizon/fiscalidad/resumen/Resumen';
-import Detalle from './modules/horizon/fiscalidad/detalle/Detalle';
-import Declaraciones from './modules/horizon/fiscalidad/declaraciones/Declaraciones';
-import ProyeccionComparativas from './modules/horizon/proyeccion/comparativas/ProyeccionComparativas';
-import ProyeccionSimulaciones from './modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones';
-import ProyeccionBase from './modules/horizon/proyeccion/base/ProyeccionBase';
-import BancosCuentas from './modules/horizon/configuracion/bancos-cuentas/BancosCuentas';
-import UsuariosRoles from './modules/horizon/configuracion/usuarios-roles/UsuariosRoles';
-import EmailEntrante from './modules/horizon/configuracion/email-entrante/EmailEntrante';
-import PropertyForm from './modules/horizon/inmuebles/cartera/PropertyForm';
-import PropertyDetail from './modules/horizon/inmuebles/cartera/PropertyDetail';
+const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
+const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
+const Prestamos = React.lazy(() => import('./modules/horizon/inmuebles/prestamos/Prestamos'));
+const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
+const TesRadar = React.lazy(() => import('./modules/horizon/tesoreria/radar/Radar'));
+const TesIngresos = React.lazy(() => import('./modules/horizon/tesoreria/ingresos/Ingresos'));
+const TesGastos = React.lazy(() => import('./modules/horizon/tesoreria/gastos/Gastos'));
+const TesCAPEX = React.lazy(() => import('./modules/horizon/tesoreria/capex/CAPEX'));
+const TesMovimientos = React.lazy(() => import('./modules/horizon/tesoreria/movimientos/Movimientos'));
+const Automatizaciones = React.lazy(() => import('./modules/horizon/tesoreria/automatizaciones/Automatizaciones'));
+const TesAlertas = React.lazy(() => import('./modules/horizon/tesoreria/alertas/Alertas'));
+const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen/Resumen'));
+const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
+const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
+const ProyeccionComparativas = React.lazy(() => import('./modules/horizon/proyeccion/comparativas/ProyeccionComparativas'));
+const ProyeccionSimulaciones = React.lazy(() => import('./modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones'));
+const ProyeccionBase = React.lazy(() => import('./modules/horizon/proyeccion/base/ProyeccionBase'));
+const BancosCuentas = React.lazy(() => import('./modules/horizon/configuracion/bancos-cuentas/BancosCuentas'));
+const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
+const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
+const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
+const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
 // Personal section (within Horizon)
-import Personal from './modules/horizon/personal/Personal';
+const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'));
 
 // Pulse (Management) Module Components
-import ContratosLista from './modules/pulse/contratos/lista/ContratosLista';
-import FirmasPendientes from './modules/pulse/firmas/pendientes/FirmasPendientes';
-import CobrosPendientes from './modules/pulse/cobros/pendientes/CobrosPendientes';
-import AutomatizacionesReglas from './modules/pulse/automatizaciones/reglas/AutomatizacionesReglas';
-import TareasPendientes from './modules/pulse/tareas/pendientes/TareasPendientes';
+const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
+const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
+const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
+const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
+const TareasPendientes = React.lazy(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
 
 // Legacy Pulse (Personal) Module Components - Keep for migration
-import HorizonPreferenciasDatos from './modules/horizon/configuracion/preferencias-datos/PreferenciasDatos';
-import GastosCapex from './modules/horizon/inmuebles/gastos-capex/GastosCapex';
+const HorizonPreferenciasDatos = React.lazy(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
+const GastosCapex = React.lazy(() => import('./modules/horizon/inmuebles/gastos-capex/GastosCapex'));
 
 // Development only imports
 const ProfileSeederPage = React.lazy(() => 
@@ -73,32 +84,108 @@ function App() {
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
               <Route index element={<Navigate to="/inmuebles/cartera" replace />} />
-              <Route path="cartera" element={<Cartera />} />
-              <Route path="cartera/nuevo" element={<PropertyForm mode="create" />} />
-              <Route path="cartera/:id" element={<PropertyDetail />} />
-              <Route path="cartera/:id/editar" element={<PropertyForm mode="edit" />} />
-              <Route path="contratos" element={<Contratos />} />
-              <Route path="prestamos" element={<Prestamos />} />
-              <Route path="gastos-capex" element={<GastosCapex />} />
-              <Route path="analisis" element={<Analisis />} />
+              <Route path="cartera" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Cartera />
+                </React.Suspense>
+              } />
+              <Route path="cartera/nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="create" />
+                </React.Suspense>
+              } />
+              <Route path="cartera/:id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyDetail />
+                </React.Suspense>
+              } />
+              <Route path="cartera/:id/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="edit" />
+                </React.Suspense>
+              } />
+              <Route path="contratos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Contratos />
+                </React.Suspense>
+              } />
+              <Route path="prestamos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Prestamos />
+                </React.Suspense>
+              } />
+              <Route path="gastos-capex" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <GastosCapex />
+                </React.Suspense>
+              } />
+              <Route path="analisis" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Analisis />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="tesoreria">
-              <Route index element={<Tesoreria />} />
-              <Route path="radar" element={<TesRadar />} />
-              <Route path="ingresos" element={<TesIngresos />} />
-              <Route path="gastos" element={<TesGastos />} />
-              <Route path="capex" element={<TesCAPEX />} />
-              <Route path="movimientos" element={<TesMovimientos />} />
-              <Route path="automatizaciones" element={<Automatizaciones />} />
-              <Route path="alertas" element={<TesAlertas />} />
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Tesoreria />
+                </React.Suspense>
+              } />
+              <Route path="radar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesRadar />
+                </React.Suspense>
+              } />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesIngresos />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesGastos />
+                </React.Suspense>
+              } />
+              <Route path="capex" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesCAPEX />
+                </React.Suspense>
+              } />
+              <Route path="movimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesMovimientos />
+                </React.Suspense>
+              } />
+              <Route path="automatizaciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Automatizaciones />
+                </React.Suspense>
+              } />
+              <Route path="alertas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesAlertas />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="fiscalidad">
               <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
-              <Route path="resumen" element={<FisResumen />} />
-              <Route path="detalle" element={<Detalle />} />
-              <Route path="declaraciones" element={<Declaraciones />} />
+              <Route path="resumen" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FisResumen />
+                </React.Suspense>
+              } />
+              <Route path="detalle" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Detalle />
+                </React.Suspense>
+              } />
+              <Route path="declaraciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Declaraciones />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="proyeccion">
@@ -109,55 +196,147 @@ function App() {
               <Route path="presupuesto" element={<Navigate to="/proyeccion/base" replace />} />
               <Route path="escenarios" element={<Navigate to="/proyeccion/simulaciones" replace />} />
               {/* New structure */}
-              <Route path="base" element={<ProyeccionBase />} />
-              <Route path="simulaciones" element={<ProyeccionSimulaciones />} />
-              <Route path="comparativas" element={<ProyeccionComparativas />} />
+              <Route path="base" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionBase />
+                </React.Suspense>
+              } />
+              <Route path="simulaciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionSimulaciones />
+                </React.Suspense>
+              } />
+              <Route path="comparativas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionComparativas />
+                </React.Suspense>
+              } />
             </Route>
             
             {/* Personal section (within Horizon) */}
             <Route path="personal">
               <Route index element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="resumen" element={<Personal />} />
-              <Route path="cuentas" element={<Personal />} />
-              <Route path="movimientos" element={<Personal />} />
-              <Route path="presupuesto" element={<Personal />} />
-              <Route path="reglas" element={<Personal />} />
+              <Route path="resumen" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="cuentas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="movimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="presupuesto" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="reglas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
             </Route>
             
             {/* Pulse (Management) Routes */}
             <Route path="contratos">
               <Route index element={<Navigate to="/contratos/lista" replace />} />
-              <Route path="lista" element={<ContratosLista />} />
-              <Route path="nuevo" element={<ContratosLista />} />
-              <Route path="gestion" element={<ContratosLista />} />
+              <Route path="lista" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosLista />
+                </React.Suspense>
+              } />
+              <Route path="nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosLista />
+                </React.Suspense>
+              } />
+              <Route path="gestion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosLista />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="firmas">
               <Route index element={<Navigate to="/firmas/pendientes" replace />} />
-              <Route path="pendientes" element={<FirmasPendientes />} />
-              <Route path="completadas" element={<FirmasPendientes />} />
-              <Route path="plantillas" element={<FirmasPendientes />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FirmasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="completadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FirmasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="plantillas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FirmasPendientes />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="cobros">
               <Route index element={<Navigate to="/cobros/pendientes" replace />} />
-              <Route path="pendientes" element={<CobrosPendientes />} />
-              <Route path="conciliacion" element={<CobrosPendientes />} />
-              <Route path="historico" element={<CobrosPendientes />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
+              <Route path="conciliacion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
+              <Route path="historico" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="automatizaciones">
               <Route index element={<Navigate to="/automatizaciones/reglas" replace />} />
-              <Route path="reglas" element={<AutomatizacionesReglas />} />
-              <Route path="flujos" element={<AutomatizacionesReglas />} />
-              <Route path="historial" element={<AutomatizacionesReglas />} />
+              <Route path="reglas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
+              <Route path="flujos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
+              <Route path="historial" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
             </Route>
             
             <Route path="tareas">
               <Route index element={<Navigate to="/tareas/pendientes" replace />} />
-              <Route path="pendientes" element={<TareasPendientes />} />
-              <Route path="completadas" element={<TareasPendientes />} />
-              <Route path="programadas" element={<TareasPendientes />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="completadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="programadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
             </Route>
 
             {/* Legacy Personal Routes - Keep for backward compatibility */}
@@ -192,11 +371,27 @@ function App() {
             <Route path="configuracion">
               <Route index element={<Navigate to="/configuracion/bancos-cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
-              <Route path="bancos-cuentas" element={<BancosCuentas />} />
-              <Route path="usuarios-roles" element={<UsuariosRoles />} />
+              <Route path="bancos-cuentas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <BancosCuentas />
+                </React.Suspense>
+              } />
+              <Route path="usuarios-roles" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <UsuariosRoles />
+                </React.Suspense>
+              } />
               {/* Shared configuration - available for both modules */}
-              <Route path="preferencias-datos" element={<HorizonPreferenciasDatos />} />
-              <Route path="email-entrante" element={<EmailEntrante />} />
+              <Route path="preferencias-datos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <HorizonPreferenciasDatos />
+                </React.Suspense>
+              } />
+              <Route path="email-entrante" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <EmailEntrante />
+                </React.Suspense>
+              } />
               {/* H6: Redirect old plan-facturacion route to new cuenta location */}
               <Route path="plan-facturacion" element={<Navigate to="/cuenta/plan" replace />} />
             </Route>

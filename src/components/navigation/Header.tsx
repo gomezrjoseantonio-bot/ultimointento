@@ -43,19 +43,19 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             <div className="h-8 w-8 rounded-full bg-brand-teal flex items-center justify-center text-white font-bold text-sm">
               A
             </div>
-            <div className="hidden md:block">
-              <h1 className="text-xl font-semibold text-gray-900">
+            <div className="hidden sm:block">
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900">
                 ATLAS
               </h1>
             </div>
           </div>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Direct Module Navigation */}
           <nav className="flex items-center bg-gray-100 rounded-atlas p-1">
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+              className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-atlas transition-all duration-200 ${
                 isHorizonActive
                   ? 'bg-brand-navy text-white shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
@@ -66,7 +66,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             </button>
             <div className="w-px h-4 bg-gray-300 mx-1" />
             <button
-              className={`px-4 py-2 text-sm font-medium rounded-atlas transition-all duration-200 ${
+              className={`px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-atlas transition-all duration-200 ${
                 isPulseActive
                   ? 'bg-brand-teal text-white shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
