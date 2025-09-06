@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown, Inbox } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, UserCircle, ChevronDown } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
@@ -9,7 +9,6 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const { currentModule, setCurrentModule } = useTheme();
 
@@ -23,7 +22,6 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
     navigate('/panel');
   };
 
-  const isInboxActive = location.pathname === '/inbox';
   const isHorizonActive = currentModule === 'horizon';
   const isPulseActive = currentModule === 'pulse';
 
@@ -77,21 +75,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             </button>
           </nav>
           
-          {/* Bandeja de entrada - only shown in Horizon */}
-          {isHorizonActive && (
-            <button
-              onClick={() => navigate('/inbox')}
-              className={`p-2 rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${
-                isInboxActive 
-                  ? 'bg-gray-100 text-gray-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              title="Bandeja de Documentos"
-              aria-label="Bandeja de Documentos"
-            >
-              <Inbox className="h-5 w-5" />
-            </button>
-          )}
+
           
           <div className="relative">
             <button 
