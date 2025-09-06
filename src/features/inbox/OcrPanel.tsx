@@ -467,7 +467,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Eye className="h-5 w-5 text-gray-400" />
+            <Eye className="h-5 w-5 text-current" />
             <h3 className="text-lg font-semibold text-gray-900">Campos extraídos (OCR)</h3>
             {ocrResult.engineInfo && (
               <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">

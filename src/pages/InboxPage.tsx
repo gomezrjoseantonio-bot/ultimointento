@@ -21,8 +21,7 @@ import { validateDocumentForPending } from '../services/documentValidationServic
 import { showError } from '../services/toastService';
 import { ZipProcessingResult } from '../services/zipProcessingService';
 import { processDocumentIngestion } from '../services/documentIngestionService';
-import { telemetry } from '../services/telemetryService';
-import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
+import { isAutoRouteEnabled } from '../config/envFlags';
 import toast from 'react-hot-toast';
 
 const InboxPage: React.FC = () => {
