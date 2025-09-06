@@ -167,7 +167,6 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
     const noticePeriodDays = parseInt(formData.noticePeriodDays) || undefined;
 
     const contract = {
-      id: editingContract?.id, // Include ID for editing
       propertyId: formData.propertyId,
       scope: formData.scope,
       selectedUnits: formData.scope === 'units' ? formData.selectedUnits : undefined,

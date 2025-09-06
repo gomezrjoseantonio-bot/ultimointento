@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 9; // H9: Added Budget wizard stores (budgets, budgetLines)
+const DB_VERSION = 10; // Added keyval store for application configuration
 
 export interface Property {
   id?: number;
@@ -814,6 +814,7 @@ interface AtlasHorizonDB {
   capex: CAPEX; // H10: Treasury CAPEX records
   budgets: Budget; // H9: Annual budget wizard
   budgetLines: BudgetLine; // H9: Budget line items
+  keyval: any; // General key-value store for application configuration
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -1026,6 +1027,11 @@ export const initDB = async () => {
           budgetLinesStore.createIndex('frequency', 'frequency', { unique: false });
           budgetLinesStore.createIndex('sourceType', 'sourceType', { unique: false });
           budgetLinesStore.createIndex('sourceId', 'sourceId', { unique: false });
+        }
+
+        // General key-value store for application configuration
+        if (!db.objectStoreNames.contains('keyval')) {
+          db.createObjectStore('keyval');
         }
       }
     });
