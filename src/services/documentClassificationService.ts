@@ -1,7 +1,9 @@
 // ATLAS HORIZON - Document Classification Service
 // Implements deterministic classification following exact requirements
+// Now integrates with ML backend service for enhanced classification
 
 import { ClassificationResult, OCRExtractionResult } from '../types/inboxTypes';
+import { mlClassificationService } from './mlClassificationService';
 
 // Classification keywords as specified in requirements
 const SUMINISTRO_KEYWORDS = [
@@ -27,9 +29,32 @@ const REFORMA_KEYWORDS = [
 
 /**
  * Classify document based on OCR text and extracted data
- * Lee el texto OCR (todo el documento) y etiqueta subtype
+ * Now uses ML backend service with fallback to rule-based classification
  */
 export async function classifyDocument(
+  ocrData: OCRExtractionResult, 
+  fullOcrText: string
+): Promise<ClassificationResult> {
+  
+  console.log('[Classification] Starting classification:', {
+    textLength: fullOcrText.length,
+    supplier: ocrData.supplier_name,
+    amount: ocrData.total_amount
+  });
+
+  // Use ML backend service with fallback to local rule-based classification
+  return await mlClassificationService.classifyDocument(
+    ocrData,
+    fullOcrText,
+    classifyDocumentLocal  // Fallback function
+  );
+}
+
+/**
+ * Local rule-based classification (used as fallback)
+ * Lee el texto OCR (todo el documento) y etiqueta subtype
+ */
+async function classifyDocumentLocal(
   ocrData: OCRExtractionResult, 
   fullOcrText: string
 ): Promise<ClassificationResult> {
