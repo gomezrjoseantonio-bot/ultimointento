@@ -72,6 +72,7 @@ async function classifyDocumentLocal(
   const suministroMatches = findMatches(lowerText, supplierName, SUMINISTRO_KEYWORDS);
   if (suministroMatches.length > 0) {
     return {
+      documentType: 'factura', // Suministro is a type of factura
       subtype: 'suministro',
       confidence: calculateConfidence(suministroMatches, fullOcrText),
       matchedKeywords: suministroMatches,
@@ -86,6 +87,7 @@ async function classifyDocumentLocal(
     
     if (!hasTaxLines) {
       return {
+        documentType: 'recibo_sepa',
         subtype: 'recibo',
         confidence: calculateConfidence(reciboMatches, fullOcrText),
         matchedKeywords: reciboMatches,
@@ -94,6 +96,7 @@ async function classifyDocumentLocal(
     } else {
       // Has tax lines, treat as invoice
       return {
+        documentType: 'factura',
         subtype: 'factura_generica',
         confidence: 0.6,
         matchedKeywords: reciboMatches,
@@ -106,6 +109,7 @@ async function classifyDocumentLocal(
   const reformaMatches = findMatches(lowerText, supplierName, REFORMA_KEYWORDS);
   if (reformaMatches.length > 0) {
     return {
+      documentType: 'factura',
       subtype: 'reforma',
       confidence: calculateConfidence(reformaMatches, fullOcrText),
       matchedKeywords: reformaMatches,
@@ -115,6 +119,7 @@ async function classifyDocumentLocal(
 
   // Default: FACTURA_GENERICA
   return {
+    documentType: 'factura',
     subtype: 'factura_generica',
     confidence: 0.3,
     matchedKeywords: [],
@@ -255,7 +260,7 @@ export function validateClassification(
       break;
       
     case 'recibo':
-      if (!ocrData.due_or_charge_date && !ocrData.issue_date) {
+      if (!ocrData.due_date && !ocrData.issue_date) {
         issues.push('Recibo requiere fecha de cargo o emisión');
       }
       break;

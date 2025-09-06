@@ -72,7 +72,7 @@ async function routeSuministro(
       cif: ocrData.supplier_tax_id,
       importe_total: ocrData.total_amount,
       fecha_emision: ocrData.issue_date,
-      fecha_prevista_cargo: ocrData.due_or_charge_date || null,
+      fecha_prevista_cargo: ocrData.due_date || null,
       inmueble_id: propertyDetection.inmueble_id,
       adjuntos: [item.fileUrl],
       notas: {
@@ -123,7 +123,7 @@ async function routeRecibo(
   
   try {
     const movimiento = {
-      fecha: ocrData.due_or_charge_date || ocrData.issue_date || item.createdAt.toISOString().split('T')[0],
+      fecha: ocrData.due_date || ocrData.issue_date || item.createdAt.toISOString().split('T')[0],
       descripcion: `Recibo ${ocrData.supplier_name}`,
       importe: -(ocrData.total_amount || 0), // Negative for expense
       cuenta_detectada: await detectAccountByIBAN(ocrData.iban_mask),
