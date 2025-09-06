@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 11; // H-HOTFIX: Added utility types, reform breakdown, and document fingerprinting
+const DB_VERSION = 12; // H9: Added new budget system (Presupuesto/PresupuestoLinea) per specification
 
 export interface Property {
   id?: number;
@@ -784,6 +784,90 @@ export type PaymentFrequency =
   | 'fraccionado'
   | 'unico';
 
+// H9: New Budget Model - Updated types per specification
+export type UUID = string;
+
+export type FrecuenciaPago = 
+  | "Mensual"
+  | "Bimestral"
+  | "Trimestral"
+  | "Semestral"
+  | "Anual"
+  | "Unico";   // pago único en fecha puntual
+
+export type TipoLinea = "Ingreso" | "Gasto";
+
+export type CategoriaGasto =
+  | "Suministros"            // Luz/Agua/Gas/Telco/TV (subtipo en 'tipo')
+  | "Seguros"
+  | "Comunidad"
+  | "IBI"
+  | "InteresesHipoteca"
+  | "CuotaHipoteca"
+  | "ReparaciónYConservación"
+  | "Mantenimiento"
+  | "Honorarios"
+  | "Tasas"
+  | "OtrosGastos"
+  | "Mejora"                 // fiscalmente amortizable
+  | "Mobiliario";            // fiscalmente amortizable
+
+export type CategoriaIngreso =
+  | "Alquiler"
+  | "OtrosIngresos";
+
+export type OrigenLinea = 
+  | "SemillaAuto"      // generada automáticamente
+  | "ManualUsuario"    // creada o editada por el usuario
+  | "AjusteSistema";   // recalculada por compra/venta, prorrateos, etc.
+
+// H9: New Budget Model per specification
+export interface Presupuesto {
+  id: UUID;
+  year: number;                // año del presupuesto
+  creadoEn: string;            // ISO
+  actualizadoEn: string;       // ISO
+  estado: "Borrador" | "Activo" | "Cerrado";
+  // metadatos de generación
+  generadoDesde?: {
+    fecha: string;             // ISO
+    porcentajeComplecionInicial: number; // 0-100 estimado
+  };
+}
+
+export interface PresupuestoLinea {
+  id: UUID;
+  presupuestoId: UUID;
+  tipo: TipoLinea;                     // Ingreso/Gasto
+  inmuebleId?: UUID;                   // requerido salvo líneas globales
+  roomId?: UUID;                       // opcional; si aplica por habitación
+  categoria?: CategoriaGasto | CategoriaIngreso;
+  tipoConcepto?: string;               // "Electricidad", "Seguro hogar", "Renta habitación 1", etc.
+  proveedor?: string;                  // opcional (para gastos)
+  proveedorNif?: string;               // opcional
+  cuentaId?: UUID;                     // cuenta por la que se mueve el dinero
+  // Calendario
+  frecuencia: FrecuenciaPago;
+  // Si Mensual/Bimestral/...: usar dayOfMonth (1..28 recomendado) o dayOfPeriod
+  dayOfMonth?: number;                 // día de pago/cobro típico
+  mesesActivos?: number[];             // 1..12; para marcar meses concretos si no es todo el año
+  fechaUnica?: string;                 // si es pago/cobro único
+  // Importe
+  importeUnitario: number;             // importe por evento
+  ivaIncluido?: boolean;               // default true; no afecta a tesorería
+  // Vigencia parcial (altas/bajas a mitad de año)
+  desde?: string;                      // ISO (default 01-01 del año)
+  hasta?: string;                      // ISO (default 12-31 del año)
+  // Origen y control
+  origen: OrigenLinea;
+  editable: boolean;                   // si viene de semilla auto, true pero marcarlo
+  notas?: string;
+  // Referencias cruzadas para conciliación
+  contratoId?: UUID;                   // si proviene de un contrato de alquiler
+  prestamoId?: UUID;                   // si proviene de una hipoteca/préstamo
+}
+
+// Legacy Budget Line interface (keep for backward compatibility)
 export interface BudgetLine {
   id?: number;
   budgetId: number;
@@ -808,6 +892,7 @@ export interface BudgetLine {
   updatedAt: string;
 }
 
+// Legacy Budget interface (keep for backward compatibility)
 export interface Budget {
   id?: number;
   year: number;
@@ -869,8 +954,10 @@ interface AtlasHorizonDB {
   ingresos: Ingreso; // H10: Treasury income records
   gastos: Gasto; // H10: Treasury expense records
   capex: CAPEX; // H10: Treasury CAPEX records
-  budgets: Budget; // H9: Annual budget wizard
-  budgetLines: BudgetLine; // H9: Budget line items
+  budgets: Budget; // H9: Annual budget wizard (legacy)
+  budgetLines: BudgetLine; // H9: Budget line items (legacy)
+  presupuestos: Presupuesto; // H9: New budget system per specification
+  presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1084,6 +1171,27 @@ export const initDB = async () => {
           budgetLinesStore.createIndex('frequency', 'frequency', { unique: false });
           budgetLinesStore.createIndex('sourceType', 'sourceType', { unique: false });
           budgetLinesStore.createIndex('sourceId', 'sourceId', { unique: false });
+        }
+
+        // H9: New Budget System - Presupuestos store (per specification)
+        if (!db.objectStoreNames.contains('presupuestos')) {
+          const presupuestosStore = db.createObjectStore('presupuestos', { keyPath: 'id' });
+          presupuestosStore.createIndex('year', 'year', { unique: false });
+          presupuestosStore.createIndex('estado', 'estado', { unique: false });
+        }
+
+        // H9: New Budget System - Presupuesto Lineas store (per specification)
+        if (!db.objectStoreNames.contains('presupuestoLineas')) {
+          const presupuestoLineasStore = db.createObjectStore('presupuestoLineas', { keyPath: 'id' });
+          presupuestoLineasStore.createIndex('presupuestoId', 'presupuestoId', { unique: false });
+          presupuestoLineasStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          presupuestoLineasStore.createIndex('tipo', 'tipo', { unique: false });
+          presupuestoLineasStore.createIndex('categoria', 'categoria', { unique: false });
+          presupuestoLineasStore.createIndex('frecuencia', 'frecuencia', { unique: false });
+          presupuestoLineasStore.createIndex('origen', 'origen', { unique: false });
+          presupuestoLineasStore.createIndex('cuentaId', 'cuentaId', { unique: false });
+          presupuestoLineasStore.createIndex('contratoId', 'contratoId', { unique: false });
+          presupuestoLineasStore.createIndex('prestamoId', 'prestamoId', { unique: false });
         }
 
         // General key-value store for application configuration
