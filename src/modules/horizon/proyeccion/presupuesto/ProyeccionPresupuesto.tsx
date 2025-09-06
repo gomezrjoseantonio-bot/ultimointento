@@ -3,6 +3,7 @@ import { Calculator, Plus, FileText, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import BudgetWizard from './components/BudgetWizard';
 import BudgetList from './components/BudgetList';
+import ProyeccionComparativa from '../comparativa/ProyeccionComparativa';
 import { Budget } from '../../../../services/db';
 import { getBudgetsByYear } from './services/budgetService';
 
@@ -11,6 +12,7 @@ const ProyeccionPresupuesto: React.FC = () => {
   const [currentYear] = useState(new Date().getFullYear());
   const [existingBudgets, setExistingBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'presupuesto' | 'comparativa'>('presupuesto');
 
   useEffect(() => {
     loadBudgets();
@@ -49,10 +51,49 @@ const ProyeccionPresupuesto: React.FC = () => {
 
   return (
     <PageLayout 
-      title="Presupuesto Anual" 
-      subtitle="Gestión de presupuestos con gastos deducibles y frecuencias"
+      title={activeTab === 'presupuesto' ? "Presupuesto Anual" : "Comparativa Anual"} 
+      subtitle={activeTab === 'presupuesto' ? "Gestión de presupuestos con gastos deducibles y frecuencias" : "Budget vs Forecast vs Actual"}
     >
       <div className="space-y-6">
+        {/* Subtabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('presupuesto')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'presupuesto'
+                  ? 'border-[#0B2B5C] text-[#0B2B5C]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Presupuesto
+            </button>
+            <button
+              onClick={() => setActiveTab('comparativa')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'comparativa'
+                  ? 'border-[#0B2B5C] text-[#0B2B5C]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Comparativa
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'presupuesto' ? (
+          <div className="space-y-6">{renderPresupuestoContent()}</div>
+        ) : (
+          <ProyeccionComparativa />
+        )}
+      </div>
+    </PageLayout>
+  );
+
+  function renderPresupuestoContent() {
+    return (
+      <>
         {/* Header Action */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -118,7 +159,7 @@ const ProyeccionPresupuesto: React.FC = () => {
               Partidas alineadas con las categorías deducibles de Hacienda para una gestión fiscal óptima.
             </p>
           </div>
-          
+
           <div className="bg-white p-6 rounded-lg border border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
               <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -128,7 +169,7 @@ const ProyeccionPresupuesto: React.FC = () => {
               Control preciso de periodicidad: mensual, trimestral, anual, fraccionado o único.
             </p>
           </div>
-          
+
           <div className="bg-white p-6 rounded-lg border border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
               <FileText className="h-5 w-5 text-purple-600" />
@@ -139,9 +180,9 @@ const ProyeccionPresupuesto: React.FC = () => {
             </p>
           </div>
         </div>
-      </div>
-    </PageLayout>
-  );
+      </>
+    );
+  }
 };
 
 export default ProyeccionPresupuesto;
