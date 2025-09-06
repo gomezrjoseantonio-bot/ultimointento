@@ -3,9 +3,8 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  X, FileText, Image, Calendar, CreditCard, Building, MapPin,
-  AlertTriangle, CheckCircle, XCircle, RotateCcw, Trash2,
-  Download, ZoomIn, ZoomOut
+  X, FileText, Image, AlertTriangle, RotateCcw, Trash2,
+  ZoomIn, ZoomOut
 } from 'lucide-react';
 
 interface DocumentEditPanelProps {

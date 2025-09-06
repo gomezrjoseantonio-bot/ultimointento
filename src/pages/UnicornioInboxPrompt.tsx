@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
-  Upload, Search, Eye, RotateCcw, Trash2, X,
+  Upload, Search, X,
   CheckCircle, AlertTriangle, XCircle,
   FileText, Image, FileSpreadsheet, Archive, File,
   ChevronDown, ChevronUp
@@ -14,6 +14,7 @@ import { DocumentType } from '../services/unicornioDocumentDetection';
 import { processInboxItem, classifyAndArchive } from '../services/unicornioInboxProcessor';
 import DocumentPreview from '../components/DocumentPreview';
 import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
+import DocumentEditPanel from '../components/inbox/DocumentEditPanel';
 
 // Estados exactos según especificación
 type DocumentStatus = 'Guardado' | 'Revisión' | 'Error';
@@ -273,6 +274,68 @@ const UnicornioInboxPrompt: React.FC = () => {
     toast.success('Documento eliminado');
   };
 
+  /**
+   * Handle save and archive from DocumentEditPanel
+   */
+  const handleSaveDocument = async (document: UnicornioDocument, updates: Record<string, any>) => {
+    try {
+      // Update document with new field values
+      const updatedDocument = {
+        ...document,
+        extractedFields: {
+          ...document.extractedFields,
+          ...updates
+        },
+        // Update table columns
+        inmueblePersonal: updates.destino || document.inmueblePersonal,
+        // Mark as saved if validation passes
+        status: 'Guardado' as DocumentStatus,
+        destinoFinal: generateDestinationFromUpdates(updates, document.tipo),
+        logs: [
+          ...document.logs,
+          { timestamp: new Date().toISOString(), action: 'Documento actualizado y archivado' },
+          { timestamp: new Date().toISOString(), action: `Guardado en: ${generateDestinationFromUpdates(updates, document.tipo)}` }
+        ]
+      };
+
+      // Update in state
+      setDocuments(prev => prev.map(doc => 
+        doc.id === document.id ? updatedDocument : doc
+      ));
+
+      // Close panel
+      setSelectedDocument(null);
+
+      toast.success(`Documento archivado en ${updatedDocument.destinoFinal}`);
+
+      // TODO: Here would call the actual save/archive API
+      // await classifyAndArchive(document.id, document.documentType, updatedDocument.extractedFields, updates);
+
+    } catch (error) {
+      toast.error('Error al guardar el documento');
+      console.error('Save error:', error);
+    }
+  };
+
+  /**
+   * Generate destination path from updates
+   */
+  const generateDestinationFromUpdates = (updates: Record<string, any>, documentType: string): string => {
+    switch (documentType) {
+      case 'Factura':
+        if (updates.destino?.includes('Inmueble')) {
+          return `Inmuebles › ${updates.destino} › Gastos`;
+        }
+        return 'Personal › Gastos';
+      case 'Extracto':
+        return 'Tesorería › Movimientos';
+      case 'Contrato':
+        return `Inmuebles › ${updates.destino} › Contratos`;
+      default:
+        return updates.destino || 'Archivo › General';
+    }
+  };
+
   // Helper functions
   const getDisplayType = (docType: DocumentType): string => {
     switch (docType) {
@@ -509,38 +572,38 @@ const UnicornioInboxPrompt: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {/* Acciones por fila (una sola hilera): 👁 Ver/Editar · 🔁 Reprocesar · 🗑 Eliminar */}
-                    <div className="flex gap-2">
-                      <button 
-                        className="text-[#113560] hover:text-[#0A2A57]"
+                    {/* Unified actions: 👁 🔁 🗑 */}
+                    <div className="flex items-center space-x-2">
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDocument(doc);
                         }}
-                        title="👁 Ver/Editar"
+                        className="text-[#0B5FFF] hover:text-[#0F3763] font-medium text-lg"
+                        title="Ver/editar"
                       >
-                        <Eye className="w-4 h-4" />
+                        👁
                       </button>
-                      <button 
-                        className="text-[#06A77D] hover:text-[#059669]"
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleReprocess(doc);
                         }}
-                        title="🔁 Reprocesar"
+                        className="text-[#0B5FFF] hover:text-[#0F3763] font-medium text-lg"
                         disabled={processing.has(doc.id)}
+                        title="Reprocesar"
                       >
-                        <RotateCcw className={`w-4 h-4 ${processing.has(doc.id) ? 'animate-spin' : ''}`} />
+                        🔁
                       </button>
-                      <button 
-                        className="text-[#C81E1E] hover:text-[#B91C1C]"
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(doc.id);
                         }}
-                        title="🗑 Eliminar"
+                        className="text-red-600 hover:text-red-800 font-medium text-lg"
+                        title="Eliminar"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        🗑
                       </button>
                     </div>
                   </td>
@@ -762,6 +825,21 @@ const UnicornioInboxPrompt: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* DocumentEditPanel (right drawer) */}
+        <DocumentEditPanel
+          document={selectedDocument}
+          isOpen={!!selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          onSave={(updates) => handleSaveDocument(selectedDocument!, updates)}
+          onReprocess={() => selectedDocument && handleReprocess(selectedDocument)}
+          onDelete={() => {
+            if (selectedDocument) {
+              handleDelete(selectedDocument.id);
+              setSelectedDocument(null);
+            }
+          }}
+        />
       </div>
     </div>
   );
