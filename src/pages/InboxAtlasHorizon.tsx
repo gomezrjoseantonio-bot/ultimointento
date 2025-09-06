@@ -20,17 +20,14 @@ import {
   FileSpreadsheet,
   Archive,
   File,
-  X,
-  Edit,
-  Save
+  X
 } from 'lucide-react';
 
-// H-HOTFIX: Import new components and services
+// H-HOTFIX: Import new services and types
 import DocumentPreview from '../components/DocumentPreview';
 import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
 import { detectUtilityType, getUtilityTypeDisplayName } from '../services/utilityDetectionService';
 import { calculateDocumentFingerprint } from '../services/documentFingerprintingService';
-import { resolvePropertyAssignment, rememberSupplierPropertyAssignment } from '../services/propertyAssignmentService';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 // Tipos de documentos según especificaciones
@@ -92,14 +89,12 @@ const InboxAtlasHorizon: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
   
-  // H-HOTFIX: Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editFormData, setEditFormData] = useState<Partial<InboxDocument>>({});
-  const [availableProperties] = useState([
+  // H-HOTFIX: Simple properties for demo
+  const availableProperties = [
     { id: '1', alias: 'C/ Mayor 123', address: 'Calle Mayor 123, Madrid' },
     { id: '2', alias: 'Piso 2A', address: 'Calle Alcalá 45, 2A, Madrid' },
     { id: '3', alias: 'Local Centro', address: 'Plaza España 8, Madrid' }
-  ]);
+  ];
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -814,15 +809,18 @@ const InboxAtlasHorizon: React.FC = () => {
             </div>
             
             <div className="flex-1 overflow-auto px-6 py-4">
-              {/* Visor del documento */}
-              <div className="mb-6 p-4 bg-gray-100 rounded-lg">
-                <div className="flex items-center justify-center h-32 text-gray-500">
-                  {getFileIcon(selectedDocument.filename, selectedDocument.type)}
-                  <span className="ml-2">Vista previa del documento</span>
-                </div>
+              {/* H-HOTFIX: Enhanced inline document preview */}
+              <div className="mb-6">
+                <DocumentPreview
+                  filename={selectedDocument.filename}
+                  fileType={selectedDocument.type}
+                  fileContent={selectedDocument.fileContent}
+                  fileUrl={selectedDocument.fileUrl}
+                  className="border rounded-lg"
+                />
               </div>
 
-              {/* Campos extraídos */}
+              {/* H-HOTFIX: Enhanced campos extraídos */}
               <div className="space-y-4 mb-6">
                 <h4 className="font-medium text-gray-900">Campos extraídos</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -854,10 +852,40 @@ const InboxAtlasHorizon: React.FC = () => {
                     <span className="text-gray-500">Inmueble:</span>
                     <div className="font-medium">{selectedDocument.inmueble || 'Personal'}</div>
                   </div>
+                  
+                  {/* H-HOTFIX: Utility-specific fields */}
+                  {selectedDocument.utility_type && (
+                    <div>
+                      <span className="text-gray-500">Tipo suministro:</span>
+                      <div className="font-medium">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">
+                          {getUtilityTypeDisplayName(selectedDocument.utility_type)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {selectedDocument.supply_address && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Dirección suministro:</span>
+                      <div className="font-medium text-xs">{selectedDocument.supply_address}</div>
+                    </div>
+                  )}
+                  
+                  {selectedDocument.expected_charge_date && (
+                    <div>
+                      <span className="text-gray-500">Fecha cargo prevista:</span>
+                      <div className="font-medium text-xs">
+                        {new Date(selectedDocument.expected_charge_date).toLocaleDateString('es-ES')}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="col-span-2">
                     <span className="text-gray-500">IBAN:</span>
                     <div className="font-medium font-mono">{selectedDocument.iban || '—'}</div>
                   </div>
+                  
                   {selectedDocument.destino && (
                     <div className="col-span-2">
                       <span className="text-gray-500">Destino final:</span>
@@ -865,6 +893,16 @@ const InboxAtlasHorizon: React.FC = () => {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {selectedDocument.destino}
                         </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* H-HOTFIX: Document revision info */}
+                  {selectedDocument.revision && selectedDocument.revision > 1 && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Revisión:</span>
+                      <div className="font-medium text-xs text-blue-600">
+                        v{selectedDocument.revision} (reprocesado)
                       </div>
                     </div>
                   )}
@@ -884,8 +922,38 @@ const InboxAtlasHorizon: React.FC = () => {
                     ))}
                   </ul>
                   
-                  {/* Campos editables inline para revision_requerida */}
-                  {selectedDocument.blockingReasons.some(r => r.includes('Categoría fiscal')) && (
+                  {/* H-HOTFIX: Enhanced reform handling with breakdown */}
+                  {selectedDocument.blockingReasons.some(r => r.includes('Reparto entre categorías')) && (
+                    <div className="mt-4">
+                      <ReformBreakdownComponent
+                        totalAmount={selectedDocument.importe || 0}
+                        onBreakdownChange={(breakdown: ReformBreakdown) => {
+                          // Update the document with the breakdown
+                          const updatedDoc = {
+                            ...selectedDocument,
+                            reform_breakdown: breakdown,
+                            status: 'guardado_automatico' as DocumentStatus,
+                            destino: `Inmuebles › Gastos › ${selectedDocument.inmueble || 'Reforma'}`,
+                            blockingReasons: undefined,
+                            expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+                            logs: [
+                              ...selectedDocument.logs,
+                              { timestamp: new Date().toISOString(), action: 'Reparto fiscal completado' },
+                              { timestamp: new Date().toISOString(), action: 'Archivado automáticamente' }
+                            ]
+                          };
+                          
+                          setDocuments(prev => prev.map(d => d.id === selectedDocument.id ? updatedDoc : d));
+                          setSelectedDocument(updatedDoc);
+                          toast.success('Reforma procesada con reparto fiscal');
+                        }}
+                        initialBreakdown={selectedDocument.reform_breakdown}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Legacy category selection for old blocking reasons */}
+                  {selectedDocument.blockingReasons.some(r => r.includes('Categoría fiscal') && !r.includes('Reparto')) && (
                     <div className="mt-4 space-y-3">
                       <label className="block text-sm font-medium text-yellow-800">
                         Seleccionar categoría fiscal:
@@ -911,11 +979,46 @@ const InboxAtlasHorizon: React.FC = () => {
                     </div>
                   )}
                   
+                  {/* Property assignment for utilities */}
+                  {selectedDocument.blockingReasons.some(r => r.includes('inmueble')) && (
+                    <div className="mt-4 space-y-3">
+                      <label className="block text-sm font-medium text-yellow-800">
+                        Seleccionar inmueble:
+                      </label>
+                      <select 
+                        className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        onChange={(e) => {
+                          const propertyId = e.target.value;
+                          if (propertyId) {
+                            const property = availableProperties.find(p => p.id === propertyId);
+                            handleCompleteAndArchive(selectedDocument, {
+                              property_id: propertyId,
+                              inmueble: property?.alias,
+                              destino: `Inmuebles › Gastos › ${property?.alias}`,
+                              blockingReasons: undefined
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">Seleccionar inmueble...</option>
+                        {availableProperties.map(property => (
+                          <option key={property.id} value={property.id}>
+                            {property.alias}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  {/* H-HOTFIX: Fixed destinations - no phantom document folders */}
                   {selectedDocument.blockingReasons.some(r => r.includes('Destino requerido')) && (
                     <div className="mt-4 space-y-3">
                       <label className="block text-sm font-medium text-yellow-800">
                         Seleccionar destino:
                       </label>
+                      <div className="text-xs text-yellow-700 mb-2">
+                        ⚠ Los documentos se adjuntan a registros, no a carpetas separadas
+                      </div>
                       <select 
                         className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
                         onChange={(e) => {
@@ -929,8 +1032,8 @@ const InboxAtlasHorizon: React.FC = () => {
                         }}
                       >
                         <option value="">Seleccionar...</option>
-                        <option value="Inmuebles › Documentos">Inmuebles › Documentos</option>
-                        <option value="Personal › Documentos">Personal › Documentos</option>
+                        <option value="Inmuebles › Gastos">Inmuebles › Gastos (adjunto al registro)</option>
+                        <option value="Tesorería › Movimientos">Tesorería › Movimientos (adjunto al registro)</option>
                         <option value="Archivo › General">Archivo › General</option>
                       </select>
                     </div>

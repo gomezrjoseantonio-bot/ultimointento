@@ -160,10 +160,10 @@ export function extractUtilityFields(
 
   // Extract consumption patterns
   const consumptionPatterns = {
-    electricity: /(\d+(?:[,\.]\d+)?)\s*kWh/gi,
-    water: /(\d+(?:[,\.]\d+)?)\s*m[³3]/gi,
-    gas: /(\d+(?:[,\.]\d+)?)\s*kWh\s*gas/gi,
-    telecom: /(\d+(?:[,\.]\d+)?)\s*GB/gi
+    electricity: /(\d+(?:[,.]?\d+)?)\s*kWh/gi,
+    water: /(\d+(?:[,.]?\d+)?)\s*m[³3]/gi,
+    gas: /(\d+(?:[,.]?\d+)?)\s*kWh\s*gas/gi,
+    telecom: /(\d+(?:[,.]?\d+)?)\s*GB/gi
   };
 
   const pattern = consumptionPatterns[utilityType];

@@ -159,7 +159,6 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     try {
       // For demo purposes, show a simple text extraction message
       // In production, use mammoth.js or similar library
-      const arrayBuffer = await blob.arrayBuffer();
       const text = 'Vista previa de documento Word - las primeras 2000 palabras serían mostradas aquí...';
       
       setPreviewContent(`
@@ -200,7 +199,8 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
   useEffect(() => {
     loadFileContent();
-  }, [fileContent, fileUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileContent, fileUrl]); // Only depend on core file props
 
   const renderPreview = () => {
     if (loading) {

@@ -116,11 +116,13 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
   const isValid = Math.abs(remaining) < 0.01; // Allow 1 cent tolerance
 
   useEffect(() => {
-    if (lineItems.length > 0 && totalAssigned === 0) {
+    const currentTotalAssigned = calculateTotalAssigned();
+    if (lineItems.length > 0 && currentTotalAssigned === 0) {
       setMode('by_lines');
       autoDistribute();
     }
-  }, [lineItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems]); // Only trigger on lineItems change
 
   return (
     <div className="space-y-4">
