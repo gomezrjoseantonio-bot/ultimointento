@@ -1,8 +1,8 @@
 // UNICORNIO Implementation Test
 // Tests the exact requirements from the problem statement
 
-import { processInboxItem } from '../src/services/unicornioInboxProcessor';
-import { extractIBANFromBankStatement, matchAccountByIBAN } from '../src/services/ibanAccountMatchingService';
+import { processInboxItem } from '../services/unicornioInboxProcessor';
+import { extractIBANFromBankStatement, matchAccountByIBAN } from '../services/ibanAccountMatchingService';
 
 describe('UNICORNIO Prompt 1 - Bank Statements', () => {
   test('should require account selection when IBAN cannot be determined', async () => {
@@ -130,10 +130,11 @@ describe('End-to-End Workflow', () => {
     expect(result.extractedFields.movimientos).toBeDefined();
     
     // 4. If account found, should be saved; if not, should require review
+    expect(result.success || result.requiresReview).toBe(true);
     if (result.success) {
       expect(result.destination).toBe('Tesorería › Movimientos');
-    } else {
-      expect(result.requiresReview).toBe(true);
+    }
+    if (result.requiresReview) {
       expect(result.blockingReasons).toContain('Selecciona cuenta destino');
     }
   });
@@ -149,12 +150,16 @@ describe('End-to-End Workflow', () => {
     expect(result.logs.some(log => log.action.includes('OCR'))).toBe(true);
     
     // 4. Should classify as utility and either auto-save or require review
+    expect(result.success || result.requiresReview).toBe(true);
     if (result.success) {
       expect(result.destination).toMatch(/Inmuebles.*Gastos/);
-    } else {
+    }
+    if (result.requiresReview) {
       expect(result.requiresReview).toBe(true);
     }
   });
 });
 
-export default {};
+// Export module for Jest compatibility
+const testModule = {};
+export default testModule;
