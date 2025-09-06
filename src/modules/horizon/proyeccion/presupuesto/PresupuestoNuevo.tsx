@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Calculator, Plus, FileText, Download, Settings, TrendingUp, Calendar, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calculator, Plus } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { Presupuesto, PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, UUID } from '../../../../services/db';
+import { Presupuesto, PresupuestoLinea, TipoLinea, UUID } from '../../../../services/db';
 import { 
   getPresupuestosByYear, 
   createPresupuesto, 
@@ -21,7 +21,6 @@ import PresupuestoLineaModal from './components/PresupuestoLineaModal';
 
 const PresupuestoNuevo: React.FC = () => {
   const [currentYear] = useState(new Date().getFullYear());
-  const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [presupuestoActual, setPresupuestoActual] = useState<Presupuesto | null>(null);
   const [lineas, setLineas] = useState<PresupuestoLinea[]>([]);
   const [resumen, setResumen] = useState<ResumenPresupuesto | null>(null);
@@ -32,24 +31,13 @@ const PresupuestoNuevo: React.FC = () => {
   
   // Filter states
   const [filtroTipo, setFiltroTipo] = useState<TipoLinea | 'todos'>('todos');
-  const [filtroCategoria, setFiltroCategoria] = useState<string>('todos');
+  const [filtroCategoria] = useState<string>('todos');
   const [filtroOrigen, setFiltroOrigen] = useState<string>('todos');
 
-  useEffect(() => {
-    loadPresupuestos();
-  }, [currentYear]);
-
-  useEffect(() => {
-    if (presupuestoActual) {
-      loadPresupuestoData();
-    }
-  }, [presupuestoActual]);
-
-  const loadPresupuestos = async () => {
+  const loadPresupuestos = useCallback(async () => {
     try {
       setLoading(true);
       const presupuestosAno = await getPresupuestosByYear(currentYear);
-      setPresupuestos(presupuestosAno);
       
       // Select the first presupuesto if any
       if (presupuestosAno.length > 0) {
@@ -60,9 +48,9 @@ const PresupuestoNuevo: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentYear]);
 
-  const loadPresupuestoData = async () => {
+  const loadPresupuestoData = useCallback(async () => {
     if (!presupuestoActual) return;
     
     try {
@@ -76,7 +64,17 @@ const PresupuestoNuevo: React.FC = () => {
     } catch (error) {
       console.error('Error loading presupuesto data:', error);
     }
-  };
+  }, [presupuestoActual]);
+
+  useEffect(() => {
+    loadPresupuestos();
+  }, [loadPresupuestos]);
+
+  useEffect(() => {
+    if (presupuestoActual) {
+      loadPresupuestoData();
+    }
+  }, [presupuestoActual, loadPresupuestoData]);
 
   const handleCreatePresupuesto = async () => {
     try {

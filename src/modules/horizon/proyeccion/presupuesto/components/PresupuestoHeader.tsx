@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Download, Settings, Repeat } from 'lucide-react';
+import { Plus, Download, Repeat } from 'lucide-react';
 import { Presupuesto, UUID } from '../../../../../services/db';
 
 interface PresupuestoHeaderProps {

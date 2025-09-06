@@ -37,7 +37,7 @@ const TesAlertas = React.lazy(() => import('./modules/horizon/tesoreria/alertas/
 const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen/Resumen'));
 const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
 const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
-const ProyeccionPresupuesto = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto'));
+
 const PresupuestoNuevo = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestoNuevo'));
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));

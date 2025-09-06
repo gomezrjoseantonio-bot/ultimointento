@@ -1,4 +1,4 @@
-import { initDB, Presupuesto, PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, OrigenLinea, UUID } from '../../../../../services/db';
+import { initDB, Presupuesto, PresupuestoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, UUID } from '../../../../../services/db';
 
 // UUID helper (simple implementation)
 export const generateUUID = (): UUID => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye } from 'lucide-react';
-import { PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, OrigenLinea } from '../../../../../services/db';
+import { PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago } from '../../../../../services/db';
 import { generarCalendarioLinea, validarLinea } from '../services/presupuestoService';
 
 interface PresupuestoLineaModalProps {

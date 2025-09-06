@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { UUID } from '../../../../../services/db';
 
 // Import ResumenPresupuesto from the service
@@ -18,10 +18,6 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
       style: 'currency',
       currency: 'EUR'
     }).format(amount);
-  };
-
-  const formatPercentage = (value: number) => {
-    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
 
   // Calculate some basic metrics for display
