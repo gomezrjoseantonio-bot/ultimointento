@@ -49,10 +49,9 @@ export async function processInboxItem(
         return await processBankStatement(file, filename, logs);
       
       case 'factura_suministro':
-        return await processUtilityBill(file, filename, logs, options);
-      
       case 'factura_reforma':
-        return await processReformInvoice(file, filename, logs, options);
+      case 'factura_generica':
+        return await processInvoice(file, filename, logs, options);
       
       case 'contrato':
         return await processContract(file, filename, logs, options);
@@ -209,6 +208,260 @@ function determineBankFromFilename(filename: string): string {
 }
 
 /**
+ * 2.2-2.4 Facturas - Following PROMPT 2 exact requirements
+ * OCR siempre, permitir completar campos faltantes, clasificar al guardar
+ */
+async function processInvoice(
+  file: File,
+  filename: string,
+  logs: Array<{ timestamp: string; action: string }>,
+  options: ProcessingOptions
+): Promise<ProcessingResult> {
+  const addLog = (action: string) => logs.push({ timestamp: new Date().toISOString(), action });
+
+  // 1. ALWAYS execute OCR for invoices (PDF/images/DOCX)
+  addLog('Ejecutando OCR para factura (obligatorio)');
+  
+  let ocrRetryCount = 0;
+  let ocrData: any = null;
+  
+  while (ocrRetryCount <= 1 && !ocrData) { // Max 1 retry as specified
+    try {
+      ocrRetryCount++;
+      
+      if (ocrRetryCount > 1) {
+        addLog('Reintentando OCR (segundo intento)');
+      }
+      
+      // Mock OCR execution - would call real OCR service
+      ocrData = await executeInvoiceOCR(file, filename);
+      
+      if (ocrData) {
+        addLog('OCR completado exitosamente');
+        break;
+      }
+      
+    } catch (error) {
+      addLog(`OCR falló intento ${ocrRetryCount}: ${error}`);
+      
+      if (ocrRetryCount >= 2) {
+        // Both attempts failed - go to Revisión
+        addLog('OCR falló tras 2 intentos - requiere reproceso manual');
+        return {
+          success: false,
+          documentType: 'factura_generica',
+          extractedFields: { ocr_failed: true },
+          requiresReview: true,
+          blockingReasons: ['OCR falló tras reintentos. Usar botón "Reprocesar OCR"'],
+          logs
+        };
+      }
+    }
+  }
+
+  // 2. Infer invoice type and required fields
+  const invoiceType = inferInvoiceType(ocrData, filename);
+  addLog(`Tipo de factura detectado: ${invoiceType}`);
+
+  // 3. Validate minimum required fields by type
+  const missingFields = validateRequiredFields(ocrData, invoiceType);
+  
+  // 4. Try to infer destination (property/personal)
+  const destinationInference = await inferInvoiceDestination(ocrData);
+  
+  if (missingFields.length > 0 || !destinationInference.inmueble_id) {
+    addLog(`Campos faltantes: ${missingFields.join(', ')}`);
+    
+    return {
+      success: false,
+      documentType: getDocumentTypeByInvoiceType(invoiceType),
+      extractedFields: {
+        ...ocrData,
+        invoice_type: invoiceType,
+        missing_fields: missingFields,
+        destination_inference: destinationInference
+      },
+      requiresReview: true,
+      blockingReasons: missingFields.length > 0 
+        ? [`Completar campos: ${missingFields.join(', ')}`]
+        : ['Seleccionar destino (Inmueble/Personal)'],
+      logs
+    };
+  }
+
+  // 5. Auto-save if all required fields present
+  addLog('Todos los campos mínimos presentes - archivando automáticamente');
+  
+  // Calculate fingerprint for deduplication
+  const { calculateDocumentFingerprint } = await import('./documentFingerprintingService');
+  const fileContent = await file.arrayBuffer();
+  const fingerprint = calculateDocumentFingerprint(fileContent, ocrData);
+  
+  // TODO: Check if already exists by fingerprint and skip if duplicate
+  
+  return {
+    success: true,
+    documentType: getDocumentTypeByInvoiceType(invoiceType),
+    extractedFields: {
+      ...ocrData,
+      invoice_type: invoiceType,
+      destination_inference: destinationInference
+    },
+    destination: generateInvoiceDestination(destinationInference),
+    requiresReview: false,
+    blockingReasons: [],
+    fingerprint: fingerprint.doc_fingerprint,
+    logs
+  };
+}
+
+/**
+ * Execute OCR on invoice file
+ */
+async function executeInvoiceOCR(file: File, filename: string): Promise<any> {
+  // Mock OCR based on filename patterns
+  const name = filename.toLowerCase();
+  
+  if (name.includes('iberdrola') || name.includes('endesa') || name.includes('luz')) {
+    return {
+      proveedor_nombre: 'Iberdrola',
+      proveedor_nif: 'A95758389',
+      total_amount: 89.45,
+      fecha_emision: '2024-01-15',
+      fecha_cargo: '2024-02-15',
+      iban_masked: '****1234',
+      direccion_servicio: 'C/ Mayor 123, Madrid',
+      cups: 'ES0031400000000001JN0F',
+      tipo_suministro: 'electricidad'
+    };
+  } else if (name.includes('agua') || name.includes('canal')) {
+    return {
+      proveedor_nombre: 'Canal de Isabel II',
+      total_amount: 45.20,
+      fecha_emision: '2024-01-15',
+      direccion_servicio: 'C/ Mayor 123, Madrid',
+      tipo_suministro: 'agua'
+    };
+  } else if (name.includes('reforma') || name.includes('obra')) {
+    return {
+      proveedor_nombre: 'Reformas García',
+      proveedor_nif: 'B12345678',
+      total_amount: 1250.00,
+      fecha_emision: '2024-01-15',
+      // Line items for reform breakdown
+      line_items: [
+        { descripcion: 'Mejora baño', importe: 800.00, categoria: 'mejora' },
+        { descripcion: 'Mobiliario cocina', importe: 300.00, categoria: 'mobiliario' },
+        { descripcion: 'Reparación fontanería', importe: 150.00, categoria: 'reparacion_conservacion' }
+      ]
+    };
+  }
+  
+  // Generic invoice
+  return {
+    proveedor_nombre: 'Proveedor Genérico',
+    total_amount: 125.50,
+    fecha_emision: '2024-01-15'
+  };
+}
+
+/**
+ * Infer invoice type from OCR data
+ */
+function inferInvoiceType(ocrData: any, filename: string): string {
+  if (ocrData.tipo_suministro || ocrData.cups) {
+    return 'suministro_' + (ocrData.tipo_suministro || 'generico');
+  }
+  
+  if (ocrData.line_items || filename.toLowerCase().includes('reforma')) {
+    return 'reforma_mejora';
+  }
+  
+  return 'factura_generica';
+}
+
+/**
+ * Validate required fields by invoice type
+ */
+function validateRequiredFields(ocrData: any, invoiceType: string): string[] {
+  const missing: string[] = [];
+  
+  // Common required fields
+  if (!ocrData.proveedor_nombre) missing.push('Proveedor nombre');
+  if (!ocrData.total_amount) missing.push('Importe total');
+  if (!ocrData.fecha_emision) missing.push('Fecha emisión');
+  
+  // Type-specific validations
+  if (invoiceType.startsWith('suministro_')) {
+    // For utilities, these are recommended but not blocking
+    // NO bloquear por "base+impuestos != total" as specified
+  }
+  
+  if (invoiceType === 'reforma_mejora') {
+    // For reform, at least one category amount should be > 0
+    const hasBreakdown = ocrData.line_items && ocrData.line_items.length > 0;
+    if (!hasBreakdown) {
+      // Will allow editing to distribute total among categories
+      missing.push('Distribución reforma (mejora/mobiliario/reparación)');
+    }
+  }
+  
+  return missing;
+}
+
+/**
+ * Infer invoice destination
+ */
+async function inferInvoiceDestination(ocrData: any): Promise<any> {
+  // Mock property detection based on address/CUPS
+  if (ocrData.direccion_servicio && ocrData.direccion_servicio.includes('Mayor 123')) {
+    return {
+      inmueble_id: 'inmueble_001',
+      inmueble_nombre: 'Piso Mayor 123',
+      confidence: 0.9,
+      match_method: 'direccion'
+    };
+  }
+  
+  if (ocrData.cups) {
+    return {
+      inmueble_id: 'inmueble_001',
+      inmueble_nombre: 'Piso Mayor 123',
+      confidence: 0.95,
+      match_method: 'cups'
+    };
+  }
+  
+  return {
+    inmueble_id: null,
+    confidence: 0,
+    match_method: 'none'
+  };
+}
+
+/**
+ * Get document type from invoice type
+ */
+function getDocumentTypeByInvoiceType(invoiceType: string): DocumentType {
+  if (invoiceType.startsWith('suministro_')) {
+    return 'factura_suministro';
+  } else if (invoiceType === 'reforma_mejora') {
+    return 'factura_reforma';
+  }
+  return 'factura_generica';
+}
+
+/**
+ * Generate destination text for invoices
+ */
+function generateInvoiceDestination(destinationInference: any): string {
+  if (destinationInference.inmueble_id) {
+    return `Inmuebles › ${destinationInference.inmueble_nombre} › Gastos`;
+  }
+  return 'Personal › Gastos';
+}
+
+/**
  * 2.2 Facturas de suministro - OCR completo + clasificación
  */
 async function processUtilityBill(
@@ -305,61 +558,6 @@ async function processUtilityBill(
     requiresReview,
     blockingReasons,
     fingerprint: fingerprint.doc_fingerprint,
-    logs
-  };
-}
-
-/**
- * 2.3 Facturas de reforma - OCR + desglose obligatorio
- */
-async function processReformInvoice(
-  file: File,
-  filename: string,
-  logs: Array<{ timestamp: string; action: string }>,
-  options: ProcessingOptions
-): Promise<ProcessingResult> {
-  const addLog = (action: string) => logs.push({ timestamp: new Date().toISOString(), action });
-
-  addLog('Ejecutando OCR para factura de reforma');
-
-  // Mock OCR data
-  const ocrData = {
-    proveedor_nombre: 'Reformas García',
-    proveedor_nif: 'B12345678',
-    invoice_id: '2024-REF-001',
-    invoice_date: '2024-01-14',
-    total_amount: 2500.00,
-    currency: 'EUR',
-    iban_masked: '****5678',
-    concept: 'Reforma integral cocina'
-  };
-
-  // Expense type inference - will suggest predominant type
-  const typeInference = inferExpenseType({
-    proveedor_nombre: ocrData.proveedor_nombre,
-    concept: ocrData.concept,
-    source_type: 'invoice'
-  });
-  addLog(`Tipo predominante inferido: ${typeInference.tipo_gasto}`);
-
-  addLog('Requiere desglose entre categorías fiscales');
-
-  return {
-    success: true,
-    documentType: 'factura_reforma',
-    extractedFields: {
-      ...ocrData,
-      tipo_gasto_predominante: typeInference.tipo_gasto,
-      destino: 'inmueble' as const,
-      estado_conciliacion: 'pendiente' as const,
-      desglose_categorias: {
-        mejora: 0,
-        mobiliario: 0,
-        reparacion_conservacion: 0
-      }
-    },
-    requiresReview: true,
-    blockingReasons: ['Reparto entre categorías fiscales: Mejora/Mobiliario/Reparación y conservación'],
     logs
   };
 }
