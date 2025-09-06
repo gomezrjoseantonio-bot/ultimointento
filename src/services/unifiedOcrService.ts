@@ -59,26 +59,16 @@ export class UnifiedOCRService {
         throw new Error(`Tipo de archivo no soportado para OCR: ${file.type}`);
       }
 
-      // Convert file to base64
+      // Convert file to array buffer for binary upload
       const fileBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(fileBuffer);
-      const binaryString = Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('');
-      const base64String = btoa(binaryString);
       
-      // Prepare request body for new endpoint
-      const requestBody = {
-        fileBase64: base64String,
-        mimeType: file.type,
-        filename: file.name
-      };
-
-      // Call the new ocr-process endpoint
-      const response = await fetch('/.netlify/functions/ocr-process', {
+      // Call the existing ocr-documentai endpoint with binary data
+      const response = await fetch('/.netlify/functions/ocr-documentai', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/octet-stream',
         },
-        body: JSON.stringify(requestBody)
+        body: fileBuffer
       });
 
       let result;
@@ -98,15 +88,55 @@ export class UnifiedOCRService {
       }
 
       if (!response.ok) {
+        // Handle error response from ocr-documentai
+        let errorMessage = 'Error en el procesamiento OCR';
+        try {
+          const errorResult = await response.json();
+          if (errorResult.message) {
+            errorMessage = errorResult.message;
+          } else if (errorResult.results?.[0]?.error) {
+            errorMessage = errorResult.results[0].error;
+          }
+        } catch {
+          // Use default error message if JSON parsing fails
+        }
+
         return {
           success: false,
-          error: result.error || 'Error en el procesamiento OCR',
+          error: errorMessage,
           status: response.status
         };
       }
 
-      // Return the result directly since new endpoint returns proper format
-      return result;
+      // Parse successful response from ocr-documentai
+      const ocrResult = await result;
+      
+      if (!ocrResult.success || !ocrResult.results?.[0]) {
+        return {
+          success: false,
+          error: 'Respuesta OCR inválida',
+          status: response.status
+        };
+      }
+
+      const documentResult = ocrResult.results[0];
+      
+      if (documentResult.status === 'error') {
+        return {
+          success: false,
+          error: documentResult.error || 'Error en OCR',
+          status: response.status
+        };
+      }
+
+      // Transform Document AI response to our standard format
+      return this.transformDocumentAIResponse({
+        document: {
+          entities: documentResult.entities || [],
+          pages: documentResult.pages || [],
+          text: documentResult.text || ''
+        }
+      });
 
     } catch (error) {
       console.error('OCR processing error:', error);
@@ -257,25 +287,30 @@ export class UnifiedOCRService {
    */
   async testOCREndpoint(): Promise<{ status: number; message: string }> {
     try {
-      // Test the new ocr-process endpoint with a minimal request
-      const testData = {
-        fileBase64: "JVBERi0xLjQK", // Simple PDF header in base64
-        mimeType: "application/pdf",
-        filename: "test.pdf"
-      };
-      
-      const response = await fetch('/.netlify/functions/ocr-process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testData)
+      // Use the ocr-selftest endpoint for testing
+      const response = await fetch('/.netlify/functions/ocr-selftest', {
+        method: 'GET'
       });
 
-      return {
-        status: response.status,
-        message: response.ok ? 'OCR endpoint disponible' : 'OCR endpoint no responde correctamente'
-      };
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok) {
+          return {
+            status: 200,
+            message: 'OCR endpoint disponible'
+          };
+        } else {
+          return {
+            status: response.status,
+            message: result.message || 'OCR endpoint configuración incorrecta'
+          };
+        }
+      } else {
+        return {
+          status: response.status,
+          message: 'OCR endpoint no responde correctamente'
+        };
+      }
 
     } catch (error) {
       return {
