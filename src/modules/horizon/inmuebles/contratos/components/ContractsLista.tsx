@@ -108,9 +108,9 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-800';
       case 'upcoming':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-primary-800';
       case 'terminated':
         return 'bg-gray-100 text-gray-800';
       default:
@@ -294,7 +294,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                           {status === 'active' && (
                             <button
                               onClick={() => handleTerminateContract(contract.id!)}
-                              className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                              className="text-warning-600 hover:text-yellow-800 transition-colors"
                               title="Terminar contrato"
                             >
                               <XCircle className="h-4 w-4" />
@@ -303,7 +303,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                           
                           <button
                             onClick={() => handleDeleteContract(contract.id!)}
-                            className="text-red-600 hover:text-red-800 transition-colors"
+                            className="text-error-600 hover:text-error-800 transition-colors"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />

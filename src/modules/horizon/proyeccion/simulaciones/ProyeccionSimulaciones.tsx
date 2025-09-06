@@ -244,7 +244,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     onClick={() => setSelectedScenario(scenario)}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                       selectedScenario?.id === scenario.id
-                        ? 'border-[#022D5E] bg-blue-50 text-[#022D5E]'
+                        ? 'border-[#022D5E] bg-primary-50 text-[#022D5E]'
                         : 'border-[#D7DEE7] hover:border-[#9CA3AF] text-[#374151]'
                     }`}
                   >

@@ -47,7 +47,7 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
     isIncome: boolean;
   }> = ({ title, categories, isIncome }) => (
     <div className="mb-6">
-      <h4 className={`text-md font-semibold mb-3 ${isIncome ? 'text-green-900' : 'text-red-900'}`}>
+      <h4 className={`text-md font-semibold mb-3 ${isIncome ? 'text-success-900' : 'text-error-900'}`}>
         {title}
       </h4>
       <div className="overflow-x-auto">

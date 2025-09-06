@@ -1,16 +1,8 @@
 import React from 'react';
-import PageLayout from '../../../components/common/PageLayout';
+import ModulePanel from '../../../components/common/ModulePanel';
 
 const Panel: React.FC = () => {
-  return (
-    <PageLayout 
-      title="Panel" 
-      subtitle="Vista general del módulo Pulse con resumen de finanzas personales." 
-      showInfoIcon={true}
-    >
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
-    </PageLayout>
-  );
+  return <ModulePanel module="pulse" />;
 };
 
 export default Panel;

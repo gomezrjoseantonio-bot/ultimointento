@@ -119,27 +119,27 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-sm text-green-600 font-medium">Ingresos anuales</div>
-          <div className="text-xl font-bold text-green-700">
+        <div className="bg-success-50 border border-success-200 rounded-lg p-4">
+          <div className="text-sm text-success-600 font-medium">Ingresos anuales</div>
+          <div className="text-xl font-bold text-success-700">
             {lines
               .filter(l => l.category === 'ingresos-alquiler')
               .reduce((sum, l) => sum + l.amount, 0)
               .toLocaleString('es-ES')} €
           </div>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="text-sm text-red-600 font-medium">Gastos anuales</div>
-          <div className="text-xl font-bold text-red-700">
+        <div className="bg-error-50 border border-error-200 rounded-lg p-4">
+          <div className="text-sm text-error-600 font-medium">Gastos anuales</div>
+          <div className="text-xl font-bold text-error-700">
             {lines
               .filter(l => l.category !== 'ingresos-alquiler')
               .reduce((sum, l) => sum + l.amount, 0)
               .toLocaleString('es-ES')} €
           </div>
         </div>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-sm text-blue-600 font-medium">Resultado anual</div>
-          <div className="text-xl font-bold text-blue-700">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="text-sm text-primary-600 font-medium">Resultado anual</div>
+          <div className="text-xl font-bold text-primary-700">
             {(lines
               .filter(l => l.category === 'ingresos-alquiler')
               .reduce((sum, l) => sum + l.amount, 0) -
@@ -162,7 +162,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
           </div>
           <button
             onClick={addNewLine}
-            className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center px-3 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             <Plus className="h-4 w-4 mr-1" />
             Añadir partida
@@ -182,7 +182,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="text"
                     value={line.description}
                     onChange={(e) => updateLine(index, 'description', e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                   />
                   
                   <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
@@ -191,7 +191,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <select
                     value={line.category}
                     onChange={(e) => updateLine(index, 'category', e.target.value as FiscalCategory)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                   >
                     {fiscalCategories.map(cat => (
                       <option key={cat.value} value={cat.value}>
@@ -210,7 +210,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="number"
                     value={line.amount}
                     onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                     min="0"
                     step="0.01"
                   />
@@ -224,7 +224,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <select
                     value={line.frequency}
                     onChange={(e) => updateLine(index, 'frequency', e.target.value as PaymentFrequency)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                   >
                     {paymentFrequencies.map(freq => (
                       <option key={freq.value} value={freq.value}>
@@ -244,7 +244,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <select
                         value={line.startMonth}
                         onChange={(e) => updateLine(index, 'startMonth', parseInt(e.target.value))}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                       >
                         {monthNames.map((month, i) => (
                           <option key={i + 1} value={i + 1}>
@@ -264,7 +264,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                         type="number"
                         value={line.installments || 2}
                         onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
                         min="1"
                         max="12"
                       />
@@ -288,14 +288,14 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                 <div className="lg:col-span-1 flex items-end">
                   <div className="flex space-x-2">
                     {line.isAutoGenerated && (
-                      <div className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                      <div className="px-2 py-1 bg-success-100 text-success-800 text-xs rounded">
                         Auto
                       </div>
                     )}
                     {!line.isAutoGenerated && (
                       <button
                         onClick={() => removeLine(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors"
                         title="Eliminar partida"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -333,7 +333,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

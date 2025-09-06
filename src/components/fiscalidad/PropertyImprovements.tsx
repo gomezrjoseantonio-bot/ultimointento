@@ -176,7 +176,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
 
       {/* Summary */}
       {improvements.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-neutral-900">Total invertido en mejoras:</span>
             <span className="text-lg font-bold text-brand-navy">
@@ -370,7 +370,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                     <button
                       onClick={() => handleDelete(improvement.id!)}
                       disabled={loading}
-                      className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                      className="text-error-600 hover:text-error-800 disabled:opacity-50"
                       title="Eliminar mejora"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -384,10 +384,10 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       )}
 
       {/* Help text */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-start gap-2">
-          <Calendar className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-blue-800">
+          <Calendar className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-primary-800">
             <p className="font-medium mb-1">Sobre las mejoras:</p>
             <ul className="space-y-1 text-xs">
               <li>• Las mejoras incrementan la base amortizable desde el año siguiente</li>

@@ -163,9 +163,9 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${
                         currentStep > step.id
-                          ? 'bg-blue-600 border-blue-600'
+                          ? 'bg-primary-600 border-primary-600'
                           : currentStep === step.id
-                          ? 'border-blue-600 bg-blue-50'
+                          ? 'border-primary-600 bg-primary-50'
                           : 'border-gray-300 bg-white'
                       }`}
                     >
@@ -174,7 +174,7 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
                       ) : (
                         <span
                           className={`text-sm font-medium ${
-                            currentStep === step.id ? 'text-blue-600' : 'text-gray-500'
+                            currentStep === step.id ? 'text-primary-600' : 'text-gray-500'
                           }`}
                         >
                           {step.id}

@@ -532,15 +532,15 @@ const InboxAtlasHorizon: React.FC = () => {
     
     switch (extension) {
       case 'pdf':
-        return <FileText className="w-4 h-4 text-red-500" />;
+        return <FileText className="w-4 h-4 text-error-500" />;
       case 'jpg':
       case 'jpeg':
       case 'png':
-        return <Image className="w-4 h-4 text-blue-500" />;
+        return <Image className="w-4 h-4 text-primary-500" />;
       case 'xlsx':
       case 'xls':
       case 'csv':
-        return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
+        return <FileSpreadsheet className="w-4 h-4 text-success-500" />;
       case 'zip':
       case 'eml':
         return <Archive className="w-4 h-4 text-purple-500" />;
@@ -551,9 +551,9 @@ const InboxAtlasHorizon: React.FC = () => {
 
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
-      case 'guardado_automatico': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'revision_requerida': return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-      case 'error': return <XCircle className="w-4 h-4 text-red-600" />;
+      case 'guardado_automatico': return <CheckCircle className="w-4 h-4 text-success-600" />;
+      case 'revision_requerida': return <AlertTriangle className="w-4 h-4 text-warning-600" />;
+      case 'error': return <XCircle className="w-4 h-4 text-error-600" />;
     }
   };
 
@@ -596,7 +596,7 @@ const InboxAtlasHorizon: React.FC = () => {
             <input
               type="text"
               placeholder="Buscar por proveedor, importe, IBAN, inmueble, id..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -629,7 +629,7 @@ const InboxAtlasHorizon: React.FC = () => {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as 'todos' | DocumentType)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="todos">Todos los tipos</option>
               <option value="Factura">Factura</option>
@@ -643,7 +643,7 @@ const InboxAtlasHorizon: React.FC = () => {
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="todos">Todas las fechas</option>
               <option value="72h">Últimas 72h</option>
@@ -696,7 +696,7 @@ const InboxAtlasHorizon: React.FC = () => {
                   <tr
                     key={doc.id}
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedDocument?.id === doc.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      selectedDocument?.id === doc.id ? 'bg-primary-50 border-l-4 border-l-blue-500' : ''
                     }`}
                     onClick={() => setSelectedDocument(doc)}
                   >
@@ -724,7 +724,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       {doc.destino ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 cursor-pointer hover:bg-blue-200 transition-colors">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 cursor-pointer hover:bg-blue-200 transition-colors">
                           {doc.destino}
                         </span>
                       ) : (
@@ -743,7 +743,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-1 sm:gap-2">
                         <button 
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-primary-600 hover:text-primary-900"
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedDocument(doc);
@@ -753,7 +753,7 @@ const InboxAtlasHorizon: React.FC = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button 
-                          className="text-green-600 hover:text-green-900"
+                          className="text-success-600 hover:text-success-900"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleReprocess(doc);
@@ -763,7 +763,7 @@ const InboxAtlasHorizon: React.FC = () => {
                           <RotateCcw className="w-4 h-4" />
                         </button>
                         <button 
-                          className="text-red-600 hover:text-red-900"
+                          className="text-error-600 hover:text-error-900"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(doc.id);
@@ -858,7 +858,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     <div>
                       <span className="text-gray-500">Tipo suministro:</span>
                       <div className="font-medium">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-success-100 text-success-700">
                           {getUtilityTypeDisplayName(selectedDocument.utility_type)}
                         </span>
                       </div>
@@ -890,7 +890,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     <div className="col-span-2">
                       <span className="text-gray-500">Destino final:</span>
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                           {selectedDocument.destino}
                         </span>
                       </div>
@@ -901,7 +901,7 @@ const InboxAtlasHorizon: React.FC = () => {
                   {selectedDocument.revision && selectedDocument.revision > 1 && (
                     <div className="col-span-2">
                       <span className="text-gray-500">Revisión:</span>
-                      <div className="font-medium text-xs text-blue-600">
+                      <div className="font-medium text-xs text-primary-600">
                         v{selectedDocument.revision} (reprocesado)
                       </div>
                     </div>
@@ -911,12 +911,12 @@ const InboxAtlasHorizon: React.FC = () => {
 
               {/* Mensajes de bloqueo para revisión requerida */}
               {selectedDocument.status === 'revision_requerida' && selectedDocument.blockingReasons && (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="mb-6 p-4 bg-warning-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center mb-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
+                    <AlertTriangle className="w-5 h-5 text-warning-600 mr-2" />
                     <span className="font-medium text-yellow-800">Revisión requerida</span>
                   </div>
-                  <ul className="text-sm text-yellow-700 space-y-1">
+                  <ul className="text-sm text-warning-700 space-y-1">
                     {selectedDocument.blockingReasons.map((reason, index) => (
                       <li key={index}>• {reason}</li>
                     ))}
@@ -1016,7 +1016,7 @@ const InboxAtlasHorizon: React.FC = () => {
                       <label className="block text-sm font-medium text-yellow-800">
                         Seleccionar destino:
                       </label>
-                      <div className="text-xs text-yellow-700 mb-2">
+                      <div className="text-xs text-warning-700 mb-2">
                         ⚠ Los documentos se adjuntan a registros, no a carpetas separadas
                       </div>
                       <select 
@@ -1043,12 +1043,12 @@ const InboxAtlasHorizon: React.FC = () => {
 
               {/* Mensajes de error */}
               {selectedDocument.status === 'error' && selectedDocument.blockingReasons && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="mb-6 p-4 bg-error-50 border border-error-200 rounded-lg">
                   <div className="flex items-center mb-2">
-                    <XCircle className="w-5 h-5 text-red-600 mr-2" />
-                    <span className="font-medium text-red-800">Error en procesamiento</span>
+                    <XCircle className="w-5 h-5 text-error-600 mr-2" />
+                    <span className="font-medium text-error-800">Error en procesamiento</span>
                   </div>
-                  <ul className="text-sm text-red-700 space-y-1">
+                  <ul className="text-sm text-error-700 space-y-1">
                     {selectedDocument.blockingReasons.map((reason, index) => (
                       <li key={index}>• {reason}</li>
                     ))}

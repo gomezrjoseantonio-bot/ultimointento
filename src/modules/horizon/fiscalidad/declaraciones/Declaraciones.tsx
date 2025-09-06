@@ -599,7 +599,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     <button
       onClick={handleGenerateDeclaration}
       disabled={isGenerating}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
     >
       <FileText className="w-4 h-4" />
       {isGenerating ? 'Generando...' : 'Generar Paquete Renta'}
@@ -610,7 +610,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     return (
       <PageLayout title="Declaraciones" subtitle="Preparación de declaraciones fiscales." primaryAction={primaryAction}>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       </PageLayout>
     );
@@ -635,7 +635,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {getYearRange().map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -650,7 +650,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
               <select
                 value={selectedProperty}
                 onChange={(e) => setSelectedProperty(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="todos">Todos los inmuebles</option>
                 {properties.map(property => (
@@ -662,8 +662,8 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
             </div>
           </div>
           
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center space-x-2 text-sm text-blue-800">
+          <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+            <div className="flex items-center space-x-2 text-sm text-primary-800">
               <Archive className="h-4 w-4" />
               <span>
                 El paquete incluirá: PDF (layout AEAT), Excel/CSV (tablas base) y JSON (datos estructurados)

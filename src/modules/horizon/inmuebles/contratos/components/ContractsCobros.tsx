@@ -205,11 +205,11 @@ const ContractsCobros: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-yellow-800';
       case 'paid':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-800';
       case 'partial':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-primary-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -239,13 +239,13 @@ const ContractsCobros: React.FC = () => {
           <div className="flex items-center space-x-6">
             <div className="text-center">
               <div className="text-sm text-neutral-600">Pendiente</div>
-              <div className="text-lg font-semibold text-yellow-600">
+              <div className="text-lg font-semibold text-warning-600">
                 {formatEuro(totals.pending)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-neutral-600">Cobrado</div>
-              <div className="text-lg font-semibold text-green-600">
+              <div className="text-lg font-semibold text-success-600">
                 {formatEuro(totals.paid)}
               </div>
             </div>
@@ -359,14 +359,14 @@ const ContractsCobros: React.FC = () => {
                           <>
                             <button
                               onClick={() => openPaymentModal(payment, false)}
-                              className="text-green-600 hover:text-green-800 transition-colors"
+                              className="text-success-600 hover:text-success-800 transition-colors"
                               title="Marcar como cobrado"
                             >
                               <Check className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => openPaymentModal(payment, true)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              className="text-primary-600 hover:text-primary-800 transition-colors"
                               title="Pago parcial"
                             >
                               <DollarSign className="h-4 w-4" />
@@ -377,7 +377,7 @@ const ContractsCobros: React.FC = () => {
                         {payment.status === 'partial' && (
                           <button
                             onClick={() => openPaymentModal(payment, false)}
-                            className="text-green-600 hover:text-green-800 transition-colors"
+                            className="text-success-600 hover:text-success-800 transition-colors"
                             title="Completar pago"
                           >
                             <Check className="h-4 w-4" />

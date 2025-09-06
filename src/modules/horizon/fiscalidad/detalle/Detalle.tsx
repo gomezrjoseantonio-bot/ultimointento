@@ -101,27 +101,27 @@ const Detalle: React.FC = () => {
     const statusMap = {
       'previsto': { 
         label: 'Prevista', 
-        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        color: 'bg-warning-100 text-yellow-800 border-yellow-200',
         icon: Clock 
       },
       'cobrado': { 
         label: 'Cobrada', 
-        color: 'bg-green-100 text-green-800 border-green-200',
+        color: 'bg-success-100 text-success-800 border-success-200',
         icon: CheckCircle 
       },
       'incompleto': { 
         label: 'Parcialmente cobrada', 
-        color: 'bg-orange-100 text-orange-800 border-orange-200',
+        color: 'bg-warning-100 text-orange-800 border-orange-200',
         icon: AlertCircle 
       },
       'completo': { 
         label: 'Completo', 
-        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        color: 'bg-primary-100 text-primary-800 border-primary-200',
         icon: CheckCircle 
       },
       'pagado': { 
         label: 'Pagado', 
-        color: 'bg-green-100 text-green-800 border-green-200',
+        color: 'bg-success-100 text-success-800 border-success-200',
         icon: CheckCircle 
       }
     };
@@ -154,7 +154,7 @@ const Detalle: React.FC = () => {
               value={filters.searchTerm}
               onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
               placeholder="Buscar..."
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ const Detalle: React.FC = () => {
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="all">Todos</option>
             {activeSection === 'ingresos' && (
@@ -190,7 +190,7 @@ const Detalle: React.FC = () => {
             type="date"
             value={filters.dateFrom}
             onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
@@ -200,7 +200,7 @@ const Detalle: React.FC = () => {
             type="date"
             value={filters.dateTo}
             onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -226,17 +226,17 @@ const Detalle: React.FC = () => {
         
         {/* Reconciliation Summary */}
         {reconciliationSuggestions.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <RefreshCw className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">
+                <RefreshCw className="w-5 h-5 text-primary-600" />
+                <span className="text-sm font-medium text-primary-900">
                   {reconciliationSuggestions.length} ingresos con sugerencias de conciliación
                 </span>
               </div>
               <button
                 onClick={() => setShowReconciliationPanel(!showReconciliationPanel)}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-primary-600 hover:text-primary-800"
               >
                 {showReconciliationPanel ? 'Ocultar' : 'Ver sugerencias'}
               </button>
@@ -252,7 +252,7 @@ const Detalle: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   Detalle de ingresos devengados y estado de cobro 
                   {unreconciledCount > 0 && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-100 text-yellow-800">
                       {unreconciledCount} sin conciliar
                     </span>
                   )}
@@ -325,13 +325,13 @@ const Detalle: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {hasReconciliation ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success-100 text-success-800">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Conciliado
                             </span>
                           ) : suggestion && suggestion.potentialMovements.length > 0 ? (
                             <div className="flex flex-col space-y-1">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-orange-800">
                                 <AlertCircle className="w-3 h-3 mr-1" />
                                 {suggestion.potentialMovements.length} sugerencias
                               </span>
@@ -341,7 +341,7 @@ const Detalle: React.FC = () => {
                                     <button
                                       key={idx}
                                       onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
-                                      className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                                      className="text-xs px-2 py-1 bg-primary-100 text-primary-800 rounded hover:bg-blue-200"
                                       title={`Confianza: ${match.confidence}% - ${match.reason}`}
                                     >
                                       Conciliar ({match.confidence}%)
@@ -362,7 +362,7 @@ const Detalle: React.FC = () => {
                             {ingreso.movement_id && (
                               <button
                                 title="Ver conciliación"
-                                className="text-blue-600 hover:text-blue-800"
+                                className="text-primary-600 hover:text-primary-800"
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </button>
@@ -370,7 +370,7 @@ const Detalle: React.FC = () => {
                             {contract && (
                               <button
                                 title="Ver contrato"
-                                className="text-green-600 hover:text-green-800"
+                                className="text-success-600 hover:text-success-800"
                               >
                                 <FileText className="h-4 w-4" />
                               </button>
@@ -474,7 +474,7 @@ const Detalle: React.FC = () => {
                                   {gasto.movement_id && (
                                     <button
                                       title="Ver conciliación bancaria"
-                                      className="text-green-600 hover:text-green-800"
+                                      className="text-success-600 hover:text-success-800"
                                     >
                                       <CheckCircle className="h-4 w-4" />
                                     </button>
@@ -482,7 +482,7 @@ const Detalle: React.FC = () => {
                                   {gasto.source_doc_id && (
                                     <button
                                       title="Ver documento"
-                                      className="text-blue-600 hover:text-blue-800"
+                                      className="text-primary-600 hover:text-primary-800"
                                     >
                                       <ExternalLink className="h-4 w-4" />
                                     </button>
@@ -569,7 +569,7 @@ const Detalle: React.FC = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       );
     }
@@ -603,7 +603,7 @@ const Detalle: React.FC = () => {
                   onClick={() => setActiveSection(section.id)}
                   className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
+                      ? 'bg-primary-100 text-primary-700 border-b-2 border-primary-500'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >

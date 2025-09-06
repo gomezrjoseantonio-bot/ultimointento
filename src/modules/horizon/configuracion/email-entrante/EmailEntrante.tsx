@@ -347,8 +347,8 @@ const EmailEntrante: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        alias.type === 'global' ? 'bg-blue-100 text-blue-800' :
-                        alias.type === 'property' ? 'bg-green-100 text-green-800' :
+                        alias.type === 'global' ? 'bg-primary-100 text-primary-800' :
+                        alias.type === 'property' ? 'bg-success-100 text-success-800' :
                         'bg-purple-100 text-purple-800'
                       }`}>
                         {alias.type === 'global' ? 'Global' : 
@@ -356,9 +356,9 @@ const EmailEntrante: React.FC = () => {
                       </div>
                       
                       {alias.isActive ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <CheckCircle className="w-4 h-4 text-success-500" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
+                        <XCircle className="w-4 h-4 text-error-500" />
                       )}
                     </div>
                     
@@ -383,7 +383,7 @@ const EmailEntrante: React.FC = () => {
                     
                     <button
                       onClick={() => regenerateAlias(alias.id)}
-                      className="p-2 text-neutral-500 hover:text-orange-600 transition-colors"
+                      className="p-2 text-neutral-500 hover:text-warning-600 transition-colors"
                       title="Regenerar alias"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -393,8 +393,8 @@ const EmailEntrante: React.FC = () => {
                       onClick={() => toggleAliasStatus(alias.id)}
                       className={`p-2 transition-colors ${
                         alias.isActive 
-                          ? 'text-green-600 hover:text-green-700' 
-                          : 'text-red-500 hover:text-red-600'
+                          ? 'text-success-600 hover:text-success-700' 
+                          : 'text-error-500 hover:text-error-600'
                       }`}
                       title={alias.isActive ? 'Desactivar' : 'Activar'}
                     >
@@ -434,7 +434,7 @@ const EmailEntrante: React.FC = () => {
                 onClick={toggleWhitelist}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                   whitelistEnabled 
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                    ? 'bg-success-100 text-success-800 hover:bg-green-200' 
                     : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
@@ -471,7 +471,7 @@ const EmailEntrante: React.FC = () => {
                       <span className="text-sm text-neutral-700">{email}</span>
                       <button
                         onClick={() => removeFromWhitelist(email)}
-                        className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                        className="p-1 text-error-500 hover:text-error-700 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -482,9 +482,9 @@ const EmailEntrante: React.FC = () => {
             </div>
 
             {/* Security limits info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-900 mb-2">Límites de seguridad</h4>
-              <ul className="text-xs text-blue-800 space-y-1">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-primary-900 mb-2">Límites de seguridad</h4>
+              <ul className="text-xs text-primary-800 space-y-1">
                 <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENTS} adjuntos por email</li>
                 <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENT_SIZE / (1024*1024)}MB por adjunto</li>
                 <li>• Validación SPF, DKIM y DMARC (registrada en logs)</li>
@@ -509,7 +509,7 @@ const EmailEntrante: React.FC = () => {
 
               {/* Issue 3: Mock email testing */}
               <div className="flex items-center gap-2">
-                <label className="cursor-pointer px-4 py-2 bg-orange-100 text-orange-800 rounded-lg hover:bg-orange-200 transition-colors">
+                <label className="cursor-pointer px-4 py-2 bg-warning-100 text-orange-800 rounded-lg hover:bg-orange-200 transition-colors">
                   <Upload className="w-4 h-4 inline mr-2" />
                   Probar con .eml/.zip
                   <input
@@ -558,16 +558,16 @@ const EmailEntrante: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          log.status === 'procesado' ? 'bg-green-100 text-green-800' :
-                          log.status === 'sin-adjuntos' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
+                          log.status === 'procesado' ? 'bg-success-100 text-success-800' :
+                          log.status === 'sin-adjuntos' ? 'bg-warning-100 text-yellow-800' :
+                          'bg-error-100 text-error-800'
                         }`}>
                           {log.status === 'procesado' ? 'Procesado' :
                            log.status === 'sin-adjuntos' ? 'Sin adjuntos' : 'Rechazado'}
                         </div>
                         
                         {log.isMock && (
-                          <div className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          <div className="px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-orange-800">
                             Test
                           </div>
                         )}
@@ -597,7 +597,7 @@ const EmailEntrante: React.FC = () => {
                         </div>
 
                         {log.reason && (
-                          <div className="text-xs text-red-600 mt-1">
+                          <div className="text-xs text-error-600 mt-1">
                             Motivo: {log.reason}
                           </div>
                         )}

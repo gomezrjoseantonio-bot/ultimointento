@@ -363,7 +363,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   onClick={() => handleDuplicateAction(index, 'replace')}
                   className={`p-2 text-sm rounded-lg border transition-colors ${
                     dup.action === 'replace' 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                      ? 'border-primary-500 bg-primary-50 text-primary-700' 
                       : 'border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >
@@ -375,7 +375,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   onClick={() => handleDuplicateAction(index, 'keep-both')}
                   className={`p-2 text-sm rounded-lg border transition-colors ${
                     dup.action === 'keep-both' 
-                      ? 'border-green-500 bg-green-50 text-green-700' 
+                      ? 'border-success-500 bg-success-50 text-success-700' 
                       : 'border-neutral-200 hover:bg-neutral-50'
                   }`}
                 >
@@ -403,7 +403,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           <button
             onClick={processDuplicates}
             disabled={duplicates.some(d => !d.action)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <CheckCircle className="w-4 h-4 inline mr-2" />
             Procesar Documentos

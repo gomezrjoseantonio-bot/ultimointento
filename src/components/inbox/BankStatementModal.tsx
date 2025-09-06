@@ -165,12 +165,12 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
         <div className="p-6 space-y-4">
           {/* File info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div className="flex items-center gap-3">
-              <Upload className="w-5 h-5 text-blue-600" />
+              <Upload className="w-5 h-5 text-primary-600" />
               <div>
-                <div className="font-medium text-blue-900">{file?.name}</div>
-                <div className="text-sm text-blue-600">
+                <div className="font-medium text-primary-900">{file?.name}</div>
+                <div className="text-sm text-primary-600">
                   Extracto bancario detectado
                 </div>
               </div>
@@ -183,7 +183,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
               Seleccionar cuenta destino
             </label>
             <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(e.target.value === 'new' ? 'new' : Number(e.target.value) || null)}
             >
@@ -205,7 +205,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                 <label className="block text-sm text-gray-600 mb-1">Nombre de la cuenta *</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                   value={newAccount.name}
                   onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
                   placeholder="Ej: Cuenta corriente principal"
@@ -215,7 +215,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                 <label className="block text-sm text-gray-600 mb-1">Banco *</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                   value={newAccount.bank}
                   onChange={(e) => setNewAccount({ ...newAccount, bank: e.target.value })}
                   placeholder="Ej: BBVA, Santander, ING..."
@@ -225,7 +225,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                 <label className="block text-sm text-gray-600 mb-1">IBAN</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                   value={newAccount.iban}
                   onChange={(e) => setNewAccount({ ...newAccount, iban: e.target.value })}
                   placeholder="ES..."
@@ -236,7 +236,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                 <input
                   type="number"
                   step="0.01"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                   value={newAccount.openingBalance}
                   onChange={(e) => setNewAccount({ ...newAccount, openingBalance: parseFloat(e.target.value) || 0 })}
                 />
@@ -244,7 +244,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
               <button
                 onClick={handleCreateAccount}
                 disabled={isLoading || !newAccount.name || !newAccount.bank}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Creando...' : 'Crear Cuenta'}
               </button>
@@ -262,7 +262,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             <button
               onClick={handleImport}
               disabled={isLoading || !selectedAccountId || selectedAccountId === 'new'}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Importando...' : 'Importar'}
             </button>

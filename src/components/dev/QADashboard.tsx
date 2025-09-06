@@ -87,8 +87,8 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pass': return 'bg-green-50 text-[#16A34A] border-green-200'; // Verde OK según guía
-      case 'fail': return 'bg-red-50 text-[#DC2626] border-red-200'; // Rojo error según guía
+      case 'pass': return 'bg-success-50 text-[#16A34A] border-success-200'; // Verde OK según guía
+      case 'fail': return 'bg-error-50 text-[#DC2626] border-error-200'; // Rojo error según guía
       case 'warning': return 'bg-amber-50 text-[#EAB308] border-amber-200'; // Amarillo warning según guía
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
@@ -99,7 +99,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
+            <BarChart3 className="h-6 w-6 text-primary-600" />
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 ATLAS QA Dashboard
@@ -120,29 +120,29 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
         <div className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Session Summary */}
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+            <div className="bg-primary-50 rounded-lg p-4">
+              <h4 className="font-medium text-primary-900 mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Session Summary
               </h4>
               {sessionData && (
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Session ID:</span>
-                    <span className="font-mono text-blue-900">{sessionData.sessionId.slice(-8)}</span>
+                    <span className="text-primary-700">Session ID:</span>
+                    <span className="font-mono text-primary-900">{sessionData.sessionId.slice(-8)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Total Events:</span>
-                    <span className="font-medium text-blue-900">{sessionData.totalEvents}</span>
+                    <span className="text-primary-700">Total Events:</span>
+                    <span className="font-medium text-primary-900">{sessionData.totalEvents}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Errors:</span>
-                    <span className={`font-medium ${sessionData.errors > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <span className="text-primary-700">Errors:</span>
+                    <span className={`font-medium ${sessionData.errors > 0 ? 'text-error-600' : 'text-success-600'}`}>
                       {sessionData.errors}
                     </span>
                   </div>
                   <div className="mt-3">
-                    <span className="text-blue-700 text-xs">Events by Type:</span>
+                    <span className="text-primary-700 text-xs">Events by Type:</span>
                     {Object.entries(sessionData.eventsByType).map(([type, count]) => (
                       <div key={type} className="flex justify-between text-xs mt-1">
                         <span className="capitalize">{type.replace('_', ' ')}:</span>
@@ -155,18 +155,18 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
             </div>
 
             {/* Manual Tests */}
-            <div className="bg-green-50 rounded-lg p-4">
-              <h4 className="font-medium text-green-900 mb-3 flex items-center gap-2">
+            <div className="bg-success-50 rounded-lg p-4">
+              <h4 className="font-medium text-success-900 mb-3 flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Manual Tests
               </h4>
               <button
                 onClick={runManualTests}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                className="w-full px-4 py-2 bg-success-600 text-white rounded-md hover:bg-success-700 transition-colors text-sm"
               >
                 Run QA Checklist
               </button>
-              <p className="text-xs text-green-700 mt-2">
+              <p className="text-xs text-success-700 mt-2">
                 Executes basic functionality tests for bank parsing, OCR, and localization
               </p>
             </div>

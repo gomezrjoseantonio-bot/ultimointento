@@ -143,20 +143,20 @@ const GastosPanel: React.FC = () => {
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'pagado': return 'bg-green-100 text-green-800';
-      case 'completo': return 'bg-blue-100 text-blue-800';
-      case 'incompleto': return 'bg-orange-100 text-orange-800';
+      case 'pagado': return 'bg-success-100 text-success-800';
+      case 'completo': return 'bg-primary-100 text-primary-800';
+      case 'incompleto': return 'bg-warning-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getCategoryColor = (categoria: string) => {
     switch (categoria) {
-      case 'suministros': return 'bg-yellow-100 text-yellow-800';
+      case 'suministros': return 'bg-warning-100 text-yellow-800';
       case 'comunidad': return 'bg-purple-100 text-purple-800';
-      case 'seguros': return 'bg-blue-100 text-blue-800';
-      case 'tributos-locales': return 'bg-red-100 text-red-800';
-      case 'servicios-personales': return 'bg-green-100 text-green-800';
+      case 'seguros': return 'bg-primary-100 text-primary-800';
+      case 'tributos-locales': return 'bg-error-100 text-error-800';
+      case 'servicios-personales': return 'bg-success-100 text-success-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -218,7 +218,7 @@ const GastosPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="completo">Completo</option>
@@ -235,7 +235,7 @@ const GastosPanel: React.FC = () => {
             placeholder="Buscar por proveedor, inmueble o categoría..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -257,7 +257,7 @@ const GastosPanel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">Completos</h3>
             <FileText className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-blue-600">
+          <div className="mt-2 text-2xl font-bold text-primary-600">
             {filteredGastos.filter(g => g.estado === 'completo').length}
           </div>
         </div>
@@ -267,7 +267,7 @@ const GastosPanel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">Pagados</h3>
             <Calendar className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-green-600">
+          <div className="mt-2 text-2xl font-bold text-success-600">
             {filteredGastos.filter(g => g.estado === 'pagado').length}
           </div>
         </div>
@@ -277,7 +277,7 @@ const GastosPanel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">Incompletos</h3>
             <User className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-orange-600">
+          <div className="mt-2 text-2xl font-bold text-warning-600">
             {filteredGastos.filter(g => g.estado === 'incompleto').length}
           </div>
         </div>
@@ -327,7 +327,7 @@ const GastosPanel: React.FC = () => {
                     {getPropertyName(gasto.destino, gasto.destino_id)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="text-sm font-medium text-red-600">
+                    <div className="text-sm font-medium text-error-600">
                       {formatEuro(gasto.total)}
                     </div>
                     {gasto.base && gasto.iva && (
@@ -345,7 +345,7 @@ const GastosPanel: React.FC = () => {
                     </span>
                     {gasto.movement_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
                           Conciliado
                         </span>
                       </div>
@@ -395,7 +395,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.proveedor_nombre}
                     onChange={(e) => setFormData({...formData, proveedor_nombre: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -407,7 +407,7 @@ const GastosPanel: React.FC = () => {
                     type="text"
                     value={formData.proveedor_nif}
                     onChange={(e) => setFormData({...formData, proveedor_nif: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -422,7 +422,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -435,7 +435,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.fecha_pago_prevista}
                     onChange={(e) => setFormData({...formData, fecha_pago_prevista: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -451,7 +451,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -464,7 +464,7 @@ const GastosPanel: React.FC = () => {
                     step="0.01"
                     value={formData.base}
                     onChange={(e) => setFormData({...formData, base: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -477,7 +477,7 @@ const GastosPanel: React.FC = () => {
                     step="0.01"
                     value={formData.iva}
                     onChange={(e) => setFormData({...formData, iva: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -490,7 +490,7 @@ const GastosPanel: React.FC = () => {
                   required
                   value={formData.categoria_AEAT}
                   onChange={(e) => setFormData({...formData, categoria_AEAT: e.target.value as AEATFiscalType})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {aeatCategories.map(category => (
                     <option key={category.value} value={category.value}>
@@ -509,7 +509,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.destino}
                     onChange={(e) => handleDestinoChange(e.target.value as GastoDestino)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="personal">Personal</option>
                     <option value="inmueble_id">Inmueble</option>
@@ -525,7 +525,7 @@ const GastosPanel: React.FC = () => {
                       required
                       value={formData.destino_id}
                       onChange={(e) => setFormData({...formData, destino_id: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value={0}>Seleccionar inmueble</option>
                       {properties.map(property => (

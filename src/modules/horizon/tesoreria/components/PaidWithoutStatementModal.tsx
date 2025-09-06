@@ -98,7 +98,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-1">{getRecordTypeLabel()}</div>
             <div className="font-medium text-gray-900">{recordDescription}</div>
-            <div className="text-lg font-bold text-blue-600">
+            <div className="text-lg font-bold text-primary-600">
               {recordAmount.toLocaleString('es-ES', { 
                 style: 'currency', 
                 currency: 'EUR' 
@@ -117,7 +117,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
                 onClick={() => setPaymentMethod('Efectivo')}
                 className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
                   paymentMethod === 'Efectivo'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -129,7 +129,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
                 onClick={() => setPaymentMethod('Tarjeta')}
                 className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
                   paymentMethod === 'Tarjeta'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -141,7 +141,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
                 onClick={() => setPaymentMethod('Otros')}
                 className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
                   paymentMethod === 'Otros'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -161,7 +161,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               id="paymentDate"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
           </div>
@@ -177,14 +177,14 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Detalles del pago, lugar, etc. (opcional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           {/* Info Note */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <div className="bg-warning-50 border border-yellow-200 rounded-lg p-3">
             <div className="flex items-start">
-              <HelpCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+              <HelpCircle className="w-5 h-5 text-warning-600 mt-0.5 mr-2 flex-shrink-0" />
               <div className="text-sm text-yellow-800">
                 <p className="font-medium mb-1">¿Cuándo usar esta opción?</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
@@ -209,7 +209,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Procesando...' : getActionLabel()}
             </button>

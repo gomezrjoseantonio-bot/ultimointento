@@ -248,10 +248,10 @@ const DashboardConfig: React.FC = () => {
   if (!config) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600">Error al cargar la configuración del dashboard</p>
+        <p className="text-error-600">Error al cargar la configuración del dashboard</p>
         <button 
           onClick={loadConfiguration}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         >
           Reintentar
         </button>
@@ -426,14 +426,14 @@ const DashboardConfig: React.FC = () => {
                   className={`
                     border border-neutral-200 rounded-lg p-4 cursor-pointer transition-colors
                     ${isActive 
-                      ? 'bg-green-50 border-green-200' 
+                      ? 'bg-success-50 border-success-200' 
                       : 'bg-white hover:bg-neutral-50'
                     }
                   `}
                   onClick={() => addBlock(blockId as DashboardBlockType)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`${isActive ? 'text-green-600' : 'text-neutral-600'}`}>
+                    <div className={`${isActive ? 'text-success-600' : 'text-neutral-600'}`}>
                       {getBlockIcon(blockId as DashboardBlockType)}
                     </div>
                     
@@ -444,7 +444,7 @@ const DashboardConfig: React.FC = () => {
 
                     <div className={`
                       w-6 h-6 rounded-full flex items-center justify-center text-white text-sm
-                      ${isActive ? 'bg-green-500' : 'bg-neutral-300'}
+                      ${isActive ? 'bg-success-500' : 'bg-neutral-300'}
                     `}>
                       {isActive ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </div>
@@ -455,14 +455,14 @@ const DashboardConfig: React.FC = () => {
           </div>
 
           {/* Info box */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mt-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="text-blue-600 flex-shrink-0">
+              <div className="text-primary-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="font-medium text-blue-800 mb-2">Presets automáticos</h4>
-                <div className="text-sm text-blue-700 space-y-1">
+                <h4 className="font-medium text-primary-800 mb-2">Presets automáticos</h4>
+                <div className="text-sm text-primary-700 space-y-1">
                   <p><strong>Preset A (≤3 inmuebles):</strong> Tesorería, Ingresos/Gastos, Fiscalidad, Alertas</p>
                   <p><strong>Preset B (&gt;3 inmuebles):</strong> Tesorería, Ingresos/Gastos, KPIs, Fiscalidad, Alertas</p>
                 </div>

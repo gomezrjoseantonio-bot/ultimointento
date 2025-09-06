@@ -150,8 +150,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   const getConciliationBadge = (estado: EstadoConciliacion) => {
     const statusMap = {
-      'pendiente': 'bg-yellow-100 text-yellow-800',
-      'conciliado': 'bg-green-100 text-green-800'
+      'pendiente': 'bg-warning-100 text-yellow-800',
+      'conciliado': 'bg-success-100 text-success-800'
     };
     
     const statusLabels = {
@@ -278,19 +278,19 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">% Conciliado</div>
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-2xl font-bold text-success-600">
             {filteredExpenses.length ? Math.round((filteredExpenses.filter(e => e.estado_conciliacion === 'conciliado').length / filteredExpenses.length) * 100) : 0}%
           </div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Suministros</div>
-          <div className="text-2xl font-bold text-blue-600">
+          <div className="text-2xl font-bold text-primary-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto?.startsWith('suministro_') || e.tipo_gasto === 'internet').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Reparación/Conservación</div>
-          <div className="text-2xl font-bold text-orange-600">
+          <div className="text-2xl font-bold text-warning-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'reparacion_conservacion').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
@@ -472,7 +472,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                         {getTipoGastoLabel(expense.tipo_gasto)}
                       </span>
                     </td>
@@ -494,7 +494,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                         )}
                         {expense.estado_conciliacion === 'pendiente' && (
                           <button
-                            className="text-green-600 hover:text-green-800 p-1"
+                            className="text-success-600 hover:text-success-800 p-1"
                             title="Conciliar"
                           >
                             <CheckCircleIcon className="h-4 w-4" />
@@ -509,7 +509,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense.id!)}
-                          className="text-red-600 hover:text-red-800 p-1"
+                          className="text-error-600 hover:text-error-800 p-1"
                           title="Eliminar"
                         >
                           <TrashIcon className="h-4 w-4" />

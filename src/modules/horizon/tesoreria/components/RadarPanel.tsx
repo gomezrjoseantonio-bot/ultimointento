@@ -274,9 +274,9 @@ const RadarPanel: React.FC = () => {
               <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance7d)}</div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance7d > projection.currentBalance ? (
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <TrendingUp className="w-4 h-4 text-success-500" />
                 ) : (
-                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <TrendingDown className="w-4 h-4 text-error-500" />
                 )}
                 Proyección +7d
               </div>
@@ -290,9 +290,9 @@ const RadarPanel: React.FC = () => {
               <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance30d)}</div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance30d > projection.currentBalance ? (
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <TrendingUp className="w-4 h-4 text-success-500" />
                 ) : (
-                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <TrendingDown className="w-4 h-4 text-error-500" />
                 )}
                 Proyección +30d
               </div>
@@ -304,19 +304,19 @@ const RadarPanel: React.FC = () => {
             
             <div className={`text-center p-4 rounded-lg ${
               projection.accountsAtRisk > 0 
-                ? 'bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200' 
+                ? 'bg-gradient-to-br from-red-50 to-orange-50 border-2 border-error-200' 
                 : 'bg-gradient-to-br from-green-50 to-green-100'
             }`}>
               <div className={`text-3xl font-bold ${
-                projection.accountsAtRisk > 0 ? 'text-red-600' : 'text-green-600'
+                projection.accountsAtRisk > 0 ? 'text-error-600' : 'text-success-600'
               }`}>
                 {projection.accountsAtRisk}
               </div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.accountsAtRisk > 0 ? (
-                  <AlertTriangle className="w-4 h-4 text-red-500" />
+                  <AlertTriangle className="w-4 h-4 text-error-500" />
                 ) : (
-                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <CheckCircle className="w-4 h-4 text-success-500" />
                 )}
                 {projection.accountsAtRisk > 0 ? 'Cuentas en riesgo' : 'Todas saludables'}
               </div>
@@ -344,10 +344,10 @@ const RadarPanel: React.FC = () => {
               return (
                 <div key={account.id} className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${
                   status === 'critical' 
-                    ? 'border-red-200 bg-red-50' 
+                    ? 'border-error-200 bg-error-50' 
                     : status === 'warning' 
                     ? 'border-orange-200 bg-orange-50'
-                    : 'border-green-200 bg-green-50'
+                    : 'border-success-200 bg-success-50'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -371,7 +371,7 @@ const RadarPanel: React.FC = () => {
                     <div>
                       <div className="text-sm font-medium text-gray-700">
                         Proyección 30d: <span className={`font-bold ${
-                          projectedBalance >= account.balance ? 'text-green-600' : 'text-red-600'
+                          projectedBalance >= account.balance ? 'text-success-600' : 'text-error-600'
                         }`}>{formatEuro(projectedBalance)}</span>
                       </div>
                       <div className="text-xs text-gray-500">
@@ -408,7 +408,7 @@ const RadarPanel: React.FC = () => {
                       <div className="font-medium text-gray-900">{rec.title}</div>
                       <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
                       {rec.type === 'transfer' && rec.suggestedAmount && (
-                        <div className="text-sm text-blue-600 mt-2">
+                        <div className="text-sm text-primary-600 mt-2">
                           💡 Transferir {formatEuro(rec.suggestedAmount)} de {rec.fromAccountName} a {rec.toAccountName}
                         </div>
                       )}
@@ -419,7 +419,7 @@ const RadarPanel: React.FC = () => {
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8">
-              <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500" />
+              <CheckCircle className="w-12 h-12 mx-auto mb-2 text-success-500" />
               <p>No hay recomendaciones activas</p>
               <p className="text-sm">Todas las cuentas están en buen estado</p>
             </div>
@@ -439,9 +439,9 @@ const RadarPanel: React.FC = () => {
               <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                 <div className="flex items-center gap-3">
                   {event.type === 'income' ? (
-                    <ArrowUpCircle className="w-5 h-5 text-green-500" />
+                    <ArrowUpCircle className="w-5 h-5 text-success-500" />
                   ) : (
-                    <ArrowDownCircle className="w-5 h-5 text-red-500" />
+                    <ArrowDownCircle className="w-5 h-5 text-error-500" />
                   )}
                   <div>
                     <div className="font-medium text-gray-900">{event.description}</div>
@@ -450,7 +450,7 @@ const RadarPanel: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className={`font-medium ${event.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                <div className={`font-medium ${event.type === 'income' ? 'text-success-600' : 'text-error-600'}`}>
                   {event.type === 'income' ? '+' : '-'}{formatEuro(event.amount)}
                 </div>
               </div>

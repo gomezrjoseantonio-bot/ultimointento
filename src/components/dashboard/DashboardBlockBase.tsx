@@ -30,7 +30,7 @@ const DashboardBlockBase: React.FC<{
     
     return (
       <span className={`inline-flex items-center text-sm font-medium ${
-        data.trend === 'up' ? 'text-green-600' : 'text-red-600'
+        data.trend === 'up' ? 'text-success-600' : 'text-error-600'
       }`}>
         {data.trend === 'up' ? '↗' : '↘'}
         {data.trendValue && <span className="ml-1">{data.trendValue}</span>}
@@ -55,12 +55,12 @@ const DashboardBlockBase: React.FC<{
 
   if (data.error) {
     return (
-      <div className={`bg-white rounded-lg border border-red-200 p-6 shadow-sm ${className}`}>
+      <div className={`bg-white rounded-lg border border-error-200 p-6 shadow-sm ${className}`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-medium text-neutral-900">{title}</h3>
           <div className="text-neutral-400">{icon}</div>
         </div>
-        <div className="text-red-600 text-sm">{data.error}</div>
+        <div className="text-error-600 text-sm">{data.error}</div>
       </div>
     );
   }

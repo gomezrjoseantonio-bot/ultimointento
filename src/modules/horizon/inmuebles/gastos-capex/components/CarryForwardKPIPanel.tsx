@@ -104,9 +104,9 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Arrastres Aplicados {selectedYear}</p>
-              <p className="text-2xl font-bold text-green-600">{formatEuro(appliedThisYear)}</p>
+              <p className="text-2xl font-bold text-success-600">{formatEuro(appliedThisYear)}</p>
             </div>
-            <TrendingUpIcon className="w-8 h-8 text-green-500" />
+            <TrendingUpIcon className="w-8 h-8 text-success-500" />
           </div>
           <p className="text-xs text-gray-500 mt-2">
             Pérdidas de ejercicios anteriores aplicadas este año
@@ -118,9 +118,9 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Saldo Pendiente</p>
-              <p className="text-2xl font-bold text-blue-600">{formatEuro(getTotalPending())}</p>
+              <p className="text-2xl font-bold text-primary-600">{formatEuro(getTotalPending())}</p>
             </div>
-            <CalendarIcon className="w-8 h-8 text-blue-500" />
+            <CalendarIcon className="w-8 h-8 text-primary-500" />
           </div>
           <p className="text-xs text-gray-500 mt-2">
             Total disponible para futuros ejercicios
@@ -132,9 +132,9 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Caduca en {selectedYear}</p>
-              <p className="text-2xl font-bold text-red-600">{formatEuro(getExpiringThisYear())}</p>
+              <p className="text-2xl font-bold text-error-600">{formatEuro(getExpiringThisYear())}</p>
             </div>
-            <AlertTriangleIcon className="w-8 h-8 text-red-500" />
+            <AlertTriangleIcon className="w-8 h-8 text-error-500" />
           </div>
           <p className="text-xs text-gray-500 mt-2">
             Arrastres que expiran este año
@@ -146,7 +146,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Caduca en {selectedYear + 1}</p>
-              <p className="text-2xl font-bold text-orange-600">{formatEuro(getExpiringNextYear())}</p>
+              <p className="text-2xl font-bold text-warning-600">{formatEuro(getExpiringNextYear())}</p>
             </div>
             <AlertTriangleIcon className="w-8 h-8 text-orange-500" />
           </div>
@@ -219,7 +219,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {detail.appliedThisYear ? (
-                        <span className="text-green-600 font-medium">
+                        <span className="text-success-600 font-medium">
                           {formatEuro(detail.appliedThisYear)}
                         </span>
                       ) : (
@@ -228,7 +228,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <span className={`font-medium ${
-                        detail.remainingAmount > 0 ? 'text-blue-600' : 'text-gray-400'
+                        detail.remainingAmount > 0 ? 'text-primary-600' : 'text-gray-400'
                       }`}>
                         {formatEuro(detail.remainingAmount)}
                       </span>
@@ -238,15 +238,15 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {detail.expiresThisYear ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-error-100 text-error-800">
                           Caduca {selectedYear}
                         </span>
                       ) : detail.expirationYear === selectedYear + 1 ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-warning-100 text-orange-800">
                           Caduca {selectedYear + 1}
                         </span>
                       ) : detail.remainingAmount > 0 ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
                           Disponible
                         </span>
                       ) : (

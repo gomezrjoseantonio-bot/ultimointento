@@ -102,12 +102,12 @@ const AccountPage: React.FC = () => {
               </button>
             </div>
             
-            <div className="border border-red-200 rounded-lg p-4 bg-red-50">
-              <h3 className="font-medium text-red-900 mb-2">Eliminación de cuenta</h3>
-              <p className="text-sm text-red-700 mb-3">
+            <div className="border border-error-200 rounded-lg p-4 bg-error-50">
+              <h3 className="font-medium text-error-900 mb-2">Eliminación de cuenta</h3>
+              <p className="text-sm text-error-700 mb-3">
                 Elimina permanentemente tu cuenta y todos los datos asociados.
               </p>
-              <button className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">
+              <button className="px-4 py-2 bg-error-600 text-white text-sm rounded-lg hover:bg-error-700 transition-colors">
                 Eliminar cuenta
               </button>
             </div>

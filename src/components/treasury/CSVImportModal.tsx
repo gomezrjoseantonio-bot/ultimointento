@@ -221,12 +221,12 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
               <div className="mb-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-green-600" />
+                    <FileText className="h-5 w-5 text-success-600" />
                     <span className="font-medium">Archivo procesado:</span>
                     <span className="text-neutral-600">{csvFile?.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Database className="h-5 w-5 text-blue-600" />
+                    <Database className="h-5 w-5 text-primary-600" />
                     <span className="font-medium">Banco detectado:</span>
                     <span className="text-neutral-600">{getBankName(preview.detectedBank)}</span>
                   </div>
@@ -237,23 +237,23 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                     <div className="text-neutral-500">Total filas</div>
                     <div className="text-lg font-semibold">{preview.totalRows}</div>
                   </div>
-                  <div className="bg-green-50 p-3 rounded-lg">
+                  <div className="bg-success-50 p-3 rounded-lg">
                     <div className="text-neutral-500">Movimientos válidos</div>
-                    <div className="text-lg font-semibold text-green-600">{preview.movements.length}</div>
+                    <div className="text-lg font-semibold text-success-600">{preview.movements.length}</div>
                   </div>
-                  <div className="bg-red-50 p-3 rounded-lg">
+                  <div className="bg-error-50 p-3 rounded-lg">
                     <div className="text-neutral-500">Errores</div>
-                    <div className="text-lg font-semibold text-red-600">{preview.errors.length}</div>
+                    <div className="text-lg font-semibold text-error-600">{preview.errors.length}</div>
                   </div>
                 </div>
                 
                 {preview.errors.length > 0 && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="mt-4 p-4 bg-error-50 border border-error-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle className="h-5 w-5 text-red-500" />
-                      <span className="font-medium text-red-900">Errores encontrados:</span>
+                      <AlertCircle className="h-5 w-5 text-error-500" />
+                      <span className="font-medium text-error-900">Errores encontrados:</span>
                     </div>
-                    <ul className="text-sm text-red-700 space-y-1">
+                    <ul className="text-sm text-error-700 space-y-1">
                       {preview.errors.slice(0, 10).map((error, index) => (
                         <li key={index}>• {error}</li>
                       ))}
@@ -287,7 +287,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           <td className="px-4 py-2">{movement.date.toLocaleDateString('es-ES')}</td>
                           <td className="px-4 py-2">{movement.valueDate ? movement.valueDate.toLocaleDateString('es-ES') : '-'}</td>
                           <td className={`px-4 py-2 text-right font-medium ${
-                            movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                            movement.amount >= 0 ? 'text-success-600' : 'text-error-600'
                           }`}>
                             {formatEuro(movement.amount)}
                           </td>

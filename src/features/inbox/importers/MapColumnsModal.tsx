@@ -163,7 +163,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <FileSpreadsheet className="h-6 w-6 text-blue-600" />
+            <FileSpreadsheet className="h-6 w-6 text-primary-600" />
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 Mapear columnas del extracto
@@ -193,7 +193,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                   <select
                     value={headerRow}
                     onChange={(e) => setHeaderRow(parseInt(e.target.value))}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     {Array.from({ length: Math.min(20, rawData.length) }, (_, i) => (
                       <option key={i} value={i}>
@@ -213,7 +213,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                           {column.label}
                         </label>
                         {column.required && (
-                          <span className="text-red-500 text-xs">*</span>
+                          <span className="text-error-500 text-xs">*</span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500">{column.description}</p>
@@ -223,7 +223,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                           column.key, 
                           e.target.value === '' ? null : parseInt(e.target.value)
                         )}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       >
                         <option value="">-- Seleccionar columna --</option>
                         {getAvailableColumns().map((header, index) => (
@@ -245,7 +245,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                   <button
                     onClick={handlePreview}
                     disabled={!canConfirm() || isProcessing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     <Eye className="h-4 w-4" />
                     {isProcessing ? 'Procesando...' : 'Vista previa'}
@@ -254,7 +254,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                   <button
                     onClick={handleConfirm}
                     disabled={!canConfirm() || isProcessing}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-success-600 text-white rounded-md hover:bg-success-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                   >
                     <CheckCircle className="h-4 w-4" />
                     Confirmar mapeo
@@ -279,7 +279,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                                   {header || `Col ${index + 1}`}
                                 </span>
                                 {isColumnMapped(index) && (
-                                  <span className="text-blue-600 text-xs">
+                                  <span className="text-primary-600 text-xs">
                                     {Object.entries(columnMapping).find(([_, v]) => v === index)?.[0]}
                                   </span>
                                 )}
@@ -290,7 +290,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                       </thead>
                       <tbody>
                         {previewData.map((row, rowIndex) => (
-                          <tr key={rowIndex} className={rowIndex === 0 ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                          <tr key={rowIndex} className={rowIndex === 0 ? 'bg-primary-50' : 'hover:bg-gray-50'}>
                             <td className="px-2 py-1 text-gray-600">
                               {headerRow + rowIndex + 1}
                             </td>
@@ -335,10 +335,10 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
 
               {parsePreview?.success ? (
                 <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                  <div className="bg-success-50 border border-success-200 rounded-md p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800">
+                      <CheckCircle className="h-5 w-5 text-success-600" />
+                      <span className="font-medium text-success-800">
                         Procesamiento exitoso
                       </span>
                     </div>
@@ -383,7 +383,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                             <tr key={index} className="border-t border-gray-100 hover:bg-gray-50">
                               <td className="px-4 py-2">{formatDate(movement.date)}</td>
                               <td className="px-4 py-2">
-                                <span className={movement.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                <span className={movement.amount >= 0 ? 'text-success-600' : 'text-error-600'}>
                                   {formatAmount(movement.amount)}
                                 </span>
                               </td>
@@ -404,7 +404,7 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                     <button
                       onClick={handleConfirm}
                       disabled={isProcessing}
-                      className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 transition-colors"
+                      className="flex items-center gap-2 px-6 py-2 bg-success-600 text-white rounded-md hover:bg-success-700 disabled:bg-gray-300 transition-colors"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Confirmar importación
@@ -412,12 +412,12 @@ const MapColumnsModal: React.FC<MapColumnsModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                <div className="bg-error-50 border border-error-200 rounded-md p-4">
                   <div className="flex items-center gap-2">
-                    <X className="h-5 w-5 text-red-600" />
-                    <span className="font-medium text-red-800">Error en el procesamiento</span>
+                    <X className="h-5 w-5 text-error-600" />
+                    <span className="font-medium text-error-800">Error en el procesamiento</span>
                   </div>
-                  <p className="text-sm text-red-700 mt-1">
+                  <p className="text-sm text-error-700 mt-1">
                     {parsePreview?.error || 'Error desconocido'}
                   </p>
                 </div>

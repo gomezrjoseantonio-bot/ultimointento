@@ -77,9 +77,9 @@ const CONFIDENCE_THRESHOLDS = {
 };
 
 const getConfidenceColor = (confidence: number): string => {
-  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'text-[#16A34A] bg-green-50'; // Verde OK según guía
+  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'text-[#16A34A] bg-success-50'; // Verde OK según guía
   if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'text-[#EAB308] bg-amber-50'; // Amarillo warning según guía
-  return 'text-[#DC2626] bg-red-50'; // Rojo error según guía
+  return 'text-[#DC2626] bg-error-50'; // Rojo error según guía
 };
 
 const getConfidenceIcon = (confidence: number) => {
@@ -219,7 +219,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
           )}
           {ocrResult?.status === 'error' && (
             <div className="mt-2">
-              <p className="text-sm text-red-600">Error en el procesamiento OCR</p>
+              <p className="text-sm text-error-600">Error en el procesamiento OCR</p>
               {ocrResult.error && (
                 <p className="text-xs text-gray-400 mt-1">{ocrResult.error}</p>
               )}
@@ -470,7 +470,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <Eye className="h-5 w-5 text-current" />
             <h3 className="text-lg font-semibold text-gray-900">Campos extraídos (OCR)</h3>
             {ocrResult.engineInfo && (
-              <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">
+              <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-md">
                 {ocrResult.engineInfo.displayName}
               </span>
             )}
@@ -652,15 +652,15 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   )}
                 </div>
                 {aligned.meta.blockingErrors.length > 0 && (
-                  <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded" role="alert">
-                    <span className="text-sm text-red-800">⚠ {aligned.meta.blockingErrors[0]}</span>
+                  <div className="mt-2 p-2 bg-error-50 border border-error-200 rounded" role="alert">
+                    <span className="text-sm text-error-800">⚠ {aligned.meta.blockingErrors[0]}</span>
                   </div>
                 )}
                 {/* Amount validation */}
                 {aligned.invoice.net.value > 0 && aligned.invoice.tax.value > 0 && aligned.invoice.total.value > 0 && (
                   Math.abs((aligned.invoice.net.value + aligned.invoice.tax.value) - aligned.invoice.total.value) <= 0.02 ? (
-                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                      <span className="text-sm text-green-800">✓ Los importes cuadran correctamente</span>
+                    <div className="mt-2 p-2 bg-success-50 border border-success-200 rounded">
+                      <span className="text-sm text-success-800">✓ Los importes cuadran correctamente</span>
                     </div>
                   ) : (
                     <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
@@ -684,7 +684,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editableServiceFields.serviceAddress ?? aligned.service.serviceAddress ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, serviceAddress: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Dirección de instalación o suministro"
                   />
                 </div>
@@ -694,7 +694,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editableServiceFields.supplyPointId ?? aligned.service.supplyPointId ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, supplyPointId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="ES****..."
                   />
                 </div>
@@ -713,7 +713,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <select
                     value={editablePaymentFields.method ?? aligned.payment.method}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, method: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="Desconocido">Desconocido</option>
                     <option value="SEPA">SEPA / Domiciliación</option>
@@ -727,7 +727,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editablePaymentFields.iban ?? aligned.payment.iban ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="ES** **** **** ** **********"
                     pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
                   />
@@ -743,7 +743,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="date"
                     value={editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, paymentDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
@@ -753,7 +753,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <section className="pt-6 border-t border-gray-200">
               <button
                 onClick={() => handleConfirmAndSave()}
-                className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
               >
                 Confirmar y guardar metadatos
               </button>
@@ -786,7 +786,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                           <span className="text-sm font-medium text-gray-900">
                             {field.label}
                             {field.isCritical && (
-                              <span className="text-red-500 ml-1">*</span>
+                              <span className="text-error-500 ml-1">*</span>
                             )}
                           </span>
                         </div>
@@ -800,7 +800,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                               value={finalValue}
                               onChange={(e) => handleFieldEdit(field.name, e.target.value)}
                               placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
-                              className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                                 field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
                                 field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
                               }`}
@@ -852,22 +852,22 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         <div className="mt-6 pt-6 border-t border-gray-200">
           {/* H-OCR-ALIGN: Show validation errors */}
           {!amountValidation.isValid && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center space-x-2 text-red-800">
+            <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-error-800">
                 <XCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">Los importes no cuadran</span>
               </div>
-              <p className="text-sm text-red-600 mt-1">{amountValidation.errorMessage}</p>
+              <p className="text-sm text-error-600 mt-1">{amountValidation.errorMessage}</p>
             </div>
           )}
           
           {!dateValidation.isValid && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center space-x-2 text-red-800">
+            <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-error-800">
                 <XCircle className="h-4 w-4" />
                 <span className="text-sm font-medium">Fechas no plausibles</span>
               </div>
-              <p className="text-sm text-red-600 mt-1">{dateValidation.errorMessage}</p>
+              <p className="text-sm text-error-600 mt-1">{dateValidation.errorMessage}</p>
             </div>
           )}
           
@@ -897,7 +897,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                 disabled={!canApply || processingApply}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   canApply && !processingApply
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500'
+                    ? 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
                 title={!canApply ? `Faltan: ${requiredFieldsCheck.missingFields.join(', ')}` : ''}

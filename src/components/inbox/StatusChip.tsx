@@ -21,10 +21,10 @@ const StatusChip: React.FC<StatusChipProps> = ({ status, warnings = [], classNam
         return {
           label: 'Procesado',
           icon: CheckCircle,
-          bgColor: 'bg-green-100',
-          textColor: 'text-green-800',
-          borderColor: 'border-green-200',
-          iconColor: 'text-green-600'
+          bgColor: 'bg-success-100',
+          textColor: 'text-success-800',
+          borderColor: 'border-success-200',
+          iconColor: 'text-success-600'
         };
       
       case 'warning':
@@ -45,10 +45,10 @@ const StatusChip: React.FC<StatusChipProps> = ({ status, warnings = [], classNam
         return {
           label: normalizedStatus === 'duplicado' ? 'Duplicado' : 'Error',
           icon: XCircle,
-          bgColor: 'bg-red-100',
-          textColor: 'text-red-800',
-          borderColor: 'border-red-200',
-          iconColor: 'text-red-600'
+          bgColor: 'bg-error-100',
+          textColor: 'text-error-800',
+          borderColor: 'border-error-200',
+          iconColor: 'text-error-600'
         };
       
       case 'pendiente':

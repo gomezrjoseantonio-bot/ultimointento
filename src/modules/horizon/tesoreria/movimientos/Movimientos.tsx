@@ -98,9 +98,9 @@ const Movimientos: React.FC = () => {
   
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'conciliado': return 'bg-green-100 text-green-800';
-      case 'parcial': return 'bg-yellow-100 text-yellow-800';
-      case 'no-documentado': return 'bg-red-100 text-red-800';
+      case 'conciliado': return 'bg-success-100 text-success-800';
+      case 'parcial': return 'bg-warning-100 text-yellow-800';
+      case 'no-documentado': return 'bg-error-100 text-error-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -162,7 +162,7 @@ const Movimientos: React.FC = () => {
               onClick={() => setShowReconciliation(!showReconciliation)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
                 showReconciliation 
-                  ? 'bg-green-50 border-green-200 text-green-700'
+                  ? 'bg-success-50 border-success-200 text-success-700'
                   : 'border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -174,12 +174,12 @@ const Movimientos: React.FC = () => {
 
         {/* Reconciliation Panel */}
         {showReconciliation && (
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-4">Conciliación Automática</h3>
+          <div className="bg-primary-50 rounded-lg border border-primary-200 p-6">
+            <h3 className="text-lg font-semibold text-primary-900 mb-4">Conciliación Automática</h3>
             {potentialMatches.length > 0 ? (
               <div className="space-y-4">
                 {potentialMatches.map((match, index) => (
-                  <div key={index} className="bg-white rounded-lg border border-blue-200 p-4">
+                  <div key={index} className="bg-white rounded-lg border border-primary-200 p-4">
                     {/* Legacy treasury events */}
                     {match.event && (
                       <div className="flex items-center justify-between">
@@ -203,13 +203,13 @@ const Movimientos: React.FC = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="mt-2 text-sm text-blue-600">
+                          <div className="mt-2 text-sm text-primary-600">
                             {match.reason}
                           </div>
                         </div>
                         <button
                           onClick={() => handleReconcile(match.event.id, match.movement.id)}
-                          className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                          className="ml-4 px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700"
                         >
                           Conciliar
                         </button>
@@ -227,13 +227,13 @@ const Movimientos: React.FC = () => {
                           </span>
                         </div>
                         {match.potentialMatches.map((recordMatch: any, recordIndex: number) => (
-                          <div key={recordIndex} className="border-l-4 border-blue-300 pl-4">
+                          <div key={recordIndex} className="border-l-4 border-primary-300 pl-4">
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                    recordMatch.type === 'ingreso' ? 'bg-green-100 text-green-800' :
-                                    recordMatch.type === 'gasto' ? 'bg-red-100 text-red-800' :
+                                    recordMatch.type === 'ingreso' ? 'bg-success-100 text-success-800' :
+                                    recordMatch.type === 'gasto' ? 'bg-error-100 text-error-800' :
                                     'bg-purple-100 text-purple-800'
                                   }`}>
                                     {recordMatch.type === 'ingreso' ? 'Ingreso' : 
@@ -253,7 +253,7 @@ const Movimientos: React.FC = () => {
                                   recordMatch.id,
                                   match.movementId
                                 )}
-                                className="ml-4 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                                className="ml-4 px-3 py-1 bg-success-600 text-white text-sm rounded hover:bg-success-700"
                               >
                                 Conciliar
                               </button>
@@ -266,7 +266,7 @@ const Movimientos: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center text-blue-600 py-4">
+              <div className="text-center text-primary-600 py-4">
                 <Check className="w-8 h-8 mx-auto mb-2" />
                 <p>No hay movimientos pendientes de conciliación</p>
               </div>
@@ -285,7 +285,7 @@ const Movimientos: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Buscar por descripción, contrapartida o referencia..."
-                    className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                    className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -297,7 +297,7 @@ const Movimientos: React.FC = () => {
                 <select
                   value={selectedAccount}
                   onChange={(e) => setSelectedAccount(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                  className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
                 >
                   <option value="all">Todas las cuentas</option>
                   {accounts.map(account => (
@@ -313,7 +313,7 @@ const Movimientos: React.FC = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                  className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
                 >
                   <option value="all">Todos</option>
                   <option value="pendiente">Pendiente</option>
@@ -365,7 +365,7 @@ const Movimientos: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         <span className={`font-medium ${
-                          movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                          movement.amount >= 0 ? 'text-success-600' : 'text-error-600'
                         }`}>
                           {movement.amount >= 0 ? '+' : ''}{formatEuro(movement.amount)}
                         </span>
@@ -402,19 +402,19 @@ const Movimientos: React.FC = () => {
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-success-600">
                   {filteredMovements.filter(m => m.amount > 0).length}
                 </div>
                 <div className="text-sm text-gray-500">Ingresos</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-error-600">
                   {filteredMovements.filter(m => m.amount < 0).length}
                 </div>
                 <div className="text-sm text-gray-500">Gastos</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary-600">
                   {filteredMovements.filter(m => m.status === 'conciliado').length}
                 </div>
                 <div className="text-sm text-gray-500">Conciliados</div>

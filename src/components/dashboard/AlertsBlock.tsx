@@ -122,9 +122,9 @@ const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classN
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50';
+      case 'high': return 'text-error-600 bg-error-50';
       case 'medium': return 'text-amber-600 bg-amber-50';
-      case 'low': return 'text-green-600 bg-green-50';
+      case 'low': return 'text-success-600 bg-success-50';
       default: return 'text-neutral-600 bg-neutral-50';
     }
   };

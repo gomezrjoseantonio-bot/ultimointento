@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Banknote, CreditCard, TrendingUp, Settings } from 'lucide-react';
-import PageLayout from '../../../components/layout/PageLayout';
+import PageLayout from '../../../components/common/PageLayout';
 
 const Personal: React.FC = () => {
   const navigate = useNavigate();

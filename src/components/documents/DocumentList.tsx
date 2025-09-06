@@ -32,10 +32,10 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
   const getFileIcon = (filename: string, type: string) => {
     if (type?.startsWith('image/') || filename?.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)) {
-      return <Image className="w-4 h-4 text-blue-500" />;
+      return <Image className="w-4 h-4 text-primary-500" />;
     }
     if (type === 'application/pdf' || filename?.toLowerCase().endsWith('.pdf')) {
-      return <FileText className="w-4 h-4 text-red-500" />;
+      return <FileText className="w-4 h-4 text-error-500" />;
     }
     if (type === 'application/zip' || filename?.toLowerCase().endsWith('.zip')) {
       return <Archive className="w-4 h-4 text-orange-500" />;
@@ -63,7 +63,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           if (aligned && (aligned.invoice.total.value > 0 || aligned.supplier.name)) {
             // Show aligned summary instead of field count
             return (
-              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-success-100 text-success-700 rounded-full">
                 <CheckCircle className="w-3 h-3" />
                 {aligned.supplier.name ? aligned.supplier.name.substring(0, 15) + (aligned.supplier.name.length > 15 ? '...' : '') : 'Procesado'}
               </span>
@@ -75,14 +75,14 @@ const DocumentList: React.FC<DocumentListProps> = ({
         }
         // Fallback: show field count
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-success-100 text-success-700 rounded-full">
             <CheckCircle className="w-3 h-3" />
             OCR · {fieldsCount} campos
           </span>
         );
       case 'error':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full" title={doc.metadata?.ocr?.error || 'Error de procesamiento'}>
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-error-100 text-error-700 rounded-full" title={doc.metadata?.ocr?.error || 'Error de procesamiento'}>
             <AlertCircle className="w-3 h-3" />
             Error
           </span>
@@ -129,7 +129,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
             key={doc.id || index}
             className={`p-3 rounded-lg transition-colors border ${
               isSelected 
-                ? 'bg-blue-50 border-blue-200' 
+                ? 'bg-primary-50 border-primary-200' 
                 : 'bg-white border-neutral-200 hover:bg-neutral-50'
             }`}
           >
@@ -172,8 +172,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       doc.metadata?.status === 'Asignado' 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-yellow-100 text-yellow-700'
+                        ? 'bg-success-100 text-success-700' 
+                        : 'bg-warning-100 text-warning-700'
                     }`}>
                       {doc.metadata?.status || 'Nuevo'}
                     </span>

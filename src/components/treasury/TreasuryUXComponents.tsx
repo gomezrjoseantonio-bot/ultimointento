@@ -18,13 +18,13 @@ export const TreasuryStatusBadge: React.FC<{
     switch (status) {
       case 'previsto':
         return { 
-          color: 'bg-blue-100 text-blue-800', 
+          color: 'bg-primary-100 text-primary-800', 
           text: 'Previsto',
           microcopy: type === 'ingreso' ? 'Pendiente de cobro' : 'Pendiente de pago'
         };
       case 'cobrado':
         return { 
-          color: 'bg-green-100 text-green-800', 
+          color: 'bg-success-100 text-success-800', 
           text: 'Cobrado',
           microcopy: 'Ingreso registrado en cuenta'
         };
@@ -36,7 +36,7 @@ export const TreasuryStatusBadge: React.FC<{
         };
       case 'incompleto':
         return { 
-          color: 'bg-yellow-100 text-yellow-800', 
+          color: 'bg-warning-100 text-yellow-800', 
           text: 'Incompleto',
           microcopy: 'Faltan datos para completar el registro'
         };
@@ -80,7 +80,7 @@ export const ValidationFeedback: React.FC<{
 }> = ({ result, className = '' }) => {
   if (result.isValid && result.warnings.length === 0) {
     return (
-      <div className={`flex items-center gap-2 text-green-700 ${className}`}>
+      <div className={`flex items-center gap-2 text-success-700 ${className}`}>
         <CheckCircle className="w-4 h-4" />
         <span className="text-sm">Registro válido</span>
       </div>
@@ -90,7 +90,7 @@ export const ValidationFeedback: React.FC<{
   return (
     <div className={`space-y-2 ${className}`}>
       {result.errors.length > 0 && (
-        <div className="flex items-start gap-2 text-red-700">
+        <div className="flex items-start gap-2 text-error-700">
           <XCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
             <div className="font-medium">Errores que deben corregirse:</div>
@@ -138,8 +138,8 @@ export const TreasuryAmount: React.FC<{
   };
 
   const getColorClass = () => {
-    if (type === 'ingreso') return 'text-green-600';
-    if (type === 'gasto') return 'text-red-600';
+    if (type === 'ingreso') return 'text-success-600';
+    if (type === 'gasto') return 'text-error-600';
     return 'text-purple-600'; // CAPEX
   };
 
@@ -244,31 +244,31 @@ export const TreasuryActionFeedback: React.FC<{
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-green-50 border-green-200',
-          icon: <CheckCircle className="w-5 h-5 text-green-500" />,
-          titleColor: 'text-green-800',
-          messageColor: 'text-green-700'
+          bg: 'bg-success-50 border-success-200',
+          icon: <CheckCircle className="w-5 h-5 text-success-500" />,
+          titleColor: 'text-success-800',
+          messageColor: 'text-success-700'
         };
       case 'error':
         return {
-          bg: 'bg-red-50 border-red-200',
-          icon: <XCircle className="w-5 h-5 text-red-500" />,
-          titleColor: 'text-red-800',
-          messageColor: 'text-red-700'
+          bg: 'bg-error-50 border-error-200',
+          icon: <XCircle className="w-5 h-5 text-error-500" />,
+          titleColor: 'text-error-800',
+          messageColor: 'text-error-700'
         };
       case 'warning':
         return {
-          bg: 'bg-yellow-50 border-yellow-200',
+          bg: 'bg-warning-50 border-yellow-200',
           icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
           titleColor: 'text-yellow-800',
-          messageColor: 'text-yellow-700'
+          messageColor: 'text-warning-700'
         };
       default:
         return {
-          bg: 'bg-blue-50 border-blue-200',
-          icon: <Info className="w-5 h-5 text-blue-500" />,
-          titleColor: 'text-blue-800',
-          messageColor: 'text-blue-700'
+          bg: 'bg-primary-50 border-primary-200',
+          icon: <Info className="w-5 h-5 text-primary-500" />,
+          titleColor: 'text-primary-800',
+          messageColor: 'text-primary-700'
         };
     }
   };
@@ -424,11 +424,11 @@ export const TreasuryQuickStats: React.FC<{
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-green-50 rounded-lg p-4">
+      <div className="bg-success-50 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-green-600">Ingresos</p>
-            <p className="text-2xl font-semibold text-green-900">
+            <p className="text-sm font-medium text-success-600">Ingresos</p>
+            <p className="text-2xl font-semibold text-success-900">
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalIngresos)}
             </p>
           </div>
@@ -436,11 +436,11 @@ export const TreasuryQuickStats: React.FC<{
         </div>
       </div>
 
-      <div className="bg-red-50 rounded-lg p-4">
+      <div className="bg-error-50 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-red-600">Gastos</p>
-            <p className="text-2xl font-semibold text-red-900">
+            <p className="text-sm font-medium text-error-600">Gastos</p>
+            <p className="text-2xl font-semibold text-error-900">
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalGastos)}
             </p>
           </div>
@@ -460,13 +460,13 @@ export const TreasuryQuickStats: React.FC<{
         </div>
       </div>
 
-      <div className={`${netCashFlow >= 0 ? 'bg-blue-50' : 'bg-orange-50'} rounded-lg p-4`}>
+      <div className={`${netCashFlow >= 0 ? 'bg-primary-50' : 'bg-orange-50'} rounded-lg p-4`}>
         <div className="flex items-center justify-between">
           <div>
-            <p className={`text-sm font-medium ${netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+            <p className={`text-sm font-medium ${netCashFlow >= 0 ? 'text-primary-600' : 'text-warning-600'}`}>
               Flujo Neto
             </p>
-            <p className={`text-2xl font-semibold ${netCashFlow >= 0 ? 'text-blue-900' : 'text-orange-900'}`}>
+            <p className={`text-2xl font-semibold ${netCashFlow >= 0 ? 'text-primary-900' : 'text-orange-900'}`}>
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(netCashFlow)}
             </p>
             {stats.pendingReconciliation > 0 && (
@@ -476,10 +476,10 @@ export const TreasuryQuickStats: React.FC<{
             )}
           </div>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            netCashFlow >= 0 ? 'bg-blue-100' : 'bg-orange-100'
+            netCashFlow >= 0 ? 'bg-primary-100' : 'bg-warning-100'
           }`}>
             <span className={`text-lg font-bold ${
-              netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'
+              netCashFlow >= 0 ? 'text-primary-600' : 'text-warning-600'
             }`}>
               {netCashFlow >= 0 ? '+' : '-'}
             </span>

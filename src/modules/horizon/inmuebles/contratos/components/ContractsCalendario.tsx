@@ -272,7 +272,7 @@ const ContractsCalendario: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {entry.isProrated ? (
                           <div className="text-sm">
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-warning-100 text-yellow-800">
                               Prorrateado
                             </span>
                             {entry.proratedDays && entry.totalDaysInMonth && (
@@ -305,7 +305,7 @@ const ContractsCalendario: React.FC = () => {
                           <div className="flex items-center justify-end space-x-2">
                             <button
                               onClick={saveEdit}
-                              className="text-green-600 hover:text-green-800 transition-colors"
+                              className="text-success-600 hover:text-success-800 transition-colors"
                               title="Guardar"
                             >
                               <Save className="h-4 w-4" />
@@ -381,7 +381,7 @@ const ContractsCalendario: React.FC = () => {
                             {entry.isProrated && (
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-neutral-600">Prorrateo:</span>
-                                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                                <span className="text-xs bg-warning-100 text-yellow-800 px-2 py-1 rounded">
                                   {entry.proratedDays}/{entry.totalDaysInMonth}
                                 </span>
                               </div>
@@ -407,7 +407,7 @@ const ContractsCalendario: React.FC = () => {
                                 <div className="flex space-x-1">
                                   <button
                                     onClick={saveEdit}
-                                    className="text-green-600 hover:text-green-800 transition-colors"
+                                    className="text-success-600 hover:text-success-800 transition-colors"
                                     title="Guardar"
                                   >
                                     <Save className="h-4 w-4" />
