@@ -180,7 +180,7 @@ const ProyeccionComparativa: React.FC = () => {
           {/* Resultado neto YTD */}
           <div className="bg-white p-4 rounded-lg shadow border-l-4 border-teal-500">
             <p className="text-sm font-medium text-gray-600">Resultado neto YTD</p>
-            <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.resultadoNetoYTD >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.resultadoNetoYTD >= 0 ? 'text-success-600' : 'text-error-600'}`}>
               {formatEuro(data.kpis.resultadoNetoYTD)}
             </p>
           </div>
@@ -189,7 +189,7 @@ const ProyeccionComparativa: React.FC = () => {
           {data.kpis.dscrYTD !== null && (
             <div className="bg-white p-4 rounded-lg shadow border-l-4 border-teal-500">
               <p className="text-sm font-medium text-gray-600">DSCR YTD</p>
-              <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.dscrYTD >= 1.25 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.dscrYTD >= 1.25 ? 'text-success-600' : 'text-error-600'}`}>
                 {data.kpis.dscrYTD.toFixed(2)} x
               </p>
             </div>

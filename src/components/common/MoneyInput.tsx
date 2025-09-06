@@ -144,7 +144,7 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
   };
 
   const baseClassName = `w-full px-3 py-2 pr-8 border rounded-md text-right focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent ${
-    error || validationError ? 'border-red-300' : 'border-neutral-300'
+    error || validationError ? 'border-error-300' : 'border-neutral-300'
   } ${disabled ? 'bg-neutral-50 text-neutral-500' : ''}`;
 
   return (
@@ -167,7 +167,7 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
         </span>
       )}
       {validationError && (
-        <p className="text-sm text-red-600 mt-1">{validationError}</p>
+        <p className="text-sm text-error-600 mt-1">{validationError}</p>
       )}
     </div>
   );

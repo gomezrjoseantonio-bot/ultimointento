@@ -367,7 +367,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
 
   const getStatusIcon = () => {
     return reform.status === 'cerrada' ? (
-      <CheckCircleIcon className="h-5 w-5 text-green-500" />
+      <CheckCircleIcon className="h-5 w-5 text-success-500" />
     ) : (
       <CogIcon className="h-5 w-5 text-orange-500" />
     );
@@ -377,8 +377,8 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
         reform.status === 'cerrada' 
-          ? 'bg-green-100 text-green-800' 
-          : 'bg-orange-100 text-orange-800'
+          ? 'bg-success-100 text-success-800' 
+          : 'bg-warning-100 text-orange-800'
       }`}>
         {reform.status === 'cerrada' ? 'Cerrada' : 'Abierta'}
       </span>
@@ -441,7 +441,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
               </button>
               <button
                 onClick={onClose}
-                className="text-green-600 hover:text-green-800 p-1"
+                className="text-success-600 hover:text-success-800 p-1"
                 title="Cerrar reforma"
               >
                 <CheckCircleIcon className="h-4 w-4" />
@@ -450,7 +450,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
           )}
           <button
             onClick={onDelete}
-            className="text-red-600 hover:text-red-800 p-1"
+            className="text-error-600 hover:text-error-800 p-1"
             title="Eliminar"
           >
             <TrashIcon className="h-4 w-4" />

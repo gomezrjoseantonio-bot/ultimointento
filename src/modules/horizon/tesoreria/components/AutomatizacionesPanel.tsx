@@ -197,9 +197,9 @@ const AutomatizacionesPanel: React.FC = () => {
       case 'minimum_balance':
         return <AlertTriangle className="w-5 h-5 text-orange-500" />;
       case 'expected_income':
-        return <Clock className="w-5 h-5 text-blue-500" />;
+        return <Clock className="w-5 h-5 text-primary-500" />;
       case 'sweep':
-        return <ArrowRight className="w-5 h-5 text-green-500" />;
+        return <ArrowRight className="w-5 h-5 text-success-500" />;
       default:
         return <Settings className="w-5 h-5 text-gray-500" />;
     }
@@ -288,7 +288,7 @@ const AutomatizacionesPanel: React.FC = () => {
                         className="text-gray-400 hover:text-gray-600"
                       >
                         {rule.isActive ? (
-                          <ToggleRight className="w-6 h-6 text-green-500" />
+                          <ToggleRight className="w-6 h-6 text-success-500" />
                         ) : (
                           <ToggleLeft className="w-6 h-6 text-gray-400" />
                         )}
@@ -311,7 +311,7 @@ const AutomatizacionesPanel: React.FC = () => {
                       
                       <button
                         onClick={() => deleteRule(rule.id!)}
-                        className="text-gray-400 hover:text-red-600"
+                        className="text-gray-400 hover:text-error-600"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -344,7 +344,7 @@ const AutomatizacionesPanel: React.FC = () => {
                   <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
                     <span>Creada: {new Date(rule.createdAt).toLocaleDateString('es-ES')}</span>
                     <span className={`px-2 py-1 rounded-full ${
-                      rule.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                      rule.isActive ? 'bg-success-100 text-success-800' : 'bg-gray-100 text-gray-600'
                     }`}>
                       {rule.isActive ? 'Activa' : 'Inactiva'}
                     </span>
@@ -403,9 +403,9 @@ const AutomatizacionesPanel: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            log.result === 'success' ? 'bg-green-100 text-green-800' :
-                            log.result === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                            log.result === 'success' ? 'bg-success-100 text-success-800' :
+                            log.result === 'warning' ? 'bg-warning-100 text-yellow-800' :
+                            'bg-error-100 text-error-800'
                           }`}>
                             {log.result === 'success' ? 'Éxito' :
                              log.result === 'warning' ? 'Advertencia' : 'Error'}

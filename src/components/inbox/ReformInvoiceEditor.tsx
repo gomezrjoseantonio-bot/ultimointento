@@ -236,7 +236,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   value="percentage"
                   checked={splitMethod === 'percentage'}
                   onChange={(e) => setSplitMethod(e.target.value as 'percentage')}
-                  className="mr-2 h-4 w-4 text-blue-600"
+                  className="mr-2 h-4 w-4 text-primary-600"
                 />
                 <Percent className="w-4 h-4 mr-1" />
                 Por porcentaje
@@ -247,7 +247,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   value="amount"
                   checked={splitMethod === 'amount'}
                   onChange={(e) => setSplitMethod(e.target.value as 'amount')}
-                  className="mr-2 h-4 w-4 text-blue-600"
+                  className="mr-2 h-4 w-4 text-primary-600"
                 />
                 <Euro className="w-4 h-4 mr-1" />
                 Por importe
@@ -259,7 +259,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           <div className="mb-6">
             <button
               onClick={autoDistribute}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+              className="flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-700 rounded-lg hover:bg-blue-200"
             >
               <Calculator className="w-4 h-4" />
               Distribución automática
@@ -275,13 +275,13 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
             <div className="border border-neutral-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h4 className="font-medium text-green-700">Mejora</h4>
+                  <h4 className="font-medium text-success-700">Mejora</h4>
                   <p className="text-xs text-neutral-600">
                     Obras que aumentan el valor del inmueble de forma permanente
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium text-green-700">
+                  <div className="font-medium text-success-700">
                     {formatCurrency(splitData.mejora.amount)}
                   </div>
                   <div className="text-xs text-neutral-600">
@@ -309,7 +309,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('mejora', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
                   />
                 </div>
                 <div>
@@ -324,7 +324,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       mejora: { ...prev.mejora, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-green-500 focus:ring-2 focus:ring-green-200"
+                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
                   />
                 </div>
               </div>
@@ -455,7 +455,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <div className="text-neutral-600">Mejora (CAPEX)</div>
-                <div className="font-medium text-green-700">
+                <div className="font-medium text-success-700">
                   {formatCurrency(splitData.mejora.amount)}
                 </div>
               </div>
@@ -482,12 +482,12 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
 
           {/* Validation errors */}
           {errors.length > 0 && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center gap-2 text-red-800 mb-2">
+            <div className="mt-4 p-4 bg-error-50 border border-error-200 rounded-lg">
+              <div className="flex items-center gap-2 text-error-800 mb-2">
                 <AlertCircle className="w-4 h-4" />
                 <span className="font-medium">Errores de validación</span>
               </div>
-              <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+              <ul className="list-disc list-inside space-y-1 text-sm text-error-700">
                 {errors.map((error, idx) => (
                   <li key={idx}>{error}</li>
                 ))}
@@ -497,8 +497,8 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
 
           {/* Success indicator */}
           {errors.length === 0 && totalAmount > 0 && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center gap-2 text-green-800">
+            <div className="mt-4 p-3 bg-success-50 border border-success-200 rounded-lg">
+              <div className="flex items-center gap-2 text-success-800">
                 <Check className="w-4 h-4" />
                 <span className="text-sm font-medium">Reparto válido - Listo para publicar</span>
               </div>
@@ -515,7 +515,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
               onChange={(e) => setSplitData(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Información adicional sobre el reparto..."
               rows={3}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
             />
           </div>
         </div>
@@ -537,7 +537,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
             <button
               onClick={handleSave}
               disabled={errors.length > 0}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
             >
               Guardar reparto
             </button>

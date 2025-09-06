@@ -93,13 +93,13 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
   if (error) {
     return (
       <div className="bg-white rounded-lg border border-neutral-200 p-6">
-        <div className="flex items-center gap-3 text-orange-600 mb-4">
+        <div className="flex items-center gap-3 text-warning-600 mb-4">
           <Info className="w-5 h-5" />
           <h3 className="text-lg font-semibold">Amortización AEAT</h3>
         </div>
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <p className="text-orange-800">{error}</p>
-          <p className="text-sm text-orange-600 mt-2">
+          <p className="text-sm text-warning-600 mt-2">
             Configure los datos de amortización AEAT en la ficha del inmueble para ver el cálculo detallado.
           </p>
         </div>
@@ -121,8 +121,8 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
         <div className="flex items-center gap-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
             isSpecialCase 
-              ? 'bg-orange-100 text-orange-700' 
-              : 'bg-green-100 text-green-700'
+              ? 'bg-warning-100 text-orange-700' 
+              : 'bg-success-100 text-success-700'
           }`}>
             {isSpecialCase ? 'Caso especial' : 'Regla general'}
           </span>
@@ -130,7 +130,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
       </div>
 
       {/* Días de alquiler */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-neutral-700">
             Días de arrendamiento en {exerciseYear}
@@ -177,7 +177,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
                 </td>
                 <td className="px-3 py-2 text-center">
                   {calculation.breakdown.selectedBase === 'construction-cost' && (
-                    <span className="inline-flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
+                    <span className="inline-flex items-center justify-center w-4 h-4 bg-success-500 rounded-full">
                       <span className="text-xs text-white">✓</span>
                     </span>
                   )}
@@ -190,19 +190,19 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
                 </td>
                 <td className="px-3 py-2 text-center">
                   {calculation.breakdown.selectedBase === 'cadastral-value' && (
-                    <span className="inline-flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
+                    <span className="inline-flex items-center justify-center w-4 h-4 bg-success-500 rounded-full">
                       <span className="text-xs text-white">✓</span>
                     </span>
                   )}
                 </td>
               </tr>
-              <tr className="bg-green-50">
+              <tr className="bg-success-50">
                 <td className="px-3 py-2 font-medium text-neutral-900">Base amortizable (mayor)</td>
                 <td className="px-3 py-2 text-right font-medium text-neutral-900">
                   {formatEsCurrency(calculation.baseAmount)}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  <span className="inline-flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
+                  <span className="inline-flex items-center justify-center w-4 h-4 bg-success-500 rounded-full">
                     <span className="text-xs text-white">✓</span>
                   </span>
                 </td>
@@ -235,7 +235,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
           </div>
 
           {calculation.improvementsAmortization > 0 && (
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+            <div className="flex justify-between items-center p-3 bg-primary-50 rounded-lg">
               <div>
                 <span className="text-sm font-medium text-neutral-900">Mejoras del año</span>
                 <div className="text-xs text-neutral-600">Amortización prorrateada</div>
@@ -274,7 +274,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
       {isSpecialCase && calculation.specialCaseJustification && (
         <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
           <h4 className="font-medium text-neutral-900 mb-2 flex items-center gap-2">
-            <Info className="w-4 h-4 text-orange-600" />
+            <Info className="w-4 h-4 text-warning-600" />
             Justificación caso especial
           </h4>
           <p className="text-sm text-orange-800">{calculation.specialCaseJustification}</p>

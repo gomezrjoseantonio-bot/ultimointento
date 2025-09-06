@@ -91,7 +91,7 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
       <div className="mt-3 text-xs text-neutral-500">
         <div className="flex justify-between">
           <span>Deducciones aplicadas</span>
-          <span className="font-medium text-green-600">
+          <span className="font-medium text-success-600">
             {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(3456.78)}
           </span>
         </div>
@@ -104,14 +104,14 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
         {options.showAmortizations && (
           <div className="flex justify-between mt-1">
             <span>Amortizaciones</span>
-            <span className="font-medium text-blue-600">
+            <span className="font-medium text-primary-600">
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(2890.45)}
             </span>
           </div>
         )}
         <div className="border-t border-neutral-200 mt-2 pt-2 flex justify-between font-medium">
           <span>Total beneficio fiscal</span>
-          <span className="text-green-700">
+          <span className="text-success-700">
             {data.formattedValue}
           </span>
         </div>

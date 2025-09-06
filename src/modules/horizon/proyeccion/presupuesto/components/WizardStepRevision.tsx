@@ -88,52 +88,52 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
           type="text"
           value={budgetName}
           onChange={(e) => setBudgetName(e.target.value)}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
           placeholder={`Presupuesto ${year}`}
         />
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+        <div className="bg-success-50 border border-success-200 rounded-lg p-6">
           <div className="flex items-center mb-3">
-            <CheckCircle className="h-6 w-6 text-green-600 mr-2" />
-            <h3 className="font-semibold text-green-900">Ingresos Anuales</h3>
+            <CheckCircle className="h-6 w-6 text-success-600 mr-2" />
+            <h3 className="font-semibold text-success-900">Ingresos Anuales</h3>
           </div>
-          <div className="text-2xl font-bold text-green-900">
+          <div className="text-2xl font-bold text-success-900">
             {formatEuro(totals.annualIncome)}
           </div>
-          <div className="text-sm text-green-700">
+          <div className="text-sm text-success-700">
             {incomeLines.length} partidas de ingresos
           </div>
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div className="bg-error-50 border border-error-200 rounded-lg p-6">
           <div className="flex items-center mb-3">
-            <AlertCircle className="h-6 w-6 text-red-600 mr-2" />
-            <h3 className="font-semibold text-red-900">Gastos Anuales</h3>
+            <AlertCircle className="h-6 w-6 text-error-600 mr-2" />
+            <h3 className="font-semibold text-error-900">Gastos Anuales</h3>
           </div>
-          <div className="text-2xl font-bold text-red-900">
+          <div className="text-2xl font-bold text-error-900">
             {formatEuro(totals.annualExpenses)}
           </div>
-          <div className="text-sm text-red-700">
+          <div className="text-sm text-error-700">
             {expenseLines.length} partidas de gastos
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6">
           <div className="flex items-center mb-3">
-            <FileText className="h-6 w-6 text-blue-600 mr-2" />
-            <h3 className="font-semibold text-blue-900">Resultado Anual</h3>
+            <FileText className="h-6 w-6 text-primary-600 mr-2" />
+            <h3 className="font-semibold text-primary-900">Resultado Anual</h3>
           </div>
           <div className={`text-2xl font-bold ${
             totals.annualIncome - totals.annualExpenses >= 0 
-              ? 'text-green-900' 
-              : 'text-red-900'
+              ? 'text-success-900' 
+              : 'text-error-900'
           }`}>
             {formatEuro(totals.annualIncome - totals.annualExpenses)}
           </div>
-          <div className="text-sm text-blue-700">
+          <div className="text-sm text-primary-700">
             Beneficio/pérdida estimado
           </div>
         </div>
@@ -162,24 +162,24 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
               </thead>
               <tbody className="space-y-2">
                 <tr className="border-b border-gray-100">
-                  <td className="text-sm font-medium text-green-900 py-2">Ingresos</td>
+                  <td className="text-sm font-medium text-success-900 py-2">Ingresos</td>
                   {totals.monthlyBreakdown.income.map((amount, index) => (
-                    <td key={index} className="text-right text-sm text-green-700 py-2 px-2">
+                    <td key={index} className="text-right text-sm text-success-700 py-2 px-2">
                       {amount > 0 ? formatEuro(amount) : '-'}
                     </td>
                   ))}
-                  <td className="text-right text-sm font-semibold text-green-900 py-2 px-2">
+                  <td className="text-right text-sm font-semibold text-success-900 py-2 px-2">
                     {formatEuro(totals.annualIncome)}
                   </td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="text-sm font-medium text-red-900 py-2">Gastos</td>
+                  <td className="text-sm font-medium text-error-900 py-2">Gastos</td>
                   {totals.monthlyBreakdown.expenses.map((amount, index) => (
-                    <td key={index} className="text-right text-sm text-red-700 py-2 px-2">
+                    <td key={index} className="text-right text-sm text-error-700 py-2 px-2">
                       {amount > 0 ? formatEuro(amount) : '-'}
                     </td>
                   ))}
-                  <td className="text-right text-sm font-semibold text-red-900 py-2 px-2">
+                  <td className="text-right text-sm font-semibold text-error-900 py-2 px-2">
                     {formatEuro(totals.annualExpenses)}
                   </td>
                 </tr>
@@ -187,13 +187,13 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
                   <td className="text-sm font-medium text-gray-900 py-2">Resultado</td>
                   {totals.monthlyBreakdown.result.map((amount, index) => (
                     <td key={index} className={`text-right text-sm font-medium py-2 px-2 ${
-                      amount >= 0 ? 'text-green-700' : 'text-red-700'
+                      amount >= 0 ? 'text-success-700' : 'text-error-700'
                     }`}>
                       {formatEuro(amount)}
                     </td>
                   ))}
                   <td className={`text-right text-sm font-semibold py-2 px-2 ${
-                    totals.annualIncome - totals.annualExpenses >= 0 ? 'text-green-900' : 'text-red-900'
+                    totals.annualIncome - totals.annualExpenses >= 0 ? 'text-success-900' : 'text-error-900'
                   }`}>
                     {formatEuro(totals.annualIncome - totals.annualExpenses)}
                   </td>
@@ -212,7 +212,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
           className={`flex items-center px-8 py-3 rounded-lg font-medium transition-colors ${
             saving || !budgetName.trim()
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-primary-600 text-white hover:bg-primary-700'
           }`}
         >
           {saving ? (
@@ -230,9 +230,9 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       </div>
 
       {/* Info Box */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+      <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4 mt-6">
         <div className="flex">
-          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
+          <AlertCircle className="h-5 w-5 text-warning-600 mt-0.5 mr-3" />
           <div>
             <h4 className="font-medium text-yellow-900">Importante</h4>
             <p className="text-sm text-yellow-800 mt-1">

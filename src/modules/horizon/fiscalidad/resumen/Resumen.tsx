@@ -300,7 +300,7 @@ const Resumen: React.FC = () => {
                   const value = e.target.value;
                   setSelectedPropertyId(value === 'todos' ? 'todos' : value ? parseInt(value) : null);
                 }}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
               >
                 <option value="">Seleccionar inmueble</option>
                 <option value="todos">Todos</option>
@@ -317,7 +317,7 @@ const Resumen: React.FC = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
               >
                 {getYearRange().map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -330,7 +330,7 @@ const Resumen: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'Vivo' | 'Prescrito')}
-                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50"
+                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
               >
                 <option value="all">Vivo | Histórico</option>
                 <option value="Vivo">Solo Vivo</option>
@@ -606,7 +606,7 @@ const Resumen: React.FC = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {getBoxes().map((item, index) => (
-                      <tr key={index} className={item.amount > 0 ? 'bg-blue-50' : ''}>
+                      <tr key={index} className={item.amount > 0 ? 'bg-primary-50' : ''}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {item.box}
                         </td>
@@ -619,8 +619,8 @@ const Resumen: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                             item.status === 'Vivo' 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
+                              ? 'bg-success-100 text-success-800'
+                              : 'bg-warning-100 text-orange-800'
                           }`}>
                             {item.status}
                           </span>

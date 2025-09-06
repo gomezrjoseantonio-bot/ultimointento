@@ -275,12 +275,12 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
             
             {/* Validation Errors */}
             {validationErrors.length > 0 && (
-              <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="p-4 border border-error-200 rounded-lg bg-error-50">
                 <div className="flex items-center mb-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
-                  <span className="font-medium text-red-800">Campos requeridos</span>
+                  <AlertTriangle className="h-5 w-5 text-error-600 mr-2" />
+                  <span className="font-medium text-error-800">Campos requeridos</span>
                 </div>
-                <ul className="text-sm text-red-700 space-y-1">
+                <ul className="text-sm text-error-700 space-y-1">
                   {validationErrors.map((error, index) => (
                     <li key={index}>• {error}</li>
                   ))}
@@ -301,7 +301,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                 <select
                   value={editableFields.destino}
                   onChange={(e) => handleFieldChange('destino', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Seleccionar destino...</option>
                   <option value="Inmueble: C/ Mayor 123">Inmueble: C/ Mayor 123</option>
@@ -318,7 +318,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   type="text"
                   value={editableFields.tipo_documento}
                   onChange={(e) => handleFieldChange('tipo_documento', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   readOnly
                 />
               </div>
@@ -351,7 +351,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.proveedor_nombre}
                     onChange={(e) => handleFieldChange('proveedor_nombre', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -363,7 +363,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.proveedor_nif}
                     onChange={(e) => handleFieldChange('proveedor_nif', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -385,7 +385,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       type="date"
                       value={editableFields.fecha_emision}
                       onChange={(e) => handleFieldChange('fecha_emision', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   
@@ -397,7 +397,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       type="date"
                       value={editableFields.fecha_cargo}
                       onChange={(e) => handleFieldChange('fecha_cargo', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
@@ -412,7 +412,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.importe_total}
                       onChange={(e) => handleFieldChange('importe_total', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                   
@@ -423,7 +423,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     <select
                       value={editableFields.moneda}
                       onChange={(e) => handleFieldChange('moneda', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="EUR">EUR</option>
                       <option value="USD">USD</option>
@@ -447,7 +447,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   <select
                     value={editableFields.tipo_suministro}
                     onChange={(e) => handleFieldChange('tipo_suministro', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">Seleccionar...</option>
                     <option value="electricidad">Luz</option>
@@ -465,7 +465,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.cups}
                     onChange={(e) => handleFieldChange('cups', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -477,7 +477,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.iban_masked}
                     onChange={(e) => handleFieldChange('iban_masked', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="ES12 **** **** 1234"
                   />
                 </div>
@@ -501,7 +501,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.mejora}
                       onChange={(e) => handleFieldChange('mejora', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
 
@@ -514,7 +514,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.mobiliario}
                       onChange={(e) => handleFieldChange('mobiliario', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
 
@@ -527,7 +527,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.reparacion_conservacion}
                       onChange={(e) => handleFieldChange('reparacion_conservacion', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
 
@@ -553,7 +553,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   <select
                     value={editableFields.cuenta_id}
                     onChange={(e) => handleFieldChange('cuenta_id', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">Seleccionar cuenta...</option>
                     <option value="1">BBVA - ES12 **** 1234</option>
@@ -604,7 +604,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
             </button>
             <button
               onClick={onDelete}
-              className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50"
+              className="inline-flex items-center px-4 py-2 border border-error-300 rounded-md text-sm font-medium text-error-700 bg-white hover:bg-error-50"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Eliminar
@@ -614,7 +614,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
           <button
             onClick={handleSave}
             disabled={validationErrors.length > 0}
-            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Guardar y archivar
           </button>

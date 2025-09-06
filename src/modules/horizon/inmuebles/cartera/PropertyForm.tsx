@@ -766,12 +766,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.alias}
                 onChange={(e) => setFormData(prev => ({ ...prev, alias: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.alias ? 'border-red-300' : 'border-neutral-300'
+                  errors.alias ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="Ej: Piso Centro Madrid"
               />
               {errors.alias && (
-                <p className="text-sm text-red-600 mt-1">{errors.alias}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.alias}</p>
               )}
             </div>
 
@@ -800,12 +800,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.address}
                 onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.address ? 'border-red-300' : 'border-neutral-300'
+                  errors.address ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="Ej: Calle Gran Vía, 123, 2º A"
               />
               {errors.address && (
-                <p className="text-sm text-red-600 mt-1">{errors.address}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.address}</p>
               )}
             </div>
 
@@ -818,13 +818,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.postalCode}
                 onChange={(e) => handlePostalCodeChange(e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.postalCode ? 'border-red-300' : 'border-neutral-300'
+                  errors.postalCode ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="28001"
                 maxLength={5}
               />
               {errors.postalCode && (
-                <p className="text-sm text-red-600 mt-1">{errors.postalCode}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.postalCode}</p>
               )}
             </div>
 
@@ -837,12 +837,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.province}
                 onChange={(e) => setFormData(prev => ({ ...prev, province: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.province ? 'border-red-300' : 'border-neutral-300'
+                  errors.province ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="Madrid"
               />
               {errors.province && (
-                <p className="text-sm text-red-600 mt-1">{errors.province}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.province}</p>
               )}
             </div>
 
@@ -855,12 +855,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.municipality}
                 onChange={(e) => setFormData(prev => ({ ...prev, municipality: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.municipality ? 'border-red-300' : 'border-neutral-300'
+                  errors.municipality ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="Madrid"
               />
               {errors.municipality && (
-                <p className="text-sm text-red-600 mt-1">{errors.municipality}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.municipality}</p>
               )}
             </div>
 
@@ -872,7 +872,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.ccaa}
                 onChange={(e) => handleCCAAChange(e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.ccaa ? 'border-red-300' : 'border-neutral-300'
+                  errors.ccaa ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
               >
                 <option value="">Selecciona CCAA</option>
@@ -883,7 +883,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 ))}
               </select>
               {errors.ccaa && (
-                <p className="text-sm text-red-600 mt-1">{errors.ccaa}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.ccaa}</p>
               )}
               {ccaaWarning && (
                 <p className="text-sm text-amber-600 mt-1">{ccaaWarning}</p>
@@ -899,11 +899,11 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.purchaseDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.purchaseDate ? 'border-red-300' : 'border-neutral-300'
+                  errors.purchaseDate ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
               />
               {errors.purchaseDate && (
-                <p className="text-sm text-red-600 mt-1">{errors.purchaseDate}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.purchaseDate}</p>
               )}
             </div>
 
@@ -916,13 +916,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.cadastralReference}
                 onChange={(e) => setFormData(prev => ({ ...prev, cadastralReference: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.cadastralReference ? 'border-red-300' : 'border-neutral-300'
+                  errors.cadastralReference ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="0654104TP7005S0003YY"
                 maxLength={20}
               />
               {errors.cadastralReference && (
-                <p className="text-sm text-red-600 mt-1">{errors.cadastralReference}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.cadastralReference}</p>
               )}
               <p className="text-xs text-neutral-500 mt-1">20 caracteres alfanuméricos</p>
             </div>
@@ -945,12 +945,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.squareMeters}
                 onChange={(e) => setFormData(prev => ({ ...prev, squareMeters: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.squareMeters ? 'border-red-300' : 'border-neutral-300'
+                  errors.squareMeters ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="75.5"
               />
               {errors.squareMeters && (
-                <p className="text-sm text-red-600 mt-1">{errors.squareMeters}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.squareMeters}</p>
               )}
             </div>
 
@@ -964,12 +964,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.bedrooms}
                 onChange={(e) => setFormData(prev => ({ ...prev, bedrooms: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.bedrooms ? 'border-red-300' : 'border-neutral-300'
+                  errors.bedrooms ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="3"
               />
               {errors.bedrooms && (
-                <p className="text-sm text-red-600 mt-1">{errors.bedrooms}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.bedrooms}</p>
               )}
             </div>
 
@@ -983,12 +983,12 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                 value={formData.bathrooms}
                 onChange={(e) => setFormData(prev => ({ ...prev, bathrooms: e.target.value }))}
                 className={`w-full px-3 py-2 border rounded-md ${
-                  errors.bathrooms ? 'border-red-300' : 'border-neutral-300'
+                  errors.bathrooms ? 'border-error-300' : 'border-neutral-300'
                 } focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent`}
                 placeholder="2"
               />
               {errors.bathrooms && (
-                <p className="text-sm text-red-600 mt-1">{errors.bathrooms}</p>
+                <p className="text-sm text-error-600 mt-1">{errors.bathrooms}</p>
               )}
             </div>
           </div>
@@ -1044,7 +1044,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                   aria-label="Precio de compra en euros"
                 />
                 {errors['acquisitionCosts.price'] && (
-                  <p className="text-sm text-red-600 mt-1">{errors['acquisitionCosts.price']}</p>
+                  <p className="text-sm text-error-600 mt-1">{errors['acquisitionCosts.price']}</p>
                 )}
               </div>
 
@@ -1106,7 +1106,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                     Tipo aplicado: 10% (obra nueva). Puedes modificarlo.
                   </p>
                   {formData.ccaa && getSpecialRegionWarning(formData.ccaa) && (
-                    <p className="text-xs text-orange-600 mt-1">
+                    <p className="text-xs text-warning-600 mt-1">
                       {getSpecialRegionWarning(formData.ccaa)}
                     </p>
                   )}
@@ -1231,7 +1231,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                   <button
                     type="button"
                     onClick={() => removeOtherCost(index)}
-                    className="px-3 py-2 text-red-600 hover:text-red-800"
+                    className="px-3 py-2 text-error-600 hover:text-error-800"
                   >
                     ×
                   </button>
@@ -1258,7 +1258,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-lg font-semibold text-neutral-900">Amortización (AEAT)</h3>
             <div className="group relative">
-              <button type="button" className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-medium hover:bg-blue-200 transition-colors">
+              <button type="button" className="w-5 h-5 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 text-xs font-medium hover:bg-blue-200 transition-colors">
                 i
               </button>
               <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 hidden group-hover:block z-10 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg shadow-lg">
@@ -1630,7 +1630,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ mode }) => {
                       />
                     </div>
                     <div className="flex items-end">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                      <div className="bg-warning-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
                         <strong>Aviso:</strong> Se guardará 3% para efectos de minoración en futuras ventas
                       </div>
                     </div>

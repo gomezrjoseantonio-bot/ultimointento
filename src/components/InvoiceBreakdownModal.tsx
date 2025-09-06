@@ -479,10 +479,10 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Mejora Column */}
             <div className="border border-gray-200 rounded-lg">
-              <div className="bg-blue-50 px-4 py-3 border-b border-gray-200">
-                <h3 className="font-semibold text-blue-900">Mejora</h3>
-                <p className="text-sm text-blue-700">Incrementa valor construcción</p>
-                <div className="mt-2 text-lg font-bold text-blue-900">
+              <div className="bg-primary-50 px-4 py-3 border-b border-gray-200">
+                <h3 className="font-semibold text-primary-900">Mejora</h3>
+                <p className="text-sm text-primary-700">Incrementa valor construcción</p>
+                <div className="mt-2 text-lg font-bold text-primary-900">
                   {formatEuro(totals.mejora)}
                 </div>
               </div>
@@ -516,10 +516,10 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
 
             {/* Reparación & Conservación Column */}
             <div className="border border-gray-200 rounded-lg">
-              <div className="bg-green-50 px-4 py-3 border-b border-gray-200">
-                <h3 className="font-semibold text-green-900">Reparación & Conservación</h3>
-                <p className="text-sm text-green-700">Gasto deducible del ejercicio</p>
-                <div className="mt-2 text-lg font-bold text-green-900">
+              <div className="bg-success-50 px-4 py-3 border-b border-gray-200">
+                <h3 className="font-semibold text-success-900">Reparación & Conservación</h3>
+                <p className="text-sm text-success-700">Gasto deducible del ejercicio</p>
+                <div className="mt-2 text-lg font-bold text-success-900">
                   {formatEuro(totals.reparacionConservacion)}
                 </div>
               </div>
@@ -577,9 +577,9 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
 
           {/* Validation Errors */}
           {validationErrors.length > 0 && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <h4 className="font-medium text-red-900 mb-2">Errores de validación:</h4>
-              <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+            <div className="mb-6 p-4 bg-error-50 border border-error-200 rounded-lg">
+              <h4 className="font-medium text-error-900 mb-2">Errores de validación:</h4>
+              <ul className="list-disc list-inside text-sm text-error-700 space-y-1">
                 {validationErrors.map((error, index) => (
                   <li key={index}>{error}</li>
                 ))}
@@ -593,11 +593,11 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Total Mejora:</span>
-                <div className="font-semibold text-blue-600">{formatEuro(totals.mejora)}</div>
+                <div className="font-semibold text-primary-600">{formatEuro(totals.mejora)}</div>
               </div>
               <div>
                 <span className="text-gray-600">Total R&C:</span>
-                <div className="font-semibold text-green-600">{formatEuro(totals.reparacionConservacion)}</div>
+                <div className="font-semibold text-success-600">{formatEuro(totals.reparacionConservacion)}</div>
               </div>
               <div>
                 <span className="text-gray-600">Total Mobiliario:</span>

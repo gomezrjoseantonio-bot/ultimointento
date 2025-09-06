@@ -89,7 +89,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
       </div>
     );
   }
@@ -105,13 +105,13 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
 
       {/* Date Range Selection */}
       {isMidYear && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-8">
           <div className="flex items-center mb-4">
-            <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="font-semibold text-blue-900">Período del presupuesto</h3>
+            <Calendar className="h-5 w-5 text-primary-600 mr-2" />
+            <h3 className="font-semibold text-primary-900">Período del presupuesto</h3>
           </div>
           
-          <p className="text-blue-800 mb-4">
+          <p className="text-primary-800 mb-4">
             Estamos en {monthNames[currentMonth - 1]}. ¿Cómo quieres configurar el presupuesto para {year}?
           </p>
           
@@ -122,9 +122,9 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
                 name="period"
                 checked={isFullYear}
                 onChange={() => setIsFullYear(true)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
               />
-              <span className="ml-3 text-sm text-blue-900">
+              <span className="ml-3 text-sm text-primary-900">
                 <strong>Todo el año:</strong> Rellenar meses previos como "retro estimado"
               </span>
             </label>
@@ -135,9 +135,9 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
                 name="period"
                 checked={!isFullYear}
                 onChange={() => setIsFullYear(false)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
               />
-              <span className="ml-3 text-sm text-blue-900">
+              <span className="ml-3 text-sm text-primary-900">
                 <strong>Desde {monthNames[currentMonth - 1]}:</strong> Meses previos quedan en blanco
               </span>
             </label>
@@ -145,13 +145,13 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
           
           {!isFullYear && (
             <div className="mt-4">
-              <label className="block text-sm font-medium text-blue-900 mb-2">
+              <label className="block text-sm font-medium text-primary-900 mb-2">
                 Mes de inicio:
               </label>
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(Number(e.target.value))}
-                className="block w-48 px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="block w-48 px-3 py-2 border border-primary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               >
                 {monthNames.slice(currentMonth - 1).map((month, index) => (
                   <option key={index} value={currentMonth + index}>
@@ -178,7 +178,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
             <div className="space-x-2">
               <button
                 onClick={handleSelectAll}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="text-sm text-primary-600 hover:text-primary-800 font-medium"
               >
                 Seleccionar todos
               </button>
@@ -201,7 +201,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
                   type="checkbox"
                   checked={selectedPropertyIds.includes(property.id!)}
                   onChange={() => handlePropertyToggle(property.id!)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 
                 <div className="ml-4 flex-1">
@@ -225,7 +225,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
                 </div>
                 
                 {selectedPropertyIds.includes(property.id!) && (
-                  <Check className="h-5 w-5 text-blue-600 ml-4" />
+                  <Check className="h-5 w-5 text-primary-600 ml-4" />
                 )}
               </label>
             </div>
@@ -237,14 +237,14 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
             <div className="text-gray-500 mb-4">
               No hay inmuebles activos en la cartera.
             </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-center mb-2">
-                <div className="bg-yellow-100 p-1 rounded-full mr-2">
-                  <span className="text-yellow-600 text-xs">⚠️</span>
+                <div className="bg-warning-100 p-1 rounded-full mr-2">
+                  <span className="text-warning-600 text-xs">⚠️</span>
                 </div>
                 <p className="text-sm font-medium text-yellow-800">Modo de prueba</p>
               </div>
-              <p className="text-sm text-yellow-700">
+              <p className="text-sm text-warning-700">
                 Puedes continuar para probar el wizard con datos de ejemplo.
               </p>
             </div>
@@ -260,7 +260,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
           className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${
             selectedPropertyIds.length === 0 && properties.length > 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-primary-600 text-white hover:bg-primary-700'
           }`}
         >
           Continuar

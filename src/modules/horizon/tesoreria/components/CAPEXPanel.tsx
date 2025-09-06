@@ -89,9 +89,9 @@ const CAPEXPanel: React.FC = () => {
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'pagado': return 'bg-green-100 text-green-800';
-      case 'completo': return 'bg-blue-100 text-blue-800';
-      case 'incompleto': return 'bg-orange-100 text-orange-800';
+      case 'pagado': return 'bg-success-100 text-success-800';
+      case 'completo': return 'bg-primary-100 text-primary-800';
+      case 'incompleto': return 'bg-warning-100 text-orange-800';
       case 'amortizando': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -99,9 +99,9 @@ const CAPEXPanel: React.FC = () => {
 
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
-      case 'mejora': return 'bg-blue-100 text-blue-800';
-      case 'ampliacion': return 'bg-green-100 text-green-800';
-      case 'mobiliario': return 'bg-yellow-100 text-yellow-800';
+      case 'mejora': return 'bg-primary-100 text-primary-800';
+      case 'ampliacion': return 'bg-success-100 text-success-800';
+      case 'mobiliario': return 'bg-warning-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -162,7 +162,7 @@ const CAPEXPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="completo">Completo</option>
@@ -180,7 +180,7 @@ const CAPEXPanel: React.FC = () => {
             placeholder="Buscar por proveedor, inmueble o tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -212,7 +212,7 @@ const CAPEXPanel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">Proyectos</h3>
             <Building className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-blue-600">
+          <div className="mt-2 text-2xl font-bold text-primary-600">
             {filteredCapex.length}
           </div>
         </div>
@@ -274,7 +274,7 @@ const CAPEXPanel: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="text-sm font-medium text-red-600">
+                    <div className="text-sm font-medium text-error-600">
                       {formatEuro(capex.total)}
                     </div>
                   </td>
@@ -292,7 +292,7 @@ const CAPEXPanel: React.FC = () => {
                     </span>
                     {capex.source_doc_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-success-100 text-success-800 rounded-full">
                           <FileText className="w-3 h-3 mr-1" />
                           OCR
                         </span>
@@ -300,7 +300,7 @@ const CAPEXPanel: React.FC = () => {
                     )}
                     {capex.movement_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
                           Conciliado
                         </span>
                       </div>
@@ -349,7 +349,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.inmueble_id}
                     onChange={(e) => setFormData({...formData, inmueble_id: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value={0}>Seleccionar inmueble</option>
                     {properties.map(property => (
@@ -369,7 +369,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.proveedor}
                     onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -384,7 +384,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -398,7 +398,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -419,7 +419,7 @@ const CAPEXPanel: React.FC = () => {
                         anos_amortizacion: selectedType?.defaultYears || 10
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     {capexTypes.map(type => (
                       <option key={type.value} value={type.value}>
@@ -440,7 +440,7 @@ const CAPEXPanel: React.FC = () => {
                     max="50"
                     value={formData.anos_amortizacion}
                     onChange={(e) => setFormData({...formData, anos_amortizacion: parseInt(e.target.value) || 10})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>

@@ -351,9 +351,9 @@ const UnicornioInboxPrompt: React.FC = () => {
   const getFileIcon = (filename: string) => {
     const extension = filename.split('.').pop()?.toLowerCase();
     switch (extension) {
-      case 'pdf': return <FileText className="w-4 h-4 text-red-500" />;
-      case 'jpg': case 'jpeg': case 'png': return <Image className="w-4 h-4 text-blue-500" />;
-      case 'xlsx': case 'xls': case 'csv': return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
+      case 'pdf': return <FileText className="w-4 h-4 text-error-500" />;
+      case 'jpg': case 'jpeg': case 'png': return <Image className="w-4 h-4 text-primary-500" />;
+      case 'xlsx': case 'xls': case 'csv': return <FileSpreadsheet className="w-4 h-4 text-success-500" />;
       case 'zip': case 'eml': return <Archive className="w-4 h-4 text-purple-500" />;
       default: return <File className="w-4 h-4 text-gray-500" />;
     }
@@ -361,9 +361,9 @@ const UnicornioInboxPrompt: React.FC = () => {
 
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
-      case 'Guardado': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'Revisión': return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
-      case 'Error': return <XCircle className="w-4 h-4 text-red-600" />;
+      case 'Guardado': return <CheckCircle className="w-4 h-4 text-success-600" />;
+      case 'Revisión': return <AlertTriangle className="w-4 h-4 text-warning-600" />;
+      case 'Error': return <XCircle className="w-4 h-4 text-error-600" />;
     }
   };
 
@@ -525,7 +525,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                 <tr
                   key={doc.id}
                   className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedDocument?.id === doc.id ? 'bg-blue-50 border-l-4 border-l-[#113560]' : ''
+                    selectedDocument?.id === doc.id ? 'bg-primary-50 border-l-4 border-l-[#113560]' : ''
                   }`}
                   onClick={() => setSelectedDocument(doc)}
                 >
@@ -600,7 +600,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                           e.stopPropagation();
                           handleDelete(doc.id);
                         }}
-                        className="text-red-600 hover:text-red-800 font-medium text-lg"
+                        className="text-error-600 hover:text-error-800 font-medium text-lg"
                         title="Eliminar"
                       >
                         🗑

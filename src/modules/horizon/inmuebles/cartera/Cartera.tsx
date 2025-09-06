@@ -411,9 +411,9 @@ const Cartera: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                             property.state === 'activo' 
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-success-100 text-success-800'
                               : property.state === 'vendido'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-primary-100 text-primary-800'
                               : 'bg-neutral-100 text-neutral-800'
                           }`}>
                             {property.state.charAt(0).toUpperCase() + property.state.slice(1)}
@@ -437,7 +437,7 @@ const Cartera: React.FC = () => {
                             </button>
                             <button
                               onClick={() => handleDelete(property)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-error-600 hover:text-error-800"
                               title="Borrar"
                             >
                               <TrashIcon className="h-4 w-4" />

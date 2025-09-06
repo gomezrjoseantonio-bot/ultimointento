@@ -106,8 +106,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
               disabled={exporting}
               className="w-full flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="bg-green-100 p-2 rounded-lg">
-                <FileText className="h-5 w-5 text-green-600" />
+              <div className="bg-success-100 p-2 rounded-lg">
+                <FileText className="h-5 w-5 text-success-600" />
               </div>
               <div className="flex-1 text-left">
                 <h4 className="font-medium text-gray-900">Exportar CSV</h4>
@@ -124,8 +124,8 @@ const ExportModal: React.FC<ExportModalProps> = ({
               disabled={exporting}
               className="w-full flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="bg-red-100 p-2 rounded-lg">
-                <File className="h-5 w-5 text-red-600" />
+              <div className="bg-error-100 p-2 rounded-lg">
+                <File className="h-5 w-5 text-error-600" />
               </div>
               <div className="flex-1 text-left">
                 <h4 className="font-medium text-gray-900">Exportar PDF</h4>

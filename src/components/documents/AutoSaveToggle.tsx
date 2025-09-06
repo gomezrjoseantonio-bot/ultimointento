@@ -79,7 +79,7 @@ const AutoSaveToggle: React.FC<AutoSaveToggleProps> = ({ onConfigChange }) => {
           inline-flex px-3 py-1 text-xs font-medium rounded-full
           ${isEnabled 
             ? 'bg-teal-100 text-teal-800' 
-            : 'bg-yellow-100 text-yellow-800'
+            : 'bg-warning-100 text-yellow-800'
           }
         `}>
           {isEnabled ? 'ON' : 'OFF'}

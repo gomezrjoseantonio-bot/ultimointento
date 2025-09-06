@@ -55,7 +55,7 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
     return (
       <div className="flex justify-center py-12">
         <div className="flex items-center space-x-3">
-          <Loader className="h-6 w-6 animate-spin text-blue-600" />
+          <Loader className="h-6 w-6 animate-spin text-primary-600" />
           <span className="text-gray-600">Generando semilla automática...</span>
         </div>
       </div>
@@ -78,13 +78,13 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="text-sm text-gray-600">Líneas de ingresos</div>
-            <div className="text-lg font-semibold text-green-600">
+            <div className="text-lg font-semibold text-success-600">
               {lines.filter(l => l.category === 'ingresos-alquiler').length}
             </div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Líneas de gastos</div>
-            <div className="text-lg font-semibold text-red-600">
+            <div className="text-lg font-semibold text-error-600">
               {lines.filter(l => l.category !== 'ingresos-alquiler').length}
             </div>
           </div>
@@ -128,7 +128,7 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

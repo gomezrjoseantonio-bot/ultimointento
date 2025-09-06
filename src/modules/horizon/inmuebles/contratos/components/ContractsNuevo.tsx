@@ -276,9 +276,9 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
 
       {/* Errors */}
       {errors.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-red-800 mb-2">Errores de validación:</h3>
-          <ul className="text-sm text-red-700 space-y-1">
+        <div className="bg-error-50 border border-error-200 rounded-md p-4">
+          <h3 className="text-sm font-medium text-error-800 mb-2">Errores de validación:</h3>
+          <ul className="text-sm text-error-700 space-y-1">
             {errors.map((error, index) => (
               <li key={index}>• {error}</li>
             ))}

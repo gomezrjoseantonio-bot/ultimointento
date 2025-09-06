@@ -1125,14 +1125,14 @@ const InboxPage: React.FC = () => {
           <div className="w-full lg:w-80 lg:flex-shrink-0 border-r border-neutral-200">
             {/* Bulk Actions */}
             {showBulkActions && selectedDocuments.length > 0 && (
-              <div className="p-4 bg-blue-50 border-b border-blue-200">
+              <div className="p-4 bg-primary-50 border-b border-primary-200">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-blue-900">
+                  <span className="text-sm font-medium text-primary-900">
                     {selectedDocuments.length} seleccionado(s)
                   </span>
                   <button
                     onClick={() => setSelectedDocuments([])}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+                    className="text-xs text-primary-600 hover:text-primary-800"
                   >
                     Limpiar
                   </button>
@@ -1140,14 +1140,14 @@ const InboxPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleBulkDelete}
-                    className="flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600 text-white rounded-lg hover:bg-error-700"
                   >
                     <Trash2 className="w-3 h-3" />
                     Eliminar
                   </button>
                   <button
                     onClick={handleBulkReassign}
-                    className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="flex items-center gap-1 px-3 py-1 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                   >
                     <FolderOpen className="w-3 h-3" />
                     Reasignar
@@ -1256,7 +1256,7 @@ const InboxPage: React.FC = () => {
                 {showBulkActions && (
                   <button
                     onClick={toggleAllDocuments}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-primary-600 hover:text-primary-800"
                   >
                     {selectedDocuments.length === filteredDocuments.length ? 'Deseleccionar' : 'Seleccionar'} todos
                   </button>

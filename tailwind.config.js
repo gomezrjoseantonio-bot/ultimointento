@@ -42,12 +42,79 @@ module.exports = {
           900: '#134e4a',
         },
         
-        // Semantic colors (Atlas Horizon Style Guide)
-        success: '#16A34A',   // Verde OK, validado, conciliado
-        warning: '#EAB308',   // Amarillo warning, pendiente
-        error: '#DC2626',     // Rojo error, descuadre
-        danger: '#DC2626',    // Alias para error
-        info: '#00B8C4',      // Usar teal para info (solo Pulse)
+        // ===== STANDARDIZED COLOR SYSTEM =====
+        // Primary colors (replace scattered blue usage)
+        primary: {
+          50: '#f0f4f9',   // Lightest - backgrounds, subtle highlights
+          100: '#d9e2ef',  // Light - hover states, secondary backgrounds  
+          200: '#b6c7df',  // Medium light - borders, disabled states
+          300: '#8ca4ce',  // Medium - icons, secondary text
+          400: '#5d7cb7',  // Medium strong - active states
+          500: '#3a5998',  // Default primary - buttons, links
+          600: '#2a4073',  // Strong - hover states, emphasis
+          700: '#0E2A47',  // Strongest - high contrast text, borders
+          800: '#0a1f35',  // Very strong - headers, important text
+          900: '#071829',  // Darkest - maximum contrast
+        },
+        
+        // Success colors (standardize green usage)
+        success: {
+          50: '#f0fdf4',   // Success background
+          100: '#dcfce7',  // Light success background
+          200: '#bbf7d0',  // Success border
+          300: '#86efac',  // Success icon light
+          400: '#4ade80',  // Success icon medium
+          500: '#16A34A',  // Primary success - official Atlas success
+          600: '#15803d',  // Success button hover
+          700: '#166534',  // Success text dark
+          800: '#14532d',  // Success strong emphasis
+          900: '#052e16',  // Success darkest
+        },
+        
+        // Warning colors (standardize yellow/orange usage)
+        warning: {
+          50: '#fffbeb',   // Warning background
+          100: '#fef3c7',  // Light warning background
+          200: '#fde68a',  // Warning border
+          300: '#fcd34d',  // Warning icon light
+          400: '#fbbf24',  // Warning icon medium
+          500: '#EAB308',  // Primary warning - official Atlas warning
+          600: '#d97706',  // Warning button hover
+          700: '#b45309',  // Warning text dark
+          800: '#92400e',  // Warning strong emphasis
+          900: '#451a03',  // Warning darkest
+        },
+        
+        // Error/Danger colors (standardize red usage)
+        error: {
+          50: '#fef2f2',   // Error background
+          100: '#fee2e2',  // Light error background
+          200: '#fecaca',  // Error border
+          300: '#fca5a5',  // Error icon light
+          400: '#f87171',  // Error icon medium
+          500: '#DC2626',  // Primary error - official Atlas error
+          600: '#dc2626',  // Error button hover
+          700: '#b91c1c',  // Error text dark
+          800: '#991b1b',  // Error strong emphasis
+          900: '#450a0a',  // Error darkest
+        },
+        
+        // Info colors (for informational content)
+        info: {
+          50: '#f0f9ff',   // Info background
+          100: '#e0f2fe',  // Light info background
+          200: '#bae6fd',  // Info border
+          300: '#7dd3fc',  // Info icon light
+          400: '#38bdf8',  // Info icon medium
+          500: '#0ea5e9',  // Primary info
+          600: '#0284c7',  // Info button hover
+          700: '#0369a1',  // Info text dark
+          800: '#075985',  // Info strong emphasis
+          900: '#0c4a6e',  // Info darkest
+        },
+        
+        // Semantic color aliases (for backward compatibility)
+        danger: '#DC2626',    // Alias for error.500
         
         // Neutral colors (Atlas Horizon Style Guide)
         neutral: {

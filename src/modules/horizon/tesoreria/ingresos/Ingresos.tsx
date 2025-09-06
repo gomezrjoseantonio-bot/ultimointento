@@ -113,9 +113,9 @@ const Ingresos: React.FC = () => {
 
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'cobrado': return 'bg-green-100 text-green-800';
-      case 'previsto': return 'bg-blue-100 text-blue-800';
-      case 'incompleto': return 'bg-orange-100 text-orange-800';
+      case 'cobrado': return 'bg-success-100 text-success-800';
+      case 'previsto': return 'bg-primary-100 text-primary-800';
+      case 'incompleto': return 'bg-warning-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -152,7 +152,7 @@ const Ingresos: React.FC = () => {
       primaryAction={
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         >
           <Plus className="w-4 h-4" />
           Nuevo Ingreso
@@ -166,7 +166,7 @@ const Ingresos: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="previsto">Previsto</option>
@@ -181,7 +181,7 @@ const Ingresos: React.FC = () => {
                 placeholder="Buscar por proveedor o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -227,7 +227,7 @@ const Ingresos: React.FC = () => {
                     {getPropertyName(ingreso.destino, ingreso.destino_id)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <span className="text-sm font-medium text-green-600">
+                    <span className="text-sm font-medium text-success-600">
                       {formatEuro(ingreso.importe)}
                     </span>
                     <div className="text-xs text-gray-500">{ingreso.moneda}</div>
@@ -283,7 +283,7 @@ const Ingresos: React.FC = () => {
                       type="text"
                       value={formData.proveedor_contraparte}
                       onChange={(e) => setFormData(prev => ({ ...prev, proveedor_contraparte: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     />
                   </div>
@@ -297,7 +297,7 @@ const Ingresos: React.FC = () => {
                         type="date"
                         value={formData.fecha_emision}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -310,7 +310,7 @@ const Ingresos: React.FC = () => {
                         type="date"
                         value={formData.fecha_prevista_cobro}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_prevista_cobro: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -327,7 +327,7 @@ const Ingresos: React.FC = () => {
                         min="0"
                         value={formData.importe}
                         onChange={(e) => setFormData(prev => ({ ...prev, importe: parseFloat(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -339,7 +339,7 @@ const Ingresos: React.FC = () => {
                       <select
                         value={formData.moneda}
                         onChange={(e) => setFormData(prev => ({ ...prev, moneda: e.target.value as 'EUR' | 'USD' | 'GBP' }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
@@ -355,7 +355,7 @@ const Ingresos: React.FC = () => {
                     <select
                       value={formData.destino}
                       onChange={(e) => setFormData(prev => ({ ...prev, destino: e.target.value as 'personal' | 'inmueble_id' }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="personal">Personal</option>
                       <option value="inmueble_id">Inmueble</option>
@@ -370,7 +370,7 @@ const Ingresos: React.FC = () => {
                       <select
                         value={formData.destino_id}
                         onChange={(e) => setFormData(prev => ({ ...prev, destino_id: parseInt(e.target.value) }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value={0}>Seleccionar inmueble</option>
                         {properties.map(property => (
@@ -392,7 +392,7 @@ const Ingresos: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                     >
                       Guardar Ingreso
                     </button>

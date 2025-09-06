@@ -171,14 +171,14 @@ const ProfileSeederPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <AlertCircle className="w-5 h-5 text-warning-600" />
           <h1 className="text-xl font-semibold text-yellow-900">
             Profile Seeder - Solo Desarrollo
           </h1>
         </div>
-        <p className="text-yellow-700 mt-2">
+        <p className="text-warning-700 mt-2">
           Herramienta para generar perfiles de banco desde archivos reales. 
           Solo disponible en modo desarrollo.
         </p>
@@ -231,7 +231,7 @@ const ProfileSeederPage: React.FC = () => {
                     <button
                       onClick={() => processFile(file)}
                       disabled={processingFile === file}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="px-3 py-1 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
                     >
                       {processingFile === file ? 'Procesando...' : 'Procesar'}
                     </button>
@@ -257,8 +257,8 @@ const ProfileSeederPage: React.FC = () => {
           </h2>
 
           {previewData.sheetName && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-700">
+            <div className="mb-4 p-3 bg-primary-50 rounded-lg">
+              <p className="text-sm text-primary-700">
                 Hoja detectada: <strong>{previewData.sheetName}</strong>
               </p>
             </div>
@@ -347,7 +347,7 @@ const ProfileSeederPage: React.FC = () => {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={addToRegistry}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="flex items-center gap-2 px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700"
                 >
                   <Plus className="w-4 h-4" />
                   Añadir al registro
@@ -373,7 +373,7 @@ const ProfileSeederPage: React.FC = () => {
           <button
             onClick={exportBankProfiles}
             disabled={capturedProfiles.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             Exportar bank-profiles.json
@@ -404,7 +404,7 @@ const ProfileSeederPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => removeFromRegistry(profile.bankKey)}
-                  className="p-1 text-red-400 hover:text-red-600"
+                  className="p-1 text-red-400 hover:text-error-600"
                 >
                   <X className="w-4 h-4" />
                 </button>

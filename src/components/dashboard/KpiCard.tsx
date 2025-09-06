@@ -10,7 +10,7 @@ interface KpiCardProps {
 
 const KpiCard: React.FC<KpiCardProps> = ({ title, value, change, isPositive, color }) => {
   const colorClasses = {
-    navy: 'border-blue-900',
+    navy: 'border-primary-900',
     teal: 'border-teal-500'
   };
 
@@ -21,7 +21,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, change, isPositive, col
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-semibold text-gray-900 tabular-nums">{value}</p>
         </div>
-        <div className={`text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+        <div className={`text-sm font-medium ${isPositive ? 'text-success-600' : 'text-error-600'}`}>
           {change}
         </div>
       </div>

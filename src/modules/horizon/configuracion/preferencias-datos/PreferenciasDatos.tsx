@@ -236,34 +236,34 @@ const PreferenciasDatos: React.FC = () => {
           <div className="bg-white rounded-lg border border-neutral-200 p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">Restablecer Datos</h2>
             <p className="text-neutral-600 mb-6">
-              <strong className="text-red-600">¡Cuidado!</strong> Esta acción eliminará permanentemente todos tus datos locales 
+              <strong className="text-error-600">¡Cuidado!</strong> Esta acción eliminará permanentemente todos tus datos locales 
               (inmuebles, documentos, contratos, gastos, etc.) y no se puede deshacer.
             </p>
             
             {!showResetConfirm ? (
               <button
                 onClick={() => setShowResetConfirm(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 Restablecer Datos
               </button>
             ) : (
-              <div className="border border-red-200 rounded-lg p-4 bg-red-50">
+              <div className="border border-error-200 rounded-lg p-4 bg-error-50">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-error-500 mt-0.5" />
                   <div className="flex-1">
-                    <h4 className="font-medium text-red-900 mb-2">
+                    <h4 className="font-medium text-error-900 mb-2">
                       ¿Estás seguro de que quieres restablecer todos los datos?
                     </h4>
-                    <p className="text-sm text-red-700 mb-4">
+                    <p className="text-sm text-error-700 mb-4">
                       Se eliminarán permanentemente todos los inmuebles, documentos, contratos, gastos y preferencias. 
                       Esta acción no se puede deshacer.
                     </p>
                     <div className="flex gap-2">
                       <button
                         onClick={handleResetData}
-                        className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                        className="px-4 py-2 bg-error-600 text-white text-sm rounded-lg hover:bg-error-700 transition-colors"
                       >
                         {showSecondConfirm ? 'Confirmar Restablecimiento' : 'Sí, Restablecer'}
                       </button>
@@ -278,7 +278,7 @@ const PreferenciasDatos: React.FC = () => {
                       </button>
                     </div>
                     {showSecondConfirm && (
-                      <p className="text-xs text-red-600 mt-2">
+                      <p className="text-xs text-error-600 mt-2">
                         Haz clic en "Confirmar Restablecimiento" para proceder definitivamente.
                       </p>
                     )}

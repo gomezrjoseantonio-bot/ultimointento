@@ -90,19 +90,19 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
       <div className="mt-3 text-xs text-neutral-500">
         <div className="flex justify-between">
           <span>Ingresos</span>
-          <span className="font-medium text-green-600">
+          <span className="font-medium text-success-600">
             {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(4567.89)}
           </span>
         </div>
         <div className="flex justify-between mt-1">
           <span>Gastos</span>
-          <span className="font-medium text-red-600">
+          <span className="font-medium text-error-600">
             {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(1234.56)}
           </span>
         </div>
         <div className="border-t border-neutral-200 mt-2 pt-2 flex justify-between font-medium">
           <span>Neto</span>
-          <span className={data.trend === 'up' ? 'text-green-600' : 'text-red-600'}>
+          <span className={data.trend === 'up' ? 'text-success-600' : 'text-error-600'}>
             {data.formattedValue}
           </span>
         </div>

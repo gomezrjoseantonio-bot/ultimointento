@@ -196,14 +196,14 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
   const getStatusBadge = () => {
     if (formData.aeatClassification?.status === 'Vivo') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-success-100 text-success-700 rounded-full">
           <CheckCircle className="w-3 h-3" />
           Vivo (deducible)
         </span>
       );
     } else if (formData.aeatClassification?.status === 'Prescrito') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-warning-100 text-orange-700 rounded-full">
           <AlertTriangle className="w-3 h-3" />
           Prescrito (histórico)
         </span>
@@ -243,7 +243,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onClick={handleSave}
           disabled={saving}
           aria-describedby="save-button-description"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         >
           <Save className="w-4 h-4" aria-hidden="true" />
           {saving ? 'Guardando...' : 'Confirmar y guardar'}
@@ -263,9 +263,9 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             aria-checked={formData.destino === 'Personal'}
             onClick={() => handleFieldChange('destino', 'Personal')}
             onKeyDown={(e) => handleKeyDown(e, () => handleFieldChange('destino', 'Personal'))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Personal'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                ? 'border-primary-500 bg-primary-50 text-primary-700'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
             aria-describedby="personal-description"
@@ -283,9 +283,9 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             aria-checked={formData.destino === 'Inmueble'}
             onClick={() => handleFieldChange('destino', 'Inmueble')}
             onKeyDown={(e) => handleKeyDown(e, () => handleFieldChange('destino', 'Inmueble'))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Inmueble'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                ? 'border-primary-500 bg-primary-50 text-primary-700'
                 : 'border-gray-200 hover:bg-gray-50'
             }`}
             aria-describedby="property-description"
@@ -314,7 +314,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               handleFieldChange('entityType', propertyId ? 'property' : undefined);
             }}
             aria-describedby="property-help"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
           >
             <option value="">Seleccionar inmueble</option>
             {properties.map(property => (
@@ -340,7 +340,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           value={formData.proveedor || ''}
           onChange={(e) => handleFieldChange('proveedor', e.target.value)}
           aria-describedby="provider-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
           placeholder="Nombre del proveedor"
         />
         <div id="provider-help" className="text-xs text-gray-500">
@@ -358,7 +358,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           value={formData.categoria || ''}
           onChange={(e) => handleFieldChange('categoria', e.target.value)}
           aria-describedby="category-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
         >
           <option value="">Seleccionar categoría</option>
           {getCategoriesForDestination().map(category => (
@@ -388,7 +388,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.amount || ''}
               onChange={(e) => handleFinancialDataChange('amount', parseFloat(e.target.value) || 0)}
               aria-describedby="total-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
               placeholder="0,00"
             />
             <div id="total-amount-help" className="sr-only">
@@ -406,7 +406,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.base || ''}
               onChange={(e) => handleFinancialDataChange('base', parseFloat(e.target.value) || 0)}
               aria-describedby="base-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
               placeholder="0,00"
             />
             <div id="base-amount-help" className="sr-only">
@@ -427,7 +427,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.iva || ''}
               onChange={(e) => handleFinancialDataChange('iva', parseFloat(e.target.value) || 0)}
               aria-describedby="vat-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
               placeholder="0,00"
             />
             <div id="vat-amount-help" className="sr-only">
@@ -444,7 +444,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.issueDate || ''}
               onChange={(e) => handleFinancialDataChange('issueDate', e.target.value)}
               aria-describedby="issue-date-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
             />
             <div id="issue-date-help" className="sr-only">
               Seleccione la fecha de emisión del documento
@@ -455,9 +455,9 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
 
       {/* AEAT Classification for Inmueble */}
       {formData.destino === 'Inmueble' && formData.aeatClassification && (
-        <section className="space-y-4 p-4 bg-blue-50 rounded-lg" aria-labelledby="aeat-title">
+        <section className="space-y-4 p-4 bg-primary-50 rounded-lg" aria-labelledby="aeat-title">
           <div className="flex items-center justify-between">
-            <h4 id="aeat-title" className="text-sm font-medium text-blue-900">
+            <h4 id="aeat-title" className="text-sm font-medium text-primary-900">
               Clasificación Fiscal AEAT
             </h4>
             {getStatusBadge()}
@@ -465,7 +465,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="block text-xs text-blue-700 mb-1" id="aeat-box-label">
+              <div className="block text-xs text-primary-700 mb-1" id="aeat-box-label">
                 Casilla AEAT
               </div>
               <div 
@@ -478,7 +478,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               </div>
             </div>
             <div>
-              <div className="block text-xs text-blue-700 mb-1" id="exercise-year-label">
+              <div className="block text-xs text-primary-700 mb-1" id="exercise-year-label">
                 Ejercicio de Devengo
               </div>
               <div 
@@ -493,7 +493,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           </div>
           
           {formData.aeatClassification.suggested && (
-            <div className="text-xs text-blue-600" role="status" aria-live="polite">
+            <div className="text-xs text-primary-600" role="status" aria-live="polite">
               <AlertTriangle className="inline w-3 h-3 mr-1" aria-hidden="true" />
               Clasificación sugerida automáticamente
             </div>
@@ -512,7 +512,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onChange={(e) => handleFieldChange('notas', e.target.value)}
           rows={3}
           aria-describedby="notes-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-blue-300 focus:ring-2 focus:ring-blue-200 focus:ring-opacity-50 focus:outline-none"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
           placeholder="Notas adicionales..."
         />
         <div id="notes-help" className="text-xs text-gray-500">

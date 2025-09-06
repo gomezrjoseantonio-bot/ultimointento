@@ -27,9 +27,9 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
   const getStatusColor = (status: Budget['status']) => {
     switch (status) {
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-yellow-800';
       case 'confirmed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -47,8 +47,8 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
           <div key={budget.id} className="px-6 py-4 hover:bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <FileText className="h-5 w-5 text-blue-600" />
+                <div className="bg-primary-100 p-2 rounded-lg">
+                  <FileText className="h-5 w-5 text-primary-600" />
                 </div>
                 
                 <div>
@@ -86,14 +86,14 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-sm text-green-600 font-medium">
+                  <div className="text-sm text-success-600 font-medium">
                     {formatEuro(budget.totals.annualIncome)}
                   </div>
                   <div className="text-xs text-gray-500">Ingresos</div>
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-sm text-red-600 font-medium">
+                  <div className="text-sm text-error-600 font-medium">
                     {formatEuro(budget.totals.annualExpenses)}
                   </div>
                   <div className="text-xs text-gray-500">Gastos</div>
@@ -125,7 +125,7 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
                       )}
                       <button
                         onClick={() => handleDeleteBudget(budget)}
-                        className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                        className="flex items-center px-4 py-2 text-sm text-error-600 hover:bg-error-50 w-full text-left"
                       >
                         <Trash2 className="h-4 w-4 mr-3" />
                         Eliminar

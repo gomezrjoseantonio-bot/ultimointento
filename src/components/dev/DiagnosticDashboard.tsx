@@ -42,22 +42,22 @@ export default function DiagnosticDashboard() {
 
   const getEventIcon = (event: string) => {
     switch (event) {
-      case 'PARSED': return <CheckCircle className="w-4 h-4 text-blue-500" />;
-      case 'ROUTED': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'PARSED': return <CheckCircle className="w-4 h-4 text-primary-500" />;
+      case 'ROUTED': return <CheckCircle className="w-4 h-4 text-success-500" />;
       case 'OCR_DONE': return <CheckCircle className="w-4 h-4 text-purple-500" />;
       case 'MOVEMENT_CREATED': return <CheckCircle className="w-4 h-4 text-indigo-500" />;
-      case 'ERROR': return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'ERROR': return <XCircle className="w-4 h-4 text-error-500" />;
       default: return <Clock className="w-4 h-4 text-neutral-400" />;
     }
   };
 
   const getEventColor = (event: string) => {
     switch (event) {
-      case 'PARSED': return 'bg-blue-50 border-blue-200';
-      case 'ROUTED': return 'bg-green-50 border-green-200';
+      case 'PARSED': return 'bg-primary-50 border-primary-200';
+      case 'ROUTED': return 'bg-success-50 border-success-200';
       case 'OCR_DONE': return 'bg-purple-50 border-purple-200';
       case 'MOVEMENT_CREATED': return 'bg-indigo-50 border-indigo-200';
-      case 'ERROR': return 'bg-red-50 border-red-200';
+      case 'ERROR': return 'bg-error-50 border-error-200';
       default: return 'bg-neutral-50 border-neutral-200';
     }
   };
@@ -72,7 +72,7 @@ export default function DiagnosticDashboard() {
         <Activity className="w-4 h-4" />
         <span className="text-xs font-medium">Diagnóstico</span>
         {events.length > 0 && (
-          <span className="bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+          <span className="bg-primary-500 text-white text-xs px-1.5 py-0.5 rounded-full">
             {events.length}
           </span>
         )}

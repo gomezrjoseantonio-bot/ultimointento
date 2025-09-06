@@ -126,8 +126,8 @@ const H8DemoComponent: React.FC = () => {
   const getTestIcon = (success: boolean | undefined) => {
     if (success === undefined) return <Clock className="w-4 h-4 text-gray-400" />;
     return success 
-      ? <CheckCircle className="w-4 h-4 text-green-500" />
-      : <XCircle className="w-4 h-4 text-red-500" />;
+      ? <CheckCircle className="w-4 h-4 text-success-500" />
+      : <XCircle className="w-4 h-4 text-error-500" />;
   };
 
   return (
@@ -137,7 +137,7 @@ const H8DemoComponent: React.FC = () => {
         <button
           onClick={runH8Tests}
           disabled={isRunning}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
         >
           <Play className="w-4 h-4" />
           <span>{isRunning ? 'Running Tests...' : 'Run H8 Tests'}</span>
@@ -152,8 +152,8 @@ const H8DemoComponent: React.FC = () => {
             onClick={toggleAutoSave}
             className={`px-3 py-1 text-xs rounded-full ${
               autoSaveEnabled 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-yellow-100 text-yellow-800'
+                ? 'bg-success-100 text-success-800' 
+                : 'bg-warning-100 text-yellow-800'
             }`}
           >
             {autoSaveEnabled ? 'ON' : 'OFF'}
@@ -163,7 +163,7 @@ const H8DemoComponent: React.FC = () => {
 
       {/* OCR Queue Metrics */}
       {metrics && (
-        <div className="mb-4 p-3 bg-blue-50 rounded">
+        <div className="mb-4 p-3 bg-primary-50 rounded">
           <h4 className="text-sm font-medium mb-2">OCR Queue Status</h4>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>Pending: {metrics.pending}</div>
@@ -248,10 +248,10 @@ const H8DemoComponent: React.FC = () => {
 
           {/* Error Display */}
           {testResults.error && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded">
+            <div className="p-2 bg-error-50 border border-error-200 rounded">
               <div className="flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-red-700">Error: {testResults.error}</span>
+                <AlertCircle className="w-4 h-4 text-error-500" />
+                <span className="text-sm text-error-700">Error: {testResults.error}</span>
               </div>
             </div>
           )}
@@ -259,9 +259,9 @@ const H8DemoComponent: React.FC = () => {
       )}
 
       {/* Instructions */}
-      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+      <div className="mt-4 p-3 bg-warning-50 border border-yellow-200 rounded">
         <h4 className="text-sm font-medium text-yellow-800 mb-1">H8 QA Checklist</h4>
-        <ul className="text-xs text-yellow-700 space-y-1">
+        <ul className="text-xs text-warning-700 space-y-1">
           <li>• Upload PDF factura → should auto-enqueue for OCR</li>
           <li>• Upload CSV extracto → should skip OCR, go to bank parser</li>
           <li>• Test "49,10 €" parsing → should become 49.10</li>

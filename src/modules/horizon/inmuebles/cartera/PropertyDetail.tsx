@@ -162,9 +162,9 @@ const PropertyDetail: React.FC = () => {
               <dd className="mt-1">
                 <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                   property.state === 'activo' 
-                    ? 'bg-green-100 text-green-800'
+                    ? 'bg-success-100 text-success-800'
                     : property.state === 'vendido'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-primary-100 text-primary-800'
                     : 'bg-neutral-100 text-neutral-800'
                 }`}>
                   {property.state.charAt(0).toUpperCase() + property.state.slice(1)}
@@ -342,15 +342,15 @@ const PropertyDetail: React.FC = () => {
 
           {/* Inmueble accesorio */}
           {property.fiscalData?.isAccessory && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <div className="text-sm font-medium text-blue-900 mb-2">Inmueble accesorio</div>
+            <div className="bg-primary-50 border border-primary-200 rounded-md p-4">
+              <div className="text-sm font-medium text-primary-900 mb-2">Inmueble accesorio</div>
               {property.fiscalData.mainPropertyId && (
-                <div className="text-xs text-blue-700">
+                <div className="text-xs text-primary-700">
                   Vinculado a inmueble principal ID: {property.fiscalData.mainPropertyId}
                 </div>
               )}
               {property.fiscalData.accessoryData && (
-                <div className="mt-2 space-y-1 text-xs text-blue-700">
+                <div className="mt-2 space-y-1 text-xs text-primary-700">
                   <div>Ref. catastral: {property.fiscalData.accessoryData.cadastralReference}</div>
                   <div>Fecha adquisición: {formatDate(property.fiscalData.accessoryData.acquisitionDate)}</div>
                   <div>Valor catastral: {formatEuro(property.fiscalData.accessoryData.cadastralValue)}</div>

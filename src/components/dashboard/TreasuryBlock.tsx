@@ -86,7 +86,7 @@ const TreasuryBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, clas
         </div>
         <div className="flex justify-between mt-1">
           <span>Proyección +{options.horizon}d</span>
-          <span className={`font-medium ${data.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-medium ${data.trend === 'up' ? 'text-success-600' : 'text-error-600'}`}>
             {data.trendValue}
           </span>
         </div>

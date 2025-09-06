@@ -139,9 +139,9 @@ const Radar: React.FC = () => {
 
   const getStatusColor = (status: 'healthy' | 'warning' | 'critical'): string => {
     switch (status) {
-      case 'critical': return 'text-red-600 bg-red-50';
-      case 'warning': return 'text-orange-600 bg-orange-50';
-      case 'healthy': return 'text-green-600 bg-green-50';
+      case 'critical': return 'text-error-600 bg-error-50';
+      case 'warning': return 'text-warning-600 bg-orange-50';
+      case 'healthy': return 'text-success-600 bg-success-50';
     }
   };
 
@@ -179,7 +179,7 @@ const Radar: React.FC = () => {
               onClick={() => setSelectedModule(module.key)}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedModule === module.key
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -201,9 +201,9 @@ const Radar: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance7d)}</div>
                 <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
                   {projection.projectedBalance7d > projection.currentBalance ? (
-                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <TrendingUp className="w-4 h-4 text-success-500" />
                   ) : (
-                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <TrendingDown className="w-4 h-4 text-error-500" />
                   )}
                   Proyección +7d
                 </div>
@@ -213,16 +213,16 @@ const Radar: React.FC = () => {
                 <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance30d)}</div>
                 <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
                   {projection.projectedBalance30d > projection.currentBalance ? (
-                    <TrendingUp className="w-4 h-4 text-green-500" />
+                    <TrendingUp className="w-4 h-4 text-success-500" />
                   ) : (
-                    <TrendingDown className="w-4 h-4 text-red-500" />
+                    <TrendingDown className="w-4 h-4 text-error-500" />
                   )}
                   Proyección +30d
                 </div>
               </div>
               
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{projection.accountsAtRisk}</div>
+                <div className="text-2xl font-bold text-warning-600">{projection.accountsAtRisk}</div>
                 <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
                   <AlertTriangle className="w-4 h-4 text-orange-500" />
                   Cuentas en riesgo
@@ -275,7 +275,7 @@ const Radar: React.FC = () => {
                         <div className="font-medium text-gray-900">{rec.title}</div>
                         <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
                         {rec.type === 'transfer' && rec.suggestedAmount && (
-                          <div className="text-sm text-blue-600 mt-2">
+                          <div className="text-sm text-primary-600 mt-2">
                             💡 Transferir {formatEuro(rec.suggestedAmount)} de {rec.fromAccountName} a {rec.toAccountName}
                           </div>
                         )}
@@ -286,7 +286,7 @@ const Radar: React.FC = () => {
               </div>
             ) : (
               <div className="text-center text-gray-500 py-8">
-                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-success-500" />
                 <p>No hay recomendaciones activas</p>
                 <p className="text-sm">Todas las cuentas están en buen estado</p>
               </div>
@@ -306,9 +306,9 @@ const Radar: React.FC = () => {
                 <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                   <div className="flex items-center gap-3">
                     {event.type === 'income' ? (
-                      <ArrowUpCircle className="w-5 h-5 text-green-500" />
+                      <ArrowUpCircle className="w-5 h-5 text-success-500" />
                     ) : (
-                      <ArrowDownCircle className="w-5 h-5 text-red-500" />
+                      <ArrowDownCircle className="w-5 h-5 text-error-500" />
                     )}
                     <div>
                       <div className="font-medium text-gray-900">{event.description}</div>
@@ -317,7 +317,7 @@ const Radar: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <div className={`font-medium ${event.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className={`font-medium ${event.type === 'income' ? 'text-success-600' : 'text-error-600'}`}>
                     {event.type === 'income' ? '+' : '-'}{formatEuro(event.amount)}
                   </div>
                 </div>

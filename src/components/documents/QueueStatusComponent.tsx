@@ -48,11 +48,11 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
       case 'PENDING':
         return <Clock className="w-4 h-4 text-gray-500" />;
       case 'PROCESSING':
-        return <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />;
+        return <RefreshCw className="w-4 h-4 text-primary-500 animate-spin" />;
       case 'OK':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-success-500" />;
       case 'ERROR':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-error-500" />;
       default:
         return <Clock className="w-4 h-4 text-gray-400" />;
     }
@@ -65,11 +65,11 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
       case 'PENDING':
         return `${baseClasses} bg-gray-100 text-gray-800`;
       case 'PROCESSING':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
+        return `${baseClasses} bg-primary-100 text-primary-800`;
       case 'OK':
-        return `${baseClasses} bg-green-100 text-green-800`;
+        return `${baseClasses} bg-success-100 text-success-800`;
       case 'ERROR':
-        return `${baseClasses} bg-red-100 text-red-800`;
+        return `${baseClasses} bg-error-100 text-error-800`;
       default:
         return `${baseClasses} bg-gray-100 text-gray-600`;
     }
@@ -91,7 +91,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
       >
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-1">
-            {activeJobs.length > 0 && <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />}
+            {activeJobs.length > 0 && <RefreshCw className="w-4 h-4 text-primary-500 animate-spin" />}
             <span className="text-sm font-medium text-gray-900">
               Cola OCR
             </span>
@@ -114,7 +114,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
         
         <div className="flex items-center space-x-2">
           {activeJobs.length > 0 && (
-            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
               {activeJobs.length} activos
             </span>
           )}
@@ -147,7 +147,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
                     {job.status === 'ERROR' && (
                       <button
                         onClick={() => handleRetry(job.id)}
-                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                        className="text-xs px-2 py-1 bg-error-100 text-error-700 rounded hover:bg-red-200 transition-colors"
                       >
                         Reintentar
                       </button>
@@ -160,7 +160,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
                     )}
                     
                     {job.attempt > 1 && (
-                      <span className="text-xs text-orange-600">
+                      <span className="text-xs text-warning-600">
                         Intento {job.attempt}
                       </span>
                     )}
@@ -172,11 +172,11 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
 
           {/* Error details */}
           {metrics?.recentErrors && metrics.recentErrors.length > 0 && (
-            <div className="p-3 border-t bg-red-50">
-              <h4 className="text-sm font-medium text-red-700 mb-2">Errores recientes</h4>
+            <div className="p-3 border-t bg-error-50">
+              <h4 className="text-sm font-medium text-error-700 mb-2">Errores recientes</h4>
               <div className="space-y-1">
                 {metrics.recentErrors.slice(0, 3).map((error: any, index: number) => (
-                  <div key={index} className="text-xs text-red-600">
+                  <div key={index} className="text-xs text-error-600">
                     <span className="font-medium">{error.filename}:</span> {error.error}
                   </div>
                 ))}
@@ -194,11 +194,11 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
                 </div>
                 <div>
                   <span className="text-gray-500">Completados:</span>
-                  <span className="ml-1 font-medium text-green-600">{metrics.completed}</span>
+                  <span className="ml-1 font-medium text-success-600">{metrics.completed}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Fallidos:</span>
-                  <span className="ml-1 font-medium text-red-600">{metrics.failed}</span>
+                  <span className="ml-1 font-medium text-error-600">{metrics.failed}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Duración promedio:</span>

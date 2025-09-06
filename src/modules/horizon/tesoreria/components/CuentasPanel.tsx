@@ -94,17 +94,17 @@ const CuentasPanel: React.FC = () => {
 
   const getStatusColor = (status: 'healthy' | 'warning' | 'critical'): string => {
     switch (status) {
-      case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-      case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'healthy': return 'text-green-600 bg-green-50 border-green-200';
+      case 'critical': return 'text-error-600 bg-error-50 border-error-200';
+      case 'warning': return 'text-warning-600 bg-orange-50 border-orange-200';
+      case 'healthy': return 'text-success-600 bg-success-50 border-success-200';
     }
   };
 
   const getStatusIcon = (status: 'healthy' | 'warning' | 'critical') => {
     switch (status) {
-      case 'critical': return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      case 'critical': return <AlertTriangle className="w-4 h-4 text-error-500" />;
       case 'warning': return <AlertTriangle className="w-4 h-4 text-orange-500" />;
-      case 'healthy': return <Banknote className="w-4 h-4 text-green-500" />;
+      case 'healthy': return <Banknote className="w-4 h-4 text-success-500" />;
     }
   };
 
@@ -240,9 +240,9 @@ const CuentasPanel: React.FC = () => {
               <div className="flex items-center">
                 <div className="flex items-center">
                   {accountProjection.projectedBalance7d > accountProjection.currentBalance ? (
-                    <TrendingUp className="w-8 h-8 text-green-500 mr-3" />
+                    <TrendingUp className="w-8 h-8 text-success-500 mr-3" />
                   ) : (
-                    <TrendingDown className="w-8 h-8 text-red-500 mr-3" />
+                    <TrendingDown className="w-8 h-8 text-error-500 mr-3" />
                   )}
                   <div>
                     <div className="text-sm font-medium text-gray-500">Proyección 7d</div>
@@ -258,9 +258,9 @@ const CuentasPanel: React.FC = () => {
               <div className="flex items-center">
                 <div className="flex items-center">
                   {accountProjection.projectedBalance > accountProjection.currentBalance ? (
-                    <TrendingUp className="w-8 h-8 text-green-500 mr-3" />
+                    <TrendingUp className="w-8 h-8 text-success-500 mr-3" />
                   ) : (
-                    <TrendingDown className="w-8 h-8 text-red-500 mr-3" />
+                    <TrendingDown className="w-8 h-8 text-error-500 mr-3" />
                   )}
                   <div>
                     <div className="text-sm font-medium text-gray-500">Proyección 30d</div>
@@ -303,12 +303,12 @@ const CuentasPanel: React.FC = () => {
                     <div className="flex items-center space-x-4">
                       <div className="flex-shrink-0">
                         {movement.amount > 0 ? (
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <TrendingUp className="w-4 h-4 text-green-600" />
+                          <div className="w-8 h-8 bg-success-100 rounded-full flex items-center justify-center">
+                            <TrendingUp className="w-4 h-4 text-success-600" />
                           </div>
                         ) : (
-                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                            <TrendingDown className="w-4 h-4 text-red-600" />
+                          <div className="w-8 h-8 bg-error-100 rounded-full flex items-center justify-center">
+                            <TrendingDown className="w-4 h-4 text-error-600" />
                           </div>
                         )}
                       </div>
@@ -322,7 +322,7 @@ const CuentasPanel: React.FC = () => {
                       </div>
                     </div>
                     <div className={`text-lg font-semibold ${
-                      movement.amount > 0 ? 'text-green-600' : 'text-red-600'
+                      movement.amount > 0 ? 'text-success-600' : 'text-error-600'
                     }`}>
                       {movement.amount > 0 ? '+' : ''}{formatEuro(movement.amount)}
                     </div>
@@ -454,8 +454,8 @@ const CuentasPanel: React.FC = () => {
                 Seleccionar Archivo
               </button>
             </div>
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-4 p-4 bg-primary-50 rounded-lg">
+              <p className="text-sm text-primary-800">
                 💡 <strong>Tip:</strong> El sistema detectará automáticamente el saldo inicial y los movimientos del extracto para configurar la cuenta.
               </p>
             </div>

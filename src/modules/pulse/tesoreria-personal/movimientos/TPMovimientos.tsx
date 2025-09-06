@@ -174,14 +174,14 @@ const TPMovimientos: React.FC = () => {
                         {movement.counterparty || '—'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
-                        movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                        movement.amount >= 0 ? 'text-success-600' : 'text-error-600'
                       }`}>
                         {formatEuro(movement.amount)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          movement.status === 'conciliado' ? 'bg-green-100 text-green-800' :
-                          movement.status === 'parcial' ? 'bg-yellow-100 text-yellow-800' :
+                          movement.status === 'conciliado' ? 'bg-success-100 text-success-800' :
+                          movement.status === 'parcial' ? 'bg-warning-100 text-yellow-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {movement.status === 'conciliado' ? 'Conciliado' :
@@ -193,10 +193,10 @@ const TPMovimientos: React.FC = () => {
                           <button className="text-neutral-400 hover:text-neutral-600">
                             <Edit2 className="h-4 w-4" />
                           </button>
-                          <button className="text-neutral-400 hover:text-blue-600">
+                          <button className="text-neutral-400 hover:text-primary-600">
                             <Link className="h-4 w-4" />
                           </button>
-                          <button className="text-neutral-400 hover:text-red-600">
+                          <button className="text-neutral-400 hover:text-error-600">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>

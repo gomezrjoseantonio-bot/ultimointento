@@ -40,10 +40,10 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
 
   const getFileIcon = (filename: string, type: string) => {
     if (type?.startsWith('image/') || filename?.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)) {
-      return <Image className="w-4 h-4 text-blue-500" />;
+      return <Image className="w-4 h-4 text-primary-500" />;
     }
     if (type === 'application/pdf' || filename?.toLowerCase().endsWith('.pdf')) {
-      return <FileText className="w-4 h-4 text-red-500" />;
+      return <FileText className="w-4 h-4 text-error-500" />;
     }
     if (type === 'application/zip' || filename?.toLowerCase().endsWith('.zip')) {
       return <Archive className="w-4 h-4 text-orange-500" />;
@@ -74,7 +74,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     
     if (isFromEmail) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded-full">
           <Mail className="w-3 h-3" />
           Email
         </span>
@@ -213,7 +213,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                 key={doc.id || index}
                 className={`border-b border-neutral-100 transition-colors cursor-pointer ${
                   isSelected 
-                    ? 'bg-blue-50' 
+                    ? 'bg-primary-50' 
                     : 'hover:bg-neutral-50'
                 }`}
                 onClick={() => onSelectDocument(doc)}

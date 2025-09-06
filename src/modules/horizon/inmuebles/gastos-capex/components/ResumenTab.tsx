@@ -269,12 +269,12 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
   const { property, expenses, limits, carryForwards, days } = summary;
 
   const categoryCards = [
-    { label: 'Financiación', amount: expenses.financiacion, color: 'bg-blue-100 border-blue-200' },
-    { label: 'R&C', amount: expenses.reparacionConservacion, color: 'bg-green-100 border-green-200' },
-    { label: 'Tributos', amount: expenses.tributos, color: 'bg-yellow-100 border-yellow-200' },
-    { label: 'Seguros', amount: expenses.seguros, color: 'bg-blue-100 border-blue-200' },
+    { label: 'Financiación', amount: expenses.financiacion, color: 'bg-primary-100 border-primary-200' },
+    { label: 'R&C', amount: expenses.reparacionConservacion, color: 'bg-success-100 border-success-200' },
+    { label: 'Tributos', amount: expenses.tributos, color: 'bg-warning-100 border-yellow-200' },
+    { label: 'Seguros', amount: expenses.seguros, color: 'bg-primary-100 border-primary-200' },
     { label: 'Servicios personales', amount: expenses.serviciosPersonales, color: 'bg-teal-100 border-teal-200' },
-    { label: 'CAPEX Mejora', amount: expenses.capexMejora, color: 'bg-orange-100 border-orange-200' },
+    { label: 'CAPEX Mejora', amount: expenses.capexMejora, color: 'bg-warning-100 border-orange-200' },
     { label: 'Mobiliario (10a)', amount: expenses.mobiliario, color: 'bg-pink-100 border-pink-200' }
   ];
 
@@ -329,7 +329,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
           </div>
           <div>
             <div className="text-xs text-gray-600 mb-1">Aplicado este año</div>
-            <div className="text-sm font-medium text-green-700">
+            <div className="text-sm font-medium text-success-700">
               {formatEuro(limits.applied)}
             </div>
           </div>
@@ -367,7 +367,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
       </div>
 
       {/* Rental/Availability Days */}
-      <div className="bg-blue-50 rounded-lg p-4">
+      <div className="bg-primary-50 rounded-lg p-4">
         <h4 className="font-medium text-gray-900 mb-3">
           Días arrendado / a disposición
         </h4>
@@ -388,7 +388,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
         </div>
 
         {(!days || days.daysRented === 0) && (
-          <div className="mt-2 text-xs text-blue-600">
+          <div className="mt-2 text-xs text-primary-600">
             Sin contratos registrados. Permite input anual provisional.
           </div>
         )}
