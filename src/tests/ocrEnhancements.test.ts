@@ -105,6 +105,8 @@ describe('Enhanced OCR Processing', () => {
 
         const result = processDocumentAIResponse(mockApiResponse, 'test-invoice.pdf');
         
+        // Always check validation warnings array exists
+        expect(result.validationWarnings).toBeDefined();
         if (shouldWarn) {
           expect(result.validationWarnings?.length).toBeGreaterThan(0);
         } else {

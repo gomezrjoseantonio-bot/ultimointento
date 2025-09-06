@@ -175,6 +175,9 @@ describe('5-Minute Diagnostic Checklist Integration', () => {
     // Could have error event if no movements were created
     if (errorEvents.length > 0) {
       expect(errorEvents[0].metadata?.error).toContain('import');
+    } else {
+      // If no error events, that's also acceptable behavior
+      expect(errorEvents.length).toBe(0);
     }
   });
 

@@ -5,6 +5,7 @@ export type DocumentType =
   | 'extracto_bancario'
   | 'factura_suministro' 
   | 'factura_reforma'
+  | 'factura_generica'
   | 'contrato'
   | 'documento_generico';
 

@@ -49,10 +49,9 @@ export async function processInboxItem(
         return await processBankStatement(file, filename, logs);
       
       case 'factura_suministro':
-        return await processUtilityBill(file, filename, logs, options);
-      
       case 'factura_reforma':
-        return await processReformInvoice(file, filename, logs, options);
+      case 'factura_generica':
+        return await processInvoice(file, filename, logs, options);
       
       case 'contrato':
         return await processContract(file, filename, logs, options);
@@ -75,7 +74,8 @@ export async function processInboxItem(
 }
 
 /**
- * 2.1 Extractos bancarios - NO OCR, direct file parsing
+ * 2.1 Extractos bancarios - Following PROMPT 1 exact requirements
+ * NUNCA marcar "Guardado" si no hay cuenta destino inequívoca
  */
 async function processBankStatement(
   file: File,
@@ -87,7 +87,20 @@ async function processBankStatement(
   try {
     addLog('Iniciando análisis de extracto bancario');
     
-    // Mock CSV parsing - in real implementation would use csvParserService
+    // 1. Extract IBAN from file (columns, header, filename)
+    const { extractIBANFromBankStatement, matchAccountByIBAN } = await import('./ibanAccountMatchingService');
+    const ibanExtraction = await extractIBANFromBankStatement(file, filename);
+    
+    if (ibanExtraction.source !== 'none') {
+      addLog(`IBAN detectado (${ibanExtraction.source}): ${ibanExtraction.iban_mask || ibanExtraction.last4}`);
+    } else {
+      addLog('No se pudo detectar IBAN en el archivo');
+    }
+    
+    // 2. Match against registered accounts
+    const accountMatch = await matchAccountByIBAN(ibanExtraction);
+    
+    // 3. Parse CSV movements (mock implementation)
     const text = await file.text();
     const lines = text.split('\n').filter(line => line.trim());
     
@@ -95,33 +108,72 @@ async function processBankStatement(
       throw new Error('Archivo vacío o sin datos');
     }
 
-    // Mock movement detection
+    // Mock movement detection with date range
     const movements = lines.slice(1).map((line, index) => {
+      const baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() - (lines.length - index));
+      
       return {
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: baseDate.toISOString().split('T')[0],
         descripcion: `Movimiento ${index + 1}`,
         importe: (Math.random() - 0.5) * 1000,
         saldo: 1000 + index * 100,
-        contraparte: 'Entidad'
+        contraparte: 'Entidad comercial',
+        referencia: `REF${index + 1}`
       };
     });
 
-    addLog(`${movements.length} movimientos detectados`);
-    addLog('Creando movimientos en Tesorería');
-
-    return {
-      success: true,
-      documentType: 'extracto_bancario',
-      extractedFields: {
-        movimientos: movements,
-        banco_origen: 'Banco detectado',
-        iban_detectado: 'ES****1234'
-      },
-      destination: 'Tesorería › Movimientos',
-      requiresReview: false,
-      blockingReasons: [],
-      logs
-    };
+    addLog(`${movements.length} movimientos parseados`);
+    
+    // 4. CRITICAL: Only create movements if account is determined
+    if (!accountMatch.requiresSelection && accountMatch.cuenta_id) {
+      addLog(`Cuenta asignada: ${accountMatch.matches[0]?.account_name}`);
+      addLog('Creando movimientos en Tesorería › Movimientos');
+      
+      // TODO: Here would call treasuryAPI.import.importTransactions
+      // await createMovementsInTreasury(movements, accountMatch.cuenta_id);
+      
+      return {
+        success: true,
+        documentType: 'extracto_bancario',
+        extractedFields: {
+          movimientos: movements,
+          cuenta_id: accountMatch.cuenta_id,
+          banco_origen: determineBankFromFilename(filename),
+          iban_detectado: ibanExtraction.iban_mask || ibanExtraction.last4,
+          rango_fechas: {
+            desde: movements[0]?.fecha,
+            hasta: movements[movements.length - 1]?.fecha
+          }
+        },
+        destination: 'Tesorería › Movimientos',
+        requiresReview: false,
+        blockingReasons: [],
+        logs
+      };
+    } else {
+      // Account cannot be determined - MUST go to Revisión
+      addLog('Extracto requiere selección de cuenta - quedará en Revisión');
+      
+      return {
+        success: false,
+        documentType: 'extracto_bancario',
+        extractedFields: {
+          movimientos: movements,
+          banco_origen: determineBankFromFilename(filename),
+          iban_detectado: ibanExtraction.iban_mask || ibanExtraction.last4,
+          account_matches: accountMatch.matches,
+          rango_fechas: {
+            desde: movements[0]?.fecha,
+            hasta: movements[movements.length - 1]?.fecha
+          }
+        },
+        requiresReview: true,
+        blockingReasons: [accountMatch.blockingReason || 'Selecciona cuenta destino'],
+        logs
+      };
+    }
+    
   } catch (error) {
     addLog(`Error en extracto: ${error}`);
     return {
@@ -133,6 +185,280 @@ async function processBankStatement(
       logs
     };
   }
+}
+
+/**
+ * Determine bank from filename patterns
+ */
+function determineBankFromFilename(filename: string): string {
+  const name = filename.toLowerCase();
+  
+  if (name.includes('bbva')) return 'BBVA';
+  if (name.includes('santander')) return 'Santander';
+  if (name.includes('sabadell')) return 'Sabadell';
+  if (name.includes('unicaja')) return 'Unicaja';
+  if (name.includes('bankinter')) return 'Bankinter';
+  if (name.includes('ing')) return 'ING';
+  if (name.includes('openbank')) return 'Openbank';
+  if (name.includes('caixa')) return 'CaixaBank';
+  if (name.includes('abanca')) return 'Abanca';
+  if (name.includes('revolut')) return 'Revolut';
+  
+  return 'Banco detectado';
+}
+
+/**
+ * 2.2-2.4 Facturas - Following PROMPT 2 exact requirements
+ * OCR siempre, permitir completar campos faltantes, clasificar al guardar
+ */
+async function processInvoice(
+  file: File,
+  filename: string,
+  logs: Array<{ timestamp: string; action: string }>,
+  options: ProcessingOptions
+): Promise<ProcessingResult> {
+  const addLog = (action: string) => logs.push({ timestamp: new Date().toISOString(), action });
+
+  // 1. ALWAYS execute OCR for invoices (PDF/images/DOCX)
+  addLog('Ejecutando OCR para factura (obligatorio)');
+  
+  let ocrRetryCount = 0;
+  let ocrData: any = null;
+  
+  while (ocrRetryCount <= 1 && !ocrData) { // Max 1 retry as specified
+    try {
+      ocrRetryCount++;
+      
+      if (ocrRetryCount > 1) {
+        addLog('Reintentando OCR (segundo intento)');
+      }
+      
+      // Mock OCR execution - would call real OCR service
+      ocrData = await executeInvoiceOCR(file, filename);
+      
+      if (ocrData) {
+        addLog('OCR completado exitosamente');
+        break;
+      }
+      
+    } catch (error) {
+      addLog(`OCR falló intento ${ocrRetryCount}: ${error}`);
+      
+      if (ocrRetryCount >= 2) {
+        // Both attempts failed - go to Revisión
+        addLog('OCR falló tras 2 intentos - requiere reproceso manual');
+        return {
+          success: false,
+          documentType: 'factura_generica',
+          extractedFields: { ocr_failed: true },
+          requiresReview: true,
+          blockingReasons: ['OCR falló tras reintentos. Usar botón "Reprocesar OCR"'],
+          logs
+        };
+      }
+    }
+  }
+
+  // 2. Infer invoice type and required fields
+  const invoiceType = inferInvoiceType(ocrData, filename);
+  addLog(`Tipo de factura detectado: ${invoiceType}`);
+
+  // 3. Validate minimum required fields by type
+  const missingFields = validateRequiredFields(ocrData, invoiceType);
+  
+  // 4. Try to infer destination (property/personal)
+  const destinationInference = await inferInvoiceDestination(ocrData);
+  
+  if (missingFields.length > 0 || !destinationInference.inmueble_id) {
+    addLog(`Campos faltantes: ${missingFields.join(', ')}`);
+    
+    return {
+      success: false,
+      documentType: getDocumentTypeByInvoiceType(invoiceType),
+      extractedFields: {
+        ...ocrData,
+        invoice_type: invoiceType,
+        missing_fields: missingFields,
+        destination_inference: destinationInference
+      },
+      requiresReview: true,
+      blockingReasons: missingFields.length > 0 
+        ? [`Completar campos: ${missingFields.join(', ')}`]
+        : ['Seleccionar destino (Inmueble/Personal)'],
+      logs
+    };
+  }
+
+  // 5. Auto-save if all required fields present
+  addLog('Todos los campos mínimos presentes - archivando automáticamente');
+  
+  // Calculate fingerprint for deduplication
+  const { calculateDocumentFingerprint } = await import('./documentFingerprintingService');
+  const fileContent = await file.arrayBuffer();
+  const fingerprint = calculateDocumentFingerprint(fileContent, ocrData);
+  
+  // TODO: Check if already exists by fingerprint and skip if duplicate
+  
+  return {
+    success: true,
+    documentType: getDocumentTypeByInvoiceType(invoiceType),
+    extractedFields: {
+      ...ocrData,
+      invoice_type: invoiceType,
+      destination_inference: destinationInference
+    },
+    destination: generateInvoiceDestination(destinationInference),
+    requiresReview: false,
+    blockingReasons: [],
+    fingerprint: fingerprint.doc_fingerprint,
+    logs
+  };
+}
+
+/**
+ * Execute OCR on invoice file
+ */
+async function executeInvoiceOCR(file: File, filename: string): Promise<any> {
+  // Mock OCR based on filename patterns
+  const name = filename.toLowerCase();
+  
+  if (name.includes('iberdrola') || name.includes('endesa') || name.includes('luz')) {
+    return {
+      proveedor_nombre: 'Iberdrola',
+      proveedor_nif: 'A95758389',
+      total_amount: 89.45,
+      fecha_emision: '2024-01-15',
+      fecha_cargo: '2024-02-15',
+      iban_masked: '****1234',
+      direccion_servicio: 'C/ Mayor 123, Madrid',
+      cups: 'ES0031400000000001JN0F',
+      tipo_suministro: 'electricidad'
+    };
+  } else if (name.includes('agua') || name.includes('canal')) {
+    return {
+      proveedor_nombre: 'Canal de Isabel II',
+      total_amount: 45.20,
+      fecha_emision: '2024-01-15',
+      direccion_servicio: 'C/ Mayor 123, Madrid',
+      tipo_suministro: 'agua'
+    };
+  } else if (name.includes('reforma') || name.includes('obra')) {
+    return {
+      proveedor_nombre: 'Reformas García',
+      proveedor_nif: 'B12345678',
+      total_amount: 1250.00,
+      fecha_emision: '2024-01-15',
+      // Line items for reform breakdown
+      line_items: [
+        { descripcion: 'Mejora baño', importe: 800.00, categoria: 'mejora' },
+        { descripcion: 'Mobiliario cocina', importe: 300.00, categoria: 'mobiliario' },
+        { descripcion: 'Reparación fontanería', importe: 150.00, categoria: 'reparacion_conservacion' }
+      ]
+    };
+  }
+  
+  // Generic invoice
+  return {
+    proveedor_nombre: 'Proveedor Genérico',
+    total_amount: 125.50,
+    fecha_emision: '2024-01-15'
+  };
+}
+
+/**
+ * Infer invoice type from OCR data
+ */
+function inferInvoiceType(ocrData: any, filename: string): string {
+  if (ocrData.tipo_suministro || ocrData.cups) {
+    return 'suministro_' + (ocrData.tipo_suministro || 'generico');
+  }
+  
+  if (ocrData.line_items || filename.toLowerCase().includes('reforma')) {
+    return 'reforma_mejora';
+  }
+  
+  return 'factura_generica';
+}
+
+/**
+ * Validate required fields by invoice type
+ */
+function validateRequiredFields(ocrData: any, invoiceType: string): string[] {
+  const missing: string[] = [];
+  
+  // Common required fields
+  if (!ocrData.proveedor_nombre) missing.push('Proveedor nombre');
+  if (!ocrData.total_amount) missing.push('Importe total');
+  if (!ocrData.fecha_emision) missing.push('Fecha emisión');
+  
+  // Type-specific validations
+  if (invoiceType.startsWith('suministro_')) {
+    // For utilities, these are recommended but not blocking
+    // NO bloquear por "base+impuestos != total" as specified
+  }
+  
+  if (invoiceType === 'reforma_mejora') {
+    // For reform, at least one category amount should be > 0
+    const hasBreakdown = ocrData.line_items && ocrData.line_items.length > 0;
+    if (!hasBreakdown) {
+      // Will allow editing to distribute total among categories
+      missing.push('Distribución reforma (mejora/mobiliario/reparación)');
+    }
+  }
+  
+  return missing;
+}
+
+/**
+ * Infer invoice destination
+ */
+async function inferInvoiceDestination(ocrData: any): Promise<any> {
+  // Mock property detection based on address/CUPS
+  if (ocrData.direccion_servicio && ocrData.direccion_servicio.includes('Mayor 123')) {
+    return {
+      inmueble_id: 'inmueble_001',
+      inmueble_nombre: 'Piso Mayor 123',
+      confidence: 0.9,
+      match_method: 'direccion'
+    };
+  }
+  
+  if (ocrData.cups) {
+    return {
+      inmueble_id: 'inmueble_001',
+      inmueble_nombre: 'Piso Mayor 123',
+      confidence: 0.95,
+      match_method: 'cups'
+    };
+  }
+  
+  return {
+    inmueble_id: null,
+    confidence: 0,
+    match_method: 'none'
+  };
+}
+
+/**
+ * Get document type from invoice type
+ */
+function getDocumentTypeByInvoiceType(invoiceType: string): DocumentType {
+  if (invoiceType.startsWith('suministro_')) {
+    return 'factura_suministro';
+  } else if (invoiceType === 'reforma_mejora') {
+    return 'factura_reforma';
+  }
+  return 'factura_generica';
+}
+
+/**
+ * Generate destination text for invoices
+ */
+function generateInvoiceDestination(destinationInference: any): string {
+  if (destinationInference.inmueble_id) {
+    return `Inmuebles › ${destinationInference.inmueble_nombre} › Gastos`;
+  }
+  return 'Personal › Gastos';
 }
 
 /**
@@ -232,61 +558,6 @@ async function processUtilityBill(
     requiresReview,
     blockingReasons,
     fingerprint: fingerprint.doc_fingerprint,
-    logs
-  };
-}
-
-/**
- * 2.3 Facturas de reforma - OCR + desglose obligatorio
- */
-async function processReformInvoice(
-  file: File,
-  filename: string,
-  logs: Array<{ timestamp: string; action: string }>,
-  options: ProcessingOptions
-): Promise<ProcessingResult> {
-  const addLog = (action: string) => logs.push({ timestamp: new Date().toISOString(), action });
-
-  addLog('Ejecutando OCR para factura de reforma');
-
-  // Mock OCR data
-  const ocrData = {
-    proveedor_nombre: 'Reformas García',
-    proveedor_nif: 'B12345678',
-    invoice_id: '2024-REF-001',
-    invoice_date: '2024-01-14',
-    total_amount: 2500.00,
-    currency: 'EUR',
-    iban_masked: '****5678',
-    concept: 'Reforma integral cocina'
-  };
-
-  // Expense type inference - will suggest predominant type
-  const typeInference = inferExpenseType({
-    proveedor_nombre: ocrData.proveedor_nombre,
-    concept: ocrData.concept,
-    source_type: 'invoice'
-  });
-  addLog(`Tipo predominante inferido: ${typeInference.tipo_gasto}`);
-
-  addLog('Requiere desglose entre categorías fiscales');
-
-  return {
-    success: true,
-    documentType: 'factura_reforma',
-    extractedFields: {
-      ...ocrData,
-      tipo_gasto_predominante: typeInference.tipo_gasto,
-      destino: 'inmueble' as const,
-      estado_conciliacion: 'pendiente' as const,
-      desglose_categorias: {
-        mejora: 0,
-        mobiliario: 0,
-        reparacion_conservacion: 0
-      }
-    },
-    requiresReview: true,
-    blockingReasons: ['Reparto entre categorías fiscales: Mejora/Mobiliario/Reparación y conservación'],
     logs
   };
 }
