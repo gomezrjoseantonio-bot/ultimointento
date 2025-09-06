@@ -137,7 +137,8 @@ export const generarCalendarioLinea = (
   
   switch (linea.frecuencia) {
     case "Mensual":
-      for (let month = fechaDesde.getMonth(); month <= fechaHasta.getMonth(); month++) {
+      // Process all 12 months for the year, respecting vigencia
+      for (let month = 0; month < 12; month++) {
         const dayOfMonth = linea.dayOfMonth || 1;
         const fecha = new Date(year, month, Math.min(dayOfMonth, new Date(year, month + 1, 0).getDate()));
         
@@ -159,7 +160,7 @@ export const generarCalendarioLinea = (
       break;
       
     case "Bimestral":
-      for (let month = fechaDesde.getMonth(); month <= fechaHasta.getMonth(); month += 2) {
+      for (let month = 0; month < 12; month += 2) {
         const dayOfMonth = linea.dayOfMonth || 1;
         const fecha = new Date(year, month, Math.min(dayOfMonth, new Date(year, month + 1, 0).getDate()));
         
@@ -178,7 +179,7 @@ export const generarCalendarioLinea = (
       break;
       
     case "Trimestral":
-      for (let month = fechaDesde.getMonth(); month <= fechaHasta.getMonth(); month += 3) {
+      for (let month = 0; month < 12; month += 3) {
         const dayOfMonth = linea.dayOfMonth || 1;
         const fecha = new Date(year, month, Math.min(dayOfMonth, new Date(year, month + 1, 0).getDate()));
         
@@ -197,7 +198,7 @@ export const generarCalendarioLinea = (
       break;
       
     case "Semestral":
-      for (let month = fechaDesde.getMonth(); month <= fechaHasta.getMonth(); month += 6) {
+      for (let month = 0; month < 12; month += 6) {
         const dayOfMonth = linea.dayOfMonth || 1;
         const fecha = new Date(year, month, Math.min(dayOfMonth, new Date(year, month + 1, 0).getDate()));
         
