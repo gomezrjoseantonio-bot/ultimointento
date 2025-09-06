@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, X } from 'lucide-react';
 import WizardStepAlcance from './WizardStepAlcance';
 import WizardStepSemilla from './WizardStepSemilla';
+import WizardStepConfiguracion from './WizardStepConfiguracion';
 import WizardStepRevision from './WizardStepRevision';
 import { BudgetLine } from '../../../../../services/db';
 
@@ -39,7 +40,8 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
   const steps = [
     { id: 1, title: 'Alcance', description: 'Selección de inmuebles y período' },
     { id: 2, title: 'Semilla automática', description: 'Datos base y configuración' },
-    { id: 3, title: 'Revisión', description: 'Confirmación y guardado' }
+    { id: 3, title: 'Configuración', description: 'Configuración de cada partida' },
+    { id: 4, title: 'Revisión', description: 'Confirmación y guardado' }
   ];
 
   const handleNext = () => {
@@ -68,6 +70,12 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
       }));
       handleNext();
     } else if (currentStep === 3) {
+      setWizardData(prev => ({
+        ...prev,
+        lines: stepData
+      }));
+      handleNext();
+    } else if (currentStep === 4) {
       // Final step - save budget
       onComplete();
     }
@@ -93,6 +101,15 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
           />
         );
       case 3:
+        return (
+          <WizardStepConfiguracion
+            year={year}
+            scope={wizardData.scope}
+            initialLines={wizardData.lines}
+            onComplete={handleStepComplete}
+          />
+        );
+      case 4:
         return (
           <WizardStepRevision
             year={year}

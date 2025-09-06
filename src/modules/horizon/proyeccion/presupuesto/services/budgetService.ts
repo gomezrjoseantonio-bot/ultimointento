@@ -102,10 +102,12 @@ export const calculateMonthlyAmounts = (
     case 'trimestral':
       const quarterlyAmount = amount / 4;
       // Default pattern: January, April, July, October (0, 3, 6, 9)
-      months[0] = quarterlyAmount;
-      months[3] = quarterlyAmount;
-      months[6] = quarterlyAmount;
-      months[9] = quarterlyAmount;
+      // But allow custom start month to shift the pattern
+      const quarterStartMonth = startMonth - 1; // Convert to 0-based index
+      for (let i = 0; i < 4; i++) {
+        const monthIndex = (quarterStartMonth + i * 3) % 12;
+        months[monthIndex] = quarterlyAmount;
+      }
       break;
       
     case 'anual':
@@ -113,12 +115,27 @@ export const calculateMonthlyAmounts = (
       break;
       
     case 'fraccionado':
-      if (installments && installments > 0) {
+      if (installments && installments > 0 && installments <= 12) {
         const installmentAmount = amount / installments;
         const monthsPerInstallment = Math.floor(12 / installments);
-        for (let i = 0; i < installments; i++) {
-          const monthIndex = (startMonth - 1 + i * monthsPerInstallment) % 12;
-          months[monthIndex] = installmentAmount;
+        
+        // More intelligent distribution for fractionated payments
+        if (installments === 2) {
+          // Semi-annual: start month and start month + 6
+          months[startMonth - 1] = installmentAmount;
+          months[(startMonth - 1 + 6) % 12] = installmentAmount;
+        } else if (installments === 3) {
+          // Every 4 months: start, start+4, start+8
+          for (let i = 0; i < installments; i++) {
+            const monthIndex = (startMonth - 1 + i * 4) % 12;
+            months[monthIndex] = installmentAmount;
+          }
+        } else {
+          // Generic distribution
+          for (let i = 0; i < installments; i++) {
+            const monthIndex = (startMonth - 1 + i * monthsPerInstallment) % 12;
+            months[monthIndex] = installmentAmount;
+          }
         }
       }
       break;

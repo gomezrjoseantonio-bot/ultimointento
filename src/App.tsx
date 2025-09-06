@@ -38,6 +38,7 @@ const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/decl
 const ProyeccionComparativas = React.lazy(() => import('./modules/horizon/proyeccion/comparativas/ProyeccionComparativas'));
 const ProyeccionSimulaciones = React.lazy(() => import('./modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones'));
 const ProyeccionBase = React.lazy(() => import('./modules/horizon/proyeccion/base/ProyeccionBase'));
+const ProyeccionPresupuesto = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/ProyeccionPresupuesto'));
 const BancosCuentas = React.lazy(() => import('./modules/horizon/configuracion/bancos-cuentas/BancosCuentas'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
@@ -193,7 +194,11 @@ function App() {
               <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
               <Route path="consolidado" element={<Navigate to="/proyeccion/comparativas" replace />} />
               {/* Legacy routes for backward compatibility */}
-              <Route path="presupuesto" element={<Navigate to="/proyeccion/base" replace />} />
+              <Route path="presupuesto" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionPresupuesto />
+                </React.Suspense>
+              } />
               <Route path="escenarios" element={<Navigate to="/proyeccion/simulaciones" replace />} />
               {/* New structure */}
               <Route path="base" element={
