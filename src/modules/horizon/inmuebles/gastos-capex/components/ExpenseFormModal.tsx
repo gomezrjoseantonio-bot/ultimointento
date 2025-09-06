@@ -102,6 +102,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
         provider: formData.provider!,
         concept: formData.concept!,
         amount: formData.amount!,
+        currency: formData.currency || 'EUR',
         fiscalType: formData.fiscalType!,
         taxYear: formData.taxYear!,
         taxIncluded: formData.taxIncluded!,
@@ -111,6 +112,11 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
         prorationDetail: formData.prorationDetail!,
         status: formData.status!,
         origin: formData.origin!,
+        // UNICORNIO REFACTOR: Required unified fields
+        tipo_gasto: formData.tipo_gasto || 'otros',
+        destino: formData.propertyId ? 'inmueble' : 'personal',
+        destino_id: formData.propertyId,
+        estado_conciliacion: 'pendiente',
         createdAt: expense?.createdAt || now,
         updatedAt: now
       };

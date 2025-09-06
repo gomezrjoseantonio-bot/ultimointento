@@ -1,8 +1,9 @@
 import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
+import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 10; // Added keyval store for application configuration
+const DB_VERSION = 11; // H-HOTFIX: Added utility types, reform breakdown, and document fingerprinting
 
 export interface Property {
   id?: number;
@@ -342,6 +343,28 @@ export type ExpenseStatus = 'validado' | 'pendiente' | 'por-revisar';
 
 export type ExpenseOrigin = 'manual' | 'inbox';
 
+// UNICORNIO REFACTOR: Unified expense types for single tab gastos
+export type TipoGasto = 
+  | 'suministro_electricidad'
+  | 'suministro_agua' 
+  | 'suministro_gas'
+  | 'internet'
+  | 'reparacion_conservacion'
+  | 'mejora'
+  | 'mobiliario'
+  | 'comunidad'
+  | 'seguro'
+  | 'ibi'
+  | 'intereses'
+  | 'comisiones'
+  | 'otros';
+
+// UNICORNIO REFACTOR: Conciliation status
+export type EstadoConciliacion = 'pendiente' | 'conciliado';
+
+// UNICORNIO REFACTOR: Expense destination
+export type DestinoGasto = 'personal' | 'inmueble';
+
 // H5: Enhanced Expense interface
 export interface ExpenseH5 {
   id?: number;
@@ -350,17 +373,46 @@ export interface ExpenseH5 {
   providerNIF?: string;
   concept: string;
   amount: number;
+  currency: string;
   fiscalType: AEATFiscalType;
   aeatBox?: AEATBox;
   taxYear: number; // Ejercicio de devengo
   taxIncluded: boolean;
-  propertyId: number;
+  propertyId?: number; // Optional for personal expenses
   unit: 'completo' | string; // 'completo' or 'habitacion-X'
   prorationMethod: ProrationMethod;
   prorationDetail: string; // % or other details based on method
   status: ExpenseStatus;
   origin: ExpenseOrigin;
   documentId?: number;
+  
+  // UNICORNIO REFACTOR: Unified expense fields
+  tipo_gasto: TipoGasto; // Inferred type for classification and filtering
+  destino: DestinoGasto; // 'personal' or 'inmueble'
+  destino_id?: number; // propertyId when destino='inmueble'
+  estado_conciliacion: EstadoConciliacion;
+  
+  // H-HOTFIX: Utility-specific fields
+  utility_type?: UtilityType;
+  supply_address?: string;
+  expected_charge_date?: string;
+  iban_masked?: string;
+  
+  // H-HOTFIX: Reform breakdown for multi-category assignments
+  reform_breakdown?: ReformBreakdown;
+  
+  // UNICORNIO REFACTOR: Amortizable breakdown (for mejora/mobiliario)
+  desglose_amortizable?: {
+    mejora_importe: number;
+    mobiliario_importe: number;
+    ficha_activo_id?: number; // Link to asset record for amortization
+  };
+  
+  // H-HOTFIX: Document fingerprinting for idempotence
+  doc_fingerprint?: string;
+  revision?: number; // Incremented on each OCR reprocess
+  last_ocr_at?: string;
+  processor_version?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -439,6 +491,9 @@ export interface PropertyDays {
 // H8: Treasury Account types
 export type AccountDestination = 'horizon' | 'pulse';
 
+// H-HOTFIX: Account usage scope for reconciliation preferences
+export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
+
 export interface Account {
   id?: number;
   name: string; // Will serve as 'alias' in the requirements
@@ -453,6 +508,8 @@ export interface Account {
   isActive: boolean;
   minimumBalance?: number; // H9: For treasury alerts
   isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
+  // H-HOTFIX: Usage scope for reconciliation prioritization
+  usage_scope?: AccountUsageScope; // Default: 'mixto'
   createdAt: string;
   updatedAt: string;
 }

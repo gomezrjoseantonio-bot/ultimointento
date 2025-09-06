@@ -1,15 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ExpenseH5, initDB, Property } from '../../../../../services/db';
-import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
+import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
+import { createSampleUnifiedExpenses } from '../../../../../demo/unifiedExpensesDemo';
 import toast from 'react-hot-toast';
 
 interface GastosTabProps {
   triggerAddExpense?: boolean;
 }
+
+// UNICORNIO REFACTOR: Expense type options for unified filtering
+const TIPO_GASTO_OPTIONS: Array<{ value: TipoGasto; label: string }> = [
+  { value: 'suministro_electricidad', label: 'Electricidad' },
+  { value: 'suministro_agua', label: 'Agua' },
+  { value: 'suministro_gas', label: 'Gas' },
+  { value: 'internet', label: 'Internet' },
+  { value: 'reparacion_conservacion', label: 'Reparación y conservación' },
+  { value: 'mejora', label: 'Mejora' },
+  { value: 'mobiliario', label: 'Mobiliario' },
+  { value: 'comunidad', label: 'Comunidad' },
+  { value: 'seguro', label: 'Seguro' },
+  { value: 'ibi', label: 'IBI' },
+  { value: 'intereses', label: 'Intereses' },
+  { value: 'comisiones', label: 'Comisiones' },
+  { value: 'otros', label: 'Otros' }
+];
 
 const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const navigate = useNavigate();
@@ -20,8 +37,10 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseH5 | undefined>(undefined);
   const [filters, setFilters] = useState({
-    fiscalType: '',
-    status: '',
+    tipo_gasto: '',
+    origen: '',
+    estado_conciliacion: '',
+    destino: '',
     propertyId: '',
     startDate: '',
     endDate: ''
@@ -56,7 +75,26 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         db.getAll('properties')
       ]);
 
-      setExpenses(expensesData);
+      // UNICORNIO REFACTOR: Migrate legacy expenses to unified structure
+      const migratedExpenses = expensesData.map(expense => {
+        if (!expense.tipo_gasto) {
+          // Auto-migrate legacy expenses
+          return {
+            ...expense,
+            tipo_gasto: 'otros' as TipoGasto,
+            destino: 'inmueble' as const,
+            destino_id: expense.propertyId,
+            estado_conciliacion: 'pendiente' as EstadoConciliacion,
+            currency: expense.currency || 'EUR'
+          };
+        }
+        return expense;
+      });
+
+      // Add demo data if no expenses exist
+      const finalExpenses = migratedExpenses.length === 0 ? createSampleUnifiedExpenses() : migratedExpenses;
+
+      setExpenses(finalExpenses);
       setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
@@ -67,61 +105,71 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   };
 
   const filteredExpenses = expenses.filter(expense => {
-    const property = properties.find(p => p.id === expense.propertyId);
+    // Handle both legacy propertyId and new destino_id structure
+    const propertyId = expense.destino === 'inmueble' ? expense.destino_id : expense.propertyId;
+    const property = properties.find(p => p.id === propertyId);
+    
     const matchesSearch = 
       expense.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property?.alias.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFiscalType = !filters.fiscalType || expense.fiscalType === filters.fiscalType;
-    const matchesStatus = !filters.status || expense.status === filters.status;
-    const matchesProperty = !filters.propertyId || expense.propertyId === parseInt(filters.propertyId);
+    const matchesTipoGasto = !filters.tipo_gasto || expense.tipo_gasto === filters.tipo_gasto;
+    const matchesOrigen = !filters.origen || expense.origin === filters.origen;
+    const matchesEstadoConciliacion = !filters.estado_conciliacion || expense.estado_conciliacion === filters.estado_conciliacion;
+    const matchesDestino = !filters.destino || expense.destino === filters.destino;
+    
+    // Handle property filter including 'personal'
+    let matchesProperty = true;
+    if (filters.propertyId) {
+      if (filters.propertyId === 'personal') {
+        matchesProperty = expense.destino === 'personal';
+      } else {
+        matchesProperty = propertyId === parseInt(filters.propertyId);
+      }
+    }
+    
     const matchesDateRange = 
       (!filters.startDate || expense.date >= filters.startDate) &&
       (!filters.endDate || expense.date <= filters.endDate);
 
-    return matchesSearch && matchesFiscalType && matchesStatus && matchesProperty && matchesDateRange;
+    return matchesSearch && matchesTipoGasto && matchesOrigen && matchesEstadoConciliacion && 
+           matchesDestino && matchesProperty && matchesDateRange;
   });
 
-  const getPropertyName = (propertyId: number): string => {
+  const getPropertyName = (expense: ExpenseH5): string => {
+    const propertyId = expense.destino === 'inmueble' ? expense.destino_id : expense.propertyId;
     const property = properties.find(p => p.id === propertyId);
-    return property?.alias || 'Inmueble no encontrado';
+    return property?.alias || (expense.destino === 'personal' ? 'Personal' : 'Inmueble no encontrado');
   };
 
-  const getStatusBadge = (status: string) => {
+  const getTipoGastoLabel = (tipo: TipoGasto): string => {
+    const option = TIPO_GASTO_OPTIONS.find(opt => opt.value === tipo);
+    return option?.label || tipo;
+  };
+
+  const getConciliationBadge = (estado: EstadoConciliacion) => {
     const statusMap = {
-      'validado': 'bg-green-100 text-green-800',
       'pendiente': 'bg-yellow-100 text-yellow-800',
-      'por-revisar': 'bg-red-100 text-red-800'
+      'conciliado': 'bg-green-100 text-green-800'
     };
     
     const statusLabels = {
-      'validado': 'Validado',
       'pendiente': 'Pendiente',
-      'por-revisar': 'Por revisar'
+      'conciliado': 'Conciliado'
     };
+
+    const iconMap = {
+      'pendiente': ClockIcon,
+      'conciliado': CheckCircleIcon
+    };
+
+    const Icon = iconMap[estado];
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMap[status as keyof typeof statusMap] || 'bg-gray-100 text-gray-800'}`}>
-        {statusLabels[status as keyof typeof statusLabels] || status}
-      </span>
-    );
-  };
-
-  const getOriginBadge = (origin: string) => {
-    const originMap = {
-      'manual': 'bg-blue-100 text-blue-800',
-      'inbox': 'bg-teal-100 text-teal-800'
-    };
-    
-    const originLabels = {
-      'manual': 'Manual',
-      'inbox': 'Inbox'
-    };
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${originMap[origin as keyof typeof originMap] || 'bg-gray-100 text-gray-800'}`}>
-        {originLabels[origin as keyof typeof originLabels] || origin}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMap[estado] || 'bg-gray-100 text-gray-800'}`}>
+        <Icon className="h-3 w-3 mr-1" />
+        {statusLabels[estado] || estado}
       </span>
     );
   };
@@ -139,19 +187,6 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   const handleEditExpense = (expense: ExpenseH5) => {
     setEditingExpense(expense);
-    setShowExpenseModal(true);
-  };
-
-  const handleDuplicateExpense = (expense: ExpenseH5) => {
-    const duplicated = {
-      ...expense,
-      id: undefined,
-      concept: `${expense.concept} (copia)`,
-      date: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    setEditingExpense(duplicated);
     setShowExpenseModal(true);
   };
 
@@ -233,6 +268,46 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   return (
     <div className="space-y-6">
+      {/* KPIs Panel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Total Gastos</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {formatEuro(filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">% Conciliado</div>
+          <div className="text-2xl font-bold text-green-600">
+            {filteredExpenses.length ? Math.round((filteredExpenses.filter(e => e.estado_conciliacion === 'conciliado').length / filteredExpenses.length) * 100) : 0}%
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Suministros</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto?.startsWith('suministro_') || e.tipo_gasto === 'internet').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Reparación/Conservación</div>
+          <div className="text-2xl font-bold text-orange-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'reparacion_conservacion').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Mejora</div>
+          <div className="text-2xl font-bold text-purple-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mejora').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="text-sm font-medium text-gray-500">Mobiliario</div>
+          <div className="text-2xl font-bold text-indigo-600">
+            {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mobiliario').reduce((sum, exp) => sum + exp.amount, 0))}
+          </div>
+        </div>
+      </div>
+
       {/* Search and Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
@@ -250,15 +325,15 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             </div>
           </div>
 
-          {/* Fiscal Type Filter */}
+          {/* Tipo de Gasto Filter */}
           <div>
             <select
-              value={filters.fiscalType}
-              onChange={(e) => setFilters(prev => ({ ...prev, fiscalType: e.target.value }))}
+              value={filters.tipo_gasto}
+              onChange={(e) => setFilters(prev => ({ ...prev, tipo_gasto: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Todos los tipos</option>
-              {AEAT_FISCAL_TYPES.map(type => (
+              {TIPO_GASTO_OPTIONS.map(type => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
@@ -266,17 +341,29 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             </select>
           </div>
 
-          {/* Status Filter */}
+          {/* Origen Filter */}
           <div>
             <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              value={filters.origen}
+              onChange={(e) => setFilters(prev => ({ ...prev, origen: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
-              <option value="">Todos los estados</option>
-              <option value="validado">Validado</option>
+              <option value="">Todos los orígenes</option>
+              <option value="manual">Manual</option>
+              <option value="inbox">Inbox</option>
+            </select>
+          </div>
+
+          {/* Estado Conciliación Filter */}
+          <div>
+            <select
+              value={filters.estado_conciliacion}
+              onChange={(e) => setFilters(prev => ({ ...prev, estado_conciliacion: e.target.value }))}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="">Conciliación</option>
               <option value="pendiente">Pendiente</option>
-              <option value="por-revisar">Por revisar</option>
+              <option value="conciliado">Conciliado</option>
             </select>
           </div>
 
@@ -287,7 +374,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               onChange={(e) => setFilters(prev => ({ ...prev, propertyId: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
-              <option value="">Todos los inmuebles</option>
+              <option value="">Inmueble/Personal</option>
+              <option value="personal">Personal</option>
               {properties.map(property => (
                 <option key={property.id} value={property.id}>
                   {property.alias}
@@ -302,8 +390,10 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               onClick={() => {
                 setSearchTerm('');
                 setFilters({
-                  fiscalType: '',
-                  status: '',
+                  tipo_gasto: '',
+                  origen: '',
+                  estado_conciliacion: '',
+                  destino: '',
                   propertyId: '',
                   startDate: '',
                   endDate: ''
@@ -339,14 +429,12 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble/Personal</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Concepto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo fiscal</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Casilla AEAT</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conciliación</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
@@ -358,6 +446,14 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
+                        <div className="font-medium">{getPropertyName(expense)}</div>
+                        <div className="text-gray-500 text-xs">
+                          {expense.unit === 'completo' ? 'Completo' : expense.unit}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>
                         <div className="font-medium">{expense.provider}</div>
                         {expense.providerNIF && (
                           <div className="text-gray-500 text-xs">{expense.providerNIF}</div>
@@ -365,30 +461,26 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.concept}
+                      <div>
+                        <div>{expense.concept}</div>
+                        {expense.desglose_amortizable && (
+                          <div className="text-gray-500 text-xs">
+                            {expense.desglose_amortizable.mejora_importe > 0 && `Mejora: ${formatEuro(expense.desglose_amortizable.mejora_importe)} `}
+                            {expense.desglose_amortizable.mobiliario_importe > 0 && `Mobiliario: ${formatEuro(expense.desglose_amortizable.mobiliario_importe)}`}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {getTipoGastoLabel(expense.tipo_gasto)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
                       {formatEuro(expense.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getFiscalTypeLabel(expense.fiscalType)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.aeatBox ? getAEATBoxLabel(expense.aeatBox) : '—'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        <div className="font-medium">{getPropertyName(expense.propertyId)}</div>
-                        <div className="text-gray-500 text-xs">
-                          {expense.unit === 'completo' ? 'Completo' : expense.unit}
-                        </div>
-                      </div>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {getStatusBadge(expense.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {getOriginBadge(expense.origin)}
+                      {getConciliationBadge(expense.estado_conciliacion)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
@@ -400,19 +492,20 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}
+                        {expense.estado_conciliacion === 'pendiente' && (
+                          <button
+                            className="text-green-600 hover:text-green-800 p-1"
+                            title="Conciliar"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
-                          title="Editar"
+                          title="Ver/Editar"
                         >
                           <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicateExpense(expense)}
-                          className="text-brand-navy hover:text-navy-800 p-1"
-                          title="Duplicar"
-                        >
-                          <CopyIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense.id!)}

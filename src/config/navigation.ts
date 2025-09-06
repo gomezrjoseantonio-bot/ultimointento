@@ -36,7 +36,7 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
       { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
       { name: 'Préstamos', href: '/inmuebles/prestamos', icon: Banknote, module: 'horizon' },
-      { name: 'Gastos & CAPEX', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
+      { name: 'Gastos', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
       { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
     ]
   },
