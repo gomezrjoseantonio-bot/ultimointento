@@ -15,7 +15,11 @@ interface Scenario {
 
 type ScenarioMode = 'diy' | 'strategies' | 'objectives';
 
-const ProyeccionSimulaciones: React.FC = () => {
+interface ProyeccionSimulacionesProps {
+  isEmbedded?: boolean;
+}
+
+const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbedded = false }): React.ReactElement => {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -83,130 +87,135 @@ const ProyeccionSimulaciones: React.FC = () => {
 
   // Show creation cards if no scenarios exist
   if (scenarios.length === 0) {
-    return (
-      <PageLayout title="Simulaciones" subtitle="Crear y guardar escenarios para análisis de hipótesis">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+    const content = (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+          </div>
+          <button
+            onClick={() => handleCreateScenario('diy')}
+            className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Nueva simulación</span>
+          </button>
+        </div>
+
+        {/* Creation Mode Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* DIY Mode */}
+          <div 
+            onClick={() => handleCreateScenario('diy')}
+            className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
+                <Settings className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-lg font-semibold text-[#0F172A]">Configurar yo mismo</h3>
             </div>
-            <button
-              onClick={() => handleCreateScenario('diy')}
-              className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Nueva simulación</span>
-            </button>
+            <p className="text-[#6B7280] text-sm mb-4">
+              Sliders globales para rentas, gastos, vacancia y revalorización. 
+              Hasta 3 acciones simples (amortizar, comprar, vender).
+            </p>
+            <div className="text-[#022D5E] text-sm font-medium">DIY →</div>
           </div>
 
-          {/* Creation Mode Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* DIY Mode */}
-            <div 
-              onClick={() => handleCreateScenario('diy')}
-              className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                  <Settings className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-lg font-semibold text-[#0F172A]">Configurar yo mismo</h3>
+          {/* Strategies Mode */}
+          <div 
+            onClick={() => handleCreateScenario('strategies')}
+            className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
+                <Star className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
               </div>
-              <p className="text-[#6B7280] text-sm mb-4">
-                Sliders globales para rentas, gastos, vacancia y revalorización. 
-                Hasta 3 acciones simples (amortizar, comprar, vender).
-              </p>
-              <div className="text-[#022D5E] text-sm font-medium">DIY →</div>
+              <h3 className="text-lg font-semibold text-[#0F172A]">Estrategias predefinidas</h3>
             </div>
-
-            {/* Strategies Mode */}
-            <div 
-              onClick={() => handleCreateScenario('strategies')}
-              className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                  <Star className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-lg font-semibold text-[#0F172A]">Estrategias predefinidas</h3>
-              </div>
-              <p className="text-[#6B7280] text-sm mb-4">
-                Optimizar lo que tienes, mejorar yield, amortizar vs reinvertir, 
-                optimización de hipotecas.
-              </p>
-              <div className="text-[#022D5E] text-sm font-medium">Estrategias →</div>
-            </div>
-
-            {/* Objectives Mode */}
-            <div 
-              onClick={() => handleCreateScenario('objectives')}
-              className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                  <Plus className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
-                </div>
-                <h3 className="text-lg font-semibold text-[#0F172A]">Objetivos</h3>
-              </div>
-              <p className="text-[#6B7280] text-sm mb-4">
-                Define metas (+1.000 €/mes en 5 años) y el sistema propone 
-                3 rutas: Conservadora/Equilibrada/Agresiva.
-              </p>
-              <div className="text-[#022D5E] text-sm font-medium">Objetivos →</div>
-            </div>
+            <p className="text-[#6B7280] text-sm mb-4">
+              Optimizar lo que tienes, mejorar yield, amortizar vs reinvertir, 
+              optimización de hipotecas.
+            </p>
+            <div className="text-[#022D5E] text-sm font-medium">Estrategias →</div>
           </div>
 
-          {/* Simple Modal Placeholder */}
-          {showModal && (
-            <div className="fixed inset-0 z-50 overflow-y-auto">
-              <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div 
-                  className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                  onClick={() => setShowModal(false)}
-                />
-                <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
-                      Crear nuevo escenario
-                    </h3>
-                    <p className="text-[#6B7280] mb-6">
-                      Modo: {modalMode === 'diy' ? 'DIY' : modalMode === 'strategies' ? 'Estrategias' : 'Objetivos'}
-                    </p>
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => {
-                          handleSaveScenario({
-                            name: `Escenario ${modalMode} ${scenarios.length + 1}`,
-                            mode: modalMode,
-                            markedForComparison: false,
-                            createdAt: new Date().toISOString()
-                          });
-                        }}
-                        className="w-full bg-[#022D5E] text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
-                      >
-                        Crear escenario de prueba
-                      </button>
-                      <button
-                        onClick={() => setShowModal(false)}
-                        className="w-full px-4 py-2 text-[#6B7280] hover:text-[#022D5E] transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+          {/* Objectives Mode */}
+          <div 
+            onClick={() => handleCreateScenario('objectives')}
+            className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
+                <Plus className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
+              </div>
+              <h3 className="text-lg font-semibold text-[#0F172A]">Objetivos</h3>
+            </div>
+            <p className="text-[#6B7280] text-sm mb-4">
+              Define metas (+1.000 €/mes en 5 años) y el sistema propone 
+              3 rutas: Conservadora/Equilibrada/Agresiva.
+            </p>
+            <div className="text-[#022D5E] text-sm font-medium">Objetivos →</div>
+          </div>
+        </div>
+
+        {/* Simple Modal Placeholder */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              <div 
+                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                onClick={() => setShowModal(false)}
+              />
+              <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+                    Crear nuevo escenario
+                  </h3>
+                  <p className="text-[#6B7280] mb-6">
+                    Modo: {modalMode === 'diy' ? 'DIY' : modalMode === 'strategies' ? 'Estrategias' : 'Objetivos'}
+                  </p>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        handleSaveScenario({
+                          name: `Escenario ${modalMode} ${scenarios.length + 1}`,
+                          mode: modalMode,
+                          markedForComparison: false,
+                          createdAt: new Date().toISOString()
+                        });
+                      }}
+                      className="w-full bg-[#022D5E] text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
+                    >
+                      Crear escenario de prueba
+                    </button>
+                    <button
+                      onClick={() => setShowModal(false)}
+                      className="w-full px-4 py-2 text-[#6B7280] hover:text-[#022D5E] transition-colors"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+    );
+
+    if (isEmbedded) return content;
+
+    return (
+      <PageLayout title="Simulaciones" subtitle="Crear y guardar escenarios para análisis de hipótesis">
+        {content}
       </PageLayout>
     );
   }
 
-  return (
-    <PageLayout title="Simulaciones" subtitle="Crear y guardar escenarios para análisis de hipótesis">
-      <div className="space-y-6">
+  const content = (
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -412,8 +421,15 @@ const ProyeccionSimulaciones: React.FC = () => {
           </div>
         )}
       </div>
-    </PageLayout>
-  );
+    );
+
+    if (isEmbedded) return content;
+
+    return (
+      <PageLayout title="Simulaciones" subtitle="Crear y guardar escenarios para análisis de hipótesis">
+        {content}
+      </PageLayout>
+    );
 };
 
 export default ProyeccionSimulaciones;

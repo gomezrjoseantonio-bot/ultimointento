@@ -26,7 +26,11 @@ interface ComparisonScenario {
   }>;
 }
 
-const ProyeccionComparativas: React.FC = () => {
+interface ProyeccionComparativasProps {
+  isEmbedded?: boolean;
+}
+
+const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbedded = false }): React.ReactElement => {
   const [markedScenarios, setMarkedScenarios] = useState<ComparisonScenario[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,61 +86,72 @@ const ProyeccionComparativas: React.FC = () => {
   };
 
   if (loading) {
+    const content = (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
+      </div>
+    );
+
+    if (isEmbedded) return content;
+
     return (
       <PageLayout title="Comparativas" subtitle="Cargando comparativa...">
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
-        </div>
+        {content}
       </PageLayout>
     );
   }
 
   // Show message when no scenarios are marked for comparison
   if (markedScenarios.length === 0) {
+    const content = (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+          </div>
+          <button
+            onClick={handleExportPDF}
+            disabled
+            className="flex items-center space-x-2 bg-gray-300 text-gray-500 px-4 py-2 rounded-xl cursor-not-allowed"
+          >
+            <Download className="h-4 w-4" />
+            <span>Exportar comparativa (PDF)</span>
+          </button>
+        </div>
+
+        {/* Empty State */}
+        <div className="bg-white rounded-xl border border-[#D7DEE7] p-12 shadow-sm text-center">
+          <TrendingUp className="h-16 w-16 text-[#9CA3AF] mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-[#374151] mb-4">
+            No hay escenarios para comparar
+          </h3>
+          <p className="text-[#6B7280] mb-6 max-w-md mx-auto">
+            Marca hasta 3 escenarios en Simulaciones para compararlos aquí. 
+            Los escenarios marcados aparecerán automáticamente en esta vista.
+          </p>
+          <button
+            onClick={() => window.location.href = '/proyeccion/simulaciones'}
+            className="bg-[#022D5E] text-white px-6 py-3 rounded-xl hover:bg-[#1a365d] transition-colors"
+          >
+            Ir a Simulaciones
+          </button>
+        </div>
+      </div>
+    );
+
+    if (isEmbedded) return content;
+
     return (
       <PageLayout title="Comparativas" subtitle="Comparar hasta 3 escenarios marcados en Simulaciones">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
-            </div>
-            <button
-              onClick={handleExportPDF}
-              disabled
-              className="flex items-center space-x-2 bg-gray-300 text-gray-500 px-4 py-2 rounded-xl cursor-not-allowed"
-            >
-              <Download className="h-4 w-4" />
-              <span>Exportar comparativa (PDF)</span>
-            </button>
-          </div>
-
-          {/* Empty State */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-12 shadow-sm text-center">
-            <TrendingUp className="h-16 w-16 text-[#9CA3AF] mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-[#374151] mb-4">
-              No hay escenarios para comparar
-            </h3>
-            <p className="text-[#6B7280] mb-6 max-w-md mx-auto">
-              Marca hasta 3 escenarios en Simulaciones para compararlos aquí. 
-              Los escenarios marcados aparecerán automáticamente en esta vista.
-            </p>
-            <button
-              onClick={() => window.location.href = '/proyeccion/simulaciones'}
-              className="bg-[#022D5E] text-white px-6 py-3 rounded-xl hover:bg-[#1a365d] transition-colors"
-            >
-              Ir a Simulaciones
-            </button>
-          </div>
-        </div>
+        {content}
       </PageLayout>
     );
   }
 
   // Show comparison when 1+ scenarios are marked
-  return (
-    <PageLayout title="Comparativas" subtitle="Comparar hasta 3 escenarios marcados en Simulaciones">
-      <div className="space-y-6">
+  const content = (
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -333,8 +348,15 @@ const ProyeccionComparativas: React.FC = () => {
           </div>
         </div>
       </div>
-    </PageLayout>
-  );
+    );
+
+    if (isEmbedded) return content;
+
+    return (
+      <PageLayout title="Comparativas" subtitle="Comparar hasta 3 escenarios marcados en Simulaciones">
+        {content}
+      </PageLayout>
+    );
 };
 
 export default ProyeccionComparativas;

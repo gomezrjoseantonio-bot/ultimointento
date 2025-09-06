@@ -7,7 +7,11 @@ import ProjectionChart from './components/ProjectionChart';
 import { proyeccionService } from './services/proyeccionService';
 import type { BaseAssumptions, BaseProjection } from './services/proyeccionService';
 
-const ProyeccionBase: React.FC = () => {
+interface ProyeccionBaseProps {
+  isEmbedded?: boolean;
+}
+
+const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): React.ReactElement => {
   const [assumptions, setAssumptions] = useState<BaseAssumptions | null>(null);
   const [projection, setProjection] = useState<BaseProjection | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,34 +50,45 @@ const ProyeccionBase: React.FC = () => {
   };
 
   if (loading) {
+    const content = (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
+      </div>
+    );
+    
+    if (isEmbedded) return content;
+    
     return (
       <PageLayout title="Proyección Base" subtitle="Cargando datos...">
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
-        </div>
+        {content}
       </PageLayout>
     );
   }
 
   if (!projection || !assumptions) {
+    const content = (
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No hay datos para mostrar
+        </h3>
+        <p className="text-gray-600">
+          Configura tus contratos de alquiler e hipotecas para ver la proyección base
+        </p>
+      </div>
+    );
+    
+    if (isEmbedded) return content;
+    
     return (
       <PageLayout title="Proyección Base" subtitle="No hay datos disponibles">
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No hay datos para mostrar
-          </h3>
-          <p className="text-gray-600">
-            Configura tus contratos de alquiler e hipotecas para ver la proyección base
-          </p>
-        </div>
+        {content}
       </PageLayout>
     );
   }
 
-  return (
-    <PageLayout title="Proyección Base" subtitle="Línea base a 20 años derivada de contratos y gastos recurrentes">
-      <div className="space-y-6">
+  const content = (
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -212,8 +227,15 @@ const ProyeccionBase: React.FC = () => {
           />
         )}
       </div>
-    </PageLayout>
-  );
+    );
+
+    if (isEmbedded) return content;
+
+    return (
+      <PageLayout title="Proyección Base" subtitle="Línea base a 20 años derivada de contratos y gastos recurrentes">
+        {content}
+      </PageLayout>
+    );
 };
 
 export default ProyeccionBase;

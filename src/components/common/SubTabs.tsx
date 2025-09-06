@@ -97,11 +97,6 @@ const SubTabs: React.FC = () => {
       return []; // No subtabs for panel or inbox
     }
     
-    // Special case: Desviaciones (comparativa) should not show subtabs
-    if (location.pathname === '/proyeccion/comparativa') {
-      return [];
-    }
-    
     if (currentModule === 'horizon') {
       return HORIZON_SUBTABS[section] || [];
     } else {

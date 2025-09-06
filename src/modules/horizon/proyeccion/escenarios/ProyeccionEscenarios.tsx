@@ -33,13 +33,13 @@ const ProyeccionEscenarios: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'base':
-        return <ProyeccionBase />;
+        return <ProyeccionBase isEmbedded={true} />;
       case 'simulaciones':
-        return <ProyeccionSimulaciones />;
+        return <ProyeccionSimulaciones isEmbedded={true} />;
       case 'comparativas':
-        return <ProyeccionComparativas />;
+        return <ProyeccionComparativas isEmbedded={true} />;
       default:
-        return <ProyeccionBase />;
+        return <ProyeccionBase isEmbedded={true} />;
     }
   };
 
