@@ -75,7 +75,8 @@ export async function processInboxItem(
 }
 
 /**
- * 2.1 Extractos bancarios - NO OCR, direct file parsing
+ * 2.1 Extractos bancarios - Following PROMPT 1 exact requirements
+ * NUNCA marcar "Guardado" si no hay cuenta destino inequívoca
  */
 async function processBankStatement(
   file: File,
@@ -87,7 +88,20 @@ async function processBankStatement(
   try {
     addLog('Iniciando análisis de extracto bancario');
     
-    // Mock CSV parsing - in real implementation would use csvParserService
+    // 1. Extract IBAN from file (columns, header, filename)
+    const { extractIBANFromBankStatement, matchAccountByIBAN } = await import('./ibanAccountMatchingService');
+    const ibanExtraction = await extractIBANFromBankStatement(file, filename);
+    
+    if (ibanExtraction.source !== 'none') {
+      addLog(`IBAN detectado (${ibanExtraction.source}): ${ibanExtraction.iban_mask || ibanExtraction.last4}`);
+    } else {
+      addLog('No se pudo detectar IBAN en el archivo');
+    }
+    
+    // 2. Match against registered accounts
+    const accountMatch = await matchAccountByIBAN(ibanExtraction);
+    
+    // 3. Parse CSV movements (mock implementation)
     const text = await file.text();
     const lines = text.split('\n').filter(line => line.trim());
     
@@ -95,33 +109,72 @@ async function processBankStatement(
       throw new Error('Archivo vacío o sin datos');
     }
 
-    // Mock movement detection
+    // Mock movement detection with date range
     const movements = lines.slice(1).map((line, index) => {
+      const baseDate = new Date();
+      baseDate.setDate(baseDate.getDate() - (lines.length - index));
+      
       return {
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: baseDate.toISOString().split('T')[0],
         descripcion: `Movimiento ${index + 1}`,
         importe: (Math.random() - 0.5) * 1000,
         saldo: 1000 + index * 100,
-        contraparte: 'Entidad'
+        contraparte: 'Entidad comercial',
+        referencia: `REF${index + 1}`
       };
     });
 
-    addLog(`${movements.length} movimientos detectados`);
-    addLog('Creando movimientos en Tesorería');
-
-    return {
-      success: true,
-      documentType: 'extracto_bancario',
-      extractedFields: {
-        movimientos: movements,
-        banco_origen: 'Banco detectado',
-        iban_detectado: 'ES****1234'
-      },
-      destination: 'Tesorería › Movimientos',
-      requiresReview: false,
-      blockingReasons: [],
-      logs
-    };
+    addLog(`${movements.length} movimientos parseados`);
+    
+    // 4. CRITICAL: Only create movements if account is determined
+    if (!accountMatch.requiresSelection && accountMatch.cuenta_id) {
+      addLog(`Cuenta asignada: ${accountMatch.matches[0]?.account_name}`);
+      addLog('Creando movimientos en Tesorería › Movimientos');
+      
+      // TODO: Here would call treasuryAPI.import.importTransactions
+      // await createMovementsInTreasury(movements, accountMatch.cuenta_id);
+      
+      return {
+        success: true,
+        documentType: 'extracto_bancario',
+        extractedFields: {
+          movimientos: movements,
+          cuenta_id: accountMatch.cuenta_id,
+          banco_origen: determineBankFromFilename(filename),
+          iban_detectado: ibanExtraction.iban_mask || ibanExtraction.last4,
+          rango_fechas: {
+            desde: movements[0]?.fecha,
+            hasta: movements[movements.length - 1]?.fecha
+          }
+        },
+        destination: 'Tesorería › Movimientos',
+        requiresReview: false,
+        blockingReasons: [],
+        logs
+      };
+    } else {
+      // Account cannot be determined - MUST go to Revisión
+      addLog('Extracto requiere selección de cuenta - quedará en Revisión');
+      
+      return {
+        success: false,
+        documentType: 'extracto_bancario',
+        extractedFields: {
+          movimientos: movements,
+          banco_origen: determineBankFromFilename(filename),
+          iban_detectado: ibanExtraction.iban_mask || ibanExtraction.last4,
+          account_matches: accountMatch.matches,
+          rango_fechas: {
+            desde: movements[0]?.fecha,
+            hasta: movements[movements.length - 1]?.fecha
+          }
+        },
+        requiresReview: true,
+        blockingReasons: [accountMatch.blockingReason || 'Selecciona cuenta destino'],
+        logs
+      };
+    }
+    
   } catch (error) {
     addLog(`Error en extracto: ${error}`);
     return {
@@ -133,6 +186,26 @@ async function processBankStatement(
       logs
     };
   }
+}
+
+/**
+ * Determine bank from filename patterns
+ */
+function determineBankFromFilename(filename: string): string {
+  const name = filename.toLowerCase();
+  
+  if (name.includes('bbva')) return 'BBVA';
+  if (name.includes('santander')) return 'Santander';
+  if (name.includes('sabadell')) return 'Sabadell';
+  if (name.includes('unicaja')) return 'Unicaja';
+  if (name.includes('bankinter')) return 'Bankinter';
+  if (name.includes('ing')) return 'ING';
+  if (name.includes('openbank')) return 'Openbank';
+  if (name.includes('caixa')) return 'CaixaBank';
+  if (name.includes('abanca')) return 'Abanca';
+  if (name.includes('revolut')) return 'Revolut';
+  
+  return 'Banco detectado';
 }
 
 /**
