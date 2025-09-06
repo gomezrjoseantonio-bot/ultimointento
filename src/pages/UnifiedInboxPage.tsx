@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Upload, Search, Eye, RotateCcw, Trash2, CheckCircle, AlertTriangle, XCircle,
-  FileText, Image, FileSpreadsheet, Archive, File, X, ChevronDown, ChevronUp
+  Upload, Search, Eye, RotateCcw, CheckCircle, AlertTriangle, XCircle,
+  FileText, Image, FileSpreadsheet, File, X, ChevronDown, ChevronUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { unifiedDocumentProcessor, ProcessedDocument, DocumentStatus } from '../services/unifiedDocumentProcessor';
@@ -65,7 +65,7 @@ const UnifiedInboxPage: React.FC = () => {
         }
 
         // Process file
-        const processedDoc = await unifiedDocumentProcessor.processFile(file);
+        await unifiedDocumentProcessor.processFile(file);
         loadDocuments(); // Refresh list
 
       } catch (error) {

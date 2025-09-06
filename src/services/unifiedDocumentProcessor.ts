@@ -1,8 +1,8 @@
 // Unified Document Processing Service
 // Implements exact requirements from problem statement
 
-import { unifiedOcrService, OCRResponse } from './unifiedOcrService';
-import { bankStatementParser, BankStatementParseResult } from './bankStatementParser';
+import { unifiedOcrService } from './unifiedOcrService';
+import { bankStatementParser } from './bankStatementParser';
 import toast from 'react-hot-toast';
 
 export type DocumentStatus = 'guardado_automatico' | 'revision_requerida' | 'error';
@@ -102,7 +102,6 @@ export class UnifiedDocumentProcessor {
 
   private detectDocumentType(file: File): 'factura' | 'extracto_bancario' {
     const extension = file.name.toLowerCase().split('.').pop();
-    const ocrExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'heic', 'doc', 'docx'];
     const bankExtensions = ['xls', 'xlsx', 'csv'];
 
     if (bankExtensions.includes(extension || '')) {
