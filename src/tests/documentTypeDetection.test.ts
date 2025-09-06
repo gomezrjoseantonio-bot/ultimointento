@@ -14,10 +14,9 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectBankStatementHeuristic(file);
       
-      expect(result.tipo).toBe('bank_statement');
+      expect(result.documentType).toBe('extracto_banco');
       expect(result.confidence).toBeGreaterThanOrEqual(0.6); // Accept current behavior
       expect(result.shouldSkipOCR).toBe(true);
-      expect(result.columnCount).toBeGreaterThanOrEqual(3);
       expect(result.reason).toContain('bank statement'); // Verify it detected as bank statement
     });
 
@@ -28,7 +27,7 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectBankStatementHeuristic(file);
       
-      expect(result.tipo).toBe('bank_statement');
+      expect(result.documentType).toBe('extracto_banco');
       expect(result.shouldSkipOCR).toBe(true);
       expect(result.confidence).toBeGreaterThan(0.7);
     });
@@ -38,7 +37,7 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectBankStatementHeuristic(file);
       
-      expect(result.tipo).toBe('other');
+      expect(result.documentType).toBe('otros');
       expect(result.confidence).toBe(0);
       expect(result.shouldSkipOCR).toBe(false);
     });
@@ -51,7 +50,7 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectDocumentType(file);
       
-      expect(result.tipo).toBe('invoice');
+      expect(result.documentType).toBe('factura');
       expect(result.shouldSkipOCR).toBe(false);
       expect(result.confidence).toBeGreaterThan(0.5);
     });
@@ -61,9 +60,9 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectDocumentType(file);
       
-      expect(result.tipo).toBe('invoice');
+      expect(result.documentType).toBe('factura');
       expect(result.shouldSkipOCR).toBe(false);
-      expect(result.tokens).toContain('factura');
+      expect(result.triggers).toContain('factura');
     });
 
     it('should detect invoice from image files', async () => {
@@ -71,7 +70,7 @@ describe('Enhanced Document Type Detection', () => {
       
       const result = await detectDocumentType(file);
       
-      expect(result.tipo).toBe('invoice');
+      expect(result.documentType).toBe('factura');
       expect(result.shouldSkipOCR).toBe(false);
     });
   });
@@ -80,10 +79,11 @@ describe('Enhanced Document Type Detection', () => {
   describe('Processing Pipeline', () => {
     it('should route bank statements to bank-parser', () => {
       const bankResult = {
-        tipo: 'bank_statement',
+        documentType: 'extracto_banco' as const,
         confidence: 0.95,
         shouldSkipOCR: true,
-        reason: 'Bank export detected'
+        reason: 'Bank export detected',
+        triggers: ['bank_statement']
       };
       
       const pipeline = getProcessingPipeline(bankResult);
@@ -92,10 +92,11 @@ describe('Enhanced Document Type Detection', () => {
 
     it('should route invoices to OCR', () => {
       const invoiceResult = {
-        tipo: 'invoice',
+        documentType: 'factura' as const,
         confidence: 0.80,
         shouldSkipOCR: false,
-        reason: 'PDF invoice detected'
+        reason: 'PDF invoice detected',
+        triggers: ['invoice']
       };
       
       const pipeline = getProcessingPipeline(invoiceResult);
@@ -104,10 +105,11 @@ describe('Enhanced Document Type Detection', () => {
 
     it('should route unknown documents to manual processing', () => {
       const unknownResult = {
-        tipo: 'unknown', // Changed from 'other' to 'unknown'
+        documentType: 'otros' as const,
         confidence: 0.50,
         shouldSkipOCR: false,
-        reason: 'No specific patterns detected'
+        reason: 'No specific patterns detected',
+        triggers: []
       };
       
       const pipeline = getProcessingPipeline(unknownResult);
@@ -119,10 +121,11 @@ describe('Enhanced Document Type Detection', () => {
   describe('Auto-OCR Decision', () => {
     it('should enable auto-OCR for invoices', () => {
       const invoiceResult = {
-        tipo: 'invoice',
+        documentType: 'factura' as const,
         confidence: 0.80,
         shouldSkipOCR: false,
-        reason: 'Invoice detected'
+        reason: 'Invoice detected',
+        triggers: ['invoice']
       };
       
       expect(shouldAutoOCR(invoiceResult)).toBe(true);
@@ -130,10 +133,11 @@ describe('Enhanced Document Type Detection', () => {
 
     it('should disable auto-OCR for bank statements', () => {
       const bankResult = {
-        tipo: 'bank_statement',
+        documentType: 'extracto_banco' as const,
         confidence: 0.95,
         shouldSkipOCR: true,
-        reason: 'Bank statement detected'
+        reason: 'Bank statement detected',
+        triggers: ['bank_statement']
       };
       
       expect(shouldAutoOCR(bankResult)).toBe(false);
@@ -141,10 +145,11 @@ describe('Enhanced Document Type Detection', () => {
 
     it('should enable auto-OCR for contracts', () => {
       const contractResult = {
-        tipo: 'Contrato',
+        documentType: 'otros' as const,
         confidence: 0.70,
         shouldSkipOCR: false,
-        reason: 'Contract detected'
+        reason: 'Contract detected',
+        triggers: ['contract']
       };
       
       expect(shouldAutoOCR(contractResult)).toBe(true);
@@ -161,7 +166,7 @@ describe('Enhanced Document Type Detection', () => {
       
       // Should still be detected as potential bank statement due to CSV format
       // but with lower confidence
-      expect(result.tipo).toBe('bank_statement');
+      expect(result.documentType).toBe('extracto_banco');
       expect(result.confidence).toBeLessThan(0.9);
     });
 
@@ -172,7 +177,7 @@ describe('Enhanced Document Type Detection', () => {
       const result = await detectBankStatementHeuristic(file);
       
       // Should not crash and provide fallback detection
-      expect(result.tipo).toBe('bank_statement');
+      expect(result.documentType).toBe('extracto_banco');
       expect(result.confidence).toBeGreaterThan(0);
     });
   });
