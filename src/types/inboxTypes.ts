@@ -1,6 +1,26 @@
 // ATLAS HORIZON - Inbox Types for OCR and Automatic Routing
 // Following exact requirements from problem statement
 
+// H-HOTFIX: Utility type enum for utilities classification
+export type UtilityType = 'electricity' | 'water' | 'gas' | 'telecom';
+
+// H-HOTFIX: Reform breakdown for AEAT categories
+export interface ReformBreakdown {
+  mejora: number;           // Property value improvement (amortizable)
+  mobiliario: number;       // Furniture amortization  
+  reparacion_conservacion: number; // Deductible expense
+}
+
+// H-HOTFIX: Document fingerprint for idempotence
+export interface DocumentFingerprint {
+  file_hash: string;        // SHA1 of file bytes
+  doc_fingerprint: string;  // SHA1 of normalized document data
+  normalized_total: number;
+  issue_date?: string;
+  supplier_tax_id?: string;
+  supplier_name_lower?: string;
+}
+
 export interface InboxItem {
   id: string;
   fileUrl: string;
@@ -91,6 +111,14 @@ export interface OCRExtractionResult {
   
   // CUPS detection for property matching
   cups?: string;
+  
+  // H-HOTFIX: Utility-specific fields
+  utility_type?: UtilityType;
+  supply_address?: string;
+  expected_charge_date?: string;
+  
+  // H-HOTFIX: Reform-specific breakdown
+  reform_breakdown?: ReformBreakdown;
   
   // Currency and normalization
   currency?: string;

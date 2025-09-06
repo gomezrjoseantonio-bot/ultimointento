@@ -1,8 +1,9 @@
 import { openDB, IDBPDatabase } from 'idb';
 import JSZip from 'jszip';
+import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 10; // Added keyval store for application configuration
+const DB_VERSION = 11; // H-HOTFIX: Added utility types, reform breakdown, and document fingerprinting
 
 export interface Property {
   id?: number;
@@ -361,6 +362,18 @@ export interface ExpenseH5 {
   status: ExpenseStatus;
   origin: ExpenseOrigin;
   documentId?: number;
+  // H-HOTFIX: Utility-specific fields
+  utility_type?: UtilityType;
+  supply_address?: string;
+  expected_charge_date?: string;
+  iban_masked?: string;
+  // H-HOTFIX: Reform breakdown for multi-category assignments
+  reform_breakdown?: ReformBreakdown;
+  // H-HOTFIX: Document fingerprinting for idempotence
+  doc_fingerprint?: string;
+  revision?: number; // Incremented on each OCR reprocess
+  last_ocr_at?: string;
+  processor_version?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -439,6 +452,9 @@ export interface PropertyDays {
 // H8: Treasury Account types
 export type AccountDestination = 'horizon' | 'pulse';
 
+// H-HOTFIX: Account usage scope for reconciliation preferences
+export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
+
 export interface Account {
   id?: number;
   name: string; // Will serve as 'alias' in the requirements
@@ -453,6 +469,8 @@ export interface Account {
   isActive: boolean;
   minimumBalance?: number; // H9: For treasury alerts
   isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
+  // H-HOTFIX: Usage scope for reconciliation prioritization
+  usage_scope?: AccountUsageScope; // Default: 'mixto'
   createdAt: string;
   updatedAt: string;
 }

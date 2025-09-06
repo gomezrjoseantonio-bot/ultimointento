@@ -1,5 +1,6 @@
 // ATLAS HORIZON - Inbox Atlas Horizon (v2 definitivo)
 // Implementación exacta según especificaciones del problema
+// H-HOTFIX: Enhanced with inline preview, utility detection, reform breakdown, etc.
 
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
@@ -19,8 +20,18 @@ import {
   FileSpreadsheet,
   Archive,
   File,
-  X
+  X,
+  Edit,
+  Save
 } from 'lucide-react';
+
+// H-HOTFIX: Import new components and services
+import DocumentPreview from '../components/DocumentPreview';
+import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
+import { detectUtilityType, getUtilityTypeDisplayName } from '../services/utilityDetectionService';
+import { calculateDocumentFingerprint } from '../services/documentFingerprintingService';
+import { resolvePropertyAssignment, rememberSupplierPropertyAssignment } from '../services/propertyAssignmentService';
+import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 // Tipos de documentos según especificaciones
 type DocumentStatus = 'guardado_automatico' | 'revision_requerida' | 'error';
@@ -44,6 +55,15 @@ interface InboxDocument {
   iban?: string;      // iban_mascara (****1234)
   destino?: string;   // destino final (chip clicable)
   
+  // H-HOTFIX: Enhanced fields
+  utility_type?: UtilityType;
+  supply_address?: string;
+  expected_charge_date?: string;
+  reform_breakdown?: ReformBreakdown;
+  doc_fingerprint?: string;
+  revision?: number;
+  property_id?: string;
+  
   // Metadatos específicos
   logs: Array<{
     timestamp: string;
@@ -57,6 +77,10 @@ interface InboxDocument {
   categoriaFiscal?: 'Mejora' | 'Mobiliario' | 'Reparación y Conservación'; // Para reformas
   contraparte?: string; // Para contratos
   renta?: number; // Para contratos
+  
+  // H-HOTFIX: File content for preview
+  fileContent?: Blob | ArrayBuffer;
+  fileUrl?: string;
 }
 
 const InboxAtlasHorizon: React.FC = () => {
@@ -67,6 +91,15 @@ const InboxAtlasHorizon: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
+  
+  // H-HOTFIX: Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<InboxDocument>>({});
+  const [availableProperties] = useState([
+    { id: '1', alias: 'C/ Mayor 123', address: 'Calle Mayor 123, Madrid' },
+    { id: '2', alias: 'Piso 2A', address: 'Calle Alcalá 45, 2A, Madrid' },
+    { id: '3', alias: 'Local Centro', address: 'Plaza España 8, Madrid' }
+  ]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -219,33 +252,90 @@ const InboxAtlasHorizon: React.FC = () => {
     });
   };
 
-  const processDocument = (document: InboxDocument) => {
+  const processDocument = async (document: InboxDocument) => {
     const filename = document.filename.toLowerCase();
     
-    // Simular procesamiento según tipo de documento
-    const processed = { ...document };
+    // H-HOTFIX: Check for existing document with same fingerprint
+    const mockOcrData = {
+      total_amount: 45.67 + Math.random() * 100,
+      issue_date: new Date().toISOString().split('T')[0],
+      supplier_tax_id: 'A95758389',
+      supplier_name: 'Iberdrola'
+    };
     
-    // 1. Suministros - Auto-guardado
+    const fingerprint = calculateDocumentFingerprint(
+      document.filename, // Mock file content
+      mockOcrData
+    );
+    
+    // Check if document already exists (idempotence)
+    const existingDoc = documents.find(d => d.doc_fingerprint === fingerprint.doc_fingerprint);
+    if (existingDoc) {
+      // Update existing document instead of creating new one
+      const updatedDoc = {
+        ...existingDoc,
+        revision: (existingDoc.revision || 0) + 1,
+        logs: [
+          ...existingDoc.logs,
+          { timestamp: new Date().toISOString(), action: 'Documento reprocesado (sin duplicar)' }
+        ]
+      };
+      
+      setDocuments(prev => prev.map(d => d.id === existingDoc.id ? updatedDoc : d));
+      toast.success(`${document.filename} actualizado (sin duplicar)`);
+      return;
+    }
+    
+    // Simular procesamiento según tipo de documento
+    const processed = { 
+      ...document,
+      doc_fingerprint: fingerprint.doc_fingerprint,
+      revision: 1
+    };
+    
+    // H-HOTFIX: Enhanced utility detection
     if (filename.includes('luz') || filename.includes('agua') || filename.includes('gas') || 
-        filename.includes('iberdrola') || filename.includes('endesa')) {
+        filename.includes('iberdrola') || filename.includes('endesa') || 
+        filename.includes('movistar') || filename.includes('orange')) {
       
       processed.tipo = 'Factura';
-      processed.proveedor = 'Iberdrola';
+      processed.proveedor = filename.includes('agua') ? 'Canal de Isabel II' : 
+                           filename.includes('gas') ? 'Naturgy' :
+                           filename.includes('movistar') ? 'Movistar' : 'Iberdrola';
       processed.cif = 'A95758389';
-      processed.importe = 45.67 + Math.random() * 100;
-      processed.fecha = new Date().toISOString().split('T')[0];
-      processed.inmueble = 'C/ Mayor 123';
-      processed.iban = `****${Math.floor(1000 + Math.random() * 9000)}`;
-      processed.destino = 'Inmuebles › Gastos › Suministros';
-      processed.status = 'guardado_automatico';
-      processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-      processed.logs.push(
-        { timestamp: new Date().toISOString(), action: 'Clasificado como suministro' },
-        { timestamp: new Date().toISOString(), action: 'Archivado automáticamente' }
-      );
-      toast.success(`${document.filename} procesado y archivado automáticamente`);
+      processed.importe = mockOcrData.total_amount;
+      processed.fecha = mockOcrData.issue_date;
       
-    // 2. Reformas/Compras - Require category selection
+      // H-HOTFIX: Detect utility type
+      const utilityType = detectUtilityType(processed.proveedor, filename);
+      processed.utility_type = utilityType || undefined;
+      
+      // H-HOTFIX: Simple property assignment for demo
+      const mockPropertyId = '1';
+      processed.property_id = mockPropertyId;
+      processed.inmueble = availableProperties.find(p => p.id === mockPropertyId)?.alias;
+      
+      if (processed.status !== 'revision_requerida') {
+        processed.iban = `****${Math.floor(1000 + Math.random() * 9000)}`;
+        processed.destino = `Inmuebles › Gastos › ${processed.inmueble || 'Suministros'}`;
+        processed.status = 'guardado_automatico';
+        processed.expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+        processed.supply_address = 'C/ Mayor 123, Madrid';
+        processed.expected_charge_date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
+      
+      processed.logs.push(
+        { timestamp: new Date().toISOString(), action: `Clasificado como ${utilityType ? getUtilityTypeDisplayName(utilityType) : 'suministro'}` },
+        { timestamp: new Date().toISOString(), action: processed.status === 'guardado_automatico' ? 'Archivado automáticamente' : 'Pendiente de asignación de inmueble' }
+      );
+      
+      if (processed.status === 'guardado_automatico') {
+        toast.success(`${document.filename} procesado y archivado automáticamente`);
+      } else {
+        toast.error(`${document.filename} procesado - requiere asignación de inmueble`);
+      }
+      
+    // H-HOTFIX: Enhanced reform processing with breakdown
     } else if (filename.includes('reforma') || filename.includes('obra') || 
                filename.includes('compra') || filename.includes('material')) {
       
@@ -255,11 +345,20 @@ const InboxAtlasHorizon: React.FC = () => {
       processed.importe = 500 + Math.random() * 2000;
       processed.fecha = new Date().toISOString().split('T')[0];
       processed.inmueble = 'Piso 2A';
+      processed.property_id = '2';
       processed.status = 'revision_requerida';
-      processed.blockingReasons = ['Categoría fiscal requerida: Mejora/Mobiliario/Reparación y Conservación'];
+      processed.blockingReasons = ['Reparto entre categorías fiscales: Mejora/Mobiliario/Reparación y conservación'];
+      
+      // H-HOTFIX: Initialize reform breakdown (will be set in UI)
+      processed.reform_breakdown = {
+        mejora: 0,
+        mobiliario: 0,
+        reparacion_conservacion: 0
+      };
+      
       processed.logs.push(
         { timestamp: new Date().toISOString(), action: 'Clasificado como reforma' },
-        { timestamp: new Date().toISOString(), action: 'Pendiente de categorización' }
+        { timestamp: new Date().toISOString(), action: 'Pendiente de reparto fiscal' }
       );
       
     // 3. Recibos simples - Auto-guardado
