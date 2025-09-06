@@ -1,9 +1,11 @@
 // UNICORNIO PROMPT - Main Inbox Processing Service
-// Implements exact processing rules per document type
+// Implements exact processing rules per document type with unified expense creation
 
 import { DocumentType, detectDocType } from './unicornioDocumentDetection';
 import { detectUtilityType } from './utilityDetectionService';
 import { calculateDocumentFingerprint } from './documentFingerprintingService';
+import { inferExpenseType } from './expenseTypeInferenceService';
+import { ExpenseH5, TipoGasto } from './db';
 
 export interface ProcessingResult {
   success: boolean;
@@ -173,6 +175,14 @@ async function processUtilityBill(
   const utilityType = detectUtilityType(ocrData.proveedor_nombre, mockOcrText);
   addLog(`Tipo de suministro detectado: ${utilityType || 'genérico'}`);
 
+  // Expense type inference
+  const typeInference = inferExpenseType({
+    proveedor_nombre: ocrData.proveedor_nombre,
+    utility_type: utilityType,
+    source_type: 'invoice'
+  });
+  addLog(`Tipo de gasto inferido: ${typeInference.tipo_gasto} (${Math.round(typeInference.confidence * 100)}%)`);
+
   // Check for idempotence
   const fingerprint = calculateDocumentFingerprint(filename, ocrData);
   addLog('Verificando documento duplicado...');
@@ -205,8 +215,11 @@ async function processUtilityBill(
   const extractedFields = {
     ...ocrData,
     service_type: utilityType,
+    tipo_gasto: typeInference.tipo_gasto,
     inmueble_id: assignedProperty?.id,
-    inmueble_alias: assignedProperty?.alias
+    inmueble_alias: assignedProperty?.alias,
+    destino: 'inmueble' as const,
+    estado_conciliacion: 'pendiente' as const
   };
 
   return {
@@ -214,7 +227,7 @@ async function processUtilityBill(
     documentType: 'factura_suministro',
     extractedFields,
     destination: assignedProperty ? 
-      `Inmuebles › Gastos › Suministros (${assignedProperty.alias})` : 
+      `Inmuebles › Gastos › ${typeInference.suggested_category} (${assignedProperty.alias})` : 
       undefined,
     requiresReview,
     blockingReasons,
@@ -244,16 +257,28 @@ async function processReformInvoice(
     invoice_date: '2024-01-14',
     total_amount: 2500.00,
     currency: 'EUR',
-    iban_masked: '****5678'
+    iban_masked: '****5678',
+    concept: 'Reforma integral cocina'
   };
 
-  addLog('Mapeando líneas a categorías fiscales');
+  // Expense type inference - will suggest predominant type
+  const typeInference = inferExpenseType({
+    proveedor_nombre: ocrData.proveedor_nombre,
+    concept: ocrData.concept,
+    source_type: 'invoice'
+  });
+  addLog(`Tipo predominante inferido: ${typeInference.tipo_gasto}`);
+
+  addLog('Requiere desglose entre categorías fiscales');
 
   return {
     success: true,
     documentType: 'factura_reforma',
     extractedFields: {
       ...ocrData,
+      tipo_gasto_predominante: typeInference.tipo_gasto,
+      destino: 'inmueble' as const,
+      estado_conciliacion: 'pendiente' as const,
       desglose_categorias: {
         mejora: 0,
         mobiliario: 0,
@@ -360,19 +385,25 @@ export async function classifyAndArchive(
       };
 
     case 'factura_suministro':
-      // Create expense in property
+      // Create unified expense in property
+      const utilityCategory = getUtilityCategoryDisplay(finalFields.tipo_gasto);
       return {
         success: true,
-        destination: `Inmuebles › Gastos › ${finalFields.inmueble_alias || 'Suministros'}`,
-        message: 'Factura de suministro archivada'
+        destination: `Inmuebles › Gastos › ${utilityCategory} (${finalFields.inmueble_alias || 'Sin asignar'})`,
+        message: `Gasto de ${utilityCategory.toLowerCase()} archivado en ${finalFields.inmueble_alias || 'inmueble'}`
       };
 
     case 'factura_reforma':
-      // Create expense(s) and asset records
+      // Create unified expense with breakdown and potential asset creation
+      const { mejora, mobiliario } = finalFields.desglose_categorias || {};
+      let assetMessage = '';
+      if ((mejora > 0) || (mobiliario > 0)) {
+        assetMessage = ' (activo creado para amortización)';
+      }
       return {
         success: true,
-        destination: `Inmuebles › Gastos/Capex`,
-        message: 'Factura de reforma archivada con desglose fiscal'
+        destination: `Inmuebles › Gastos (${finalFields.inmueble_alias || 'Sin asignar'})`,
+        message: `Gasto de reforma archivado con desglose fiscal${assetMessage}`
       };
 
     case 'contrato':
@@ -399,4 +430,27 @@ export async function classifyAndArchive(
         message: 'Tipo de documento no reconocido'
       };
   }
+}
+
+/**
+ * Helper function to get display name for utility categories
+ */
+function getUtilityCategoryDisplay(tipoGasto: TipoGasto): string {
+  const displayMap: Record<TipoGasto, string> = {
+    'suministro_electricidad': 'Electricidad',
+    'suministro_agua': 'Agua',
+    'suministro_gas': 'Gas',
+    'internet': 'Internet',
+    'reparacion_conservacion': 'Reparación y conservación',
+    'mejora': 'Mejora',
+    'mobiliario': 'Mobiliario',
+    'comunidad': 'Comunidad',
+    'seguro': 'Seguro',
+    'ibi': 'IBI',
+    'intereses': 'Intereses',
+    'comisiones': 'Comisiones',
+    'otros': 'Otros'
+  };
+  
+  return displayMap[tipoGasto] || 'Otros';
 }

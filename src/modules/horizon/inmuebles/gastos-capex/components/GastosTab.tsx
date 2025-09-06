@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon } from 'lucide-react';
+import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, CopyIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ExpenseH5, initDB, Property } from '../../../../../services/db';
+import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
 import { AEAT_FISCAL_TYPES, getFiscalTypeLabel, getAEATBoxLabel } from '../../../../../utils/aeatUtils';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
@@ -10,6 +10,23 @@ import toast from 'react-hot-toast';
 interface GastosTabProps {
   triggerAddExpense?: boolean;
 }
+
+// UNICORNIO REFACTOR: Expense type options for unified filtering
+const TIPO_GASTO_OPTIONS: Array<{ value: TipoGasto; label: string }> = [
+  { value: 'suministro_electricidad', label: 'Electricidad' },
+  { value: 'suministro_agua', label: 'Agua' },
+  { value: 'suministro_gas', label: 'Gas' },
+  { value: 'internet', label: 'Internet' },
+  { value: 'reparacion_conservacion', label: 'Reparación y conservación' },
+  { value: 'mejora', label: 'Mejora' },
+  { value: 'mobiliario', label: 'Mobiliario' },
+  { value: 'comunidad', label: 'Comunidad' },
+  { value: 'seguro', label: 'Seguro' },
+  { value: 'ibi', label: 'IBI' },
+  { value: 'intereses', label: 'Intereses' },
+  { value: 'comisiones', label: 'Comisiones' },
+  { value: 'otros', label: 'Otros' }
+];
 
 const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const navigate = useNavigate();
@@ -20,8 +37,10 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseH5 | undefined>(undefined);
   const [filters, setFilters] = useState({
-    fiscalType: '',
-    status: '',
+    tipo_gasto: '',
+    origen: '',
+    estado_conciliacion: '',
+    destino: '',
     propertyId: '',
     startDate: '',
     endDate: ''
@@ -67,25 +86,63 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   };
 
   const filteredExpenses = expenses.filter(expense => {
-    const property = properties.find(p => p.id === expense.propertyId);
+    // Handle both legacy propertyId and new destino_id structure
+    const propertyId = expense.destino === 'inmueble' ? expense.destino_id : expense.propertyId;
+    const property = properties.find(p => p.id === propertyId);
+    
     const matchesSearch = 
       expense.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property?.alias.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesFiscalType = !filters.fiscalType || expense.fiscalType === filters.fiscalType;
-    const matchesStatus = !filters.status || expense.status === filters.status;
-    const matchesProperty = !filters.propertyId || expense.propertyId === parseInt(filters.propertyId);
+    const matchesTipoGasto = !filters.tipo_gasto || expense.tipo_gasto === filters.tipo_gasto;
+    const matchesOrigen = !filters.origen || expense.origin === filters.origen;
+    const matchesEstadoConciliacion = !filters.estado_conciliacion || expense.estado_conciliacion === filters.estado_conciliacion;
+    const matchesDestino = !filters.destino || expense.destino === filters.destino;
+    const matchesProperty = !filters.propertyId || propertyId === parseInt(filters.propertyId);
     const matchesDateRange = 
       (!filters.startDate || expense.date >= filters.startDate) &&
       (!filters.endDate || expense.date <= filters.endDate);
 
-    return matchesSearch && matchesFiscalType && matchesStatus && matchesProperty && matchesDateRange;
+    return matchesSearch && matchesTipoGasto && matchesOrigen && matchesEstadoConciliacion && 
+           matchesDestino && matchesProperty && matchesDateRange;
   });
 
-  const getPropertyName = (propertyId: number): string => {
+  const getPropertyName = (expense: ExpenseH5): string => {
+    const propertyId = expense.destino === 'inmueble' ? expense.destino_id : expense.propertyId;
     const property = properties.find(p => p.id === propertyId);
-    return property?.alias || 'Inmueble no encontrado';
+    return property?.alias || (expense.destino === 'personal' ? 'Personal' : 'Inmueble no encontrado');
+  };
+
+  const getTipoGastoLabel = (tipo: TipoGasto): string => {
+    const option = TIPO_GASTO_OPTIONS.find(opt => opt.value === tipo);
+    return option?.label || tipo;
+  };
+
+  const getConciliationBadge = (estado: EstadoConciliacion) => {
+    const statusMap = {
+      'pendiente': 'bg-yellow-100 text-yellow-800',
+      'conciliado': 'bg-green-100 text-green-800'
+    };
+    
+    const statusLabels = {
+      'pendiente': 'Pendiente',
+      'conciliado': 'Conciliado'
+    };
+
+    const iconMap = {
+      'pendiente': ClockIcon,
+      'conciliado': CheckCircleIcon
+    };
+
+    const Icon = iconMap[estado];
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMap[estado] || 'bg-gray-100 text-gray-800'}`}>
+        <Icon className="h-3 w-3 mr-1" />
+        {statusLabels[estado] || estado}
+      </span>
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -250,15 +307,15 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             </div>
           </div>
 
-          {/* Fiscal Type Filter */}
+          {/* Tipo de Gasto Filter */}
           <div>
             <select
-              value={filters.fiscalType}
-              onChange={(e) => setFilters(prev => ({ ...prev, fiscalType: e.target.value }))}
+              value={filters.tipo_gasto}
+              onChange={(e) => setFilters(prev => ({ ...prev, tipo_gasto: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Todos los tipos</option>
-              {AEAT_FISCAL_TYPES.map(type => (
+              {TIPO_GASTO_OPTIONS.map(type => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>
@@ -266,17 +323,29 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             </select>
           </div>
 
-          {/* Status Filter */}
+          {/* Origen Filter */}
           <div>
             <select
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              value={filters.origen}
+              onChange={(e) => setFilters(prev => ({ ...prev, origen: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
-              <option value="">Todos los estados</option>
-              <option value="validado">Validado</option>
+              <option value="">Todos los orígenes</option>
+              <option value="manual">Manual</option>
+              <option value="inbox">Inbox</option>
+            </select>
+          </div>
+
+          {/* Estado Conciliación Filter */}
+          <div>
+            <select
+              value={filters.estado_conciliacion}
+              onChange={(e) => setFilters(prev => ({ ...prev, estado_conciliacion: e.target.value }))}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="">Conciliación</option>
               <option value="pendiente">Pendiente</option>
-              <option value="por-revisar">Por revisar</option>
+              <option value="conciliado">Conciliado</option>
             </select>
           </div>
 
@@ -287,7 +356,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               onChange={(e) => setFilters(prev => ({ ...prev, propertyId: e.target.value }))}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
-              <option value="">Todos los inmuebles</option>
+              <option value="">Inmueble/Personal</option>
+              <option value="personal">Personal</option>
               {properties.map(property => (
                 <option key={property.id} value={property.id}>
                   {property.alias}
@@ -302,8 +372,10 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               onClick={() => {
                 setSearchTerm('');
                 setFilters({
-                  fiscalType: '',
-                  status: '',
+                  tipo_gasto: '',
+                  origen: '',
+                  estado_conciliacion: '',
+                  destino: '',
                   propertyId: '',
                   startDate: '',
                   endDate: ''
@@ -339,14 +411,12 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble/Personal</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Concepto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo fiscal</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Casilla AEAT</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conciliación</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
@@ -358,6 +428,14 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
+                        <div className="font-medium">{getPropertyName(expense)}</div>
+                        <div className="text-gray-500 text-xs">
+                          {expense.unit === 'completo' ? 'Completo' : expense.unit}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>
                         <div className="font-medium">{expense.provider}</div>
                         {expense.providerNIF && (
                           <div className="text-gray-500 text-xs">{expense.providerNIF}</div>
@@ -365,30 +443,26 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.concept}
+                      <div>
+                        <div>{expense.concept}</div>
+                        {expense.desglose_amortizable && (
+                          <div className="text-gray-500 text-xs">
+                            {expense.desglose_amortizable.mejora_importe > 0 && `Mejora: ${formatEuro(expense.desglose_amortizable.mejora_importe)} `}
+                            {expense.desglose_amortizable.mobiliario_importe > 0 && `Mobiliario: ${formatEuro(expense.desglose_amortizable.mobiliario_importe)}`}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {getTipoGastoLabel(expense.tipo_gasto)}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
                       {formatEuro(expense.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getFiscalTypeLabel(expense.fiscalType)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {expense.aeatBox ? getAEATBoxLabel(expense.aeatBox) : '—'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        <div className="font-medium">{getPropertyName(expense.propertyId)}</div>
-                        <div className="text-gray-500 text-xs">
-                          {expense.unit === 'completo' ? 'Completo' : expense.unit}
-                        </div>
-                      </div>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {getStatusBadge(expense.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {getOriginBadge(expense.origin)}
+                      {getConciliationBadge(expense.estado_conciliacion)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
@@ -400,19 +474,20 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}
+                        {expense.estado_conciliacion === 'pendiente' && (
+                          <button
+                            className="text-green-600 hover:text-green-800 p-1"
+                            title="Conciliar"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
-                          title="Editar"
+                          title="Ver/Editar"
                         >
                           <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicateExpense(expense)}
-                          className="text-brand-navy hover:text-navy-800 p-1"
-                          title="Duplicar"
-                        >
-                          <CopyIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense.id!)}

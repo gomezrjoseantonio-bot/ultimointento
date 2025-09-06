@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, FileTextIcon, CogIcon, BarChart3Icon } from 'lucide-react';
+import { PlusIcon, FileTextIcon, BarChart3Icon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import GastosTab from './components/GastosTab';
-import CapexTab from './components/CapexTab';
 import ResumenTab from './components/ResumenTab';
 
-type TabType = 'gastos' | 'capex' | 'resumen';
+type TabType = 'gastos' | 'resumen';
 
 const GastosCapex: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('gastos');
@@ -18,11 +17,6 @@ const GastosCapex: React.FC = () => {
       id: 'gastos' as TabType,
       name: 'Gastos',
       icon: FileTextIcon
-    },
-    {
-      id: 'capex' as TabType,
-      name: 'CAPEX',
-      icon: CogIcon
     },
     {
       id: 'resumen' as TabType,
@@ -46,8 +40,8 @@ const GastosCapex: React.FC = () => {
 
   return (
     <PageLayout 
-      title="Gastos & CAPEX" 
-      subtitle="Capturar, clasificar y prorratear gastos según AEAT; modelar reformas (CAPEX)"
+      title="Gastos" 
+      subtitle="Capturar, clasificar y conciliar gastos por tipo; incluye amortizables (mejora/mobiliario)"
       showInfoIcon={true}
       primaryAction={
         <button
@@ -94,7 +88,6 @@ const GastosCapex: React.FC = () => {
       {/* Tab Content */}
       <div className="flex-1">
         {activeTab === 'gastos' && <GastosTab triggerAddExpense={triggerAddExpense} />}
-        {activeTab === 'capex' && <CapexTab />}
         {activeTab === 'resumen' && <ResumenTab />}
       </div>
     </PageLayout>

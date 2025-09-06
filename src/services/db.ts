@@ -343,6 +343,28 @@ export type ExpenseStatus = 'validado' | 'pendiente' | 'por-revisar';
 
 export type ExpenseOrigin = 'manual' | 'inbox';
 
+// UNICORNIO REFACTOR: Unified expense types for single tab gastos
+export type TipoGasto = 
+  | 'suministro_electricidad'
+  | 'suministro_agua' 
+  | 'suministro_gas'
+  | 'internet'
+  | 'reparacion_conservacion'
+  | 'mejora'
+  | 'mobiliario'
+  | 'comunidad'
+  | 'seguro'
+  | 'ibi'
+  | 'intereses'
+  | 'comisiones'
+  | 'otros';
+
+// UNICORNIO REFACTOR: Conciliation status
+export type EstadoConciliacion = 'pendiente' | 'conciliado';
+
+// UNICORNIO REFACTOR: Expense destination
+export type DestinoGasto = 'personal' | 'inmueble';
+
 // H5: Enhanced Expense interface
 export interface ExpenseH5 {
   id?: number;
@@ -351,24 +373,41 @@ export interface ExpenseH5 {
   providerNIF?: string;
   concept: string;
   amount: number;
+  currency: string;
   fiscalType: AEATFiscalType;
   aeatBox?: AEATBox;
   taxYear: number; // Ejercicio de devengo
   taxIncluded: boolean;
-  propertyId: number;
+  propertyId?: number; // Optional for personal expenses
   unit: 'completo' | string; // 'completo' or 'habitacion-X'
   prorationMethod: ProrationMethod;
   prorationDetail: string; // % or other details based on method
   status: ExpenseStatus;
   origin: ExpenseOrigin;
   documentId?: number;
+  
+  // UNICORNIO REFACTOR: Unified expense fields
+  tipo_gasto: TipoGasto; // Inferred type for classification and filtering
+  destino: DestinoGasto; // 'personal' or 'inmueble'
+  destino_id?: number; // propertyId when destino='inmueble'
+  estado_conciliacion: EstadoConciliacion;
+  
   // H-HOTFIX: Utility-specific fields
   utility_type?: UtilityType;
   supply_address?: string;
   expected_charge_date?: string;
   iban_masked?: string;
+  
   // H-HOTFIX: Reform breakdown for multi-category assignments
   reform_breakdown?: ReformBreakdown;
+  
+  // UNICORNIO REFACTOR: Amortizable breakdown (for mejora/mobiliario)
+  desglose_amortizable?: {
+    mejora_importe: number;
+    mobiliario_importe: number;
+    ficha_activo_id?: number; // Link to asset record for amortization
+  };
+  
   // H-HOTFIX: Document fingerprinting for idempotence
   doc_fingerprint?: string;
   revision?: number; // Incremented on each OCR reprocess
