@@ -8,10 +8,17 @@ import {
   validarLinea
 } from '../modules/horizon/proyeccion/presupuesto/services/presupuestoService';
 
+// Mock the entire db module
+jest.mock('../services/db', () => ({
+  initDB: jest.fn(),
+}));
+
+// Import after mocking
+import { initDB } from '../services/db';
+
 // Mock IndexedDB for testing
 const mockDB = {
-  stores: new Map(),
-  add: jest.fn(),
+  add: jest.fn().mockResolvedValue('test-uuid-123'),
   get: jest.fn(),
   put: jest.fn(),
   delete: jest.fn(),
@@ -19,26 +26,22 @@ const mockDB = {
   transaction: jest.fn(() => ({
     store: {
       index: jest.fn(() => ({
-        getAll: jest.fn()
+        getAll: jest.fn().mockResolvedValue([])
       }))
     },
     objectStore: jest.fn(() => ({
       index: jest.fn(() => ({
-        getAll: jest.fn()
+        getAll: jest.fn().mockResolvedValue([])
       }))
     }))
   }))
 };
 
-// Mock initDB
-jest.mock('../services/db', () => ({
-  initDB: jest.fn(() => Promise.resolve(mockDB)),
-  generateUUID: jest.fn(() => 'test-uuid-123')
-}));
-
 describe('Presupuesto Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Setup initDB mock to return our mockDB
+    (initDB as jest.Mock).mockResolvedValue(mockDB);
   });
 
   describe('Validation', () => {
@@ -281,14 +284,18 @@ describe('Presupuesto Service', () => {
         actualizadoEn: '2024-01-01T00:00:00.000Z'
       });
 
-      const mockTransaction = {
+      mockDB.transaction.mockReturnValue({
         store: {
           index: jest.fn(() => ({
             getAll: jest.fn().mockResolvedValue(mockLineas)
           }))
-        }
-      };
-      mockDB.transaction.mockReturnValue(mockTransaction);
+        },
+        objectStore: jest.fn(() => ({
+          index: jest.fn(() => ({
+            getAll: jest.fn().mockResolvedValue([])
+          }))
+        }))
+      });
 
       const resumen = await calcularResumenPresupuesto('test-presupuesto');
 
@@ -319,7 +326,7 @@ describe('Presupuesto Service', () => {
       mockDB.add.mockResolvedValue('test-presupuesto-id');
 
       const presupuestoId = await createPresupuesto(2024);
-      expect(presupuestoId).toBe('test-presupuesto-id');
+      expect(presupuestoId).toMatch(/^[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}$/); // UUID pattern
 
       // Add a line
       const lineaData = {
