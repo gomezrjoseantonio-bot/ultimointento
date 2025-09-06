@@ -236,7 +236,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
 
                 {/* Start Month and Installments */}
                 <div className="lg:col-span-3">
-                  {(line.frequency === 'anual' || line.frequency === 'fraccionado' || line.frequency === 'unico') && (
+                  {(line.frequency === 'anual' || line.frequency === 'fraccionado' || line.frequency === 'unico' || line.frequency === 'trimestral') && (
                     <>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Mes inicial
@@ -273,7 +273,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   
                   {line.frequency === 'trimestral' && (
                     <div className="text-xs text-gray-500 mt-1">
-                      Patrón: Ene/Abr/Jul/Oct
+                      {monthNames[line.startMonth - 1]} / {monthNames[(line.startMonth + 2) % 12]} / {monthNames[(line.startMonth + 5) % 12]} / {monthNames[(line.startMonth + 8) % 12]}
                     </div>
                   )}
                   

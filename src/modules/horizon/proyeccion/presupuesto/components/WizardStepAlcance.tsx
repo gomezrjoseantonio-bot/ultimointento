@@ -68,13 +68,14 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
   };
 
   const handleContinue = () => {
-    if (selectedPropertyIds.length === 0) {
+    // Allow testing mode when no properties exist
+    if (selectedPropertyIds.length === 0 && properties.length > 0) {
       alert('Debes seleccionar al menos un inmueble.');
       return;
     }
 
     onComplete({
-      propertyIds: selectedPropertyIds,
+      propertyIds: selectedPropertyIds.length > 0 ? selectedPropertyIds : [999], // Use test property ID
       startMonth: isFullYear ? 1 : startMonth,
       isFullYear
     });
@@ -232,8 +233,21 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
         </div>
         
         {properties.length === 0 && (
-          <div className="px-6 py-8 text-center text-gray-500">
-            No hay inmuebles activos en la cartera.
+          <div className="px-6 py-8 text-center">
+            <div className="text-gray-500 mb-4">
+              No hay inmuebles activos en la cartera.
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <div className="bg-yellow-100 p-1 rounded-full mr-2">
+                  <span className="text-yellow-600 text-xs">⚠️</span>
+                </div>
+                <p className="text-sm font-medium text-yellow-800">Modo de prueba</p>
+              </div>
+              <p className="text-sm text-yellow-700">
+                Puedes continuar para probar el wizard con datos de ejemplo.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -242,9 +256,9 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
       <div className="flex justify-end mt-8">
         <button
           onClick={handleContinue}
-          disabled={selectedPropertyIds.length === 0}
+          disabled={selectedPropertyIds.length === 0 && properties.length > 0}
           className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${
-            selectedPropertyIds.length === 0
+            selectedPropertyIds.length === 0 && properties.length > 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
