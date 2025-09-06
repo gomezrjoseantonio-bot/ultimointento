@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Eye, RotateCcw, CheckCircle, AlertTriangle, XCircle,
-  FileText, Image, FileSpreadsheet, File, X, ChevronDown, ChevronUp
+  FileText, Image, FileSpreadsheet, File, X, ChevronDown, ChevronUp, CreditCard
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { unifiedDocumentProcessor, ProcessedDocument, DocumentStatus } from '../services/unifiedDocumentProcessor';
 import { unifiedOcrService } from '../services/unifiedOcrService';
+import AccountAssignmentModal from '../components/modals/AccountAssignmentModal';
 
 const UnifiedInboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
@@ -14,6 +15,10 @@ const UnifiedInboxPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
   const [isDev] = useState(process.env.NODE_ENV !== 'production');
+  const [accountAssignmentModal, setAccountAssignmentModal] = useState<{
+    isOpen: boolean;
+    document: ProcessedDocument | null;
+  }>({ isOpen: false, document: null });
 
   // Load documents and setup cleanup
   useEffect(() => {
@@ -75,6 +80,32 @@ const UnifiedInboxPage: React.FC = () => {
     }
   };
 
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
   const handleReprocessOCR = async (docId: string) => {
     try {
       await unifiedDocumentProcessor.reprocessOCR(docId);
@@ -83,6 +114,24 @@ const UnifiedInboxPage: React.FC = () => {
     } catch (error) {
       toast.error(`Error reprocesando OCR: ${error}`);
     }
+  };
+
+  const handleAssignAccount = async (documentId: string, accountData: { iban?: string; accountNumber?: string; bankName?: string }) => {
+    try {
+      await unifiedDocumentProcessor.assignBankAccount(documentId, accountData);
+      loadDocuments();
+      toast.success('Cuenta bancaria asignada correctamente');
+    } catch (error) {
+      toast.error(`Error asignando cuenta: ${error}`);
+    }
+  };
+
+  const openAccountAssignmentModal = (document: ProcessedDocument) => {
+    setAccountAssignmentModal({ isOpen: true, document });
+  };
+
+  const closeAccountAssignmentModal = () => {
+    setAccountAssignmentModal({ isOpen: false, document: null });
   };
 
   const handleTestOCR = async () => {
@@ -152,7 +201,13 @@ const UnifiedInboxPage: React.FC = () => {
   const errorDocs = filteredDocuments.filter(doc => doc.status === 'error');
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div 
+      className="h-screen flex flex-col bg-gray-50"
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-start sm:items-center">
@@ -249,9 +304,22 @@ const UnifiedInboxPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4">
             {documents.length === 0 ? (
               <div className="text-center py-12">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
-                <p className="mt-1 text-sm text-gray-500">Sube documentos para comenzar</p>
+                <div 
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors"
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Arrastra archivos aquí o sube documentos para comenzar
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Soporta: PDF, JPG, PNG, HEIC, DOC, DOCX, XLS, XLSX, CSV
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-6">
@@ -268,6 +336,7 @@ const UnifiedInboxPage: React.FC = () => {
                           document={doc}
                           onSelect={setSelectedDocument}
                           onReprocessOCR={handleReprocessOCR}
+                          onAssignAccount={openAccountAssignmentModal}
                           getStatusIcon={getStatusIcon}
                           getFileIcon={getFileIcon}
                           getStatusText={getStatusText}
@@ -290,6 +359,7 @@ const UnifiedInboxPage: React.FC = () => {
                           document={doc}
                           onSelect={setSelectedDocument}
                           onReprocessOCR={handleReprocessOCR}
+                          onAssignAccount={openAccountAssignmentModal}
                           getStatusIcon={getStatusIcon}
                           getFileIcon={getFileIcon}
                           getStatusText={getStatusText}
@@ -312,6 +382,7 @@ const UnifiedInboxPage: React.FC = () => {
                           document={doc}
                           onSelect={setSelectedDocument}
                           onReprocessOCR={handleReprocessOCR}
+                          onAssignAccount={openAccountAssignmentModal}
                           getStatusIcon={getStatusIcon}
                           getFileIcon={getFileIcon}
                           getStatusText={getStatusText}
@@ -351,6 +422,16 @@ const UnifiedInboxPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Account Assignment Modal */}
+      {accountAssignmentModal.isOpen && accountAssignmentModal.document && (
+        <AccountAssignmentModal
+          isOpen={accountAssignmentModal.isOpen}
+          onClose={closeAccountAssignmentModal}
+          document={accountAssignmentModal.document}
+          onAssignAccount={handleAssignAccount}
+        />
+      )}
     </div>
   );
 };
@@ -360,6 +441,7 @@ interface DocumentCardProps {
   document: ProcessedDocument;
   onSelect: (doc: ProcessedDocument) => void;
   onReprocessOCR: (docId: string) => void;
+  onAssignAccount: (document: ProcessedDocument) => void;
   getStatusIcon: (status: DocumentStatus) => React.ReactNode;
   getFileIcon: (filename: string) => React.ReactNode;
   getStatusText: (status: DocumentStatus) => string;
@@ -369,6 +451,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   document,
   onSelect,
   onReprocessOCR,
+  onAssignAccount,
   getStatusIcon,
   getFileIcon,
   getStatusText
@@ -451,6 +534,19 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               title="Reprocesar OCR"
             >
               <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Bank account assignment button for CSV/XLS files requiring manual assignment */}
+          {document.documentType === 'extracto_bancario' && 
+           document.status === 'revision_requerida' &&
+           document.blockingReasons?.some(reason => reason.includes('cuenta')) && (
+            <button
+              onClick={() => onAssignAccount(document)}
+              className="p-1 text-blue-500 hover:text-blue-700"
+              title="Asignar cuenta bancaria"
+            >
+              <CreditCard className="h-4 w-4" />
             </button>
           )}
         </div>

@@ -59,16 +59,26 @@ export class UnifiedOCRService {
         throw new Error(`Tipo de archivo no soportado para OCR: ${file.type}`);
       }
 
-      // Convert file to binary data
+      // Convert file to base64
       const fileBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(fileBuffer);
+      const binaryString = Array.from(uint8Array).map(byte => String.fromCharCode(byte)).join('');
+      const base64String = btoa(binaryString);
       
-      // Call Netlify function with binary data
-      const response = await fetch('/.netlify/functions/ocr', {
+      // Prepare request body for new endpoint
+      const requestBody = {
+        fileBase64: base64String,
+        mimeType: file.type,
+        filename: file.name
+      };
+
+      // Call the new ocr-process endpoint
+      const response = await fetch('/.netlify/functions/ocr-process', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': 'application/json',
         },
-        body: fileBuffer
+        body: JSON.stringify(requestBody)
       });
 
       let result;
@@ -90,14 +100,13 @@ export class UnifiedOCRService {
       if (!response.ok) {
         return {
           success: false,
-          error: result.message || result.error || 'Error en el procesamiento OCR',
-          code: result.code,
+          error: result.error || 'Error en el procesamiento OCR',
           status: response.status
         };
       }
 
-      // Transform Document AI response to our format
-      return this.transformDocumentAIResponse(result);
+      // Return the result directly since new endpoint returns proper format
+      return result;
 
     } catch (error) {
       console.error('OCR processing error:', error);
@@ -248,15 +257,19 @@ export class UnifiedOCRService {
    */
   async testOCREndpoint(): Promise<{ status: number; message: string }> {
     try {
-      // Create a minimal test file
-      const testData = new ArrayBuffer(100);
+      // Test the new ocr-process endpoint with a minimal request
+      const testData = {
+        fileBase64: "JVBERi0xLjQK", // Simple PDF header in base64
+        mimeType: "application/pdf",
+        filename: "test.pdf"
+      };
       
-      const response = await fetch('/.netlify/functions/ocr', {
+      const response = await fetch('/.netlify/functions/ocr-process', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': 'application/json',
         },
-        body: testData
+        body: JSON.stringify(testData)
       });
 
       return {
