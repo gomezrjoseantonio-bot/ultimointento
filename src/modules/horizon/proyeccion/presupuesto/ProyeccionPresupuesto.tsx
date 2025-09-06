@@ -3,7 +3,6 @@ import { Calculator, Plus, FileText, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import BudgetWizard from './components/BudgetWizard';
 import BudgetList from './components/BudgetList';
-import ProyeccionComparativa from '../comparativa/ProyeccionComparativa';
 import { Budget } from '../../../../services/db';
 import { getBudgetsByYear } from './services/budgetService';
 
@@ -12,7 +11,6 @@ const ProyeccionPresupuesto: React.FC = () => {
   const [currentYear] = useState(new Date().getFullYear());
   const [existingBudgets, setExistingBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'presupuesto' | 'comparativa'>('presupuesto');
 
   useEffect(() => {
     loadBudgets();
@@ -51,42 +49,11 @@ const ProyeccionPresupuesto: React.FC = () => {
 
   return (
     <PageLayout 
-      title={activeTab === 'presupuesto' ? "Presupuesto Anual" : "Comparativa Anual"} 
-      subtitle={activeTab === 'presupuesto' ? "Gestión de presupuestos con gastos deducibles y frecuencias" : "Budget vs Forecast vs Actual"}
+      title="Presupuesto Anual" 
+      subtitle="Gestión de presupuestos con gastos deducibles y frecuencias"
     >
       <div className="space-y-6">
-        {/* Subtabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('presupuesto')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'presupuesto'
-                  ? 'border-[#0B2B5C] text-[#0B2B5C]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Presupuesto
-            </button>
-            <button
-              onClick={() => setActiveTab('comparativa')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'comparativa'
-                  ? 'border-[#0B2B5C] text-[#0B2B5C]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Comparativa
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'presupuesto' ? (
-          <div className="space-y-6">{renderPresupuestoContent()}</div>
-        ) : (
-          <ProyeccionComparativa />
-        )}
+        {renderPresupuestoContent()}
       </div>
     </PageLayout>
   );
