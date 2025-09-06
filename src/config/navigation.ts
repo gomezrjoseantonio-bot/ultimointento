@@ -70,8 +70,8 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     subTabs: [
       { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
-      { name: 'Comparativa', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
-      { name: 'Escenarios', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
+      { name: 'Desviaciones', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
+      { name: 'HORIZONTES', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
     ]
   },
   
