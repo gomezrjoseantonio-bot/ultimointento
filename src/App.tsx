@@ -9,6 +9,7 @@ import MainLayout from './layouts/MainLayout';
 import Dashboard from './pages/Dashboard';
 import InboxAtlasHorizon from './pages/InboxAtlasHorizon';
 import UnicornioInboxPrompt from './pages/UnicornioInboxPrompt';
+import UnifiedInboxPage from './pages/UnifiedInboxPage';
 import AccountPage from './pages/account/AccountPage';
 
 // Loading component for better UX
@@ -80,7 +81,8 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={<Dashboard />} />
-            <Route path="inbox" element={<UnicornioInboxPrompt />} />
+            <Route path="inbox" element={<UnifiedInboxPage />} />
+            <Route path="inbox-unicornio" element={<UnicornioInboxPrompt />} />
             <Route path="inbox-legacy" element={<InboxAtlasHorizon />} />
             
             {/* Horizon (Investment) Routes */}
