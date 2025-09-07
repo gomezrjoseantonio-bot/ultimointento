@@ -58,6 +58,249 @@ export class PrestamosCalculationService {
   }
 
   /**
+   * Calculate bonified interest rate (with applied bonifications)
+   * @param prestamo Loan data
+   * @param currentDate Current date for mixed loan calculations
+   * @returns Annual nominal rate with bonifications applied
+   */
+  calculateBonifiedRate(prestamo: Prestamo, currentDate?: Date): number {
+    const baseRate = this.calculateBaseRate(prestamo, currentDate);
+    
+    if (!prestamo.bonificaciones || prestamo.bonificaciones.length === 0) {
+      return baseRate;
+    }
+
+    // Sum up all active bonifications
+    const totalBonifications = prestamo.bonificaciones
+      .filter(bonif => bonif.estado === 'CUMPLIDA')
+      .reduce((sum, bonif) => sum + bonif.reduccionPuntosPorcentuales, 0);
+
+    // Apply bonifications (rate cannot go below 0)
+    const bonifiedRate = Math.max(0, baseRate - totalBonifications);
+    return Math.round(bonifiedRate * 10000) / 10000;
+  }
+
+  /**
+   * Calculate savings from bonifications
+   * @param prestamo Loan data
+   * @param currentDate Current date for calculations
+   * @returns Detailed savings breakdown
+   */
+  calculateBonificationSavings(prestamo: Prestamo, currentDate?: Date): {
+    baseRate: number;
+    bonifiedRate: number;
+    basePayment: number;
+    bonifiedPayment: number;
+    totalSavingsPerMonth: number;
+    totalSavingsPerYear: number;
+    bonificationBreakdown: Array<{
+      bonificationId: string;
+      name: string;
+      reduction: number;
+      savingsPerMonth: number;
+      savingsPerYear: number;
+    }>;
+  } {
+    const baseRate = this.calculateBaseRate(prestamo, currentDate);
+    const bonifiedRate = this.calculateBonifiedRate(prestamo, currentDate);
+    
+    // Calculate remaining term for payments
+    const fechaFirma = new Date(prestamo.fechaFirma);
+    const evalDate = currentDate || new Date();
+    const mesesTranscurridos = this.getMonthsDifference(fechaFirma, evalDate);
+    const mesesRestantes = Math.max(1, prestamo.plazoMesesTotal - mesesTranscurridos);
+    
+    // Calculate payments with and without bonifications
+    const basePayment = this.calculateFrenchPayment(prestamo.principalVivo, baseRate, mesesRestantes);
+    const bonifiedPayment = this.calculateFrenchPayment(prestamo.principalVivo, bonifiedRate, mesesRestantes);
+    
+    const totalSavingsPerMonth = basePayment - bonifiedPayment;
+    const totalSavingsPerYear = totalSavingsPerMonth * 12;
+
+    // Calculate savings breakdown per bonification
+    const bonificationBreakdown: Array<{
+      bonificationId: string;
+      name: string;
+      reduction: number;
+      savingsPerMonth: number;
+      savingsPerYear: number;
+    }> = [];
+
+    if (prestamo.bonificaciones) {
+      let cumulativeRate = baseRate;
+      
+      for (const bonif of prestamo.bonificaciones.filter(b => b.estado === 'CUMPLIDA')) {
+        const rateBeforeBonif = cumulativeRate;
+        const rateAfterBonif = Math.max(0, cumulativeRate - bonif.reduccionPuntosPorcentuales);
+        
+        const paymentBefore = this.calculateFrenchPayment(prestamo.principalVivo, rateBeforeBonif, mesesRestantes);
+        const paymentAfter = this.calculateFrenchPayment(prestamo.principalVivo, rateAfterBonif, mesesRestantes);
+        
+        const savingsPerMonth = paymentBefore - paymentAfter;
+        const savingsPerYear = savingsPerMonth * 12;
+        
+        bonificationBreakdown.push({
+          bonificationId: bonif.id,
+          name: bonif.nombre,
+          reduction: bonif.reduccionPuntosPorcentuales,
+          savingsPerMonth: Math.round(savingsPerMonth * 100) / 100,
+          savingsPerYear: Math.round(savingsPerYear * 100) / 100
+        });
+        
+        cumulativeRate = rateAfterBonif;
+      }
+    }
+
+    return {
+      baseRate: Math.round(baseRate * 10000) / 10000,
+      bonifiedRate: Math.round(bonifiedRate * 10000) / 10000,
+      basePayment: Math.round(basePayment * 100) / 100,
+      bonifiedPayment: Math.round(bonifiedPayment * 100) / 100,
+      totalSavingsPerMonth: Math.round(totalSavingsPerMonth * 100) / 100,
+      totalSavingsPerYear: Math.round(totalSavingsPerYear * 100) / 100,
+      bonificationBreakdown
+    };
+  }
+
+  /**
+   * Evaluate bonification compliance and generate alerts
+   * @param prestamo Loan data
+   * @param currentDate Current evaluation date
+   * @returns Compliance status and alerts
+   */
+  evaluateBonifications(prestamo: Prestamo, currentDate?: Date): {
+    bonificationStatus: Array<{
+      bonificationId: string;
+      name: string;
+      status: 'CUMPLIDA' | 'EN_RIESGO' | 'PERDIDA' | 'PENDIENTE';
+      economicImpact?: {
+        lossSavingsPerMonth: number;
+        lossSavingsPerYear: number;
+      };
+      alertDates?: {
+        evaluationDate: string;
+        applicationDate: string;
+        daysUntilEvaluation: number;
+      };
+      progress?: {
+        description: string;
+        missing?: string;
+      };
+    }>;
+    upcomingAlerts: Array<{
+      bonificationId: string;
+      alertType: 'T-45' | 'T-21' | 'T-7' | 'T-2';
+      message: string;
+      economicImpact: {
+        additionalCostPerMonth: number;
+        additionalCostPerYear: number;
+      };
+      actionRequired: string;
+    }>;
+  } {
+    const evalDate = currentDate || new Date();
+    const bonificationStatus: any[] = [];
+    const upcomingAlerts: any[] = [];
+
+    if (!prestamo.bonificaciones) {
+      return { bonificationStatus, upcomingAlerts };
+    }
+
+    for (const bonif of prestamo.bonificaciones) {
+      // Calculate economic impact if this bonification is lost
+      const economicImpact = this.calculateBonificationLossImpact(prestamo, bonif.id, currentDate);
+      
+      // Calculate alert dates if applicable
+      let alertDates;
+      if (prestamo.fechaFinPeriodo && prestamo.fechaEvaluacion) {
+        const evaluationDate = new Date(prestamo.fechaEvaluacion);
+        const daysUntilEvaluation = Math.ceil((evaluationDate.getTime() - evalDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        alertDates = {
+          evaluationDate: prestamo.fechaEvaluacion,
+          applicationDate: prestamo.fechaFinPeriodo,
+          daysUntilEvaluation
+        };
+
+        // Generate alerts based on days remaining
+        if (daysUntilEvaluation > 0) {
+          if ([45, 21, 7, 2].includes(daysUntilEvaluation)) {
+            const alertType = `T-${daysUntilEvaluation}` as 'T-45' | 'T-21' | 'T-7' | 'T-2';
+            upcomingAlerts.push({
+              bonificationId: bonif.id,
+              alertType,
+              message: `Bonificación "${bonif.nombre}" en riesgo. Te falta ${bonif.progreso?.faltante || 'cumplir requisitos'}. Si no la cumples antes del ${prestamo.fechaEvaluacion}, tu cuota subirá +${economicImpact.additionalCostPerMonth.toFixed(2)} €/mes (+${economicImpact.additionalCostPerYear.toFixed(2)} €/año) desde ${prestamo.fechaFinPeriodo}.`,
+              economicImpact,
+              actionRequired: this.getBonificationActionRequired(bonif)
+            });
+          }
+        }
+      }
+
+      bonificationStatus.push({
+        bonificationId: bonif.id,
+        name: bonif.nombre,
+        status: bonif.estado,
+        economicImpact: bonif.estado !== 'CUMPLIDA' ? economicImpact : undefined,
+        alertDates,
+        progress: bonif.progreso
+      });
+    }
+
+    return { bonificationStatus, upcomingAlerts };
+  }
+
+  /**
+   * Calculate economic impact of losing a specific bonification
+   */
+  private calculateBonificationLossImpact(prestamo: Prestamo, bonificationId: string, currentDate?: Date): {
+    additionalCostPerMonth: number;
+    additionalCostPerYear: number;
+  } {
+    const bonification = prestamo.bonificaciones?.find(b => b.id === bonificationId);
+    if (!bonification) {
+      return { additionalCostPerMonth: 0, additionalCostPerYear: 0 };
+    }
+
+    const fechaFirma = new Date(prestamo.fechaFirma);
+    const evalDate = currentDate || new Date();
+    const mesesTranscurridos = this.getMonthsDifference(fechaFirma, evalDate);
+    const mesesRestantes = Math.max(1, prestamo.plazoMesesTotal - mesesTranscurridos);
+
+    const currentRate = this.calculateBonifiedRate(prestamo, currentDate);
+    const rateWithoutThisBonif = currentRate + bonification.reduccionPuntosPorcentuales;
+
+    const currentPayment = this.calculateFrenchPayment(prestamo.principalVivo, currentRate, mesesRestantes);
+    const paymentWithoutBonif = this.calculateFrenchPayment(prestamo.principalVivo, rateWithoutThisBonif, mesesRestantes);
+
+    const additionalCostPerMonth = paymentWithoutBonif - currentPayment;
+    const additionalCostPerYear = additionalCostPerMonth * 12;
+
+    return {
+      additionalCostPerMonth: Math.round(additionalCostPerMonth * 100) / 100,
+      additionalCostPerYear: Math.round(additionalCostPerYear * 100) / 100
+    };
+  }
+
+  /**
+   * Get action required message for bonification compliance
+   */
+  private getBonificationActionRequired(bonification: any): string {
+    switch (bonification.regla.tipo) {
+      case 'NOMINA':
+        return `Asegurar nómina ≥ ${bonification.regla.minimoMensual}€ por ${bonification.lookbackMeses} meses`;
+      case 'TARJETA':
+        return `Realizar al menos ${bonification.regla.movimientosMesMin} movimientos con tarjeta por mes`;
+      case 'SEGURO_HOGAR':
+        return 'Mantener seguro de hogar activo';
+      case 'SEGURO_VIDA':
+        return 'Mantener seguro de vida activo';
+      default:
+        return bonification.regla.descripcion || 'Cumplir requisitos específicos';
+    }
+  }
+
+  /**
    * Generate complete payment schedule
    * @param prestamo Loan configuration
    * @returns Complete payment plan

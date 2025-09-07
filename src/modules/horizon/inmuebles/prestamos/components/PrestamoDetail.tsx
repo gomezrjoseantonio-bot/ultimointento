@@ -11,6 +11,7 @@ import { formatEuro, formatDate, formatPercentage } from '../../../../../utils/f
 import { Prestamo, PlanPagos } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
 import AmortizationSimulator from './AmortizationSimulator';
+import BonificationPanel from './BonificationPanel';
 
 interface PrestamoDetailProps {
   prestamoId: string;
@@ -172,6 +173,9 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
           </span>
         </div>
       </div>
+
+      {/* Bonifications Panel */}
+      <BonificationPanel prestamo={prestamo} />
 
       {/* Payment Schedule */}
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
