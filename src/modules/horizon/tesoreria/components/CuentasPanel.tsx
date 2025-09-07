@@ -103,6 +103,23 @@ const CuentasPanel: React.FC = () => {
     }
   }, [accounts, usageFilter]);
 
+  // Handle editing account - populate form when editingAccount changes
+  useEffect(() => {
+    if (editingAccount) {
+      setNewAccountForm({
+        alias: editingAccount.name,
+        bank: editingAccount.bank,
+        iban: editingAccount.iban || '',
+        openingBalance: editingAccount.openingBalance.toString(),
+        minimumBalance: editingAccount.minimumBalance?.toString() || '',
+        includeInConsolidated: editingAccount.includeInConsolidated ?? true,
+        usage_scope: editingAccount.usage_scope || 'mixto',
+        logoFile: null,
+        logoPreview: editingAccount.logo_url ? getLogoFromStorage(editingAccount.id!) : null
+      });
+    }
+  }, [editingAccount]);
+
   const getAccountStatus = (account: Account): 'healthy' | 'warning' | 'critical' => {
     const minimumBalance = account.minimumBalance || 200;
     
@@ -216,6 +233,8 @@ const CuentasPanel: React.FC = () => {
   };
 
   const handleCreateAccount = async () => {
+    const isEditing = editingAccount !== null;
+    
     // Enhanced validation
     if (!newAccountForm.alias.trim()) {
       toast.error('El alias de la cuenta es obligatorio');
@@ -240,17 +259,16 @@ const CuentasPanel: React.FC = () => {
     try {
       setIsCreatingAccount(true);
       
-      let logoUrl = undefined;
+      let logoUrl = editingAccount?.logo_url; // Keep existing logo for edits
       
       // Handle logo upload if present
       if (newAccountForm.logoFile) {
         try {
-          // For now, we'll generate a temporary ID to use for logo storage
-          const tempId = Date.now();
-          const { logoUrl: uploadedLogoUrl } = await processLogoUpload(newAccountForm.logoFile, tempId);
+          const accountId = editingAccount?.id || Date.now();
+          const { logoUrl: uploadedLogoUrl } = await processLogoUpload(newAccountForm.logoFile, accountId);
           logoUrl = uploadedLogoUrl;
         } catch (error) {
-          toast.error('Error subiendo el logo, pero la cuenta se creará sin logo');
+          toast.error('Error subiendo el logo, pero la cuenta se guardará sin cambios en el logo');
         }
       }
       
@@ -260,24 +278,30 @@ const CuentasPanel: React.FC = () => {
         iban: newAccountForm.iban.trim() || undefined,
         includeInConsolidated: newAccountForm.includeInConsolidated,
         openingBalance: parseEuropeanNumber(newAccountForm.openingBalance),
-        openingBalanceDate: new Date().toISOString(),
+        openingBalanceDate: isEditing ? editingAccount!.openingBalanceDate : new Date().toISOString(),
         usage_scope: newAccountForm.usage_scope,
         logo_url: logoUrl
       };
 
-      const newAccount = await treasuryAPI.accounts.createAccount(accountData);
+      let updatedAccount: Account;
+      
+      if (isEditing) {
+        updatedAccount = await treasuryAPI.accounts.updateAccount(editingAccount!.id!, accountData);
+        toast.success('Cuenta actualizada correctamente');
+      } else {
+        updatedAccount = await treasuryAPI.accounts.createAccount(accountData);
+        toast.success('Cuenta creada correctamente');
+      }
       
       // Update minimum balance if specified
       if (newAccountForm.minimumBalance) {
         const db = await initDB();
-        const updatedAccount = {
-          ...newAccount,
+        const accountWithMinBalance = {
+          ...updatedAccount,
           minimumBalance: parseEuropeanNumber(newAccountForm.minimumBalance)
         };
-        await db.put('accounts', updatedAccount);
+        await db.put('accounts', accountWithMinBalance);
       }
-
-      toast.success('Cuenta creada correctamente');
       
       // Reset form and reload accounts
       if (newAccountForm.logoPreview) {
@@ -296,15 +320,228 @@ const CuentasPanel: React.FC = () => {
       });
       setShowImport(false);
       setShowCreateForm(false);
+      setEditingAccount(null);
       await loadAccounts();
       
     } catch (error) {
-      console.error('Error creating account:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al crear la cuenta');
+      console.error('Error saving account:', error);
+      toast.error(error instanceof Error ? error.message : `Error al ${isEditing ? 'actualizar' : 'crear'} la cuenta`);
     } finally {
       setIsCreatingAccount(false);
     }
   };
+
+  // Create/Edit Form Modal
+  if (showCreateForm) {
+    const isEditing = editingAccount !== null;
+    const formTitle = isEditing ? 'Editar Cuenta' : 'Nueva Cuenta';
+    
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                setShowCreateForm(false);
+                setEditingAccount(null);
+                if (newAccountForm.logoPreview) {
+                  URL.revokeObjectURL(newAccountForm.logoPreview);
+                }
+                setNewAccountForm({
+                  alias: '',
+                  bank: '',
+                  iban: '',
+                  openingBalance: '',
+                  minimumBalance: '',
+                  includeInConsolidated: true,
+                  usage_scope: 'mixto',
+                  logoFile: null,
+                  logoPreview: null
+                });
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{formTitle}</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {isEditing ? 'Modifica los datos de la cuenta' : 'Crea una nueva cuenta bancaria'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta *</label>
+              <input
+                type="text"
+                value={newAccountForm.alias}
+                onChange={(e) => handleNewAccountChange('alias', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                placeholder="ej. Cuenta Corriente Principal"
+                disabled={isCreatingAccount}
+              />
+              {newAccountForm.alias && (newAccountForm.alias.length < 2 || newAccountForm.alias.length > 50) && (
+                <p className="text-xs text-red-600 mt-1">El alias debe tener entre 2 y 50 caracteres</p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Banco *</label>
+              <input
+                type="text"
+                value={newAccountForm.bank}
+                onChange={(e) => handleNewAccountChange('bank', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                placeholder="ej. Banco Santander"
+                disabled={isCreatingAccount}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">IBAN (opcional)</label>
+              <input
+                type="text"
+                value={newAccountForm.iban}
+                onChange={(e) => handleNewAccountChange('iban', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                placeholder="ES91 2100 0418 4502 0005 1332"
+                disabled={isCreatingAccount}
+              />
+              {newAccountForm.iban && !validateIBAN(newAccountForm.iban) && (
+                <p className="text-xs text-red-600 mt-1">Formato de IBAN inválido</p>
+              )}
+            </div>
+            
+            {/* Usage/Uso field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Uso *</label>
+              <select
+                value={newAccountForm.usage_scope}
+                onChange={(e) => handleNewAccountChange('usage_scope', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                disabled={isCreatingAccount}
+              >
+                <option value="personal">Personal</option>
+                <option value="inmuebles">Inmuebles</option>
+                <option value="mixto">Mixto</option>
+              </select>
+            </div>
+
+            {/* Logo upload field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opcional)</label>
+              <div className="space-y-3">
+                {!newAccountForm.logoPreview ? (
+                  <div className="flex items-center justify-center w-full">
+                    <label htmlFor="logo-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click para subir</span> o arrastra aquí
+                        </p>
+                        <p className="text-xs text-gray-500">JPG, PNG (máx. 512KB)</p>
+                      </div>
+                      <input 
+                        id="logo-upload" 
+                        type="file" 
+                        className="hidden" 
+                        accept=".jpg,.jpeg,.png"
+                        onChange={handleLogoChange}
+                        disabled={isCreatingAccount}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="w-32 h-32 mx-auto border-2 border-gray-200 rounded-lg overflow-hidden">
+                      <img 
+                        src={newAccountForm.logoPreview} 
+                        alt="Logo preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      disabled={isCreatingAccount}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial</label>
+              <input
+                type="text"
+                value={newAccountForm.openingBalance}
+                onChange={(e) => handleNewAccountChange('openingBalance', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                placeholder="1.234,56"
+                disabled={isCreatingAccount}
+              />
+              <p className="text-xs text-gray-500 mt-1">Formato europeo: 1.234,56</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Mínimo</label>
+              <input
+                type="text"
+                value={newAccountForm.minimumBalance}
+                onChange={(e) => handleNewAccountChange('minimumBalance', e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                placeholder="200,00"
+                disabled={isCreatingAccount}
+              />
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="includeInConsolidated"
+                checked={newAccountForm.includeInConsolidated}
+                onChange={(e) => handleNewAccountChange('includeInConsolidated', e.target.checked)}
+                className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-gray-300 rounded"
+                disabled={isCreatingAccount}
+              />
+              <label htmlFor="includeInConsolidated" className="ml-2 block text-sm text-gray-700">
+                Incluir en consolidado
+              </label>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <button 
+                onClick={handleCreateAccount}
+                disabled={isCreatingAccount || !newAccountForm.alias.trim() || !newAccountForm.bank.trim()}
+                className="flex-1 bg-brand-navy text-white py-3 px-4 rounded-lg hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingAccount ? 'Guardando...' : (isEditing ? 'Actualizar Cuenta' : 'Crear Cuenta')}
+              </button>
+              <button 
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setEditingAccount(null);
+                }}
+                disabled={isCreatingAccount}
+                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -671,7 +908,10 @@ const CuentasPanel: React.FC = () => {
             <Upload className="w-4 h-4 mr-2" />
             Importar
           </button>
-          <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy">
+          <button 
+            onClick={() => setShowCreateForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nueva Cuenta
           </button>
