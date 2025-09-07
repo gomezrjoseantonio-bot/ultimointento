@@ -13,9 +13,10 @@ import {
   Eye
 } from 'lucide-react';
 import { formatEuro } from '../../../../../utils/formatUtils';
-import { Prestamo } from '../../../../../types/prestamos';
+import { Prestamo, Bonificacion } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { prestamosCalculationService } from '../../../../../services/prestamosCalculationService';
+import BonificationForm from './BonificationForm';
 
 interface PrestamoFormProps {
   onSuccess: (prestamo: Prestamo) => void;
@@ -54,6 +55,12 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
   const [comisionAmortizacionParcial, setComisionAmortizacionParcial] = useState<string>('0.01');
   const [comisionCancelacionTotal, setComisionCancelacionTotal] = useState<string>('0.005');
   const [gastosFijosOperacion, setGastosFijosOperacion] = useState<string>('30');
+
+  // Bonifications
+  const [bonificaciones, setBonificaciones] = useState<Bonificacion[]>([]);
+  const [fechaFinPeriodo, setFechaFinPeriodo] = useState<string>('');
+  const [fechaEvaluacion, setFechaEvaluacion] = useState<string>('');
+  const [offsetEvaluacionDias, setOffsetEvaluacionDias] = useState<string>('30');
 
   // State
   const [loading, setLoading] = useState(false);
@@ -172,7 +179,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
         // Costs
         comisionAmortizacionParcial: parseFloat(comisionAmortizacionParcial),
         comisionCancelacionTotal: parseFloat(comisionCancelacionTotal),
-        gastosFijosOperacion: parseFloat(gastosFijosOperacion)
+        gastosFijosOperacion: parseFloat(gastosFijosOperacion),
+
+        // Bonifications
+        ...(bonificaciones.length > 0 && { bonificaciones }),
+        ...(fechaFinPeriodo && { fechaFinPeriodo }),
+        ...(fechaEvaluacion && { fechaEvaluacion }),
+        ...(offsetEvaluacionDias && { offsetEvaluacionDias: parseInt(offsetEvaluacionDias) })
       };
 
       const newPrestamo = await prestamosService.createPrestamo(prestamoData);
@@ -640,6 +653,117 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 step="0.01"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Bonifications */}
+        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
+            <CreditCard className="h-5 w-5 text-[#022D5E]" />
+            <span>Bonificaciones</span>
+          </h2>
+
+          {/* Bonification period settings */}
+          <div className="mb-6">
+            <h3 className="font-medium text-[#374151] mb-4">Período de evaluación</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Fin del período bonificado
+                </label>
+                <input
+                  type="date"
+                  value={fechaFinPeriodo}
+                  onChange={(e) => setFechaFinPeriodo(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  placeholder="2025-12-31"
+                />
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Fecha hasta la cual se aplicarán las bonificaciones
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Fecha de evaluación
+                </label>
+                <input
+                  type="date"
+                  value={fechaEvaluacion}
+                  onChange={(e) => setFechaEvaluacion(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  placeholder="2025-12-01"
+                />
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Fecha de evaluación de cumplimiento
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Días antes del fin (offset)
+                </label>
+                <input
+                  type="number"
+                  value={offsetEvaluacionDias}
+                  onChange={(e) => setOffsetEvaluacionDias(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  placeholder="30"
+                  min="0"
+                />
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Días antes del fin del período para evaluar
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bonifications list */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-[#374151]">Bonificaciones configuradas</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const newBonif: Bonificacion = {
+                    id: `bonif_${Date.now()}`,
+                    nombre: '',
+                    reduccionPuntosPorcentuales: 0,
+                    lookbackMeses: 3,
+                    regla: { tipo: 'NOMINA', minimoMensual: 1000 },
+                    estado: 'PENDIENTE'
+                  };
+                  setBonificaciones([...bonificaciones, newBonif]);
+                }}
+                className="px-3 py-1 text-sm bg-[#022D5E] text-white rounded-md hover:bg-[#033A73] transition-colors"
+              >
+                + Añadir bonificación
+              </button>
+            </div>
+
+            {bonificaciones.length === 0 ? (
+              <div className="text-center py-6 text-[#6B7280]">
+                <p>No hay bonificaciones configuradas</p>
+                <p className="text-sm">Haz clic en "Añadir bonificación" para empezar</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bonificaciones.map((bonif, index) => (
+                  <BonificationForm 
+                    key={bonif.id}
+                    bonification={bonif}
+                    onChange={(updatedBonif) => {
+                      const newBonifs = [...bonificaciones];
+                      newBonifs[index] = updatedBonif;
+                      setBonificaciones(newBonifs);
+                    }}
+                    onRemove={() => {
+                      setBonificaciones(bonificaciones.filter((_, i) => i !== index));
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
