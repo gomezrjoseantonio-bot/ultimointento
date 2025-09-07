@@ -36,7 +36,6 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Horizontes', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
-    { label: 'Bancos & Cuentas', path: '/configuracion/bancos-cuentas' },
     { label: 'Usuarios & Roles', path: '/configuracion/usuarios-roles' },
     { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
     { label: 'Email entrante', path: '/configuracion/email-entrante' },

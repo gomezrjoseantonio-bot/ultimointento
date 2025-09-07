@@ -41,7 +41,6 @@ const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/decl
 const PresupuestoNuevo = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestoNuevo'));
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
-const BancosCuentas = React.lazy(() => import('./modules/horizon/configuracion/bancos-cuentas/BancosCuentas'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
@@ -377,13 +376,10 @@ function App() {
             
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
-              <Route index element={<Navigate to="/configuracion/bancos-cuentas" replace />} />
+              <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
+              {/* Redirect bancos-cuentas to unified location */}
+              <Route path="bancos-cuentas" element={<Navigate to="/tesoreria#cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
-              <Route path="bancos-cuentas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <BancosCuentas />
-                </React.Suspense>
-              } />
               <Route path="usuarios-roles" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <UsuariosRoles />

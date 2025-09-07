@@ -510,6 +510,7 @@ export interface Account {
   isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
   // H-HOTFIX: Usage scope for reconciliation prioritization
   usage_scope?: AccountUsageScope; // Default: 'mixto'
+  logo_url?: string; // Logo image URL (JPG/PNG, max 512KB)
   createdAt: string;
   updatedAt: string;
 }
