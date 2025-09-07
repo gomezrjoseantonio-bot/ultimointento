@@ -128,17 +128,102 @@ const CuentasPanel: React.FC = () => {
   };
 
   // New account form handlers
-  const handleNewAccountChange = (field: string, value: string | boolean) => {
+  const handleNewAccountChange = (field: string, value: string | boolean | File | null) => {
     setNewAccountForm(prev => ({
       ...prev,
       [field]: value
     }));
   };
 
+  // Handle logo file selection
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateLogoFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error!);
+      return;
+    }
+
+    try {
+      const previewUrl = URL.createObjectURL(file);
+      setNewAccountForm(prev => ({
+        ...prev,
+        logoFile: file,
+        logoPreview: previewUrl
+      }));
+    } catch (error) {
+      toast.error('Error procesando el logo');
+    }
+  };
+
+  // Remove logo
+  const handleRemoveLogo = () => {
+    if (newAccountForm.logoPreview) {
+      URL.revokeObjectURL(newAccountForm.logoPreview);
+    }
+    setNewAccountForm(prev => ({
+      ...prev,
+      logoFile: null,
+      logoPreview: null
+    }));
+  };
+
+  // Usage and display helpers
+  const getUsageLabel = (usage: string) => {
+    switch (usage) {
+      case 'personal': return 'Personal';
+      case 'inmuebles': return 'Inmuebles';
+      case 'mixto': return 'Mixto';
+      default: return 'Mixto';
+    }
+  };
+
+  const getUsageColor = (usage: string) => {
+    switch (usage) {
+      case 'personal': return 'bg-blue-100 text-blue-800';
+      case 'inmuebles': return 'bg-green-100 text-green-800';
+      case 'mixto': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const toggleIbanDisplay = (accountId: number) => {
+    setShowIbanFull(prev => ({
+      ...prev,
+      [accountId]: !prev[accountId]
+    }));
+  };
+
+  const renderIban = (account: Account) => {
+    if (!account.iban) return 'No especificado';
+    
+    const showFull = showIbanFull[account.id!];
+    const displayIban = showFull ? account.iban : maskIBAN(account.iban);
+    
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-sm">{displayIban}</span>
+        <button
+          onClick={() => toggleIbanDisplay(account.id!)}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          {showFull ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    );
+  };
+
   const handleCreateAccount = async () => {
-    // Validation
+    // Enhanced validation
     if (!newAccountForm.alias.trim()) {
       toast.error('El alias de la cuenta es obligatorio');
+      return;
+    }
+    
+    if (newAccountForm.alias.trim().length < 2 || newAccountForm.alias.trim().length > 50) {
+      toast.error('El alias debe tener entre 2 y 50 caracteres');
       return;
     }
     
@@ -155,13 +240,29 @@ const CuentasPanel: React.FC = () => {
     try {
       setIsCreatingAccount(true);
       
+      let logoUrl = undefined;
+      
+      // Handle logo upload if present
+      if (newAccountForm.logoFile) {
+        try {
+          // For now, we'll generate a temporary ID to use for logo storage
+          const tempId = Date.now();
+          const { logoUrl: uploadedLogoUrl } = await processLogoUpload(newAccountForm.logoFile, tempId);
+          logoUrl = uploadedLogoUrl;
+        } catch (error) {
+          toast.error('Error subiendo el logo, pero la cuenta se creará sin logo');
+        }
+      }
+      
       const accountData = {
         alias: newAccountForm.alias.trim(),
         bank: newAccountForm.bank.trim(),
         iban: newAccountForm.iban.trim() || undefined,
         includeInConsolidated: newAccountForm.includeInConsolidated,
         openingBalance: parseEuropeanNumber(newAccountForm.openingBalance),
-        openingBalanceDate: new Date().toISOString()
+        openingBalanceDate: new Date().toISOString(),
+        usage_scope: newAccountForm.usage_scope,
+        logo_url: logoUrl
       };
 
       const newAccount = await treasuryAPI.accounts.createAccount(accountData);
@@ -179,6 +280,9 @@ const CuentasPanel: React.FC = () => {
       toast.success('Cuenta creada correctamente');
       
       // Reset form and reload accounts
+      if (newAccountForm.logoPreview) {
+        URL.revokeObjectURL(newAccountForm.logoPreview);
+      }
       setNewAccountForm({
         alias: '',
         bank: '',
@@ -191,6 +295,7 @@ const CuentasPanel: React.FC = () => {
         logoPreview: null
       });
       setShowImport(false);
+      setShowCreateForm(false);
       await loadAccounts();
       
     } catch (error) {
@@ -418,6 +523,67 @@ const CuentasPanel: React.FC = () => {
                   disabled={isCreatingAccount}
                 />
               </div>
+              
+              {/* Usage/Uso field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Uso *</label>
+                <select
+                  value={newAccountForm.usage_scope}
+                  onChange={(e) => handleNewAccountChange('usage_scope', e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-brand-navy focus:border-brand-navy"
+                  disabled={isCreatingAccount}
+                >
+                  <option value="personal">Personal</option>
+                  <option value="inmuebles">Inmuebles</option>
+                  <option value="mixto">Mixto</option>
+                </select>
+              </div>
+
+              {/* Logo upload field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Logo (opcional)</label>
+                <div className="space-y-3">
+                  {!newAccountForm.logoPreview ? (
+                    <div className="flex items-center justify-center w-full">
+                      <label htmlFor="logo-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                          <p className="mb-2 text-sm text-gray-500">
+                            <span className="font-semibold">Click para subir</span> o arrastra aquí
+                          </p>
+                          <p className="text-xs text-gray-500">JPG, PNG (máx. 512KB)</p>
+                        </div>
+                        <input 
+                          id="logo-upload" 
+                          type="file" 
+                          className="hidden" 
+                          accept=".jpg,.jpeg,.png"
+                          onChange={handleLogoChange}
+                          disabled={isCreatingAccount}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <div className="w-32 h-32 mx-auto border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <img 
+                          src={newAccountForm.logoPreview} 
+                          alt="Logo preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        disabled={isCreatingAccount}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Saldo Inicial</label>
                 <input
@@ -512,6 +678,37 @@ const CuentasPanel: React.FC = () => {
         </div>
       </div>
 
+      {/* Usage Filter */}
+      <div className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700">Filtrar por uso:</span>
+        </div>
+        <div className="flex gap-2">
+          {[
+            { key: 'all', label: 'Todos' },
+            { key: 'personal', label: 'Personal' },
+            { key: 'inmuebles', label: 'Inmuebles' },
+            { key: 'mixto', label: 'Mixto' }
+          ].map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => setUsageFilter(filter.key as typeof usageFilter)}
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                usageFilter === filter.key
+                  ? 'bg-brand-navy text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto text-sm text-gray-500">
+          {filteredAccounts.length} de {accounts.length} cuentas
+        </div>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -587,7 +784,7 @@ const CuentasPanel: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {accounts.map(account => {
+            {filteredAccounts.map(account => {
               const status = getAccountStatus(account);
               const minimumBalance = account.minimumBalance || 200;
               
@@ -602,16 +799,38 @@ const CuentasPanel: React.FC = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className={`p-2 rounded-lg border ${getStatusColor(status)}`}>
-                        {getStatusIcon(status)}
+                      {/* Logo or icon */}
+                      <div className="flex-shrink-0">
+                        {account.logo_url ? (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-gray-200">
+                            <img 
+                              src={getLogoFromStorage(account.id!) || account.logo_url} 
+                              alt={`${account.bank} logo`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className={`p-3 rounded-lg border ${getStatusColor(status)}`}>
+                            {getStatusIcon(status)}
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <div className="font-medium text-gray-900">{account.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {account.bank} {account.iban && `• ${account.iban.slice(-4)}`}
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-medium text-gray-900">{account.name}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${getUsageColor(account.usage_scope || 'mixto')}`}>
+                            {getUsageLabel(account.usage_scope || 'mixto')}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {account.bank}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {renderIban(account)}
                         </div>
                         {account.minimumBalance && (
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-gray-400 mt-1">
                             Saldo mínimo: {formatEuro(minimumBalance)}
                           </div>
                         )}
@@ -632,15 +851,30 @@ const CuentasPanel: React.FC = () => {
                         </div>
                       </div>
                       
-                      <button 
-                        className="p-2 text-gray-400 hover:text-gray-600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Handle edit action
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingAccount(account);
+                            setShowCreateForm(true);
+                          }}
+                          title="Editar cuenta"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Handle disable/delete action based on usage
+                            toast.error('Funcionalidad de eliminación próximamente');
+                          }}
+                          title="Deshabilitar/Eliminar cuenta"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
