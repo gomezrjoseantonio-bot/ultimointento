@@ -156,7 +156,7 @@ const PresupuestoNuevo: React.FC = () => {
       linea.categoria || '',
       linea.tipoConcepto || '',
       linea.frecuencia,
-      linea.importeUnitario.toString(),
+      (linea.importeUnitario || 0).toString(),
       linea.cuentaId || '',
       `${linea.desde || ''} - ${linea.hasta || ''}`,
       linea.origen,

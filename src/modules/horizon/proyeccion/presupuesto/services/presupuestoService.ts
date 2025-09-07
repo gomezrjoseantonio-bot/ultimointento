@@ -129,7 +129,7 @@ export const generarCalendarioLinea = (
   year: number
 ): EventoPresupuesto[] => {
   const eventos: EventoPresupuesto[] = [];
-  const importeUnitario = linea.importeUnitario;
+  const importeUnitario = linea.importeUnitario || 0;
   
   // Calculate fecha desde and hasta
   const fechaDesde = linea.desde ? new Date(linea.desde) : new Date(year, 0, 1);
@@ -273,10 +273,22 @@ export const sembrarPresupuesto = async (
   
   // Generate income from contracts
   for (const contract of activeContracts) {
+    // Calculate monthly amounts (all 12 months with rent amount)
+    const amountByMonth = new Array(12).fill(contract.monthlyRent);
+    
     const lineaId = await createPresupuestoLinea({
       presupuestoId,
-      tipo: "Ingreso",
+      scope: "INMUEBLES",
+      type: "INGRESO",
       inmuebleId: contract.propertyId.toString(),
+      category: "Rentas de alquiler",
+      label: `Alquiler - ${contract.tenant.name}`,
+      amountByMonth,
+      accountId: undefined, // Will be assigned later
+      sourceRef: contract.id?.toString(),
+      note: 'Generado automáticamente desde contrato',
+      // Compatibility fields (deprecated but maintained)
+      tipo: "Ingreso",
       categoria: "Alquiler",
       tipoConcepto: `Alquiler - ${contract.tenant.name}`,
       frecuencia: "Mensual",
@@ -305,10 +317,21 @@ export const sembrarPresupuesto = async (
   
   for (const inmuebleId of inmuebleIds) {
     for (const { categoria, tipoConcepto, frecuencia } of expenseCategories) {
+      // Calculate monthly amounts (start with 0 - to be filled manually)
+      const amountByMonth = new Array(12).fill(0);
+      
       const lineaId = await createPresupuestoLinea({
         presupuestoId,
-        tipo: "Gasto",
+        scope: "INMUEBLES",
+        type: "COSTE",
         inmuebleId,
+        category: categoria,
+        label: tipoConcepto,
+        amountByMonth,
+        accountId: undefined, // Will be assigned later
+        note: 'Completar manualmente',
+        // Compatibility fields (deprecated but maintained)
+        tipo: "Gasto",
         categoria,
         tipoConcepto,
         frecuencia,
@@ -391,7 +414,7 @@ export const validarLinea = (linea: Omit<PresupuestoLinea, 'id'>): string[] => {
   if (!linea.categoria) errores.push('Categoría es requerida');
   if (!linea.tipoConcepto) errores.push('Tipo de concepto es requerido');
   if (!linea.frecuencia) errores.push('Frecuencia es requerida');
-  if (linea.importeUnitario <= 0) errores.push('Importe debe ser mayor que 0');
+  if (!linea.importeUnitario || linea.importeUnitario <= 0) errores.push('Importe debe ser mayor que 0');
   
   if (linea.dayOfMonth && (linea.dayOfMonth < 1 || linea.dayOfMonth > 28)) {
     errores.push('Día del mes debe estar entre 1 y 28');

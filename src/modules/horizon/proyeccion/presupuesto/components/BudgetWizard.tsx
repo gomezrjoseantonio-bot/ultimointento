@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, X } from 'lucide-react';
-import WizardStepAlcance from './WizardStepAlcance';
-import WizardStepSemilla from './WizardStepSemilla';
-import WizardStepConfiguracion from './WizardStepConfiguracion';
-import WizardStepRevision from './WizardStepRevision';
-import { BudgetLine } from '../../../../../services/db';
+import WizardStepScopeSelection from './WizardStepScopeSelection';
+import WizardStepSemillaNuevo from './WizardStepSemillaNuevo';
+import WizardStepConfiguracionNuevo from './WizardStepConfiguracionNuevo';
+import WizardStepRevisionNuevo from './WizardStepRevisionNuevo';
+import { PresupuestoLinea } from '../../../../../services/db';
 
 interface BudgetWizardProps {
   year: number;
@@ -13,32 +13,25 @@ interface BudgetWizardProps {
 }
 
 export interface WizardData {
-  scope: {
-    propertyIds: number[];
-    roomIds?: string[];
-    startMonth: number;
-    isFullYear: boolean;
-  };
-  lines: Omit<BudgetLine, 'id' | 'budgetId'>[];
+  scopes: ('PERSONAL' | 'INMUEBLES')[];
+  startMonth: number;
+  isFullYear: boolean;
+  lines: Omit<PresupuestoLinea, 'id' | 'presupuestoId'>[];
   name: string;
-  version: string;
 }
 
 const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [wizardData, setWizardData] = useState<WizardData>({
-    scope: {
-      propertyIds: [],
-      startMonth: 1,
-      isFullYear: true
-    },
+    scopes: [],
+    startMonth: 1,
+    isFullYear: true,
     lines: [],
-    name: `Presupuesto ${year}`,
-    version: 'v1.0'
+    name: `Presupuesto ${year}`
   });
 
   const steps = [
-    { id: 1, title: 'Alcance', description: 'Selección de inmuebles y período' },
+    { id: 1, title: 'Ámbitos', description: 'Selección de ámbitos y período' },
     { id: 2, title: 'Semilla automática', description: 'Datos base y configuración' },
     { id: 3, title: 'Configuración', description: 'Configuración de cada partida' },
     { id: 4, title: 'Revisión', description: 'Confirmación y guardado' }
@@ -58,18 +51,23 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
 
   const handleStepComplete = (stepData?: any) => {
     if (currentStep === 1) {
+      // Scope selection step
       setWizardData(prev => ({
         ...prev,
-        scope: stepData
+        scopes: stepData.selectedScopes,
+        startMonth: stepData.startMonth,
+        isFullYear: stepData.isFullYear
       }));
       handleNext();
     } else if (currentStep === 2) {
+      // Semilla step
       setWizardData(prev => ({
         ...prev,
         lines: stepData
       }));
       handleNext();
     } else if (currentStep === 3) {
+      // Configuration step
       setWizardData(prev => ({
         ...prev,
         lines: stepData
@@ -85,33 +83,40 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
     switch (currentStep) {
       case 1:
         return (
-          <WizardStepAlcance
+          <WizardStepScopeSelection
             year={year}
-            initialData={wizardData.scope}
+            initialData={{
+              selectedScopes: wizardData.scopes,
+              year,
+              startMonth: wizardData.startMonth,
+              isFullYear: wizardData.isFullYear
+            }}
             onComplete={handleStepComplete}
           />
         );
       case 2:
         return (
-          <WizardStepSemilla
+          <WizardStepSemillaNuevo
             year={year}
-            scope={wizardData.scope}
+            scopes={wizardData.scopes}
+            startMonth={wizardData.startMonth}
+            isFullYear={wizardData.isFullYear}
             initialLines={wizardData.lines}
             onComplete={handleStepComplete}
           />
         );
       case 3:
         return (
-          <WizardStepConfiguracion
+          <WizardStepConfiguracionNuevo
             year={year}
-            scope={wizardData.scope}
+            scopes={wizardData.scopes}
             initialLines={wizardData.lines}
             onComplete={handleStepComplete}
           />
         );
       case 4:
         return (
-          <WizardStepRevision
+          <WizardStepRevisionNuevo
             year={year}
             wizardData={wizardData}
             onComplete={handleStepComplete}

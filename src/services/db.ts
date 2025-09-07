@@ -839,33 +839,40 @@ export interface Presupuesto {
 export interface PresupuestoLinea {
   id: UUID;
   presupuestoId: UUID;
-  tipo: TipoLinea;                     // Ingreso/Gasto
+  scope: "INMUEBLES" | "PERSONAL";     // Ámbito: Inmuebles o Personal
+  type: "INGRESO" | "COSTE";           // Tipo: Ingreso o Coste
   inmuebleId?: UUID;                   // requerido salvo líneas globales
   roomId?: UUID;                       // opcional; si aplica por habitación
-  categoria?: CategoriaGasto | CategoriaIngreso;
-  tipoConcepto?: string;               // "Electricidad", "Seguro hogar", "Renta habitación 1", etc.
-  proveedor?: string;                  // opcional (para gastos)
-  proveedorNif?: string;               // opcional
-  cuentaId?: UUID;                     // cuenta por la que se mueve el dinero
-  // Calendario
-  frecuencia: FrecuenciaPago;
-  // Si Mensual/Bimestral/...: usar dayOfMonth (1..28 recomendado) o dayOfPeriod
-  dayOfMonth?: number;                 // día de pago/cobro típico
-  mesesActivos?: number[];             // 1..12; para marcar meses concretos si no es todo el año
-  fechaUnica?: string;                 // si es pago/cobro único
-  // Importe
-  importeUnitario: number;             // importe por evento
-  ivaIncluido?: boolean;               // default true; no afecta a tesorería
-  // Vigencia parcial (altas/bajas a mitad de año)
-  desde?: string;                      // ISO (default 01-01 del año)
-  hasta?: string;                      // ISO (default 12-31 del año)
-  // Origen y control
-  origen: OrigenLinea;
-  editable: boolean;                   // si viene de semilla auto, true pero marcarlo
-  notas?: string;
-  // Referencias cruzadas para conciliación
-  contratoId?: UUID;                   // si proviene de un contrato de alquiler
-  prestamoId?: UUID;                   // si proviene de una hipoteca/préstamo
+  // Categorización AEAT
+  category: string;                    // Categoría principal: "Rentas de alquiler", "Nómina", "IBI", "Suministros", etc.
+  subcategory?: string;                // Subcategoría: "Luz", "Agua", "Gas", "Telco" para Suministros
+  label: string;                       // Texto libre: "Renta Piso Tenderina", "IBI piso X"
+  providerName?: string;               // Proveedor: "Endesa", opcional
+  accountId?: UUID;                    // Cuenta de cargo/abono (obligatorio antes de guardar)
+  sourceRef?: UUID;                    // ID de Contrato, Préstamo, etc. (opcional)
+  // Importes mensuales - Array de 12 posiciones para ENE...DIC
+  amountByMonth: number[];             // Importes mensuales [12]
+  note?: string;                       // Nota opcional
+  // Campos de compatibilidad (mantener por ahora)
+  tipo?: TipoLinea;                    // DEPRECATED: usar type
+  categoria?: CategoriaGasto | CategoriaIngreso; // DEPRECATED: usar category
+  tipoConcepto?: string;               // DEPRECATED: usar label
+  proveedor?: string;                  // DEPRECATED: usar providerName
+  proveedorNif?: string;               // DEPRECATED
+  cuentaId?: UUID;                     // DEPRECATED: usar accountId
+  frecuencia?: FrecuenciaPago;         // DEPRECATED
+  dayOfMonth?: number;                 // DEPRECATED
+  mesesActivos?: number[];             // DEPRECATED
+  fechaUnica?: string;                 // DEPRECATED
+  importeUnitario?: number;            // DEPRECATED
+  ivaIncluido?: boolean;               // DEPRECATED
+  desde?: string;                      // DEPRECATED
+  hasta?: string;                      // DEPRECATED
+  origen?: OrigenLinea;                // DEPRECATED
+  editable?: boolean;                  // DEPRECATED
+  notas?: string;                      // DEPRECATED: usar note
+  contratoId?: UUID;                   // DEPRECATED: usar sourceRef
+  prestamoId?: UUID;                   // DEPRECATED: usar sourceRef
 }
 
 // Legacy Budget Line interface (keep for backward compatibility)
