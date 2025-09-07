@@ -154,7 +154,6 @@ export const navigationConfig: NavigationItem[] = [
     icon: Settings,
     module: 'horizon',
     subTabs: [
-      { name: 'Bancos & Cuentas', href: '/configuracion/bancos-cuentas', icon: Banknote, module: 'horizon' },
       { name: 'Usuarios & Roles', href: '/configuracion/usuarios-roles', icon: Users, module: 'horizon' },
       { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'horizon' },
       { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'horizon' },
