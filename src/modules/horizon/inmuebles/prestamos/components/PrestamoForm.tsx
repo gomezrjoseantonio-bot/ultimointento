@@ -257,10 +257,11 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       let prestamo: Prestamo;
       if (prestamoId) {
         // Edit mode
-        prestamo = await prestamosService.updatePrestamo(prestamoId, prestamoData);
-        if (!prestamo) {
+        const updatedPrestamo = await prestamosService.updatePrestamo(prestamoId, prestamoData);
+        if (!updatedPrestamo) {
           throw new Error('No se pudo actualizar el préstamo');
         }
+        prestamo = updatedPrestamo;
       } else {
         // Create mode
         prestamo = await prestamosService.createPrestamo(prestamoData);

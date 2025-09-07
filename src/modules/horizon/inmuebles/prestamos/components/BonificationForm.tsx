@@ -20,14 +20,20 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
     bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : ''
   );
   const [minimoMensualDisplay, setMinimoMensualDisplay] = useState(
-    bonification.regla?.minimoMensual ? formatSpanishNumber(bonification.regla.minimoMensual, 0) : ''
+    bonification.regla?.tipo === 'NOMINA' && bonification.regla.minimoMensual 
+      ? formatSpanishNumber(bonification.regla.minimoMensual, 0) 
+      : ''
   );
 
   // Update display states when bonification prop changes
   useEffect(() => {
     setReduccionDisplay(formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 3));
     setCosteDisplay(bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : '');
-    setMinimoMensualDisplay(bonification.regla?.minimoMensual ? formatSpanishNumber(bonification.regla.minimoMensual, 0) : '');
+    setMinimoMensualDisplay(
+      bonification.regla?.tipo === 'NOMINA' && bonification.regla.minimoMensual 
+        ? formatSpanishNumber(bonification.regla.minimoMensual, 0) 
+        : ''
+    );
   }, [bonification]);
 
   const handleFieldChange = (field: keyof Bonificacion, value: any) => {
