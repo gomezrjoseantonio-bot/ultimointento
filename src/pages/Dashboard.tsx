@@ -8,6 +8,7 @@ import IncomeExpensesBlock from '../components/dashboard/IncomeExpensesBlock';
 import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
+import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
 
 const Dashboard: React.FC = () => {
   const { currentModule } = useTheme();
@@ -96,6 +97,12 @@ const Dashboard: React.FC = () => {
 
   const moduleInfo = getModuleInfo();
 
+  // Use HorizonVisualPanel for Horizon module
+  if (currentModule === 'horizon') {
+    return <HorizonVisualPanel />;
+  }
+
+  // For Pulse module, continue with the existing dashboard logic
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -144,8 +151,8 @@ const Dashboard: React.FC = () => {
             </div>
             <h3 className="text-lg font-medium text-neutral-900 mb-2">Empezar</h3>
             <p className="text-neutral-500 mb-6 max-w-md mx-auto">
-              Tu {currentModule === 'horizon' ? 'cartera de inversiones' : 'plataforma de gestión'} está vacía. 
-              {' '}Comienza {currentModule === 'horizon' ? 'importando tus datos o agregando nuevas entradas' : 'creando contratos y configurando automatizaciones'}.
+              Tu plataforma de gestión está vacía. 
+              {' '}Comienza creando contratos y configurando automatizaciones.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <button 

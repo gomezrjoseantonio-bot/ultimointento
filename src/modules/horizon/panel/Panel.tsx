@@ -1,8 +1,8 @@
 import React from 'react';
-import ModulePanel from '../../../components/common/ModulePanel';
+import HorizonVisualPanel from './components/HorizonVisualPanel';
 
 const Panel: React.FC = () => {
-  return <ModulePanel module="horizon" />;
+  return <HorizonVisualPanel />;
 };
 
 export default Panel;

@@ -11,15 +11,23 @@ module.exports = {
         'brand-navy': '#0E2A47',  // Legacy ATLAS navy (backward compatibility)
         'brand-teal': '#00B8C4',  // Turquesa Pulse - RESERVED FOR PULSE ONLY
         
-        // Official Horizon Design System Tokens
-        'hz-primary': '#0F2C5C',     // Official Horizon primary
-        'hz-primary-600': '#1E3A8A', // Official Horizon hover/active
+        // Official Horizon Design System Tokens (Updated per requirements)
+        'hz-primary': '#0A84FF',     // Primary Horizon blue #0A84FF
+        'hz-primary-dark': '#0A3D62', // Primary dark (text/borders) #0A3D62  
         'hz-bg': '#F7F9FC',          // Official Horizon soft background
-        'hz-text': '#0B1220',        // Official Horizon text
-        'hz-success': '#16A34A',     // Official Horizon success
-        'hz-warning': '#F59E0B',     // Official Horizon warning
-        'hz-error': '#DC2626',       // Official Horizon error
-        'hz-info': '#2563EB',        // Official Horizon info
+        'hz-text': '#111827',        // Text color #111827
+        'hz-success': '#10B981',     // Success green #10B981
+        'hz-warning': '#F59E0B',     // Warning yellow #F59E0B
+        'hz-error': '#EF4444',       // Error red #EF4444
+        'hz-info': '#0A84FF',        // Info blue same as primary
+        
+        // Horizon Neutral Colors per requirements
+        'hz-neutral-900': '#111827', // Darkest text
+        'hz-neutral-700': '#374151', // Secondary text
+        'hz-neutral-500': '#6B7280', // Muted text
+        'hz-neutral-300': '#D1D5DB', // Light borders
+        'hz-neutral-100': '#F3F4F6', // Light backgrounds
+        'hz-card-bg': '#FFFFFF',     // Card backgrounds
         
         // Legacy horizon colors (for backward compatibility)
         'horizon-navy': '#0F2C5C',   // Maps to hz-primary
