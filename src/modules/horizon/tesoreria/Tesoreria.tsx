@@ -5,6 +5,7 @@ import RadarPanel from './components/RadarPanel';
 import CuentasPanel from './components/CuentasPanel';
 import MovimientosPanel from './components/MovimientosPanel';
 import AutomatizacionesPanel from './components/AutomatizacionesPanel';
+import PageHeader from '../../../components/common/PageHeader';
 
 type TabType = 'radar' | 'cuentas' | 'movimientos' | 'automatizaciones';
 
@@ -69,29 +70,28 @@ const Tesoreria: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-navy-900">
-                  Tesorería
-                </h1>
-                <p className="mt-1 text-sm text-neutral-500">
-                  Gestión centralizada de cuentas, movimientos y automatizaciones
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--hz-bg)' }}>
+      {/* Standardized Page Header */}
+      <PageHeader
+        title="Tesorería"
+        subtitle="Gestión centralizada de cuentas, movimientos y automatizaciones"
+        primaryAction={{
+          label: "Nueva cuenta",
+          onClick: () => {
+            // Navigate to specific tab action based on activeTab
+            if (activeTab === 'cuentas') {
+              // TODO: Open new account modal
+            } else if (activeTab === 'movimientos') {
+              // TODO: Open new movement modal  
+            }
+          }
+        }}
+      />
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-neutral-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8" aria-label="Tabs">
+      {/* Custom Sub-tabs for Treasury (using internal navigation) */}
+      <div className="border-b border-gray-200 bg-white">
+        <div className="px-6">
+          <div className="flex flex-wrap gap-6">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -101,29 +101,25 @@ const Tesoreria: React.FC = () => {
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   className={`
-                    group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm
-                    ${isActive
-                      ? 'border-brand-navy text-brand-navy'
-                      : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
+                    px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2 flex items-center gap-2
+                    ${isActive 
+                      ? 'border-hz-primary'
+                      : 'text-neutral-600 hover:text-neutral-900 border-transparent hover:border-gray-300'
                     }
                   `}
+                  style={isActive ? { color: 'var(--hz-primary)' } : {}}
                 >
-                  <Icon 
-                    className={`
-                      -ml-0.5 mr-2 h-5 w-5
-                      ${isActive ? 'text-brand-navy' : 'text-neutral-400 group-hover:text-neutral-500'}
-                    `} 
-                  />
+                  <Icon className="h-4 w-4" />
                   {tab.name}
                 </button>
               );
             })}
-          </nav>
+          </div>
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-6 py-8">
         {renderActiveTab()}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusIcon, FileTextIcon, BarChart3Icon } from 'lucide-react';
+import { FileTextIcon, BarChart3Icon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import GastosTab from './components/GastosTab';
@@ -43,15 +43,10 @@ const GastosCapex: React.FC = () => {
       title="Gastos" 
       subtitle="Capturar, clasificar y conciliar gastos por tipo; incluye amortizables (mejora/mobiliario)"
       showInfoIcon={true}
-      primaryAction={
-        <button
-          onClick={handleAddExpense}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Añadir gasto
-        </button>
-      }
+      primaryAction={{
+        label: "Añadir gasto",
+        onClick: handleAddExpense
+      }}
     >
       {/* Segmented Control - Row 3 with proper spacing */}
       <div className="mb-3">

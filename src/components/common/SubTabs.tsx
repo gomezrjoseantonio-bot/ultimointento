@@ -110,31 +110,31 @@ const SubTabs: React.FC = () => {
     return null;
   }
   
-  const accentColorClass = 'text-brand-navy'; // Both modules use navy as primary
-  const borderColorClass = 'border-brand-navy'; // Both modules use navy as primary
-  
   return (
-    <div className="border-b border-gray-200">
-      <div className="flex flex-wrap gap-6">
-        {tabs.map((tab) => {
-          const isActive = location.pathname === tab.path;
-          
-          return (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={`
-                px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2
-                ${isActive 
-                  ? `${accentColorClass} ${borderColorClass}` 
-                  : 'text-neutral-600 hover:text-neutral-900 border-transparent hover:border-gray-300'
-                }
-              `}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+    <div className="border-b border-gray-200 bg-white">
+      <div className="px-6">
+        <div className="flex flex-wrap gap-6">
+          {tabs.map((tab) => {
+            const isActive = location.pathname === tab.path;
+            
+            return (
+              <button
+                key={tab.path}
+                onClick={() => navigate(tab.path)}
+                className={`
+                  px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2
+                  ${isActive 
+                    ? 'border-hz-primary' 
+                    : 'text-neutral-600 hover:text-neutral-900 border-transparent hover:border-gray-300'
+                  }
+                `}
+                style={isActive ? { color: 'var(--hz-primary)' } : {}}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

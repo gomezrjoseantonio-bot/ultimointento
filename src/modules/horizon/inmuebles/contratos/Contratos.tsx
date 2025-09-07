@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Calendar, CreditCard, List } from 'lucide-react';
+import { Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { Contract } from '../../../../services/db';
@@ -79,17 +79,10 @@ const Contratos: React.FC = () => {
       title="Contratos" 
       subtitle="Gestión de contratos de alquiler por inmueble completo o por unidades."
       showInfoIcon={true}
-      primaryAction={
-        !showNewContract ? (
-          <button
-            onClick={() => setShowNewContract(true)}
-            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-navy-800 transition-colors"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Nuevo contrato
-          </button>
-        ) : null
-      }
+      primaryAction={!showNewContract ? {
+        label: "Nuevo contrato",
+        onClick: () => setShowNewContract(true)
+      } : undefined}
     >
       {/* Row 3: Segment Control - 12px spacing to content - Only show when not creating new contract */}
       {!showNewContract && (

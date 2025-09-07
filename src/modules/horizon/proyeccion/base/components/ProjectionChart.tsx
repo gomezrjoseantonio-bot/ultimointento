@@ -41,8 +41,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Ingresos de alquiler (netos)',
         data: filteredData.map(d => d.rentalIncome),
-        borderColor: '#0E9F6E',
-        backgroundColor: 'rgba(14, 159, 110, 0.1)',
+        borderColor: '#059669', // Horizon success color
+        backgroundColor: 'rgba(5, 150, 105, 0.1)',
         fill: false,
         tension: 0.2,
         borderWidth: 2,
@@ -52,8 +52,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Gastos (operativos + impuestos + seguros + comunidad)',
         data: filteredData.map(d => -d.operatingExpenses), // Negative for visualization
-        borderColor: '#DC2626',
-        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+        borderColor: '#EF4444', // Horizon error color
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
         tension: 0.2,
         borderWidth: 2,
@@ -63,7 +63,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Servicio de deuda',
         data: filteredData.map(d => -d.debtService), // Negative for visualization
-        borderColor: '#F59E0B',
+        borderColor: '#F59E0B', // Horizon warning color
         backgroundColor: 'rgba(245, 158, 11, 0.1)',
         fill: false,
         tension: 0.2,
@@ -74,8 +74,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Flujo neto',
         data: filteredData.map(d => d.netCashflow),
-        borderColor: '#022D5E',
-        backgroundColor: 'rgba(2, 45, 94, 0.1)',
+        borderColor: '#0F2C5C', // Official Horizon primary
+        backgroundColor: 'rgba(15, 44, 92, 0.1)',
         fill: false,
         tension: 0.2,
         borderWidth: 3,
@@ -111,7 +111,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         titleColor: '#ffffff',
         bodyColor: '#ffffff',
-        borderColor: '#022D5E',
+        borderColor: '#0F2C5C', // Official Horizon primary
         borderWidth: 1,
         cornerRadius: 8,
         displayColors: true,

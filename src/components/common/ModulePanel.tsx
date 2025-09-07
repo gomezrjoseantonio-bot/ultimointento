@@ -1,5 +1,6 @@
 import React from 'react';
 import PageLayout from './PageLayout';
+import EmptyState from './EmptyState';
 
 interface ModulePanelProps {
   module: 'horizon' | 'pulse';
@@ -25,7 +26,10 @@ const ModulePanel: React.FC<ModulePanelProps> = ({ module }) => {
       subtitle={subtitle}
       showInfoIcon={true}
     >
-      <p className="text-gray-600">En construcción. Próximo hito: funcionalidades.</p>
+      <EmptyState
+        title="Panel en construcción"
+        description="Próximo hito: funcionalidades de panel de control y resumen ejecutivo."
+      />
     </PageLayout>
   );
 };

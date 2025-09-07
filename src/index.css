@@ -8,35 +8,46 @@
 
 :root {
   /* Marca ATLAS */
-  --brand-navy: #0E2A47;   /* ATLAS azul marino actualizado según guía Horizon */
-  --brand-teal: #00B8C4;   /* ATLAS teal/acento actualizado */
+  --brand-navy: #0E2A47;   /* ATLAS azul marino - legacy compatibility */
+  --brand-teal: #00B8C4;   /* ATLAS teal/acento - RESERVED FOR PULSE ONLY */
 
-  /* Horizon Module - Strict Color Palette */
-  --horizon-primary: #0A2A57;      /* Primary navy as per requirements */
-  --horizon-primary-hover: #0C356B; /* Hover state as per requirements */
-  --horizon-bg-soft: #EAF1F8;      /* Soft background as per requirements */
+  /* Horizon Module - Official Design System Tokens */
+  --hz-primary: #0F2C5C;      /* Primary navy blue as per specification */
+  --hz-primary-600: #1E3A8A;  /* Hover/active states as per specification */
+  --hz-bg: #F7F9FC;           /* Soft background as per specification */
+  --hz-text: #0B1220;         /* Text color as per specification */
+  
+  /* Horizon Semantic States - Official Tokens */
+  --hz-success: #16A34A;      /* Success green */
+  --hz-warning: #F59E0B;      /* Warning yellow */
+  --hz-error: #DC2626;        /* Error red */
+  --hz-info: #2563EB;         /* Info blue */
   
   /* NO TURQUOISE - Reserved for Pulse only */
   
-  /* Paleta derivada para Horizon */
-  --text: #0D1B2A;         /* Neutral dark text */
-  --text-muted: #475569;   /* Muted text */
-  --bg: #FFFFFF;           /* White background */
-  --surface: #FFFFFF;      /* White surface */
-  --surface-2: #F8FAFC;    /* Light neutral surface */
-  --border: #E2E8F0;       /* Border color */
+  /* Legacy aliases for backward compatibility - will use Horizon tokens */
+  --text: var(--hz-text);         /* Use Horizon text color */
+  --text-muted: #475569;          /* Muted text */
+  --bg: #FFFFFF;                  /* White background */
+  --surface: #FFFFFF;             /* White surface */
+  --surface-2: var(--hz-bg);      /* Light neutral surface uses Horizon bg */
+  --border: #E2E8F0;              /* Border color */
 
-  /* Estados semánticos según especificación */
-  --success: #16A34A;      /* Verde éxito ✅ */
-  --warning: #F59E0B;      /* Amarillo advertencia ⚠ */
-  --danger: #DC2626;       /* Rojo error ⛔ */
-  --info: var(--horizon-primary);
+  /* Estados semánticos - mapped to Horizon tokens */
+  --success: var(--hz-success);   /* Use Horizon success */
+  --warning: var(--hz-warning);   /* Use Horizon warning */
+  --danger: var(--hz-error);      /* Use Horizon error */
+  --info: var(--hz-info);         /* Use Horizon info */
 
-  /* Interacciones - Solo Horizon */
-  --primary: var(--horizon-primary);
+  /* Primary interactions - use Horizon tokens */
+  --primary: var(--hz-primary);
   --primary-contrast: #FFFFFF;
-  --primary-hover: var(--horizon-primary-hover);
-  /* NO accent colors - strictly Horizon only */
+  --primary-hover: var(--hz-primary-600);
+  
+  /* Legacy Horizon tokens for backward compatibility */
+  --horizon-primary: var(--hz-primary);
+  --horizon-primary-hover: var(--hz-primary-600);
+  --horizon-bg-soft: var(--hz-bg);
 
   /* Tipografía y ritmo */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
@@ -278,44 +289,46 @@ html {
     @apply bg-white rounded-xl border border-neutral-200 shadow-sm;
   }
   
+  /* Horizon Design System Utility Classes - Official Tokens */
   .horizon-primary {
-    background-color: var(--horizon-navy);
+    background-color: var(--hz-primary);
     color: white;
   }
   
   .horizon-primary:hover {
-    background-color: #011e42;
-  }
-  
-  .horizon-accent {
-    background-color: var(--horizon-teal);
-    color: white;
-  }
-  
-  .horizon-accent:hover {
-    background-color: #2693ab;
+    background-color: var(--hz-primary-600);
   }
   
   .horizon-secondary {
-    @apply border border-neutral-300 text-gray-700 bg-white hover:bg-neutral-50;
-    border-color: var(--horizon-navy);
-    color: var(--horizon-navy);
+    @apply border text-white bg-transparent hover:bg-white hover:text-current;
+    border-color: var(--hz-primary);
+    color: var(--hz-primary);
   }
   
+  .horizon-secondary:hover {
+    background-color: var(--hz-primary);
+    color: white;
+  }
+  
+  /* Horizon Badge System - Official Design Tokens */
   .horizon-badge-success {
-    @apply bg-green-100 text-green-800;
+    background-color: #EAF7EE;  /* Success background per specification */
+    color: var(--hz-success);
   }
   
   .horizon-badge-warning {
-    @apply bg-yellow-100 text-yellow-800;
+    background-color: #FFF7E6;  /* Warning background per specification */
+    color: #B45309;             /* Warning text per specification */
   }
   
   .horizon-badge-error {
-    @apply bg-red-100 text-red-800;
+    background-color: #FDECEC;  /* Error background per specification */
+    color: #B91C1C;             /* Error text per specification */
   }
   
   .horizon-badge-info {
-    @apply bg-blue-100 text-blue-800;
+    background-color: #E8F0FF;  /* Info background per specification */
+    color: #1D4ED8;             /* Info text per specification */
   }
   
   /* Screen reader only content */

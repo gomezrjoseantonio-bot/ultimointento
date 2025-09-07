@@ -8,11 +8,21 @@ module.exports = {
     extend: {
       colors: {
         // Official ATLAS brand colors - Atlas Horizon Style Guide
-        'brand-navy': '#0E2A47',  // Azul marino Horizon - color base principal
-        'brand-teal': '#00B8C4',  // Turquesa Pulse - reservado solo para Pulse
+        'brand-navy': '#0E2A47',  // Legacy ATLAS navy (backward compatibility)
+        'brand-teal': '#00B8C4',  // Turquesa Pulse - RESERVED FOR PULSE ONLY
         
-        // Horizon colors (primary navy)
-        'horizon-navy': '#0E2A47',
+        // Official Horizon Design System Tokens
+        'hz-primary': '#0F2C5C',     // Official Horizon primary
+        'hz-primary-600': '#1E3A8A', // Official Horizon hover/active
+        'hz-bg': '#F7F9FC',          // Official Horizon soft background
+        'hz-text': '#0B1220',        // Official Horizon text
+        'hz-success': '#16A34A',     // Official Horizon success
+        'hz-warning': '#F59E0B',     // Official Horizon warning
+        'hz-error': '#DC2626',       // Official Horizon error
+        'hz-info': '#2563EB',        // Official Horizon info
+        
+        // Legacy horizon colors (for backward compatibility)
+        'horizon-navy': '#0F2C5C',   // Maps to hz-primary
         
         // Navy palette for Horizon theme
         navy: {
