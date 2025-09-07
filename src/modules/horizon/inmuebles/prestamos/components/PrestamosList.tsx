@@ -1,7 +1,7 @@
 // Préstamos List View Component
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Calculator, Home, Search, Filter, Eye } from 'lucide-react';
+import { Plus, Calculator, Home, Search, Filter, Eye, Trash2, Edit } from 'lucide-react';
 import { formatEuro, formatDate, formatPercentage } from '../../../../../utils/formatUtils';
 import { Prestamo } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
@@ -9,10 +9,11 @@ import { prestamosCalculationService } from '../../../../../services/prestamosCa
 
 interface PrestamosListProps {
   onSelectPrestamo: (prestamoId: string) => void;
+  onEditPrestamo: (prestamoId: string) => void;
   onCreateNew: () => void;
 }
 
-const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onCreateNew }) => {
+const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditPrestamo, onCreateNew }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +30,28 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onCreat
       setPrestamos(allPrestamos);
     } catch (error) {
       console.error('Error loading préstamos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePrestamo = async (prestamoId: string, prestamoNombre: string) => {
+    if (!window.confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const success = await prestamosService.deletePrestamo(prestamoId);
+      if (success) {
+        // Reload the list after deletion
+        await loadPrestamos();
+      } else {
+        alert('Error al eliminar el préstamo');
+      }
+    } catch (error) {
+      console.error('Error deleting préstamo:', error);
+      alert('Error al eliminar el préstamo');
     } finally {
       setLoading(false);
     }
@@ -260,13 +283,30 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onCreat
                         )}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => onSelectPrestamo(prestamo.id)}
-                          className="inline-flex items-center px-3 py-1 border border-[#D1D5DB] text-sm font-medium rounded-md text-[#374151] bg-white hover:bg-[#F8F9FA] transition-colors"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver detalle
-                        </button>
+                        <div className="flex items-center justify-center space-x-2">
+                          <button
+                            onClick={() => onSelectPrestamo(prestamo.id)}
+                            className="inline-flex items-center px-3 py-1 border border-[#D1D5DB] text-sm font-medium rounded-md text-[#374151] bg-white hover:bg-[#F8F9FA] transition-colors"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver
+                          </button>
+                          <button
+                            onClick={() => onEditPrestamo(prestamo.id)}
+                            className="inline-flex items-center px-3 py-1 border border-[#022D5E] text-sm font-medium rounded-md text-[#022D5E] bg-white hover:bg-[#EEF2FF] transition-colors"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeletePrestamo(prestamo.id, prestamo.nombre)}
+                            className="inline-flex items-center px-3 py-1 border border-[#DC2626] text-sm font-medium rounded-md text-[#DC2626] bg-white hover:bg-[#FEE2E2] transition-colors"
+                            disabled={loading}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

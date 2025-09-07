@@ -152,6 +152,9 @@ export class PrestamosService {
         comisionAmortizacionParcial: 0.01,
         comisionCancelacionTotal: 0.005,
         gastosFijosOperacion: 30,
+        // Bonifications management
+        maximoBonificacionPorcentaje: 0.006, // 0.60% max bonification
+        periodoRevisionBonificacionMeses: 12, // annual review
         // Bonifications
         fechaFinPeriodo: '2025-12-31',
         fechaEvaluacion: '2025-12-01',
