@@ -46,6 +46,11 @@ export interface Prestamo {
   // Optional bonifications (to be ignored for now)
   bonificaciones?: Bonificacion[];
 
+  // Bonification evaluation parameters (when bonifications are active)
+  fechaFinPeriodo?: string;           // end of evaluation period (ISO date)
+  fechaEvaluacion?: string;           // evaluation date (defaults to finPeriodo - 30 days, editable)
+  offsetEvaluacionDias?: number;      // default 30 days before end period
+
   // Audit
   createdAt: string;
   updatedAt: string;

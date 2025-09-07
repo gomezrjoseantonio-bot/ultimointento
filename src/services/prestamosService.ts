@@ -152,6 +152,48 @@ export class PrestamosService {
         comisionAmortizacionParcial: 0.01,
         comisionCancelacionTotal: 0.005,
         gastosFijosOperacion: 30,
+        // Bonifications
+        fechaFinPeriodo: '2025-12-31',
+        fechaEvaluacion: '2025-12-01',
+        offsetEvaluacionDias: 30,
+        bonificaciones: [
+          {
+            id: 'bonif_001',
+            nombre: 'Nómina',
+            reduccionPuntosPorcentuales: 0.003, // 0.30 pp
+            lookbackMeses: 4,
+            regla: { tipo: 'NOMINA', minimoMensual: 1200 },
+            costeAnualEstimado: 0,
+            estado: 'EN_RIESGO',
+            progreso: {
+              descripcion: 'Llevas 2/4 meses de nómina ≥ 1.200€',
+              faltante: 'Faltan 2 meses con nómina ≥ 1.200€'
+            }
+          },
+          {
+            id: 'bonif_002',
+            nombre: 'Seguro Hogar',
+            reduccionPuntosPorcentuales: 0.002, // 0.20 pp
+            lookbackMeses: 12,
+            regla: { tipo: 'SEGURO_HOGAR', activo: true },
+            costeAnualEstimado: 240,
+            estado: 'CUMPLIDA',
+            progreso: {
+              descripcion: 'Seguro activo desde hace 8 meses'
+            }
+          },
+          {
+            id: 'bonif_003',
+            nombre: 'Tarjeta',
+            reduccionPuntosPorcentuales: 0.001, // 0.10 pp
+            lookbackMeses: 3,
+            regla: { tipo: 'TARJETA', movimientosMesMin: 6 },
+            estado: 'CUMPLIDA',
+            progreso: {
+              descripcion: 'Promedio de 8 movimientos/mes últimos 3 meses'
+            }
+          }
+        ],
         createdAt: '2023-08-10T10:00:00Z',
         updatedAt: '2024-12-01T15:30:00Z'
       },
