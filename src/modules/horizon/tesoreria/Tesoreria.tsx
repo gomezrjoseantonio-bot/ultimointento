@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Banknote, CreditCard, Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import RadarPanel from './components/RadarPanel';
+import Radar from './radar/Radar';
 import CuentasPanel from './components/CuentasPanel';
 import MovimientosPanel from './components/MovimientosPanel';
 import AutomatizacionesPanel from './components/AutomatizacionesPanel';
@@ -57,7 +57,7 @@ const Tesoreria: React.FC = () => {
   const renderActiveTab = () => {
     switch (activeTab) {
       case 'radar':
-        return <RadarPanel />;
+        return <Radar />;
       case 'cuentas':
         return <CuentasPanel />;
       case 'movimientos':
@@ -65,7 +65,7 @@ const Tesoreria: React.FC = () => {
       case 'automatizaciones':
         return <AutomatizacionesPanel />;
       default:
-        return <RadarPanel />;
+        return <Radar />;
     }
   };
 
@@ -119,7 +119,7 @@ const Tesoreria: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="px-6 py-8">
+      <div className="py-8">
         {renderActiveTab()}
       </div>
     </div>

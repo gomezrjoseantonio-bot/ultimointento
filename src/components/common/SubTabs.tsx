@@ -19,12 +19,6 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Gastos & CAPEX', path: '/inmuebles/gastos-capex' },
     { label: 'Análisis', path: '/inmuebles/analisis' },
   ],
-  tesoreria: [
-    { label: 'Radar', path: '/tesoreria#radar' },
-    { label: 'Cuentas', path: '/tesoreria#cuentas' },
-    { label: 'Movimientos', path: '/tesoreria#movimientos' },
-    { label: 'Automatizaciones', path: '/tesoreria#automatizaciones' },
-  ],
   fiscalidad: [
     { label: 'Resumen', path: '/fiscalidad/resumen' },
     { label: 'Detalle', path: '/fiscalidad/detalle' },
