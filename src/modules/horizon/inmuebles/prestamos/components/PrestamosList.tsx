@@ -1,7 +1,7 @@
 // Préstamos List View Component
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Calculator, Home, Search, Filter, Eye, Trash2 } from 'lucide-react';
+import { Plus, Calculator, Home, Search, Filter, Eye, Trash2, Edit } from 'lucide-react';
 import { formatEuro, formatDate, formatPercentage } from '../../../../../utils/formatUtils';
 import { Prestamo } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
@@ -9,10 +9,11 @@ import { prestamosCalculationService } from '../../../../../services/prestamosCa
 
 interface PrestamosListProps {
   onSelectPrestamo: (prestamoId: string) => void;
+  onEditPrestamo: (prestamoId: string) => void;
   onCreateNew: () => void;
 }
 
-const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onCreateNew }) => {
+const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditPrestamo, onCreateNew }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -289,6 +290,13 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onCreat
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Ver
+                          </button>
+                          <button
+                            onClick={() => onEditPrestamo(prestamo.id)}
+                            className="inline-flex items-center px-3 py-1 border border-[#022D5E] text-sm font-medium rounded-md text-[#022D5E] bg-white hover:bg-[#EEF2FF] transition-colors"
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
                           </button>
                           <button
                             onClick={() => handleDeletePrestamo(prestamo.id, prestamo.nombre)}

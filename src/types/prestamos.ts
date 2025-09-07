@@ -43,8 +43,10 @@ export interface Prestamo {
   comisionCancelacionTotal?: number;    // % on outstanding balance
   gastosFijosOperacion?: number;        // €
 
-  // Optional bonifications (to be ignored for now)
+  // Bonifications management
   bonificaciones?: Bonificacion[];
+  maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
+  periodoRevisionBonificacionMeses?: number; // bonification review period: 6 or 12 months
 
   // Bonification evaluation parameters (when bonifications are active)
   fechaFinPeriodo?: string;           // end of evaluation period (ISO date)

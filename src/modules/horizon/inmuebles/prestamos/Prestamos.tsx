@@ -4,7 +4,7 @@ import PrestamosList from './components/PrestamosList';
 import PrestamoDetail from './components/PrestamoDetail';
 import PrestamoForm from './components/PrestamoForm';
 
-type View = 'list' | 'detail' | 'create';
+type View = 'list' | 'detail' | 'create' | 'edit';
 
 const Prestamos: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('list');
@@ -13,6 +13,11 @@ const Prestamos: React.FC = () => {
   const handleSelectPrestamo = (prestamoId: string) => {
     setSelectedPrestamoId(prestamoId);
     setCurrentView('detail');
+  };
+
+  const handleEditPrestamo = (prestamoId: string) => {
+    setSelectedPrestamoId(prestamoId);
+    setCurrentView('edit');
   };
 
   const handleBackToList = () => {
@@ -43,18 +48,30 @@ const Prestamos: React.FC = () => {
             onCancel={handleBackToList}
           />
         );
+      case 'edit':
+        return (
+          <PrestamoForm
+            prestamoId={selectedPrestamoId}
+            onSuccess={(prestamo) => {
+              setSelectedPrestamoId(prestamo.id);
+              setCurrentView('detail');
+            }}
+            onCancel={handleBackToList}
+          />
+        );
       case 'list':
       default:
         return (
           <PrestamosList
             onSelectPrestamo={handleSelectPrestamo}
+            onEditPrestamo={handleEditPrestamo}
             onCreateNew={handleCreateNew}
           />
         );
     }
   };
 
-  if (currentView === 'detail' || currentView === 'create') {
+  if (currentView === 'detail' || currentView === 'create' || currentView === 'edit') {
     // Don't wrap detail or create view in PageLayout since they have their own navigation
     return <div className="p-6">{renderContent()}</div>;
   }

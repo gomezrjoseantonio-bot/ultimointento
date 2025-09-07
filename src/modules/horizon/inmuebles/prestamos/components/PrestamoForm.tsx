@@ -20,11 +20,12 @@ import { prestamosCalculationService } from '../../../../../services/prestamosCa
 import BonificationForm from './BonificationForm';
 
 interface PrestamoFormProps {
+  prestamoId?: string; // If provided, edit mode. If not, create mode
   onSuccess: (prestamo: Prestamo) => void;
   onCancel: () => void;
 }
 
-const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
+const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCancel }) => {
   // Basic loan data
   const [nombre, setNombre] = useState('');
   const [inmuebleId, setInmuebleId] = useState('');
@@ -59,6 +60,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
 
   // Bonifications
   const [bonificaciones, setBonificaciones] = useState<Bonificacion[]>([]);
+  const [maximoBonificacionPorcentaje, setMaximoBonificacionPorcentaje] = useState<string>('0,60');
+  const [periodoRevisionBonificacionMeses, setPeriodoRevisionBonificacionMeses] = useState<string>('12');
   const [fechaFinPeriodo, setFechaFinPeriodo] = useState<string>('');
   const [fechaEvaluacion, setFechaEvaluacion] = useState<string>('');
   const [offsetEvaluacionDias, setOffsetEvaluacionDias] = useState<string>('30');
@@ -95,6 +98,56 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
     }
   }, [principalInicial, plazoMesesTotal, tipo, tipoNominalAnualFijo, valorIndiceActual, diferencial, tipoNominalAnualMixtoFijo]);
 
+  // Load existing loan data if in edit mode
+  useEffect(() => {
+    if (prestamoId) {
+      const loadPrestamoData = async () => {
+        try {
+          setLoading(true);
+          const prestamo = await prestamosService.getPrestamoById(prestamoId);
+          if (prestamo) {
+            // Load all form fields from existing loan
+            setNombre(prestamo.nombre);
+            setInmuebleId(prestamo.inmuebleId);
+            setPrincipalInicial(prestamo.principalInicial.toString());
+            setFechaFirma(prestamo.fechaFirma);
+            setPlazoMesesTotal(prestamo.plazoMesesTotal.toString());
+            setTipo(prestamo.tipo);
+            setTipoNominalAnualFijo(formatSpanishNumber(prestamo.tipoNominalAnualFijo || 0, 3));
+            setIndice(prestamo.indice || 'EURIBOR');
+            setValorIndiceActual(formatSpanishNumber(prestamo.valorIndiceActual || 0, 3));
+            setDiferencial(formatSpanishNumber(prestamo.diferencial || 0, 3));
+            setPeriodoRevisionMeses(prestamo.periodoRevisionMeses?.toString() || '12');
+            setTramoFijoMeses(prestamo.tramoFijoMeses?.toString() || '');
+            setTipoNominalAnualMixtoFijo(formatSpanishNumber(prestamo.tipoNominalAnualMixtoFijo || 0, 3));
+            setMesesSoloIntereses(prestamo.mesesSoloIntereses?.toString() || '0');
+            setDiferirPrimeraCuotaMeses(prestamo.diferirPrimeraCuotaMeses?.toString() || '0');
+            setProrratearPrimerPeriodo(prestamo.prorratearPrimerPeriodo || false);
+            setCobroMesVencido(prestamo.cobroMesVencido || false);
+            setDiaCargoMes(prestamo.diaCargoMes?.toString() || '1');
+            setCuentaCargoId(prestamo.cuentaCargoId);
+            setComisionAmortizacionParcial(formatSpanishNumber(prestamo.comisionAmortizacionParcial || 0, 3));
+            setComisionCancelacionTotal(formatSpanishNumber(prestamo.comisionCancelacionTotal || 0, 3));
+            setGastosFijosOperacion(prestamo.gastosFijosOperacion?.toString() || '30');
+            setBonificaciones(prestamo.bonificaciones || []);
+            setMaximoBonificacionPorcentaje(formatSpanishNumber(prestamo.maximoBonificacionPorcentaje || 0.006, 2));
+            setPeriodoRevisionBonificacionMeses(prestamo.periodoRevisionBonificacionMeses?.toString() || '12');
+            setFechaFinPeriodo(prestamo.fechaFinPeriodo || '');
+            setFechaEvaluacion(prestamo.fechaEvaluacion || '');
+            setOffsetEvaluacionDias(prestamo.offsetEvaluacionDias?.toString() || '30');
+          }
+        } catch (error) {
+          console.error('Error loading loan data:', error);
+          setError('Error al cargar los datos del préstamo');
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadPrestamoData();
+    }
+  }, [prestamoId]);
+
   const validateForm = (): string[] => {
     const errors: string[] = [];
 
@@ -124,6 +177,16 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
     const diaCargoNum = parseInt(diaCargoMes);
     if (diaCargoNum < 1 || diaCargoNum > 31) errors.push('Día de cargo debe estar entre 1 y 31');
 
+    // Validate bonifications
+    if (bonificaciones.length > 0) {
+      const totalBonificacion = bonificaciones.reduce((sum, bonif) => sum + bonif.reduccionPuntosPorcentuales, 0);
+      const maxBonif = parseSpanishNumber(maximoBonificacionPorcentaje) / 100;
+      
+      if (totalBonificacion > maxBonif) {
+        errors.push(`Las bonificaciones totales (${formatSpanishNumber(totalBonificacion * 100, 2)}%) exceden el máximo permitido (${maximoBonificacionPorcentaje}%)`);
+      }
+    }
+
     return errors;
   };
 
@@ -150,20 +213,20 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
         tipo,
         
         // Type-specific fields
-        ...(tipo === 'FIJO' && { tipoNominalAnualFijo: parseFloat(tipoNominalAnualFijo) }),
+        ...(tipo === 'FIJO' && { tipoNominalAnualFijo: parseSpanishNumber(tipoNominalAnualFijo) }),
         ...(tipo === 'VARIABLE' && {
           indice,
-          valorIndiceActual: parseFloat(valorIndiceActual),
-          diferencial: parseFloat(diferencial),
+          valorIndiceActual: parseSpanishNumber(valorIndiceActual),
+          diferencial: parseSpanishNumber(diferencial),
           periodoRevisionMeses: parseInt(periodoRevisionMeses),
           fechaProximaRevision: new Date(new Date(fechaFirma).getTime() + parseInt(periodoRevisionMeses) * 30.44 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
         }),
         ...(tipo === 'MIXTO' && {
           tramoFijoMeses: parseInt(tramoFijoMeses),
-          tipoNominalAnualMixtoFijo: parseFloat(tipoNominalAnualMixtoFijo),
+          tipoNominalAnualMixtoFijo: parseSpanishNumber(tipoNominalAnualMixtoFijo),
           indice,
-          valorIndiceActual: parseFloat(valorIndiceActual),
-          diferencial: parseFloat(diferencial),
+          valorIndiceActual: parseSpanishNumber(valorIndiceActual),
+          diferencial: parseSpanishNumber(diferencial),
           periodoRevisionMeses: parseInt(periodoRevisionMeses)
         }),
 
@@ -178,22 +241,35 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
         cuentaCargoId: cuentaCargoId.trim(),
 
         // Costs
-        comisionAmortizacionParcial: parseFloat(comisionAmortizacionParcial),
-        comisionCancelacionTotal: parseFloat(comisionCancelacionTotal),
+        comisionAmortizacionParcial: parseSpanishNumber(comisionAmortizacionParcial),
+        comisionCancelacionTotal: parseSpanishNumber(comisionCancelacionTotal),
         gastosFijosOperacion: parseFloat(gastosFijosOperacion),
 
         // Bonifications
         ...(bonificaciones.length > 0 && { bonificaciones }),
+        maximoBonificacionPorcentaje: parseSpanishNumber(maximoBonificacionPorcentaje) / 100,
+        periodoRevisionBonificacionMeses: parseInt(periodoRevisionBonificacionMeses),
         ...(fechaFinPeriodo && { fechaFinPeriodo }),
         ...(fechaEvaluacion && { fechaEvaluacion }),
         ...(offsetEvaluacionDias && { offsetEvaluacionDias: parseInt(offsetEvaluacionDias) })
       };
 
-      const newPrestamo = await prestamosService.createPrestamo(prestamoData);
-      onSuccess(newPrestamo);
+      let prestamo: Prestamo;
+      if (prestamoId) {
+        // Edit mode
+        prestamo = await prestamosService.updatePrestamo(prestamoId, prestamoData);
+        if (!prestamo) {
+          throw new Error('No se pudo actualizar el préstamo');
+        }
+      } else {
+        // Create mode
+        prestamo = await prestamosService.createPrestamo(prestamoData);
+      }
+      
+      onSuccess(prestamo);
       
     } catch (err) {
-      setError('Error al crear el préstamo');
+      setError(prestamoId ? 'Error al actualizar el préstamo' : 'Error al crear el préstamo');
       console.error(err);
     } finally {
       setLoading(false);
@@ -207,7 +283,9 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Calculator className="h-6 w-6 text-[#022D5E]" />
-            <h1 className="text-xl font-semibold text-[#0F172A]">Crear nuevo préstamo</h1>
+            <h1 className="text-xl font-semibold text-[#0F172A]">
+              {prestamoId ? 'Editar préstamo' : 'Crear nuevo préstamo'}
+            </h1>
           </div>
           <button
             onClick={onCancel}
@@ -676,6 +754,42 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
 
           {/* Bonification period settings */}
           <div className="mb-6">
+            <h3 className="font-medium text-[#374151] mb-4">Configuración de bonificaciones</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Máximo bonificación total (%)
+                </label>
+                <input
+                  type="text"
+                  value={maximoBonificacionPorcentaje}
+                  onChange={(e) => setMaximoBonificacionPorcentaje(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  placeholder="0,60"
+                />
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Máximo % de bonificación que se puede aplicar (ej: 0,60% = 60 puntos básicos)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Período de revisión
+                </label>
+                <select
+                  value={periodoRevisionBonificacionMeses}
+                  onChange={(e) => setPeriodoRevisionBonificacionMeses(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                >
+                  <option value="6">6 meses</option>
+                  <option value="12">12 meses</option>
+                </select>
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Frecuencia de revisión de bonificaciones (estándar español)
+                </p>
+              </div>
+            </div>
+
             <h3 className="font-medium text-[#374151] mb-4">Período de evaluación</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -828,7 +942,12 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                <span>{loading ? 'Creando...' : 'Crear préstamo'}</span>
+                <span>
+                  {loading 
+                    ? (prestamoId ? 'Actualizando...' : 'Creando...')
+                    : (prestamoId ? 'Actualizar préstamo' : 'Crear préstamo')
+                  }
+                </span>
               </button>
             </div>
           </div>
