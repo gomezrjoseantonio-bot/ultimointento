@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { ResponsiveContainer, Tooltip, ComposedChart, Bar, XAxis, YAxis, Line } from 'recharts';
 import { ExternalLink, TrendingUp } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -22,8 +24,19 @@ interface IncomeExpensesSectionProps {
 }
 
 const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+  
   // Mock data - in real implementation would come from treasury projections
   const timelineData: DailyData[] = generateTimelineData(filters.dateRange);
+
+  const handleViewInRadar = () => {
+    // Show loading toast and navigate to the treasury cash flow section
+    toast.loading('Abriendo Radar de Tesorería...', { id: 'radar-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Radar', { id: 'radar-nav' });
+      navigate('/tesoreria', { state: { section: 'radar' } });
+    }, 500);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -80,7 +93,10 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
             </div>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors">
+        <button 
+          onClick={handleViewInRadar}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+        >
           <ExternalLink className="w-4 h-4" />
           Ver en Radar
         </button>

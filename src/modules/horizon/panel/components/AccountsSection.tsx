@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
-import { MoreHorizontal, Building2 } from 'lucide-react';
+import { MoreHorizontal, Building2, Settings, Eye, ExternalLink } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
 
 interface AccountData {
@@ -25,6 +27,21 @@ interface AccountsSectionProps {
 }
 
 const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenMenuId(null);
+    };
+    
+    if (openMenuId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openMenuId]);
+  
   // Mock data - in real implementation would come from treasury services
   const accounts: AccountData[] = [
     {
@@ -106,6 +123,32 @@ const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
     }
   };
 
+  const handleAccountMenu = (accountId: string, action: string) => {
+    setOpenMenuId(null);
+    
+    switch (action) {
+      case 'details':
+        toast.success('Abriendo detalles de cuenta...');
+        navigate('/tesoreria', { state: { accountId, action: 'details' } });
+        break;
+      case 'movements':
+        toast.success('Abriendo movimientos de cuenta...');
+        navigate('/tesoreria', { state: { accountId, action: 'movements' } });
+        break;
+      case 'settings':
+        toast.success('Abriendo configuración de cuenta...');
+        navigate('/tesoreria', { state: { accountId, action: 'settings' } });
+        break;
+    }
+  };
+
+  const toggleMenu = (accountId: string, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    setOpenMenuId(openMenuId === accountId ? null : accountId);
+  };
+
   if (filteredAccounts.length === 0) {
     return (
       <div className="bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-6">
@@ -144,9 +187,41 @@ const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
                 <span className={`px-2 py-0.5 text-xs rounded-full ${getUsageColor(account.usage)}`}>
                   {getUsageLabel(account.usage)}
                 </span>
-                <button className="p-1 hover:bg-hz-neutral-100 rounded">
-                  <MoreHorizontal className="w-4 h-4 text-hz-neutral-500" />
-                </button>
+                <div className="relative">
+                  <button 
+                    onClick={(e) => toggleMenu(account.id, e)}
+                    className="p-1 hover:bg-hz-neutral-100 rounded"
+                  >
+                    <MoreHorizontal className="w-4 h-4 text-hz-neutral-500" />
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  {openMenuId === account.id && (
+                    <div className="absolute right-0 top-8 z-10 w-48 bg-white border border-hz-neutral-200 rounded-lg shadow-lg py-1">
+                      <button
+                        onClick={() => handleAccountMenu(account.id, 'details')}
+                        className="w-full px-3 py-2 text-left text-sm text-hz-neutral-700 hover:bg-hz-neutral-50 flex items-center gap-2"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver detalles
+                      </button>
+                      <button
+                        onClick={() => handleAccountMenu(account.id, 'movements')}
+                        className="w-full px-3 py-2 text-left text-sm text-hz-neutral-700 hover:bg-hz-neutral-50 flex items-center gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Ver movimientos
+                      </button>
+                      <button
+                        onClick={() => handleAccountMenu(account.id, 'settings')}
+                        className="w-full px-3 py-2 text-left text-sm text-hz-neutral-700 hover:bg-hz-neutral-50 flex items-center gap-2"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Configurar
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

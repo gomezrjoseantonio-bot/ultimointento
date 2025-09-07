@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { ExternalLink, Home, TrendingUp, TrendingDown } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -24,8 +26,28 @@ interface RentsSectionProps {
 }
 
 const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+  
   // Mock data - in real implementation would come from contracts and treasury
   const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+  const handleViewContracts = () => {
+    // Show loading toast and navigate to the contracts section
+    toast.loading('Abriendo gestión de contratos...', { id: 'contracts-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Contratos', { id: 'contracts-nav' });
+      navigate('/inmuebles/contratos');
+    }, 500);
+  };
+
+  const handleConfigureContracts = () => {
+    // Show loading toast and navigate to the contracts creation section
+    toast.loading('Abriendo configuración de contratos...', { id: 'config-contracts' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Contratos', { id: 'config-contracts' });
+      navigate('/inmuebles/contratos');
+    }, 500);
+  };
   
   const rentData: RentData = {
     month: currentMonth,
@@ -100,7 +122,10 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
         <div className="text-center py-8 text-hz-neutral-500">
           <Home className="w-12 h-12 mx-auto mb-4 text-hz-neutral-300" />
           <p>Sin contratos configurados</p>
-          <button className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors">
+          <button 
+            onClick={handleConfigureContracts}
+            className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+          >
             Configurar contratos
           </button>
         </div>
@@ -112,7 +137,10 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
     <div className="bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-semibold text-hz-neutral-900">Rentas</h2>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors">
+        <button 
+          onClick={handleViewContracts}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+        >
           <ExternalLink className="w-4 h-4" />
           Ver contratos
         </button>

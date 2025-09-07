@@ -1,5 +1,7 @@
 import React from 'react';
-import { AlertTriangle, AlertCircle, Info, Clock, ArrowRightLeft, Plus, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { AlertTriangle, AlertCircle, Info, Clock, ArrowRightLeft, Plus, CheckCircle } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
 
 interface Alert {
@@ -18,6 +20,8 @@ interface AlertsSectionProps {
 }
 
 const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+  
   // Mock data - in real implementation would come from services
   const alerts: Alert[] = [
     {
@@ -110,6 +114,40 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
     );
   };
 
+  const handleSimulateTransfer = (alertId: string, account?: string) => {
+    // Show loading toast and navigate to treasury section
+    toast.loading('Abriendo simulador de transferencias...', { id: 'simulate-transfer' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Tesorería', { id: 'simulate-transfer' });
+      navigate('/tesoreria', { state: { action: 'simulate', alertId, account } });
+    }, 500);
+  };
+
+  const handleRegisterTransfer = (alertId: string, account?: string) => {
+    // Show loading toast and navigate to treasury section
+    toast.loading('Abriendo registro de transferencias...', { id: 'register-transfer' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Tesorería', { id: 'register-transfer' });
+      navigate('/tesoreria', { state: { action: 'register', alertId, account } });
+    }, 500);
+  };
+
+  const handlePostpone = (alertId: string) => {
+    // Show success toast for postponing
+    toast.success('Alerta pospuesta por 24 horas', {
+      icon: '⏰',
+      duration: 3000,
+    });
+  };
+
+  const handleMarkDone = (alertId: string) => {
+    // Show success toast for marking as done
+    toast.success('Alerta marcada como completada', {
+      icon: '✅',
+      duration: 3000,
+    });
+  };
+
   if (alerts.length === 0) {
     return (
       <div className="bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-6">
@@ -162,20 +200,32 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 mt-4">
-                  <button className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark transition-colors">
+                  <button 
+                    onClick={() => handleSimulateTransfer(alert.id, alert.account)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark transition-colors"
+                  >
                     <ArrowRightLeft className="w-3 h-3" />
                     Simular transferencia
                   </button>
-                  <button className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-success text-white rounded-md hover:bg-opacity-90 transition-colors">
+                  <button 
+                    onClick={() => handleRegisterTransfer(alert.id, alert.account)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-success text-white rounded-md hover:bg-opacity-90 transition-colors"
+                  >
                     <Plus className="w-3 h-3" />
                     Registrar transferencia
                   </button>
-                  <button className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-neutral-100 text-hz-neutral-700 rounded-md hover:bg-hz-neutral-200 transition-colors">
+                  <button 
+                    onClick={() => handlePostpone(alert.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-neutral-100 text-hz-neutral-700 rounded-md hover:bg-hz-neutral-200 transition-colors"
+                  >
                     <Clock className="w-3 h-3" />
                     Posponer 24h
                   </button>
-                  <button className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-neutral-100 text-hz-neutral-700 rounded-md hover:bg-hz-neutral-200 transition-colors">
-                    <X className="w-3 h-3" />
+                  <button 
+                    onClick={() => handleMarkDone(alert.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-neutral-100 text-hz-neutral-700 rounded-md hover:bg-hz-neutral-200 transition-colors"
+                  >
+                    <CheckCircle className="w-3 h-3" />
                     Hecho
                   </button>
                 </div>

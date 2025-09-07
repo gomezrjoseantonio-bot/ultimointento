@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ExternalLink, Calculator, TrendingUp, TrendingDown } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -17,8 +19,19 @@ interface ExpensesSectionProps {
 }
 
 const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+  
   // Mock data - in real implementation would come from movements categorization and budget
   const currentMonth = new Date().toLocaleDateString('es-ES', { month: 'long' });
+
+  const handleOpenBudget = () => {
+    // Show loading toast and navigate to the budget section
+    toast.loading('Abriendo gestión de presupuesto...', { id: 'budget-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Presupuesto', { id: 'budget-nav' });
+      navigate('/proyeccion/presupuesto');
+    }, 500);
+  };
   
   const expenseCategories: ExpenseCategory[] = [
     {
@@ -104,7 +117,10 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
             Distribución de gastos de {currentMonth}
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors">
+        <button 
+          onClick={handleOpenBudget}
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+        >
           <ExternalLink className="w-4 h-4" />
           Abrir Presupuesto
         </button>
