@@ -63,6 +63,8 @@ export class TreasuryAccountsAPI {
     includeInConsolidated?: boolean;
     openingBalance: number;
     openingBalanceDate?: string;
+    usage_scope?: 'personal' | 'inmuebles' | 'mixto';
+    logo_url?: string;
   }): Promise<Account> {
     // Validate IBAN if provided
     if (accountData.iban && !validateIBAN(accountData.iban)) {
@@ -88,6 +90,8 @@ export class TreasuryAccountsAPI {
       includeInConsolidated: accountData.includeInConsolidated ?? true,
       currency: 'EUR',
       isActive: true,
+      usage_scope: accountData.usage_scope || 'mixto', // Default to 'mixto'
+      logo_url: accountData.logo_url,
       createdAt: now,
       updatedAt: now
     };
@@ -106,6 +110,8 @@ export class TreasuryAccountsAPI {
     includeInConsolidated?: boolean;
     openingBalance: number;
     openingBalanceDate?: string;
+    usage_scope?: 'personal' | 'inmuebles' | 'mixto';
+    logo_url?: string;
   }>): Promise<Account> {
     const db = await initDB();
     
@@ -128,6 +134,8 @@ export class TreasuryAccountsAPI {
       ...(accountData.includeInConsolidated !== undefined && { includeInConsolidated: accountData.includeInConsolidated }),
       ...(accountData.openingBalance !== undefined && { openingBalance: accountData.openingBalance }),
       ...(accountData.openingBalanceDate && { openingBalanceDate: accountData.openingBalanceDate }),
+      ...(accountData.usage_scope && { usage_scope: accountData.usage_scope }),
+      ...(accountData.logo_url !== undefined && { logo_url: accountData.logo_url }),
       updatedAt: new Date().toISOString()
     };
 

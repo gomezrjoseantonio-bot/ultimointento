@@ -169,7 +169,7 @@ function findIBANColumns(lines: string[]): string[] {
 /**
  * Mask a complete IBAN: ES12 **** **** 1234
  */
-function maskIBAN(iban: string): string {
+export function maskIBAN(iban: string): string {
   if (iban.length < 8) return iban;
   return `${iban.substring(0, 4)} **** **** ${iban.substring(iban.length - 4)}`;
 }
