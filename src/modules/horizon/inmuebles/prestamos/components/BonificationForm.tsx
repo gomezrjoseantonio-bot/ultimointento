@@ -1,6 +1,6 @@
 // Bonification Form Component for creating/editing individual bonifications
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { Bonificacion, ReglaBonificacion } from '../../../../../types/prestamos';
 import { formatSpanishNumber, parseSpanishNumber } from '../../../../../services/spanishFormattingService';
@@ -13,6 +13,22 @@ interface BonificationFormProps {
 
 const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onChange, onRemove }) => {
   const [isExpanded, setIsExpanded] = useState(!bonification.nombre);
+  const [reduccionDisplay, setReduccionDisplay] = useState(
+    formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 3)
+  );
+  const [costeDisplay, setCosteDisplay] = useState(
+    bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : ''
+  );
+  const [minimoMensualDisplay, setMinimoMensualDisplay] = useState(
+    bonification.regla?.minimoMensual ? formatSpanishNumber(bonification.regla.minimoMensual, 0) : ''
+  );
+
+  // Update display states when bonification prop changes
+  useEffect(() => {
+    setReduccionDisplay(formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 3));
+    setCosteDisplay(bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : '');
+    setMinimoMensualDisplay(bonification.regla?.minimoMensual ? formatSpanishNumber(bonification.regla.minimoMensual, 0) : '');
+  }, [bonification]);
 
   const handleFieldChange = (field: keyof Bonificacion, value: any) => {
     onChange({
@@ -173,10 +189,17 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
           </label>
           <input
             type="text"
-            value={formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 3)}
-            onChange={(e) => {
-              const parsed = parseSpanishNumber(e.target.value);
-              handleFieldChange('reduccionPuntosPorcentuales', parsed / 100);
+            value={reduccionDisplay}
+            onChange={(e) => setReduccionDisplay(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value) {
+                const parsed = parseSpanishNumber(e.target.value);
+                if (parsed >= 0) {
+                  const formatted = formatSpanishNumber(parsed, 3);
+                  setReduccionDisplay(formatted);
+                  handleFieldChange('reduccionPuntosPorcentuales', parsed / 100);
+                }
+              }
             }}
             className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
             placeholder="0,300"
@@ -206,10 +229,20 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
           </label>
           <input
             type="text"
-            value={bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : ''}
-            onChange={(e) => {
-              const parsed = parseSpanishNumber(e.target.value);
-              handleFieldChange('costeAnualEstimado', parsed || undefined);
+            value={costeDisplay}
+            onChange={(e) => setCosteDisplay(e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value) {
+                const parsed = parseSpanishNumber(e.target.value);
+                if (parsed >= 0) {
+                  const formatted = formatSpanishNumber(parsed, 0);
+                  setCosteDisplay(formatted);
+                  handleFieldChange('costeAnualEstimado', parsed || undefined);
+                }
+              } else {
+                setCosteDisplay('');
+                handleFieldChange('costeAnualEstimado', undefined);
+              }
             }}
             className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
             placeholder="240"
@@ -266,13 +299,20 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             </label>
             <input
               type="text"
-              value={formatSpanishNumber(bonification.regla.minimoMensual || 0, 0)}
-              onChange={(e) => {
-                const parsed = parseSpanishNumber(e.target.value);
-                handleRuleChange({
-                  tipo: 'NOMINA',
-                  minimoMensual: parsed
-                });
+              value={minimoMensualDisplay}
+              onChange={(e) => setMinimoMensualDisplay(e.target.value)}
+              onBlur={(e) => {
+                if (e.target.value) {
+                  const parsed = parseSpanishNumber(e.target.value);
+                  if (parsed >= 0) {
+                    const formatted = formatSpanishNumber(parsed, 0);
+                    setMinimoMensualDisplay(formatted);
+                    handleRuleChange({
+                      tipo: 'NOMINA',
+                      minimoMensual: parsed
+                    });
+                  }
+                }
               }}
               className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
               placeholder="1.200"

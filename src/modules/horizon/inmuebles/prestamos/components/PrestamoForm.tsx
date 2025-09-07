@@ -73,7 +73,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
   // Calculate estimated payment when relevant fields change
   useEffect(() => {
-    const principal = parseFloat(principalInicial) || 0;
+    const principal = parseSpanishNumber(principalInicial);
     const plazo = parseInt(plazoMesesTotal) || 0;
     
     if (principal > 0 && plazo > 0) {
@@ -81,13 +81,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       
       switch (tipo) {
         case 'FIJO':
-          rate = parseFloat(tipoNominalAnualFijo) || 0;
+          rate = parseSpanishNumber(tipoNominalAnualFijo);
           break;
         case 'VARIABLE':
-          rate = (parseFloat(valorIndiceActual) || 0) + (parseFloat(diferencial) || 0);
+          rate = parseSpanishNumber(valorIndiceActual) + parseSpanishNumber(diferencial);
           break;
         case 'MIXTO':
-          rate = parseFloat(tipoNominalAnualMixtoFijo) || 0;
+          rate = parseSpanishNumber(tipoNominalAnualMixtoFijo);
           break;
       }
 
@@ -109,28 +109,28 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             // Load all form fields from existing loan
             setNombre(prestamo.nombre);
             setInmuebleId(prestamo.inmuebleId);
-            setPrincipalInicial(prestamo.principalInicial.toString());
+            setPrincipalInicial(formatSpanishNumber(prestamo.principalInicial, 2));
             setFechaFirma(prestamo.fechaFirma);
             setPlazoMesesTotal(prestamo.plazoMesesTotal.toString());
             setTipo(prestamo.tipo);
-            setTipoNominalAnualFijo(formatSpanishNumber(prestamo.tipoNominalAnualFijo || 0, 3));
+            setTipoNominalAnualFijo(prestamo.tipoNominalAnualFijo ? formatSpanishNumber(prestamo.tipoNominalAnualFijo, 2) : '');
             setIndice(prestamo.indice || 'EURIBOR');
-            setValorIndiceActual(formatSpanishNumber(prestamo.valorIndiceActual || 0, 3));
-            setDiferencial(formatSpanishNumber(prestamo.diferencial || 0, 3));
+            setValorIndiceActual(prestamo.valorIndiceActual ? formatSpanishNumber(prestamo.valorIndiceActual, 2) : '');
+            setDiferencial(prestamo.diferencial ? formatSpanishNumber(prestamo.diferencial, 2) : '');
             setPeriodoRevisionMeses(prestamo.periodoRevisionMeses?.toString() || '12');
             setTramoFijoMeses(prestamo.tramoFijoMeses?.toString() || '');
-            setTipoNominalAnualMixtoFijo(formatSpanishNumber(prestamo.tipoNominalAnualMixtoFijo || 0, 3));
+            setTipoNominalAnualMixtoFijo(prestamo.tipoNominalAnualMixtoFijo ? formatSpanishNumber(prestamo.tipoNominalAnualMixtoFijo, 2) : '');
             setMesesSoloIntereses(prestamo.mesesSoloIntereses?.toString() || '0');
             setDiferirPrimeraCuotaMeses(prestamo.diferirPrimeraCuotaMeses?.toString() || '0');
             setProrratearPrimerPeriodo(prestamo.prorratearPrimerPeriodo || false);
             setCobroMesVencido(prestamo.cobroMesVencido || false);
             setDiaCargoMes(prestamo.diaCargoMes?.toString() || '1');
             setCuentaCargoId(prestamo.cuentaCargoId);
-            setComisionAmortizacionParcial(formatSpanishNumber(prestamo.comisionAmortizacionParcial || 0, 3));
-            setComisionCancelacionTotal(formatSpanishNumber(prestamo.comisionCancelacionTotal || 0, 3));
-            setGastosFijosOperacion(prestamo.gastosFijosOperacion?.toString() || '30');
+            setComisionAmortizacionParcial(prestamo.comisionAmortizacionParcial ? formatSpanishNumber(prestamo.comisionAmortizacionParcial, 3) : '');
+            setComisionCancelacionTotal(prestamo.comisionCancelacionTotal ? formatSpanishNumber(prestamo.comisionCancelacionTotal, 3) : '');
+            setGastosFijosOperacion(prestamo.gastosFijosOperacion ? formatSpanishNumber(prestamo.gastosFijosOperacion, 2) : '');
             setBonificaciones(prestamo.bonificaciones || []);
-            setMaximoBonificacionPorcentaje(formatSpanishNumber(prestamo.maximoBonificacionPorcentaje || 0.006, 2));
+            setMaximoBonificacionPorcentaje(formatSpanishNumber((prestamo.maximoBonificacionPorcentaje || 0.006) * 100, 2));
             setPeriodoRevisionBonificacionMeses(prestamo.periodoRevisionBonificacionMeses?.toString() || '12');
             setFechaFinPeriodo(prestamo.fechaFinPeriodo || '');
             setFechaEvaluacion(prestamo.fechaEvaluacion || '');
@@ -153,25 +153,25 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
     if (!nombre.trim()) errors.push('Nombre del préstamo es obligatorio');
     if (!inmuebleId.trim()) errors.push('ID del inmueble es obligatorio');
-    if (!principalInicial || parseFloat(principalInicial) <= 0) errors.push('Principal inicial debe ser mayor que 0');
+    if (!principalInicial || parseSpanishNumber(principalInicial) <= 0) errors.push('Principal inicial debe ser mayor que 0');
     if (!plazoMesesTotal || parseInt(plazoMesesTotal) <= 0) errors.push('Plazo debe ser mayor que 0');
     if (!fechaFirma) errors.push('Fecha de firma es obligatoria');
     if (!cuentaCargoId.trim()) errors.push('Cuenta de cargo es obligatoria');
 
-    if (tipo === 'FIJO' && (!tipoNominalAnualFijo || parseFloat(tipoNominalAnualFijo) < 0)) {
+    if (tipo === 'FIJO' && (!tipoNominalAnualFijo || parseSpanishNumber(tipoNominalAnualFijo) < 0)) {
       errors.push('Tipo de interés fijo es obligatorio');
     }
 
     if (tipo === 'VARIABLE') {
-      if (!valorIndiceActual || parseFloat(valorIndiceActual) < 0) errors.push('Valor del índice es obligatorio');
-      if (!diferencial || parseFloat(diferencial) < 0) errors.push('Diferencial es obligatorio');
+      if (!valorIndiceActual || parseSpanishNumber(valorIndiceActual) < 0) errors.push('Valor del índice es obligatorio');
+      if (!diferencial || parseSpanishNumber(diferencial) < 0) errors.push('Diferencial es obligatorio');
     }
 
     if (tipo === 'MIXTO') {
       if (!tramoFijoMeses || parseInt(tramoFijoMeses) <= 0) errors.push('Tramo fijo en meses es obligatorio');
-      if (!tipoNominalAnualMixtoFijo || parseFloat(tipoNominalAnualMixtoFijo) < 0) errors.push('Tipo fijo del tramo mixto es obligatorio');
-      if (!valorIndiceActual || parseFloat(valorIndiceActual) < 0) errors.push('Valor del índice es obligatorio');
-      if (!diferencial || parseFloat(diferencial) < 0) errors.push('Diferencial es obligatorio');
+      if (!tipoNominalAnualMixtoFijo || parseSpanishNumber(tipoNominalAnualMixtoFijo) < 0) errors.push('Tipo fijo del tramo mixto es obligatorio');
+      if (!valorIndiceActual || parseSpanishNumber(valorIndiceActual) < 0) errors.push('Valor del índice es obligatorio');
+      if (!diferencial || parseSpanishNumber(diferencial) < 0) errors.push('Diferencial es obligatorio');
     }
 
     const diaCargoNum = parseInt(diaCargoMes);
@@ -206,8 +206,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       const prestamoData: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
         nombre: nombre.trim(),
         inmuebleId: inmuebleId.trim(),
-        principalInicial: parseFloat(principalInicial),
-        principalVivo: parseFloat(principalInicial),
+        principalInicial: parseSpanishNumber(principalInicial),
+        principalVivo: parseSpanishNumber(principalInicial),
         fechaFirma,
         plazoMesesTotal: parseInt(plazoMesesTotal),
         tipo,
@@ -243,7 +243,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         // Costs
         comisionAmortizacionParcial: parseSpanishNumber(comisionAmortizacionParcial),
         comisionCancelacionTotal: parseSpanishNumber(comisionCancelacionTotal),
-        gastosFijosOperacion: parseFloat(gastosFijosOperacion),
+        gastosFijosOperacion: parseSpanishNumber(gastosFijosOperacion),
 
         // Bonifications
         ...(bonificaciones.length > 0 && { bonificaciones }),
@@ -339,10 +339,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               </label>
               <input
                 type="text"
-                value={principalInicial ? formatSpanishNumber(parseFloat(principalInicial), 2) : ''}
-                onChange={(e) => {
-                  const parsed = parseSpanishNumber(e.target.value);
-                  setPrincipalInicial(parsed.toString());
+                value={principalInicial}
+                onChange={(e) => setPrincipalInicial(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    const parsed = parseSpanishNumber(e.target.value);
+                    if (parsed > 0) {
+                      setPrincipalInicial(formatSpanishNumber(parsed, 2));
+                    }
+                  }
                 }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                 placeholder="180.000,00"
@@ -433,10 +438,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                 </label>
                 <input
                   type="text"
-                  value={tipoNominalAnualFijo ? formatSpanishNumber(parseFloat(tipoNominalAnualFijo), 3) : ''}
-                  onChange={(e) => {
-                    const parsed = parseSpanishNumber(e.target.value);
-                    setTipoNominalAnualFijo(parsed.toString());
+                  value={tipoNominalAnualFijo}
+                  onChange={(e) => setTipoNominalAnualFijo(e.target.value)}
+                  onBlur={(e) => {
+                    if (e.target.value) {
+                      const parsed = parseSpanishNumber(e.target.value);
+                      if (parsed > 0) {
+                        setTipoNominalAnualFijo(formatSpanishNumber(parsed, 2));
+                      }
+                    }
                   }}
                   className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                   placeholder="4,49"
@@ -466,10 +476,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   </label>
                   <input
                     type="text"
-                    value={valorIndiceActual ? formatSpanishNumber(parseFloat(valorIndiceActual), 3) : ''}
-                    onChange={(e) => {
-                      const parsed = parseSpanishNumber(e.target.value);
-                      setValorIndiceActual(parsed.toString());
+                    value={valorIndiceActual}
+                    onChange={(e) => setValorIndiceActual(e.target.value)}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        const parsed = parseSpanishNumber(e.target.value);
+                        if (parsed > 0) {
+                          setValorIndiceActual(formatSpanishNumber(parsed, 2));
+                        }
+                      }
                     }}
                     className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                     placeholder="3,65"
@@ -482,10 +497,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   </label>
                   <input
                     type="text"
-                    value={diferencial ? formatSpanishNumber(parseFloat(diferencial), 3) : ''}
-                    onChange={(e) => {
-                      const parsed = parseSpanishNumber(e.target.value);
-                      setDiferencial(parsed.toString());
+                    value={diferencial}
+                    onChange={(e) => setDiferencial(e.target.value)}
+                    onBlur={(e) => {
+                      if (e.target.value) {
+                        const parsed = parseSpanishNumber(e.target.value);
+                        if (parsed > 0) {
+                          setDiferencial(formatSpanishNumber(parsed, 2));
+                        }
+                      }
                     }}
                     className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                     placeholder="1,2"
@@ -518,10 +538,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     </label>
                     <input
                       type="text"
-                      value={tipoNominalAnualMixtoFijo ? formatSpanishNumber(parseFloat(tipoNominalAnualMixtoFijo), 3) : ''}
-                      onChange={(e) => {
-                        const parsed = parseSpanishNumber(e.target.value);
-                        setTipoNominalAnualMixtoFijo(parsed.toString());
+                      value={tipoNominalAnualMixtoFijo}
+                      onChange={(e) => setTipoNominalAnualMixtoFijo(e.target.value)}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          const parsed = parseSpanishNumber(e.target.value);
+                          if (parsed > 0) {
+                            setTipoNominalAnualMixtoFijo(formatSpanishNumber(parsed, 2));
+                          }
+                        }
                       }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                       placeholder="3,2"
@@ -549,10 +574,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     </label>
                     <input
                       type="text"
-                      value={valorIndiceActual ? formatSpanishNumber(parseFloat(valorIndiceActual), 3) : ''}
-                      onChange={(e) => {
-                        const parsed = parseSpanishNumber(e.target.value);
-                        setValorIndiceActual(parsed.toString());
+                      value={valorIndiceActual}
+                      onChange={(e) => setValorIndiceActual(e.target.value)}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          const parsed = parseSpanishNumber(e.target.value);
+                          if (parsed > 0) {
+                            setValorIndiceActual(formatSpanishNumber(parsed, 2));
+                          }
+                        }
                       }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                       placeholder="3,65"
@@ -565,10 +595,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     </label>
                     <input
                       type="text"
-                      value={diferencial ? formatSpanishNumber(parseFloat(diferencial), 3) : ''}
-                      onChange={(e) => {
-                        const parsed = parseSpanishNumber(e.target.value);
-                        setDiferencial(parsed.toString());
+                      value={diferencial}
+                      onChange={(e) => setDiferencial(e.target.value)}
+                      onBlur={(e) => {
+                        if (e.target.value) {
+                          const parsed = parseSpanishNumber(e.target.value);
+                          if (parsed > 0) {
+                            setDiferencial(formatSpanishNumber(parsed, 2));
+                          }
+                        }
                       }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                       placeholder="1,5"
@@ -701,13 +736,18 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               </label>
               <input
                 type="text"
-                value={comisionAmortizacionParcial ? formatSpanishNumber(parseFloat(comisionAmortizacionParcial), 3) : ''}
-                onChange={(e) => {
-                  const parsed = parseSpanishNumber(e.target.value);
-                  setComisionAmortizacionParcial(parsed.toString());
+                value={comisionAmortizacionParcial || ''}
+                onChange={(e) => setComisionAmortizacionParcial(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    const parsed = parseSpanishNumber(e.target.value);
+                    if (parsed >= 0) {
+                      setComisionAmortizacionParcial(formatSpanishNumber(parsed, 3));
+                    }
+                  }
                 }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="1,0"
+                placeholder="1,000"
               />
             </div>
 
@@ -717,13 +757,18 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               </label>
               <input
                 type="text"
-                value={comisionCancelacionTotal ? formatSpanishNumber(parseFloat(comisionCancelacionTotal), 3) : ''}
-                onChange={(e) => {
-                  const parsed = parseSpanishNumber(e.target.value);
-                  setComisionCancelacionTotal(parsed.toString());
+                value={comisionCancelacionTotal || ''}
+                onChange={(e) => setComisionCancelacionTotal(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    const parsed = parseSpanishNumber(e.target.value);
+                    if (parsed >= 0) {
+                      setComisionCancelacionTotal(formatSpanishNumber(parsed, 3));
+                    }
+                  }
                 }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="0,5"
+                placeholder="0,500"
               />
             </div>
 
@@ -733,10 +778,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               </label>
               <input
                 type="text"
-                value={gastosFijosOperacion ? formatSpanishNumber(parseFloat(gastosFijosOperacion), 2) : ''}
-                onChange={(e) => {
-                  const parsed = parseSpanishNumber(e.target.value);
-                  setGastosFijosOperacion(parsed.toString());
+                value={gastosFijosOperacion || ''}
+                onChange={(e) => setGastosFijosOperacion(e.target.value)}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    const parsed = parseSpanishNumber(e.target.value);
+                    if (parsed >= 0) {
+                      setGastosFijosOperacion(formatSpanishNumber(parsed, 2));
+                    }
+                  }
                 }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                 placeholder="30,00"
