@@ -5,11 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { 
-  Upload,
-  Search, 
-  Eye, 
   RotateCcw,
-  Trash2, 
   ChevronDown, 
   ChevronUp,
   CheckCircle,
@@ -19,9 +15,14 @@ import {
   Image,
   FileSpreadsheet,
   Archive,
-  File,
-  X
+  File
 } from 'lucide-react';
+
+// Import standardized components
+import PageHeader from '../components/common/PageHeader';
+import FilterBar from '../components/common/FilterBar';
+import DataTable from '../components/common/DataTable';
+import Drawer from '../components/common/Drawer';
 
 // H-HOTFIX: Import new services and types
 import DocumentPreview from '../components/DocumentPreview';
@@ -560,257 +561,196 @@ const InboxAtlasHorizon: React.FC = () => {
   const statusCounts = getStatusCounts();
   const filteredDocuments = getFilteredDocuments();
 
+  // DataTable configuration
+  const tableColumns = [
+    {
+      key: 'tipo',
+      label: 'Tipo',
+      render: (value: DocumentType, item: InboxDocument) => (
+        <div className="flex items-center gap-2">
+          {getFileIcon(item.filename, item.type)}
+          <span className="text-sm font-medium text-gray-900">{value}</span>
+        </div>
+      )
+    },
+    {
+      key: 'proveedor',
+      label: 'Proveedor/Emisor', 
+      render: (value: string, item: InboxDocument) => (
+        <div>
+          <div className="text-sm text-gray-900">{value || '—'}</div>
+          <div className="text-xs text-gray-500">{item.filename}</div>
+        </div>
+      )
+    },
+    {
+      key: 'importe',
+      label: 'Importe',
+      render: (value: number) => value ? `${value.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'
+    },
+    {
+      key: 'fecha',
+      label: 'Fecha doc.',
+      render: (value: string) => value ? new Date(value).toLocaleDateString('es-ES') : '—'
+    },
+    {
+      key: 'inmueble',
+      label: 'Inmueble/Personal',
+      render: (value: string) => value || 'Personal'
+    },
+    {
+      key: 'iban',
+      label: 'IBAN detectado',
+      render: (value: string) => (
+        <span className="font-mono text-sm">{value || '—'}</span>
+      )
+    },
+    {
+      key: 'destino',
+      label: 'Destino final',
+      render: (value: string) => value ? (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-hz-primary/10 text-hz-primary cursor-pointer hover:bg-hz-primary/20 transition-colors">
+          {value}
+        </span>
+      ) : (
+        <span className="text-sm text-gray-400">—</span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Estado',
+      render: (value: DocumentStatus) => (
+        <div className="flex items-center gap-1">
+          {getStatusIcon(value)}
+          <span className="text-sm">
+            {value === 'guardado_automatico' ? '✅' : 
+             value === 'revision_requerida' ? '⚠' : '⛔'}
+          </span>
+        </div>
+      )
+    }
+  ];
+
+  const tableActions = [
+    {
+      type: 'view' as const,
+      label: 'Ver documento',
+      onClick: (item: InboxDocument) => setSelectedDocument(item)
+    },
+    {
+      type: 'custom' as const,
+      label: 'Reprocesar',
+      icon: <RotateCcw className="w-4 h-4" />,
+      onClick: handleReprocess,
+      className: 'text-hz-success hover:text-green-700'
+    },
+    {
+      type: 'delete' as const,
+      label: 'Eliminar',
+      onClick: (item: InboxDocument) => handleDelete(item.id)
+    }
+  ];
+
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header compacto */}
-      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Bandeja de entrada</h1>
-          
-          {/* Botón Subir documentos */}
-          <div className="relative">
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <button
-              style={{ backgroundColor: '#0A2A57' }}
-              className="hover:bg-[#0C356B] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              Subir documentos
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Standardized Header */}
+      <PageHeader
+        title="Bandeja de entrada"
+        subtitle="Procesamiento automático de documentos con OCR y clasificación inteligente"
+        primaryAction={{
+          label: "Subir documentos",
+          onClick: () => {
+            // Trigger file input click
+            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+            fileInput?.click();
+          }
+        }}
+      />
+      
+      {/* Hidden file input */}
+      <input
+        id="file-upload"
+        type="file"
+        multiple
+        accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
+        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+        className="hidden"
+      />
 
-      {/* Barra de utilidades */}
-      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-6 py-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Buscador global */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por proveedor, importe, IBAN, inmueble, id..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* Segmented control de estado con contadores */}
-          <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
-            {[
-              { key: 'todos' as const, label: 'Todos', count: statusCounts.todos },
-              { key: 'guardado_automatico' as const, label: 'Guardado ✅', count: statusCounts.guardado_automatico },
-              { key: 'revision_requerida' as const, label: 'Revisión ⚠', count: statusCounts.revision_requerida },
-              { key: 'error' as const, label: 'Error ⛔', count: statusCounts.error }
-            ].map(({ key, label, count }) => (
-              <button
-                key={key}
-                onClick={() => setStatusFilter(key)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  statusFilter === key
-                    ? 'bg-white text-[#0A2A57] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {label} ({count})
-              </button>
-            ))}
-          </div>
-
-          {/* Filtros adicionales */}
-          <div className="flex gap-2">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as 'todos' | DocumentType)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="todos">Todos los tipos</option>
-              <option value="Factura">Factura</option>
-              <option value="Recibo">Recibo</option>
-              <option value="Extracto">Extracto</option>
-              <option value="Contrato">Contrato</option>
-              <option value="Archivo">Archivo</option>
-              <option value="Otro">Otro</option>
-            </select>
-
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="todos">Todas las fechas</option>
-              <option value="72h">Últimas 72h</option>
-              <option value="semana">Última semana</option>
-              <option value="mes">Último mes</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      {/* Standardized Filter Bar */}
+      <FilterBar
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Buscar por proveedor, importe, IBAN, inmueble, id..."
+        filters={[
+          {
+            key: 'status',
+            label: 'Estado',
+            value: statusFilter,
+            options: [
+              { value: 'todos', label: `Todos (${statusCounts.todos})` },
+              { value: 'guardado_automatico', label: `Guardado ✅ (${statusCounts.guardado_automatico})` },
+              { value: 'revision_requerida', label: `Revisión ⚠ (${statusCounts.revision_requerida})` },
+              { value: 'error', label: `Error ⛔ (${statusCounts.error})` }
+            ],
+            onChange: (value) => setStatusFilter(value as typeof statusFilter)
+          },
+          {
+            key: 'type',
+            label: 'Tipo',
+            value: typeFilter,
+            options: [
+              { value: 'todos', label: 'Todos los tipos' },
+              { value: 'Factura', label: 'Factura' },
+              { value: 'Recibo', label: 'Recibo' },
+              { value: 'Extracto', label: 'Extracto' },
+              { value: 'Contrato', label: 'Contrato' },
+              { value: 'Archivo', label: 'Archivo' },
+              { value: 'Otro', label: 'Otro' }
+            ],
+            onChange: (value) => setTypeFilter(value as typeof typeFilter)
+          },
+          {
+            key: 'date',
+            label: 'Período',
+            value: dateFilter,
+            options: [
+              { value: 'todos', label: 'Todas las fechas' },
+              { value: '72h', label: 'Últimas 72h' },
+              { value: 'semana', label: 'Última semana' },
+              { value: 'mes', label: 'Último mes' }
+            ],
+            onChange: setDateFilter
+          }
+        ]}
+      />
 
       {/* Contenido principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Tabla principal */}
-        <div className="flex-1 overflow-auto">
-          <div className="min-w-full">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tipo
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Proveedor/Emisor
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Importe
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fecha doc.
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Inmueble/Personal
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    IBAN detectado
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Destino final
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredDocuments.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedDocument?.id === doc.id ? 'bg-primary-50 border-l-4 border-l-blue-500' : ''
-                    }`}
-                    onClick={() => setSelectedDocument(doc)}
-                  >
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getFileIcon(doc.filename, doc.type)}
-                        <span className="text-sm font-medium text-gray-900">{doc.tipo}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{doc.proveedor || '—'}</div>
-                      <div className="text-xs text-gray-500">{doc.filename}</div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.importe ? `${doc.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-ES') : '—'}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {doc.inmueble || 'Personal'}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                      {doc.iban || '—'}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      {doc.destino ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 cursor-pointer hover:bg-blue-200 transition-colors">
-                          {doc.destino}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        {getStatusIcon(doc.status)}
-                        <span className="text-sm">
-                          {doc.status === 'guardado_automatico' ? '✅' : 
-                           doc.status === 'revision_requerida' ? '⚠' : '⛔'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-1 sm:gap-2">
-                        <button 
-                          className="text-primary-600 hover:text-primary-900"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDocument(doc);
-                          }}
-                          title="Ver documento"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button 
-                          className="text-success-600 hover:text-success-900"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReprocess(doc);
-                          }}
-                          title="Reprocesar"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </button>
-                        <button 
-                          className="text-error-600 hover:text-error-900"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(doc.id);
-                          }}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filteredDocuments.length === 0 && (
-              <div className="text-center py-12">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Comienza subiendo un documento o ajusta los filtros.
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Standardized Data Table */}
+        <div className="flex-1 p-6">
+          <DataTable
+            data={filteredDocuments}
+            columns={tableColumns}
+            actions={tableActions}
+            emptyMessage="No hay documentos que coincidan con los filtros"
+            emptyIcon={<FileText className="h-12 w-12 text-gray-400" />}
+            onSort={undefined} // Could implement sorting later
+            className="border-0"
+          />
         </div>
 
         {/* Vista de detalle (split/panel lateral) */}
-        {selectedDocument && (
-          <div className="w-full lg:w-96 xl:w-[32rem] border-l border-gray-200 bg-white flex flex-col">
-            <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900 pr-4">
-                  {selectedDocument.filename}
-                </h3>
-                <button
-                  onClick={() => setSelectedDocument(null)}
-                  className="lg:hidden text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-auto px-6 py-4">
+        <Drawer
+          isOpen={!!selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          title={selectedDocument?.filename || 'Documento'}
+          size="lg"
+        >
+          {selectedDocument && (
+            <div className="space-y-6">
               {/* H-HOTFIX: Enhanced inline document preview */}
-              <div className="mb-6">
+              <div>
                 <DocumentPreview
                   filename={selectedDocument.filename}
                   fileType={selectedDocument.type}
@@ -821,7 +761,7 @@ const InboxAtlasHorizon: React.FC = () => {
               </div>
 
               {/* H-HOTFIX: Enhanced campos extraídos */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4">
                 <h4 className="font-medium text-gray-900">Campos extraídos</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -858,7 +798,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     <div>
                       <span className="text-gray-500">Tipo suministro:</span>
                       <div className="font-medium">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-success-100 text-success-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-hz-success-light text-hz-success">
                           {getUtilityTypeDisplayName(selectedDocument.utility_type)}
                         </span>
                       </div>
@@ -890,7 +830,7 @@ const InboxAtlasHorizon: React.FC = () => {
                     <div className="col-span-2">
                       <span className="text-gray-500">Destino final:</span>
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-hz-primary/10 text-hz-primary">
                           {selectedDocument.destino}
                         </span>
                       </div>
@@ -901,7 +841,7 @@ const InboxAtlasHorizon: React.FC = () => {
                   {selectedDocument.revision && selectedDocument.revision > 1 && (
                     <div className="col-span-2">
                       <span className="text-gray-500">Revisión:</span>
-                      <div className="font-medium text-xs text-primary-600">
+                      <div className="font-medium text-xs text-hz-primary">
                         v{selectedDocument.revision} (reprocesado)
                       </div>
                     </div>
@@ -911,12 +851,12 @@ const InboxAtlasHorizon: React.FC = () => {
 
               {/* Mensajes de bloqueo para revisión requerida */}
               {selectedDocument.status === 'revision_requerida' && selectedDocument.blockingReasons && (
-                <div className="mb-6 p-4 bg-warning-50 border border-yellow-200 rounded-lg">
+                <div className="p-4 bg-hz-warning-light border border-hz-warning rounded-lg">
                   <div className="flex items-center mb-2">
-                    <AlertTriangle className="w-5 h-5 text-warning-600 mr-2" />
-                    <span className="font-medium text-yellow-800">Revisión requerida</span>
+                    <AlertTriangle className="w-5 h-5 text-hz-warning mr-2" />
+                    <span className="font-medium text-hz-warning">Revisión requerida</span>
                   </div>
-                  <ul className="text-sm text-warning-700 space-y-1">
+                  <ul className="text-sm text-hz-warning space-y-1">
                     {selectedDocument.blockingReasons.map((reason, index) => (
                       <li key={index}>• {reason}</li>
                     ))}
@@ -955,11 +895,11 @@ const InboxAtlasHorizon: React.FC = () => {
                   {/* Legacy category selection for old blocking reasons */}
                   {selectedDocument.blockingReasons.some(r => r.includes('Categoría fiscal') && !r.includes('Reparto')) && (
                     <div className="mt-4 space-y-3">
-                      <label className="block text-sm font-medium text-yellow-800">
+                      <label className="block text-sm font-medium text-hz-warning">
                         Seleccionar categoría fiscal:
                       </label>
                       <select 
-                        className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
                         onChange={(e) => {
                           const categoria = e.target.value as 'Mejora' | 'Mobiliario' | 'Reparación y Conservación';
                           if (categoria) {
@@ -982,11 +922,11 @@ const InboxAtlasHorizon: React.FC = () => {
                   {/* Property assignment for utilities */}
                   {selectedDocument.blockingReasons.some(r => r.includes('inmueble')) && (
                     <div className="mt-4 space-y-3">
-                      <label className="block text-sm font-medium text-yellow-800">
+                      <label className="block text-sm font-medium text-hz-warning">
                         Seleccionar inmueble:
                       </label>
                       <select 
-                        className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
                         onChange={(e) => {
                           const propertyId = e.target.value;
                           if (propertyId) {
@@ -1013,14 +953,14 @@ const InboxAtlasHorizon: React.FC = () => {
                   {/* H-HOTFIX: Fixed destinations - no phantom document folders */}
                   {selectedDocument.blockingReasons.some(r => r.includes('Destino requerido')) && (
                     <div className="mt-4 space-y-3">
-                      <label className="block text-sm font-medium text-yellow-800">
+                      <label className="block text-sm font-medium text-hz-warning">
                         Seleccionar destino:
                       </label>
-                      <div className="text-xs text-warning-700 mb-2">
+                      <div className="text-xs text-hz-warning mb-2">
                         ⚠ Los documentos se adjuntan a registros, no a carpetas separadas
                       </div>
                       <select 
-                        className="w-full px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
                         onChange={(e) => {
                           const destino = e.target.value;
                           if (destino) {
@@ -1043,51 +983,51 @@ const InboxAtlasHorizon: React.FC = () => {
 
               {/* Mensajes de error */}
               {selectedDocument.status === 'error' && selectedDocument.blockingReasons && (
-                <div className="mb-6 p-4 bg-error-50 border border-error-200 rounded-lg">
+                <div className="p-4 bg-hz-error-light border border-hz-error rounded-lg">
                   <div className="flex items-center mb-2">
-                    <XCircle className="w-5 h-5 text-error-600 mr-2" />
-                    <span className="font-medium text-error-800">Error en procesamiento</span>
+                    <XCircle className="w-5 h-5 text-hz-error mr-2" />
+                    <span className="font-medium text-hz-error">Error en procesamiento</span>
                   </div>
-                  <ul className="text-sm text-error-700 space-y-1">
+                  <ul className="text-sm text-hz-error space-y-1">
                     {selectedDocument.blockingReasons.map((reason, index) => (
                       <li key={index}>• {reason}</li>
                     ))}
                   </ul>
                 </div>
               )}
-            </div>
 
-            {/* Panel inferior plegable "Logs" */}
-            <div className="flex-shrink-0 border-t border-gray-200 px-6 py-4">
-              <button
-                onClick={() => setShowLogsPanel(!showLogsPanel)}
-                className="flex items-center justify-between w-full text-left"
-              >
-                <span className="text-sm font-medium text-gray-900">Logs</span>
-                {showLogsPanel ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-              
-              {showLogsPanel && (
-                <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
-                  {selectedDocument.logs.map((log, index) => (
-                    <div key={index} className="text-xs bg-gray-50 p-3 rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-gray-900">{log.action}</span>
-                        <span className="text-gray-500">
-                          {new Date(log.timestamp).toLocaleString('es-ES')}
-                        </span>
+              {/* Panel inferior plegable "Logs" */}
+              <div className="border-t border-gray-200 pt-4">
+                <button
+                  onClick={() => setShowLogsPanel(!showLogsPanel)}
+                  className="flex items-center justify-between w-full text-left"
+                >
+                  <span className="text-sm font-medium text-gray-900">Logs</span>
+                  {showLogsPanel ? (
+                    <ChevronUp className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+                
+                {showLogsPanel && (
+                  <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                    {selectedDocument.logs.map((log, index) => (
+                      <div key={index} className="text-xs bg-gray-50 p-3 rounded">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900">{log.action}</span>
+                          <span className="text-gray-500">
+                            {new Date(log.timestamp).toLocaleString('es-ES')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </Drawer>
       </div>
     </div>
   );
