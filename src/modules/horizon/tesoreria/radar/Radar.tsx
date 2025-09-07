@@ -262,26 +262,31 @@ const Radar: React.FC = () => {
   return (
     <PageLayout title="Radar" subtitle="Vista de próximos ingresos/gastos y saldo proyectado.">
       <div className="space-y-6">
-        {/* Header with period tabs and personal accounts toggle */}
+        {/* Header with period selection and personal accounts toggle */}
         <div className="flex items-center justify-between">
-          {/* Period Tabs */}
-          <div className="flex gap-2">
-            {[
-              { key: 'hoy' as const, label: 'Hoy' },
-              { key: '30dias' as const, label: '30 días' }
-            ].map(period => (
-              <button
-                key={period.key}
-                onClick={() => setSelectedPeriod(period.key)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedPeriod === period.key
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {period.label}
-              </button>
-            ))}
+          {/* Period Selection - Segmented Control */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">Período:</span>
+            <div className="inline-flex rounded-md border border-gray-300 bg-white">
+              {[
+                { key: 'hoy' as const, label: 'Hoy' },
+                { key: '30dias' as const, label: '30 días' }
+              ].map((period, index) => (
+                <button
+                  key={period.key}
+                  onClick={() => setSelectedPeriod(period.key)}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    index === 0 ? 'rounded-l-md' : 'rounded-r-md border-l border-gray-300'
+                  } ${
+                    selectedPeriod === period.key
+                      ? 'bg-gray-100 text-gray-900'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Exclude Personal Accounts Switch */}
