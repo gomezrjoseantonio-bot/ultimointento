@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, Loader } from 'lucide-react';
-import { BudgetLine } from '../../../../../services/db';
-import { generateBudgetSeed } from '../services/budgetService';
+import { PresupuestoLinea } from '../../../../../services/db';
+import { generateScopeSeed, ScopeSeededData } from '../services/scopeSeedService';
 
 interface WizardStepSemillaProps {
   year: number;
-  scope: {
-    propertyIds: number[];
-    roomIds?: string[];
-    startMonth: number;
-    isFullYear: boolean;
-  };
-  initialLines: Omit<BudgetLine, 'id' | 'budgetId'>[];
-  onComplete: (lines: Omit<BudgetLine, 'id' | 'budgetId'>[]) => void;
+  scopes: ('PERSONAL' | 'INMUEBLES')[];
+  startMonth: number;
+  isFullYear: boolean;
+  initialLines: Omit<PresupuestoLinea, 'id' | 'presupuestoId'>[];
+  onComplete: (lines: Omit<PresupuestoLinea, 'id' | 'presupuestoId'>[]) => void;
 }
 
 const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
