@@ -11,17 +11,25 @@
   --brand-navy: #0E2A47;   /* ATLAS azul marino - legacy compatibility */
   --brand-teal: #00B8C4;   /* ATLAS teal/acento - RESERVED FOR PULSE ONLY */
 
-  /* Horizon Module - Official Design System Tokens */
-  --hz-primary: #0F2C5C;      /* Primary navy blue as per specification */
-  --hz-primary-600: #1E3A8A;  /* Hover/active states as per specification */
+  /* Horizon Module - Official Design System Tokens (Updated per requirements) */
+  --hz-primary: #0A84FF;      /* Primary Horizon blue #0A84FF */
+  --hz-primary-dark: #0A3D62; /* Primary dark (text/borders) #0A3D62 */
   --hz-bg: #F7F9FC;           /* Soft background as per specification */
-  --hz-text: #0B1220;         /* Text color as per specification */
+  --hz-text: #111827;         /* Text color #111827 */
   
-  /* Horizon Semantic States - Official Tokens */
-  --hz-success: #16A34A;      /* Success green */
-  --hz-warning: #F59E0B;      /* Warning yellow */
-  --hz-error: #DC2626;        /* Error red */
-  --hz-info: #2563EB;         /* Info blue */
+  /* Horizon Semantic States - Official Tokens per requirements */
+  --hz-success: #10B981;      /* Success green #10B981 */
+  --hz-warning: #F59E0B;      /* Warning yellow #F59E0B */
+  --hz-error: #EF4444;        /* Error red #EF4444 */
+  --hz-info: #0A84FF;         /* Info blue same as primary */
+  
+  /* Horizon Neutral Colors per requirements */
+  --hz-neutral-900: #111827;  /* Darkest text */
+  --hz-neutral-700: #374151;  /* Secondary text */
+  --hz-neutral-500: #6B7280;  /* Muted text */
+  --hz-neutral-300: #D1D5DB;  /* Light borders */
+  --hz-neutral-100: #F3F4F6;  /* Light backgrounds */
+  --hz-card-bg: #FFFFFF;      /* Card backgrounds */
   
   /* NO TURQUOISE - Reserved for Pulse only */
   
