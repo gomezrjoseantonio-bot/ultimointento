@@ -28,6 +28,9 @@ const CuentasPanel: React.FC = () => {
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [usageFilter, setUsageFilter] = useState<'all' | 'personal' | 'inmuebles' | 'mixto'>('all');
   const [showIbanFull, setShowIbanFull] = useState<{ [key: number]: boolean }>({});
+  const [showUnificationBanner, setShowUnificationBanner] = useState(
+    !localStorage.getItem('cuentas-unification-banner-dismissed')
+  );
   
   // New account form state
   const [newAccountForm, setNewAccountForm] = useState({
@@ -543,6 +546,11 @@ const CuentasPanel: React.FC = () => {
     );
   }
 
+  const dismissUnificationBanner = () => {
+    localStorage.setItem('cuentas-unification-banner-dismissed', 'true');
+    setShowUnificationBanner(false);
+  };
+
   if (loading) {
     return (
       <div className="animate-pulse">
@@ -917,6 +925,32 @@ const CuentasPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Unification Banner */}
+      {showUnificationBanner && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">ℹ</span>
+                </div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Hemos unificado 'Cuentas'.</span> Ahora se gestionan desde Tesorería con funciones mejoradas: filtros por uso, carga de logos y validación IBAN.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={dismissUnificationBanner}
+              className="flex-shrink-0 ml-4 text-blue-400 hover:text-blue-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Usage Filter */}
       <div className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200">
