@@ -1,162 +1,257 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { initDB, Account } from '../../../../services/db';
-import { getTreasuryProjections, generateTreasuryRecommendations } from '../../../../services/treasuryForecastService';
+import { initDB, Account, TreasuryEvent } from '../../../../services/db';
+import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 
-interface TreasuryProjection {
-  currentBalance: number;
-  projectedBalance7d: number;
-  projectedBalance30d: number;
-  accountBalances: Map<number, { current: number; projected: number }>;
-  upcomingEvents: Array<{
-    date: string;
-    description: string;
-    amount: number;
-    type: 'income' | 'expense';
-  }>;
-  recommendations: Array<{
-    id: string;
-    type: 'transfer' | 'alert';
-    severity: 'info' | 'warning' | 'critical';
-    title: string;
-    description: string;
-    suggestedAmount?: number;
-    fromAccountName?: string;
-    toAccountName?: string;
-  }>;
-  accountsAtRisk: number;
+// Event status types according to specification
+type EventStatus = 'programado' | 'confirmado' | 'riesgo' | 'alerta';
+
+// Event category types according to specification
+type EventCategory = 'Renta' | 'Hipoteca' | 'Suministros' | 'IBI' | 'Comunidad' | 'Seguros' | 'Reparación y Conservación' | 'Mobiliario' | 'Mejora' | 'Otros';
+
+// Event scope types according to specification  
+type EventScope = 'Inmuebles' | 'Personal';
+
+// Event source types according to specification
+type EventSource = 'Presupuesto' | 'Contrato' | 'Préstamo' | 'Factura OCR' | 'Movimiento esperado' | 'Manual';
+
+// Enhanced event interface for the timeline
+interface RadarEvent {
+  id: string;
+  date: string; // dd/mm format
+  concept: string;
+  scope: EventScope;
+  category: EventCategory;
+  accountSource?: string; // cuenta de cargo/abono
+  amount: number; // with sign
+  balanceAfter: number; // running balance after this event
+  source: EventSource;
+  status: EventStatus;
+  originalEvent: TreasuryEvent;
 }
 
-const Radar: React.FC = () => {
-  const [projection, setProjection] = useState<TreasuryProjection | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedModule, setSelectedModule] = useState<'pulse' | 'horizon' | 'consolidado'>('consolidado');
+// Account data for Radar cards
+interface RadarAccount {
+  id: number;
+  name: string;
+  bank: string;
+  ibanMasked: string; // **** **** **** 1234
+  currentBalance: number;
+  usage: 'Personal' | 'Inmuebles' | 'Mixta';
+  upcomingIncome: number; // sum of income in period
+  upcomingExpenses: number; // sum of expenses in period  
+  projectedBalance: number; // balance at end of period
+  events: RadarEvent[]; // timeline events for this account
+  isExpanded: boolean; // UI state
+}
 
-  const loadTreasuryData = useCallback(async () => {
+// Helper functions moved outside component to avoid re-renders
+const getAccountUsage = (account: Account): 'Personal' | 'Inmuebles' | 'Mixta' => {
+  // Use the existing usage_scope field if available
+  if (account.usage_scope) {
+    switch (account.usage_scope) {
+      case 'personal': return 'Personal';
+      case 'inmuebles': return 'Inmuebles';
+      case 'mixto': return 'Mixta';
+      default: return 'Mixta';
+    }
+  }
+  // Fallback logic based on destination
+  if (account.destination === 'pulse') return 'Personal';
+  if (account.destination === 'horizon') return 'Inmuebles';
+  return 'Mixta';
+};
+
+const maskIban = (iban?: string): string => {
+  if (!iban) return 'Sin IBAN';
+  if (iban.length < 4) return iban;
+  const lastFour = iban.slice(-4);
+  return `**** **** **** ${lastFour}`;
+};
+
+const getEventStatus = (event: TreasuryEvent, balanceAfter: number): EventStatus => {
+  const eventDate = new Date(event.predictedDate);
+  const today = new Date();
+  const daysDiff = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Check if confirmed (has actual movement)
+  if (event.status === 'executed' || event.status === 'confirmed' || event.movementId) {
+    return 'confirmado';
+  }
+
+  // Check for risk conditions
+  if (event.type === 'income' && daysDiff <= 3 && event.status === 'predicted') {
+    return 'riesgo';
+  }
+
+  // Check for alert (negative balance after event) - using balanceAfter parameter
+  if (balanceAfter < 0) {
+    return 'alerta';
+  }
+
+  // Check for risk (balance below minimum after event)
+  const minimumBalance = 200; // Default minimum balance
+  if (balanceAfter < minimumBalance) {
+    return 'riesgo';
+  }
+
+  return 'programado';
+};
+
+const getStatusColor = (status: EventStatus): string => {
+  switch (status) {
+    case 'confirmado': return 'text-green-600';
+    case 'riesgo': return 'text-yellow-600';
+    case 'alerta': return 'text-red-600';
+    case 'programado': return 'text-gray-500';
+  }
+};
+
+const convertToRadarEvent = (event: TreasuryEvent, account: RadarAccount, balanceAfter: number): RadarEvent => {
+  const eventDate = new Date(event.predictedDate);
+  
+  return {
+    id: `${event.id}-${account.id}`,
+    date: eventDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }),
+    concept: event.description,
+    scope: event.sourceType === 'contract' ? 'Inmuebles' : 'Personal', // Simplified logic
+    category: 'Otros', // Simplified - would need more logic to determine category
+    accountSource: event.accountId === account.id ? 'esta cuenta' : undefined,
+    amount: event.type === 'income' ? event.amount : -event.amount,
+    balanceAfter,
+    source: event.sourceType === 'document' ? 'Factura OCR' : 
+            event.sourceType === 'contract' ? 'Contrato' : 'Manual',
+    status: getEventStatus(event, balanceAfter),
+    originalEvent: event
+  };
+};
+
+const Radar: React.FC = () => {
+  const [radarAccounts, setRadarAccounts] = useState<RadarAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPeriod, setSelectedPeriod] = useState<'hoy' | '30dias'>('hoy');
+  const [excludePersonal, setExcludePersonal] = useState(() => {
+    return localStorage.getItem('radar-exclude-personal') === 'true';
+  });
+
+  const loadRadarData = useCallback(async () => {
     setLoading(true);
     try {
       const db = await initDB();
       
-      // Load accounts filtered by module
+      // Load all active accounts
       const allAccounts = await db.getAll('accounts');
-      const filteredAccounts = selectedModule === 'consolidado' 
-        ? allAccounts.filter(acc => acc.isActive)
-        : allAccounts.filter(acc => acc.isActive && acc.destination === selectedModule);
+      const activeAccounts = allAccounts.filter(acc => acc.isActive);
       
-      setAccounts(filteredAccounts);
+      // Calculate period in days
+      const periodDays = selectedPeriod === 'hoy' ? 1 : 30;
       
-      // Get treasury projections
-      const accountIds = filteredAccounts.map(acc => acc.id!);
-      const { accountBalances, totalInflow, totalOutflow, events } = await getTreasuryProjections(30, accountIds);
+      // Get treasury events for the period
+      const accountIds = activeAccounts.map(acc => acc.id!);
+      const { events, accountBalances } = await getTreasuryProjections(periodDays, accountIds);
       
-      // Calculate global balances
-      const currentBalance = filteredAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+      // Process each account
+      const processedAccounts: RadarAccount[] = [];
       
-      const projections7d = await getTreasuryProjections(7, accountIds);
-      const projectedBalance7d = currentBalance + projections7d.totalInflow - projections7d.totalOutflow;
+      for (const account of activeAccounts) {
+        const accountEvents = events.filter(event => event.accountId === account.id);
+        
+        // Sort events by date
+        accountEvents.sort((a, b) => new Date(a.predictedDate).getTime() - new Date(b.predictedDate).getTime());
+        
+        // Calculate running balance
+        let runningBalance = account.balance;
+        const radarEvents: RadarEvent[] = [];
+        
+        for (const event of accountEvents) {
+          runningBalance += event.type === 'income' ? event.amount : -event.amount;
+          const radarEvent = convertToRadarEvent(event, {
+            id: account.id!,
+            name: account.name,
+            bank: account.bank,
+            ibanMasked: maskIban(account.iban),
+            currentBalance: account.balance,
+            usage: getAccountUsage(account),
+            upcomingIncome: 0,
+            upcomingExpenses: 0,
+            projectedBalance: runningBalance,
+            events: [],
+            isExpanded: accountEvents.length > 0
+          }, runningBalance);
+          
+          radarEvents.push(radarEvent);
+        }
+        
+        // Calculate totals
+        const upcomingIncome = accountEvents
+          .filter(e => e.type === 'income')
+          .reduce((sum, e) => sum + e.amount, 0);
+        
+        const upcomingExpenses = accountEvents
+          .filter(e => e.type === 'expense')
+          .reduce((sum, e) => sum + e.amount, 0);
+        
+        const projectedBalance = accountBalances.get(account.id!)?.projected || account.balance;
+        
+        const radarAccount: RadarAccount = {
+          id: account.id!,
+          name: account.name,
+          bank: account.bank,
+          ibanMasked: maskIban(account.iban),
+          currentBalance: account.balance,
+          usage: getAccountUsage(account),
+          upcomingIncome,
+          upcomingExpenses,
+          projectedBalance,
+          events: radarEvents,
+          isExpanded: radarEvents.length > 0
+        };
+        
+        processedAccounts.push(radarAccount);
+      }
       
-      const projectedBalance30d = currentBalance + totalInflow - totalOutflow;
+      setRadarAccounts(processedAccounts);
       
-      // Get upcoming events (next 7 days)
-      const upcomingEvents = events
-        .filter(event => {
-          const eventDate = new Date(event.predictedDate);
-          const today = new Date();
-          const weekFromNow = new Date();
-          weekFromNow.setDate(today.getDate() + 7);
-          return eventDate >= today && eventDate <= weekFromNow;
-        })
-        .sort((a, b) => new Date(a.predictedDate).getTime() - new Date(b.predictedDate).getTime())
-        .slice(0, 5)
-        .map(event => ({
-          date: event.predictedDate,
-          description: event.description,
-          amount: event.amount,
-          type: event.type
-        }));
-
-      // Count accounts at risk (will go below minimum balance)
-      const accountsAtRisk = filteredAccounts.filter(acc => {
-        const balance = accountBalances.get(acc.id!);
-        const minimumBalance = acc.minimumBalance || 200;
-        return balance && balance.projected < minimumBalance;
-      }).length;
-
-      // Get recommendations
-      await generateTreasuryRecommendations();
-      const recommendations = await db.getAll('treasuryRecommendations');
-      const activeRecommendations = recommendations
-        .filter(rec => rec.status === 'active')
-        .map(rec => ({
-          id: rec.id!,
-          type: rec.type,
-          severity: rec.severity,
-          title: rec.title,
-          description: rec.description,
-          suggestedAmount: rec.suggestedAmount,
-          fromAccountName: rec.fromAccountId ? filteredAccounts.find(acc => acc.id === rec.fromAccountId)?.name : undefined,
-          toAccountName: rec.toAccountId ? filteredAccounts.find(acc => acc.id === rec.toAccountId)?.name : undefined
-        }));
-
-      setProjection({
-        currentBalance,
-        projectedBalance7d,
-        projectedBalance30d,
-        accountBalances,
-        upcomingEvents,
-        recommendations: activeRecommendations,
-        accountsAtRisk
-      });
-
     } catch (error) {
-      console.error('Error loading treasury data:', error);
+      console.error('Error loading radar data:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedModule]);
+  }, [selectedPeriod]);
 
   useEffect(() => {
-    loadTreasuryData();
-  }, [selectedModule, loadTreasuryData]);
+    loadRadarData();
+  }, [selectedPeriod, loadRadarData]);
 
-  const getAccountProjectedBalance = (account: Account): number => {
-    if (!projection) return account.balance;
-    const balance = projection.accountBalances.get(account.id!);
-    return balance?.projected || account.balance;
-  };
+  // Handle personal accounts toggle
+  const handleExcludePersonalToggle = useCallback(() => {
+    const newValue = !excludePersonal;
+    setExcludePersonal(newValue);
+    localStorage.setItem('radar-exclude-personal', newValue.toString());
+  }, [excludePersonal]);
 
-  const getAccountStatus = (account: Account): 'healthy' | 'warning' | 'critical' => {
-    const projectedBalance = getAccountProjectedBalance(account);
-    const minimumBalance = account.minimumBalance || 200;
-    
-    if (projectedBalance < 0) return 'critical';
-    if (projectedBalance < minimumBalance) return 'warning';
-    return 'healthy';
-  };
+  // Filter accounts based on personal exclusion setting
+  const filteredAccounts = radarAccounts.filter(account => {
+    if (!excludePersonal) return true;
+    return account.usage !== 'Personal';
+  });
 
-  const getStatusColor = (status: 'healthy' | 'warning' | 'critical'): string => {
-    switch (status) {
-      case 'critical': return 'text-error-600 bg-error-50';
-      case 'warning': return 'text-warning-600 bg-orange-50';
-      case 'healthy': return 'text-success-600 bg-success-50';
-    }
-  };
-
-  const getSeverityIcon = (severity: 'info' | 'warning' | 'critical') => {
-    switch (severity) {
-      case 'critical': return <AlertTriangle className="w-5 h-5 text-error-500" />; // Rojo error según guía
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-warning-500" />; // Amarillo warning según guía  
-      case 'info': return <CheckCircle className="w-5 h-5 text-success-500" />; // Verde OK según guía
-    }
+  // Toggle account expansion
+  const toggleAccountExpansion = (accountId: number) => {
+    setRadarAccounts(prev => prev.map(acc => 
+      acc.id === accountId 
+        ? { ...acc, isExpanded: !acc.isExpanded }
+        : acc
+    ));
   };
 
   if (loading) {
     return (
-      <PageLayout title="Radar Tesorería" subtitle="Vista general del estado financiero.">
+      <PageLayout title="Radar" subtitle="Vista de próximos ingresos/gastos y saldo proyectado.">
         <div className="animate-pulse space-y-6">
+          <div className="h-16 bg-gray-200 rounded-lg"></div>
           <div className="h-32 bg-gray-200 rounded-lg"></div>
           <div className="h-64 bg-gray-200 rounded-lg"></div>
         </div>
@@ -165,164 +260,203 @@ const Radar: React.FC = () => {
   }
 
   return (
-    <PageLayout title="Radar Tesorería" subtitle="Vista general del estado financiero y proyecciones.">
+    <PageLayout title="Radar" subtitle="Vista de próximos ingresos/gastos y saldo proyectado.">
       <div className="space-y-6">
-        {/* Module Toggle */}
-        <div className="flex gap-2">
-          {[
-            { key: 'pulse' as const, label: 'Pulse' },
-            { key: 'horizon' as const, label: 'Horizon' },
-            { key: 'consolidado' as const, label: 'Consolidado' }
-          ].map(module => (
-            <button
-              key={module.key}
-              onClick={() => setSelectedModule(module.key)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedModule === module.key
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {module.label}
-            </button>
-          ))}
+        {/* Header with period tabs and personal accounts toggle */}
+        <div className="flex items-center justify-between">
+          {/* Period Tabs */}
+          <div className="flex gap-2">
+            {[
+              { key: 'hoy' as const, label: 'Hoy' },
+              { key: '30dias' as const, label: '30 días' }
+            ].map(period => (
+              <button
+                key={period.key}
+                onClick={() => setSelectedPeriod(period.key)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedPeriod === period.key
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Exclude Personal Accounts Switch */}
+          <div className="flex items-center gap-3">
+            <label htmlFor="exclude-personal" className="text-sm font-medium text-gray-700">
+              Excluir cuentas personales
+            </label>
+            <input
+              id="exclude-personal"
+              type="checkbox"
+              checked={excludePersonal}
+              onChange={handleExcludePersonalToggle}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+          </div>
         </div>
 
-        {/* Global Summary */}
-        {projection && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Resumen Global</h3>
-              <p className="text-sm text-gray-500">Fecha hoy: {new Date().toLocaleDateString('es-ES')} — Saldo global: {formatEuro(projection.currentBalance)}</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance7d)}</div>
-                <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
-                  {projection.projectedBalance7d > projection.currentBalance ? (
-                    <TrendingUp className="w-4 h-4 text-success-500" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-error-500" />
-                  )}
-                  Proyección +7d
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{formatEuro(projection.projectedBalance30d)}</div>
-                <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
-                  {projection.projectedBalance30d > projection.currentBalance ? (
-                    <TrendingUp className="w-4 h-4 text-success-500" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4 text-error-500" />
-                  )}
-                  Proyección +30d
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-2xl font-bold text-warning-600">{projection.accountsAtRisk}</div>
-                <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
-                  <AlertTriangle className="w-4 h-4 text-orange-500" />
-                  Cuentas en riesgo
-                </div>
-              </div>
-            </div>
+        {/* Account Cards */}
+        {filteredAccounts.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+            <p className="text-gray-500">
+              {excludePersonal 
+                ? "Estás excluyendo las cuentas personales. Desactiva el filtro para verlas."
+                : "No hay cuentas para mostrar."}
+            </p>
           </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Account Balances */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Cuentas</h3>
-            <div className="space-y-4">
-              {accounts.map(account => {
-                const status = getAccountStatus(account);
-                const projectedBalance = getAccountProjectedBalance(account);
-                
-                return (
-                  <div key={account.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100">
+        ) : (
+          <div className="space-y-4">
+            {filteredAccounts.map(account => (
+              <div key={account.id} className="bg-white rounded-lg border border-gray-200">
+                {/* Account Card Header */}
+                <div className="p-6">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">{account.name}</div>
-                      <div className="text-sm text-gray-500">{account.bank}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">
-                        Hoy: {formatEuro(account.balance)}
+                      {/* Account Name and Details */}
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {account.name}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          {account.bank}
+                        </span>
+                        <span className="text-sm text-gray-400">
+                          {account.ibanMasked}
+                        </span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          account.usage === 'Personal' ? 'bg-blue-100 text-blue-800' :
+                          account.usage === 'Inmuebles' ? 'bg-green-100 text-green-800' :
+                          'bg-purple-100 text-purple-800'
+                        }`}>
+                          {account.usage}
+                        </span>
                       </div>
-                      <div className={`text-sm px-2 py-1 rounded-full ${getStatusColor(status)}`}>
-                        +30d: {formatEuro(projectedBalance)}
-                        {status === 'critical' && ' ⚠️'}
+                      
+                      {/* Current Balance */}
+                      <div className="text-2xl font-bold text-gray-900 mb-2">
+                        {formatEuro(account.currentBalance)}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Recommendations */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recomendaciones</h3>
-            {projection && projection.recommendations.length > 0 ? (
-              <div className="space-y-4">
-                {projection.recommendations.map(rec => (
-                  <div key={rec.id} className="p-4 rounded-lg border border-gray-100">
-                    <div className="flex items-start gap-3">
-                      {getSeverityIcon(rec.severity)}
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{rec.title}</div>
-                        <div className="text-sm text-gray-600 mt-1">{rec.description}</div>
-                        {rec.type === 'transfer' && rec.suggestedAmount && (
-                          <div className="text-sm text-primary-600 mt-2">
-                            💡 Transferir {formatEuro(rec.suggestedAmount)} de {rec.fromAccountName} a {rec.toAccountName}
-                          </div>
+                    {/* Mini KPIs */}
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-500">Entradas</div>
+                        <div className="text-lg font-semibold text-green-600">
+                          +{formatEuro(account.upcomingIncome)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-500">Salidas</div>
+                        <div className="text-lg font-semibold text-red-600">
+                          -{formatEuro(account.upcomingExpenses)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-500">Saldo final</div>
+                        <div className={`text-lg font-semibold ${
+                          account.projectedBalance < 0 ? 'text-red-600' : 'text-gray-900'
+                        }`}>
+                          {formatEuro(account.projectedBalance)}
+                        </div>
+                      </div>
+                      
+                      {/* Expand/Collapse Button */}
+                      <button
+                        onClick={() => toggleAccountExpansion(account.id)}
+                        className="flex items-center gap-1 px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        {account.isExpanded ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            Contraer
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            Expandir
+                          </>
                         )}
-                      </div>
+                      </button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <CheckCircle className="w-12 h-12 mx-auto mb-2 text-success-500" />
-                <p>No hay recomendaciones activas</p>
-                <p className="text-sm">Todas las cuentas están en buen estado</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Upcoming Events Calendar */}
-        {projection && projection.upcomingEvents.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Calendario (próximos 7 días)
-            </h3>
-            <div className="space-y-3">
-              {projection.upcomingEvents.map((event, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    {event.type === 'income' ? (
-                      <ArrowUpCircle className="w-5 h-5 text-success-500" />
-                    ) : (
-                      <ArrowDownCircle className="w-5 h-5 text-error-500" />
-                    )}
-                    <div>
-                      <div className="font-medium text-gray-900">{event.description}</div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(event.date).toLocaleDateString('es-ES')}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`font-medium ${event.type === 'income' ? 'text-success-600' : 'text-error-600'}`}>
-                    {event.type === 'income' ? '+' : '-'}{formatEuro(event.amount)}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Expandable Timeline */}
+                {account.isExpanded && (
+                  <div className="border-t border-gray-200">
+                    {account.events.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500">
+                        Sin movimientos previstos
+                      </div>
+                    ) : (
+                      <div className="p-6">
+                        <h4 className="text-sm font-medium text-gray-700 mb-4">
+                          Cronología de eventos
+                        </h4>
+                        <div className="space-y-3">
+                          {account.events.map(event => (
+                            <div key={event.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="text-sm font-medium text-gray-600 w-16">
+                                  {event.date}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{event.concept}</div>
+                                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                                    <span>{event.scope}</span>
+                                    <span>•</span>
+                                    <span>{event.category}</span>
+                                    {event.accountSource && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{event.accountSource}</span>
+                                      </>
+                                    )}
+                                    <span>•</span>
+                                    <span>{event.source}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-4">
+                                <div className={`font-medium ${event.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {event.amount >= 0 ? '+' : ''}{formatEuro(event.amount)}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                  {formatEuro(event.balanceAfter)}
+                                </div>
+                                <div className={`text-xs px-2 py-1 rounded-full ${getStatusColor(event.status)}`}>
+                                  {event.status}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Account Footer */}
+                <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 rounded-b-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      Saldo hoy: <span className="font-medium">{formatEuro(account.currentBalance)}</span>
+                    </span>
+                    <span className="text-gray-600">
+                      Saldo al final del periodo: <span className={`font-medium ${
+                        account.projectedBalance < 0 ? 'text-red-600' : 'text-gray-900'
+                      }`}>{formatEuro(account.projectedBalance)}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
