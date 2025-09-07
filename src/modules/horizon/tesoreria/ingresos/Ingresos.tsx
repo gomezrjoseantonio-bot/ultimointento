@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, X, DollarSign, Calendar, User } from 'lucide-react';
+import { Search, X, DollarSign, Calendar, User } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Ingreso, Property, IngresoOrigen, IngresoDestino, IngresoEstado } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -149,15 +149,10 @@ const Ingresos: React.FC = () => {
     <PageLayout 
       title="Ingresos" 
       subtitle="Alquileres, nóminas y otros ingresos previstos y cobrados."
-      primaryAction={
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Ingreso
-        </button>
-      }
+      primaryAction={{
+        label: "Nuevo Ingreso",
+        onClick: () => setShowForm(true)
+      }}
     >
       <div className="space-y-6">
         {/* Filters */}

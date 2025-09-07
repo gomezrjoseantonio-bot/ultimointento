@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Calendar, User, Archive } from 'lucide-react';
+import { Download, Calendar, User, Archive } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property } from '../../../../services/db';
 import { getFiscalSummary } from '../../../../services/fiscalSummaryService';
@@ -595,16 +595,11 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     return years;
   };
 
-  const primaryAction = (
-    <button
-      onClick={handleGenerateDeclaration}
-      disabled={isGenerating}
-      className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
-    >
-      <FileText className="w-4 h-4" />
-      {isGenerating ? 'Generando...' : 'Generar Paquete Renta'}
-    </button>
-  );
+  const primaryAction = {
+    label: isGenerating ? 'Generando...' : 'Generar Paquete Renta',
+    onClick: handleGenerateDeclaration,
+    disabled: isGenerating
+  };
 
   if (loading) {
     return (

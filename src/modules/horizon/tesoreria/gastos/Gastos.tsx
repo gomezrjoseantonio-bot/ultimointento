@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
+import { Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -170,15 +170,10 @@ const Gastos: React.FC = () => {
     <PageLayout 
       title="Gastos" 
       subtitle="Suministros, comunidad, seguros y otros gastos deducibles."
-      primaryAction={
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Gasto
-        </button>
-      }
+      primaryAction={{
+        label: "Nuevo Gasto",
+        onClick: () => setShowForm(true)
+      }}
     >
       <div className="space-y-6">
         {/* Filters */}

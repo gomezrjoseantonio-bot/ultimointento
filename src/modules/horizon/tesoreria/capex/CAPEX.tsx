@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, X, Calculator, Calendar, User, Building, FileText } from 'lucide-react';
+import { Search, X, Calculator, Calendar, User, Building, FileText } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, CAPEX, Property, CAPEXTipo, CAPEXEstado } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -155,15 +155,10 @@ const CapexComponent: React.FC = () => {
     <PageLayout 
       title="CAPEX" 
       subtitle="Reformas, mejoras, ampliaciones y mobiliario con amortización."
-      primaryAction={
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo CAPEX
-        </button>
-      }
+      primaryAction={{
+        label: "Nuevo CAPEX",
+        onClick: () => setShowForm(true)
+      }}
     >
       <div className="space-y-6">
         {/* Filters */}
