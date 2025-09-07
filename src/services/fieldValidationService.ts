@@ -159,9 +159,9 @@ export class FieldValidationService {
   getConfidenceColor(confidence: number): string {
     const level = this.getConfidenceLevel(confidence);
     switch (level) {
-      case 'high': return '#10B981';    // Green
-      case 'medium': return '#F59E0B';  // Amber
-      case 'low': return '#EF4444';     // Red
+      case 'high': return 'var(--hz-success)';    // Atlas success green
+      case 'medium': return 'var(--hz-warning)';  // Atlas warning yellow
+      case 'low': return 'var(--hz-error)';       // Atlas error red
     }
   }
 

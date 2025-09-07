@@ -14,14 +14,14 @@ export interface ToastOptions {
   actionHandler?: () => void;
 }
 
-// Atlas Horizon corporate colors - Style Guide compliant
+// Atlas Horizon corporate colors - Using CSS variables for consistency
 const ATLAS_COLORS = {
-  navy: '#0E2A47',      // Azul marino Horizon - color base principal
-  turquoise: '#00B8C4', // Turquesa Pulse - reservado solo para Pulse
-  success: '#16A34A',   // Verde - OK, validado, conciliado
-  warning: '#EAB308',   // Amarillo - warning, pendiente de revisión
-  error: '#DC2626',     // Rojo - error, descuadre
-  info: '#00B8C4'       // Info usando turquesa (solo para Pulse)
+  navy: 'var(--brand-navy)',       // Azul marino Horizon - color base principal
+  turquoise: 'var(--brand-teal)',  // Turquesa Pulse - reservado solo para Pulse
+  success: 'var(--hz-success)',    // Verde - OK, validado, conciliado
+  warning: 'var(--hz-warning)',    // Amarillo - warning, pendiente de revisión
+  error: 'var(--hz-error)',        // Rojo - error, descuadre
+  info: 'var(--hz-info)'           // Info blue
 };
 
 /**

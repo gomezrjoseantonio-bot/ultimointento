@@ -88,7 +88,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
   if (loading) {
     const content = (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
       </div>
     );
 
@@ -108,7 +108,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Proyección</h1>
           </div>
           <button
             onClick={handleExportPDF}
@@ -122,17 +122,17 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
 
         {/* Empty State */}
         <div className="bg-white rounded-xl border border-[#D7DEE7] p-12 shadow-sm text-center">
-          <TrendingUp className="h-16 w-16 text-[#9CA3AF] mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-[#374151] mb-4">
+          <TrendingUp className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-4">
             No hay escenarios para comparar
           </h3>
-          <p className="text-[#6B7280] mb-6 max-w-md mx-auto">
+          <p className="text-gray-500 mb-6 max-w-md mx-auto">
             Marca hasta 3 escenarios en Simulaciones para compararlos aquí. 
             Los escenarios marcados aparecerán automáticamente en esta vista.
           </p>
           <button
             onClick={() => window.location.href = '/proyeccion/simulaciones'}
-            className="bg-[#022D5E] text-white px-6 py-3 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="bg-primary-700 text-white px-6 py-3 rounded-xl hover:bg-[#1a365d] transition-colors"
           >
             Ir a Simulaciones
           </button>
@@ -155,11 +155,11 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Proyección</h1>
           </div>
           <button
             onClick={handleExportPDF}
-            className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
           >
             <Download className="h-4 w-4" />
             <span>Exportar comparativa (PDF)</span>
@@ -172,8 +172,8 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
             <div key={scenario.id} className="bg-white rounded-xl border border-[#D7DEE7] p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="font-semibold text-[#0F172A]">{scenario.name}</h3>
-                  <p className="text-sm text-[#6B7280]">
+                  <h3 className="font-semibold text-neutral-900">{scenario.name}</h3>
+                  <p className="text-sm text-gray-500">
                     {scenario.mode === 'diy' && 'DIY'}
                     {scenario.mode === 'strategies' && 'Estrategia'}
                     {scenario.mode === 'objectives' && 'Objetivo'}
@@ -181,17 +181,17 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                 </div>
                 <button
                   onClick={() => handleEditScenario(scenario.id)}
-                  className="p-2 text-[#6B7280] hover:text-[#022D5E] hover:bg-[#F8F9FA] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 hover:text-primary-700 hover:bg-[#F8F9FA] rounded-lg transition-colors"
                   title="Editar escenario"
                 >
                   <Edit className="h-4 w-4" />
                 </button>
               </div>
               <div className="text-center">
-                <div className="text-lg font-bold text-[#022D5E]">
+                <div className="text-lg font-bold text-primary-700">
                   {formatEuro(scenario.kpis.netWorth20Y)}
                 </div>
-                <div className="text-sm text-[#6B7280]">Patrimonio 20a</div>
+                <div className="text-sm text-gray-500">Patrimonio 20a</div>
               </div>
             </div>
           ))}
@@ -214,28 +214,28 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cashflow Comparison Chart */}
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Flujo Neto
             </h3>
             <div className="h-64 bg-[#F8F9FA] rounded-lg flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
               <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-[#9CA3AF] mx-auto mb-2" />
-                <p className="text-[#6B7280]">Gráfico de flujo neto superpuesto</p>
-                <p className="text-sm text-[#9CA3AF]">20 años - {markedScenarios.length} escenarios</p>
+                <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">Gráfico de flujo neto superpuesto</p>
+                <p className="text-sm text-gray-400">20 años - {markedScenarios.length} escenarios</p>
               </div>
             </div>
           </div>
 
           {/* Net Worth Comparison Chart */}
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Patrimonio Neto
             </h3>
             <div className="h-64 bg-[#F8F9FA] rounded-lg flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
               <div className="text-center">
-                <TrendingUp className="h-12 w-12 text-[#9CA3AF] mx-auto mb-2" />
-                <p className="text-[#6B7280]">Gráfico de patrimonio superpuesto</p>
-                <p className="text-sm text-[#9CA3AF]">20 años - {markedScenarios.length} escenarios</p>
+                <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">Gráfico de patrimonio superpuesto</p>
+                <p className="text-sm text-gray-400">20 años - {markedScenarios.length} escenarios</p>
               </div>
             </div>
           </div>
@@ -243,16 +243,16 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
 
         {/* KPI Comparison Table */}
         <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-[#0F172A] mb-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Tabla KPI Comparativa
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#D7DEE7]">
-                  <th className="text-left text-sm font-medium text-[#6B7280] py-3 px-4">KPI</th>
+                  <th className="text-left text-sm font-medium text-gray-500 py-3 px-4">KPI</th>
                   {markedScenarios.map((scenario, index) => (
-                    <th key={scenario.id} className="text-center text-sm font-medium text-[#6B7280] py-3 px-4">
+                    <th key={scenario.id} className="text-center text-sm font-medium text-gray-500 py-3 px-4">
                       Escenario {String.fromCharCode(65 + index)}
                     </th>
                   ))}
@@ -260,65 +260,65 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
               </thead>
               <tbody>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">Cashflow 5a</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">Cashflow 5a</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatEuro(scenario.kpis.cashflow5Y)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">Cashflow 20a</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">Cashflow 20a</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatEuro(scenario.kpis.cashflow20Y)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">Patrimonio 20a</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">Patrimonio 20a</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatEuro(scenario.kpis.netWorth20Y)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">DSCR mínimo</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">DSCR mínimo</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {scenario.kpis.minDSCR.toFixed(2)} x
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">% vacancia asumida</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">% vacancia asumida</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatPercentage(scenario.kpis.assumedVacancy / 100)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">% revalorización</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">% revalorización</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatPercentage(scenario.kpis.assumedAppreciation / 100)}
                     </td>
                   ))}
                 </tr>
                 <tr className="border-b border-[#F3F4F6]">
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">% rentas</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">% rentas</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatPercentage(scenario.kpis.assumedRentGrowth / 100)}
                     </td>
                   ))}
                 </tr>
                 <tr>
-                  <td className="py-3 px-4 text-sm font-medium text-[#374151]">Deuda remanente 20a</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-700">Deuda remanente 20a</td>
                   {markedScenarios.map(scenario => (
-                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-[#0F172A] tabular-nums">
+                    <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
                       {formatEuro(scenario.kpis.remainingDebt20Y)}
                     </td>
                   ))}
@@ -332,16 +332,16 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         <div className="bg-[#F8F9FA] rounded-xl p-4 border border-[#D7DEE7]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-[#374151]">
+              <p className="text-sm font-medium text-gray-700">
                 Comparando {markedScenarios.length} de 3 escenarios posibles
               </p>
-              <p className="text-xs text-[#6B7280]">
+              <p className="text-xs text-gray-500">
                 Marca o desmarca escenarios en la sección Simulaciones para actualizar esta comparativa
               </p>
             </div>
             <button
               onClick={() => window.location.href = '/proyeccion/simulaciones'}
-              className="text-sm text-[#022D5E] hover:text-[#1a365d] font-medium"
+              className="text-sm text-primary-700 hover:text-primary-800 font-medium"
             >
               Gestionar escenarios →
             </button>

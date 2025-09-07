@@ -83,7 +83,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
       </div>
     );
   }
@@ -91,10 +91,10 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
   if (!prestamo || !planPagos) {
     return (
       <div className="text-center py-12">
-        <p className="text-[#6B7280]">No se pudo cargar la información del préstamo.</p>
+        <p className="text-gray-500">No se pudo cargar la información del préstamo.</p>
         <button 
           onClick={onBack}
-          className="mt-4 text-[#022D5E] hover:text-[#033A73] font-medium"
+          className="mt-4 text-primary-700 hover:text-primary-800 font-medium"
         >
           ← Volver a préstamos
         </button>
@@ -116,22 +116,22 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
           <div className="flex items-center space-x-3">
             <button 
               onClick={onBack}
-              className="text-[#6B7280] hover:text-[#022D5E] transition-colors"
+              className="text-gray-500 hover:text-primary-700 transition-colors"
             >
               <ChevronRight className="h-5 w-5 rotate-180" />
             </button>
             <div className="flex items-center space-x-2">
-              <Home className="h-5 w-5 text-[#022D5E]" />
-              <h1 className="text-xl font-semibold text-[#0F172A]">{prestamo.nombre}</h1>
+              <Home className="h-5 w-5 text-primary-700" />
+              <h1 className="text-xl font-semibold text-neutral-900">{prestamo.nombre}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="px-3 py-1 bg-[#F8F9FA] text-[#022D5E] rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-[#F8F9FA] text-primary-700 rounded-full text-sm font-medium">
               {getTipoDisplay(prestamo)}
             </span>
             <button
               onClick={() => setShowSimulator(true)}
-              className="px-4 py-2 bg-[#022D5E] text-white rounded-lg hover:bg-[#033A73] transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-[#033A73] transition-colors flex items-center space-x-2"
             >
               <Calculator className="h-4 w-4" />
               <span>Simular amortización</span>
@@ -142,33 +142,33 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
         {/* Key metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-[#022D5E]">{formatEuro(prestamo.principalVivo)}</div>
-            <div className="text-sm text-[#6B7280]">Principal vivo</div>
+            <div className="text-2xl font-bold text-primary-700">{formatEuro(prestamo.principalVivo)}</div>
+            <div className="text-sm text-gray-500">Principal vivo</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-[#022D5E]">
+            <div className="text-2xl font-bold text-primary-700">
               {planPagos.periodos[0]?.cuota ? formatEuro(planPagos.periodos[0].cuota) : '—'}
             </div>
-            <div className="text-sm text-[#6B7280]">Cuota actual</div>
+            <div className="text-sm text-gray-500">Cuota actual</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-[#022D5E]">{prestamo.plazoMesesTotal} meses</div>
-            <div className="text-sm text-[#6B7280]">Plazo total</div>
+            <div className="text-2xl font-bold text-primary-700">{prestamo.plazoMesesTotal} meses</div>
+            <div className="text-sm text-gray-500">Plazo total</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-[#022D5E]">{formatDate(planPagos.resumen.fechaFinalizacion)}</div>
-            <div className="text-sm text-[#6B7280]">Fin previsto</div>
+            <div className="text-2xl font-bold text-primary-700">{formatDate(planPagos.resumen.fechaFinalizacion)}</div>
+            <div className="text-sm text-gray-500">Fin previsto</div>
           </div>
         </div>
 
         {/* Features chips */}
         <div className="flex flex-wrap gap-2">
           {getFeatures(prestamo).map((feature, index) => (
-            <span key={index} className="px-2 py-1 bg-[#E5E7EB] text-[#374151] rounded text-xs">
+            <span key={index} className="px-2 py-1 bg-[#E5E7EB] text-gray-700 rounded text-xs">
               {feature}
             </span>
           ))}
-          <span className="px-2 py-1 bg-[#E5E7EB] text-[#374151] rounded text-xs">
+          <span className="px-2 py-1 bg-[#E5E7EB] text-gray-700 rounded text-xs">
             Día de cargo: {prestamo.diaCargoMes}
           </span>
         </div>
@@ -180,11 +180,11 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
       {/* Payment Schedule */}
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-primary-700" />
             <span>Plan de pagos</span>
           </h2>
-          <div className="text-sm text-[#6B7280]">
+          <div className="text-sm text-gray-500">
             Total intereses: {formatEuro(planPagos.resumen.totalIntereses)}
           </div>
         </div>
@@ -194,40 +194,40 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
           <table className="w-full text-sm">
             <thead className="bg-[#F8F9FA]">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-[#6B7280] uppercase">Periodo</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-[#6B7280] uppercase">Devengo</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-[#6B7280] uppercase">Fecha cargo</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-[#6B7280] uppercase">Cuota</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-[#6B7280] uppercase">Interés</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-[#6B7280] uppercase">Amortización</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-[#6B7280] uppercase">Principal final</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-[#6B7280] uppercase">Notas</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Periodo</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Devengo</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fecha cargo</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Cuota</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Interés</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amortización</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Principal final</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Notas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F3F4F6]">
               {currentPeriodos.map((periodo) => (
                 <tr key={periodo.periodo} className="hover:bg-[#F8F9FA]">
-                  <td className="px-3 py-3 text-[#0F172A] font-medium">{periodo.periodo}</td>
-                  <td className="px-3 py-3 text-[#6B7280]">
+                  <td className="px-3 py-3 text-neutral-900 font-medium">{periodo.periodo}</td>
+                  <td className="px-3 py-3 text-gray-500">
                     {formatDate(periodo.devengoDesde)} - {formatDate(periodo.devengoHasta)}
                     {periodo.diasDevengo && (
-                      <div className="text-xs text-[#9CA3AF]">{periodo.diasDevengo} días</div>
+                      <div className="text-xs text-gray-400">{periodo.diasDevengo} días</div>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-[#6B7280]">{formatDate(periodo.fechaCargo)}</td>
-                  <td className="px-3 py-3 text-right text-[#0F172A] font-medium">{formatEuro(periodo.cuota)}</td>
-                  <td className="px-3 py-3 text-right text-[#6B7280]">{formatEuro(periodo.interes)}</td>
-                  <td className="px-3 py-3 text-right text-[#6B7280]">{formatEuro(periodo.amortizacion)}</td>
-                  <td className="px-3 py-3 text-right text-[#0F172A] font-medium">{formatEuro(periodo.principalFinal)}</td>
+                  <td className="px-3 py-3 text-gray-500">{formatDate(periodo.fechaCargo)}</td>
+                  <td className="px-3 py-3 text-right text-neutral-900 font-medium">{formatEuro(periodo.cuota)}</td>
+                  <td className="px-3 py-3 text-right text-gray-500">{formatEuro(periodo.interes)}</td>
+                  <td className="px-3 py-3 text-right text-gray-500">{formatEuro(periodo.amortizacion)}</td>
+                  <td className="px-3 py-3 text-right text-neutral-900 font-medium">{formatEuro(periodo.principalFinal)}</td>
                   <td className="px-3 py-3 text-center">
                     <div className="flex justify-center space-x-1">
                       {periodo.esProrrateado && (
-                        <span className="px-1 py-0.5 bg-[#FEF3C7] text-[#D97706] rounded text-xs" title="Prorrateado">
+                        <span className="px-1 py-0.5 bg-warning-100 text-warning-600 rounded text-xs" title="Prorrateado">
                           P
                         </span>
                       )}
                       {periodo.esSoloIntereses && (
-                        <span className="px-1 py-0.5 bg-[#DBEAFE] text-[#1D4ED8] rounded text-xs" title="Solo intereses">
+                        <span className="px-1 py-0.5 bg-info-100 text-info-600 rounded text-xs" title="Solo intereses">
                           I
                         </span>
                       )}
@@ -242,7 +242,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
-            <div className="text-sm text-[#6B7280]">
+            <div className="text-sm text-gray-500">
               Mostrando {startIndex + 1}-{Math.min(endIndex, planPagos.periodos.length)} de {planPagos.periodos.length} períodos
             </div>
             <div className="flex items-center space-x-2">
@@ -253,7 +253,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
               >
                 Anterior
               </button>
-              <span className="text-sm text-[#6B7280]">
+              <span className="text-sm text-gray-500">
                 Página {currentPage} de {totalPages}
               </span>
               <button

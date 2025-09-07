@@ -153,7 +153,7 @@ const ProyeccionComparativa: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm font-semibold">
                 <span className="text-gray-700">Actual:</span>
-                <span className="text-[#0B2B5C] tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
+                <span className="text-primary-700 tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
               </div>
             </div>
           </div>
@@ -172,7 +172,7 @@ const ProyeccionComparativa: React.FC = () => {
               </div>
               <div className="flex justify-between text-sm font-semibold">
                 <span className="text-gray-700">Actual:</span>
-                <span className="text-[#0B2B5C] tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
+                <span className="text-primary-700 tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
               </div>
             </div>
           </div>

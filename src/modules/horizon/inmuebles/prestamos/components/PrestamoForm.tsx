@@ -287,14 +287,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Calculator className="h-6 w-6 text-[#022D5E]" />
-            <h1 className="text-xl font-semibold text-[#0F172A]">
+            <Calculator className="h-6 w-6 text-primary-700" />
+            <h1 className="text-xl font-semibold text-neutral-900">
               {prestamoId ? 'Editar préstamo' : 'Crear nuevo préstamo'}
             </h1>
           </div>
           <button
             onClick={onCancel}
-            className="text-[#6B7280] hover:text-[#374151] transition-colors"
+            className="text-gray-500 hover:text-gray-700 transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
@@ -304,42 +304,42 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
         <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
-            <Home className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
+            <Home className="h-5 w-5 text-primary-700" />
             <span>Información básica</span>
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nombre del préstamo *
               </label>
               <input
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="Ej: Hipoteca Vivienda Principal"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 ID del inmueble *
               </label>
               <input
                 type="text"
                 value={inmuebleId}
                 onChange={(e) => setInmuebleId(e.target.value)}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="Ej: property_001"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Principal inicial (€) *
               </label>
               <input
@@ -354,21 +354,21 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="180.000,00"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Plazo total (meses) *
               </label>
               <input
                 type="number"
                 value={plazoMesesTotal}
                 onChange={(e) => setPlazoMesesTotal(e.target.value)}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="300"
                 min="1"
                 required
@@ -376,27 +376,27 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Fecha de firma *
               </label>
               <input
                 type="date"
                 value={fechaFirma}
                 onChange={(e) => setFechaFirma(e.target.value)}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cuenta de cargo *
               </label>
               <input
                 type="text"
                 value={cuentaCargoId}
                 onChange={(e) => setCuentaCargoId(e.target.value)}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="cuenta_001"
                 required
               />
@@ -406,15 +406,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Interest Type */}
         <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5 text-primary-700" />
             <span>Tipo de interés</span>
           </h2>
 
           <div className="space-y-6">
             {/* Type selection */}
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
                 Modalidad *
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -425,8 +425,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     onClick={() => setTipo(tipoOption)}
                     className={`p-3 rounded-lg border-2 text-center transition-colors ${
                       tipo === tipoOption
-                        ? 'border-[#022D5E] bg-[#F8F9FA] text-[#022D5E]'
-                        : 'border-[#D1D5DB] hover:border-[#9CA3AF] text-[#6B7280]'
+                        ? 'border-primary-700 bg-[#F8F9FA] text-primary-700'
+                        : 'border-gray-300 hover:border-gray-400 text-gray-500'
                     }`}
                   >
                     <div className="font-medium">{tipoOption}</div>
@@ -438,7 +438,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             {/* Type-specific fields */}
             {tipo === 'FIJO' && (
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tipo nominal anual (%) *
                 </label>
                 <input
@@ -453,7 +453,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       }
                     }
                   }}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="4,49"
                   required
                 />
@@ -463,20 +463,20 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             {tipo === 'VARIABLE' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Índice *
                   </label>
                   <select
                     value={indice}
                     onChange={(e) => setIndice(e.target.value as 'EURIBOR' | 'OTRO')}
-                    className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   >
                     <option value="EURIBOR">EURIBOR</option>
                     <option value="OTRO">Otro</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Valor actual (%) *
                   </label>
                   <input
@@ -491,13 +491,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                     placeholder="3,65"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#374151] mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Diferencial (%) *
                   </label>
                   <input
@@ -512,7 +512,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                     placeholder="1,2"
                     required
                   />
@@ -524,21 +524,21 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#374151] mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tramo fijo (meses) *
                     </label>
                     <input
                       type="number"
                       value={tramoFijoMeses}
                       onChange={(e) => setTramoFijoMeses(e.target.value)}
-                      className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                       placeholder="60"
                       min="1"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#374151] mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Tipo fijo (%) *
                     </label>
                     <input
@@ -553,7 +553,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }
                       }}
-                      className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                       placeholder="3,2"
                       required
                     />
@@ -561,20 +561,20 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#374151] mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Índice post-fijo *
                     </label>
                     <select
                       value={indice}
                       onChange={(e) => setIndice(e.target.value as 'EURIBOR' | 'OTRO')}
-                      className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                     >
                       <option value="EURIBOR">EURIBOR</option>
                       <option value="OTRO">Otro</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#374151] mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Valor actual (%) *
                     </label>
                     <input
@@ -589,13 +589,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }
                       }}
-                      className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                       placeholder="3,65"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-[#374151] mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Diferencial (%) *
                     </label>
                     <input
@@ -610,7 +610,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }
                       }}
-                      className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                       placeholder="1,5"
                       required
                     />
@@ -621,13 +621,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
             {(tipo === 'VARIABLE' || tipo === 'MIXTO') && (
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Período de revisión (meses)
                 </label>
                 <select
                   value={periodoRevisionMeses}
                   onChange={(e) => setPeriodoRevisionMeses(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 >
                   <option value="6">6 meses</option>
                   <option value="12">12 meses</option>
@@ -639,56 +639,56 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Irregular Payments */}
         <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-primary-700" />
             <span>Configuración de pagos</span>
           </h2>
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Meses solo intereses
                 </label>
                 <input
                   type="number"
                   value={mesesSoloIntereses}
                   onChange={(e) => setMesesSoloIntereses(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="0"
                   min="0"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Períodos iniciales donde solo se pagan intereses
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Diferir primera cuota (meses)
                 </label>
                 <input
                   type="number"
                   value={diferirPrimeraCuotaMeses}
                   onChange={(e) => setDiferirPrimeraCuotaMeses(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="0"
                   min="0"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Meses de diferimiento hasta primera cuota
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Día de cargo (1-31)
                 </label>
                 <input
                   type="number"
                   value={diaCargoMes}
                   onChange={(e) => setDiaCargoMes(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="1"
                   min="1"
                   max="31"
@@ -704,9 +704,9 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   id="prorratearPrimerPeriodo"
                   checked={prorratearPrimerPeriodo}
                   onChange={(e) => setProrratearPrimerPeriodo(e.target.checked)}
-                  className="rounded border-[#D1D5DB] text-[#022D5E] focus:ring-[#022D5E]"
+                  className="rounded border-gray-300 text-primary-700 focus:ring-primary-700"
                 />
-                <label htmlFor="prorratearPrimerPeriodo" className="text-sm text-[#374151]">
+                <label htmlFor="prorratearPrimerPeriodo" className="text-sm text-gray-700">
                   Prorratear primer período por días reales
                 </label>
               </div>
@@ -717,9 +717,9 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   id="cobroMesVencido"
                   checked={cobroMesVencido}
                   onChange={(e) => setCobroMesVencido(e.target.checked)}
-                  className="rounded border-[#D1D5DB] text-[#022D5E] focus:ring-[#022D5E]"
+                  className="rounded border-gray-300 text-primary-700 focus:ring-primary-700"
                 />
-                <label htmlFor="cobroMesVencido" className="text-sm text-[#374151]">
+                <label htmlFor="cobroMesVencido" className="text-sm text-gray-700">
                   Cobro a mes vencido (devengo mes t, cargo mes t+1)
                 </label>
               </div>
@@ -729,14 +729,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Costs */}
         <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
-            <CreditCard className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
+            <CreditCard className="h-5 w-5 text-primary-700" />
             <span>Comisiones y gastos</span>
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Comisión amortización parcial (%)
               </label>
               <input
@@ -751,13 +751,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="1,000"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Comisión cancelación total (%)
               </label>
               <input
@@ -772,13 +772,13 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="0,500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#374151] mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Gastos fijos por operación (€)
               </label>
               <input
@@ -793,7 +793,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 placeholder="30,00"
               />
             </div>
@@ -802,116 +802,116 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Bonifications */}
         <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
-          <h2 className="text-lg font-semibold text-[#0F172A] mb-4 flex items-center space-x-2">
-            <CreditCard className="h-5 w-5 text-[#022D5E]" />
+          <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
+            <CreditCard className="h-5 w-5 text-primary-700" />
             <span>Bonificaciones</span>
           </h2>
 
           {/* Bonification period settings */}
           <div className="mb-6">
-            <h3 className="font-medium text-[#374151] mb-4">Configuración de bonificaciones</h3>
+            <h3 className="font-medium text-gray-700 mb-4">Configuración de bonificaciones</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Máximo bonificación total (%)
                 </label>
                 <input
                   type="text"
                   value={maximoBonificacionPorcentaje}
                   onChange={(e) => setMaximoBonificacionPorcentaje(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="0,60"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Máximo % de bonificación que se puede aplicar (ej: 0,60% = 60 puntos básicos)
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Período de revisión
                 </label>
                 <select
                   value={periodoRevisionBonificacionMeses}
                   onChange={(e) => setPeriodoRevisionBonificacionMeses(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                 >
                   <option value="6">6 meses</option>
                   <option value="12">12 meses</option>
                 </select>
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Frecuencia de revisión de bonificaciones (estándar español)
                 </p>
               </div>
             </div>
 
-            <h3 className="font-medium text-[#374151] mb-4">Período de bonificación máxima</h3>
+            <h3 className="font-medium text-gray-700 mb-4">Período de bonificación máxima</h3>
             <div className="mb-6">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fin del período de bonificación máxima
                 </label>
                 <input
                   type="date"
                   value={fechaFinMaximaBonificacion}
                   onChange={(e) => setFechaFinMaximaBonificacion(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="2026-12-31"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Fecha hasta la cual se aplicará la bonificación máxima garantizada. 
                   Después de esta fecha se evaluará el cumplimiento para determinar la bonificación aplicable.
                 </p>
               </div>
             </div>
 
-            <h3 className="font-medium text-[#374151] mb-4">Período de evaluación</h3>
+            <h3 className="font-medium text-gray-700 mb-4">Período de evaluación</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fin del período bonificado
                 </label>
                 <input
                   type="date"
                   value={fechaFinPeriodo}
                   onChange={(e) => setFechaFinPeriodo(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="2025-12-31"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Fecha hasta la cual se aplicarán las bonificaciones
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fecha de evaluación
                 </label>
                 <input
                   type="date"
                   value={fechaEvaluacion}
                   onChange={(e) => setFechaEvaluacion(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="2025-12-01"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Fecha de evaluación de cumplimiento
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#374151] mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Días antes del fin (offset)
                 </label>
                 <input
                   type="number"
                   value={offsetEvaluacionDias}
                   onChange={(e) => setOffsetEvaluacionDias(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
                   placeholder="30"
                   min="0"
                 />
-                <p className="text-xs text-[#6B7280] mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Días antes del fin del período para evaluar
                 </p>
               </div>
@@ -921,7 +921,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
           {/* Bonifications list */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[#374151]">Bonificaciones</h3>
+              <h3 className="font-medium text-gray-700">Bonificaciones</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -950,7 +950,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             {/* Configured bonifications */}
             {bonificaciones.length > 0 && (
               <div className="space-y-3">
-                <h4 className="font-medium text-[#374151] text-sm">
+                <h4 className="font-medium text-gray-700 text-sm">
                   Bonificaciones configuradas ({bonificaciones.length})
                 </h4>
                 {bonificaciones.map((bonif, index) => (
@@ -976,14 +976,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         {estimatedPayment && (
           <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <Eye className="h-5 w-5 text-[#0369A1]" />
-              <h3 className="font-medium text-[#0369A1]">Vista previa</h3>
+              <Eye className="h-5 w-5 text-info-700" />
+              <h3 className="font-medium text-info-700">Vista previa</h3>
             </div>
-            <div className="text-sm text-[#374151]">
+            <div className="text-sm text-gray-700">
               <p>
                 <strong>Cuota mensual estimada:</strong> {formatEuro(estimatedPayment)}
               </p>
-              <p className="text-xs text-[#6B7280] mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Cálculo aproximado basado en sistema francés estándar
               </p>
             </div>
@@ -1006,7 +1006,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 text-[#6B7280] hover:text-[#374151] transition-colors"
+              className="px-6 py-2 text-gray-500 hover:text-gray-700 transition-colors"
             >
               Cancelar
             </button>
@@ -1015,7 +1015,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-[#022D5E] text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-6 py-2 bg-primary-700 text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

@@ -72,13 +72,13 @@ const ProyeccionEscenarios: React.FC = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`group inline-flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
                     isActive
-                      ? 'border-[#022D5E] text-[#022D5E]'
+                      ? 'border-primary-700 text-primary-700'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <Icon 
                     className={`mr-2 h-4 w-4 ${
-                      isActive ? 'text-[#022D5E]' : 'text-gray-400 group-hover:text-gray-500'
+                      isActive ? 'text-primary-700' : 'text-gray-400 group-hover:text-gray-500'
                     }`} 
                   />
                   {tab.label}

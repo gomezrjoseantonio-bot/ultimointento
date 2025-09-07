@@ -206,9 +206,9 @@ const RadarPanel: React.FC = () => {
 
   const getSeverityIcon = (severity: 'info' | 'warning' | 'critical') => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="w-5 h-5 text-[#DC2626]" />; // Rojo error según guía
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-[#EAB308]" />; // Amarillo warning según guía
-      case 'info': return <CheckCircle className="w-5 h-5 text-[#16A34A]" />; // Verde OK según guía
+      case 'critical': return <AlertTriangle className="w-5 h-5 text-error-500" />; // Rojo error según guía
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-warning-500" />; // Amarillo warning según guía
+      case 'info': return <CheckCircle className="w-5 h-5 text-success-500" />; // Verde OK según guía
     }
   };
 
@@ -225,7 +225,7 @@ const RadarPanel: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-[#0E2A47]">Radar Tesorería</h2>
+        <h2 className="text-xl font-semibold text-brand-navy">Radar Tesorería</h2>
         <p className="text-sm text-gray-600 mt-1">
           Vista general del estado financiero y proyecciones
         </p>
@@ -243,8 +243,8 @@ const RadarPanel: React.FC = () => {
             onClick={() => setSelectedModule(module.key)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               selectedModule === module.key
-                ? 'bg-[#0E2A47] text-white shadow-sm'
-                : 'bg-gray-100 text-gray-700 hover:bg-[#0E2A47] hover:text-white'
+                ? 'bg-brand-navy text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-brand-navy hover:text-white'
             }`}
           >
             {module.label}
@@ -270,8 +270,8 @@ const RadarPanel: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-gradient-to-br from-[#35C0CF]/10 to-[#35C0CF]/5 rounded-lg">
-              <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance7d)}</div>
+            <div className="text-center p-4 bg-gradient-to-br from-teal-400/10 to-teal-400/5 rounded-lg">
+              <div className="text-3xl font-bold text-primary-800">{formatEuro(projection.projectedBalance7d)}</div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance7d > projection.currentBalance ? (
                   <TrendingUp className="w-4 h-4 text-success-500" />
@@ -286,8 +286,8 @@ const RadarPanel: React.FC = () => {
               </div>
             </div>
             
-            <div className="text-center p-4 bg-gradient-to-br from-[#0D2B52]/10 to-[#0D2B52]/5 rounded-lg">
-              <div className="text-3xl font-bold text-[#0D2B52]">{formatEuro(projection.projectedBalance30d)}</div>
+            <div className="text-center p-4 bg-gradient-to-br from-primary-800/10 to-primary-800/5 rounded-lg">
+              <div className="text-3xl font-bold text-primary-800">{formatEuro(projection.projectedBalance30d)}</div>
               <div className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-2">
                 {projection.projectedBalance30d > projection.currentBalance ? (
                   <TrendingUp className="w-4 h-4 text-success-500" />
@@ -354,13 +354,13 @@ const RadarPanel: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{getStatusIndicator(status)}</span>
                         <div>
-                          <div className="font-semibold text-[#0D2B52]">{account.name}</div>
+                          <div className="font-semibold text-primary-800">{account.name}</div>
                           <div className="text-sm text-gray-600">{account.bank}</div>
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-[#0D2B52]">
+                      <div className="text-lg font-bold text-primary-800">
                         {formatEuro(account.balance)}
                       </div>
                       <div className="text-sm text-gray-600">Saldo hoy</div>
@@ -379,7 +379,7 @@ const RadarPanel: React.FC = () => {
                       </div>
                     </div>
                     
-                    <button className="text-xs text-[#35C0CF] hover:text-[#0D2B52] font-medium transition-colors">
+                    <button className="text-xs text-teal-400 hover:text-primary-800 font-medium transition-colors">
                       Ver proyección 30d →
                     </button>
                   </div>

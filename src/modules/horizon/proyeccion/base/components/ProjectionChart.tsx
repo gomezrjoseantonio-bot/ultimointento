@@ -167,7 +167,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {/* Time Horizon Selector */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-[#6B7280]">Horizonte temporal:</span>
+          <span className="text-sm font-medium text-gray-500">Horizonte temporal:</span>
           <div className="flex space-x-1">
             {[5, 10, 20].map((years) => (
               <button
@@ -175,8 +175,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
                 onClick={() => setTimeHorizon(years as 5 | 10 | 20)}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   timeHorizon === years
-                    ? 'bg-[#022D5E] text-white'
-                    : 'bg-[#F8F9FA] text-[#6B7280] hover:bg-[#E5E7EB]'
+                    ? 'bg-primary-700 text-white'
+                    : 'bg-[#F8F9FA] text-gray-500 hover:bg-[#E5E7EB]'
                 }`}
               >
                 {years} años
@@ -192,7 +192,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       </div>
 
       {/* Chart Legend Description */}
-      <div className="mt-4 text-xs text-[#6B7280]">
+      <div className="mt-4 text-xs text-gray-500">
         <p>
           * Los gastos y servicio de deuda se muestran como valores negativos para mejor visualización del impacto en el flujo neto.
         </p>

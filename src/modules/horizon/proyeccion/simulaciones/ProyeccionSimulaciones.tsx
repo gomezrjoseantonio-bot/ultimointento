@@ -92,11 +92,11 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Proyección</h1>
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -112,15 +112,15 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           >
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                <Settings className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
+                <Settings className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-semibold text-[#0F172A]">Configurar yo mismo</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">Configurar yo mismo</h3>
             </div>
-            <p className="text-[#6B7280] text-sm mb-4">
+            <p className="text-gray-500 text-sm mb-4">
               Sliders globales para rentas, gastos, vacancia y revalorización. 
               Hasta 3 acciones simples (amortizar, comprar, vender).
             </p>
-            <div className="text-[#022D5E] text-sm font-medium">DIY →</div>
+            <div className="text-primary-700 text-sm font-medium">DIY →</div>
           </div>
 
           {/* Strategies Mode */}
@@ -130,15 +130,15 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           >
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                <Star className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
+                <Star className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-semibold text-[#0F172A]">Estrategias predefinidas</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">Estrategias predefinidas</h3>
             </div>
-            <p className="text-[#6B7280] text-sm mb-4">
+            <p className="text-gray-500 text-sm mb-4">
               Optimizar lo que tienes, mejorar yield, amortizar vs reinvertir, 
               optimización de hipotecas.
             </p>
-            <div className="text-[#022D5E] text-sm font-medium">Estrategias →</div>
+            <div className="text-primary-700 text-sm font-medium">Estrategias →</div>
           </div>
 
           {/* Objectives Mode */}
@@ -148,15 +148,15 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           >
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-[#F8F9FA] rounded-lg group-hover:bg-[#E5E7EB] transition-colors">
-                <Plus className="h-6 w-6 text-[#022D5E]" strokeWidth={1.5} />
+                <Plus className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
-              <h3 className="text-lg font-semibold text-[#0F172A]">Objetivos</h3>
+              <h3 className="text-lg font-semibold text-neutral-900">Objetivos</h3>
             </div>
-            <p className="text-[#6B7280] text-sm mb-4">
+            <p className="text-gray-500 text-sm mb-4">
               Define metas (+1.000 €/mes en 5 años) y el sistema propone 
               3 rutas: Conservadora/Equilibrada/Agresiva.
             </p>
-            <div className="text-[#022D5E] text-sm font-medium">Objetivos →</div>
+            <div className="text-primary-700 text-sm font-medium">Objetivos →</div>
           </div>
         </div>
 
@@ -170,10 +170,10 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">
                     Crear nuevo escenario
                   </h3>
-                  <p className="text-[#6B7280] mb-6">
+                  <p className="text-gray-500 mb-6">
                     Modo: {modalMode === 'diy' ? 'DIY' : modalMode === 'strategies' ? 'Estrategias' : 'Objetivos'}
                   </p>
                   <div className="space-y-3">
@@ -186,13 +186,13 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="w-full bg-[#022D5E] text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
+                      className="w-full bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
                     >
                       Crear escenario de prueba
                     </button>
                     <button
                       onClick={() => setShowModal(false)}
-                      className="w-full px-4 py-2 text-[#6B7280] hover:text-[#022D5E] transition-colors"
+                      className="w-full px-4 py-2 text-gray-500 hover:text-primary-700 transition-colors"
                     >
                       Cancelar
                     </button>
@@ -219,11 +219,11 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Proyección</h1>
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -234,7 +234,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           {/* Left Sidebar - Scenarios List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl border border-[#D7DEE7] p-4 shadow-sm">
-              <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-4">
                 Escenarios guardados
               </h3>
               <div className="space-y-2">
@@ -244,19 +244,19 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     onClick={() => setSelectedScenario(scenario)}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                       selectedScenario?.id === scenario.id
-                        ? 'border-[#022D5E] bg-primary-50 text-[#022D5E]'
-                        : 'border-[#D7DEE7] hover:border-[#9CA3AF] text-[#374151]'
+                        ? 'border-primary-700 bg-primary-50 text-primary-700'
+                        : 'border-[#D7DEE7] hover:border-gray-400 text-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">{scenario.name}</div>
                       {scenario.markedForComparison && (
-                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[#022D5E] text-white">
+                        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary-700 text-white">
                           Para comparar
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-[#6B7280]">
+                    <div className="text-xs text-gray-500">
                       {scenario.mode === 'diy' && 'DIY'}
                       {scenario.mode === 'strategies' && 'Estrategia'}
                       {scenario.mode === 'objectives' && 'Objetivo'}
@@ -276,8 +276,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                 {/* Scenario Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-[#0F172A]">{selectedScenario.name}</h2>
-                    <p className="text-[#6B7280] text-sm">
+                    <h2 className="text-xl font-semibold text-neutral-900">{selectedScenario.name}</h2>
+                    <p className="text-gray-500 text-sm">
                       {selectedScenario.mode === 'diy' && 'Configuración DIY'}
                       {selectedScenario.mode === 'strategies' && 'Estrategia predefinida'}
                       {selectedScenario.mode === 'objectives' && 'Basado en objetivos'}
@@ -288,8 +288,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                       onClick={() => handleToggleComparison(selectedScenario)}
                       className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                         selectedScenario.markedForComparison
-                          ? 'bg-[#022D5E] text-white'
-                          : 'bg-[#F8F9FA] text-[#6B7280] hover:bg-[#E5E7EB]'
+                          ? 'bg-primary-700 text-white'
+                          : 'bg-[#F8F9FA] text-gray-500 hover:bg-[#E5E7EB]'
                       }`}
                     >
                       {selectedScenario.markedForComparison ? (
@@ -303,14 +303,14 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     </button>
                     <button
                       onClick={() => handleDuplicateScenario(selectedScenario)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-[#F8F9FA] text-[#6B7280] rounded-lg hover:bg-[#E5E7EB] transition-colors text-sm"
+                      className="flex items-center space-x-2 px-3 py-2 bg-[#F8F9FA] text-gray-500 rounded-lg hover:bg-[#E5E7EB] transition-colors text-sm"
                     >
                       <Copy className="h-4 w-4" />
                       <span>Duplicar</span>
                     </button>
                     <button
                       onClick={() => handleDeleteScenario(selectedScenario)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-[#FEF2F2] text-[#DC2626] rounded-lg hover:bg-[#FEE2E2] transition-colors text-sm"
+                      className="flex items-center space-x-2 px-3 py-2 bg-[#FEF2F2] text-error-500 rounded-lg hover:bg-[#FEE2E2] transition-colors text-sm"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span>Eliminar</span>
@@ -321,36 +321,36 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                 {/* KPI Preview */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                   <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-                    <div className="text-2xl font-bold text-[#022D5E]">{formatEuro(15600)}</div>
-                    <div className="text-sm text-[#6B7280]">Cashflow 5a</div>
+                    <div className="text-2xl font-bold text-primary-700">{formatEuro(15600)}</div>
+                    <div className="text-sm text-gray-500">Cashflow 5a</div>
                   </div>
                   <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-                    <div className="text-2xl font-bold text-[#022D5E]">{formatEuro(48000)}</div>
-                    <div className="text-sm text-[#6B7280]">Cashflow 20a</div>
+                    <div className="text-2xl font-bold text-primary-700">{formatEuro(48000)}</div>
+                    <div className="text-sm text-gray-500">Cashflow 20a</div>
                   </div>
                   <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-                    <div className="text-2xl font-bold text-[#022D5E]">{formatEuro(650000)}</div>
-                    <div className="text-sm text-[#6B7280]">Patrimonio 20a</div>
+                    <div className="text-2xl font-bold text-primary-700">{formatEuro(650000)}</div>
+                    <div className="text-sm text-gray-500">Patrimonio 20a</div>
                   </div>
                   <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-                    <div className="text-2xl font-bold text-[#022D5E]">1,85 x</div>
-                    <div className="text-sm text-[#6B7280]">DSCR medio</div>
+                    <div className="text-2xl font-bold text-primary-700">1,85 x</div>
+                    <div className="text-sm text-gray-500">DSCR medio</div>
                   </div>
                 </div>
 
                 {/* Chart Placeholder */}
                 <div className="h-64 bg-[#F8F9FA] rounded-lg flex items-center justify-center border-2 border-dashed border-[#D7DEE7] mb-6">
                   <div className="text-center">
-                    <Settings className="h-12 w-12 text-[#9CA3AF] mx-auto mb-2" />
-                    <p className="text-[#6B7280]">Gráfico de proyección 20 años</p>
-                    <p className="text-sm text-[#9CA3AF]">Flujo neto y patrimonio neto por año</p>
+                    <Settings className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500">Gráfico de proyección 20 años</p>
+                    <p className="text-sm text-gray-400">Flujo neto y patrimonio neto por año</p>
                   </div>
                 </div>
 
                 {/* Actions Assumed */}
                 <div className="bg-[#F8F9FA] rounded-lg p-4">
-                  <h4 className="font-medium text-[#0F172A] mb-3">Acciones asumidas</h4>
-                  <div className="space-y-2 text-sm text-[#6B7280]">
+                  <h4 className="font-medium text-neutral-900 mb-3">Acciones asumidas</h4>
+                  <div className="space-y-2 text-sm text-gray-500">
                     <div>• Crecimiento rentas: 3,5% anual</div>
                     <div>• Inflación gastos: 2,5% anual</div>
                     <div>• Vacancia: 5,0%</div>
@@ -366,11 +366,11 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-[#D7DEE7] p-12 shadow-sm text-center">
-                <Settings className="h-12 w-12 text-[#9CA3AF] mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-[#374151] mb-2">
+                <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-700 mb-2">
                   Selecciona un escenario
                 </h3>
-                <p className="text-[#6B7280]">
+                <p className="text-gray-500">
                   Elige un escenario de la lista para ver sus detalles y resultados
                 </p>
               </div>
@@ -388,10 +388,10 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">
                     Crear nuevo escenario
                   </h3>
-                  <p className="text-[#6B7280] mb-6">
+                  <p className="text-gray-500 mb-6">
                     Modo: {modalMode === 'diy' ? 'DIY' : modalMode === 'strategies' ? 'Estrategias' : 'Objetivos'}
                   </p>
                   <div className="space-y-3">
@@ -404,13 +404,13 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="w-full bg-[#022D5E] text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
+                      className="w-full bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-[#1a365d] transition-colors"
                     >
                       Crear escenario de prueba
                     </button>
                     <button
                       onClick={() => setShowModal(false)}
-                      className="w-full px-4 py-2 text-[#6B7280] hover:text-[#022D5E] transition-colors"
+                      className="w-full px-4 py-2 text-gray-500 hover:text-primary-700 transition-colors"
                     >
                       Cancelar
                     </button>

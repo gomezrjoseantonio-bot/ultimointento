@@ -52,7 +52,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
   if (loading) {
     const content = (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022D5E]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
       </div>
     );
     
@@ -92,11 +92,11 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[#0F172A]">Proyección</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Proyección</h1>
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center space-x-2 bg-[#022D5E] text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
           >
             <Settings className="h-4 w-4" />
             <span>Ajustar supuestos</span>
@@ -109,13 +109,13 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
               <div className="p-2 bg-[#F8F9FA] rounded-lg">
-                <TrendingUp className="h-5 w-5 text-[#022D5E]" strokeWidth={1.5} />
+                <TrendingUp className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#6B7280]">Cashflow neto anual actual</p>
+                <p className="text-sm font-medium text-gray-500">Cashflow neto anual actual</p>
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#0F172A] tabular-nums">
+            <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {formatEuro(projection.currentAnnualCashflow)}
             </p>
           </div>
@@ -124,13 +124,13 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
               <div className="p-2 bg-[#F8F9FA] rounded-lg">
-                <PiggyBank className="h-5 w-5 text-[#022D5E]" strokeWidth={1.5} />
+                <PiggyBank className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#6B7280]">Patrimonio neto estimado (20a)</p>
+                <p className="text-sm font-medium text-gray-500">Patrimonio neto estimado (20a)</p>
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#0F172A] tabular-nums">
+            <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {formatEuro(projection.netWorth20Y)}
             </p>
           </div>
@@ -139,13 +139,13 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
               <div className="p-2 bg-[#F8F9FA] rounded-lg">
-                <Target className="h-5 w-5 text-[#022D5E]" strokeWidth={1.5} />
+                <Target className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#6B7280]">DSCR actual</p>
+                <p className="text-sm font-medium text-gray-500">DSCR actual</p>
               </div>
             </div>
-            <p className="text-2xl font-semibold text-[#0F172A] tabular-nums">
+            <p className="text-2xl font-semibold text-neutral-900 tabular-nums">
               {projection.currentDSCR.toFixed(2)} x
             </p>
           </div>
@@ -153,7 +153,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
         {/* Main Chart */}
         <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-[#0F172A] mb-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Proyección a 20 años
           </h3>
           <ProjectionChart data={projection.yearlyData} />
@@ -161,39 +161,39 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
         {/* Assumptions Summary */}
         <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             Supuestos base
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="text-center">
-              <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
+              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
                 {formatPercentage(assumptions.rentGrowth / 100)}
               </p>
-              <p className="text-sm text-[#6B7280]">Crecimiento rentas</p>
+              <p className="text-sm text-gray-500">Crecimiento rentas</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
+              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
                 {formatPercentage(assumptions.expenseInflation / 100)}
               </p>
-              <p className="text-sm text-[#6B7280]">Inflación gastos</p>
+              <p className="text-sm text-gray-500">Inflación gastos</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
+              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
                 {formatPercentage(assumptions.propertyAppreciation / 100)}
               </p>
-              <p className="text-sm text-[#6B7280]">Revalorización activos</p>
+              <p className="text-sm text-gray-500">Revalorización activos</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
+              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
                 {formatPercentage(assumptions.vacancyRate / 100)}
               </p>
-              <p className="text-sm text-[#6B7280]">Vacancia</p>
+              <p className="text-sm text-gray-500">Vacancia</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-semibold text-[#022D5E] tabular-nums">
+              <p className="text-2xl font-semibold text-primary-700 tabular-nums">
                 {formatPercentage(assumptions.referenceRate / 100)}
               </p>
-              <p className="text-sm text-[#6B7280]">Tipo de interés ref.</p>
+              <p className="text-sm text-gray-500">Tipo de interés ref.</p>
             </div>
           </div>
         </div>
@@ -201,14 +201,14 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         {/* Top Impacts */}
         {projection.upcomingImpacts.length > 0 && (
           <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#0F172A] mb-4">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Top impactos próximos 90 días
             </h3>
             <div className="flex flex-wrap gap-2">
               {projection.upcomingImpacts.map((impact, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-[#F8F9FA] text-[#022D5E] border border-[#D7DEE7]"
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-[#F8F9FA] text-primary-700 border border-[#D7DEE7]"
                 >
                   {impact.description}
                 </div>
