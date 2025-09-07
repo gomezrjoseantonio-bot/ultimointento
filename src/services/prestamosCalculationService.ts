@@ -289,12 +289,23 @@ export class PrestamosCalculationService {
     switch (bonification.regla.tipo) {
       case 'NOMINA':
         return `Asegurar nómina ≥ ${bonification.regla.minimoMensual}€ por ${bonification.lookbackMeses} meses`;
-      case 'TARJETA':
-        return `Realizar al menos ${bonification.regla.movimientosMesMin} movimientos con tarjeta por mes`;
+      case 'PLAN_PENSIONES':
+        return 'Mantener plan de pensiones activo';
       case 'SEGURO_HOGAR':
         return 'Mantener seguro de hogar activo';
       case 'SEGURO_VIDA':
         return 'Mantener seguro de vida activo';
+      case 'TARJETA':
+        const tarjetaReqs = [];
+        if (bonification.regla.movimientosMesMin) {
+          tarjetaReqs.push(`${bonification.regla.movimientosMesMin} movimientos/mes`);
+        }
+        if (bonification.regla.importeMinimo) {
+          tarjetaReqs.push(`facturar ≥${bonification.regla.importeMinimo}€/año`);
+        }
+        return `Uso de tarjeta: ${tarjetaReqs.join(' o ')}`;
+      case 'ALARMA':
+        return 'Mantener servicio de alarma activo';
       default:
         return bonification.regla.descripcion || 'Cumplir requisitos específicos';
     }
