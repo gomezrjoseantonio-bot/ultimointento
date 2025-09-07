@@ -698,10 +698,10 @@ const UnicornioInboxPrompt: React.FC = () => {
               {selectedDocument.status === 'Revisión' && selectedDocument.blockingReasons.length > 0 && (
                 <div className="mb-6 p-4 bg-[#D97706] bg-opacity-10 border border-[#D97706] border-opacity-20 rounded-lg">
                   <div className="flex items-center mb-2">
-                    <AlertTriangle className="w-5 h-5 text-[#D97706] mr-2" />
-                    <span className="font-medium text-[#D97706]">Revisión requerida</span>
+                    <AlertTriangle className="w-5 h-5 text-warning-600 mr-2" />
+                    <span className="font-medium text-warning-600">Revisión requerida</span>
                   </div>
-                  <ul className="text-sm text-[#D97706] space-y-1">
+                  <ul className="text-sm text-warning-600 space-y-1">
                     {selectedDocument.blockingReasons.map((reason, index) => (
                       <li key={index}>• {reason}</li>
                     ))}
@@ -727,7 +727,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                   {/* Property selection for utilities */}
                   {selectedDocument.blockingReasons.some(r => r.includes('inmueble')) && (
                     <div className="mt-4 space-y-3">
-                      <label className="block text-sm font-medium text-[#D97706]">
+                      <label className="block text-sm font-medium text-warning-600">
                         Seleccionar inmueble:
                       </label>
                       <select 
@@ -754,7 +754,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                   {/* Destination selection for generic documents */}
                   {selectedDocument.blockingReasons.some(r => r.includes('Destino requerido')) && (
                     <div className="mt-4 space-y-3">
-                      <label className="block text-sm font-medium text-[#D97706]">
+                      <label className="block text-sm font-medium text-warning-600">
                         Seleccionar destino:
                       </label>
                       <select 

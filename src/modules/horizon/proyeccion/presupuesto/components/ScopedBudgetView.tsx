@@ -190,8 +190,8 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
               <p className="text-sm text-info-800 mt-1">
                 Esta vista muestra la suma automática de los presupuestos PERSONAL e INMUEBLES. 
                 Las líneas se distinguen por colores: 
-                <span className="inline-block w-3 h-3 bg-blue-500 rounded-full mx-1"></span>Personal 
-                <span className="inline-block w-3 h-3 bg-green-500 rounded-full mx-1"></span>Inmuebles
+                <span className="inline-block w-3 h-3 bg-primary-500 rounded-full mx-1"></span>Personal 
+                <span className="inline-block w-3 h-3 bg-success-500 rounded-full mx-1"></span>Inmuebles
               </p>
               <p className="text-sm text-info-700 mt-2">
                 <strong>Nota:</strong> Para editar líneas, cambia a las pestañas específicas de cada ámbito.

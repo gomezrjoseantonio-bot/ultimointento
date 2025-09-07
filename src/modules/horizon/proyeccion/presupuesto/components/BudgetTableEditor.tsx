@@ -257,7 +257,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                   <td className="px-2 py-2">
                     {scope === 'CONSOLIDADO' && (
                       <span className={`inline-block w-3 h-3 rounded-full ${
-                        line.scope === 'PERSONAL' ? 'bg-blue-500' : 'bg-green-500'
+                        line.scope === 'PERSONAL' ? 'bg-primary-500' : 'bg-success-500'
                       }`} title={line.scope} />
                     )}
                   </td>
@@ -302,7 +302,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                         </button>
                         <button
                           onClick={() => handleDeleteLine(line.id)}
-                          className="p-1 text-gray-400 hover:text-red-600"
+                          className="p-1 text-gray-400 hover:text-error-600"
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />

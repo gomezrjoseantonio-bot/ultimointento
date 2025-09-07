@@ -67,7 +67,7 @@ describe('Badge', () => {
     render(<Badge variant="success">Success</Badge>);
     const badge = screen.getByText('Success');
     // Test that Horizon-specific classes are used instead of generic Tailwind colors
-    expect(badge).not.toHaveClass('bg-green-100', 'text-green-800');
+    expect(badge).not.toHaveClass('bg-success-100', 'text-success-800');
     expect(badge).toHaveClass('bg-hz-success-light', 'text-hz-success');
   });
 });

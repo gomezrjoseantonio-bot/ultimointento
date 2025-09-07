@@ -341,7 +341,7 @@ const Resumen: React.FC = () => {
             {fiscalSummary && selectedPropertyId !== 'todos' && (
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0E2A47] text-white rounded-lg hover:bg-[#1a4059]"
+                className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-[#1a4059]"
               >
                 <Download className="w-4 h-4" />
                 Export
@@ -367,27 +367,27 @@ const Resumen: React.FC = () => {
                       return (
                         <>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.ingresosDevengados)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.ingresosDevengados)}</div>
                             <div className="text-sm text-gray-600">Ingresos devengados</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.cobrado)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.cobrado)}</div>
                             <div className="text-sm text-gray-600">Cobrado</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.pendiente)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.pendiente)}</div>
                             <div className="text-sm text-gray-600">Pendiente</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.gastosDeducibles)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.gastosDeducibles)}</div>
                             <div className="text-sm text-gray-600">Gastos deducibles</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.amortizacionesAplicadas)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.amortizacionesAplicadas)}</div>
                             <div className="text-sm text-gray-600">Amortizaciones</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(kpis.arrastresAplicados)}</div>
+                            <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(kpis.arrastresAplicados)}</div>
                             <div className="text-sm text-gray-600">Arrastres aplicados</div>
                           </div>
                         </>
@@ -406,15 +406,15 @@ const Resumen: React.FC = () => {
                         return (
                           <>
                             <div className="text-center">
-                              <div className="text-lg font-semibold text-[#0E2A47]">{formatCurrency(kpis.amortizacionInmueble || 0)}</div>
+                              <div className="text-lg font-semibold text-brand-navy">{formatCurrency(kpis.amortizacionInmueble || 0)}</div>
                               <div className="text-xs text-gray-600">Amort. Inmueble</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-semibold text-[#0E2A47]">{formatCurrency(kpis.amortizacionMejoras || 0)}</div>
+                              <div className="text-lg font-semibold text-brand-navy">{formatCurrency(kpis.amortizacionMejoras || 0)}</div>
                               <div className="text-xs text-gray-600">Amort. Mejoras</div>
                             </div>
                             <div className="text-center">
-                              <div className="text-lg font-semibold text-[#0E2A47]">{formatCurrency(kpis.amortizacionMobiliario || 0)}</div>
+                              <div className="text-lg font-semibold text-brand-navy">{formatCurrency(kpis.amortizacionMobiliario || 0)}</div>
                               <div className="text-xs text-gray-600">Amort. Mobiliario</div>
                             </div>
                           </>
@@ -507,27 +507,27 @@ const Resumen: React.FC = () => {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
                   <div className="text-sm text-gray-600">Ingresos devengados</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
                   <div className="text-sm text-gray-600">Cobrado</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
                   <div className="text-sm text-gray-600">Pendiente</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(getTotalAmount())}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(getTotalAmount())}</div>
                   <div className="text-sm text-gray-600">Gastos deducibles</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(fiscalSummary.annualDepreciation || 0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(fiscalSummary.annualDepreciation || 0)}</div>
                   <div className="text-sm text-gray-600">Amortizaciones</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-[#0E2A47]">{formatCurrency(fiscalSummary.deductibleExcess || 0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(fiscalSummary.deductibleExcess || 0)}</div>
                   <div className="text-sm text-gray-600">Arrastres aplicados</div>
                 </div>
               </div>

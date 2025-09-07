@@ -642,7 +642,7 @@ const InboxAtlasHorizon: React.FC = () => {
       label: 'Reprocesar',
       icon: <RotateCcw className="w-4 h-4" />,
       onClick: handleReprocess,
-      className: 'text-hz-success hover:text-green-700'
+      className: 'text-hz-success hover:text-success-700'
     },
     {
       type: 'delete' as const,

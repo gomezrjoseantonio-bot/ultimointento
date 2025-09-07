@@ -63,10 +63,10 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-[#0F172A]">
+              <h3 className="text-lg font-semibold text-neutral-900">
                 Ajustar supuestos base
               </h3>
-              <p className="text-sm text-[#6B7280] mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 Modifica los parámetros globales para la proyección baseline
               </p>
             </div>
@@ -74,7 +74,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-[#F8F9FA] transition-colors"
             >
-              <X className="h-5 w-5 text-[#6B7280]" />
+              <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>
 
@@ -82,7 +82,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
           <div className="space-y-6">
             {/* Rent Growth */}
             <div>
-              <label className="block text-sm font-medium text-[#0F172A] mb-2">
+              <label className="block text-sm font-medium text-neutral-900 mb-2">
                 Crecimiento rentas anual: {formatPercentage(formData.rentGrowth / 100)}
               </label>
               <input
@@ -97,7 +97,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${formData.rentGrowth * 10}%, #F8F9FA ${formData.rentGrowth * 10}%, #F8F9FA 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>10%</span>
               </div>
@@ -105,7 +105,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
 
             {/* Expense Inflation */}
             <div>
-              <label className="block text-sm font-medium text-[#0F172A] mb-2">
+              <label className="block text-sm font-medium text-neutral-900 mb-2">
                 Inflación gastos anual: {formatPercentage(formData.expenseInflation / 100)}
               </label>
               <input
@@ -120,7 +120,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.expenseInflation / 8) * 100}%, #F8F9FA ${(formData.expenseInflation / 8) * 100}%, #F8F9FA 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>8%</span>
               </div>
@@ -128,7 +128,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
 
             {/* Property Appreciation */}
             <div>
-              <label className="block text-sm font-medium text-[#0F172A] mb-2">
+              <label className="block text-sm font-medium text-neutral-900 mb-2">
                 Revalorización activos anual: {formatPercentage(formData.propertyAppreciation / 100)}
               </label>
               <input
@@ -143,7 +143,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>12%</span>
               </div>
@@ -151,7 +151,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
 
             {/* Vacancy Rate */}
             <div>
-              <label className="block text-sm font-medium text-[#0F172A] mb-2">
+              <label className="block text-sm font-medium text-neutral-900 mb-2">
                 Vacancia: {formatPercentage(formData.vacancyRate / 100)}
               </label>
               <input
@@ -166,7 +166,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.vacancyRate / 20) * 100}%, #F8F9FA ${(formData.vacancyRate / 20) * 100}%, #F8F9FA 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>20%</span>
               </div>
@@ -174,7 +174,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
 
             {/* Reference Rate */}
             <div>
-              <label className="block text-sm font-medium text-[#0F172A] mb-2">
+              <label className="block text-sm font-medium text-neutral-900 mb-2">
                 Tipo de interés de referencia: {formatPercentage(formData.referenceRate / 100)}
               </label>
               <input
@@ -189,11 +189,11 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.referenceRate / 15) * 100}%, #F8F9FA ${(formData.referenceRate / 15) * 100}%, #F8F9FA 100%)`
                 }}
               />
-              <div className="flex justify-between text-xs text-[#6B7280] mt-1">
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>15%</span>
               </div>
-              <p className="text-xs text-[#6B7280] mt-2">
+              <p className="text-xs text-gray-500 mt-2">
                 Solo para forecast de hipotecas con tipo variable
               </p>
             </div>
@@ -202,7 +202,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             <div className="pt-4 border-t border-[#D7DEE7]">
               <button
                 onClick={resetToDefaults}
-                className="flex items-center space-x-2 text-sm text-[#6B7280] hover:text-[#022D5E] transition-colors"
+                className="flex items-center space-x-2 text-sm text-gray-500 hover:text-primary-700 transition-colors"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Restaurar valores por defecto</span>
@@ -214,14 +214,14 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
           <div className="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-[#D7DEE7]">
             <button
               onClick={hasChanges ? handleReset : onClose}
-              className="px-4 py-2 text-sm font-medium text-[#6B7280] hover:text-[#022D5E] transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-primary-700 transition-colors"
             >
               {hasChanges ? 'Cancelar' : 'Cerrar'}
             </button>
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#022D5E] text-white text-sm font-medium rounded-lg hover:bg-[#1a365d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-4 py-2 bg-primary-700 text-white text-sm font-medium rounded-lg hover:bg-[#1a365d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="h-4 w-4" />
               <span>Guardar</span>

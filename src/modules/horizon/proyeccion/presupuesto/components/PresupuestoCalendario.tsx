@@ -30,9 +30,9 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
   const getBubbleColor = (monthIndex: number) => {
     const neto = resumen.breakdown.neto[monthIndex];
     if (neto > 0) {
-      return 'bg-green-100 border-green-300 text-green-800';
+      return 'bg-success-100 border-green-300 text-success-800';
     } else if (neto < 0) {
-      return 'bg-red-100 border-red-300 text-red-800';
+      return 'bg-error-100 border-error-300 text-error-800';
     } else {
       return 'bg-gray-100 border-gray-300 text-gray-800';
     }
@@ -100,7 +100,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
                 {/* Delta */}
                 <div className="flex justify-between items-center border-t pt-2">
                   <span className="text-xs text-gray-600">Δ:</span>
-                  <span className={`text-sm font-bold ${delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-bold ${delta >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                     {delta >= 0 ? '+' : ''}{formatCurrency(delta)}
                   </span>
                 </div>
@@ -136,7 +136,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
           </div>
           <div>
             <div className="text-xs text-gray-600 mb-1">Desviación</div>
-            <div className="text-lg font-bold text-green-600">
+            <div className="text-lg font-bold text-success-600">
               +{formatCurrency(Math.abs(generateMockReal(resumen.netoAnual) - resumen.netoAnual))}
             </div>
           </div>

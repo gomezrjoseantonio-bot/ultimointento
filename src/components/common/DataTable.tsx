@@ -61,11 +61,11 @@ const DataTable: React.FC<DataTableProps> = ({
   const getActionClassName = (type: string) => {
     switch (type) {
       case 'view':
-        return 'text-hz-info hover:text-blue-700';
+        return 'text-hz-info hover:text-primary-700';
       case 'edit':
         return 'hover:text-gray-700';
       case 'delete':
-        return 'text-hz-error hover:text-red-700';
+        return 'text-hz-error hover:text-error-700';
       default:
         return 'text-gray-600 hover:text-gray-700';
     }

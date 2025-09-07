@@ -77,9 +77,9 @@ const CONFIDENCE_THRESHOLDS = {
 };
 
 const getConfidenceColor = (confidence: number): string => {
-  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'text-[#16A34A] bg-success-50'; // Verde OK según guía
-  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'text-[#EAB308] bg-amber-50'; // Amarillo warning según guía
-  return 'text-[#DC2626] bg-error-50'; // Rojo error según guía
+  if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'text-success-500 bg-success-50'; // Verde OK según guía
+  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'text-warning-500 bg-amber-50'; // Amarillo warning según guía
+  return 'text-error-500 bg-error-50'; // Rojo error según guía
 };
 
 const getConfidenceIcon = (confidence: number) => {

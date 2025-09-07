@@ -154,9 +154,9 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
 
         <div className="p-6">
           {errors.length > 0 && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <h3 className="text-sm font-medium text-red-800 mb-2">Errores de validación:</h3>
-              <ul className="text-sm text-red-700 list-disc list-inside">
+            <div className="mb-6 p-4 bg-error-50 border border-error-200 rounded-lg">
+              <h3 className="text-sm font-medium text-error-800 mb-2">Errores de validación:</h3>
+              <ul className="text-sm text-error-700 list-disc list-inside">
                 {errors.map((error, index) => (
                   <li key={index}>{error}</li>
                 ))}
@@ -293,7 +293,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   <option value="cuenta-2">Cuenta Secundaria</option>
                 </select>
                 {!formData.cuentaId && (
-                  <p className="text-xs text-orange-600 mt-1">
+                  <p className="text-xs text-warning-600 mt-1">
                     Se recomienda asignar una cuenta para proyección de tesorería
                   </p>
                 )}
