@@ -142,6 +142,53 @@ export class TreasuryAccountsAPI {
     await db.put('accounts', updatedAccount);
     return updatedAccount;
   }
+
+  /**
+   * DELETE /api/treasury/accounts/:id
+   * Deactivates an account instead of hard deleting it to preserve data integrity
+   */
+  static async deactivateAccount(id: number): Promise<Account> {
+    const db = await initDB();
+    
+    // Get existing account
+    const existingAccount = await db.get('accounts', id);
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    if (!existingAccount.isActive) {
+      throw new Error('La cuenta ya está desactivada');
+    }
+
+    // Check if account has movements to warn user
+    const allMovements = await db.getAll('movements');
+    const accountMovements = allMovements.filter(m => m.accountId === id);
+    
+    if (accountMovements.length > 0) {
+      console.warn(`Account ${id} has ${accountMovements.length} movements. Deactivating but preserving data.`);
+    }
+
+    const deactivatedAccount: Account = {
+      ...existingAccount,
+      isActive: false,
+      updatedAt: new Date().toISOString()
+    };
+
+    await db.put('accounts', deactivatedAccount);
+    
+    // Emit domain event for account deactivation
+    try {
+      await emitTreasuryEvent({
+        type: 'ACCOUNT_CHANGED',
+        payload: { account: deactivatedAccount, previousAccount: existingAccount }
+      });
+    } catch (error) {
+      console.error('Error emitting account deactivation event:', error);
+      // Don't fail the operation if event emission fails
+    }
+
+    return deactivatedAccount;
+  }
 }
 
 /**

@@ -81,9 +81,9 @@ export function removeLogoFromStorage(accountId: number): void {
 }
 
 /**
- * Resizes image to recommended dimensions (256x256) while maintaining aspect ratio
+ * Resizes image to recommended dimensions (800x600) while maintaining aspect ratio
  */
-export function resizeImage(file: File, maxWidth: number = 256, maxHeight: number = 256): Promise<Blob> {
+export function resizeImage(file: File, maxWidth: number = 800, maxHeight: number = 600): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');

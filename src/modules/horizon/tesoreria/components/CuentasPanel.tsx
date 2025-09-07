@@ -31,6 +31,7 @@ const CuentasPanel: React.FC = () => {
   const [showUnificationBanner, setShowUnificationBanner] = useState(
     !localStorage.getItem('cuentas-unification-banner-dismissed')
   );
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<Account | null>(null);
   
   // New account form state
   const [newAccountForm, setNewAccountForm] = useState({
@@ -331,6 +332,30 @@ const CuentasPanel: React.FC = () => {
       toast.error(error instanceof Error ? error.message : `Error al ${isEditing ? 'actualizar' : 'crear'} la cuenta`);
     } finally {
       setIsCreatingAccount(false);
+    }
+  };
+
+  // Handle account deletion/deactivation
+  const handleDeleteAccount = async () => {
+    if (!confirmDeleteAccount) return;
+
+    try {
+      await treasuryAPI.accounts.deactivateAccount(confirmDeleteAccount.id!);
+      toast.success('Cuenta desactivada correctamente');
+      
+      // Reload accounts to reflect the change
+      await loadAccounts();
+      setConfirmDeleteAccount(null);
+      
+      // If the deleted account was selected, clear selection
+      if (selectedAccount?.id === confirmDeleteAccount.id) {
+        setSelectedAccount(null);
+        setAccountProjection(null);
+      }
+      
+    } catch (error) {
+      console.error('Error deactivating account:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al desactivar la cuenta');
     }
   };
 
@@ -1141,8 +1166,7 @@ const CuentasPanel: React.FC = () => {
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Handle disable/delete action based on usage
-                            toast.error('Funcionalidad de eliminación próximamente');
+                            setConfirmDeleteAccount(account);
                           }}
                           title="Deshabilitar/Eliminar cuenta"
                         >
@@ -1157,6 +1181,44 @@ const CuentasPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {confirmDeleteAccount && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">Desactivar Cuenta</h3>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                ¿Estás seguro de que quieres desactivar la cuenta <strong>{confirmDeleteAccount.name}</strong>?
+              </p>
+              <p className="text-xs text-gray-500">
+                La cuenta se desactivará pero se mantendrán todos sus movimientos e historial para preservar la integridad de los datos.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteAccount}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Desactivar
+              </button>
+              <button
+                onClick={() => setConfirmDeleteAccount(null)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
