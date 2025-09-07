@@ -86,8 +86,8 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
           {lineas.map((linea) => (
             <tr key={linea.id} className="hover:bg-gray-50">
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`text-sm font-medium ${getTipoColor(linea.tipo)}`}>
-                  {linea.tipo}
+                <span className={`text-sm font-medium ${getTipoColor(linea.tipo || linea.type)}`}>
+                  {linea.tipo || linea.type}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -117,7 +117,7 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {formatCurrency(linea.importeUnitario)}
+                {formatCurrency(linea.importeUnitario || 0)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {linea.cuentaId ? (
@@ -133,8 +133,8 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getOrigenBadgeColor(linea.origen)}`}>
-                  {linea.origen}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getOrigenBadgeColor(linea.origen || 'ManualUsuario')}`}>
+                  {linea.origen || 'Manual'}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

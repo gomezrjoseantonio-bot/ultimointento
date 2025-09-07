@@ -18,6 +18,12 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<Omit<PresupuestoLinea, 'id'>>({
     presupuestoId: '',
+    scope: 'INMUEBLES',
+    type: 'COSTE',
+    category: 'Otros',
+    label: '',
+    amountByMonth: new Array(12).fill(0),
+    // Legacy fields for compatibility
     tipo: 'Gasto',
     inmuebleId: '',
     categoria: undefined,
@@ -47,6 +53,12 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
     if (linea) {
       setFormData({
         presupuestoId: linea.presupuestoId,
+        scope: linea.scope || 'INMUEBLES',
+        type: linea.type || 'COSTE',
+        category: linea.category || 'Otros',
+        label: linea.label || '',
+        amountByMonth: linea.amountByMonth || new Array(12).fill(0),
+        // Legacy fields for compatibility
         tipo: linea.tipo,
         inmuebleId: linea.inmuebleId || '',
         roomId: linea.roomId,
