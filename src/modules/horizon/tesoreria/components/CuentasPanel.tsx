@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown } from 'lucide-react';
+import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown, Eye, EyeOff, Filter, Trash2, X } from 'lucide-react';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
 import { treasuryAPI, validateIBAN, parseEuropeanNumber } from '../../../../services/treasuryApiService';
+import { maskIBAN } from '../../../../services/ibanAccountMatchingService';
+import { validateLogoFile, processLogoUpload, getLogoFromStorage } from '../../../../services/logoUploadService';
 import toast from 'react-hot-toast';
 
 interface AccountProjection {
@@ -16,11 +18,16 @@ interface AccountProjection {
 
 const CuentasPanel: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<Account[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountProjection, setAccountProjection] = useState<AccountProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [showImport, setShowImport] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [usageFilter, setUsageFilter] = useState<'all' | 'personal' | 'inmuebles' | 'mixto'>('all');
+  const [showIbanFull, setShowIbanFull] = useState<{ [key: number]: boolean }>({});
   
   // New account form state
   const [newAccountForm, setNewAccountForm] = useState({
@@ -29,7 +36,10 @@ const CuentasPanel: React.FC = () => {
     iban: '',
     openingBalance: '',
     minimumBalance: '',
-    includeInConsolidated: true
+    includeInConsolidated: true,
+    usage_scope: 'mixto' as 'personal' | 'inmuebles' | 'mixto',
+    logoFile: null as File | null,
+    logoPreview: null as string | null
   });
 
   const loadAccounts = async () => {
@@ -83,6 +93,15 @@ const CuentasPanel: React.FC = () => {
   useEffect(() => {
     loadAccounts();
   }, []);
+
+  // Filter accounts based on usage filter
+  useEffect(() => {
+    if (usageFilter === 'all') {
+      setFilteredAccounts(accounts);
+    } else {
+      setFilteredAccounts(accounts.filter(account => account.usage_scope === usageFilter));
+    }
+  }, [accounts, usageFilter]);
 
   const getAccountStatus = (account: Account): 'healthy' | 'warning' | 'critical' => {
     const minimumBalance = account.minimumBalance || 200;
@@ -166,7 +185,10 @@ const CuentasPanel: React.FC = () => {
         iban: '',
         openingBalance: '',
         minimumBalance: '',
-        includeInConsolidated: true
+        includeInConsolidated: true,
+        usage_scope: 'mixto',
+        logoFile: null,
+        logoPreview: null
       });
       setShowImport(false);
       await loadAccounts();
