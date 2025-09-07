@@ -47,6 +47,7 @@ export interface Prestamo {
   bonificaciones?: Bonificacion[];
   maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
   periodoRevisionBonificacionMeses?: number; // bonification review period: 6 or 12 months
+  fechaFinMaximaBonificacion?: string;       // end date for maximum bonification period
 
   // Bonification evaluation parameters (when bonifications are active)
   fechaFinPeriodo?: string;           // end of evaluation period (ISO date)
@@ -76,9 +77,11 @@ export interface Bonificacion {
 
 export type ReglaBonificacion =
   | { tipo: 'NOMINA'; minimoMensual: number }
-  | { tipo: 'TARJETA'; movimientosMesMin: number }
+  | { tipo: 'PLAN_PENSIONES'; activo: boolean }
   | { tipo: 'SEGURO_HOGAR'; activo: boolean }
   | { tipo: 'SEGURO_VIDA'; activo: boolean }
+  | { tipo: 'TARJETA'; movimientosMesMin?: number; importeMinimo?: number }
+  | { tipo: 'ALARMA'; activo: boolean }
   | { tipo: 'OTRA'; descripcion: string };
 
 export interface PeriodoPago {

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { Bonificacion, ReglaBonificacion } from '../../../../../types/prestamos';
 import { formatSpanishNumber, parseSpanishNumber } from '../../../../../services/spanishFormattingService';
+import { standardBonificationsService } from '../../../../../services/standardBonificationsService';
 
 interface BonificationFormProps {
   bonification: Bonificacion;
@@ -52,42 +53,24 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
 
   const getTipoOptions = () => [
     { value: 'NOMINA', label: 'Nómina' },
-    { value: 'TARJETA', label: 'Uso de tarjeta' },
+    { value: 'PLAN_PENSIONES', label: 'Plan de pensiones' },
     { value: 'SEGURO_HOGAR', label: 'Seguro de hogar' },
     { value: 'SEGURO_VIDA', label: 'Seguro de vida' },
+    { value: 'TARJETA', label: 'Uso de tarjeta' },
+    { value: 'ALARMA', label: 'Alarma' },
     { value: 'OTRA', label: 'Otra' }
   ];
 
-  const getPresetBonifications = () => [
-    {
-      nombre: 'Nómina',
-      reduccionPuntosPorcentuales: 0.003,
-      lookbackMeses: 4,
-      regla: { tipo: 'NOMINA' as const, minimoMensual: 1200 },
-      costeAnualEstimado: 0
-    },
-    {
-      nombre: 'Seguro de hogar',
-      reduccionPuntosPorcentuales: 0.002,
-      lookbackMeses: 12,
-      regla: { tipo: 'SEGURO_HOGAR' as const, activo: true },
-      costeAnualEstimado: 240
-    },
-    {
-      nombre: 'Seguro de vida',
-      reduccionPuntosPorcentuales: 0.002,
-      lookbackMeses: 12,
-      regla: { tipo: 'SEGURO_VIDA' as const, activo: true },
-      costeAnualEstimado: 180
-    },
-    {
-      nombre: 'Uso de tarjeta',
-      reduccionPuntosPorcentuales: 0.001,
-      lookbackMeses: 3,
-      regla: { tipo: 'TARJETA' as const, movimientosMesMin: 6 },
-      costeAnualEstimado: 0
-    }
-  ];
+  const getPresetBonifications = () => {
+    return standardBonificationsService.getHabitual().map(standard => ({
+      nombre: standard.nombre,
+      reduccionPuntosPorcentuales: standard.reduccionPuntosPorcentuales,
+      lookbackMeses: standard.lookbackMeses,
+      regla: standard.regla,
+      costeAnualEstimado: standard.costeAnualEstimado || 0,
+      descripcion: standard.descripcion
+    }));
+  };
 
   const applyPreset = (preset: any) => {
     onChange({
@@ -164,6 +147,9 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 className="text-left p-2 text-sm border rounded hover:bg-[#F3F4F6] transition-colors"
               >
                 <div className="font-medium">{preset.nombre}</div>
+                <div className="text-[#6B7280] text-xs mb-1">
+                  {preset.descripcion}
+                </div>
                 <div className="text-[#6B7280]">
                   -{formatSpanishNumber(preset.reduccionPuntosPorcentuales * 100, 2)}% 
                   {preset.costeAnualEstimado > 0 && ` (~${formatSpanishNumber(preset.costeAnualEstimado, 0)}€/año)`}
@@ -271,14 +257,20 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
               case 'NOMINA':
                 newRule = { tipo: 'NOMINA', minimoMensual: 1000 };
                 break;
-              case 'TARJETA':
-                newRule = { tipo: 'TARJETA', movimientosMesMin: 6 };
+              case 'PLAN_PENSIONES':
+                newRule = { tipo: 'PLAN_PENSIONES', activo: true };
                 break;
               case 'SEGURO_HOGAR':
                 newRule = { tipo: 'SEGURO_HOGAR', activo: true };
                 break;
               case 'SEGURO_VIDA':
                 newRule = { tipo: 'SEGURO_VIDA', activo: true };
+                break;
+              case 'TARJETA':
+                newRule = { tipo: 'TARJETA', movimientosMesMin: 6 };
+                break;
+              case 'ALARMA':
+                newRule = { tipo: 'ALARMA', activo: true };
                 break;
               default:
                 newRule = { tipo: 'OTRA', descripcion: '' };
@@ -327,21 +319,50 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
         )}
 
         {bonification.regla.tipo === 'TARJETA' && (
-          <div>
-            <label className="block text-sm font-medium text-[#374151] mb-1">
-              Movimientos mínimos por mes
-            </label>
-            <input
-              type="number"
-              value={bonification.regla.movimientosMesMin}
-              onChange={(e) => handleRuleChange({
-                tipo: 'TARJETA',
-                movimientosMesMin: parseInt(e.target.value)
-              })}
-              className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-              placeholder="6"
-              min="0"
-            />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-[#374151] mb-1">
+                Movimientos mínimos por mes
+              </label>
+              <input
+                type="number"
+                value={(bonification.regla.tipo === 'TARJETA' ? bonification.regla.movimientosMesMin : '') || ''}
+                onChange={(e) => handleRuleChange({
+                  tipo: 'TARJETA',
+                  movimientosMesMin: parseInt(e.target.value) || undefined,
+                  importeMinimo: bonification.regla.tipo === 'TARJETA' ? bonification.regla.importeMinimo : undefined
+                })}
+                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                placeholder="6"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#374151] mb-1">
+                Importe mínimo anual (€) - opcional
+              </label>
+              <input
+                type="number"
+                value={(bonification.regla.tipo === 'TARJETA' ? bonification.regla.importeMinimo : '') || ''}
+                onChange={(e) => handleRuleChange({
+                  tipo: 'TARJETA',
+                  movimientosMesMin: bonification.regla.tipo === 'TARJETA' ? bonification.regla.movimientosMesMin : undefined,
+                  importeMinimo: parseInt(e.target.value) || undefined
+                })}
+                className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                placeholder="3000"
+                min="0"
+              />
+            </div>
+          </div>
+        )}
+
+        {(bonification.regla.tipo === 'PLAN_PENSIONES' || 
+          bonification.regla.tipo === 'SEGURO_HOGAR' || 
+          bonification.regla.tipo === 'SEGURO_VIDA' || 
+          bonification.regla.tipo === 'ALARMA') && (
+          <div className="text-sm text-[#6B7280]">
+            Esta bonificación se aplicará automáticamente mientras el producto/servicio esté activo.
           </div>
         )}
 

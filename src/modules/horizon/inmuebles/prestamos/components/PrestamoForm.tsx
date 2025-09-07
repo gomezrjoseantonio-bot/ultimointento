@@ -18,6 +18,7 @@ import { Prestamo, Bonificacion } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { prestamosCalculationService } from '../../../../../services/prestamosCalculationService';
 import BonificationForm from './BonificationForm';
+import StandardBonificationsSelector from './StandardBonificationsSelector';
 
 interface PrestamoFormProps {
   prestamoId?: string; // If provided, edit mode. If not, create mode
@@ -62,6 +63,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
   const [bonificaciones, setBonificaciones] = useState<Bonificacion[]>([]);
   const [maximoBonificacionPorcentaje, setMaximoBonificacionPorcentaje] = useState<string>('0,60');
   const [periodoRevisionBonificacionMeses, setPeriodoRevisionBonificacionMeses] = useState<string>('12');
+  const [fechaFinMaximaBonificacion, setFechaFinMaximaBonificacion] = useState<string>('');
   const [fechaFinPeriodo, setFechaFinPeriodo] = useState<string>('');
   const [fechaEvaluacion, setFechaEvaluacion] = useState<string>('');
   const [offsetEvaluacionDias, setOffsetEvaluacionDias] = useState<string>('30');
@@ -132,6 +134,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
             setBonificaciones(prestamo.bonificaciones || []);
             setMaximoBonificacionPorcentaje(formatSpanishNumber((prestamo.maximoBonificacionPorcentaje || 0.006) * 100, 2));
             setPeriodoRevisionBonificacionMeses(prestamo.periodoRevisionBonificacionMeses?.toString() || '12');
+            setFechaFinMaximaBonificacion(prestamo.fechaFinMaximaBonificacion || '');
             setFechaFinPeriodo(prestamo.fechaFinPeriodo || '');
             setFechaEvaluacion(prestamo.fechaEvaluacion || '');
             setOffsetEvaluacionDias(prestamo.offsetEvaluacionDias?.toString() || '30');
@@ -249,6 +252,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         ...(bonificaciones.length > 0 && { bonificaciones }),
         maximoBonificacionPorcentaje: parseSpanishNumber(maximoBonificacionPorcentaje) / 100,
         periodoRevisionBonificacionMeses: parseInt(periodoRevisionBonificacionMeses),
+        ...(fechaFinMaximaBonificacion && { fechaFinMaximaBonificacion }),
         ...(fechaFinPeriodo && { fechaFinPeriodo }),
         ...(fechaEvaluacion && { fechaEvaluacion }),
         ...(offsetEvaluacionDias && { offsetEvaluacionDias: parseInt(offsetEvaluacionDias) })
@@ -841,6 +845,26 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               </div>
             </div>
 
+            <h3 className="font-medium text-[#374151] mb-4">Período de bonificación máxima</h3>
+            <div className="mb-6">
+              <div>
+                <label className="block text-sm font-medium text-[#374151] mb-2">
+                  Fin del período de bonificación máxima
+                </label>
+                <input
+                  type="date"
+                  value={fechaFinMaximaBonificacion}
+                  onChange={(e) => setFechaFinMaximaBonificacion(e.target.value)}
+                  className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
+                  placeholder="2026-12-31"
+                />
+                <p className="text-xs text-[#6B7280] mt-1">
+                  Fecha hasta la cual se aplicará la bonificación máxima garantizada. 
+                  Después de esta fecha se evaluará el cumplimiento para determinar la bonificación aplicable.
+                </p>
+              </div>
+            </div>
+
             <h3 className="font-medium text-[#374151] mb-4">Período de evaluación</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -897,7 +921,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
           {/* Bonifications list */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[#374151]">Bonificaciones configuradas</h3>
+              <h3 className="font-medium text-[#374151]">Bonificaciones</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -911,19 +935,24 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   };
                   setBonificaciones([...bonificaciones, newBonif]);
                 }}
-                className="px-3 py-1 text-sm bg-[#022D5E] text-white rounded-md hover:bg-[#033A73] transition-colors"
+                className="px-3 py-1 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
               >
-                + Añadir bonificación
+                + Personalizada
               </button>
             </div>
 
-            {bonificaciones.length === 0 ? (
-              <div className="text-center py-6 text-[#6B7280]">
-                <p>No hay bonificaciones configuradas</p>
-                <p className="text-sm">Haz clic en "Añadir bonificación" para empezar</p>
-              </div>
-            ) : (
+            {/* Standard bonifications selector */}
+            <StandardBonificationsSelector
+              existingBonifications={bonificaciones}
+              onAddBonification={(bonification) => setBonificaciones([...bonificaciones, bonification])}
+            />
+
+            {/* Configured bonifications */}
+            {bonificaciones.length > 0 && (
               <div className="space-y-3">
+                <h4 className="font-medium text-[#374151] text-sm">
+                  Bonificaciones configuradas ({bonificaciones.length})
+                </h4>
                 {bonificaciones.map((bonif, index) => (
                   <BonificationForm 
                     key={bonif.id}
