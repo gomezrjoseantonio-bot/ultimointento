@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Account, TreasuryEvent } from '../../../../services/db';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -249,18 +248,18 @@ const Radar: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout title="Radar" subtitle="Vista de próximos ingresos/gastos y saldo proyectado.">
+      <div className="p-6">
         <div className="animate-pulse space-y-6">
           <div className="h-16 bg-gray-200 rounded-lg"></div>
           <div className="h-32 bg-gray-200 rounded-lg"></div>
           <div className="h-64 bg-gray-200 rounded-lg"></div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout title="Radar" subtitle="Vista de próximos ingresos/gastos y saldo proyectado.">
+    <div className="p-6">
       <div className="space-y-6">
         {/* Header with period selection and personal accounts toggle */}
         <div className="flex items-center justify-between">
@@ -465,7 +464,7 @@ const Radar: React.FC = () => {
           </div>
         )}
       </div>
-    </PageLayout>
+    </div>
   );
 };
 
