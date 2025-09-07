@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Calculator, Plus } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import BudgetWizard from './components/BudgetWizard';
@@ -13,11 +13,7 @@ const PresupuestoScopeView: React.FC = () => {
   const [allLines, setAllLines] = useState<PresupuestoLinea[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadPresupuestos();
-  }, [currentYear]);
-
-  const loadPresupuestos = async () => {
+  const loadPresupuestos = useCallback(async () => {
     try {
       setLoading(true);
       const presupuestosAno = await getPresupuestosByYear(currentYear);
@@ -35,7 +31,11 @@ const PresupuestoScopeView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentYear]);
+
+  useEffect(() => {
+    loadPresupuestos();
+  }, [loadPresupuestos]);
 
   const handleWizardComplete = () => {
     setShowWizard(false);

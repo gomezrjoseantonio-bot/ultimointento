@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Save, Download } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
-import { createPresupuesto, createPresupuestoLinea, generateUUID } from '../services/presupuestoService';
+import { createPresupuesto, createPresupuestoLinea } from '../services/presupuestoService';
 import ScopedBudgetView from './ScopedBudgetView';
 
 interface WizardStepRevisionProps {
@@ -44,7 +44,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       // Validate account assignments
       const linesWithoutAccount = wizardData.lines.filter(line => !line.accountId);
       if (linesWithoutAccount.length > 0) {
-        const shouldContinue = confirm(
+        const shouldContinue = window.confirm(
           `Hay ${linesWithoutAccount.length} líneas sin cuenta asignada. ¿Deseas continuar?`
         );
         if (!shouldContinue) return;

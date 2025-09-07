@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Copy, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Copy } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
 
 interface BudgetTableEditorProps {

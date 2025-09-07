@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Building, TrendingUp, Plus, Download } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
 import BudgetTableEditor from './BudgetTableEditor';

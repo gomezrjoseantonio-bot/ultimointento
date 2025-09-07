@@ -48,6 +48,12 @@ describe('Presupuesto Service', () => {
     it('should validate required fields', () => {
       const invalidLinea = {
         presupuestoId: 'test-presupuesto',
+        scope: 'INMUEBLES' as const,
+        type: 'COSTE' as const,
+        category: '',  // Invalid - empty
+        label: '',     // Invalid - empty
+        amountByMonth: new Array(12).fill(0), // Invalid - all zeros
+        // Legacy fields for compatibility
         tipo: 'Gasto' as const,
         categoria: undefined,
         tipoConcepto: '',

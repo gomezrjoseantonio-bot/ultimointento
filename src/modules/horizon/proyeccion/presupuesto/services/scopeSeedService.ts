@@ -1,12 +1,7 @@
 import { 
   initDB, 
-  PresupuestoLinea, 
-  UUID, 
-  Property, 
-  Contract, 
-  Movement 
+  PresupuestoLinea
 } from '../../../../../services/db';
-import { generateUUID } from './presupuestoService';
 
 export interface ScopeSeededData {
   scope: 'PERSONAL' | 'INMUEBLES';
