@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Trash2 } from 'lucide-react';
 import { Bonificacion, ReglaBonificacion } from '../../../../../types/prestamos';
+import { formatSpanishNumber, parseSpanishNumber } from '../../../../../services/spanishFormattingService';
 
 interface BonificationFormProps {
   bonification: Bonificacion;
@@ -83,7 +84,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             <div className="flex items-center space-x-3">
               <span className="font-medium text-[#374151]">{bonification.nombre}</span>
               <span className="text-sm text-[#6B7280]">
-                -{(bonification.reduccionPuntosPorcentuales * 100).toFixed(2)}%
+                -{formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 2)}%
               </span>
               {bonification.costeAnualEstimado && bonification.costeAnualEstimado > 0 && (
                 <span className="text-sm text-[#DC2626]">
@@ -142,8 +143,8 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
               >
                 <div className="font-medium">{preset.nombre}</div>
                 <div className="text-[#6B7280]">
-                  -{(preset.reduccionPuntosPorcentuales * 100).toFixed(2)}% 
-                  {preset.costeAnualEstimado > 0 && ` (~${preset.costeAnualEstimado}€/año)`}
+                  -{formatSpanishNumber(preset.reduccionPuntosPorcentuales * 100, 2)}% 
+                  {preset.costeAnualEstimado > 0 && ` (~${formatSpanishNumber(preset.costeAnualEstimado, 0)}€/año)`}
                 </div>
               </button>
             ))}
@@ -171,16 +172,17 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             Reducción (puntos %) *
           </label>
           <input
-            type="number"
-            value={(bonification.reduccionPuntosPorcentuales * 100).toFixed(3)}
-            onChange={(e) => handleFieldChange('reduccionPuntosPorcentuales', parseFloat(e.target.value) / 100)}
+            type="text"
+            value={formatSpanishNumber(bonification.reduccionPuntosPorcentuales * 100, 3)}
+            onChange={(e) => {
+              const parsed = parseSpanishNumber(e.target.value);
+              handleFieldChange('reduccionPuntosPorcentuales', parsed / 100);
+            }}
             className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-            placeholder="0.300"
-            min="0"
-            step="0.001"
+            placeholder="0,300"
           />
           <p className="text-xs text-[#6B7280] mt-1">
-            ej: 0.300 = 0.30 puntos porcentuales
+            ej: 0,300 = 0,30 puntos porcentuales
           </p>
         </div>
 
@@ -203,12 +205,14 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             Coste anual estimado (€)
           </label>
           <input
-            type="number"
-            value={bonification.costeAnualEstimado || ''}
-            onChange={(e) => handleFieldChange('costeAnualEstimado', parseFloat(e.target.value) || undefined)}
+            type="text"
+            value={bonification.costeAnualEstimado ? formatSpanishNumber(bonification.costeAnualEstimado, 0) : ''}
+            onChange={(e) => {
+              const parsed = parseSpanishNumber(e.target.value);
+              handleFieldChange('costeAnualEstimado', parsed || undefined);
+            }}
             className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
             placeholder="240"
-            min="0"
           />
         </div>
       </div>
@@ -261,15 +265,17 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
               Importe mínimo mensual (€)
             </label>
             <input
-              type="number"
-              value={bonification.regla.minimoMensual}
-              onChange={(e) => handleRuleChange({
-                tipo: 'NOMINA',
-                minimoMensual: parseFloat(e.target.value)
-              })}
+              type="text"
+              value={formatSpanishNumber(bonification.regla.minimoMensual || 0, 0)}
+              onChange={(e) => {
+                const parsed = parseSpanishNumber(e.target.value);
+                handleRuleChange({
+                  tipo: 'NOMINA',
+                  minimoMensual: parsed
+                });
+              }}
               className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-              placeholder="1200"
-              min="0"
+              placeholder="1.200"
             />
           </div>
         )}

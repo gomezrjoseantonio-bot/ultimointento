@@ -13,6 +13,7 @@ import {
   Eye
 } from 'lucide-react';
 import { formatEuro } from '../../../../../utils/formatUtils';
+import { formatSpanishNumber, parseSpanishNumber } from '../../../../../services/spanishFormattingService';
 import { Prestamo, Bonificacion } from '../../../../../types/prestamos';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { prestamosCalculationService } from '../../../../../services/prestamosCalculationService';
@@ -121,7 +122,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
     }
 
     const diaCargoNum = parseInt(diaCargoMes);
-    if (diaCargoNum < 1 || diaCargoNum > 28) errors.push('Día de cargo debe estar entre 1 y 28');
+    if (diaCargoNum < 1 || diaCargoNum > 31) errors.push('Día de cargo debe estar entre 1 y 31');
 
     return errors;
   };
@@ -259,13 +260,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 Principal inicial (€) *
               </label>
               <input
-                type="number"
-                value={principalInicial}
-                onChange={(e) => setPrincipalInicial(e.target.value)}
+                type="text"
+                value={principalInicial ? formatSpanishNumber(parseFloat(principalInicial), 2) : ''}
+                onChange={(e) => {
+                  const parsed = parseSpanishNumber(e.target.value);
+                  setPrincipalInicial(parsed.toString());
+                }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="180000"
-                min="0"
-                step="0.01"
+                placeholder="180.000,00"
                 required
               />
             </div>
@@ -352,13 +354,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                   Tipo nominal anual (%) *
                 </label>
                 <input
-                  type="number"
-                  value={tipoNominalAnualFijo}
-                  onChange={(e) => setTipoNominalAnualFijo(e.target.value)}
+                  type="text"
+                  value={tipoNominalAnualFijo ? formatSpanishNumber(parseFloat(tipoNominalAnualFijo), 3) : ''}
+                  onChange={(e) => {
+                    const parsed = parseSpanishNumber(e.target.value);
+                    setTipoNominalAnualFijo(parsed.toString());
+                  }}
                   className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                  placeholder="3.2"
-                  min="0"
-                  step="0.001"
+                  placeholder="4,49"
                   required
                 />
               </div>
@@ -384,13 +387,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                     Valor actual (%) *
                   </label>
                   <input
-                    type="number"
-                    value={valorIndiceActual}
-                    onChange={(e) => setValorIndiceActual(e.target.value)}
+                    type="text"
+                    value={valorIndiceActual ? formatSpanishNumber(parseFloat(valorIndiceActual), 3) : ''}
+                    onChange={(e) => {
+                      const parsed = parseSpanishNumber(e.target.value);
+                      setValorIndiceActual(parsed.toString());
+                    }}
                     className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                    placeholder="3.65"
-                    min="0"
-                    step="0.001"
+                    placeholder="3,65"
                     required
                   />
                 </div>
@@ -399,13 +403,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                     Diferencial (%) *
                   </label>
                   <input
-                    type="number"
-                    value={diferencial}
-                    onChange={(e) => setDiferencial(e.target.value)}
+                    type="text"
+                    value={diferencial ? formatSpanishNumber(parseFloat(diferencial), 3) : ''}
+                    onChange={(e) => {
+                      const parsed = parseSpanishNumber(e.target.value);
+                      setDiferencial(parsed.toString());
+                    }}
                     className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                    placeholder="1.2"
-                    min="0"
-                    step="0.001"
+                    placeholder="1,2"
                     required
                   />
                 </div>
@@ -434,13 +439,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                       Tipo fijo (%) *
                     </label>
                     <input
-                      type="number"
-                      value={tipoNominalAnualMixtoFijo}
-                      onChange={(e) => setTipoNominalAnualMixtoFijo(e.target.value)}
+                      type="text"
+                      value={tipoNominalAnualMixtoFijo ? formatSpanishNumber(parseFloat(tipoNominalAnualMixtoFijo), 3) : ''}
+                      onChange={(e) => {
+                        const parsed = parseSpanishNumber(e.target.value);
+                        setTipoNominalAnualMixtoFijo(parsed.toString());
+                      }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                      placeholder="3.2"
-                      min="0"
-                      step="0.001"
+                      placeholder="3,2"
                       required
                     />
                   </div>
@@ -464,13 +470,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                       Valor actual (%) *
                     </label>
                     <input
-                      type="number"
-                      value={valorIndiceActual}
-                      onChange={(e) => setValorIndiceActual(e.target.value)}
+                      type="text"
+                      value={valorIndiceActual ? formatSpanishNumber(parseFloat(valorIndiceActual), 3) : ''}
+                      onChange={(e) => {
+                        const parsed = parseSpanishNumber(e.target.value);
+                        setValorIndiceActual(parsed.toString());
+                      }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                      placeholder="3.65"
-                      min="0"
-                      step="0.001"
+                      placeholder="3,65"
                       required
                     />
                   </div>
@@ -479,13 +486,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                       Diferencial (%) *
                     </label>
                     <input
-                      type="number"
-                      value={diferencial}
-                      onChange={(e) => setDiferencial(e.target.value)}
+                      type="text"
+                      value={diferencial ? formatSpanishNumber(parseFloat(diferencial), 3) : ''}
+                      onChange={(e) => {
+                        const parsed = parseSpanishNumber(e.target.value);
+                        setDiferencial(parsed.toString());
+                      }}
                       className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                      placeholder="1.5"
-                      min="0"
-                      step="0.001"
+                      placeholder="1,5"
                       required
                     />
                   </div>
@@ -556,7 +564,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
 
               <div>
                 <label className="block text-sm font-medium text-[#374151] mb-2">
-                  Día de cargo (1-28)
+                  Día de cargo (1-31)
                 </label>
                 <input
                   type="number"
@@ -565,7 +573,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                   className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
                   placeholder="1"
                   min="1"
-                  max="28"
+                  max="31"
                   required
                 />
               </div>
@@ -614,13 +622,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 Comisión amortización parcial (%)
               </label>
               <input
-                type="number"
-                value={comisionAmortizacionParcial}
-                onChange={(e) => setComisionAmortizacionParcial(e.target.value)}
+                type="text"
+                value={comisionAmortizacionParcial ? formatSpanishNumber(parseFloat(comisionAmortizacionParcial), 3) : ''}
+                onChange={(e) => {
+                  const parsed = parseSpanishNumber(e.target.value);
+                  setComisionAmortizacionParcial(parsed.toString());
+                }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="1.0"
-                min="0"
-                step="0.001"
+                placeholder="1,0"
               />
             </div>
 
@@ -629,13 +638,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 Comisión cancelación total (%)
               </label>
               <input
-                type="number"
-                value={comisionCancelacionTotal}
-                onChange={(e) => setComisionCancelacionTotal(e.target.value)}
+                type="text"
+                value={comisionCancelacionTotal ? formatSpanishNumber(parseFloat(comisionCancelacionTotal), 3) : ''}
+                onChange={(e) => {
+                  const parsed = parseSpanishNumber(e.target.value);
+                  setComisionCancelacionTotal(parsed.toString());
+                }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="0.5"
-                min="0"
-                step="0.001"
+                placeholder="0,5"
               />
             </div>
 
@@ -644,13 +654,14 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ onSuccess, onCancel }) => {
                 Gastos fijos por operación (€)
               </label>
               <input
-                type="number"
-                value={gastosFijosOperacion}
-                onChange={(e) => setGastosFijosOperacion(e.target.value)}
+                type="text"
+                value={gastosFijosOperacion ? formatSpanishNumber(parseFloat(gastosFijosOperacion), 2) : ''}
+                onChange={(e) => {
+                  const parsed = parseSpanishNumber(e.target.value);
+                  setGastosFijosOperacion(parsed.toString());
+                }}
                 className="w-full px-3 py-2 border border-[#D1D5DB] rounded-md focus:ring-[#022D5E] focus:border-[#022D5E]"
-                placeholder="30"
-                min="0"
-                step="0.01"
+                placeholder="30,00"
               />
             </div>
           </div>
