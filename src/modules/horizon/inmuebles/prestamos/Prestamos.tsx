@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PageLayout from '../../../../components/common/PageLayout';
 import PrestamosList from './components/PrestamosList';
 import PrestamoDetail from './components/PrestamoDetail';
+import PrestamoForm from './components/PrestamoForm';
 
 type View = 'list' | 'detail' | 'create';
 
@@ -34,20 +35,13 @@ const Prestamos: React.FC = () => {
         );
       case 'create':
         return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold text-[#0F172A] mb-4">
-              Crear nuevo préstamo
-            </h2>
-            <p className="text-[#6B7280] mb-6">
-              Funcionalidad de creación en desarrollo
-            </p>
-            <button
-              onClick={handleBackToList}
-              className="px-4 py-2 bg-[#022D5E] text-white rounded-lg hover:bg-[#033A73] transition-colors"
-            >
-              Volver a la lista
-            </button>
-          </div>
+          <PrestamoForm
+            onSuccess={(prestamo) => {
+              setSelectedPrestamoId(prestamo.id);
+              setCurrentView('detail');
+            }}
+            onCancel={handleBackToList}
+          />
         );
       case 'list':
       default:
@@ -60,8 +54,8 @@ const Prestamos: React.FC = () => {
     }
   };
 
-  if (currentView === 'detail') {
-    // Don't wrap detail view in PageLayout since it has its own navigation
+  if (currentView === 'detail' || currentView === 'create') {
+    // Don't wrap detail or create view in PageLayout since they have their own navigation
     return <div className="p-6">{renderContent()}</div>;
   }
 
