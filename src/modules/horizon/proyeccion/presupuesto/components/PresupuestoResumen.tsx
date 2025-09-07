@@ -21,7 +21,7 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
   };
 
   // Calculate some basic metrics for display
-  const netoColor = resumen.netoAnual >= 0 ? 'text-green-600' : 'text-red-600';
+  const netoColor = resumen.netoAnual >= 0 ? 'text-success-600' : 'text-error-600';
   const netoIcon = resumen.netoAnual >= 0 ? TrendingUp : TrendingDown;
 
   // Simple heatmap calculation for months
@@ -30,11 +30,11 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
     const avgNeto = resumen.netoAnual / 12;
     
     if (Math.abs(monthNeto - avgNeto) / Math.abs(avgNeto) <= 0.1) {
-      return 'bg-green-100 text-green-800'; // En línea
+      return 'bg-success-100 text-success-800'; // En línea
     } else if (Math.abs(monthNeto - avgNeto) / Math.abs(avgNeto) <= 0.3) {
-      return 'bg-yellow-100 text-yellow-800'; // Desviación moderada
+      return 'bg-warning-100 text-yellow-800'; // Desviación moderada
     } else {
-      return 'bg-red-100 text-red-800'; // Desviación alta
+      return 'bg-error-100 text-error-800'; // Desviación alta
     }
   };
 
@@ -53,12 +53,12 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
         <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-green-600">Ingresos Anuales</p>
-              <p className="text-2xl font-bold text-green-800">
+              <p className="text-sm font-medium text-success-600">Ingresos Anuales</p>
+              <p className="text-2xl font-bold text-success-800">
                 {formatCurrency(resumen.ingresoAnual)}
               </p>
             </div>
-            <TrendingUp className="h-8 w-8 text-green-600" />
+            <TrendingUp className="h-8 w-8 text-success-600" />
           </div>
         </div>
 
@@ -66,12 +66,12 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
         <div className="bg-gradient-to-r from-red-50 to-red-100 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-red-600">Gastos Anuales</p>
-              <p className="text-2xl font-bold text-red-800">
+              <p className="text-sm font-medium text-error-600">Gastos Anuales</p>
+              <p className="text-2xl font-bold text-error-800">
                 {formatCurrency(resumen.gastoAnual)}
               </p>
             </div>
-            <TrendingDown className="h-8 w-8 text-red-600" />
+            <TrendingDown className="h-8 w-8 text-error-600" />
           </div>
         </div>
 
@@ -79,7 +79,7 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-600">Resultado Neto</p>
+              <p className="text-sm font-medium text-primary-600">Resultado Neto</p>
               <p className={`text-2xl font-bold ${netoColor}`}>
                 {formatCurrency(resumen.netoAnual)}
               </p>
@@ -115,15 +115,15 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
         {/* Legend */}
         <div className="flex items-center justify-center space-x-6 mt-4 text-xs">
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-green-100 rounded"></div>
+            <div className="w-3 h-3 bg-success-100 rounded"></div>
             <span>En línea (±10%)</span>
           </div>
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-yellow-100 rounded"></div>
+            <div className="w-3 h-3 bg-warning-100 rounded"></div>
             <span>Desviación moderada (±30%)</span>
           </div>
           <div className="flex items-center space-x-1">
-            <div className="w-3 h-3 bg-red-100 rounded"></div>
+            <div className="w-3 h-3 bg-error-100 rounded"></div>
             <span>Desviación alta ({'>'}30%)</span>
           </div>
         </div>

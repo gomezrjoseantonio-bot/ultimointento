@@ -151,11 +151,11 @@ const UnifiedInboxPage: React.FC = () => {
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
       case 'guardado_automatico':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="h-5 w-5 text-success-500" />;
       case 'revision_requerida':
         return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-red-500" />;
+        return <XCircle className="h-5 w-5 text-error-500" />;
       default:
         return <File className="h-5 w-5 text-gray-500" />;
     }
@@ -178,13 +178,13 @@ const UnifiedInboxPage: React.FC = () => {
     const extension = filename.toLowerCase().split('.').pop();
     
     if (['pdf'].includes(extension || '')) {
-      return <FileText className="h-6 w-6 text-red-500" />;
+      return <FileText className="h-6 w-6 text-error-500" />;
     }
     if (['jpg', 'jpeg', 'png', 'heic'].includes(extension || '')) {
       return <Image className="h-6 w-6" style={{ color: 'var(--horizon-primary)' }} />;
     }
     if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
-      return <FileSpreadsheet className="h-6 w-6 text-green-500" />;
+      return <FileSpreadsheet className="h-6 w-6 text-success-500" />;
     }
     return <File className="h-6 w-6 text-gray-500" />;
   };
@@ -543,7 +543,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
            document.blockingReasons?.some(reason => reason.includes('cuenta')) && (
             <button
               onClick={() => onAssignAccount(document)}
-              className="p-1 text-blue-500 hover:text-blue-700"
+              className="p-1 text-primary-500 hover:text-primary-700"
               title="Asignar cuenta bancaria"
             >
               <CreditCard className="h-4 w-4" />

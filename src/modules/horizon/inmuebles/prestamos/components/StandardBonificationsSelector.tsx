@@ -39,8 +39,8 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
 
   const getCategoryColor = (categoria: StandardBonification['categoria']) => {
     switch (categoria) {
-      case 'ingresos': return 'bg-green-50 border-green-200 text-green-800';
-      case 'productos': return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'ingresos': return 'bg-success-50 border-success-200 text-success-800';
+      case 'productos': return 'bg-primary-50 border-primary-200 text-primary-800';
       case 'servicios': return 'bg-purple-50 border-purple-200 text-purple-800';
       default: return 'bg-gray-50 border-gray-200 text-gray-800';
     }
@@ -60,7 +60,7 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="text-sm text-blue-600 hover:text-blue-800"
+          className="text-sm text-primary-600 hover:text-primary-800"
         >
           Ver más opciones de bonificación
         </button>
@@ -69,9 +69,9 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
   }
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="font-medium text-blue-900 flex items-center space-x-2">
+        <h4 className="font-medium text-primary-900 flex items-center space-x-2">
           <Check className="h-4 w-4" />
           <span>Bonificaciones disponibles</span>
         </h4>
@@ -79,7 +79,7 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
           <button
             type="button"
             onClick={() => setShowAll(true)}
-            className="text-xs text-blue-600 hover:text-blue-800"
+            className="text-xs text-primary-600 hover:text-primary-800"
           >
             Ver todas
           </button>
@@ -92,7 +92,7 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
             key={standard.id}
             type="button"
             onClick={() => handleAddStandard(standard)}
-            className="text-left p-3 border border-gray-200 rounded-lg hover:bg-white hover:border-blue-300 transition-colors bg-white"
+            className="text-left p-3 border border-gray-200 rounded-lg hover:bg-white hover:border-primary-300 transition-colors bg-white"
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center space-x-2">
@@ -111,11 +111,11 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
             </p>
             
             <div className="flex items-center justify-between text-xs">
-              <span className="text-green-600 font-medium">
+              <span className="text-success-600 font-medium">
                 -{formatSpanishNumber(standard.reduccionPuntosPorcentuales * 100, 2)}%
               </span>
               {standard.costeAnualEstimado && standard.costeAnualEstimado > 0 && (
-                <span className="text-red-600">
+                <span className="text-error-600">
                   ~{formatSpanishNumber(standard.costeAnualEstimado, 0)}€/año
                 </span>
               )}
@@ -133,8 +133,8 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
       )}
 
       {availableStandard.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-blue-200">
-          <div className="flex items-center space-x-2 text-xs text-blue-700">
+        <div className="mt-3 pt-3 border-t border-primary-200">
+          <div className="flex items-center space-x-2 text-xs text-primary-700">
             <AlertTriangle className="h-3 w-3" />
             <span>
               Haz clic en una bonificación para añadirla a tu préstamo. 

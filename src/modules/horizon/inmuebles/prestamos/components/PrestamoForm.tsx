@@ -992,10 +992,10 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Error message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="bg-error-50 border border-error-200 rounded-lg p-4">
             <div className="flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <p className="text-sm text-red-700">{error}</p>
+              <AlertCircle className="h-5 w-5 text-error-600" />
+              <p className="text-sm text-error-700">{error}</p>
             </div>
           </div>
         )}

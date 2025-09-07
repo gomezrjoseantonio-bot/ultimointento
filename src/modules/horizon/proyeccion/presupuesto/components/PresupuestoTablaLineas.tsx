@@ -23,18 +23,18 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
   const getOrigenBadgeColor = (origen: string) => {
     switch (origen) {
       case 'SemillaAuto':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary-100 text-primary-800';
       case 'ManualUsuario':
-        return 'bg-green-100 text-green-800';
+        return 'bg-success-100 text-success-800';
       case 'AjusteSistema':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-warning-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getTipoColor = (tipo: string) => {
-    return tipo === 'Ingreso' ? 'text-green-600' : 'text-red-600';
+    return tipo === 'Ingreso' ? 'text-success-600' : 'text-error-600';
   };
 
   if (lineas.length === 0) {
@@ -123,7 +123,7 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                 {linea.cuentaId ? (
                   <span>Cuenta {linea.cuentaId.slice(-4)}</span>
                 ) : (
-                  <span className="text-red-500 text-xs">Pendiente</span>
+                  <span className="text-error-500 text-xs">Pendiente</span>
                 )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -159,7 +159,7 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                         onDelete(linea.id);
                       }
                     }}
-                    className="text-red-600 hover:text-red-900"
+                    className="text-error-600 hover:text-error-900"
                     title="Eliminar"
                   >
                     <Trash2 className="h-4 w-4" />

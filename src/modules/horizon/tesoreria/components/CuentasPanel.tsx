@@ -203,8 +203,8 @@ const CuentasPanel: React.FC = () => {
 
   const getUsageColor = (usage: string) => {
     switch (usage) {
-      case 'personal': return 'bg-blue-100 text-blue-800';
-      case 'inmuebles': return 'bg-green-100 text-green-800';
+      case 'personal': return 'bg-primary-100 text-primary-800';
+      case 'inmuebles': return 'bg-success-100 text-success-800';
       case 'mixto': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -415,7 +415,7 @@ const CuentasPanel: React.FC = () => {
                 disabled={isCreatingAccount}
               />
               {newAccountForm.alias && (newAccountForm.alias.length < 2 || newAccountForm.alias.length > 50) && (
-                <p className="text-xs text-red-600 mt-1">El alias debe tener entre 2 y 50 caracteres</p>
+                <p className="text-xs text-error-600 mt-1">El alias debe tener entre 2 y 50 caracteres</p>
               )}
             </div>
             
@@ -442,7 +442,7 @@ const CuentasPanel: React.FC = () => {
                 disabled={isCreatingAccount}
               />
               {newAccountForm.iban && !validateIBAN(newAccountForm.iban) && (
-                <p className="text-xs text-red-600 mt-1">Formato de IBAN inválido</p>
+                <p className="text-xs text-error-600 mt-1">Formato de IBAN inválido</p>
               )}
             </div>
             
@@ -497,7 +497,7 @@ const CuentasPanel: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleRemoveLogo}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                      className="absolute -top-2 -right-2 bg-error-500 text-white rounded-full p-1 hover:bg-error-600"
                       disabled={isCreatingAccount}
                     >
                       <X className="w-4 h-4" />
@@ -845,7 +845,7 @@ const CuentasPanel: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleRemoveLogo}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        className="absolute -top-2 -right-2 bg-error-500 text-white rounded-full p-1 hover:bg-error-600"
                         disabled={isCreatingAccount}
                       >
                         <X className="w-4 h-4" />
@@ -953,23 +953,23 @@ const CuentasPanel: React.FC = () => {
 
       {/* Unification Banner */}
       {showUnificationBanner && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
                   <span className="text-white text-sm font-medium">ℹ</span>
                 </div>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-blue-800">
+                <p className="text-sm text-primary-800">
                   <span className="font-medium">Hemos unificado 'Cuentas'.</span> Ahora se gestionan desde Tesorería con funciones mejoradas: filtros por uso, carga de logos y validación IBAN.
                 </p>
               </div>
             </div>
             <button
               onClick={dismissUnificationBanner}
-              className="flex-shrink-0 ml-4 text-blue-400 hover:text-blue-600"
+              className="flex-shrink-0 ml-4 text-blue-400 hover:text-primary-600"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1163,7 +1163,7 @@ const CuentasPanel: React.FC = () => {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          className="p-2 text-gray-400 hover:text-error-600 hover:bg-error-50 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
                             setConfirmDeleteAccount(account);
@@ -1187,8 +1187,8 @@ const CuentasPanel: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center mr-3">
+                <AlertTriangle className="w-5 h-5 text-error-600" />
               </div>
               <h3 className="text-lg font-medium text-gray-900">Desactivar Cuenta</h3>
             </div>
@@ -1205,7 +1205,7 @@ const CuentasPanel: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleDeleteAccount}
-                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+                className="flex-1 bg-error-600 text-white py-2 px-4 rounded-lg hover:bg-error-700 transition-colors"
               >
                 Desactivar
               </button>

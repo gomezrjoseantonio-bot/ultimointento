@@ -105,10 +105,10 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
             <div key={scope} className="bg-white border border-gray-200 rounded-lg p-6">
               <div className="flex items-center mb-4">
                 <div className={`p-3 rounded-lg ${
-                  scope === 'PERSONAL' ? 'bg-blue-100' : 'bg-green-100'
+                  scope === 'PERSONAL' ? 'bg-primary-100' : 'bg-success-100'
                 }`}>
                   <span className={`text-lg font-bold ${
-                    scope === 'PERSONAL' ? 'text-blue-600' : 'text-green-600'
+                    scope === 'PERSONAL' ? 'text-primary-600' : 'text-success-600'
                   }`}>
                     {scope === 'PERSONAL' ? '👤' : '🏠'}
                   </span>

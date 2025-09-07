@@ -149,7 +149,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   <span className="absolute right-3 top-2 text-[#6B7280] text-sm">€</span>
                 </div>
                 {!isValidAmount() && importe && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-sm text-error-600">
                     Debe ser entre 0 y {formatEuro(prestamo.principalVivo)}
                   </p>
                 )}
@@ -212,9 +212,9 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
 
             {/* Error message */}
             {error && (
-              <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="flex items-center space-x-2 p-3 bg-error-50 border border-error-200 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-error-600" />
+                <p className="text-sm text-error-700">{error}</p>
               </div>
             )}
 
