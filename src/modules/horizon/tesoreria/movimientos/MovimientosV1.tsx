@@ -215,7 +215,12 @@ const MovimientosV1: React.FC = () => {
         };
         
         await db.put('movements', updatedMovement);
-        await loadData();
+        
+        // Optimistic update - update state directly instead of full reload
+        setMovements(prev => prev.map(m => 
+          m.id === movement.id ? updatedMovement : m
+        ));
+        
         showSuccess('Movimiento marcado como confirmado');
       } catch (error) {
         showError('Error al actualizar el movimiento');
@@ -235,6 +240,8 @@ const MovimientosV1: React.FC = () => {
 
     try {
       const db = await initDB();
+      const updatedMovements: Movement[] = [];
+      
       for (const movement of pendingMovements) {
         if (movement) {
           const updatedMovement = {
@@ -244,14 +251,36 @@ const MovimientosV1: React.FC = () => {
             updatedAt: new Date().toISOString()
           };
           await db.put('movements', updatedMovement);
+          updatedMovements.push(updatedMovement);
         }
       }
       
+      // Optimistic update - update all affected movements in state
+      setMovements(prev => prev.map(m => {
+        const updated = updatedMovements.find(um => um.id === m.id);
+        return updated || m;
+      }));
+      
       setSelectedMovements([]);
-      await loadData();
       showSuccess(`${pendingMovements.length} movimientos marcados como confirmados`);
     } catch (error) {
       showError('Error al actualizar los movimientos');
+    }
+  };
+
+  // Delete movement handler
+  const handleDeleteMovement = async (movement: Movement) => {
+    try {
+      const db = await initDB();
+      await db.delete('movements', movement.id!);
+      
+      // Optimistic update - remove from state instead of full reload
+      setMovements(prev => prev.filter(m => m.id !== movement.id));
+      
+      showSuccess('Movimiento eliminado exitosamente');
+    } catch (error) {
+      console.error('Error deleting movement:', error);
+      showError('Error al eliminar el movimiento');
     }
   };
 
@@ -697,7 +726,7 @@ const MovimientosV1: React.FC = () => {
                           <button
                             onClick={() => {
                               if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
-                                // TODO: Implement delete
+                                handleDeleteMovement(movement);
                               }
                             }}
                             className="text-hz-error hover:text-red-700"
