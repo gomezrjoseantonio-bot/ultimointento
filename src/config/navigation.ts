@@ -45,12 +45,7 @@ export const navigationConfig: NavigationItem[] = [
     href: '/tesoreria',
     icon: Banknote,
     module: 'horizon',
-    subTabs: [
-      { name: 'Radar', href: '/tesoreria#radar', icon: TrendingUp, module: 'horizon' },
-      { name: 'Cuentas', href: '/tesoreria#cuentas', icon: Banknote, module: 'horizon' },
-      { name: 'Movimientos', href: '/tesoreria#movimientos', icon: CreditCard, module: 'horizon' },
-      { name: 'Automatizaciones', href: '/tesoreria#automatizaciones', icon: Settings, module: 'horizon' },
-    ]
+    // NO subtabs - single Radar view per ATLAS guide
   },
   {
     name: 'Fiscalidad',
@@ -154,8 +149,9 @@ export const navigationConfig: NavigationItem[] = [
     icon: Settings,
     module: 'horizon',
     subTabs: [
-      { name: 'Usuarios & Roles', href: '/configuracion/usuarios-roles', icon: Users, module: 'horizon' },
-      { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'horizon' },
+      { name: 'Usuarios y roles', href: '/configuracion/usuarios-roles', icon: Users, module: 'horizon' },
+      { name: 'Preferencias y datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'horizon' },
+      { name: 'Cuentas', href: '/configuracion/cuentas', icon: Banknote, module: 'horizon' },
       { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'horizon' },
     ]
   },

@@ -16,9 +16,10 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Cartera', path: '/inmuebles/cartera' },
     { label: 'Contratos', path: '/inmuebles/contratos' },
     { label: 'Préstamos', path: '/inmuebles/prestamos' },
-    { label: 'Gastos & CAPEX', path: '/inmuebles/gastos-capex' },
+    { label: 'Gastos', path: '/inmuebles/gastos-capex' },
     { label: 'Análisis', path: '/inmuebles/analisis' },
   ],
+  // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
     { label: 'Resumen', path: '/fiscalidad/resumen' },
     { label: 'Detalle', path: '/fiscalidad/detalle' },
@@ -30,8 +31,9 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Horizontes', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
-    { label: 'Usuarios & Roles', path: '/configuracion/usuarios-roles' },
-    { label: 'Preferencias & Datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Usuarios y roles', path: '/configuracion/usuarios-roles' },
+    { label: 'Preferencias y datos', path: '/configuracion/preferencias-datos' },
+    { label: 'Cuentas', path: '/configuracion/cuentas' },
     { label: 'Email entrante', path: '/configuracion/email-entrante' },
   ],
 };
