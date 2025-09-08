@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Plus, 
   Upload, 
@@ -127,7 +127,7 @@ const MovimientosV1: React.FC = () => {
   }, [loadData]);
 
   // FIX PACK v1.0: Filter movements using centralized filter logic with UTC date handling
-  const filteredMovements = useCallback(() => {
+  const filteredMovs = useMemo(() => {
     let filtered = movements;
 
     // Account filter - FIX PACK v1.0: Handle "all" option
@@ -194,7 +194,6 @@ const MovimientosV1: React.FC = () => {
     return filtered;
   }, [movements, filters, searchTerm, accounts]);
 
-  const filteredMovs = filteredMovements();
   const totalPages = Math.ceil(filteredMovs.length / ITEMS_PER_PAGE);
   const paginatedMovements = filteredMovs.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
