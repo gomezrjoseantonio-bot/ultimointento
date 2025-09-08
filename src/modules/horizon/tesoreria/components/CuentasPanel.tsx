@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown, Eye, EyeOff, Filter, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown, Eye, EyeOff, Filter, Trash2, X, Play, Pause } from 'lucide-react';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
@@ -27,6 +27,7 @@ const CuentasPanel: React.FC = () => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [usageFilter, setUsageFilter] = useState<'all' | 'personal' | 'inmuebles' | 'mixto'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active'); // FIX PACK v2.0: Status filter
   const [showIbanFull, setShowIbanFull] = useState<{ [key: number]: boolean }>({});
   const [showUnificationBanner, setShowUnificationBanner] = useState(
     !localStorage.getItem('cuentas-unification-banner-dismissed')
@@ -46,18 +47,19 @@ const CuentasPanel: React.FC = () => {
     logoPreview: null as string | null
   });
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
-      const db = await initDB();
-      const allAccounts = await db.getAll('accounts');
-      const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon' && acc.isActive);
+      // FIX PACK v2.0: Load accounts based on status filter
+      const include_inactive = statusFilter === 'all' || statusFilter === 'inactive';
+      const allAccounts = await treasuryAPI.accounts.getAccounts(include_inactive);
+      const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
       setAccounts(horizonAccounts);
     } catch (error) {
       console.error('Error loading accounts:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   const loadAccountDetails = async (account: Account) => {
     try {
@@ -96,16 +98,27 @@ const CuentasPanel: React.FC = () => {
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [loadAccounts]);
 
-  // Filter accounts based on usage filter
+  // Filter accounts based on usage and status filters
   useEffect(() => {
-    if (usageFilter === 'all') {
-      setFilteredAccounts(accounts);
-    } else {
-      setFilteredAccounts(accounts.filter(account => account.usage_scope === usageFilter));
+    let filtered = accounts;
+    
+    // Apply usage filter
+    if (usageFilter !== 'all') {
+      filtered = filtered.filter(account => account.usage_scope === usageFilter);
     }
-  }, [accounts, usageFilter]);
+    
+    // Apply status filter (FIX PACK v2.0)
+    if (statusFilter === 'active') {
+      filtered = filtered.filter(account => account.isActive);
+    } else if (statusFilter === 'inactive') {
+      filtered = filtered.filter(account => !account.isActive);
+    }
+    // statusFilter === 'all' shows both active and inactive
+    
+    setFilteredAccounts(filtered);
+  }, [accounts, usageFilter, statusFilter]);
 
   // Handle editing account - populate form when editingAccount changes
   useEffect(() => {
@@ -335,13 +348,49 @@ const CuentasPanel: React.FC = () => {
     }
   };
 
-  // Handle account deletion/deactivation
+  // Handle account activation/deactivation toggle (FIX PACK v2.0)
+  const handleToggleAccountStatus = async (account: Account) => {
+    try {
+      if (account.isActive) {
+        await treasuryAPI.accounts.deactivateAccount(account.id!);
+        toast.success('Cuenta desactivada correctamente');
+      } else {
+        await treasuryAPI.accounts.activateAccount(account.id!);
+        toast.success('Cuenta activada correctamente');
+      }
+      
+      // Reload accounts to reflect the change
+      await loadAccounts();
+      
+      // If the modified account was selected, clear selection to refresh
+      if (selectedAccount?.id === account.id) {
+        setSelectedAccount(null);
+        setAccountProjection(null);
+      }
+      
+    } catch (error) {
+      console.error('Error toggling account status:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al cambiar el estado de la cuenta');
+    }
+  };
+
+  // Handle account deletion/deactivation (FIX PACK v2.0)
   const handleDeleteAccount = async () => {
     if (!confirmDeleteAccount) return;
 
     try {
-      await treasuryAPI.accounts.deactivateAccount(confirmDeleteAccount.id!);
-      toast.success('Cuenta desactivada correctamente');
+      // Attempt hard delete first
+      const result = await treasuryAPI.accounts.deleteAccount(confirmDeleteAccount.id!);
+      
+      if (result.success) {
+        toast.success('Cuenta eliminada correctamente');
+      } else if (result.requiresWizard) {
+        // TODO: Open deletion wizard
+        toast.error(`La cuenta tiene ${result.refs_summary?.movements} movimientos. Se requiere asistente de eliminación.`);
+        // For now, just deactivate
+        await treasuryAPI.accounts.deactivateAccount(confirmDeleteAccount.id!);
+        toast.success('Cuenta desactivada correctamente (eliminación completa pendiente)');
+      }
       
       // Reload accounts to reflect the change
       await loadAccounts();
@@ -354,8 +403,8 @@ const CuentasPanel: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Error deactivating account:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al desactivar la cuenta');
+      console.error('Error deleting account:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al eliminar la cuenta');
     }
   };
 
@@ -1003,6 +1052,31 @@ const CuentasPanel: React.FC = () => {
             </button>
           ))}
         </div>
+        
+        {/* FIX PACK v2.0: Status filter */}
+        <div className="flex items-center gap-2 ml-4 border-l border-gray-300 pl-4">
+          <span className="text-sm font-medium text-gray-700">Estado:</span>
+        </div>
+        <div className="flex gap-2">
+          {[
+            { key: 'active', label: 'Activas' },
+            { key: 'all', label: 'Todas' }, 
+            { key: 'inactive', label: 'Desactivadas' }
+          ].map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => setStatusFilter(filter.key as typeof statusFilter)}
+              className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                statusFilter === filter.key
+                  ? 'bg-brand-navy text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+        
         <div className="ml-auto text-sm text-gray-500">
           {filteredAccounts.length} de {accounts.length} cuentas
         </div>
@@ -1081,6 +1155,23 @@ const CuentasPanel: React.FC = () => {
               Agregar Cuenta
             </button>
           </div>
+        ) : filteredAccounts.length === 0 ? (
+          /* FIX PACK v2.0: Empty state for filters */
+          <div className="p-6 text-center">
+            <Filter className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {statusFilter === 'inactive' 
+                ? 'No tienes cuentas desactivadas'
+                : 'No se encontraron cuentas'
+              }
+            </h3>
+            <p className="text-gray-500 mb-4">
+              {statusFilter === 'inactive' 
+                ? 'Todas tus cuentas están activas'
+                : 'Ajusta los filtros para ver más cuentas'
+              }
+            </p>
+          </div>
         ) : (
           <div className="divide-y divide-gray-200">
             {filteredAccounts.map(account => {
@@ -1121,6 +1212,14 @@ const CuentasPanel: React.FC = () => {
                           <span className={`px-2 py-1 text-xs rounded-full ${getUsageColor(account.usage_scope || 'mixto')}`}>
                             {getUsageLabel(account.usage_scope || 'mixto')}
                           </span>
+                          {/* FIX PACK v2.0: Status badge */}
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            account.isActive 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {account.isActive ? 'Activa' : 'Desactivada'}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-500 mt-1">
                           {account.bank}
@@ -1128,6 +1227,12 @@ const CuentasPanel: React.FC = () => {
                         <div className="text-sm text-gray-500 mt-1">
                           {renderIban(account)}
                         </div>
+                        {/* FIX PACK v2.0: Show notice for inactive accounts */}
+                        {!account.isActive && (
+                          <div className="text-xs text-amber-600 mt-1 font-medium">
+                            ⚠️ No se pueden crear nuevos movimientos en esta cuenta
+                          </div>
+                        )}
                         {account.minimumBalance && (
                           <div className="text-xs text-gray-400 mt-1">
                             Saldo mínimo: {formatEuro(minimumBalance)}
@@ -1151,6 +1256,21 @@ const CuentasPanel: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        {/* FIX PACK v2.0: Activate/Deactivate toggle button */}
+                        <button 
+                          className={`p-2 rounded ${
+                            account.isActive 
+                              ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' 
+                              : 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleAccountStatus(account);
+                          }}
+                          title={account.isActive ? "Desactivar cuenta" : "Activar cuenta"}
+                        >
+                          {account.isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </button>
                         <button 
                           className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
                           onClick={(e) => {
@@ -1168,7 +1288,7 @@ const CuentasPanel: React.FC = () => {
                             e.stopPropagation();
                             setConfirmDeleteAccount(account);
                           }}
-                          title="Deshabilitar/Eliminar cuenta"
+                          title="Eliminar cuenta"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1190,15 +1310,15 @@ const CuentasPanel: React.FC = () => {
               <div className="w-10 h-10 bg-error-100 rounded-full flex items-center justify-center mr-3">
                 <AlertTriangle className="w-5 h-5 text-error-600" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900">Desactivar Cuenta</h3>
+              <h3 className="text-lg font-medium text-gray-900">Eliminar Cuenta</h3>
             </div>
             
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">
-                ¿Estás seguro de que quieres desactivar la cuenta <strong>{confirmDeleteAccount.name}</strong>?
+                ¿Estás seguro de que quieres eliminar la cuenta <strong>{confirmDeleteAccount.name}</strong>?
               </p>
               <p className="text-xs text-gray-500">
-                La cuenta se desactivará pero se mantendrán todos sus movimientos e historial para preservar la integridad de los datos.
+                Si la cuenta tiene movimientos, se abrirá un asistente para reasignar o archivar los datos antes de eliminarla completamente.
               </p>
             </div>
             
@@ -1207,7 +1327,7 @@ const CuentasPanel: React.FC = () => {
                 onClick={handleDeleteAccount}
                 className="flex-1 bg-error-600 text-white py-2 px-4 rounded-lg hover:bg-error-700 transition-colors"
               >
-                Desactivar
+                Eliminar
               </button>
               <button
                 onClick={() => setConfirmDeleteAccount(null)}
