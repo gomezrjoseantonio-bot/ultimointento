@@ -7,29 +7,38 @@
 @tailwind utilities;
 
 :root {
-  /* Marca ATLAS */
-  --brand-navy: #0E2A47;   /* ATLAS azul marino - legacy compatibility */
-  --brand-teal: #00B8C4;   /* ATLAS teal/acento - RESERVED FOR PULSE ONLY */
+  /* ATLAS Official Color Tokens - Horizon Module */
+  --atlas-navy-1: #303A4C;        /* Neutral dark */
+  --atlas-blue: #042C5E;          /* Horizon primary */
+  --atlas-teal: #1DA0BA;          /* Pulse accents only */
+  --atlas-navy-2: #142C50;        /* Sidebar/dark backgrounds */
+  
+  /* ATLAS Functional Colors */
+  --ok: #28A745;                   /* Success green */
+  --warn: #FFC107;                 /* Warning yellow */
+  --error: #DC3545;                /* Error red */
+  --bg: #F8F9FA;                   /* Background */
+  --text-gray: #6C757D;            /* Text gray */
 
   /* Horizon Module - ATLAS Design System Tokens (Updated per requirements) */
-  --hz-primary: #0D1B2A;          /* ATLAS Primary blue #0D1B2A */
-  --hz-primary-dark: #0D1B2A;     /* Primary dark same as primary */
-  --hz-bg: #F8F9FA;               /* ATLAS background #F8F9FA */
-  --hz-text: #0D1B2A;             /* ATLAS primary for text */
+  --hz-primary: var(--atlas-blue);          /* ATLAS Primary blue #042C5E */
+  --hz-primary-dark: var(--atlas-blue);     /* Primary dark same as primary */
+  --hz-bg: var(--bg);                       /* ATLAS background #F8F9FA */
+  --hz-text: var(--atlas-navy-1);           /* ATLAS neutral dark for text */
   
   /* Horizon Semantic States - ATLAS Tokens per requirements */
-  --hz-success: #28A745;          /* ATLAS Success green #28A745 */
-  --hz-warning: #FFC107;          /* ATLAS Warning yellow #FFC107 */
-  --hz-error: #DC3545;            /* ATLAS Error red #DC3545 */
-  --hz-info: #0D1B2A;             /* Info blue same as primary */
+  --hz-success: var(--ok);                  /* ATLAS Success green #28A745 */
+  --hz-warning: var(--warn);                /* ATLAS Warning yellow #FFC107 */
+  --hz-error: var(--error);                 /* ATLAS Error red #DC3545 */
+  --hz-info: var(--atlas-blue);             /* Info blue same as primary */
   
   /* Horizon Neutral Colors per ATLAS requirements */
-  --hz-neutral-900: #0D1B2A;      /* Darkest text - ATLAS primary */
-  --hz-neutral-700: #6C757D;      /* Secondary text - ATLAS grey */
-  --hz-neutral-500: #6C757D;      /* Muted text - ATLAS grey */
-  --hz-neutral-300: #DEE2E6;      /* Light borders */
-  --hz-neutral-100: #F8F9FA;      /* Light backgrounds - ATLAS bg */
-  --hz-card-bg: #FFFFFF;          /* Card backgrounds */
+  --hz-neutral-900: var(--atlas-navy-1);   /* Darkest text - ATLAS neutral dark */
+  --hz-neutral-700: var(--text-gray);      /* Secondary text - ATLAS grey */
+  --hz-neutral-500: var(--text-gray);      /* Muted text - ATLAS grey */
+  --hz-neutral-300: #DEE2E6;               /* Light borders */
+  --hz-neutral-100: var(--bg);             /* Light backgrounds - ATLAS bg */
+  --hz-card-bg: #FFFFFF;                   /* Card backgrounds */
   
   /* NO TURQUOISE - Reserved for Pulse only */
   
@@ -225,40 +234,40 @@ html {
     @apply inline-flex items-center px-4 py-2 text-sm font-medium rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
   
-  /* Primary buttons - now use consistent navy for both modules */
+  /* Primary buttons - ATLAS blue for Horizon */
   .btn-primary-horizon {
-    @apply btn-base bg-brand-navy text-white hover:bg-navy-800 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-atlas-blue text-white hover:bg-navy-800 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-primary-pulse {
-    @apply btn-base bg-brand-navy text-white hover:bg-navy-800 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-atlas-blue text-white hover:bg-navy-800 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Secondary/Outline buttons */
   .btn-secondary-horizon {
-    @apply btn-base border border-neutral-300 text-brand-navy bg-white hover:bg-neutral-50 focus:ring-brand-navy;
+    @apply btn-base border border-neutral-300 text-atlas-blue bg-white hover:bg-neutral-50 focus:ring-atlas-blue;
   }
   
   .btn-secondary-pulse {
-    @apply btn-base border border-neutral-300 text-brand-navy bg-white hover:bg-neutral-50 focus:ring-brand-navy;
+    @apply btn-base border border-neutral-300 text-atlas-blue bg-white hover:bg-neutral-50 focus:ring-atlas-blue;
   }
   
   /* Ghost buttons */
   .btn-ghost-horizon {
-    @apply btn-base border-transparent text-brand-navy bg-transparent hover:bg-neutral-50 focus:ring-brand-navy;
+    @apply btn-base border-transparent text-atlas-blue bg-transparent hover:bg-neutral-50 focus:ring-atlas-blue;
   }
   
   .btn-ghost-pulse {
-    @apply btn-base border-transparent text-brand-navy bg-transparent hover:bg-neutral-50 focus:ring-brand-navy;
+    @apply btn-base border-transparent text-atlas-blue bg-transparent hover:bg-neutral-50 focus:ring-atlas-blue;
   }
   
   /* Accent buttons (for secondary positive actions) */
   .btn-accent-horizon {
-    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-accent-pulse {
-    @apply btn-base bg-brand-teal text-white hover:bg-teal-600 focus:ring-brand-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */

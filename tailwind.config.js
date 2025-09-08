@@ -7,19 +7,32 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Official ATLAS brand colors - Atlas Horizon Style Guide
-        'brand-navy': '#0E2A47',  // Legacy ATLAS navy (backward compatibility)
-        'brand-teal': '#00B8C4',  // Turquesa Pulse - RESERVED FOR PULSE ONLY
+        // ATLAS Official Color Tokens - Horizon Module
+        'atlas-navy-1': '#303A4C',   // Neutral dark
+        'atlas-blue': '#042C5E',     // Horizon primary  
+        'atlas-teal': '#1DA0BA',     // Pulse accents only
+        'atlas-navy-2': '#142C50',   // Sidebar/dark backgrounds
+        
+        // ATLAS Functional Colors
+        'ok': '#28A745',             // Success green
+        'warn': '#FFC107',           // Warning yellow  
+        'error': '#DC3545',          // Error red
+        'bg': '#F8F9FA',             // Background
+        'text-gray': '#6C757D',      // Text gray
+        
+        // Legacy brand colors (backward compatibility)
+        'brand-navy': '#042C5E',     // Maps to atlas-blue
+        'brand-teal': '#1DA0BA',     // Maps to atlas-teal
         
         // Official Horizon Design System Tokens (Updated per requirements)
-        'hz-primary': '#0A84FF',     // Primary Horizon blue #0A84FF
-        'hz-primary-dark': '#0A3D62', // Primary dark (text/borders) #0A3D62  
-        'hz-bg': '#F7F9FC',          // Official Horizon soft background
-        'hz-text': '#111827',        // Text color #111827
-        'hz-success': '#10B981',     // Success green #10B981
-        'hz-warning': '#F59E0B',     // Warning yellow #F59E0B
-        'hz-error': '#EF4444',       // Error red #EF4444
-        'hz-info': '#0A84FF',        // Info blue same as primary
+        'hz-primary': '#042C5E',     // ATLAS blue #042C5E
+        'hz-primary-dark': '#042C5E', // Primary dark same as primary  
+        'hz-bg': '#F8F9FA',          // ATLAS background
+        'hz-text': '#303A4C',        // ATLAS neutral dark
+        'hz-success': '#28A745',     // ATLAS Success green
+        'hz-warning': '#FFC107',     // ATLAS Warning yellow
+        'hz-error': '#DC3545',       // ATLAS Error red
+        'hz-info': '#042C5E',        // Info blue same as primary
         
         // Horizon Neutral Colors per requirements
         'hz-neutral-900': '#111827', // Darkest text
@@ -41,9 +54,9 @@ module.exports = {
           400: '#5d7cb7',
           500: '#3a5998',
           600: '#2a4073',
-          700: '#0E2A47', // Official Horizon navy
-          800: '#0a1f35',
-          900: '#071829',
+          700: '#042C5E', // Official ATLAS blue
+          800: '#031F47', // Darker ATLAS blue for hover
+          900: '#021530', // Darkest for pressed states
         },
         
         // Teal palette for Pulse theme (NO usar en Horizon)
