@@ -65,7 +65,7 @@ const Cuentas: React.FC = () => {
                     }
                   `}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-6 w-6" style={{ strokeWidth: 1.5 }} />
                   {tab.name}
                 </button>
               );

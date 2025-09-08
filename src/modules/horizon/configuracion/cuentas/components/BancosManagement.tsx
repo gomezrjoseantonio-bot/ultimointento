@@ -36,7 +36,7 @@ const BancosManagement: React.FC = () => {
       {/* ATLAS Info Banner */}
       <div className="mb-6 bg-blue-50 border border-atlas-blue/20 rounded-lg p-4">
         <div className="flex items-start">
-          <Info className="w-5 h-5 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" />
+          <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
             <h3 className="font-medium text-atlas-navy-1 mb-1">Cuentas simplificadas</h3>
             <p className="text-sm text-text-gray">
@@ -69,7 +69,7 @@ const BancosManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                    <Banknote className="w-4 h-4 text-gray-500" />
+                    <Banknote className="w-6 h-6 text-gray-500" style={{ strokeWidth: 1.5 }} />
                   </div>
                   <div>
                     <h3 className="font-medium text-atlas-navy-1">{account.alias}</h3>

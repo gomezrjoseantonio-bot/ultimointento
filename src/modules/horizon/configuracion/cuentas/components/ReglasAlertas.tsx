@@ -47,7 +47,7 @@ const ReglasAlertas: React.FC = () => {
       {/* ATLAS Info Banner */}
       <div className="mb-6 bg-blue-50 border border-atlas-blue/20 rounded-lg p-4">
         <div className="flex items-start">
-          <Info className="w-5 h-5 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" />
+          <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
             <h3 className="font-medium text-atlas-navy-1 mb-1">Reglas de clasificación</h3>
             <p className="text-sm text-text-gray">
@@ -69,7 +69,7 @@ const ReglasAlertas: React.FC = () => {
               onClick={handleNewRule}
               className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-navy-800 transition-colors"
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-6 h-6 mr-2" style={{ strokeWidth: 1.5 }} />
               Nueva regla
             </button>
           </div>
@@ -81,7 +81,7 @@ const ReglasAlertas: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-atlas-blue/10 rounded-full flex items-center justify-center mt-1">
-                    <Settings className="w-4 h-4 text-atlas-blue" />
+                    <Settings className="w-6 h-6 text-atlas-blue" style={{ strokeWidth: 1.5 }} />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center space-x-2">
