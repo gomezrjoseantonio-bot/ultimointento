@@ -1,3 +1,4 @@
+import React from 'react';
 import toast from 'react-hot-toast';
 
 /**
@@ -28,7 +29,7 @@ const ATLAS_COLORS = {
  * Success toast (green) - for completed actions
  */
 export const showSuccess = (message: string, options: ToastOptions = {}): string => {
-  return toast.success(message, {
+  const toastConfig: any = {
     duration: options.duration || 3000,
     position: options.position || 'top-right',
     style: {
@@ -43,7 +44,30 @@ export const showSuccess = (message: string, options: ToastOptions = {}): string
       primary: ATLAS_COLORS.success,
       secondary: '#F0FDF4'
     }
-  });
+  };
+
+  // FIX PACK v1.0: Add CTA button support
+  if (options.actionLabel && options.actionHandler) {
+    return toast.success(
+      (t) => (
+        <div className="flex items-center justify-between w-full">
+          <span>{message}</span>
+          <button
+            onClick={() => {
+              options.actionHandler!();
+              toast.dismiss(t.id);
+            }}
+            className="ml-3 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+          >
+            {options.actionLabel}
+          </button>
+        </div>
+      ),
+      toastConfig
+    );
+  }
+
+  return toast.success(message, toastConfig);
 };
 
 /**
@@ -131,15 +155,15 @@ export const showLoading = (message: string, options: ToastOptions = {}): string
 /**
  * Promise toast - for async operations with automatic success/error handling
  */
-export const showPromise = <T>(
-  promise: Promise<T>,
+export const showPromise = (
+  promise: Promise<any>,
   messages: {
     loading: string;
-    success: string | ((data: T) => string);
+    success: string | ((data: any) => string);
     error: string | ((error: any) => string);
   },
   options: ToastOptions = {}
-): Promise<T> => {
+): Promise<any> => {
   return toast.promise(promise, messages, {
     position: options.position || 'top-right',
     style: {

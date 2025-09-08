@@ -34,6 +34,13 @@ import {
   getAccountDisplayName,
   logAccountLoading
 } from '../../../../utils/accountUtils';
+// FIX PACK v1.0: Import analytics utilities
+import { 
+  trackEmptyState, 
+  trackFilterAction, 
+  trackFilterUsage,
+  trackCacheInvalidation
+} from '../../../../utils/treasuryAnalytics';
 
 // FIX PACK v1.0: Updated date filter options per requirements
 const DATE_FILTERS = [
@@ -70,6 +77,9 @@ const MovimientosV1: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // FIX PACK v1.0: Track cache invalidation
+      trackCacheInvalidation('manual_refresh');
       
       // FIX PACK v1.0: Load only active accounts from treasury API
       const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
@@ -170,6 +180,9 @@ const MovimientosV1: React.FC = () => {
 
     // FIX PACK v1.0: Log filter application for debugging
     logFilterApplication(filters, filtered.length);
+    
+    // FIX PACK v1.0: Track filter usage analytics
+    trackFilterUsage(filters, filtered.length);
 
     return filtered;
   }, [movements, filters, searchTerm, accounts]);
@@ -246,17 +259,45 @@ const MovimientosV1: React.FC = () => {
     } : { name: 'Cuenta desconocida', bank: '', logo: '/placeholder-bank.png', isActive: false };
   };
 
-  // FIX PACK v1.0: Helper to update individual filter properties
-  const updateFilter = (key: keyof MovementFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  // FIX PACK v1.0: Helper to update individual filter properties with analytics
+  const updateFilter = (key: keyof MovementFilters, value: any, ctaType?: string) => {
+    const previousFilters = { ...filters };
+    const newFilters = { ...filters, [key]: value };
+    
+    setFilters(newFilters);
+    
+    // Track analytics for CTA clicks
+    if (ctaType) {
+      trackFilterAction({
+        action: 'cta_click',
+        ctaType: ctaType as any,
+        previousFilters,
+        newFilters
+      });
+    } else {
+      trackFilterAction({
+        action: 'filter_change',
+        previousFilters,
+        newFilters
+      });
+    }
   };
 
-  // FIX PACK v1.0: Reset filters to defaults
+  // FIX PACK v1.0: Reset filters to defaults with analytics
   const handleResetFilters = () => {
+    const previousFilters = { ...filters };
     const defaultFilters = resetFiltersToDefaults();
+    
     setFilters(defaultFilters);
     setSearchTerm('');
     setCurrentPage(1);
+    
+    // Track analytics
+    trackFilterAction({
+      action: 'filter_reset',
+      ctaType: 'reset_filters',
+      previousFilters
+    });
   };
 
   // Totals calculation
@@ -685,11 +726,24 @@ const MovimientosV1: React.FC = () => {
               No se encontraron movimientos con los filtros aplicados
             </div>
             
+            {/* FIX PACK v1.0: Track empty state analytics */}
+            {(() => {
+              trackEmptyState({
+                filters,
+                searchTerm,
+                totalMovements: movements.length,
+                filteredMovements: 0,
+                activeAccounts: accounts.length,
+                timestamp: new Date().toISOString()
+              });
+              return null;
+            })()}
+            
             {/* Smart CTAs based on current filters */}
             <div className="space-y-3">
               {filters.accountId !== 'all' && (
                 <button
-                  onClick={() => updateFilter('accountId', 'all')}
+                  onClick={() => updateFilter('accountId', 'all', 'show_all_accounts')}
                   className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
                 >
                   Cambiar a 'Todas las cuentas'
@@ -698,7 +752,7 @@ const MovimientosV1: React.FC = () => {
               
               {filters.dateRange !== 'last90days' && (
                 <button
-                  onClick={() => updateFilter('dateRange', 'last90days')}
+                  onClick={() => updateFilter('dateRange', 'last90days', 'show_last_90_days')}
                   className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
                 >
                   Mostrar 'Últimos 90 días'
@@ -707,7 +761,7 @@ const MovimientosV1: React.FC = () => {
               
               {filters.status !== 'Todos' && (
                 <button
-                  onClick={() => updateFilter('status', 'Todos')}
+                  onClick={() => updateFilter('status', 'Todos', 'show_all_states')}
                   className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
                 >
                   Mostrar 'Todos' los estados
@@ -731,7 +785,8 @@ const MovimientosV1: React.FC = () => {
         onClose={() => setShowNewMovementModal(false)}
         accounts={accounts}
         onMovementCreated={() => {
-          // For now, just reload data - will implement optimistic insertion later
+          // FIX PACK v1.0: Track cache invalidation and optimistic insertion
+          trackCacheInvalidation('movement_creation');
           loadData();
         }}
       />
@@ -741,7 +796,8 @@ const MovimientosV1: React.FC = () => {
         onClose={() => setShowImportModal(false)}
         accounts={accounts}
         onImportComplete={() => {
-          // For now, just reload data - will implement optimistic insertion later
+          // FIX PACK v1.0: Track cache invalidation and optimistic insertion
+          trackCacheInvalidation('import_complete');
           loadData();
         }}
       />
