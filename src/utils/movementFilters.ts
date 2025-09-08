@@ -3,7 +3,7 @@
  * Utilities for filter persistence and date handling
  */
 
-import { MovementState } from '../services/db';
+import { MovementState, MovementOrigin } from '../services/db';
 
 export interface MovementFilters {
   accountId: number | 'all';
@@ -12,6 +12,7 @@ export interface MovementFilters {
   customDateTo: string;
   status: MovementState | 'Todos';
   excludePersonal: boolean;
+  source?: MovementOrigin | 'Todos'; // New filter for import source
 }
 
 const FILTERS_STORAGE_KEY = 'treasury.movements.filters.v1';
@@ -23,7 +24,8 @@ export const DEFAULT_FILTERS: MovementFilters = {
   customDateFrom: '',
   customDateTo: '',
   status: 'Todos', // "Todos" by default
-  excludePersonal: false // OFF by default
+  excludePersonal: false, // OFF by default
+  source: 'Todos' // New: show all sources by default
 };
 
 /**

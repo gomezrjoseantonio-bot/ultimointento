@@ -3,6 +3,7 @@ import { X, Upload } from 'lucide-react';
 import { Account } from '../../services/db';
 import { treasuryAPI } from '../../services/treasuryApiService';
 import { formatEuro } from '../../utils/formatUtils';
+import { importBankStatement, ImportOptions } from '../../services/bankStatementImportService';
 import toast from 'react-hot-toast';
 
 interface BankStatementModalProps {
@@ -91,59 +92,48 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
     try {
       setIsLoading(true);
       
-      // UNICORNIO PROMPT 1: Enhanced import with account validation
-      // First validate that account exists and IBAN matches if provided
+      // Validate that account exists
       const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
       if (!selectedAccount) {
         toast.error('Cuenta seleccionada no encontrada');
         return;
       }
       
-      // Check for existing imports of same file to prevent duplicates
-      const fileHash = await calculateFileHash(file);
-      // TODO: Check against previous imports by hash + date range + account
+      // Use the unified import service
+      const options: ImportOptions = {
+        file,
+        accountId: selectedAccountId as number,
+        skipDuplicates: true,
+        usuario: 'inbox_ui'
+      };
       
-      const result = await treasuryAPI.import.importTransactions(
-        file, 
-        selectedAccountId as number, 
-        true, // skipDuplicates
-        'usuario' // TODO: Get actual user from context
-      );
+      const result = await importBankStatement(options);
       
-      onImportComplete(result);
+      if (!result.success && (result as any).requiresAccountSelection) {
+        // This shouldn't happen since we pre-selected an account, but handle it
+        toast.error('Error: se requiere selección de cuenta');
+        return;
+      }
       
-      // Show success message with batch info
-      const message = `✅ ${result.inserted} movimientos importados`;
-      const details = [];
-      if (result.duplicates > 0) details.push(`${result.duplicates} duplicados`);
-      if (result.reconciled && result.reconciled > 0) details.push(`${result.reconciled} conciliados`);
-      if (result.pendingReview && result.pendingReview > 0) details.push(`${result.pendingReview} pendientes`);
-      if (result.batchId) details.push(`Lote: ${result.batchId.split('_')[1]}`);
+      if (result.success) {
+        // Call the completion handler with the expected format
+        onImportComplete({
+          inserted: result.inserted,
+          duplicates: result.duplicates,
+          failed: result.errors,
+          batchId: result.batchId
+        });
+      } else {
+        toast.error('Error al importar el extracto');
+      }
       
-      toast.success(details.length > 0 ? `${message} • ${details.join(' • ')}` : message);
-      
-      onClose();
     } catch (error) {
       console.error('Import error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error al importar movimientos';
-      
-      // UNICORNIO PROMPT 1: Special handling for idempotency errors
-      if (errorMessage.includes('ya ha sido importado')) {
-        toast.error('⚠️ Este archivo ya fue importado anteriormente');
-      } else {
-        toast.error(errorMessage);
-      }
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Helper function to calculate file hash for deduplication
-  const calculateFileHash = async (file: File): Promise<string> => {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   if (!isOpen) return null;
