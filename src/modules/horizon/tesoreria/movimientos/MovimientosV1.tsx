@@ -55,6 +55,7 @@ const MovimientosV1: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   // FIX PACK v1.0: Use centralized filter state with localStorage persistence
   const [filters, setFilters] = useState<MovementFilters>(() => loadFiltersFromStorage());
@@ -117,6 +118,7 @@ const MovimientosV1: React.FC = () => {
       showError('Error al cargar los datos de tesorería');
     } finally {
       setLoading(false);
+      setLastUpdated(new Date()); // Set timestamp after data is loaded
     }
   }, []); // Remove includeInactive dependency
 
@@ -165,6 +167,11 @@ const MovimientosV1: React.FC = () => {
     // Status filter
     if (filters.status !== 'Todos') {
       filtered = filtered.filter(mov => mov.movementState === filters.status);
+    }
+
+    // Source filter (new for extracto imports)
+    if (filters.source && filters.source !== 'Todos') {
+      filtered = filtered.filter(mov => mov.origin === filters.source);
     }
 
     // Search filter
@@ -260,7 +267,7 @@ const MovimientosV1: React.FC = () => {
   };
 
   // FIX PACK v1.0: Helper to update individual filter properties with analytics
-  const updateFilter = (key: keyof MovementFilters, value: any, ctaType?: string) => {
+  const updateFilter = useCallback((key: keyof MovementFilters, value: any, ctaType?: string) => {
     const previousFilters = { ...filters };
     const newFilters = { ...filters, [key]: value };
     
@@ -281,7 +288,30 @@ const MovimientosV1: React.FC = () => {
         newFilters
       });
     }
-  };
+  }, [filters]);
+
+  // Handle URL query parameters for Inbox integration
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sourceParam = urlParams.get('source');
+    const uploadedAtParam = urlParams.get('uploaded_at');
+    
+    if (sourceParam === 'extracto') {
+      // Set filter to show only CSV (extracto) imports
+      updateFilter('source', 'CSV');
+      
+      if (uploadedAtParam === 'today') {
+        // Set date filter to today
+        const today = new Date().toISOString().split('T')[0];
+        updateFilter('dateRange', 'custom');
+        updateFilter('customDateFrom', today);
+        updateFilter('customDateTo', today);
+      }
+      
+      // Clear URL parameters after applying filters
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [updateFilter]);
 
   // FIX PACK v1.0: Reset filters to defaults with analytics
   const handleResetFilters = () => {
@@ -323,7 +353,14 @@ const MovimientosV1: React.FC = () => {
       <div className="bg-white border-b border-hz-neutral-300 sticky top-0 z-40">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-semibold text-hz-primary-dark">Movimientos</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-hz-primary-dark">Movimientos</h1>
+              {lastUpdated && (
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                  Datos actualizados {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowNewMovementModal(true)}
@@ -420,6 +457,21 @@ const MovimientosV1: React.FC = () => {
                 <option value="Confirmado">Confirmado</option>
                 <option value="Conciliado">Conciliado</option>
                 <option value="Revisar">Revisar</option>
+              </select>
+            </div>
+
+            {/* Source Filter - NEW for extracto imports */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-hz-text">Origen:</label>
+              <select
+                value={filters.source || 'Todos'}
+                onChange={(e) => updateFilter('source', e.target.value as MovementOrigin | 'Todos')}
+                className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
+              >
+                <option value="Todos">Todos</option>
+                <option value="OCR">OCR</option>
+                <option value="CSV">Extracto</option>
+                <option value="Manual">Manual</option>
               </select>
             </div>
 

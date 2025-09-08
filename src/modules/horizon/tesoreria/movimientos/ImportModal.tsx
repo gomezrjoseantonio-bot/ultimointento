@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, X, FileText, AlertCircle } from 'lucide-react';
 import { Account } from '../../../../services/db';
-import { showSuccess, showError } from '../../../../services/toastService';
+import { showError } from '../../../../services/toastService';
 import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
 import AccountSelectionModal from '../../../../components/modals/AccountSelectionModal';
+import { importBankStatement, ImportOptions } from '../../../../services/bankStatementImportService';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -22,41 +23,6 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
   const [showPreview, setShowPreview] = useState(false);
   const [showAccountSelection, setShowAccountSelection] = useState(false);
   const [unrecognizedIBAN, setUnrecognizedIBAN] = useState<string | null>(null);
-
-  const parseCSVFile = (content: string, filename: string): any[] => {
-    const lines = content.split('\n').filter(line => line.trim());
-    if (lines.length < 2) return [];
-    
-    // Basic CSV parsing - detect separator
-    const sampleLine = lines[1];
-    const separator = sampleLine.includes(';') ? ';' : ',';
-    
-    const headers = lines[0].split(separator).map(h => h.trim().replace(/"/g, ''));
-    const rows = lines.slice(1);
-    
-    return rows.map(row => {
-      const values = row.split(separator).map(v => v.trim().replace(/"/g, ''));
-      const obj: any = {};
-      
-      // Try to detect common columns and standardize
-      headers.forEach((header, index) => {
-        const value = values[index] || '';
-        const lowerHeader = header.toLowerCase();
-        
-        if (lowerHeader.includes('fecha')) {
-          obj.fecha = value;
-        } else if (lowerHeader.includes('concepto') || lowerHeader.includes('descripcion')) {
-          obj.descripcion = value;
-        } else if (lowerHeader.includes('importe') || lowerHeader.includes('amount')) {
-          obj.importe = parseFloat(value.replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
-        } else if (lowerHeader.includes('saldo') || lowerHeader.includes('balance')) {
-          obj.saldo = parseFloat(value.replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
-        }
-      });
-      
-      return obj;
-    }).filter(row => row.fecha && row.descripcion); // Only include complete rows
-  };
 
   const handleFile = useCallback(async (selectedFile: File) => {
     const fileType = selectedFile.type;
@@ -82,18 +48,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
     else if (fileName.includes('sabadell')) detected = 'Sabadell';
     
     setDetectedBank(detected);
-    
-    // Parse the actual file for preview data
-    try {
-      const fileContent = await selectedFile.text();
-      const parsedData = parseCSVFile(fileContent, selectedFile.name);
-      setPreviewData(parsedData.slice(0, 5)); // Show first 5 rows as preview
-    } catch (error) {
-      console.error('Error parsing file:', error);
-      showError('Error al leer el archivo. Verifica que sea un CSV válido.');
-      return;
-    }
-    setShowPreview(true);
+    setShowPreview(false); // Simplified - no preview for now
   }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -122,111 +77,49 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
     }
   };
 
-  const tryDetectIBAN = async (file: File): Promise<string | null> => {
-    try {
-      const content = await file.text();
-      // Simple IBAN detection regex for Spanish IBANs
-      const ibanRegex = /ES\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}/i;
-      const match = content.match(ibanRegex);
-      return match ? match[0].replace(/\s/g, '') : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const performActualImport = async (targetAccountId: number) => {
-    const { initDB } = await import('../../../../services/db');
-    const db = await initDB();
-    
-    // Convert preview data to movements with proper validation
-    const now = new Date().toISOString();
-    const validMovements = previewData.filter(row => 
-      row.fecha && row.descripcion && typeof row.importe === 'number'
-    );
-    
-    const movements = validMovements.map((row, index) => ({
-      accountId: targetAccountId,
-      date: convertSpanishDateToISO(row.fecha),
-      amount: row.importe,
-      description: row.descripcion,
-      type: (row.importe > 0 ? 'Ingreso' : 'Gasto') as 'Ingreso' | 'Gasto',
-      category: inferCategoryFromDescription(row.descripcion),
-      origin: 'Extracto' as 'Extracto', // Changed from CSV to Extracto for proper tracking
-      movementState: 'Confirmado' as 'Confirmado',
-      tags: inferTagsFromDescription(row.descripcion),
-      isAutoTagged: true,
-      balance: row.saldo,
-      importBatch: `import_${Date.now()}`,
-      csvRowIndex: index,
-      createdAt: now,
-      updatedAt: now,
-      status: 'pendiente' as 'pendiente'
-    }));
-    
-    // Batch insert movements
-    for (const movement of movements) {
-      await db.add('movements', movement);
-    }
-    
-    // Track analytics
-    trackMovementCreation('import', movements.length, {
-      sourceBank: detectedBank || 'manual_selection',
-      fileName: file!.name,
-      fileSize: file!.size,
-      accountId: targetAccountId,
-      averageAmount: movements.reduce((sum, m) => sum + Math.abs(m.amount), 0) / movements.length
-    });
-    
-    // Enhanced success toast matching the required format
-    showSuccess(`Importados ${movements.length} movimientos. Ya están en Tesorería > Movimientos.`);
-    
-    // Trigger immediate reload
-    onImportComplete();
-    handleClose();
-  };
-
   const handleImport = async () => {
     if (!file) {
       showError('Selecciona un archivo para importar');
       return;
     }
 
-    // Check if we need to show account selection modal
-    if (!selectedAccount && !detectedBank) {
-      // Try to detect IBAN from the file
-      const detectedIBAN = await tryDetectIBAN(file);
-      if (detectedIBAN) {
-        const matchingAccount = accounts.find(acc => 
-          acc.iban && acc.iban.replace(/\s/g, '').includes(detectedIBAN.replace(/\s/g, ''))
-        );
-        
-        if (matchingAccount) {
-          setSelectedAccount(matchingAccount.id!);
-        } else {
-          // IBAN not recognized - show mandatory account selection modal
-          setUnrecognizedIBAN(detectedIBAN);
-          setShowAccountSelection(true);
-          return;
-        }
-      } else {
-        // No IBAN detected - show account selection modal
-        setShowAccountSelection(true);
-        return;
-      }
-    }
-
     setImporting(true);
     
     try {
-      // Get the final target account ID
-      const targetAccountId = selectedAccount || 
-        accounts.find(acc => acc.bank === detectedBank)?.id;
+      // Use the unified import service
+      const options: ImportOptions = {
+        file,
+        accountId: selectedAccount || undefined,
+        skipDuplicates: true,
+        usuario: 'tesoreria_ui'
+      };
       
-      if (!targetAccountId) {
-        throw new Error('No se pudo determinar la cuenta de destino');
+      const result = await importBankStatement(options);
+      
+      if (!result.success && (result as any).requiresAccountSelection) {
+        // Show account selection modal
+        setUnrecognizedIBAN((result as any).detectedIBAN || null);
+        setShowAccountSelection(true);
+        return;
       }
       
-      await performActualImport(targetAccountId);
+      if (result.success) {
+        // Track analytics
+        trackMovementCreation('import', result.inserted, {
+          sourceBank: detectedBank || 'manual_selection',
+          fileName: file.name,
+          fileSize: file.size,
+          accountId: selectedAccount || 0,
+          duplicatesFound: result.duplicates,
+          errorsFound: result.errors
+        });
+        
+        // Trigger immediate reload
+        onImportComplete();
+        handleClose();
+      } else {
+        showError('Error al importar el extracto', 'Verifica que el archivo tenga el formato correcto');
+      }
       
     } catch (error) {
       console.error('Import error:', error);
@@ -240,65 +133,10 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
     setSelectedAccount(accountId);
     setShowAccountSelection(false);
     setUnrecognizedIBAN(null);
-    // Continue with import
-    setTimeout(() => handleImport(), 100);
-  };
-
-  // Helper functions for smart categorization
-  const convertSpanishDateToISO = (spanishDate: string): string => {
-    const [day, month, year] = spanishDate.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  };
-
-  const inferCategoryFromDescription = (description: string): string | undefined => {
-    const desc = description.toLowerCase();
-    
-    if (desc.includes('luz') || desc.includes('endesa') || desc.includes('iberdrola')) {
-      return 'Suministros › Luz';
-    }
-    if (desc.includes('agua') || desc.includes('aqualia') || desc.includes('cyii')) {
-      return 'Suministros › Agua';
-    }
-    if (desc.includes('gas') || desc.includes('naturgy')) {
-      return 'Suministros › Gas';
-    }
-    if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || desc.includes('vodafone')) {
-      return 'Suministros › Internet';
-    }
-    if (desc.includes('alquiler') || desc.includes('rent')) {
-      return 'Alquiler › Ingresos';
-    }
-    if (desc.includes('ibi') || desc.includes('contribucion')) {
-      return 'Tributos › IBI';
-    }
-    if (desc.includes('comunidad') || desc.includes('administrador')) {
-      return 'Tributos › Comunidad';
-    }
-    if (desc.includes('transferencia') || desc.includes('traspaso')) {
-      return 'Transferencias';
-    }
-    
-    return undefined;
-  };
-
-  const inferTagsFromDescription = (description: string): string[] => {
-    const tags: string[] = [];
-    const desc = description.toLowerCase();
-    
-    if (desc.includes('domiciliacion') || desc.includes('domiciliado')) {
-      tags.push('domiciliado');
-    }
-    if (desc.includes('transferencia')) {
-      tags.push('transferencia');
-    }
-    if (desc.includes('bizum')) {
-      tags.push('bizum');
-    }
-    if (desc.includes('tarjeta') || desc.includes('tpv')) {
-      tags.push('tarjeta');
-    }
-    
-    return tags;
+    // Continue with import using the selected account
+    setTimeout(() => {
+      handleImport();
+    }, 100);
   };
 
   const handleClose = () => {

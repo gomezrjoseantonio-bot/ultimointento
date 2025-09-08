@@ -703,12 +703,31 @@ const InboxPage: React.FC = () => {
     if (summary.pendingReview && summary.pendingReview > 0) details.push(`${summary.pendingReview} pendientes`);
     
     const fullMessage = details.length > 0 
-      ? `${message}. ${details.join(', ')}. Ya están en Tesorería > Movimientos.`
-      : `${message}. Ya están en Tesorería > Movimientos.`;
+      ? `${message}. ${details.join(', ')}.`
+      : message;
     
-    toast.success(fullMessage, {
-      duration: 5000
-    });
+    // Show success toast with link to movements
+    toast.success(
+      (t) => (
+        <div className="flex items-center gap-3">
+          <span>{fullMessage}</span>
+          <button
+            onClick={() => {
+              // Open movements page with extracto filter and today's date
+              const url = `/tesoreria/movimientos?source=extracto&uploaded_at=today`;
+              window.open(url, '_blank');
+              toast.dismiss(t.id);
+            }}
+            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+          >
+            Ver en Movimientos
+          </button>
+        </div>
+      ),
+      {
+        duration: 8000
+      }
+    );
     
     // The file doesn't get added to Inbox since it was processed directly
   };
