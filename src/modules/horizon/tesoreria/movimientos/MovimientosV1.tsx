@@ -3,20 +3,19 @@ import {
   Plus, 
   Upload, 
   Search, 
-  Filter,
   Edit2, 
   Trash2, 
   Paperclip,
   Check,
   X,
   ChevronLeft,
-  ChevronRight,
-  Download,
-  Settings
+  ChevronRight
 } from 'lucide-react';
 import { initDB, Account, Movement, MovementType, MovementOrigin, MovementState } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { showSuccess, showError } from '../../../../services/toastService';
+import ImportModal from './ImportModal';
+import NewMovementModal from './NewMovementModal';
 
 // Date filter options
 const DATE_FILTERS = [
@@ -46,9 +45,6 @@ const MovimientosV1: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showNewMovementModal, setShowNewMovementModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const [selectedMovements, setSelectedMovements] = useState<number[]>([]);
   
   const ITEMS_PER_PAGE = 50;
@@ -558,8 +554,8 @@ const MovimientosV1: React.FC = () => {
                         {movement.attachedDocumentId ? (
                           <button
                             onClick={() => {
-                              setSelectedDocument(movement.attachedDocumentId);
-                              setShowDocumentPreview(true);
+                              // TODO: Implement document preview
+                              console.log('Preview document:', movement.attachedDocumentId);
                             }}
                             className="text-hz-primary hover:text-hz-primary-dark"
                           >
@@ -572,7 +568,10 @@ const MovimientosV1: React.FC = () => {
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => setEditingMovement(movement)}
+                            onClick={() => {
+                              // TODO: Implement edit functionality
+                              console.log('Edit movement:', movement);
+                            }}
                             className="text-hz-primary hover:text-hz-primary-dark"
                             title="Editar"
                           >
@@ -679,53 +678,19 @@ const MovimientosV1: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {showNewMovementModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-hz-text mb-4">Nuevo movimiento</h3>
-              {/* TODO: Implement new movement form */}
-              <div className="text-center py-8 text-hz-neutral-500">
-                Formulario de nuevo movimiento
-                <br />
-                (Por implementar)
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowNewMovementModal(false)}
-                  className="px-4 py-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-50"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <NewMovementModal
+        isOpen={showNewMovementModal}
+        onClose={() => setShowNewMovementModal(false)}
+        accounts={accounts}
+        onMovementCreated={loadData}
+      />
 
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-lg mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-hz-text mb-4">Importar extracto</h3>
-              {/* TODO: Implement import form */}
-              <div className="text-center py-8 text-hz-neutral-500">
-                Formulario de importación de extractos
-                <br />
-                (Por implementar)
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-50"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        accounts={accounts}
+        onImportComplete={loadData}
+      />
     </div>
   );
 };

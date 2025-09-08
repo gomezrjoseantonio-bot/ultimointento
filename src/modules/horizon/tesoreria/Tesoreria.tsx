@@ -3,7 +3,7 @@ import { TrendingUp, Banknote, CreditCard, Settings } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Radar from './radar/Radar';
 import CuentasPanel from './components/CuentasPanel';
-import MovimientosPanel from './components/MovimientosPanel';
+import Movimientos from './movimientos/Movimientos';
 import AutomatizacionesPanel from './components/AutomatizacionesPanel';
 import PageHeader from '../../../components/common/PageHeader';
 
@@ -61,7 +61,7 @@ const Tesoreria: React.FC = () => {
       case 'cuentas':
         return <CuentasPanel />;
       case 'movimientos':
-        return <MovimientosPanel />;
+        return <Movimientos />;
       case 'automatizaciones':
         return <AutomatizacionesPanel />;
       default:
