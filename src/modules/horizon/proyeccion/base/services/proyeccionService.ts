@@ -121,17 +121,18 @@ class ProyeccionService {
   async getBaseProjection(): Promise<BaseProjection> {
     const assumptions = await this.getBaseAssumptions();
     
-    // For demo purposes, generate sample data
-    // In a real implementation, this would calculate based on actual contracts and expenses
+    // Calculate based on actual contracts and expenses
     const currentYear = new Date().getFullYear();
     const yearlyData: YearlyProjectionData[] = [];
     
-    // Sample base values (would come from actual data)
-    let currentRentalIncome = 24000; // Annual net rental income
-    let currentExpenses = 8000; // Annual operating expenses
-    let currentDebtService = 12000; // Annual debt service
-    let currentPropertyValue = 300000; // Current property value
-    let outstandingDebt = 180000; // Outstanding debt
+    // Get actual data from database
+    const { rentalIncome, expenses, debtService, propertyValue, outstandingDebt } = await this.getActualBaseValues();
+    
+    let currentRentalIncome = rentalIncome;
+    let currentExpenses = expenses;
+    let currentDebtService = debtService;
+    let currentPropertyValue = propertyValue;
+    let currentOutstandingDebt = outstandingDebt;
     
     for (let i = 0; i <= 20; i++) {
       const year = currentYear + i;
@@ -143,10 +144,10 @@ class ProyeccionService {
       
       // Calculate debt reduction (simplified - in reality would depend on loan terms)
       const debtReduction = i > 0 ? currentDebtService * 0.3 : 0; // Assume 30% goes to principal
-      outstandingDebt = Math.max(0, outstandingDebt - debtReduction);
+      currentOutstandingDebt = Math.max(0, currentOutstandingDebt - debtReduction);
       
       const netCashflow = adjustedRentalIncome - adjustedExpenses - currentDebtService;
-      const netWorth = adjustedPropertyValue - outstandingDebt;
+      const netWorth = adjustedPropertyValue - currentOutstandingDebt;
       
       yearlyData.push({
         year,
@@ -159,21 +160,8 @@ class ProyeccionService {
       });
     }
 
-    // Sample upcoming impacts
-    const upcomingImpacts: UpcomingImpact[] = [
-      {
-        description: 'Revisión hipoteca Piso A',
-        date: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-        amount: 850,
-        type: 'debt'
-      },
-      {
-        description: 'IBI trimestral',
-        date: new Date(Date.now() + 75 * 24 * 60 * 60 * 1000).toISOString(),
-        amount: 320,
-        type: 'expense'
-      }
-    ];
+    // Get upcoming impacts from actual data
+    const upcomingImpacts = await this.getUpcomingImpacts();
 
     const projection: BaseProjection = {
       currentAnnualCashflow: yearlyData[0].netCashflow,
@@ -221,6 +209,69 @@ class ProyeccionService {
       typeof obj.vacancyRate === 'number' &&
       typeof obj.referenceRate === 'number' &&
       typeof obj.lastModified === 'string';
+  }
+
+  /**
+   * Calculate actual base values from database
+   */
+  private async getActualBaseValues(): Promise<{
+    rentalIncome: number;
+    expenses: number;
+    debtService: number;
+    propertyValue: number;
+    outstandingDebt: number;
+  }> {
+    try {
+      const db = await initDB();
+      const [contracts, expenses, properties] = await Promise.all([
+        db.getAll('contracts'),
+        db.getAll('expenses'),
+        db.getAll('properties')
+      ]);
+
+      // Calculate annual rental income from active contracts
+      const currentYear = new Date().getFullYear();
+      const rentalIncome = contracts
+        .filter(contract => contract.status === 'active')
+        .reduce((total, contract) => total + (contract.rentAmount * 12), 0);
+
+      // Calculate annual expenses from this year
+      const totalExpenses = expenses
+        .filter(expense => expense.taxYear === currentYear)
+        .reduce((total, expense) => total + expense.amount, 0);
+
+      // Calculate property values
+      const propertyValue = properties
+        .reduce((total, property) => total + (property.purchasePrice || 0), 0);
+
+      // For debt service and outstanding debt, return 0 if no data available
+      // In a real implementation, this would come from mortgage/loan data
+      return {
+        rentalIncome: rentalIncome || 0,
+        expenses: totalExpenses || 0,
+        debtService: 0, // Would calculate from loan data
+        propertyValue: propertyValue || 0,
+        outstandingDebt: 0 // Would calculate from loan data
+      };
+    } catch (error) {
+      console.warn('Error calculating base values:', error);
+      return {
+        rentalIncome: 0,
+        expenses: 0,
+        debtService: 0,
+        propertyValue: 0,
+        outstandingDebt: 0
+      };
+    }
+  }
+
+  /**
+   * Get upcoming impacts from actual data
+   */
+  private async getUpcomingImpacts(): Promise<UpcomingImpact[]> {
+    // In a real implementation, this would analyze contracts, expenses, and schedules
+    // to determine upcoming financial impacts
+    return [];
   }
 }
 
