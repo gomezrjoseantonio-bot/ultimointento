@@ -367,6 +367,26 @@ export class TreasuryAccountsAPI {
 
     return { success: true };
   }
+
+  /**
+   * FIX PACK v2.0: Validate that an account can have movements created on it
+   */
+  static async validateAccountForMovement(accountId: number): Promise<void> {
+    const db = await initDB();
+    
+    const account = await db.get('accounts', accountId);
+    if (!account) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    if (account.deleted_at) {
+      throw new Error('No se pueden crear movimientos en una cuenta eliminada');
+    }
+
+    if (!account.isActive) {
+      throw new Error('No se pueden crear movimientos en una cuenta desactivada');
+    }
+  }
 }
 
 /**
