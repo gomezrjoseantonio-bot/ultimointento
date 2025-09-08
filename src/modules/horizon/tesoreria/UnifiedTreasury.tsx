@@ -2,9 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar, 
   Search, 
-  Upload, 
-  ArrowRightLeft, 
-  Plus,
   Filter,
   Eye,
   EyeOff,
@@ -30,7 +27,6 @@ import {
   TimelineDay,
   Transfer,
   QuickAction,
-  AccountAction,
   ImportResult
 } from '../../../types/unifiedTreasury';
 import { formatEuro } from '../../../services/aeatClassificationService';
@@ -53,7 +49,6 @@ const UnifiedTreasury: React.FC = () => {
   // Modal states
   const [showImportModal, setShowImportModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showMovementModal, setShowMovementModal] = useState(false);
 
   // Load accounts and apply filters
   const loadAccounts = useCallback(async () => {
@@ -119,7 +114,7 @@ const UnifiedTreasury: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, []);
 
   useEffect(() => {
     loadAccounts();
@@ -303,24 +298,6 @@ const UnifiedTreasury: React.FC = () => {
     }
   };
 
-  // Handle account actions from three-dot menu
-  const handleAccountAction = (action: AccountAction, account: UnifiedAccount) => {
-    console.log(`Account action: ${action} on account ${account.id}`);
-    // TODO: Implement actual account action logic
-    
-    switch (action) {
-      case 'view_details':
-        toast.success('Ver detalles de cuenta');
-        break;
-      case 'create_transfer':
-        setShowTransferModal(true);
-        break;
-      case 'import_statement':
-        setShowImportModal(true);
-        break;
-    }
-  };
-
   // Handle import completion
   const handleImportComplete = (result: ImportResult) => {
     toast.success(
@@ -349,10 +326,6 @@ const UnifiedTreasury: React.FC = () => {
           {
             label: "Nueva transferencia",
             onClick: () => setShowTransferModal(true)
-          },
-          {
-            label: "Nuevo movimiento", 
-            onClick: () => setShowMovementModal(true)
           }
         ]}
       />
