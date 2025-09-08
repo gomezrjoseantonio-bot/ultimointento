@@ -54,63 +54,41 @@ const UnifiedTreasury: React.FC = () => {
   const loadAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call
-      const mockAccounts: UnifiedAccount[] = [
-        {
-          id: 1,
-          name: 'Cuenta Principal',
-          bank: 'BBVA',
-          iban: 'ES7621000418401234567891',
-          balance: 15420.50,
-          openingBalance: 10000,
-          currency: 'EUR',
-          destination: 'horizon',
-          usage_scope: 'inmuebles',
-          status: 'activa',
-          currentBalance: 15420.50,
-          nextEvent: {
-            date: '2024-01-15',
-            concept: 'Alquiler H1',
-            amount: 850,
-            type: 'income'
-          },
-          riskLevel: 'verde',
-          projectedBalance: 16270.50,
-          monthlyMinBalance: 12100.00,
-          includeInConsolidated: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: 'Gastos Inmuebles',
-          bank: 'Santander',
-          iban: 'ES9721000418401234567892',
-          balance: -420.30,
-          openingBalance: 5000,
-          currency: 'EUR',
-          destination: 'horizon',
-          usage_scope: 'inmuebles',
-          status: 'activa',
-          currentBalance: -420.30,
-          nextEvent: {
-            date: '2024-01-12',
-            concept: 'Recibo Luz',
-            amount: -89.45,
-            type: 'expense'
-          },
-          riskLevel: 'rojo',
-          projectedBalance: -850.20,
-          monthlyMinBalance: -1200.00,
-          includeInConsolidated: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
+      // Import the treasury API service
+      const { treasuryAPI } = await import('../../../services/treasuryApiService');
       
-      setAccounts(mockAccounts);
+      // Load real accounts from database using the same API as Configuration module
+      const dbAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
+      const horizonAccounts = dbAccounts.filter(acc => acc.destination === 'horizon');
+      
+      // Convert DB accounts to UnifiedAccount format
+      const unifiedAccounts: UnifiedAccount[] = horizonAccounts.map(acc => ({
+        id: acc.id!,
+        name: acc.name || `Cuenta ${acc.bank}`,
+        bank: acc.bank,
+        iban: acc.iban,
+        balance: acc.balance,
+        openingBalance: acc.openingBalance,
+        currency: acc.currency,
+        destination: acc.destination,
+        usage_scope: acc.usage_scope || 'mixto',
+        status: acc.isActive ? 'activa' : 'desactivada',
+        currentBalance: acc.balance,
+        nextEvent: undefined, // Will be populated by separate logic
+        riskLevel: acc.balance < (acc.minimumBalance || 0) ? 'rojo' : 'verde',
+        projectedBalance: acc.balance, // Simplified for now
+        monthlyMinBalance: acc.minimumBalance || 0,
+        includeInConsolidated: acc.includeInConsolidated ?? true,
+        createdAt: acc.createdAt,
+        updatedAt: acc.updatedAt
+      }));
+      
+      setAccounts(unifiedAccounts);
     } catch (error) {
       console.error('Error loading accounts:', error);
+      toast.error('Error al cargar las cuentas');
+      // Fallback to empty array instead of mock data
+      setAccounts([]);
     } finally {
       setLoading(false);
     }

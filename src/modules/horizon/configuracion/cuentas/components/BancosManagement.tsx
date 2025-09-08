@@ -3,7 +3,7 @@ import { Banknote, Info, Edit2, Trash2, Upload, X, AlertTriangle } from 'lucide-
 import toast from 'react-hot-toast';
 import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
 import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFromStorage } from '../../../../../services/logoUploadService';
-import { initDB, Account } from '../../../../../services/db';
+import { Account } from '../../../../../services/db';
 
 interface AccountFormData {
   alias: string;
@@ -54,13 +54,15 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   const loadAccounts = async () => {
     try {
       setLoading(true);
-      const db = await initDB();
-      const allAccounts = await db.getAll('accounts');
-      // Filter out deleted accounts and sort by creation date
-      const activeAccounts = allAccounts
-        .filter(account => !account.deleted_at)
+      // Use the same API as Treasury module to ensure consistency
+      // Only show active accounts to match Treasury module behavior
+      const allAccounts = await TreasuryAccountsAPI.getAccounts(false); // Only active accounts
+      // Filter by horizon destination like Treasury module does
+      const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
+      // Sort by creation date
+      const sortedAccounts = horizonAccounts
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setAccounts(activeAccounts);
+      setAccounts(sortedAccounts);
     } catch (error) {
       console.error('Error loading accounts:', error);
       toast.error('Error al cargar las cuentas');
