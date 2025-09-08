@@ -470,7 +470,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <Eye className="h-5 w-5 text-current" />
             <h3 className="text-lg font-semibold text-gray-900">Campos extraídos (OCR)</h3>
             {ocrResult.engineInfo && (
-              <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-md">
+              <span className="px-2 py-1 text-xs font-medium bg-navy-100 text-navy-800 rounded-md">
                 {ocrResult.engineInfo.displayName}
               </span>
             )}
@@ -684,7 +684,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editableServiceFields.serviceAddress ?? aligned.service.serviceAddress ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, serviceAddress: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
                     placeholder="Dirección de instalación o suministro"
                   />
                 </div>
@@ -694,7 +694,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editableServiceFields.supplyPointId ?? aligned.service.supplyPointId ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, supplyPointId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
                     placeholder="ES****..."
                   />
                 </div>
@@ -713,7 +713,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <select
                     value={editablePaymentFields.method ?? aligned.payment.method}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, method: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
                   >
                     <option value="Desconocido">Desconocido</option>
                     <option value="SEPA">SEPA / Domiciliación</option>
@@ -727,7 +727,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="text"
                     value={editablePaymentFields.iban ?? aligned.payment.iban ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
                     placeholder="ES** **** **** ** **********"
                     pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
                   />
@@ -743,7 +743,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="date"
                     value={editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, paymentDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
                   />
                 </div>
               </div>
@@ -753,7 +753,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <section className="pt-6 border-t border-gray-200">
               <button
                 onClick={() => handleConfirmAndSave()}
-                className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                className="w-full px-4 py-3 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors font-medium"
               >
                 Confirmar y guardar metadatos
               </button>
@@ -800,7 +800,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                               value={finalValue}
                               onChange={(e) => handleFieldEdit(field.name, e.target.value)}
                               placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
-                              className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                              className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-navy-600 focus:border-navy-600 ${
                                 field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
                                 field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
                               }`}
@@ -871,9 +871,9 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             </div>
           )}
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Info className="h-4 w-4" />
+              <Info className="h-4 w-4 flex-shrink-0" />
               <span>
                 {canApply 
                   ? 'Todos los controles pasados. Listo para aplicar.' 
@@ -882,11 +882,11 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
               </span>
             </div>
             
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               {/* H-OCR-REFORM: Invoice breakdown button for reform invoices */}
               <button
                 onClick={() => setShowInvoiceBreakdown?.(true)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-navy-700 text-white hover:bg-navy-800 transition-colors"
                 title="Desglosar factura en Mejora, R&C y Mobiliario"
               >
                 Desglose reforma
@@ -897,7 +897,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                 disabled={!canApply || processingApply}
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                   canApply && !processingApply
-                    ? 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500'
+                    ? 'bg-navy-700 text-white hover:bg-navy-800 focus:ring-2 focus:ring-navy-600'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
                 title={!canApply ? `Faltan: ${requiredFieldsCheck.missingFields.join(', ')}` : ''}
@@ -908,7 +908,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     <span>Aplicando...</span>
                   </div>
                 ) : (
-                  'Aplicar a gasto/CAPEX (borrador)'
+                  'Aplicar a gasto/CAPEX'
                 )}
               </button>
             </div>
