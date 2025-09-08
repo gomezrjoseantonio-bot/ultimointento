@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import CompactAlertsSection from './CompactAlertsSection';
 import RiskRunwaySection from './RiskRunwaySection';
@@ -13,16 +14,19 @@ export interface PanelFilters {
 }
 
 const HorizonVisualPanel: React.FC = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PanelFilters>({
     excludePersonal: true,
     dateRange: '7days'  // Default to 7 days as per requirements
   });
 
-  const [showConfigModal, setShowConfigModal] = useState(false);
-
-  const handleFilterChange = (newFilters: Partial<PanelFilters>) => {
+  const handleFilterChange = useCallback((newFilters: Partial<PanelFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-  };
+  }, []);
+
+  const handleConfigureClick = useCallback(() => {
+    navigate('/configuracion/preferencias-datos#panel');
+  }, [navigate]);
 
   return (
     <div className="h-screen bg-hz-bg overflow-hidden">
@@ -81,7 +85,7 @@ const HorizonVisualPanel: React.FC = () => {
 
           {/* Right side: Configure Panel button */}
           <button 
-            onClick={() => setShowConfigModal(true)}
+            onClick={handleConfigureClick}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-hz-neutral-700 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100 transition-colors"
           >
             <Settings className="w-4 h-4" />
@@ -93,26 +97,26 @@ const HorizonVisualPanel: React.FC = () => {
         <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
           
           {/* Row 1: Height 120px */}
-          <div className="col-span-6 h-[120px]">
+          <div className="col-span-6 h-[120px] overflow-hidden">
             <CompactAlertsSection filters={filters} />
           </div>
-          <div className="col-span-6 h-[120px]">
+          <div className="col-span-6 h-[120px] overflow-hidden">
             <RiskRunwaySection filters={filters} />
           </div>
 
           {/* Row 2: Height 260px */}
-          <div className="col-span-8 h-[260px]">
+          <div className="col-span-8 h-[260px] overflow-hidden">
             <TimelineSection filters={filters} />
           </div>
-          <div className="col-span-4 h-[260px]">
+          <div className="col-span-4 h-[260px] overflow-hidden">
             <RentsCompactSection filters={filters} />
           </div>
 
           {/* Row 3: Height 260px */}
-          <div className="col-span-8 h-[260px]">
+          <div className="col-span-8 h-[260px] overflow-hidden">
             <AccountsCompactSection filters={filters} />
           </div>
-          <div className="col-span-4 h-[260px]">
+          <div className="col-span-4 h-[260px] overflow-hidden">
             <ExpensesCompactSection filters={filters} />
           </div>
         </div>
@@ -120,24 +124,6 @@ const HorizonVisualPanel: React.FC = () => {
         {/* Bottom margin: 16px */}
         <div className="h-4 flex-shrink-0"></div>
       </div>
-
-      {/* Configure Panel Modal - TODO: Implement modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-hz-neutral-900 mb-4">Configurar Panel</h3>
-            <p className="text-hz-neutral-700 mb-4">
-              Funcionalidad de configuración en desarrollo.
-            </p>
-            <button 
-              onClick={() => setShowConfigModal(false)}
-              className="px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

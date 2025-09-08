@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { ExternalLink } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -14,6 +16,15 @@ interface RentsCompactSectionProps {
 }
 
 const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+
+  const handleOpenContracts = () => {
+    toast.loading('Abriendo gestión de contratos...', { id: 'contracts-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Inmuebles', { id: 'contracts-nav' });
+      navigate('/inmuebles/cartera', { state: { view: 'contracts' } });
+    }, 500);
+  };
   // Mock data - in real implementation would come from contracts service
   const collected = 2850;
   const pending = 450;
@@ -31,11 +42,6 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
     { name: 'Cobradas', value: collected, color: '#10B981' },
     { name: 'Pendientes', value: pending, color: '#F59E0B' }
   ];
-
-  const handleOpenContracts = () => {
-    // Navigate to contracts - mock implementation
-    console.log('Opening contracts...');
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {

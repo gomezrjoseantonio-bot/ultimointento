@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { ExternalLink } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -15,7 +17,16 @@ interface TimelineSectionProps {
   filters: PanelFilters;
 }
 
-const TimelineSection: React.FC<TimelineSectionProps> = ({ filters }) => {
+const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters }) => {
+  const navigate = useNavigate();
+
+  const handleOpenRadar = () => {
+    toast.loading('Abriendo vista Radar...', { id: 'radar-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Personal', { id: 'radar-nav' });
+      navigate('/personal/resumen', { state: { view: 'radar', dateRange: filters.dateRange } });
+    }, 500);
+  };
   // Generate timeline data based on filters
   const generateTimelineData = (): TimelineData[] => {
     const data: TimelineData[] = [];
@@ -51,11 +62,6 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({ filters }) => {
   const totalIncome = timelineData.reduce((sum, day) => sum + day.income, 0);
   const totalExpenses = timelineData.reduce((sum, day) => sum + day.expenses, 0);
   const totalNet = totalIncome - totalExpenses;
-
-  const handleOpenRadar = () => {
-    // Navigate to Radar with same query - mock implementation
-    console.log('Opening Radar with timeline data...');
-  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -155,6 +161,6 @@ const TimelineSection: React.FC<TimelineSectionProps> = ({ filters }) => {
       </div>
     </div>
   );
-};
+});
 
 export default TimelineSection;

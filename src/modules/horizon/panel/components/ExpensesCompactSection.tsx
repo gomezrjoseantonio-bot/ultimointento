@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { ExternalLink, TrendingUp } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
 
@@ -16,6 +18,15 @@ interface ExpensesCompactSectionProps {
 }
 
 const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters }) => {
+  const navigate = useNavigate();
+
+  const handleOpenBudget = () => {
+    toast.loading('Abriendo gestión de presupuesto...', { id: 'budget-nav' });
+    setTimeout(() => {
+      toast.success('Redirigiendo a Presupuesto', { id: 'budget-nav' });
+      navigate('/proyeccion/presupuesto');
+    }, 500);
+  };
   // Mock data - Top 4 expense categories for the month
   const categories: ExpenseCategory[] = [
     {
@@ -51,11 +62,6 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
       deviationPercent: 0
     }
   ];
-
-  const handleOpenBudget = () => {
-    // Navigate to budget - mock implementation
-    console.log('Opening budget...');
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {

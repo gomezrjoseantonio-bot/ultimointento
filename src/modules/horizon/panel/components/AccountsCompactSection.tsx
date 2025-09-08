@@ -23,7 +23,7 @@ interface AccountsCompactSectionProps {
   filters: PanelFilters;
 }
 
-const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = ({ filters }) => {
+const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo(({ filters }) => {
   // Generate sparkline data
   const generateSparklineData = (current: number, projected: number, threshold?: number): SparklineData[] => {
     const data: SparklineData[] = [];
@@ -138,17 +138,17 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = ({ filters
         Cuentas destacadas (4)
       </h2>
       
-      {/* 2x2 Grid of Account Cards */}
-      <div className="flex-1 grid grid-cols-2 gap-2">
+      {/* 2x2 Grid of Account Cards - Fixed height with overflow protection */}
+      <div className="flex-1 grid grid-cols-2 gap-2 min-h-0 overflow-hidden">
         {filteredAccounts.map((account) => (
-          <div key={account.id} className="border border-hz-neutral-200 rounded p-2 flex flex-col">
+          <div key={account.id} className="border border-hz-neutral-200 rounded p-2 flex flex-col min-h-0 overflow-hidden">
             {/* Header with menu */}
-            <div className="flex items-start justify-between mb-1">
+            <div className="flex items-start justify-between mb-1 flex-shrink-0">
               <div className="flex-1 min-w-0">
                 <h3 className="text-xs font-medium text-hz-neutral-900 truncate">
                   {account.name}
                 </h3>
-                <p className="text-xs text-hz-neutral-500">
+                <p className="text-xs text-hz-neutral-500 truncate">
                   {account.maskedIban}
                 </p>
               </div>
@@ -158,17 +158,17 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = ({ filters
             </div>
             
             {/* Balances */}
-            <div className="mb-2">
-              <div className="text-sm font-semibold text-hz-neutral-900">
+            <div className="mb-2 flex-shrink-0">
+              <div className="text-sm font-semibold text-hz-neutral-900 truncate">
                 {formatBalance(account.currentBalance)}
               </div>
-              <div className="text-xs text-hz-neutral-500">
+              <div className="text-xs text-hz-neutral-500 truncate">
                 {formatBalance(account.projectedBalance)} {getDaysLabel()}
               </div>
             </div>
             
             {/* Sparkline */}
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <CustomSparkline 
                 data={account.sparklineData} 
                 threshold={account.threshold}
@@ -179,6 +179,6 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = ({ filters
       </div>
     </div>
   );
-};
+});
 
 export default AccountsCompactSection;
