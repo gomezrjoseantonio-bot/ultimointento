@@ -99,6 +99,13 @@ const MovimientosPanel: React.FC = () => {
         counterparty: newMovement.counterparty || undefined,
         estado_conciliacion: 'sin_conciliar',
         status: 'pendiente',
+        // V1.0 required fields
+        type: parseFloat(newMovement.amount) >= 0 ? 'Ingreso' : 'Gasto',
+        origin: 'Manual',
+        movementState: 'Previsto',
+        category: '',
+        tags: [],
+        isAutoTagged: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

@@ -522,6 +522,11 @@ export type TransactionState = 'pending' | 'reconciled' | 'ignored'; // New fiel
 // H10: Treasury reconciliation status
 export type ReconciliationStatus = 'sin_conciliar' | 'conciliado';
 
+// V1.0: Enhanced movement types and statuses per requirements
+export type MovementType = 'Ingreso' | 'Gasto' | 'Transferencia' | 'Ajuste';
+export type MovementOrigin = 'OCR' | 'CSV' | 'Manual';
+export type MovementState = 'Previsto' | 'Confirmado' | 'Conciliado' | 'Revisar';
+
 export interface Movement {
   id?: number;
   accountId: number;
@@ -556,11 +561,57 @@ export interface Movement {
   // Import metadata (FIX-EXTRACTOS compliant - no file content)
   importBatch?: string; // ID of the import batch
   csvRowIndex?: number; // Original row index in CSV (metadata only)
+  
+  // V1.0: New fields per requirements
+  type: MovementType; // Ingreso/Gasto/Transferencia/Ajuste
+  category?: string; // Hierarchical category (e.g., "Suministros › Luz")
+  origin: MovementOrigin; // OCR/CSV/Manual
+  movementState: MovementState; // Previsto/Confirmado/Conciliado/Revisar
+  tags?: string[]; // Auto-assigned tags from rules
+  transferGroupId?: string; // For linked transfer movements
+  attachedDocumentId?: number; // Single primary document
+  appliedRuleId?: number; // Rule that auto-categorized this movement
+  isAutoTagged?: boolean; // Whether category came from rules
+  
+  // Audit fields for quick actions (section 14)
+  lastModifiedBy?: string; // User who made the change
+  changeReason?: 'user_ok' | 'inline_edit_amount' | 'inline_edit_date' | 'bulk_ok' | 'manual_edit';
+  
   createdAt: string;
   updatedAt: string;
 }
 
-// H9: Treasury Forecast Events
+// V1.0: Auto-tagging rules
+export interface MovementRule {
+  id?: number;
+  name: string;
+  isActive: boolean;
+  condition: {
+    field: 'description' | 'counterparty' | 'amount';
+    operator: 'contains' | 'equals' | 'greater_than' | 'less_than';
+    value: string | number;
+    caseSensitive?: boolean;
+  };
+  actions: {
+    setCategory?: string;
+    setProvider?: string;
+    addTag?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// V1.0: Transfer suggestions
+export interface TransferSuggestion {
+  id?: number;
+  fromAccountId: number;
+  toAccountId: number;
+  suggestedAmount: number;
+  reason: string;
+  triggerDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
 export interface TreasuryEvent {
   id?: number;
   type: 'income' | 'expense';

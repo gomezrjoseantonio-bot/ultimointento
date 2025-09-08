@@ -363,6 +363,14 @@ export class TreasuryImportAPI {
           currency: parsedMovement.currency || 'EUR', // EUR por defecto
           balance: parseEuropeanNumber(parsedMovement.balance || 0),
           
+          // V1.0 required fields
+          type: normalizedAmount >= 0 ? 'Ingreso' : 'Gasto',
+          origin: 'CSV',
+          movementState: 'Confirmado', // Imported movements are confirmed
+          category: '', // Will be set by rules engine
+          tags: [],
+          isAutoTagged: false,
+          
           // FIX-EXTRACTOS: Import metadata (no raw file content!)
           importBatch: importBatchId,
           csvRowIndex: parsedMovement.originalRow,
