@@ -124,9 +124,9 @@ const CuentasPanel: React.FC = () => {
   useEffect(() => {
     if (editingAccount) {
       setNewAccountForm({
-        alias: editingAccount.name,
+        alias: editingAccount.name || '',
         bank: editingAccount.bank,
-        iban: editingAccount.iban || '',
+        iban: editingAccount.iban,
         openingBalance: editingAccount.openingBalance.toString(),
         minimumBalance: editingAccount.minimumBalance?.toString() || '',
         includeInConsolidated: editingAccount.includeInConsolidated ?? true,
@@ -252,13 +252,8 @@ const CuentasPanel: React.FC = () => {
   const handleCreateAccount = async () => {
     const isEditing = editingAccount !== null;
     
-    // Enhanced validation
-    if (!newAccountForm.alias.trim()) {
-      toast.error('El alias de la cuenta es obligatorio');
-      return;
-    }
-    
-    if (newAccountForm.alias.trim().length < 2 || newAccountForm.alias.trim().length > 50) {
+    // Enhanced validation - ALIAS is optional, BANK NAME and IBAN are mandatory
+    if (newAccountForm.alias.trim() && (newAccountForm.alias.trim().length < 2 || newAccountForm.alias.trim().length > 50)) {
       toast.error('El alias debe tener entre 2 y 50 caracteres');
       return;
     }
@@ -268,7 +263,12 @@ const CuentasPanel: React.FC = () => {
       return;
     }
 
-    if (newAccountForm.iban && !validateIBAN(newAccountForm.iban)) {
+    if (!newAccountForm.iban.trim()) {
+      toast.error('El IBAN es obligatorio');
+      return;
+    }
+
+    if (!validateIBAN(newAccountForm.iban)) {
       toast.error('Formato de IBAN inválido');
       return;
     }
@@ -290,9 +290,9 @@ const CuentasPanel: React.FC = () => {
       }
       
       const accountData = {
-        alias: newAccountForm.alias.trim(),
+        alias: newAccountForm.alias.trim() || undefined,
         bank: newAccountForm.bank.trim(),
-        iban: newAccountForm.iban.trim() || undefined,
+        iban: newAccountForm.iban.trim(),
         includeInConsolidated: newAccountForm.includeInConsolidated,
         openingBalance: parseEuropeanNumber(newAccountForm.openingBalance),
         openingBalanceDate: isEditing ? editingAccount!.openingBalanceDate : new Date().toISOString(),
@@ -657,7 +657,7 @@ const CuentasPanel: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">{selectedAccount.name}</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{selectedAccount.name || `${selectedAccount.bank} - ${selectedAccount.iban.slice(-4)}`}</h2>
               <p className="text-sm text-gray-500">{selectedAccount.bank} • {selectedAccount.iban?.slice(-4)}</p>
             </div>
           </div>
@@ -810,7 +810,7 @@ const CuentasPanel: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Cuenta Manual</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alias de la cuenta (opcional)</label>
                 <input
                   type="text"
                   value={newAccountForm.alias}
@@ -832,7 +832,7 @@ const CuentasPanel: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN (opcional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">IBAN *</label>
                 <input
                   type="text"
                   value={newAccountForm.iban}
@@ -1208,7 +1208,7 @@ const CuentasPanel: React.FC = () => {
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
-                          <h3 className="font-medium text-gray-900">{account.name}</h3>
+                          <h3 className="font-medium text-gray-900">{account.name || `${account.bank} - ${account.iban.slice(-4)}`}</h3>
                           <span className={`px-2 py-1 text-xs rounded-full ${getUsageColor(account.usage_scope || 'mixto')}`}>
                             {getUsageLabel(account.usage_scope || 'mixto')}
                           </span>
@@ -1315,7 +1315,7 @@ const CuentasPanel: React.FC = () => {
             
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">
-                ¿Estás seguro de que quieres eliminar la cuenta <strong>{confirmDeleteAccount.name}</strong>?
+                ¿Estás seguro de que quieres eliminar la cuenta <strong>{confirmDeleteAccount.name || `${confirmDeleteAccount.bank} - ${confirmDeleteAccount.iban.slice(-4)}`}</strong>?
               </p>
               <p className="text-xs text-gray-500">
                 Si la cuenta tiene movimientos, se abrirá un asistente para reasignar o archivar los datos antes de eliminarla completamente.

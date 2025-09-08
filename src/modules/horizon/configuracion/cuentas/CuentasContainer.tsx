@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Banknote, Settings } from 'lucide-react';
 import PageHeader from '../../../../components/common/PageHeader';
-import BancosManagement from './components/BancosManagement';
+import BancosManagement, { BancosManagementRef } from './components/BancosManagement';
 import ReglasAlertas from './components/ReglasAlertas';
 
 /**
@@ -13,6 +13,7 @@ import ReglasAlertas from './components/ReglasAlertas';
  */
 const Cuentas: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'bancos' | 'reglas'>('bancos');
+  const bancosRef = useRef<BancosManagementRef>(null);
 
   const tabs = [
     {
@@ -37,7 +38,7 @@ const Cuentas: React.FC = () => {
           onClick: () => {
             // Handle based on active tab
             if (activeTab === 'bancos') {
-              // Will be handled by BancosManagement component
+              bancosRef.current?.triggerNewAccount();
             } else {
               // Will be handled by ReglasAlertas component
             }
@@ -76,7 +77,7 @@ const Cuentas: React.FC = () => {
 
       {/* Tab Content */}
       <div className="py-8">
-        {activeTab === 'bancos' && <BancosManagement />}
+        {activeTab === 'bancos' && <BancosManagement ref={bancosRef} />}
         {activeTab === 'reglas' && <ReglasAlertas />}
       </div>
     </div>

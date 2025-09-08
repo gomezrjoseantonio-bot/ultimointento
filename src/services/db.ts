@@ -496,9 +496,9 @@ export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
 
 export interface Account {
   id?: number;
-  name: string; // Will serve as 'alias' in the requirements
+  name?: string; // Optional alias - Bank name and IBAN are the required identifiers
   bank: string;
-  iban?: string;
+  iban: string; // Now required instead of optional
   destination: AccountDestination;
   balance: number;
   openingBalance: number;

@@ -20,7 +20,7 @@ const IBAN_REGEX = /^[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}$/;
  * Validates IBAN format
  */
 export function validateIBAN(iban: string): boolean {
-  if (!iban) return true; // IBAN is optional
+  if (!iban) return false; // IBAN is now required
   const cleanIban = iban.replace(/\s/g, '').toUpperCase();
   return IBAN_REGEX.test(cleanIban);
 }
@@ -66,23 +66,27 @@ export class TreasuryAccountsAPI {
    * POST /api/treasury/accounts
    */
   static async createAccount(accountData: {
-    alias: string;
+    alias?: string;
     bank: string;
-    iban?: string;
+    iban: string;
     includeInConsolidated?: boolean;
     openingBalance: number;
     openingBalanceDate?: string;
     usage_scope?: 'personal' | 'inmuebles' | 'mixto';
     logo_url?: string;
   }): Promise<Account> {
-    // Validate IBAN if provided
-    if (accountData.iban && !validateIBAN(accountData.iban)) {
+    // Validate IBAN - now required
+    if (!validateIBAN(accountData.iban)) {
       throw new Error('Formato de IBAN inválido');
     }
 
-    // Validate required fields
-    if (!accountData.alias || !accountData.bank) {
-      throw new Error('Alias y banco son campos obligatorios');
+    // Validate required fields - bank and IBAN are required
+    if (!accountData.bank) {
+      throw new Error('El banco es obligatorio');
+    }
+
+    if (!accountData.iban) {
+      throw new Error('El IBAN es obligatorio');
     }
 
     const db = await initDB();
@@ -91,7 +95,7 @@ export class TreasuryAccountsAPI {
     const newAccount: Account = {
       name: accountData.alias, // Using name field as alias
       bank: accountData.bank,
-      iban: accountData.iban?.replace(/\s/g, '').toUpperCase(),
+      iban: accountData.iban.replace(/\s/g, '').toUpperCase(),
       destination: 'horizon', // Default to horizon
       balance: accountData.openingBalance,
       openingBalance: accountData.openingBalance,
@@ -113,9 +117,9 @@ export class TreasuryAccountsAPI {
    * PUT /api/treasury/accounts/:id
    */
   static async updateAccount(id: number, accountData: Partial<{
-    alias: string;
+    alias?: string;
     bank: string;
-    iban?: string;
+    iban: string;
     includeInConsolidated?: boolean;
     openingBalance: number;
     openingBalanceDate?: string;
@@ -137,9 +141,9 @@ export class TreasuryAccountsAPI {
 
     const updatedAccount: Account = {
       ...existingAccount,
-      ...(accountData.alias && { name: accountData.alias }),
+      ...(accountData.alias !== undefined && { name: accountData.alias }),
       ...(accountData.bank && { bank: accountData.bank }),
-      ...(accountData.iban !== undefined && { iban: accountData.iban?.replace(/\s/g, '').toUpperCase() }),
+      ...(accountData.iban !== undefined && { iban: accountData.iban.replace(/\s/g, '').toUpperCase() }),
       ...(accountData.includeInConsolidated !== undefined && { includeInConsolidated: accountData.includeInConsolidated }),
       ...(accountData.openingBalance !== undefined && { openingBalance: accountData.openingBalance }),
       ...(accountData.openingBalanceDate && { openingBalanceDate: accountData.openingBalanceDate }),
