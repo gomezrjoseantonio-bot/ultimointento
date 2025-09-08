@@ -8,7 +8,7 @@ interface NewMovementModalProps {
   isOpen: boolean;
   onClose: () => void;
   accounts: Account[];
-  onMovementCreated: () => void;
+  onMovementCreated: (newMovement?: any) => void; // Allow optimistic update
 }
 
 interface NewMovementForm {
@@ -107,6 +107,22 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     if (form.type === 'Transferencia' && form.accountId === form.transferToAccountId) return 'Las cuentas de origen y destino deben ser diferentes';
     
     return null;
+  };
+
+  const handleClose = () => {
+    setForm({
+      date: new Date().toISOString().split('T')[0],
+      accountId: '',
+      amount: '',
+      type: 'Gasto',
+      description: '',
+      category: '',
+      counterparty: '',
+      state: 'Previsto',
+      transferToAccountId: ''
+    });
+    setSaving(false);
+    onClose();
   };
 
   const handleSave = async () => {
@@ -216,17 +232,12 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
           hasCounterparty: !!form.counterparty
         });
         
-        showSuccess(`${form.type} de ${Math.abs(amount).toFixed(2)}€ ${form.type === 'Ingreso' ? 'registrado' : 'creado'} correctamente`, {
-          actionLabel: 'Ver movimiento',
-          actionHandler: () => {
-            console.log('Navigate to specific movement');
-          }
-        });
+        showSuccess(`${form.type} de ${Math.abs(amount).toFixed(2)}€ ${form.type === 'Ingreso' ? 'registrado' : 'creado'} correctamente`);
+        
+        // Optimistic update - pass the new movement to avoid flicker
+        onMovementCreated(movement);
+        handleClose();
       }
-      
-      // FIX PACK v1.0: Optimistic insertion - trigger immediate reload
-      onMovementCreated();
-      handleClose();
       
     } catch (error) {
       console.error('Error creating movement:', error);
@@ -234,21 +245,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleClose = () => {
-    setForm({
-      date: new Date().toISOString().split('T')[0],
-      accountId: '',
-      amount: '',
-      type: 'Gasto',
-      description: '',
-      category: '',
-      counterparty: '',
-      state: 'Previsto',
-      transferToAccountId: ''
-    });
-    onClose();
   };
 
   if (!isOpen) return null;

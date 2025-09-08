@@ -784,10 +784,30 @@ const MovimientosV1: React.FC = () => {
         isOpen={showNewMovementModal}
         onClose={() => setShowNewMovementModal(false)}
         accounts={accounts}
-        onMovementCreated={() => {
-          // FIX PACK v1.0: Track cache invalidation and optimistic insertion
-          trackCacheInvalidation('movement_creation');
-          loadData();
+        onMovementCreated={(newMovement) => {
+          // Optimistic update - add new movement to state without full reload
+          if (newMovement) {
+            // Ensure the movement has required V1.0 fields
+            const enhancedMovement = {
+              ...newMovement,
+              type: newMovement.type || (newMovement.amount > 0 ? 'Ingreso' : 'Gasto') as MovementType,
+              origin: newMovement.origin || 'Manual' as MovementOrigin,
+              movementState: newMovement.movementState || 'Previsto' as MovementState,
+              category: newMovement.category || '',
+              tags: newMovement.tags || [],
+              isAutoTagged: newMovement.isAutoTagged || false
+            };
+            
+            // Add to movements state and re-sort
+            setMovements(prev => {
+              const updated = [...prev, enhancedMovement];
+              return updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          } else {
+            // Fallback to full reload if no movement provided
+            loadData();
+          }
+          setShowNewMovementModal(false);
         }}
       />
 
