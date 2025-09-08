@@ -290,6 +290,85 @@ export class TreasuryAccountsAPI {
   }
 
   /**
+   * DELETE /api/treasury/accounts/:id/cascade
+   * ATLAS REQUIREMENT: Complete cascading delete for accounts
+   * Deletes account and ALL related data (movements, rules, alerts, etc.)
+   */
+  static async cascadeDeleteAccount(id: number): Promise<{ success: boolean; deletedItems: any }> {
+    const db = await initDB();
+    
+    // Get existing account
+    const existingAccount = await db.get('accounts', id);
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    const deletedItems = {
+      movements: 0,
+      rules: 0,
+      // Future: alerts, documents, etc.
+    };
+
+    try {
+      // 1. Delete all movements associated with this account
+      const allMovements = await db.getAll('movements');
+      const accountMovements = allMovements.filter(m => m.accountId === id);
+      
+      for (const movement of accountMovements) {
+        await db.delete('movements', movement.id!);
+        deletedItems.movements++;
+      }
+
+      // 2. Delete classification rules that reference this account
+      const savedRules = localStorage.getItem('classificationRules');
+      if (savedRules) {
+        const rules = JSON.parse(savedRules);
+        const filteredRules = rules.filter((rule: any) => {
+          // Remove rules that have conditions referencing this account
+          const hasAccountCondition = rule.conditions?.some((cond: any) => 
+            cond.field === 'account_id' && cond.value === id
+          );
+          if (hasAccountCondition) {
+            deletedItems.rules++;
+            return false;
+          }
+          return true;
+        });
+        localStorage.setItem('classificationRules', JSON.stringify(filteredRules));
+      }
+
+      // 3. Future: Delete related alerts, documents, OCR metadata, etc.
+      // TODO: Implement when these features are available
+      // - Delete alerts referencing this account
+      // - Delete documents linked to this account
+      // - Delete OCR metadata for this account
+      // - Delete any automation rules specific to this account
+
+      // 4. Delete the account itself
+      await db.delete('accounts', id);
+
+      // Emit domain event for cascading deletion
+      try {
+        await emitTreasuryEvent({
+          type: 'ACCOUNT_DELETED',
+          payload: { 
+            accountId: id, 
+            account: existingAccount
+          }
+        });
+      } catch (error) {
+        console.error('Error emitting cascade deletion event:', error);
+        // Don't fail the operation if event emission fails
+      }
+
+      return { success: true, deletedItems };
+    } catch (error) {
+      console.error('Error during cascade deletion:', error);
+      throw new Error('Error al eliminar la cuenta y datos asociados');
+    }
+  }
+
+  /**
    * POST /api/treasury/accounts/:id/delete_wizard
    * FIX PACK v2.0: Guided deletion for accounts with movements
    */

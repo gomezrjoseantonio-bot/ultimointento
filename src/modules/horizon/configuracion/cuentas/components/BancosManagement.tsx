@@ -212,26 +212,22 @@ const BancosManagement: React.FC = () => {
     try {
       setDeleting(true);
       
-      // Get related data count for confirmation message
-      const db = await initDB();
-      const allMovements = await db.getAll('movements');
-      const accountMovements = allMovements.filter(m => m.accountId === deleteConfirmation.id);
+      // Use the new cascading delete method
+      const result = await TreasuryAccountsAPI.cascadeDeleteAccount(deleteConfirmation.id);
       
-      // Perform cascading delete by removing all related data
-      // Delete movements
-      for (const movement of accountMovements) {
-        await db.delete('movements', movement.id!);
-      }
-
-      // Delete the account
-      await db.delete('accounts', deleteConfirmation.id);
-
       // Remove logo from storage if exists
       if (deleteConfirmation.logo_url) {
         removeLogoFromStorage(deleteConfirmation.id);
       }
 
-      toast.success('Cuenta y datos asociados eliminados');
+      const { deletedItems } = result;
+      const summary = [];
+      if (deletedItems.movements > 0) summary.push(`${deletedItems.movements} movimientos`);
+      if (deletedItems.rules > 0) summary.push(`${deletedItems.rules} reglas`);
+      
+      const summaryText = summary.length > 0 ? ` (${summary.join(', ')})` : '';
+      toast.success(`Cuenta y datos asociados eliminados${summaryText}`);
+      
       await loadAccounts();
       setDeleteConfirmation(null);
     } catch (error) {
