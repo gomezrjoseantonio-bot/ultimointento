@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Banknote, CreditCard, Settings } from 'lucide-react';
+import { TrendingUp, Banknote, CreditCard, Settings, Layers } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import UnifiedTreasury from './UnifiedTreasury';
 import Radar from './radar/Radar';
 import CuentasPanel from './components/CuentasPanel';
 import Movimientos from './movimientos/Movimientos';
 import AutomatizacionesPanel from './components/AutomatizacionesPanel';
 import PageHeader from '../../../components/common/PageHeader';
 
-type TabType = 'radar' | 'cuentas' | 'movimientos' | 'automatizaciones';
+type TabType = 'unificada' | 'radar' | 'cuentas' | 'movimientos' | 'automatizaciones';
 
 const Tesoreria: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('radar');
+  const [activeTab, setActiveTab] = useState<TabType>('unificada');
   const location = useLocation();
   const navigate = useNavigate();
 
   // Handle URL hash for tab navigation
   useEffect(() => {
     const hash = location.hash.replace('#', '') as TabType;
-    if (['radar', 'cuentas', 'movimientos', 'automatizaciones'].includes(hash)) {
+    if (['unificada', 'radar', 'cuentas', 'movimientos', 'automatizaciones'].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location.hash]);
@@ -28,6 +29,12 @@ const Tesoreria: React.FC = () => {
   };
 
   const tabs = [
+    {
+      id: 'unificada' as TabType,
+      name: 'Vista Unificada',
+      icon: Layers,
+      description: 'Vista única con todas las cuentas y timeline diario'
+    },
     {
       id: 'radar' as TabType,
       name: 'Radar',
@@ -56,6 +63,8 @@ const Tesoreria: React.FC = () => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'unificada':
+        return <UnifiedTreasury />;
       case 'radar':
         return <Radar />;
       case 'cuentas':
@@ -65,9 +74,14 @@ const Tesoreria: React.FC = () => {
       case 'automatizaciones':
         return <AutomatizacionesPanel />;
       default:
-        return <Radar />;
+        return <UnifiedTreasury />;
     }
   };
+
+  // For the unified view, we don't show the standard PageHeader
+  if (activeTab === 'unificada') {
+    return renderActiveTab();
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--hz-bg)' }}>
