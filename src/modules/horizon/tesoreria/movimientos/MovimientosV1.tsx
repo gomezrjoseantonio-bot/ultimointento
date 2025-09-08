@@ -9,20 +9,44 @@ import {
   Check,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
 import { initDB, Account, Movement, MovementType, MovementOrigin, MovementState } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { showSuccess, showError } from '../../../../services/toastService';
-import { treasuryAPI } from '../../../../services/treasuryApiService'; // FIX PACK v2.0
+import { treasuryAPI } from '../../../../services/treasuryApiService';
 import ImportModal from './ImportModal';
 import NewMovementModal from './NewMovementModal';
+// FIX PACK v1.0: Import new utilities
+import { 
+  MovementFilters, 
+  loadFiltersFromStorage, 
+  saveFiltersToStorage, 
+  resetFiltersToDefaults, 
+  getDateRangeBounds,
+  formatDateForDisplay,
+  logFilterApplication
+} from '../../../../utils/movementFilters';
+import { 
+  sortAccountsByTypeAndAlias, 
+  getActiveAccounts, 
+  getAccountDisplayName,
+  logAccountLoading
+} from '../../../../utils/accountUtils';
+// FIX PACK v1.0: Import analytics utilities
+import { 
+  trackEmptyState, 
+  trackFilterAction, 
+  trackFilterUsage,
+  trackCacheInvalidation
+} from '../../../../utils/treasuryAnalytics';
 
-// Date filter options
+// FIX PACK v1.0: Updated date filter options per requirements
 const DATE_FILTERS = [
-  { value: 'today', label: 'Hoy' },
-  { value: '7d', label: '7d' },
-  { value: '30d', label: '30d' },
+  { value: 'last90days', label: 'Últimos 90 días' },
+  { value: 'thismonth', label: 'Este mes' },
+  { value: 'last30days', label: 'Últimos 30 días' },
   { value: 'custom', label: 'Personalizado' }
 ];
 
@@ -32,15 +56,8 @@ const MovimientosV1: React.FC = () => {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Filters state
-  const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
-  const [excludePersonal, setExcludePersonal] = useState(false);
-  const [includeInactive, setIncludeInactive] = useState(false); // FIX PACK v2.0: Include inactive accounts toggle
-  const [dateFilter, setDateFilter] = useState('30d');
-  const [customDateFrom, setCustomDateFrom] = useState('');
-  const [customDateTo, setCustomDateTo] = useState('');
-  const [statusFilter, setStatusFilter] = useState<MovementState | 'Todos'>('Todos');
-  const [typeFilter, setTypeFilter] = useState<MovementType | 'Todos'>('Todos');
+  // FIX PACK v1.0: Use centralized filter state with localStorage persistence
+  const [filters, setFilters] = useState<MovementFilters>(() => loadFiltersFromStorage());
   const [searchTerm, setSearchTerm] = useState('');
   
   // UI state
@@ -51,21 +68,35 @@ const MovimientosV1: React.FC = () => {
   
   const ITEMS_PER_PAGE = 50;
 
+  // FIX PACK v1.0: Save filters to localStorage whenever they change
+  useEffect(() => {
+    saveFiltersToStorage(filters);
+  }, [filters]);
+
   // Load data
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // FIX PACK v2.0: Load Horizon accounts using treasury API with inactive support
-      const allAccounts = await treasuryAPI.accounts.getAccounts(includeInactive);
+      // FIX PACK v1.0: Track cache invalidation
+      trackCacheInvalidation('manual_refresh');
+      
+      // FIX PACK v1.0: Load only active accounts from treasury API
+      const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
       const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
-      setAccounts(horizonAccounts);
+      
+      // FIX PACK v1.0: Sort accounts by type and alias
+      const sortedAccounts = sortAccountsByTypeAndAlias(getActiveAccounts(horizonAccounts));
+      setAccounts(sortedAccounts);
+      
+      // FIX PACK v1.0: Log account loading for debugging
+      logAccountLoading(sortedAccounts, false);
       
       // Load movements for Horizon accounts
       const db = await initDB();
       const allMovements = await db.getAll('movements');
       const horizonMovements = allMovements.filter(mov => 
-        horizonAccounts.some(acc => acc.id === mov.accountId)
+        sortedAccounts.some(acc => acc.id === mov.accountId)
       );
       
       // Ensure movements have required V1.0 fields with defaults
@@ -87,65 +118,53 @@ const MovimientosV1: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [includeInactive]); // FIX PACK v2.0: Depend on includeInactive
+  }, []); // Remove includeInactive dependency
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Filter movements
+  // FIX PACK v1.0: Filter movements using centralized filter logic with UTC date handling
   const filteredMovements = useCallback(() => {
     let filtered = movements;
 
-    // Account filter
-    if (selectedAccounts.length > 0) {
-      filtered = filtered.filter(mov => selectedAccounts.includes(mov.accountId));
+    // Account filter - FIX PACK v1.0: Handle "all" option
+    if (filters.accountId !== 'all') {
+      filtered = filtered.filter(mov => mov.accountId === filters.accountId);
     }
 
     // Exclude personal accounts
-    if (excludePersonal) {
+    if (filters.excludePersonal) {
       const personalAccountIds = accounts
         .filter(acc => acc.usage_scope === 'personal')
         .map(acc => acc.id!);
       filtered = filtered.filter(mov => !personalAccountIds.includes(mov.accountId));
     }
 
-    // Date filter
-    const now = new Date();
-    let dateFrom: Date | null = null;
-    
-    switch (dateFilter) {
-      case 'today':
-        dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case '7d':
-        dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30d':
-        dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case 'custom':
-        if (customDateFrom) dateFrom = new Date(customDateFrom);
-        break;
+    // FIX PACK v1.0: Date filter with UTC handling
+    const { fromDate, toDate } = getDateRangeBounds(
+      filters.dateRange, 
+      filters.customDateFrom, 
+      filters.customDateTo
+    );
+
+    if (fromDate) {
+      filtered = filtered.filter(mov => {
+        const movDate = new Date(mov.date);
+        return movDate >= fromDate;
+      });
     }
 
-    if (dateFrom) {
-      filtered = filtered.filter(mov => new Date(mov.date) >= dateFrom!);
-    }
-
-    if (dateFilter === 'custom' && customDateTo) {
-      const dateTo = new Date(customDateTo);
-      filtered = filtered.filter(mov => new Date(mov.date) <= dateTo);
+    if (toDate) {
+      filtered = filtered.filter(mov => {
+        const movDate = new Date(mov.date);
+        return movDate <= toDate;
+      });
     }
 
     // Status filter
-    if (statusFilter !== 'Todos') {
-      filtered = filtered.filter(mov => mov.movementState === statusFilter);
-    }
-
-    // Type filter
-    if (typeFilter !== 'Todos') {
-      filtered = filtered.filter(mov => mov.type === typeFilter);
+    if (filters.status !== 'Todos') {
+      filtered = filtered.filter(mov => mov.movementState === filters.status);
     }
 
     // Search filter
@@ -159,8 +178,14 @@ const MovimientosV1: React.FC = () => {
       );
     }
 
+    // FIX PACK v1.0: Log filter application for debugging
+    logFilterApplication(filters, filtered.length);
+    
+    // FIX PACK v1.0: Track filter usage analytics
+    trackFilterUsage(filters, filtered.length);
+
     return filtered;
-  }, [movements, selectedAccounts, excludePersonal, dateFilter, customDateFrom, customDateTo, statusFilter, typeFilter, searchTerm, accounts]);
+  }, [movements, filters, searchTerm, accounts]);
 
   const filteredMovs = filteredMovements();
   const totalPages = Math.ceil(filteredMovs.length / ITEMS_PER_PAGE);
@@ -234,11 +259,44 @@ const MovimientosV1: React.FC = () => {
     } : { name: 'Cuenta desconocida', bank: '', logo: '/placeholder-bank.png', isActive: false };
   };
 
-  // FIX PACK v2.0: Check if any selected accounts are inactive
-  const hasInactiveSelectedAccounts = () => {
-    return selectedAccounts.some(accountId => {
-      const account = accounts.find(acc => acc.id === accountId);
-      return account && !account.isActive;
+  // FIX PACK v1.0: Helper to update individual filter properties with analytics
+  const updateFilter = (key: keyof MovementFilters, value: any, ctaType?: string) => {
+    const previousFilters = { ...filters };
+    const newFilters = { ...filters, [key]: value };
+    
+    setFilters(newFilters);
+    
+    // Track analytics for CTA clicks
+    if (ctaType) {
+      trackFilterAction({
+        action: 'cta_click',
+        ctaType: ctaType as any,
+        previousFilters,
+        newFilters
+      });
+    } else {
+      trackFilterAction({
+        action: 'filter_change',
+        previousFilters,
+        newFilters
+      });
+    }
+  };
+
+  // FIX PACK v1.0: Reset filters to defaults with analytics
+  const handleResetFilters = () => {
+    const previousFilters = { ...filters };
+    const defaultFilters = resetFiltersToDefaults();
+    
+    setFilters(defaultFilters);
+    setSearchTerm('');
+    setCurrentPage(1);
+    
+    // Track analytics
+    trackFilterAction({
+      action: 'filter_reset',
+      ctaType: 'reset_filters',
+      previousFilters
     });
   };
 
@@ -284,37 +342,25 @@ const MovimientosV1: React.FC = () => {
             </div>
           </div>
 
-          {/* Compact Filters - Single Line */}
+          {/* FIX PACK v1.0: Updated Filters - Using chip/selector approach */}
           <div className="flex items-center gap-4 flex-wrap">
-            {/* Account Multi-Select */}
+            {/* Account Selector */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-hz-text">Cuenta:</label>
               <select
-                multiple
-                value={selectedAccounts.map(String)}
+                value={filters.accountId}
                 onChange={(e) => {
-                  const selected = Array.from(e.target.selectedOptions).map(option => Number(option.value));
-                  setSelectedAccounts(selected);
+                  const value = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                  updateFilter('accountId', value);
                 }}
-                className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
+                className="text-sm border border-hz-neutral-300 rounded px-2 py-1 min-w-[200px]"
               >
-                {/* FIX PACK v2.0: Separate active and inactive accounts */}
-                {accounts.filter(acc => acc.isActive).map(account => (
+                <option value="all">Todas las cuentas</option>
+                {accounts.map(account => (
                   <option key={account.id} value={account.id}>
-                    {account.name} ({account.bank})
+                    {getAccountDisplayName(account)}
                   </option>
                 ))}
-                {includeInactive && accounts.some(acc => !acc.isActive) && (
-                  <>
-                    <optgroup label="Cuentas desactivadas">
-                      {accounts.filter(acc => !acc.isActive).map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.name} ({account.bank}) - Desactivada
-                        </option>
-                      ))}
-                    </optgroup>
-                  </>
-                )}
               </select>
             </div>
 
@@ -322,30 +368,19 @@ const MovimientosV1: React.FC = () => {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                checked={excludePersonal}
-                onChange={(e) => setExcludePersonal(e.target.checked)}
+                checked={filters.excludePersonal}
+                onChange={(e) => updateFilter('excludePersonal', e.target.checked)}
                 className="rounded border-hz-neutral-300"
               />
               Excluir personal
-            </label>
-
-            {/* FIX PACK v2.0: Include Inactive Accounts Toggle */}
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-                className="rounded border-hz-neutral-300"
-              />
-              Incluir desactivadas
             </label>
 
             {/* Date Range */}
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-hz-text">Fecha:</label>
               <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                value={filters.dateRange}
+                onChange={(e) => updateFilter('dateRange', e.target.value)}
                 className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
               >
                 {DATE_FILTERS.map(filter => (
@@ -354,18 +389,18 @@ const MovimientosV1: React.FC = () => {
                   </option>
                 ))}
               </select>
-              {dateFilter === 'custom' && (
+              {filters.dateRange === 'custom' && (
                 <>
                   <input
                     type="date"
-                    value={customDateFrom}
-                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                    value={filters.customDateFrom}
+                    onChange={(e) => updateFilter('customDateFrom', e.target.value)}
                     className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
                   />
                   <input
                     type="date"
-                    value={customDateTo}
-                    onChange={(e) => setCustomDateTo(e.target.value)}
+                    value={filters.customDateTo}
+                    onChange={(e) => updateFilter('customDateTo', e.target.value)}
                     className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
                   />
                 </>
@@ -376,8 +411,8 @@ const MovimientosV1: React.FC = () => {
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-hz-text">Estado:</label>
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as MovementState | 'Todos')}
+                value={filters.status}
+                onChange={(e) => updateFilter('status', e.target.value as MovementState | 'Todos')}
                 className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
               >
                 <option value="Todos">Todos</option>
@@ -385,22 +420,6 @@ const MovimientosV1: React.FC = () => {
                 <option value="Confirmado">Confirmado</option>
                 <option value="Conciliado">Conciliado</option>
                 <option value="Revisar">Revisar</option>
-              </select>
-            </div>
-
-            {/* Type Filter */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-hz-text">Tipo:</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as MovementType | 'Todos')}
-                className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
-              >
-                <option value="Todos">Todos</option>
-                <option value="Ingreso">Ingreso</option>
-                <option value="Gasto">Gasto</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Ajuste">Ajuste</option>
               </select>
             </div>
 
@@ -415,21 +434,21 @@ const MovimientosV1: React.FC = () => {
                 className="flex-1 text-sm border border-hz-neutral-300 rounded px-3 py-1 min-w-0"
               />
             </div>
+
+            {/* Reset Filters Button */}
+            <button
+              onClick={handleResetFilters}
+              className="flex items-center gap-2 px-3 py-1 text-sm border border-hz-neutral-300 rounded hover:bg-hz-neutral-50 transition-colors"
+              title="Restablecer filtros"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </button>
           </div>
         </div>
       </div>
 
-      {/* FIX PACK v2.0: Banner for inactive accounts */}
-      {hasInactiveSelectedAccounts() && (
-        <div className="bg-amber-50 border border-amber-200 px-6 py-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 text-amber-600">⚠️</div>
-            <p className="text-sm text-amber-800">
-              <strong>Aviso:</strong> Has seleccionado cuentas desactivadas. Puedes seguir viendo su histórico pero no se pueden crear nuevos movimientos en ellas.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* FIX PACK v1.0: Remove banner for inactive accounts - we only show active accounts now */}
 
       {/* Bulk Actions Bar */}
       {selectedMovements.length > 0 && (
@@ -531,7 +550,7 @@ const MovimientosV1: React.FC = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-hz-text">
-                        {new Date(movement.date).toLocaleDateString('es-ES')}
+                        {formatDateForDisplay(movement.date)}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -700,26 +719,62 @@ const MovimientosV1: React.FC = () => {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* FIX PACK v1.0: Smart Empty State with detected causes and CTAs */}
         {filteredMovs.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-hz-neutral-500 mb-4">
+            <div className="text-hz-neutral-500 mb-6">
               No se encontraron movimientos con los filtros aplicados
             </div>
-            <button
-              onClick={() => {
-                setSelectedAccounts([]);
-                setExcludePersonal(false);
-                setIncludeInactive(false); // FIX PACK v2.0: Reset include inactive
-                setDateFilter('30d');
-                setStatusFilter('Todos');
-                setTypeFilter('Todos');
-                setSearchTerm('');
-              }}
-              className="text-hz-primary hover:text-hz-primary-dark"
-            >
-              Limpiar filtros
-            </button>
+            
+            {/* FIX PACK v1.0: Track empty state analytics */}
+            {(() => {
+              trackEmptyState({
+                filters,
+                searchTerm,
+                totalMovements: movements.length,
+                filteredMovements: 0,
+                activeAccounts: accounts.length,
+                timestamp: new Date().toISOString()
+              });
+              return null;
+            })()}
+            
+            {/* Smart CTAs based on current filters */}
+            <div className="space-y-3">
+              {filters.accountId !== 'all' && (
+                <button
+                  onClick={() => updateFilter('accountId', 'all', 'show_all_accounts')}
+                  className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                >
+                  Cambiar a 'Todas las cuentas'
+                </button>
+              )}
+              
+              {filters.dateRange !== 'last90days' && (
+                <button
+                  onClick={() => updateFilter('dateRange', 'last90days', 'show_last_90_days')}
+                  className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                >
+                  Mostrar 'Últimos 90 días'
+                </button>
+              )}
+              
+              {filters.status !== 'Todos' && (
+                <button
+                  onClick={() => updateFilter('status', 'Todos', 'show_all_states')}
+                  className="block mx-auto px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-opacity-90 transition-colors"
+                >
+                  Mostrar 'Todos' los estados
+                </button>
+              )}
+              
+              <button
+                onClick={handleResetFilters}
+                className="block mx-auto px-4 py-2 border border-hz-primary text-hz-primary rounded-lg hover:bg-hz-primary hover:text-white transition-colors"
+              >
+                Restablecer filtros
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -729,14 +784,22 @@ const MovimientosV1: React.FC = () => {
         isOpen={showNewMovementModal}
         onClose={() => setShowNewMovementModal(false)}
         accounts={accounts}
-        onMovementCreated={loadData}
+        onMovementCreated={() => {
+          // FIX PACK v1.0: Track cache invalidation and optimistic insertion
+          trackCacheInvalidation('movement_creation');
+          loadData();
+        }}
       />
 
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         accounts={accounts}
-        onImportComplete={loadData}
+        onImportComplete={() => {
+          // FIX PACK v1.0: Track cache invalidation and optimistic insertion
+          trackCacheInvalidation('import_complete');
+          loadData();
+        }}
       />
     </div>
   );

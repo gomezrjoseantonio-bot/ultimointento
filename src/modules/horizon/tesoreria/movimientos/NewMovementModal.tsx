@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { Account, MovementType, MovementState } from '../../../../services/db';
 import { showSuccess, showError } from '../../../../services/toastService';
+import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
 
 interface NewMovementModalProps {
   isOpen: boolean;
@@ -118,29 +119,118 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     setSaving(true);
     
     try {
-      // TODO: Implement actual movement creation logic
-      // For now, simulate the creation process
+      // FIX PACK v1.0: Implement actual movement creation with optimistic insertion
+      const { initDB } = await import('../../../../services/db');
+      const db = await initDB();
+      
+      const amount = parseFloat(form.amount);
+      const now = new Date().toISOString();
       
       if (form.type === 'Transferencia') {
         // Create two linked movements for transfers
-        console.log('Creating transfer movements:', {
-          from: form.accountId,
-          to: form.transferToAccountId,
-          amount: parseFloat(form.amount),
-          description: form.description
+        const transferGroupId = `transfer_${Date.now()}`;
+        
+        // Movement from source account (negative)
+        const fromMovement = {
+          accountId: Number(form.accountId),
+          date: form.date,
+          amount: -Math.abs(amount), // Always negative for outgoing
+          description: `Transferencia a ${accounts.find(a => a.id?.toString() === form.transferToAccountId)?.name || 'cuenta'}`,
+          counterparty: form.counterparty || 'Transferencia interna',
+          type: 'Transferencia' as 'Transferencia',
+          category: 'Transferencias',
+          origin: 'Manual' as 'Manual',
+          movementState: form.state,
+          transferGroupId,
+          tags: ['transferencia'],
+          isAutoTagged: true,
+          createdAt: now,
+          updatedAt: now,
+          status: 'pendiente' as 'pendiente'
+        };
+        
+        // Movement to destination account (positive)
+        const toMovement = {
+          accountId: Number(form.transferToAccountId),
+          date: form.date,
+          amount: Math.abs(amount), // Always positive for incoming
+          description: `Transferencia desde ${accounts.find(a => a.id?.toString() === form.accountId)?.name || 'cuenta'}`,
+          counterparty: form.counterparty || 'Transferencia interna',
+          type: 'Transferencia' as 'Transferencia',
+          category: 'Transferencias',
+          origin: 'Manual' as 'Manual',
+          movementState: form.state,
+          transferGroupId,
+          tags: ['transferencia'],
+          isAutoTagged: true,
+          createdAt: now,
+          updatedAt: now,
+          status: 'pendiente' as 'pendiente'
+        };
+        
+        // Save both movements
+        await db.add('movements', fromMovement);
+        await db.add('movements', toMovement);
+        
+        // Track analytics
+        trackMovementCreation('manual', 2, { 
+          type: 'transfer',
+          amount: Math.abs(amount),
+          accountFrom: form.accountId,
+          accountTo: form.transferToAccountId
         });
-        showSuccess('Transferencia creada correctamente');
+        
+        showSuccess(`Transferencia de ${Math.abs(amount).toFixed(2)}€ creada correctamente`, {
+          actionLabel: 'Ver movimientos',
+          actionHandler: () => {
+            console.log('Navigate to movements with transfer filter');
+          }
+        });
+        
       } else {
         // Create single movement
-        console.log('Creating movement:', form);
-        showSuccess('Movimiento creado correctamente');
+        const movement = {
+          accountId: Number(form.accountId),
+          date: form.date,
+          amount: amount,
+          description: form.description,
+          counterparty: form.counterparty || undefined,
+          type: form.type,
+          category: form.category || undefined,
+          origin: 'Manual' as 'Manual',
+          movementState: form.state,
+          tags: form.category ? [form.category.split(' › ')[0]] : [],
+          isAutoTagged: !!form.category,
+          createdAt: now,
+          updatedAt: now,
+          status: 'pendiente' as 'pendiente'
+        };
+        
+        await db.add('movements', movement);
+        
+        // Track analytics
+        trackMovementCreation('manual', 1, { 
+          type: form.type.toLowerCase(),
+          amount: Math.abs(amount),
+          category: form.category,
+          hasCounterparty: !!form.counterparty
+        });
+        
+        showSuccess(`${form.type} de ${Math.abs(amount).toFixed(2)}€ ${form.type === 'Ingreso' ? 'registrado' : 'creado'} correctamente`, {
+          actionLabel: 'Ver movimiento',
+          actionHandler: () => {
+            console.log('Navigate to specific movement');
+          }
+        });
       }
       
+      // FIX PACK v1.0: Optimistic insertion - trigger immediate reload
       onMovementCreated();
       handleClose();
       
     } catch (error) {
-      showError('Error al crear el movimiento');
+      console.error('Error creating movement:', error);
+      showError('Error al crear el movimiento', 'Revisa los datos e inténtalo de nuevo');
     } finally {
       setSaving(false);
     }

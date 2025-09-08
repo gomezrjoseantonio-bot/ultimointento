@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Upload, X, FileText, AlertCircle } from 'lucide-react';
 import { Account } from '../../../../services/db';
 import { showSuccess, showError } from '../../../../services/toastService';
+import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -95,19 +96,131 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
     setImporting(true);
     
     try {
-      // TODO: Implement actual import logic using existing services
-      // For now, simulate import process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // FIX PACK v1.0: Implement actual import logic
+      const { initDB } = await import('../../../../services/db');
+      const db = await initDB();
       
-      showSuccess(`${previewData.length} movimientos importados correctamente`);
+      // Get the target account ID
+      const targetAccountId = selectedAccount || 
+        accounts.find(acc => acc.bank === detectedBank)?.id;
+      
+      if (!targetAccountId) {
+        throw new Error('No se pudo determinar la cuenta de destino');
+      }
+      
+      // FIX PACK v1.0: Smart injection - convert preview data to movements
+      const now = new Date().toISOString();
+      const movements = previewData.map((row, index) => ({
+        accountId: targetAccountId,
+        date: convertSpanishDateToISO(row.fecha),
+        amount: row.importe,
+        description: row.descripcion,
+        type: (row.importe > 0 ? 'Ingreso' : 'Gasto') as 'Ingreso' | 'Gasto',
+        category: inferCategoryFromDescription(row.descripcion),
+        origin: 'CSV' as 'CSV',
+        movementState: 'Confirmado' as 'Confirmado',
+        tags: inferTagsFromDescription(row.descripcion),
+        isAutoTagged: true,
+        balance: row.saldo,
+        importBatch: `import_${Date.now()}`,
+        csvRowIndex: index,
+        createdAt: now,
+        updatedAt: now,
+        status: 'pendiente' as 'pendiente'
+      }));
+      
+      // Batch insert movements
+      for (const movement of movements) {
+        await db.add('movements', movement);
+      }
+      
+      // Track analytics
+      trackMovementCreation('import', movements.length, {
+        sourceBank: detectedBank || 'manual_selection',
+        fileName: file.name,
+        fileSize: file.size,
+        accountId: targetAccountId,
+        averageAmount: movements.reduce((sum, m) => sum + Math.abs(m.amount), 0) / movements.length
+      });
+      
+      // FIX PACK v1.0: Enhanced success toast with CTA
+      showSuccess(
+        `${movements.length} movimientos importados correctamente`, 
+        {
+          actionLabel: 'Ver importados',
+          actionHandler: () => {
+            console.log('Navigate to imported movements filter');
+          }
+        }
+      );
+      
+      // FIX PACK v1.0: Optimistic insertion - trigger immediate reload
       onImportComplete();
       handleClose();
       
     } catch (error) {
-      showError('Error al importar el extracto');
+      console.error('Import error:', error);
+      showError('Error al importar el extracto', 'Verifica que el archivo tenga el formato correcto');
     } finally {
       setImporting(false);
     }
+  };
+
+  // Helper functions for smart categorization
+  const convertSpanishDateToISO = (spanishDate: string): string => {
+    const [day, month, year] = spanishDate.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  const inferCategoryFromDescription = (description: string): string | undefined => {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('luz') || desc.includes('endesa') || desc.includes('iberdrola')) {
+      return 'Suministros › Luz';
+    }
+    if (desc.includes('agua') || desc.includes('aqualia') || desc.includes('cyii')) {
+      return 'Suministros › Agua';
+    }
+    if (desc.includes('gas') || desc.includes('naturgy')) {
+      return 'Suministros › Gas';
+    }
+    if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || desc.includes('vodafone')) {
+      return 'Suministros › Internet';
+    }
+    if (desc.includes('alquiler') || desc.includes('rent')) {
+      return 'Alquiler › Ingresos';
+    }
+    if (desc.includes('ibi') || desc.includes('contribucion')) {
+      return 'Tributos › IBI';
+    }
+    if (desc.includes('comunidad') || desc.includes('administrador')) {
+      return 'Tributos › Comunidad';
+    }
+    if (desc.includes('transferencia') || desc.includes('traspaso')) {
+      return 'Transferencias';
+    }
+    
+    return undefined;
+  };
+
+  const inferTagsFromDescription = (description: string): string[] => {
+    const tags: string[] = [];
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('domiciliacion') || desc.includes('domiciliado')) {
+      tags.push('domiciliado');
+    }
+    if (desc.includes('transferencia')) {
+      tags.push('transferencia');
+    }
+    if (desc.includes('bizum')) {
+      tags.push('bizum');
+    }
+    if (desc.includes('tarjeta') || desc.includes('tpv')) {
+      tags.push('tarjeta');
+    }
+    
+    return tags;
   };
 
   const handleClose = () => {
