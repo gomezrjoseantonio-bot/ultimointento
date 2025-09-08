@@ -280,11 +280,75 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
 
     setIsProcessing(true);
     try {
-      // Simulate processing - in real implementation this would call the backend
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get database connection
+      const { initDB } = await import('../../services/db');
+      const db = await initDB();
 
-      const totalRows = parsedData.rows.length - headerRowIndex - 1;
-      const validRows = Math.floor(totalRows * 0.9); // Simulate some validation failures
+      // Parse rows into movements
+      const dataRows = parsedData.rows.slice(headerRowIndex + 1);
+      const movements = [];
+      
+      for (const row of dataRows) {
+        try {
+          // Map columns based on column mapping
+          const fecha = row[parsedData.headers.indexOf(columnMapping.fecha)];
+          const concepto = row[parsedData.headers.indexOf(columnMapping.concepto)];
+          
+          let importe = 0;
+          if (columnMapping.importe) {
+            const importeValue = row[parsedData.headers.indexOf(columnMapping.importe)];
+            importe = parseFloat(importeValue?.toString().replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+          } else if (columnMapping.cargo && columnMapping.abono) {
+            const cargoValue = row[parsedData.headers.indexOf(columnMapping.cargo)] || 0;
+            const abonoValue = row[parsedData.headers.indexOf(columnMapping.abono)] || 0;
+            const cargo = parseFloat(cargoValue.toString().replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+            const abono = parseFloat(abonoValue.toString().replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+            importe = abono - cargo; // Positive for income, negative for expense
+          }
+
+          let saldo = 0;
+          if (columnMapping.saldo) {
+            const saldoValue = row[parsedData.headers.indexOf(columnMapping.saldo)];
+            saldo = parseFloat(saldoValue?.toString().replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+          }
+
+          // Skip empty rows
+          if (!fecha || !concepto || importe === 0) continue;
+
+          // Convert Spanish date to ISO
+          const [day, month, year] = fecha.split('/');
+          const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+
+          // Create movement object
+          const movement = {
+            accountId: parseInt(selectedAccount),
+            date: isoDate,
+            amount: importe,
+            description: concepto,
+            type: (importe > 0 ? 'Ingreso' : 'Gasto') as 'Ingreso' | 'Gasto',
+            origin: 'Extracto' as 'Extracto',
+            movementState: 'Confirmado' as 'Confirmado',
+            category: inferCategoryFromDescription(concepto),
+            tags: inferTagsFromDescription(concepto),
+            isAutoTagged: true,
+            balance: saldo,
+            importBatch: `inbox_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: 'pendiente' as 'pendiente'
+          };
+
+          movements.push(movement);
+        } catch (error) {
+          console.warn('Error parsing row:', row, error);
+          // Continue with other rows
+        }
+      }
+
+      // Insert movements into database
+      for (const movement of movements) {
+        await db.add('movements', movement);
+      }
 
       // Save template if custom mapping was used
       let templateSaved = false;
@@ -311,8 +375,8 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
 
       const result: ImportResult = {
         success: true,
-        movementsCreated: validRows,
-        errors: totalRows > validRows ? [`${totalRows - validRows} filas con errores de formato`] : [],
+        movementsCreated: movements.length,
+        errors: dataRows.length > movements.length ? [`${dataRows.length - movements.length} filas omitidas por errores de formato`] : [],
         templateSaved
       };
 
@@ -327,6 +391,58 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Helper functions for smart categorization
+  const inferCategoryFromDescription = (description: string): string | undefined => {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('luz') || desc.includes('endesa') || desc.includes('iberdrola')) {
+      return 'Suministros › Luz';
+    }
+    if (desc.includes('agua') || desc.includes('aqualia') || desc.includes('cyii')) {
+      return 'Suministros › Agua';
+    }
+    if (desc.includes('gas') || desc.includes('naturgy')) {
+      return 'Suministros › Gas';
+    }
+    if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || desc.includes('vodafone')) {
+      return 'Suministros › Internet';
+    }
+    if (desc.includes('alquiler') || desc.includes('rent')) {
+      return 'Alquiler › Ingresos';
+    }
+    if (desc.includes('ibi') || desc.includes('contribucion')) {
+      return 'Tributos › IBI';
+    }
+    if (desc.includes('comunidad') || desc.includes('administrador')) {
+      return 'Tributos › Comunidad';
+    }
+    if (desc.includes('transferencia') || desc.includes('traspaso')) {
+      return 'Transferencias';
+    }
+    
+    return undefined;
+  };
+
+  const inferTagsFromDescription = (description: string): string[] => {
+    const tags: string[] = [];
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('domiciliacion') || desc.includes('domiciliado')) {
+      tags.push('domiciliado');
+    }
+    if (desc.includes('transferencia')) {
+      tags.push('transferencia');
+    }
+    if (desc.includes('bizum')) {
+      tags.push('bizum');
+    }
+    if (desc.includes('tarjeta') || desc.includes('tpv')) {
+      tags.push('tarjeta');
+    }
+    
+    return tags;
   };
 
   if (!isOpen) return null;

@@ -11,25 +11,25 @@
   --brand-navy: #0E2A47;   /* ATLAS azul marino - legacy compatibility */
   --brand-teal: #00B8C4;   /* ATLAS teal/acento - RESERVED FOR PULSE ONLY */
 
-  /* Horizon Module - Official Design System Tokens (Updated per requirements) */
-  --hz-primary: #0A84FF;      /* Primary Horizon blue #0A84FF */
-  --hz-primary-dark: #0A3D62; /* Primary dark (text/borders) #0A3D62 */
-  --hz-bg: #F7F9FC;           /* Soft background as per specification */
-  --hz-text: #111827;         /* Text color #111827 */
+  /* Horizon Module - ATLAS Design System Tokens (Updated per requirements) */
+  --hz-primary: #0D1B2A;          /* ATLAS Primary blue #0D1B2A */
+  --hz-primary-dark: #0D1B2A;     /* Primary dark same as primary */
+  --hz-bg: #F8F9FA;               /* ATLAS background #F8F9FA */
+  --hz-text: #0D1B2A;             /* ATLAS primary for text */
   
-  /* Horizon Semantic States - Official Tokens per requirements */
-  --hz-success: #10B981;      /* Success green #10B981 */
-  --hz-warning: #F59E0B;      /* Warning yellow #F59E0B */
-  --hz-error: #EF4444;        /* Error red #EF4444 */
-  --hz-info: #0A84FF;         /* Info blue same as primary */
+  /* Horizon Semantic States - ATLAS Tokens per requirements */
+  --hz-success: #28A745;          /* ATLAS Success green #28A745 */
+  --hz-warning: #FFC107;          /* ATLAS Warning yellow #FFC107 */
+  --hz-error: #DC3545;            /* ATLAS Error red #DC3545 */
+  --hz-info: #0D1B2A;             /* Info blue same as primary */
   
-  /* Horizon Neutral Colors per requirements */
-  --hz-neutral-900: #111827;  /* Darkest text */
-  --hz-neutral-700: #374151;  /* Secondary text */
-  --hz-neutral-500: #6B7280;  /* Muted text */
-  --hz-neutral-300: #D1D5DB;  /* Light borders */
-  --hz-neutral-100: #F3F4F6;  /* Light backgrounds */
-  --hz-card-bg: #FFFFFF;      /* Card backgrounds */
+  /* Horizon Neutral Colors per ATLAS requirements */
+  --hz-neutral-900: #0D1B2A;      /* Darkest text - ATLAS primary */
+  --hz-neutral-700: #6C757D;      /* Secondary text - ATLAS grey */
+  --hz-neutral-500: #6C757D;      /* Muted text - ATLAS grey */
+  --hz-neutral-300: #DEE2E6;      /* Light borders */
+  --hz-neutral-100: #F8F9FA;      /* Light backgrounds - ATLAS bg */
+  --hz-card-bg: #FFFFFF;          /* Card backgrounds */
   
   /* NO TURQUOISE - Reserved for Pulse only */
   
