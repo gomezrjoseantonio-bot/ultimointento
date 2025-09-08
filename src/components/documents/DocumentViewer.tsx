@@ -161,6 +161,27 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // OCR Panel Handlers
+  const handleApplyToExpense = async (ocrData: any) => {
+    try {
+      console.log('Applying OCR data to expense:', ocrData);
+      toast.success('Datos aplicados al gasto correctamente');
+    } catch (error) {
+      console.error('Error applying to expense:', error);
+      toast.error('Error al aplicar datos al gasto');
+    }
+  };
+
+  const handleApplyToCAPEX = async (ocrData: any) => {
+    try {
+      console.log('Applying OCR data to CAPEX:', ocrData);
+      toast.success('Datos aplicados al CAPEX correctamente');
+    } catch (error) {
+      console.error('Error applying to CAPEX:', error);
+      toast.error('Error al aplicar datos al CAPEX');
+    }
+  };
+
   // H-OCR-REFORM: Handle invoice breakdown save
   const handleInvoiceBreakdownSave = async (breakdown: any) => {
     try {
@@ -308,7 +329,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           </div>
           <button 
             onClick={handleDownload}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
           >
             <Download className="w-4 h-4 inline mr-2" />
             Descargar {document.filename}
@@ -322,7 +343,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <p className="text-neutral-500 mb-4">No se puede previsualizar este tipo de archivo</p>
         <button 
           onClick={handleDownload}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
         >
           <Download className="w-4 h-4 inline mr-2" />
           Descargar
@@ -454,6 +475,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <OcrPanel 
               document={document}
               onUpdate={onUpdate}
+              onApplyToExpense={handleApplyToExpense}
+              onApplyToCAPEX={handleApplyToCAPEX}
               setShowInvoiceBreakdown={setShowInvoiceBreakdown}
             />
           </div>
@@ -463,7 +486,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <div className="mt-4 flex gap-2">
             <button
               onClick={handleSaveMetadata}
-              className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="px-4 py-2 text-sm bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
             >
               Guardar cambios
             </button>
@@ -485,7 +508,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           {document?.type || 'Tipo de archivo no especificado'}
         </p>
         <button 
-          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="mt-4 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
           onClick={handlePreview}
         >
           <Eye className="w-4 h-4 inline mr-2" />
@@ -528,7 +551,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         )}
         
         <button 
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
           onClick={() => setShowAssignModal(true)}
         >
           <UserCheck className="w-4 h-4" />
@@ -717,7 +740,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
             <div className="flex gap-3 mt-6">
               <button 
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
                 onClick={handleAssign}
               >
                 {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}

@@ -109,7 +109,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
     switch (docType.toLowerCase()) {
       case 'factura':
       case 'recibo':
-        return <FileText className="w-5 h-5 text-primary-600" />;
+        return <FileText className="w-5 h-5 text-navy-700" />;
       case 'contrato':
         return <FileText className="w-5 h-5 text-success-600" />;
       case 'extracto bancario':
@@ -184,14 +184,14 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               placeholder="Buscar por nombre, proveedor o tipo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-neutral-200 rounded-xl focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+              className="w-full pl-10 pr-3 py-2 border border-neutral-200 rounded-xl focus:border-navy-600 focus:ring-2 focus:ring-navy-200"
             />
           </div>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 border border-neutral-200 rounded-xl focus:border-primary-500"
+            className="px-3 py-2 border border-neutral-200 rounded-xl focus:border-navy-600"
           >
             <option value="all">Todos los tipos</option>
             <option value="factura">Facturas</option>
@@ -204,7 +204,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 border border-neutral-200 rounded-xl focus:border-primary-500"
+            className="px-3 py-2 border border-neutral-200 rounded-xl focus:border-navy-600"
           >
             <option value="all">Todos los estados</option>
             <option value="ready">Listo para publicar</option>
@@ -226,14 +226,14 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
 
       {/* Bulk actions */}
       {selectedDocs.length > 0 && (
-        <div className="p-4 bg-primary-50 border-b border-primary-200">
+        <div className="p-4 bg-navy-50 border-b border-navy-200">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-primary-900">
+            <span className="text-sm font-medium text-navy-900">
               {selectedDocs.length} seleccionados · {readyToPublishCount} listos
             </span>
             <button
               onClick={() => setSelectedDocs([])}
-              className="text-xs text-primary-600 hover:text-primary-800"
+              className="text-xs text-navy-700 hover:text-navy-900"
             >
               Limpiar selección
             </button>
@@ -242,7 +242,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => onAssignInmueble(selectedDocuments)}
-              className="px-3 py-1 bg-white border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 text-xs"
+              className="px-3 py-1 bg-white border border-navy-200 text-navy-700 rounded-lg hover:bg-navy-50 text-xs"
             >
               <Building className="w-3 h-3 inline mr-1" />
               Asignar Inmueble
@@ -250,7 +250,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             
             <button
               onClick={() => onAssignAccount(selectedDocuments)}
-              className="px-3 py-1 bg-white border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 text-xs"
+              className="px-3 py-1 bg-white border border-navy-200 text-navy-700 rounded-lg hover:bg-navy-50 text-xs"
             >
               <CreditCard className="w-3 h-3 inline mr-1" />
               Asignar Cuenta
@@ -258,14 +258,14 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             
             <button
               onClick={() => onChooseCategory(selectedDocuments)}
-              className="px-3 py-1 bg-white border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 text-xs"
+              className="px-3 py-1 bg-white border border-navy-200 text-navy-700 rounded-lg hover:bg-navy-50 text-xs"
             >
               Elegir Categoría
             </button>
             
             <button
               onClick={() => onAdjustAmounts(selectedDocuments)}
-              className="px-3 py-1 bg-white border border-primary-200 text-primary-700 rounded-lg hover:bg-primary-50 text-xs"
+              className="px-3 py-1 bg-white border border-navy-200 text-navy-700 rounded-lg hover:bg-navy-50 text-xs"
             >
               Ajustar totales/IVA
             </button>
@@ -273,7 +273,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             {readyToPublishCount > 0 && (
               <button
                 onClick={() => onPublishBatch(selectedDocuments.filter(d => d.isReadyToPublish))}
-                className="px-3 py-1 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs font-medium"
+                className="px-3 py-1 bg-navy-700 text-white rounded-lg hover:bg-navy-800 text-xs font-medium"
               >
                 Publicar selección ({readyToPublishCount})
               </button>
@@ -299,7 +299,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               type="checkbox"
               checked={filteredDocuments.length > 0 && selectedDocs.length === filteredDocuments.length}
               onChange={handleSelectAll}
-              className="mr-3 h-4 w-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+              className="mr-3 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
             />
             <span className="text-sm text-neutral-700">
               Seleccionar todos ({filteredDocuments.length})
@@ -309,7 +309,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
 
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-700 mx-auto"></div>
             <p className="mt-2 text-sm text-neutral-600">Cargando documentos...</p>
           </div>
         ) : filteredDocuments.length === 0 ? (
@@ -336,7 +336,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                     e.stopPropagation();
                     handleSelectDocument(doc.id, e.target.checked);
                   }}
-                  className="mt-1 h-4 w-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
                 />
 
                 {/* Document thumbnail/icon */}
@@ -405,7 +405,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                                   ? 'bg-error-100 text-error-800'
                                   : reason.type === 'warning'
                                   ? 'bg-warning-100 text-yellow-800'
-                                  : 'bg-primary-100 text-primary-800'
+                                  : 'bg-navy-100 text-navy-800'
                               }`}
                             >
                               {reason.message}

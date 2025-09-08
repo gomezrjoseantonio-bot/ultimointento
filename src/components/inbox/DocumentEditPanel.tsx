@@ -614,7 +614,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
           <button
             onClick={handleSave}
             disabled={validationErrors.length > 0}
-            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-navy-700 hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Guardar y archivar
           </button>
