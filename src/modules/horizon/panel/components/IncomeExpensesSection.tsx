@@ -197,16 +197,14 @@ function generateTimelineData(dateRange: string): DailyData[] {
   const days = dateRange === 'today' ? 1 : dateRange === '7days' ? 7 : 30;
   const data: DailyData[] = [];
   
-  // Sample recurring items
-  const recurringItems = [
-    { description: 'Nómina', amount: 3500, type: 'income' as const, account: 'Santander', dayOfMonth: 1 },
-    { description: 'Alquiler Piso A', amount: 1200, type: 'income' as const, account: 'Santander', dayOfMonth: 5 },
-    { description: 'Alquiler Piso B', amount: 950, type: 'income' as const, account: 'ING', dayOfMonth: 7 },
-    { description: 'IBI', amount: 150, type: 'expense' as const, account: 'Santander', dayOfMonth: 10 },
-    { description: 'Hipoteca', amount: 800, type: 'expense' as const, account: 'BBVA', dayOfMonth: 15 },
-    { description: 'Comunidad Piso A', amount: 120, type: 'expense' as const, account: 'Santander', dayOfMonth: 20 },
-    { description: 'Seguro', amount: 85, type: 'expense' as const, account: 'ING', dayOfMonth: 25 }
-  ];
+  // Real implementation would get this from actual contracts and scheduled expenses
+  const recurringItems: Array<{
+    description: string;
+    amount: number;
+    type: 'income' | 'expense';
+    account: string;
+    dayOfMonth: number;
+  }> = [];
 
   let cumulativeBalance = 0;
 

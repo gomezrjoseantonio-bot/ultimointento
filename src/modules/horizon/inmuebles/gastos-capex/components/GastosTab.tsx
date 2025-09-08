@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
-import { createSampleUnifiedExpenses } from '../../../../../demo/unifiedExpensesDemo';
+
 import toast from 'react-hot-toast';
 
 interface GastosTabProps {
@@ -91,10 +91,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         return expense;
       });
 
-      // Add demo data if no expenses exist
-      const finalExpenses = migratedExpenses.length === 0 ? createSampleUnifiedExpenses() : migratedExpenses;
-
-      setExpenses(finalExpenses);
+      setExpenses(migratedExpenses);
       setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
