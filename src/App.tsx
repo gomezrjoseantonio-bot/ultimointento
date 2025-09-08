@@ -43,6 +43,7 @@ const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyecc
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
+const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
 const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
@@ -377,12 +378,18 @@ function App() {
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
               <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
-              {/* Redirect bancos-cuentas to unified location */}
-              <Route path="bancos-cuentas" element={<Navigate to="/tesoreria#cuentas" replace />} />
+              {/* ATLAS: Redirect old tesoreria cuentas to new location */}
+              <Route path="bancos-cuentas" element={<Navigate to="/configuracion/cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
               <Route path="usuarios-roles" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <UsuariosRoles />
+                </React.Suspense>
+              } />
+              {/* ATLAS: New Cuentas section with Bancos and Reglas subtabs */}
+              <Route path="cuentas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Cuentas />
                 </React.Suspense>
               } />
               {/* Shared configuration - available for both modules */}
