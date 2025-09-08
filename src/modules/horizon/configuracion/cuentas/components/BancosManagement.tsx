@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Banknote, Info, Plus, Edit2, Trash2, Upload, X, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
+import { Banknote, Info, Edit2, Trash2, Upload, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
 import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFromStorage } from '../../../../../services/logoUploadService';
@@ -21,7 +21,12 @@ interface AccountFormData {
  * - Delete with cascading confirmation dialog
  * - IBAN masking and logo display
  */
-const BancosManagement: React.FC = () => {
+
+export interface BancosManagementRef {
+  triggerNewAccount: () => void;
+}
+
+const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -85,6 +90,11 @@ const BancosManagement: React.FC = () => {
     setShowModal(true);
   };
 
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    triggerNewAccount: handleNewAccount
+  }));
+
   const handleEditAccount = (account: Account) => {
     setEditingAccount(account);
     setFormData({
@@ -105,9 +115,8 @@ const BancosManagement: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!formData.alias.trim()) {
-      errors.alias = 'El alias es obligatorio';
-    } else if (formData.alias.trim().length < 2) {
+    // ALIAS is optional - only validate if provided
+    if (formData.alias.trim() && formData.alias.trim().length < 2) {
       errors.alias = 'El alias debe tener al menos 2 caracteres';
     }
 
@@ -115,7 +124,10 @@ const BancosManagement: React.FC = () => {
       errors.bank = 'El banco es obligatorio';
     }
 
-    if (formData.iban && !validateIBAN(formData.iban)) {
+    // IBAN is now mandatory
+    if (!formData.iban.trim()) {
+      errors.iban = 'El IBAN es obligatorio';
+    } else if (!validateIBAN(formData.iban)) {
       errors.iban = 'Formato de IBAN inválido';
     }
 
@@ -173,9 +185,9 @@ const BancosManagement: React.FC = () => {
       }
 
       const accountData = {
-        alias: formData.alias.trim(),
+        alias: formData.alias.trim() || undefined,
         bank: formData.bank.trim(),
-        iban: formData.iban ? formData.iban.replace(/\s/g, '').toUpperCase() : undefined,
+        iban: formData.iban.replace(/\s/g, '').toUpperCase(),
         openingBalance: 0,
         includeInConsolidated: true,
         logo_url: logoUrl || undefined
@@ -284,13 +296,6 @@ const BancosManagement: React.FC = () => {
             <h2 className="text-lg font-medium text-atlas-navy-1">
               Cuentas bancarias ({accounts.length})
             </h2>
-            <button
-              onClick={handleNewAccount}
-              className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-5 h-5 mr-2" style={{ strokeWidth: 1.5 }} />
-              Nueva cuenta
-            </button>
           </div>
         </div>
 
@@ -316,7 +321,7 @@ const BancosManagement: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <h3 className="font-medium text-atlas-navy-1">{account.name}</h3>
+                      <h3 className="font-medium text-atlas-navy-1">{account.name || `${account.bank} - ${account.iban.slice(-4)}`}</h3>
                       <p className="text-sm text-text-gray">{account.bank}</p>
                       <p className="text-sm text-text-gray font-mono">
                         {maskIBAN(account.iban)}
@@ -371,7 +376,7 @@ const BancosManagement: React.FC = () => {
               {/* Alias Field */}
               <div>
                 <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  Alias *
+                  Alias (opcional)
                 </label>
                 <input
                   type="text"
@@ -411,7 +416,7 @@ const BancosManagement: React.FC = () => {
               {/* IBAN Field */}
               <div>
                 <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  IBAN (opcional)
+                  IBAN *
                 </label>
                 <input
                   type="text"
@@ -515,7 +520,7 @@ const BancosManagement: React.FC = () => {
               </p>
               
               <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                <p className="text-sm font-medium text-atlas-navy-1">{deleteConfirmation.name}</p>
+                <p className="text-sm font-medium text-atlas-navy-1">{deleteConfirmation.name || `${deleteConfirmation.bank} - ${deleteConfirmation.iban.slice(-4)}`}</p>
                 <p className="text-sm text-text-gray">{deleteConfirmation.bank}</p>
                 <p className="text-sm text-text-gray font-mono">{maskIBAN(deleteConfirmation.iban)}</p>
               </div>
@@ -542,6 +547,6 @@ const BancosManagement: React.FC = () => {
       )}
     </div>
   );
-};
+});
 
 export default BancosManagement;

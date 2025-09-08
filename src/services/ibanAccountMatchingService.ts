@@ -214,7 +214,7 @@ export async function matchAccountByIBAN(
           cuenta_id: exactMatch.id,
           matches: [{
             cuenta_id: exactMatch.id!,
-            account_name: exactMatch.name,
+            account_name: exactMatch.name || `${exactMatch.bank} - ${exactMatch.iban.slice(-4)}`,
             iban: exactMatch.iban,
             last4: exactMatch.iban?.slice(-4) || '',
             confidence: 0.95
@@ -233,7 +233,7 @@ export async function matchAccountByIBAN(
       for (const account of last4Matches) {
         matches.push({
           cuenta_id: account.id!,
-          account_name: account.name,
+          account_name: account.name || `${account.bank} - ${account.iban.slice(-4)}`,
           iban: account.iban,
           last4: account.iban?.slice(-4) || '',
           confidence: 0.7
@@ -281,7 +281,7 @@ export async function matchAccountByIBAN(
 export function getAccountUsageDisplay(account: Account): string {
   // This would ideally come from account.usage field
   // For now, infer from account name/type
-  const name = account.name.toLowerCase();
+  const name = (account.name || account.bank).toLowerCase();
   
   if (name.includes('personal') || name.includes('particular')) {
     return 'Personal';
