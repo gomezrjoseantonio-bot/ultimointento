@@ -14,6 +14,7 @@ import {
 import { initDB, Account, Movement, MovementType, MovementOrigin, MovementState } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { showSuccess, showError } from '../../../../services/toastService';
+import { treasuryAPI } from '../../../../services/treasuryApiService'; // FIX PACK v2.0
 import ImportModal from './ImportModal';
 import NewMovementModal from './NewMovementModal';
 
@@ -34,6 +35,7 @@ const MovimientosV1: React.FC = () => {
   // Filters state
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
   const [excludePersonal, setExcludePersonal] = useState(false);
+  const [includeInactive, setIncludeInactive] = useState(false); // FIX PACK v2.0: Include inactive accounts toggle
   const [dateFilter, setDateFilter] = useState('30d');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
@@ -50,21 +52,17 @@ const MovimientosV1: React.FC = () => {
   const ITEMS_PER_PAGE = 50;
 
   // Load data
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const db = await initDB();
       
-      // Load Horizon accounts
-      const allAccounts = await db.getAll('accounts');
+      // FIX PACK v2.0: Load Horizon accounts using treasury API with inactive support
+      const allAccounts = await treasuryAPI.accounts.getAccounts(includeInactive);
       const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
       setAccounts(horizonAccounts);
       
       // Load movements for Horizon accounts
+      const db = await initDB();
       const allMovements = await db.getAll('movements');
       const horizonMovements = allMovements.filter(mov => 
         horizonAccounts.some(acc => acc.id === mov.accountId)
@@ -89,7 +87,11 @@ const MovimientosV1: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [includeInactive]); // FIX PACK v2.0: Depend on includeInactive
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Filter movements
   const filteredMovements = useCallback(() => {
@@ -227,8 +229,17 @@ const MovimientosV1: React.FC = () => {
     return account ? {
       name: account.name,
       bank: account.bank,
-      logo: account.logo_url || '/placeholder-bank.png'
-    } : { name: 'Cuenta desconocida', bank: '', logo: '/placeholder-bank.png' };
+      logo: account.logo_url || '/placeholder-bank.png',
+      isActive: account.isActive // FIX PACK v2.0: Include active status
+    } : { name: 'Cuenta desconocida', bank: '', logo: '/placeholder-bank.png', isActive: false };
+  };
+
+  // FIX PACK v2.0: Check if any selected accounts are inactive
+  const hasInactiveSelectedAccounts = () => {
+    return selectedAccounts.some(accountId => {
+      const account = accounts.find(acc => acc.id === accountId);
+      return account && !account.isActive;
+    });
   };
 
   // Totals calculation
@@ -287,11 +298,23 @@ const MovimientosV1: React.FC = () => {
                 }}
                 className="text-sm border border-hz-neutral-300 rounded px-2 py-1"
               >
-                {accounts.map(account => (
+                {/* FIX PACK v2.0: Separate active and inactive accounts */}
+                {accounts.filter(acc => acc.isActive).map(account => (
                   <option key={account.id} value={account.id}>
                     {account.name} ({account.bank})
                   </option>
                 ))}
+                {includeInactive && accounts.some(acc => !acc.isActive) && (
+                  <>
+                    <optgroup label="Cuentas desactivadas">
+                      {accounts.filter(acc => !acc.isActive).map(account => (
+                        <option key={account.id} value={account.id}>
+                          {account.name} ({account.bank}) - Desactivada
+                        </option>
+                      ))}
+                    </optgroup>
+                  </>
+                )}
               </select>
             </div>
 
@@ -304,6 +327,17 @@ const MovimientosV1: React.FC = () => {
                 className="rounded border-hz-neutral-300"
               />
               Excluir personal
+            </label>
+
+            {/* FIX PACK v2.0: Include Inactive Accounts Toggle */}
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(e) => setIncludeInactive(e.target.checked)}
+                className="rounded border-hz-neutral-300"
+              />
+              Incluir desactivadas
             </label>
 
             {/* Date Range */}
@@ -384,6 +418,18 @@ const MovimientosV1: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* FIX PACK v2.0: Banner for inactive accounts */}
+      {hasInactiveSelectedAccounts() && (
+        <div className="bg-amber-50 border border-amber-200 px-6 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 text-amber-600">⚠️</div>
+            <p className="text-sm text-amber-800">
+              <strong>Aviso:</strong> Has seleccionado cuentas desactivadas. Puedes seguir viendo su histórico pero no se pueden crear nuevos movimientos en ellas.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Bulk Actions Bar */}
       {selectedMovements.length > 0 && (
@@ -664,6 +710,7 @@ const MovimientosV1: React.FC = () => {
               onClick={() => {
                 setSelectedAccounts([]);
                 setExcludePersonal(false);
+                setIncludeInactive(false); // FIX PACK v2.0: Reset include inactive
                 setDateFilter('30d');
                 setStatusFilter('Todos');
                 setTypeFilter('Todos');

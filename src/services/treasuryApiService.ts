@@ -45,12 +45,21 @@ export function parseEuropeanNumber(value: string | number): number {
  */
 export class TreasuryAccountsAPI {
   /**
-   * GET /api/treasury/accounts
+   * GET /api/treasury/accounts?include_inactive=true|false
+   * FIX PACK v2.0: Support filtering by active/inactive state
    */
-  static async getAccounts(): Promise<Account[]> {
+  static async getAccounts(include_inactive: boolean = false): Promise<Account[]> {
     const db = await initDB();
     const allAccounts = await db.getAll('accounts');
-    return allAccounts.filter(acc => acc.isActive);
+    
+    // Never show deleted accounts (deleted_at is not null)
+    const nonDeletedAccounts = allAccounts.filter(acc => !acc.deleted_at);
+    
+    if (include_inactive) {
+      return nonDeletedAccounts; // Return both active and inactive
+    } else {
+      return nonDeletedAccounts.filter(acc => acc.isActive); // Only active
+    }
   }
 
   /**
@@ -145,7 +154,7 @@ export class TreasuryAccountsAPI {
 
   /**
    * DELETE /api/treasury/accounts/:id
-   * Deactivates an account instead of hard deleting it to preserve data integrity
+   * FIX PACK v2.0: Deactivates an account (is_active = false, deleted_at = NULL)
    */
   static async deactivateAccount(id: number): Promise<Account> {
     const db = await initDB();
@@ -171,6 +180,7 @@ export class TreasuryAccountsAPI {
     const deactivatedAccount: Account = {
       ...existingAccount,
       isActive: false,
+      deleted_at: undefined, // Ensure deleted_at remains null for deactivation
       updatedAt: new Date().toISOString()
     };
 
@@ -188,6 +198,194 @@ export class TreasuryAccountsAPI {
     }
 
     return deactivatedAccount;
+  }
+
+  /**
+   * PATCH /api/treasury/accounts/:id { is_active }
+   * FIX PACK v2.0: Activates a previously deactivated account
+   */
+  static async activateAccount(id: number): Promise<Account> {
+    const db = await initDB();
+    
+    // Get existing account
+    const existingAccount = await db.get('accounts', id);
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    if (existingAccount.deleted_at) {
+      throw new Error('No se puede activar una cuenta eliminada');
+    }
+
+    if (existingAccount.isActive) {
+      throw new Error('La cuenta ya está activa');
+    }
+
+    const activatedAccount: Account = {
+      ...existingAccount,
+      isActive: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    await db.put('accounts', activatedAccount);
+    
+    // Emit domain event for account activation
+    try {
+      await emitTreasuryEvent({
+        type: 'ACCOUNT_CHANGED',
+        payload: { account: activatedAccount, previousAccount: existingAccount }
+      });
+    } catch (error) {
+      console.error('Error emitting account activation event:', error);
+      // Don't fail the operation if event emission fails
+    }
+
+    return activatedAccount;
+  }
+
+  /**
+   * DELETE /api/treasury/accounts/:id (hard delete)
+   * FIX PACK v2.0: Attempts hard delete, returns 409 if account has movements
+   */
+  static async deleteAccount(id: number): Promise<{ success: boolean; requiresWizard?: boolean; refs_summary?: any }> {
+    const db = await initDB();
+    
+    // Get existing account
+    const existingAccount = await db.get('accounts', id);
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    // Check for movements
+    const allMovements = await db.getAll('movements');
+    const accountMovements = allMovements.filter(m => m.accountId === id);
+    
+    if (accountMovements.length > 0) {
+      // Return conflict status - requires wizard
+      return {
+        success: false,
+        requiresWizard: true,
+        refs_summary: {
+          movements: accountMovements.length,
+          // TODO: Add other reference types like automatization rules
+        }
+      };
+    }
+
+    // Safe to hard delete - no movements
+    await db.delete('accounts', id);
+    
+    // Emit domain event for account deletion
+    try {
+      await emitTreasuryEvent({
+        type: 'ACCOUNT_DELETED',
+        payload: { accountId: id, account: existingAccount }
+      });
+    } catch (error) {
+      console.error('Error emitting account deletion event:', error);
+      // Don't fail the operation if event emission fails
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * POST /api/treasury/accounts/:id/delete_wizard
+   * FIX PACK v2.0: Guided deletion for accounts with movements
+   */
+  static async executeDeleteWizard(id: number, decisions: {
+    movements: 'reassign' | 'archive';
+    targetAccountId?: number; // Required if movements = 'reassign'
+    // TODO: Add automation rules handling
+  }): Promise<{ success: boolean }> {
+    const db = await initDB();
+    
+    // Get existing account
+    const existingAccount = await db.get('accounts', id);
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    // Get movements
+    const allMovements = await db.getAll('movements');
+    const accountMovements = allMovements.filter(m => m.accountId === id);
+    
+    if (accountMovements.length === 0) {
+      // No movements, just hard delete
+      await db.delete('accounts', id);
+      return { success: true };
+    }
+
+    // Handle movements based on decision
+    if (decisions.movements === 'reassign') {
+      if (!decisions.targetAccountId) {
+        throw new Error('Target account ID required for reassignment');
+      }
+      
+      // Verify target account exists and is active
+      const targetAccount = await db.get('accounts', decisions.targetAccountId);
+      if (!targetAccount || !targetAccount.isActive || targetAccount.deleted_at) {
+        throw new Error('Cuenta destino no válida');
+      }
+
+      // Reassign all movements to target account
+      for (const movement of accountMovements) {
+        const updatedMovement = {
+          ...movement,
+          accountId: decisions.targetAccountId,
+          updatedAt: new Date().toISOString()
+        };
+        await db.put('movements', updatedMovement);
+      }
+      
+    } else if (decisions.movements === 'archive') {
+      // TODO: Implement archive account creation
+      // For now, we'll mark movements as archived but keep them
+      // This should create a virtual account_archive_<id> 
+      console.warn('Archive functionality not yet implemented');
+      throw new Error('Función de archivo aún no implementada');
+    }
+
+    // Delete the account after reassigning/archiving movements
+    await db.delete('accounts', id);
+    
+    // Emit domain event for wizard completion
+    try {
+      await emitTreasuryEvent({
+        type: 'ACCOUNT_DELETE_WIZARD_COMPLETED',
+        payload: { 
+          accountId: id, 
+          account: existingAccount,
+          decisions,
+          movedMovements: accountMovements.length
+        }
+      });
+    } catch (error) {
+      console.error('Error emitting delete wizard completion event:', error);
+      // Don't fail the operation if event emission fails
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * FIX PACK v2.0: Validate that an account can have movements created on it
+   */
+  static async validateAccountForMovement(accountId: number): Promise<void> {
+    const db = await initDB();
+    
+    const account = await db.get('accounts', accountId);
+    if (!account) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    if (account.deleted_at) {
+      throw new Error('No se pueden crear movimientos en una cuenta eliminada');
+    }
+
+    if (!account.isActive) {
+      throw new Error('No se pueden crear movimientos en una cuenta desactivada');
+    }
   }
 }
 

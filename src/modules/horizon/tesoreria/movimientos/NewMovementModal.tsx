@@ -207,8 +207,13 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
               >
                 <option value="">Seleccionar cuenta...</option>
                 {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} ({account.bank})
+                  <option 
+                    key={account.id} 
+                    value={account.id}
+                    disabled={!account.isActive}
+                    title={!account.isActive ? "No disponible: cuenta desactivada" : ""}
+                  >
+                    {account.name} ({account.bank}){!account.isActive ? ' - Desactivada' : ''}
                   </option>
                 ))}
               </select>
@@ -253,8 +258,13 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                   {accounts
                     .filter(account => account.id?.toString() !== form.accountId)
                     .map(account => (
-                      <option key={account.id} value={account.id}>
-                        {account.name} ({account.bank})
+                      <option 
+                        key={account.id} 
+                        value={account.id}
+                        disabled={!account.isActive}
+                        title={!account.isActive ? "No disponible: cuenta desactivada" : ""}
+                      >
+                        {account.name} ({account.bank}){!account.isActive ? ' - Desactivada' : ''}
                       </option>
                     ))}
                 </select>

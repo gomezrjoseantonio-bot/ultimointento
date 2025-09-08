@@ -506,6 +506,7 @@ export interface Account {
   includeInConsolidated?: boolean; // New field for treasury_accounts requirement
   currency: string;
   isActive: boolean;
+  deleted_at?: string; // FIX PACK v2.0: NULL = not deleted, timestamp = deleted
   minimumBalance?: number; // H9: For treasury alerts
   isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
   // H-HOTFIX: Usage scope for reconciliation prioritization

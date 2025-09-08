@@ -6,7 +6,9 @@ export type TreasuryDomainEvent =
   | { type: 'MOVEMENT_CREATED'; payload: { movement: Movement } }
   | { type: 'MOVEMENT_UPDATED'; payload: { movement: Movement; previousMovement: Movement } }
   | { type: 'MOVEMENT_DELETED'; payload: { movement: Movement } }
-  | { type: 'ACCOUNT_CHANGED'; payload: { account: Account; previousAccount?: Account } };
+  | { type: 'ACCOUNT_CHANGED'; payload: { account: Account; previousAccount?: Account } }
+  | { type: 'ACCOUNT_DELETED'; payload: { accountId: number; account: Account } }
+  | { type: 'ACCOUNT_DELETE_WIZARD_COMPLETED'; payload: { accountId: number; account: Account; decisions: any; movedMovements: number } };
 
 // Event listeners registry
 type EventListener = (event: TreasuryDomainEvent) => Promise<void>;
@@ -227,6 +229,12 @@ addEventListener(async (event) => {
     case 'ACCOUNT_CHANGED':
       // If account properties changed that could affect calculations
       await triggerTreasuryUpdate([event.payload.account.id!]);
+      break;
+      
+    case 'ACCOUNT_DELETED':
+    case 'ACCOUNT_DELETE_WIZARD_COMPLETED':
+      // Full treasury update when accounts are deleted
+      await triggerTreasuryUpdate();
       break;
   }
 });
