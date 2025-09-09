@@ -96,10 +96,11 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
       
       const result = await importBankStatement(options);
       
-      if (!result.success && (result as any).requiresAccountSelection) {
+      if (result.requiresAccountSelection) {
         // Show account selection modal
-        setUnrecognizedIBAN((result as any).detectedIBAN || null);
+        setUnrecognizedIBAN(result.unrecognizedIBAN || null);
         setShowAccountSelection(true);
+        setImporting(false);
         return;
       }
       
@@ -118,12 +119,26 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
         onImportComplete();
         handleClose();
       } else {
-        showError('Error al importar el extracto', 'Verifica que el archivo tenga el formato correcto');
+        // More specific error messages
+        const errorMsg = result.errors > 0 
+          ? `Se produjeron ${result.errors} errores durante la importación`
+          : 'No se pudieron procesar los movimientos del archivo';
+        showError('Error al importar el extracto', errorMsg);
       }
       
     } catch (error) {
       console.error('Import error:', error);
-      showError('Error al importar el extracto', 'Verifica que el archivo tenga el formato correcto');
+      // Better error message based on error type
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      if (errorMessage.includes('No se pudo detectar la cuenta')) {
+        showError('Cuenta no detectada', 'No se pudo detectar la cuenta automáticamente. Selecciónala manualmente.');
+      } else if (errorMessage.includes('archivo no soportado') || errorMessage.includes('formato')) {
+        showError('Formato no soportado', 'Verifica que el archivo sea un extracto bancario válido (CSV, XLS, XLSX)');
+      } else if (errorMessage.includes('suficientes datos')) {
+        showError('Archivo vacío o incompleto', 'El archivo no contiene movimientos válidos para importar');
+      } else {
+        showError('Error al importar el extracto', errorMessage);
+      }
     } finally {
       setImporting(false);
     }

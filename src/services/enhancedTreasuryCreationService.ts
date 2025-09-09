@@ -10,6 +10,7 @@
 
 import { initDB, Movement, Account, Ingreso, Gasto, CAPEX } from './db';
 import { DocumentType } from './unicornioDocumentDetection';
+import { safeMatch } from '../utils/safe';
 
 export type TreasuryOrigin = 'ocr_document' | 'bank_extract' | 'manual_entry';
 
@@ -415,7 +416,7 @@ function parseAmount(value: any): number | undefined {
 
 function extractIBAN(text: string): string | undefined {
   const ibanPattern = /[A-Z]{2}\d{2}[\s]?[\d\s]{16,34}/g;
-  const matches = text.match(ibanPattern);
+  const matches = safeMatch(text, ibanPattern);
   return matches ? matches[0].replace(/\s/g, '') : undefined;
 }
 
@@ -428,7 +429,7 @@ function detectPropertyFromText(text: string): string | undefined {
   ];
   
   for (const pattern of propertyPatterns) {
-    const match = text.match(pattern);
+    const match = safeMatch(text, pattern);
     if (match && match[1]) {
       return match[1].trim();
     }
@@ -444,7 +445,7 @@ function detectVATRate(text: string): number | undefined {
   ];
   
   for (const pattern of vatPatterns) {
-    const match = text.match(pattern);
+    const match = safeMatch(text, pattern);
     if (match) {
       const rate = parseInt(match[1] || match[0]);
       if ([21, 10, 4, 0].includes(rate)) {
@@ -494,7 +495,7 @@ function detectTenantName(text: string): string | undefined {
   ];
   
   for (const pattern of tenantPatterns) {
-    const match = text.match(pattern);
+    const match = safeMatch(text, pattern);
     if (match && match[1]) {
       return match[1].trim();
     }

@@ -3,6 +3,7 @@
 
 import { Account } from './db';
 import { treasuryAPI } from './treasuryApiService';
+import { safeMatch } from '../utils/safe';
 
 export interface IBANExtractionResult {
   iban_completo?: string;     // Full IBAN if found
@@ -98,7 +99,7 @@ function extractIBANFromText(text: string): Omit<IBANExtractionResult, 'source' 
   const maskedIbanRegex = /ES[0-9]{2}[\s*x•-]{0,4}[*x•\s\d]{8,}[\s\d]*([0-9]{4})/gi;
   
   // Look for complete IBAN
-  const completeMatch = text.match(/ES[0-9]{2}[0-9]{20}/gi);
+  const completeMatch = safeMatch(text, /ES[0-9]{2}[0-9]{20}/gi);
   if (completeMatch && completeMatch[0]) {
     const iban = completeMatch[0].replace(/\s/g, '');
     return {
@@ -109,10 +110,10 @@ function extractIBANFromText(text: string): Omit<IBANExtractionResult, 'source' 
   }
   
   // Look for masked IBAN with last 4 digits visible
-  const maskedMatch = text.match(maskedIbanRegex);
+  const maskedMatch = safeMatch(text, maskedIbanRegex);
   if (maskedMatch && maskedMatch[0]) {
     const fullMatch = maskedMatch[0];
-    const last4Match = fullMatch.match(/([0-9]{4})$/);
+    const last4Match = safeMatch(fullMatch, /([0-9]{4})$/);
     if (last4Match) {
       const last4 = last4Match[1];
       const normalizedMask = normalizeIBANMask(fullMatch);
@@ -125,7 +126,7 @@ function extractIBANFromText(text: string): Omit<IBANExtractionResult, 'source' 
   
   // Look for just last 4 digits patterns
   const last4Regex = /\b[0-9]{4}\b/g;
-  const last4Matches = text.match(last4Regex);
+  const last4Matches = safeMatch(text, last4Regex);
   if (last4Matches && last4Matches.length === 1) {
     // Only if there's exactly one 4-digit number, assume it's account last4
     return {
@@ -182,8 +183,8 @@ function normalizeIBANMask(masked: string): string {
   const cleaned = masked.replace(/\s+/g, ' ').trim();
   
   // Extract ES prefix and last 4 digits
-  const esMatch = cleaned.match(/^ES\d{2}/);
-  const last4Match = cleaned.match(/(\d{4})$/);
+  const esMatch = safeMatch(cleaned, /^ES\d{2}/);
+  const last4Match = safeMatch(cleaned, /(\d{4})$/);
   
   if (esMatch && last4Match) {
     return `${esMatch[0]} **** **** ${last4Match[1]}`;

@@ -38,6 +38,10 @@ export interface ImportResult {
   errors: number;
   createdIds: number[];
   batchId: string;
+  // For account selection workflow
+  requiresAccountSelection?: boolean;
+  unrecognizedIBAN?: string;
+  availableAccounts?: Array<{cuenta_id: number; account_name: string; iban?: string; confidence: number}>;
 }
 
 export interface ImportOptions {
@@ -77,7 +81,7 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
           requiresAccountSelection: true,
           unrecognizedIBAN: resolvedAccount.detectedIBAN,
           availableAccounts: resolvedAccount.matches || []
-        } as any; // Extend interface as needed
+        };
       }
       finalAccountId = resolvedAccount.cuenta_id!;
     }
@@ -133,10 +137,25 @@ async function parseFileToRows(file: File): Promise<ParsedRow[]> {
     // Convert to standardized row format
     const amount = typeof movement.amount === 'number' ? movement.amount : parseFloat(String(movement.amount));
     
+    // Ensure UTC date format (YYYY-MM-DD)
+    let valueDate: string;
+    if (movement.date instanceof Date) {
+      valueDate = movement.date.toISOString().split('T')[0];
+    } else if (typeof movement.date === 'string') {
+      // Parse and convert to UTC
+      const parsed = new Date(movement.date);
+      if (isNaN(parsed.getTime())) {
+        // If invalid date, try parsing common formats
+        valueDate = parseAndNormalizeDateString(movement.date);
+      } else {
+        valueDate = parsed.toISOString().split('T')[0];
+      }
+    } else {
+      throw new Error(`Invalid date format in movement: ${movement.date}`);
+    }
+    
     return {
-      value_date: movement.date instanceof Date ? 
-        movement.date.toISOString().split('T')[0] : 
-        movement.date,
+      value_date: valueDate,
       description: movement.description || '',
       amount: Math.abs(amount), // Always store positive, type indicates direction
       type: amount >= 0 ? 'IN' : 'OUT',
@@ -273,6 +292,46 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
     ...results,
     batchId
   };
+}
+
+/**
+ * Parse and normalize date string to UTC format (YYYY-MM-DD)
+ */
+function parseAndNormalizeDateString(dateStr: string): string {
+  // Common Spanish date formats
+  const formats = [
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // DD/MM/YYYY
+    /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+    /(\d{1,2})-(\d{1,2})-(\d{4})/, // DD-MM-YYYY
+  ];
+
+  for (const format of formats) {
+    const match = dateStr.match(format);
+    if (match) {
+      const [, p1, p2, p3] = match;
+      
+      // Determine if it's DD/MM/YYYY or YYYY-MM-DD
+      if (p3.length === 4) {
+        // DD/MM/YYYY or DD-MM-YYYY
+        const day = parseInt(p1, 10);
+        const month = parseInt(p2, 10);
+        const year = parseInt(p3, 10);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.toISOString().split('T')[0];
+      } else {
+        // YYYY-MM-DD
+        const year = parseInt(p1, 10);
+        const month = parseInt(p2, 10);
+        const day = parseInt(p3, 10);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.toISOString().split('T')[0];
+      }
+    }
+  }
+  
+  // Fallback: return current date if unparseable
+  console.warn(`Could not parse date string: ${dateStr}, using current date`);
+  return new Date().toISOString().split('T')[0];
 }
 
 /**

@@ -8,6 +8,8 @@
  * - Error codes for invalid/ambiguous cases
  */
 
+import { safeMatch } from './safe';
+
 export interface ParseResult {
   value: number | null;
   code?: 'DECIMAL_LOSS' | 'INVALID_NUMBER_ES' | 'VALUE_DRIFT';
@@ -47,7 +49,7 @@ export function parseEsNumber(input: string, opts: ParseOptions = {}): ParseResu
 
   // Step 2: Validate against mention text for anti-join protection
   if (mentionText) {
-    const originalDecimalMatch = mentionText.match(/,(\d{1,2})(?!\d)/);
+    const originalDecimalMatch = safeMatch(mentionText, /,(\d{1,2})(?!\d)/);
     if (originalDecimalMatch) {
       const expectedDecimal = originalDecimalMatch[1];
       // If the cleaned version loses the decimal part, it's a join
@@ -62,7 +64,7 @@ export function parseEsNumber(input: string, opts: ParseOptions = {}): ParseResu
   }
 
   // Step 3: Check for multiple commas (invalid)
-  const commaCount = (cleaned.match(/,/g) || []).length;
+  const commaCount = (safeMatch(cleaned, /,/g) || []).length;
   if (commaCount > 1) {
     return { 
       value: null, 
