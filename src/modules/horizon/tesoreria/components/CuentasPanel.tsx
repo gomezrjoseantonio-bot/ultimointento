@@ -829,7 +829,7 @@ const CuentasPanel: React.FC = () => {
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Ir a Configuración > Cuentas
+            Ir a Configuración &gt; Cuentas
           </button>
         </div>
       </div>
