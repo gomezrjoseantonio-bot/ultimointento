@@ -1,23 +1,33 @@
-// UNICORNIO PROMPT - Enhanced Inbox Interface
-// Complete implementation according to exact specifications
-
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
   Upload, Search, X,
   CheckCircle, AlertTriangle, XCircle,
   FileText, Image, FileSpreadsheet, Archive, File,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Clock, Edit
 } from 'lucide-react';
 
 import { DocumentType } from '../services/unicornioDocumentDetection';
 import { processInboxItem, classifyAndArchive } from '../services/unicornioInboxProcessor';
+import { 
+  createTreasuryMovementFromOCR, 
+  createTreasuryMovementFromBankExtract,
+  enhanceOCRFieldExtraction,
+  DocumentOCRFields
+} from '../services/enhancedTreasuryCreationService';
+import { 
+  autoSaveDocument,
+  getTimeUntilExpiration,
+  scheduleCleanupCheck
+} from '../services/enhancedAutoSaveService';
 import DocumentPreview from '../components/DocumentPreview';
 import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
 import DocumentEditPanel from '../components/inbox/DocumentEditPanel';
+import AccountSelectionModal from '../components/modals/AccountSelectionModal';
+import DocumentCorrectionWorkflow from '../components/inbox/DocumentCorrectionWorkflow';
 
 // Estados exactos según especificación
-type DocumentStatus = 'Guardado' | 'Revisión' | 'Error';
+type DocumentStatus = 'Auto-guardado' | 'Revisión' | 'Error' | 'Guardado';
 
 interface UnicornioDocument {
   id: string;
@@ -38,12 +48,21 @@ interface UnicornioDocument {
   
   // Campos internos
   documentType: DocumentType;
-  extractedFields: Record<string, any>;
+  extractedFields: DocumentOCRFields;
   blockingReasons: string[];
   logs: Array<{ timestamp: string; action: string }>;
   expiresAt?: string; // Para retención 72h
   fingerprint?: string;
   revision?: number;
+  
+  // Treasury integration
+  treasuryRecordId?: number;
+  treasuryRecordType?: 'ingreso' | 'gasto' | 'capex' | 'movement';
+  treasuryOrigin?: 'ocr_document' | 'bank_extract';
+  
+  // Auto-save tracking
+  autoSavedAt?: string;
+  isAutoSaved?: boolean;
   
   // Para preview
   file?: File;
@@ -54,18 +73,29 @@ const UnicornioInboxPrompt: React.FC = () => {
   const [documents, setDocuments] = useState<UnicornioDocument[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<UnicornioDocument | null>(null);
   const [statusFilter, setStatusFilter] = useState<'todos' | DocumentStatus>('todos');
-  const [typeFilter] = useState<'todos' | string>('todos');
+  const [typeFilter, setTypeFilter] = useState<'todos' | string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
+  
+  // Enhanced functionality state
+  const [showAccountSelection, setShowAccountSelection] = useState(false);
+  const [pendingBankExtract, setPendingBankExtract] = useState<any>(null);
+  const [showCorrectionWorkflow, setShowCorrectionWorkflow] = useState(false);
+  const [documentToCorrect, setDocumentToCorrect] = useState<UnicornioDocument | null>(null);
+
+  // Initialize cleanup scheduler
+  useEffect(() => {
+    scheduleCleanupCheck();
+  }, []);
 
   // Cleanup expired documents (72h retention)
   useEffect(() => {
     const cleanup = () => {
       const now = new Date();
       setDocuments(prev => prev.filter(doc => {
-        if (doc.status === 'Guardado' && doc.expiresAt) {
+        if (doc.status === 'Auto-guardado' && doc.expiresAt) {
           return new Date(doc.expiresAt) > now;
         }
         return true; // Keep Revisión and Error indefinitely
@@ -78,34 +108,88 @@ const UnicornioInboxPrompt: React.FC = () => {
   }, []);
 
   /**
-   * Core processing function following specification
+   * Enhanced processing function with treasury integration
    */
   const executeProcessInboxItem = useCallback(async (doc: UnicornioDocument, file: File, reprocess = false) => {
     try {
       const result = await processInboxItem(file, doc.filename, { reprocess });
       
+      // Enhanced OCR field extraction
+      const enhancedFields = enhanceOCRFieldExtraction(
+        result.extractedFields,
+        result.documentType,
+        doc.filename
+      );
+
+      // Check if it's a bank extract that needs account selection
+      if (result.documentType === 'extracto_bancario') {
+        // For bank extracts, show account selection first
+        setPendingBankExtract({
+          documentId: doc.id,
+          filename: doc.filename,
+          extractedData: enhancedFields,
+          file
+        });
+        setShowAccountSelection(true);
+        
+        // Update document to show pending account selection
+        const updatedDoc: UnicornioDocument = {
+          ...doc,
+          documentType: result.documentType,
+          extractedFields: enhancedFields,
+          blockingReasons: ['Selección de cuenta bancaria requerida'],
+          logs: [...doc.logs, ...result.logs],
+          status: 'Revisión',
+          revision: (doc.revision || 0) + 1,
+          fingerprint: result.fingerprint,
+          tipo: getDisplayType(result.documentType),
+          treasuryOrigin: 'bank_extract'
+        };
+
+        setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
+        setProcessing(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(doc.id);
+          return newSet;
+        });
+        return;
+      }
+
+      // For other documents, create treasury movement directly
+      const treasuryResult = await createTreasuryMovementFromOCR(
+        doc.id,
+        result.documentType,
+        enhancedFields,
+        doc.filename
+      );
+
       const updatedDoc: UnicornioDocument = {
         ...doc,
         documentType: result.documentType,
-        extractedFields: result.extractedFields,
+        extractedFields: enhancedFields,
         blockingReasons: result.blockingReasons,
         logs: [...doc.logs, ...result.logs],
-        status: result.requiresReview ? 'Revisión' : 'Guardado',
+        status: result.requiresReview ? 'Revisión' : 'Auto-guardado',
         revision: (doc.revision || 0) + 1,
         fingerprint: result.fingerprint,
+        treasuryRecordId: treasuryResult.recordId,
+        treasuryRecordType: treasuryResult.recordType,
+        treasuryOrigin: 'ocr_document',
         
         // Map to table columns
         tipo: getDisplayType(result.documentType),
-        proveedorEmisor: result.extractedFields.proveedor_nombre || result.extractedFields.arrendatario_nombre,
-        importe: result.extractedFields.total_amount || result.extractedFields.renta_mensual,
-        fechaDoc: result.extractedFields.invoice_date || result.extractedFields.fecha_inicio,
-        inmueblePersonal: result.extractedFields.inmueble_alias || 'Personal',
-        ibanDetectado: result.extractedFields.iban_masked || result.extractedFields.iban_detectado,
+        proveedorEmisor: enhancedFields.proveedor_nombre || enhancedFields.arrendatario_nombre,
+        importe: enhancedFields.total_amount,
+        fechaDoc: enhancedFields.invoice_date,
+        inmueblePersonal: enhancedFields.inmueble_alias || 'Personal',
+        ibanDetectado: enhancedFields.iban_masked || enhancedFields.iban_detectado,
         destinoFinal: result.destination,
         
-        // Set expiration for successful documents
-        expiresAt: result.requiresReview ? undefined : 
-          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+        // Set expiration for auto-saved documents
+        expiresAt: !result.requiresReview ? 
+          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() : undefined,
+        autoSavedAt: !result.requiresReview ? new Date().toISOString() : undefined,
+        isAutoSaved: !result.requiresReview
       };
 
       setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
@@ -121,15 +205,21 @@ const UnicornioInboxPrompt: React.FC = () => {
       }
 
       // Show appropriate message
-      if (result.success) {
+      if (treasuryResult.success) {
         if (result.requiresReview) {
           toast.error(`${doc.filename} procesado - requiere revisión`);
         } else {
-          const destination = result.destination || 'destino desconocido';
-          toast.success(`${doc.filename} procesado y archivado automáticamente en ${destination}`);
+          // Auto-save the document
+          await autoSaveDocument(
+            doc.id,
+            doc.filename,
+            result.documentType,
+            enhancedFields
+          );
+          toast.success(`${doc.filename} procesado y auto-guardado (72h)`);
         }
       } else {
-        toast.error(`Error procesando ${doc.filename}`);
+        toast.error(`Error en tesorería: ${treasuryResult.message}`);
       }
 
     } catch (error) {
@@ -152,6 +242,30 @@ const UnicornioInboxPrompt: React.FC = () => {
       toast.error(`Error procesando ${doc.filename}: ${error}`);
     }
   }, [selectedDocument]);
+
+  /**
+   * DISPARADOR OBLIGATORIO 2: Al pulsar "🔁 Reprocesar"
+   */
+  const handleReprocess = useCallback(async (doc: UnicornioDocument) => {
+    if (!doc.file) {
+      toast.error('Archivo no disponible para reprocesar');
+      return;
+    }
+
+    const updatedDoc = {
+      ...doc,
+      logs: [...doc.logs, { timestamp: new Date().toISOString(), action: 'Reprocesamiento iniciado' }]
+    };
+
+    setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
+    setProcessing(prev => {
+      const newSet = new Set(prev);
+      newSet.add(doc.id);
+      return newSet;
+    });
+
+    await executeProcessInboxItem(updatedDoc, doc.file, true);
+  }, [executeProcessInboxItem]);
 
   /**
    * DISPARADOR OBLIGATORIO 1: Al subir archivo
@@ -205,28 +319,108 @@ const UnicornioInboxPrompt: React.FC = () => {
   }, [executeProcessInboxItem]);
 
   /**
-   * DISPARADOR OBLIGATORIO 2: Al pulsar "🔁 Reprocesar"
+   * Handle account selection for bank extracts
    */
-  const handleReprocess = useCallback(async (doc: UnicornioDocument) => {
-    if (!doc.file) {
-      toast.error('Archivo no disponible para reprocesar');
-      return;
-    }
+  const handleAccountSelection = async (accountId: number) => {
+    if (!pendingBankExtract) return;
 
-    const updatedDoc = {
-      ...doc,
-      logs: [...doc.logs, { timestamp: new Date().toISOString(), action: 'Reprocesamiento iniciado' }]
+    try {
+      setProcessing(prev => {
+        const newSet = new Set(prev);
+        newSet.add(pendingBankExtract.documentId);
+        return newSet;
+      });
+
+      // Create treasury movements from bank extract
+      const treasuryResult = await createTreasuryMovementFromBankExtract({
+        accountId,
+        transactions: [
+          {
+            date: pendingBankExtract.extractedData.invoice_date || new Date().toISOString().split('T')[0],
+            amount: pendingBankExtract.extractedData.total_amount || 0,
+            description: `Extracto bancario: ${pendingBankExtract.filename}`,
+            counterparty: pendingBankExtract.extractedData.proveedor_nombre,
+            reference: pendingBankExtract.extractedData.transaction_reference,
+            balance: pendingBankExtract.extractedData.account_balance
+          }
+        ]
+      }, pendingBankExtract.filename);
+
+      // Update document
+      const updatedDoc: UnicornioDocument = {
+        ...documents.find(d => d.id === pendingBankExtract.documentId)!,
+        status: treasuryResult.success ? 'Auto-guardado' : 'Error',
+        blockingReasons: treasuryResult.success ? [] : [treasuryResult.message],
+        treasuryRecordId: treasuryResult.movementId,
+        treasuryRecordType: 'movement',
+        treasuryOrigin: 'bank_extract',
+        logs: [
+          ...documents.find(d => d.id === pendingBankExtract.documentId)!.logs,
+          { timestamp: new Date().toISOString(), action: `Cuenta seleccionada: ${accountId}` },
+          { timestamp: new Date().toISOString(), action: treasuryResult.message }
+        ],
+        expiresAt: treasuryResult.success ? 
+          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() : undefined,
+        autoSavedAt: treasuryResult.success ? new Date().toISOString() : undefined,
+        isAutoSaved: treasuryResult.success
+      };
+
+      setDocuments(prev => prev.map(d => d.id === pendingBankExtract.documentId ? updatedDoc : d));
+
+      if (treasuryResult.success) {
+        toast.success(treasuryResult.message);
+      } else {
+        toast.error(treasuryResult.message);
+      }
+
+    } catch (error) {
+      toast.error('Error al procesar extracto bancario');
+      console.error('Error processing bank extract:', error);
+    } finally {
+      setProcessing(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pendingBankExtract.documentId);
+        return newSet;
+      });
+      setPendingBankExtract(null);
+      setShowAccountSelection(false);
+    }
+  };
+
+  /**
+   * Handle opening document correction workflow
+   */
+  const handleOpenCorrection = (doc: UnicornioDocument) => {
+    setDocumentToCorrect(doc);
+    setShowCorrectionWorkflow(true);
+  };
+
+  /**
+   * Handle completion of document correction
+   */
+  const handleCorrectionComplete = (correctedFields: DocumentOCRFields) => {
+    if (!documentToCorrect) return;
+
+    // Update document with corrected data
+    const updatedDoc: UnicornioDocument = {
+      ...documentToCorrect,
+      extractedFields: correctedFields,
+      status: 'Auto-guardado',
+      blockingReasons: [],
+      logs: [
+        ...documentToCorrect.logs,
+        { timestamp: new Date().toISOString(), action: 'Datos corregidos por usuario' },
+        { timestamp: new Date().toISOString(), action: 'Documento archivado permanentemente' }
+      ],
+      expiresAt: undefined, // No longer auto-expires
+      isAutoSaved: false
     };
 
-    setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
-    setProcessing(prev => {
-      const newSet = new Set(prev);
-      newSet.add(doc.id);
-      return newSet;
-    });
-
-    await executeProcessInboxItem(updatedDoc, doc.file, true);
-  }, [executeProcessInboxItem]);
+    setDocuments(prev => prev.map(d => d.id === documentToCorrect.id ? updatedDoc : d));
+    setShowCorrectionWorkflow(false);
+    setDocumentToCorrect(null);
+    setSelectedDocument(null);
+  };
 
   /**
    * DISPARADOR OBLIGATORIO 3: Al guardar cambios en editor
@@ -361,29 +555,53 @@ const UnicornioInboxPrompt: React.FC = () => {
 
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
-      case 'Guardado': return <CheckCircle className="w-4 h-4 text-success-600" />;
+      case 'Auto-guardado': return <CheckCircle className="w-4 h-4 text-success-600" />;
       case 'Revisión': return <AlertTriangle className="w-4 h-4 text-warning-600" />;
       case 'Error': return <XCircle className="w-4 h-4 text-error-600" />;
     }
   };
 
-  // Filtering
+  // Enhanced filtering per specification
   const getFilteredDocuments = () => {
     let filtered = documents;
 
+    // Status filter
     if (statusFilter !== 'todos') {
       filtered = filtered.filter(doc => doc.status === statusFilter);
     }
 
+    // Type filter - categorize by document types
     if (typeFilter !== 'todos') {
-      filtered = filtered.filter(doc => doc.tipo === typeFilter);
+      filtered = filtered.filter(doc => {
+        const docType = doc.documentType;
+        switch (typeFilter) {
+          case 'facturas':
+            return docType.includes('factura') || docType.includes('recibo');
+          case 'extractos':
+            return docType.includes('extracto');
+          case 'contratos':
+            return docType.includes('contrato');
+          case 'otros':
+            return !docType.includes('factura') && !docType.includes('extracto') && !docType.includes('contrato');
+          default:
+            return true;
+        }
+      });
     }
 
+    // Date filter
     if (dateFilter === '72h') {
       const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000);
       filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
+    } else if (dateFilter === '7d') {
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
+    } else if (dateFilter === '30d') {
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
     }
 
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(doc => 
@@ -401,7 +619,7 @@ const UnicornioInboxPrompt: React.FC = () => {
   const getStatusCounts = () => {
     return {
       todos: documents.length,
-      Guardado: documents.filter(d => d.status === 'Guardado').length,
+      'Auto-guardado': documents.filter(d => d.status === 'Auto-guardado').length,
       Revisión: documents.filter(d => d.status === 'Revisión').length,
       Error: documents.filter(d => d.status === 'Error').length
     };
@@ -411,11 +629,17 @@ const UnicornioInboxPrompt: React.FC = () => {
   const filteredDocuments = getFilteredDocuments();
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Header - Mantén estilos Atlas */}
-      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 py-4">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#F8F9FA' }}>
+      {/* Header - HORIZON styling with exact specification */}
+      <div className="flex-shrink-0 border-b bg-white px-6 py-4" style={{ borderColor: '#DEE2E6' }}>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Bandeja de entrada</h1>
+          <h1 className="text-2xl font-semibold" style={{ 
+            color: '#303A4C',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: '600' 
+          }}>
+            Bandeja de entrada
+          </h1>
           
           <div className="relative">
             <input
@@ -426,60 +650,141 @@ const UnicornioInboxPrompt: React.FC = () => {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
             <button
-              style={{ backgroundColor: '#113560' }} // Primario Atlas
-              className="hover:bg-[#0A2A57] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              className="text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors hover:opacity-90"
+              style={{ 
+                backgroundColor: '#042C5E',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: '500'
+              }}
             >
-              <Upload className="w-4 h-4" />
-              Subir documentos
+              <Upload className="w-4 h-4" strokeWidth={1.5} />
+              Subir archivo
             </button>
           </div>
         </div>
       </div>
 
-      {/* Barra de utilidades */}
-      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-6 py-4">
+      {/* Drag/Drop Zone + Select File Button - per specification */}
+      <div className="flex-shrink-0 bg-white px-6 py-4" style={{ borderBottom: '1px solid #DEE2E6' }}>
+        <div 
+          className="border-2 border-dashed rounded-lg p-6 text-center transition-colors hover:border-opacity-80"
+          style={{ 
+            borderColor: '#DEE2E6',
+            fontFamily: 'Inter, sans-serif'
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files) {
+              handleFileUpload(e.dataTransfer.files);
+            }
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = '#042C5E'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#DEE2E6'}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <Upload className="w-8 h-8" strokeWidth={1.5} style={{ color: '#6C757D' }} />
+            <p className="text-sm" style={{ color: '#303A4C', fontFamily: 'Inter, sans-serif' }}>
+              Arrastra archivos aquí o{' '}
+              <label className="font-medium cursor-pointer hover:underline" style={{ color: '#042C5E' }}>
+                selecciona archivos
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.csv,.zip,.eml"
+                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                  className="hidden"
+                />
+              </label>
+            </p>
+            <p className="text-xs" style={{ color: '#6C757D', fontFamily: 'Inter, sans-serif' }}>
+              Facturas/recibos: PDF, JPG, PNG, DOCX • Extractos: CSV, XLS, XLSX • Contratos: PDF • ZIP soportado
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Discrete filters above table - per specification */}
+      <div className="flex-shrink-0 px-6 py-4" style={{ 
+        backgroundColor: '#F8F9FA', 
+        borderBottom: '1px solid #DEE2E6',
+        fontFamily: 'Inter, sans-serif'
+      }}>
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Buscador global */}
+          {/* Global search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" strokeWidth={1.5} style={{ color: '#6C757D' }} />
             <input
               type="text"
-              placeholder="Buscar por proveedor, importe, IBAN, inmueble, id..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#113560] text-sm"
+              placeholder="Buscar por proveedor, banco, IBAN, inmueble..."
+              className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-hz-primary text-sm bg-white"
+              style={{ 
+                borderColor: '#DEE2E6',
+                fontFamily: 'Inter, sans-serif'
+              }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Filtro discreto por estado + "Últimas 72 h" */}
-          <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
+          {/* Estado filter */}
+          <div className="flex flex-wrap rounded-lg p-1 gap-1" style={{ backgroundColor: '#DEE2E6' }}>
             {[
               { key: 'todos' as const, label: 'Todos', count: statusCounts.todos },
-              { key: 'Guardado' as const, label: 'Guardado ✅', count: statusCounts.Guardado },
-              { key: 'Revisión' as const, label: 'Revisión ⚠', count: statusCounts.Revisión },
-              { key: 'Error' as const, label: 'Error ⛔', count: statusCounts.Error }
+              { key: 'Auto-guardado' as const, label: 'Auto-guardado', count: statusCounts['Auto-guardado'] },
+              { key: 'Revisión' as const, label: 'Revisión', count: statusCounts.Revisión },
+              { key: 'Error' as const, label: 'Error', count: statusCounts.Error }
             ].map(({ key, label, count }) => (
               <button
                 key={key}
                 onClick={() => setStatusFilter(key)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   statusFilter === key
-                    ? 'bg-white text-[#113560] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white shadow-sm'
+                    : 'hover:bg-white hover:bg-opacity-50'
                 }`}
+                style={{ 
+                  color: statusFilter === key ? '#042C5E' : '#303A4C',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: '500'
+                }}
               >
                 {label} ({count})
               </button>
             ))}
           </div>
 
+          {/* Tipo filter */}
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hz-primary bg-white"
+            style={{ 
+              borderColor: '#DEE2E6',
+              fontFamily: 'Inter, sans-serif'
+            }}
+          >
+            <option value="todos">Todos los tipos</option>
+            <option value="facturas">Facturas</option>
+            <option value="extractos">Extractos</option>
+            <option value="contratos">Contratos</option>
+            <option value="otros">Otros</option>
+          </select>
+
+          {/* Date range filter */}
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#113560]"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hz-primary bg-white"
+            style={{ 
+              borderColor: '#DEE2E6',
+              fontFamily: 'Inter, sans-serif'
+            }}
           >
             <option value="todos">Todas las fechas</option>
             <option value="72h">Últimas 72h</option>
+            <option value="7d">Última semana</option>
+            <option value="30d">Último mes</option>
           </select>
         </div>
       </div>
@@ -488,122 +793,238 @@ const UnicornioInboxPrompt: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Tabla principal con columnas exactas */}
         <div className="flex-1 overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
+          <table className="min-w-full divide-y" style={{ borderColor: '#DEE2E6' }}>
+            <thead className="sticky top-0" style={{ backgroundColor: '#F8F9FA' }}>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tipo
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
+                  Tipo detectado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Proveedor/Emisor
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
+                  Proveedor / Banco
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Importe
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
+                  Inmueble
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha doc.
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
+                  Cuenta
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Inmueble/Personal
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  IBAN detectado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Destino final
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
                   Estado
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ 
+                  color: '#303A4C',
+                  fontFamily: 'Inter, sans-serif'
+                }}>
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y" style={{ borderColor: '#DEE2E6' }}>
               {filteredDocuments.map((doc) => (
                 <tr
                   key={doc.id}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedDocument?.id === doc.id ? 'bg-primary-50 border-l-4 border-l-[#113560]' : ''
+                  className={`cursor-pointer transition-colors ${
+                    selectedDocument?.id === doc.id ? 'border-l-4' : ''
                   }`}
+                  style={{ 
+                    backgroundColor: selectedDocument?.id === doc.id ? '#F8F9FA' : 'white',
+                    borderLeftColor: selectedDocument?.id === doc.id ? '#042C5E' : 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedDocument?.id !== doc.id) {
+                      e.currentTarget.style.backgroundColor = '#F8F9FA';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedDocument?.id !== doc.id) {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }
+                  }}
                   onClick={() => setSelectedDocument(doc)}
                 >
+                  {/* Tipo detectado */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       {getFileIcon(doc.filename)}
-                      <span className="text-sm font-medium text-gray-900">
-                        {processing.has(doc.id) ? 'Procesando...' : doc.tipo}
-                      </span>
+                      <div>
+                        <div className="text-sm font-medium" style={{ 
+                          color: '#303A4C',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          {processing.has(doc.id) ? 'Procesando...' : getDisplayType(doc.documentType)}
+                        </div>
+                        <div className="text-xs" style={{ 
+                          color: '#6C757D',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          {doc.filename}
+                        </div>
+                      </div>
                     </div>
                   </td>
+                  
+                  {/* Proveedor / Banco */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{doc.proveedorEmisor || '—'}</div>
-                    <div className="text-xs text-gray-500">{doc.filename}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {doc.importe ? `${doc.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {doc.fechaDoc ? new Date(doc.fechaDoc).toLocaleDateString('es-ES') : '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {doc.inmueblePersonal || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
-                    {doc.ibanDetectado || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {doc.destinoFinal ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#06A77D] bg-opacity-10 text-[#06A77D] cursor-pointer hover:bg-opacity-20 transition-colors">
-                        {doc.destinoFinal}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">—</span>
+                    <div className="text-sm" style={{ 
+                      color: '#303A4C',
+                      fontFamily: 'Inter, sans-serif'
+                    }}>
+                      {doc.proveedorEmisor || '—'}
+                    </div>
+                    {doc.importe && (
+                      <div className="text-xs" style={{ 
+                        color: '#6C757D',
+                        fontFamily: 'Inter, sans-serif'
+                      }}>
+                        {doc.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      </div>
                     )}
                   </td>
+                  
+                  {/* Inmueble */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ 
+                    color: '#303A4C',
+                    fontFamily: 'Inter, sans-serif'
+                  }}>
+                    {doc.inmueblePersonal || '—'}
+                  </td>
+                  
+                  {/* Cuenta (solo para extractos) */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(doc.status)}
-                      <span className="text-sm">
-                        {doc.status === 'Guardado' ? '✅' : 
-                         doc.status === 'Revisión' ? '⚠' : '⛔'}
+                    {doc.documentType.includes('extracto') ? (
+                      doc.ibanDetectado ? (
+                        <div className="text-sm font-mono" style={{ 
+                          color: '#303A4C',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          {doc.ibanDetectado}
+                        </div>
+                      ) : (
+                        <span className="text-sm" style={{ 
+                          color: '#FFC107',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          Pendiente selección
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-sm" style={{ 
+                        color: '#6C757D',
+                        fontFamily: 'Inter, sans-serif'
+                      }}>
+                        —
                       </span>
+                    )}
+                  </td>
+                  
+                  {/* Estado */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(doc.status)}
+                        <span className={`text-sm font-medium`} style={{ 
+                          color: doc.status === 'Auto-guardado' ? '#28A745' : 
+                                 doc.status === 'Revisión' ? '#FFC107' : '#DC3545',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          {doc.status === 'Auto-guardado' ? 'Auto-guardado' :
+                           doc.status === 'Revisión' ? 'Revisión' : 'Error'}
+                        </span>
+                      </div>
+                      {/* Show expiration time for auto-saved documents */}
+                      {doc.status === 'Auto-guardado' && doc.expiresAt && (
+                        <div className="flex items-center gap-1 text-xs" style={{ color: '#6C757D' }}>
+                          <Clock className="w-3 h-3" strokeWidth={1.5} />
+                          <span>
+                            {getTimeUntilExpiration(doc.expiresAt).expired 
+                              ? 'Expirado' 
+                              : `${getTimeUntilExpiration(doc.expiresAt).formattedTimeRemaining} restantes`
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </td>
+                  
+                  {/* Acciones */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {/* Unified actions: 👁 🔁 🗑 */}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
+                      {/* Ver/Editar */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDocument(doc);
                         }}
-                        className="text-[#0B5FFF] hover:text-[#0F3763] font-medium text-lg"
-                        title="Ver/editar"
+                        className="transition-opacity hover:opacity-80"
+                        style={{ color: '#042C5E' }}
+                        title="Ver/Editar"
                       >
-                        👁
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReprocess(doc);
-                        }}
-                        className="text-[#0B5FFF] hover:text-[#0F3763] font-medium text-lg"
-                        disabled={processing.has(doc.id)}
-                        title="Reprocesar"
-                      >
-                        🔁
-                      </button>
+                      
+                      {/* Corregir (solo si requiere revisión) */}
+                      {doc.status === 'Revisión' && doc.blockingReasons.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCorrection(doc);
+                          }}
+                          className="transition-opacity hover:opacity-80"
+                          style={{ color: '#FFC107' }}
+                          title="Corregir datos"
+                        >
+                          <Edit className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                      )}
+                      
+                      {/* Guardar/Confirmar (solo si no está auto-guardado) */}
+                      {doc.status !== 'Auto-guardado' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveDocument(doc, {});
+                          }}
+                          className="transition-opacity hover:opacity-80"
+                          style={{ color: '#28A745' }}
+                          title="Guardar/Confirmar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </button>
+                      )}
+                      
+                      {/* Eliminar */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDelete(doc.id);
                         }}
-                        className="text-error-600 hover:text-error-800 font-medium text-lg"
+                        className="transition-opacity hover:opacity-80"
+                        style={{ color: '#DC3545' }}
                         title="Eliminar"
                       >
-                        🗑
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -614,10 +1035,18 @@ const UnicornioInboxPrompt: React.FC = () => {
 
           {filteredDocuments.length === 0 && (
             <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Comienza subiendo un documento o ajusta los filtros.
+              <FileText className="mx-auto h-12 w-12" style={{ color: '#6C757D' }} strokeWidth={1.5} />
+              <h3 className="mt-2 text-sm font-medium" style={{ 
+                color: '#303A4C',
+                fontFamily: 'Inter, sans-serif'
+              }}>
+                No hay documentos
+              </h3>
+              <p className="mt-1 text-sm" style={{ 
+                color: '#6C757D',
+                fontFamily: 'Inter, sans-serif'
+              }}>
+                Sube algunos archivos para comenzar a procesarlos
               </p>
             </div>
           )}
@@ -719,7 +1148,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                             categoriaFiscal: 'Completo'
                           });
                         }}
-                        initialBreakdown={selectedDocument.extractedFields.desglose_categorias}
+                        initialBreakdown={undefined}
                       />
                     </div>
                   )}
@@ -841,6 +1270,48 @@ const UnicornioInboxPrompt: React.FC = () => {
           }}
         />
       </div>
+
+      {/* Account Selection Modal */}
+      <AccountSelectionModal
+        isOpen={showAccountSelection}
+        onClose={() => {
+          setShowAccountSelection(false);
+          setPendingBankExtract(null);
+        }}
+        onSelectAccount={handleAccountSelection}
+        filename={pendingBankExtract?.filename}
+        title="Seleccionar cuenta para extracto bancario"
+        subtitle="Este extracto bancario necesita ser asociado a una cuenta específica"
+      />
+
+      {/* Document Correction Workflow Modal */}
+      {showCorrectionWorkflow && documentToCorrect && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div 
+              className="fixed inset-0 transition-opacity" 
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              onClick={() => {
+                setShowCorrectionWorkflow(false);
+                setDocumentToCorrect(null);
+              }}
+            />
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <DocumentCorrectionWorkflow
+                documentId={documentToCorrect.id}
+                filename={documentToCorrect.filename}
+                originalFields={documentToCorrect.extractedFields}
+                blockingReasons={documentToCorrect.blockingReasons}
+                onCorrectionComplete={handleCorrectionComplete}
+                onCancel={() => {
+                  setShowCorrectionWorkflow(false);
+                  setDocumentToCorrect(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

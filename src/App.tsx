@@ -82,8 +82,8 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={<Dashboard />} />
-            <Route path="inbox" element={<UnifiedInboxPage />} />
-            <Route path="inbox-unicornio" element={<UnicornioInboxPrompt />} />
+            <Route path="inbox" element={<UnicornioInboxPrompt />} />
+            <Route path="inbox-unified" element={<UnifiedInboxPage />} />
             <Route path="inbox-legacy" element={<InboxAtlasHorizon />} />
             
             {/* Horizon (Investment) Routes */}

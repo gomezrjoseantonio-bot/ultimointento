@@ -8,46 +8,56 @@
 @tailwind utilities;
 
 :root {
-  /* ATLAS Official Color Tokens - Horizon Module */
-  --atlas-navy-1: #303A4C;        /* Neutral dark */
-  --atlas-blue: #042C5E;          /* Horizon primary */
-  --atlas-teal: #1DA0BA;          /* Pulse accents only */
-  --atlas-navy-2: #142C50;        /* Sidebar/dark backgrounds */
+  /* ATLAS HORIZON - Official Color Tokens ONLY */
+  --atlas-blue: #042C5E;          /* Horizon primary - ONLY allowed blue */
+  --atlas-navy-1: #303A4C;        /* Neutral dark text */
+  --atlas-navy-2: #142C50;        /* Dark backgrounds/sidebar */
+  --bg: #F8F9FA;                   /* Light background */
+  --text-gray: #6C757D;            /* Secondary text */
   
-  /* ATLAS Functional Colors */
+  /* ATLAS Functional States - EXACT requirements */
   --ok: #28A745;                   /* Success green */
   --warn: #FFC107;                 /* Warning yellow */
   --error: #DC3545;                /* Error red */
-  --bg: #F8F9FA;                   /* Background */
-  --text-gray: #6C757D;            /* Text gray */
-
-  /* Horizon Module - ATLAS Design System Tokens (Updated per requirements) */
-  --hz-primary: var(--atlas-blue);          /* ATLAS Primary blue #042C5E */
-  --hz-primary-dark: var(--atlas-blue);     /* Primary dark same as primary */
-  --hz-bg: var(--bg);                       /* ATLAS background #F8F9FA */
-  --hz-text: var(--atlas-navy-1);           /* ATLAS neutral dark for text */
   
-  /* Horizon Semantic States - ATLAS Tokens per requirements */
-  --hz-success: var(--ok);                  /* ATLAS Success green #28A745 */
-  --hz-warning: var(--warn);                /* ATLAS Warning yellow #FFC107 */
-  --hz-error: var(--error);                 /* ATLAS Error red #DC3545 */
-  --hz-info: var(--atlas-blue);             /* Info blue same as primary */
+  /* PROHIBITED COLORS - DO NOT USE */
+  /* --atlas-teal: #1DA0BA; */     /* PULSE ONLY - NOT for Horizon */
+  /* #09182E */                    /* NEVER USE - forbidden */
   
-  /* Horizon Neutral Colors per ATLAS requirements */
-  --hz-neutral-900: var(--atlas-navy-1);   /* Darkest text - ATLAS neutral dark */
-  --hz-neutral-700: var(--text-gray);      /* Secondary text - ATLAS grey */
-  --hz-neutral-500: var(--text-gray);      /* Muted text - ATLAS grey */
+  /* Horizon Module - ATLAS Design System Tokens (EXACT per requirements) */
+  --hz-primary: var(--atlas-blue);          /* #042C5E */
+  --hz-primary-dark: var(--atlas-blue);     /* Same as primary */
+  --hz-bg: var(--bg);                       /* #F8F9FA */
+  --hz-text: var(--atlas-navy-1);           /* #303A4C */
+  
+  /* Horizon Semantic States - EXACT ATLAS specification */
+  --hz-success: var(--ok);                  /* #28A745 */
+  --hz-warning: var(--warn);                /* #FFC107 */
+  --hz-error: var(--error);                 /* #DC3545 */
+  --hz-info: var(--atlas-blue);             /* #042C5E */
+  
+  /* Horizon Neutral System - ATLAS specification */
+  --hz-neutral-900: var(--atlas-navy-1);   /* #303A4C - Darkest text */
+  --hz-neutral-700: var(--text-gray);      /* #6C757D - Secondary text */
+  --hz-neutral-500: var(--text-gray);      /* #6C757D - Muted text */
   --hz-neutral-300: #DEE2E6;               /* Light borders */
-  --hz-neutral-100: var(--bg);             /* Light backgrounds - ATLAS bg */
-  --hz-card-bg: #FFFFFF;                   /* Card backgrounds */
+  --hz-neutral-100: var(--bg);             /* #F8F9FA - Light backgrounds */
+  --hz-card-bg: #FFFFFF;                   /* White cards */
   
-  /* NO TURQUOISE - Reserved for Pulse only */
+  /* Movement States - EXACT per specification */
+  --movement-previsto-ingreso: var(--ok);  /* Green for expected income */
+  --movement-previsto-gasto: var(--error); /* Red for expected expense */
+  --movement-confirmado: var(--atlas-blue); /* Blue for confirmed */
+  --movement-vencido: var(--warn);         /* Amber for overdue */
+  --movement-no-previsto: var(--text-gray); /* Gray for unplanned */
   
-  /* Legacy aliases for backward compatibility - will use Horizon tokens */
-  --text: var(--hz-text);         /* Use Horizon text color */
-  --text-muted: #475569;          /* Muted text */
-  --bg: #FFFFFF;                  /* White background */
-  --surface: #FFFFFF;             /* White surface */
+  /* Typography - Inter as specified */
+  --font-ui: 'Inter', system-ui, sans-serif;
+  
+  /* Legacy cleanup - redirect to Horizon tokens */
+  --text: var(--hz-text);
+  --text-muted: var(--hz-neutral-700);
+  --surface: var(--hz-card-bg);
   --surface-2: var(--hz-bg);      /* Light neutral surface uses Horizon bg */
   --border: #E2E8F0;              /* Border color */
 
@@ -259,16 +269,17 @@ html {
   }
   
   .btn-ghost-pulse {
-    @apply btn-base border-transparent text-atlas-blue bg-transparent hover:bg-neutral-50 focus:ring-atlas-blue;
+    @apply btn-base border-transparent text-hz-primary bg-transparent hover:bg-hz-neutral-100 focus:ring-hz-primary;
   }
   
-  /* Accent buttons (for secondary positive actions) */
+  /* Accent buttons (for secondary positive actions) - HORIZON only uses atlas-blue */
   .btn-accent-horizon {
-    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
+  /* DEPRECATED - Pulse button style not allowed in Horizon */
   .btn-accent-pulse {
-    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */
