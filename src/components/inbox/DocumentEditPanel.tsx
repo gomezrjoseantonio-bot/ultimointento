@@ -17,13 +17,13 @@ interface DocumentEditPanelProps {
   onDelete: () => void;
 }
 
-// Atlas Horizon color scheme
+// Atlas Horizon color scheme (ATLAS palette exact colors)
 const colors = {
-  primary: '#0F3763',    // Horizon azul
+  primary: '#042C5E',    // Exact ATLAS primary
   accent: '#0B5FFF',     // Acento
-  success: '#1DB954',    // Guardado
-  warning: '#FFA726',    // Revisión  
-  error: '#E53935',      // Error
+  success: '#28A745',    // Exact ATLAS success (status badge green)
+  warning: '#FFC107',    // Exact ATLAS warning (status badge yellow)
+  error: '#DC3545',      // Exact ATLAS error (status badge red)
   gray50: '#F9FAFB',
   gray100: '#F3F4F6',
   gray200: '#E5E7EB',
@@ -110,9 +110,9 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'Guardado': { color: colors.success, label: '✅ Guardado', bgColor: '#1DB954' },
-      'Revisión': { color: colors.warning, label: '⚠ Revisión', bgColor: '#FFA726' },
-      'Error': { color: colors.error, label: '⛔ Error', bgColor: '#E53935' }
+      'Guardado': { color: colors.success, label: '✅ Guardado', bgColor: '#28A745' },
+      'Revisión': { color: colors.warning, label: '⚠ Revisión', bgColor: '#FFC107' },
+      'Error': { color: colors.error, label: '⛔ Error', bgColor: '#DC3545' }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Error;
@@ -646,7 +646,10 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
           <button
             onClick={handleSave}
             disabled={validationErrors.length > 0}
-            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-navy-700 hover:bg-navy-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+            style={{ 
+              backgroundColor: validationErrors.length > 0 ? '#9CA3AF' : colors.primary
+            }}
           >
             Guardar y archivar
           </button>
