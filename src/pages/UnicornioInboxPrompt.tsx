@@ -1,23 +1,35 @@
-// UNICORNIO PROMPT - Enhanced Inbox Interface
-// Complete implementation according to exact specifications
-
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { 
   Upload, Search, X,
   CheckCircle, AlertTriangle, XCircle,
   FileText, Image, FileSpreadsheet, Archive, File,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Clock, Edit
 } from 'lucide-react';
 
 import { DocumentType } from '../services/unicornioDocumentDetection';
 import { processInboxItem, classifyAndArchive } from '../services/unicornioInboxProcessor';
+import { 
+  createTreasuryMovementFromOCR, 
+  createTreasuryMovementFromBankExtract,
+  enhanceOCRFieldExtraction,
+  DocumentOCRFields
+} from '../services/enhancedTreasuryCreationService';
+import { 
+  autoSaveDocument,
+  getAutoSaveDocument,
+  getTimeUntilExpiration,
+  scheduleCleanupCheck,
+  convertToPermanentArchive
+} from '../services/enhancedAutoSaveService';
 import DocumentPreview from '../components/DocumentPreview';
 import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
 import DocumentEditPanel from '../components/inbox/DocumentEditPanel';
+import AccountSelectionModal from '../components/modals/AccountSelectionModal';
+import DocumentCorrectionWorkflow from '../components/inbox/DocumentCorrectionWorkflow';
 
 // Estados exactos según especificación
-type DocumentStatus = 'Guardado' | 'Revisión' | 'Error';
+type DocumentStatus = 'Auto-guardado' | 'Revisión' | 'Error';
 
 interface UnicornioDocument {
   id: string;
@@ -38,12 +50,21 @@ interface UnicornioDocument {
   
   // Campos internos
   documentType: DocumentType;
-  extractedFields: Record<string, any>;
+  extractedFields: DocumentOCRFields;
   blockingReasons: string[];
   logs: Array<{ timestamp: string; action: string }>;
   expiresAt?: string; // Para retención 72h
   fingerprint?: string;
   revision?: number;
+  
+  // Treasury integration
+  treasuryRecordId?: number;
+  treasuryRecordType?: 'ingreso' | 'gasto' | 'capex' | 'movement';
+  treasuryOrigin?: 'ocr_document' | 'bank_extract';
+  
+  // Auto-save tracking
+  autoSavedAt?: string;
+  isAutoSaved?: boolean;
   
   // Para preview
   file?: File;
@@ -59,13 +80,24 @@ const UnicornioInboxPrompt: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
+  
+  // Enhanced functionality state
+  const [showAccountSelection, setShowAccountSelection] = useState(false);
+  const [pendingBankExtract, setPendingBankExtract] = useState<any>(null);
+  const [showCorrectionWorkflow, setShowCorrectionWorkflow] = useState(false);
+  const [documentToCorrect, setDocumentToCorrect] = useState<UnicornioDocument | null>(null);
+
+  // Initialize cleanup scheduler
+  useEffect(() => {
+    scheduleCleanupCheck();
+  }, []);
 
   // Cleanup expired documents (72h retention)
   useEffect(() => {
     const cleanup = () => {
       const now = new Date();
       setDocuments(prev => prev.filter(doc => {
-        if (doc.status === 'Guardado' && doc.expiresAt) {
+        if (doc.status === 'Auto-guardado' && doc.expiresAt) {
           return new Date(doc.expiresAt) > now;
         }
         return true; // Keep Revisión and Error indefinitely
@@ -78,34 +110,88 @@ const UnicornioInboxPrompt: React.FC = () => {
   }, []);
 
   /**
-   * Core processing function following specification
+   * Enhanced processing function with treasury integration
    */
   const executeProcessInboxItem = useCallback(async (doc: UnicornioDocument, file: File, reprocess = false) => {
     try {
       const result = await processInboxItem(file, doc.filename, { reprocess });
       
+      // Enhanced OCR field extraction
+      const enhancedFields = enhanceOCRFieldExtraction(
+        result.extractedFields,
+        result.documentType,
+        doc.filename
+      );
+
+      // Check if it's a bank extract that needs account selection
+      if (result.documentType === 'extracto_bancario') {
+        // For bank extracts, show account selection first
+        setPendingBankExtract({
+          documentId: doc.id,
+          filename: doc.filename,
+          extractedData: enhancedFields,
+          file
+        });
+        setShowAccountSelection(true);
+        
+        // Update document to show pending account selection
+        const updatedDoc: UnicornioDocument = {
+          ...doc,
+          documentType: result.documentType,
+          extractedFields: enhancedFields,
+          blockingReasons: ['Selección de cuenta bancaria requerida'],
+          logs: [...doc.logs, ...result.logs],
+          status: 'Revisión',
+          revision: (doc.revision || 0) + 1,
+          fingerprint: result.fingerprint,
+          tipo: getDisplayType(result.documentType),
+          treasuryOrigin: 'bank_extract'
+        };
+
+        setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
+        setProcessing(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(doc.id);
+          return newSet;
+        });
+        return;
+      }
+
+      // For other documents, create treasury movement directly
+      const treasuryResult = await createTreasuryMovementFromOCR(
+        doc.id,
+        result.documentType,
+        enhancedFields,
+        doc.filename
+      );
+
       const updatedDoc: UnicornioDocument = {
         ...doc,
         documentType: result.documentType,
-        extractedFields: result.extractedFields,
+        extractedFields: enhancedFields,
         blockingReasons: result.blockingReasons,
         logs: [...doc.logs, ...result.logs],
-        status: result.requiresReview ? 'Revisión' : 'Guardado',
+        status: result.requiresReview ? 'Revisión' : 'Auto-guardado',
         revision: (doc.revision || 0) + 1,
         fingerprint: result.fingerprint,
+        treasuryRecordId: treasuryResult.recordId,
+        treasuryRecordType: treasuryResult.recordType,
+        treasuryOrigin: 'ocr_document',
         
         // Map to table columns
         tipo: getDisplayType(result.documentType),
-        proveedorEmisor: result.extractedFields.proveedor_nombre || result.extractedFields.arrendatario_nombre,
-        importe: result.extractedFields.total_amount || result.extractedFields.renta_mensual,
-        fechaDoc: result.extractedFields.invoice_date || result.extractedFields.fecha_inicio,
-        inmueblePersonal: result.extractedFields.inmueble_alias || 'Personal',
-        ibanDetectado: result.extractedFields.iban_masked || result.extractedFields.iban_detectado,
+        proveedorEmisor: enhancedFields.proveedor_nombre || enhancedFields.arrendatario_nombre,
+        importe: enhancedFields.total_amount,
+        fechaDoc: enhancedFields.invoice_date,
+        inmueblePersonal: enhancedFields.inmueble_alias || 'Personal',
+        ibanDetectado: enhancedFields.iban_masked || enhancedFields.iban_detectado,
         destinoFinal: result.destination,
         
-        // Set expiration for successful documents
-        expiresAt: result.requiresReview ? undefined : 
-          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+        // Set expiration for auto-saved documents
+        expiresAt: !result.requiresReview ? 
+          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() : undefined,
+        autoSavedAt: !result.requiresReview ? new Date().toISOString() : undefined,
+        isAutoSaved: !result.requiresReview
       };
 
       setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
@@ -121,15 +207,21 @@ const UnicornioInboxPrompt: React.FC = () => {
       }
 
       // Show appropriate message
-      if (result.success) {
+      if (treasuryResult.success) {
         if (result.requiresReview) {
           toast.error(`${doc.filename} procesado - requiere revisión`);
         } else {
-          const destination = result.destination || 'destino desconocido';
-          toast.success(`${doc.filename} procesado y archivado automáticamente en ${destination}`);
+          // Auto-save the document
+          await autoSaveDocument(
+            doc.id,
+            doc.filename,
+            result.documentType,
+            enhancedFields
+          );
+          toast.success(`${doc.filename} procesado y auto-guardado (72h)`);
         }
       } else {
-        toast.error(`Error procesando ${doc.filename}`);
+        toast.error(`Error en tesorería: ${treasuryResult.message}`);
       }
 
     } catch (error) {
@@ -152,6 +244,30 @@ const UnicornioInboxPrompt: React.FC = () => {
       toast.error(`Error procesando ${doc.filename}: ${error}`);
     }
   }, [selectedDocument]);
+
+  /**
+   * DISPARADOR OBLIGATORIO 2: Al pulsar "🔁 Reprocesar"
+   */
+  const handleReprocess = useCallback(async (doc: UnicornioDocument) => {
+    if (!doc.file) {
+      toast.error('Archivo no disponible para reprocesar');
+      return;
+    }
+
+    const updatedDoc = {
+      ...doc,
+      logs: [...doc.logs, { timestamp: new Date().toISOString(), action: 'Reprocesamiento iniciado' }]
+    };
+
+    setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
+    setProcessing(prev => {
+      const newSet = new Set(prev);
+      newSet.add(doc.id);
+      return newSet;
+    });
+
+    await executeProcessInboxItem(updatedDoc, doc.file, true);
+  }, [executeProcessInboxItem]);
 
   /**
    * DISPARADOR OBLIGATORIO 1: Al subir archivo
@@ -205,8 +321,104 @@ const UnicornioInboxPrompt: React.FC = () => {
   }, [executeProcessInboxItem]);
 
   /**
-   * DISPARADOR OBLIGATORIO 2: Al pulsar "🔁 Reprocesar"
+   * Handle account selection for bank extracts
    */
+  const handleAccountSelection = async (accountId: number) => {
+    if (!pendingBankExtract) return;
+
+    try {
+      setProcessing(prev => new Set([...prev, pendingBankExtract.documentId]));
+
+      // Create treasury movements from bank extract
+      const treasuryResult = await createTreasuryMovementFromBankExtract({
+        accountId,
+        transactions: [
+          {
+            date: pendingBankExtract.extractedData.invoice_date || new Date().toISOString().split('T')[0],
+            amount: pendingBankExtract.extractedData.total_amount || 0,
+            description: `Extracto bancario: ${pendingBankExtract.filename}`,
+            counterparty: pendingBankExtract.extractedData.proveedor_nombre,
+            reference: pendingBankExtract.extractedData.transaction_reference,
+            balance: pendingBankExtract.extractedData.account_balance
+          }
+        ]
+      }, pendingBankExtract.filename);
+
+      // Update document
+      const updatedDoc: UnicornioDocument = {
+        ...documents.find(d => d.id === pendingBankExtract.documentId)!,
+        status: treasuryResult.success ? 'Auto-guardado' : 'Error',
+        blockingReasons: treasuryResult.success ? [] : [treasuryResult.message],
+        treasuryRecordId: treasuryResult.movementId,
+        treasuryRecordType: 'movement',
+        treasuryOrigin: 'bank_extract',
+        logs: [
+          ...documents.find(d => d.id === pendingBankExtract.documentId)!.logs,
+          { timestamp: new Date().toISOString(), action: `Cuenta seleccionada: ${accountId}` },
+          { timestamp: new Date().toISOString(), action: treasuryResult.message }
+        ],
+        expiresAt: treasuryResult.success ? 
+          new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString() : undefined,
+        autoSavedAt: treasuryResult.success ? new Date().toISOString() : undefined,
+        isAutoSaved: treasuryResult.success
+      };
+
+      setDocuments(prev => prev.map(d => d.id === pendingBankExtract.documentId ? updatedDoc : d));
+
+      if (treasuryResult.success) {
+        toast.success(treasuryResult.message);
+      } else {
+        toast.error(treasuryResult.message);
+      }
+
+    } catch (error) {
+      toast.error('Error al procesar extracto bancario');
+      console.error('Error processing bank extract:', error);
+    } finally {
+      setProcessing(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(pendingBankExtract.documentId);
+        return newSet;
+      });
+      setPendingBankExtract(null);
+      setShowAccountSelection(false);
+    }
+  };
+
+  /**
+   * Handle opening document correction workflow
+   */
+  const handleOpenCorrection = (doc: UnicornioDocument) => {
+    setDocumentToCorrect(doc);
+    setShowCorrectionWorkflow(true);
+  };
+
+  /**
+   * Handle completion of document correction
+   */
+  const handleCorrectionComplete = (correctedFields: DocumentOCRFields) => {
+    if (!documentToCorrect) return;
+
+    // Update document with corrected data
+    const updatedDoc: UnicornioDocument = {
+      ...documentToCorrect,
+      extractedFields: correctedFields,
+      status: 'Auto-guardado',
+      blockingReasons: [],
+      logs: [
+        ...documentToCorrect.logs,
+        { timestamp: new Date().toISOString(), action: 'Datos corregidos por usuario' },
+        { timestamp: new Date().toISOString(), action: 'Documento archivado permanentemente' }
+      ],
+      expiresAt: undefined, // No longer auto-expires
+      isAutoSaved: false
+    };
+
+    setDocuments(prev => prev.map(d => d.id === documentToCorrect.id ? updatedDoc : d));
+    setShowCorrectionWorkflow(false);
+    setDocumentToCorrect(null);
+    setSelectedDocument(null);
+  };
   const handleReprocess = useCallback(async (doc: UnicornioDocument) => {
     if (!doc.file) {
       toast.error('Archivo no disponible para reprocesar');
@@ -361,7 +573,7 @@ const UnicornioInboxPrompt: React.FC = () => {
 
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
-      case 'Guardado': return <CheckCircle className="w-4 h-4 text-success-600" />;
+      case 'Auto-guardado': return <CheckCircle className="w-4 h-4 text-success-600" />;
       case 'Revisión': return <AlertTriangle className="w-4 h-4 text-warning-600" />;
       case 'Error': return <XCircle className="w-4 h-4 text-error-600" />;
     }
@@ -425,7 +637,7 @@ const UnicornioInboxPrompt: React.FC = () => {
   const getStatusCounts = () => {
     return {
       todos: documents.length,
-      Guardado: documents.filter(d => d.status === 'Guardado').length,
+      'Auto-guardado': documents.filter(d => d.status === 'Auto-guardado').length,
       Revisión: documents.filter(d => d.status === 'Revisión').length,
       Error: documents.filter(d => d.status === 'Error').length
     };
@@ -537,7 +749,7 @@ const UnicornioInboxPrompt: React.FC = () => {
           <div className="flex flex-wrap rounded-lg p-1 gap-1" style={{ backgroundColor: '#DEE2E6' }}>
             {[
               { key: 'todos' as const, label: 'Todos', count: statusCounts.todos },
-              { key: 'Guardado' as const, label: 'Auto-guardado', count: statusCounts.Guardado },
+              { key: 'Auto-guardado' as const, label: 'Auto-guardado', count: statusCounts['Auto-guardado'] },
               { key: 'Revisión' as const, label: 'Revisión', count: statusCounts.Revisión },
               { key: 'Error' as const, label: 'Error', count: statusCounts.Error }
             ].map(({ key, label, count }) => (
@@ -740,16 +952,30 @@ const UnicornioInboxPrompt: React.FC = () => {
                   
                   {/* Estado */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(doc.status)}
-                      <span className={`text-sm font-medium`} style={{ 
-                        color: doc.status === 'Guardado' ? '#28A745' : 
-                               doc.status === 'Revisión' ? '#FFC107' : '#DC3545',
-                        fontFamily: 'Inter, sans-serif'
-                      }}>
-                        {doc.status === 'Guardado' ? 'Auto-guardado (72h)' :
-                         doc.status === 'Revisión' ? 'Revisión' : 'Error'}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(doc.status)}
+                        <span className={`text-sm font-medium`} style={{ 
+                          color: doc.status === 'Auto-guardado' ? '#28A745' : 
+                                 doc.status === 'Revisión' ? '#FFC107' : '#DC3545',
+                          fontFamily: 'Inter, sans-serif'
+                        }}>
+                          {doc.status === 'Auto-guardado' ? 'Auto-guardado' :
+                           doc.status === 'Revisión' ? 'Revisión' : 'Error'}
+                        </span>
+                      </div>
+                      {/* Show expiration time for auto-saved documents */}
+                      {doc.status === 'Auto-guardado' && doc.expiresAt && (
+                        <div className="flex items-center gap-1 text-xs" style={{ color: '#6C757D' }}>
+                          <Clock className="w-3 h-3" strokeWidth={1.5} />
+                          <span>
+                            {getTimeUntilExpiration(doc.expiresAt).expired 
+                              ? 'Expirado' 
+                              : `${getTimeUntilExpiration(doc.expiresAt).formattedTimeRemaining} restantes`
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </td>
                   
@@ -772,8 +998,23 @@ const UnicornioInboxPrompt: React.FC = () => {
                         </svg>
                       </button>
                       
-                      {/* Guardar/Confirmar (solo si no está guardado) */}
-                      {doc.status !== 'Guardado' && (
+                      {/* Corregir (solo si requiere revisión) */}
+                      {doc.status === 'Revisión' && doc.blockingReasons.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenCorrection(doc);
+                          }}
+                          className="transition-opacity hover:opacity-80"
+                          style={{ color: '#FFC107' }}
+                          title="Corregir datos"
+                        >
+                          <Edit className="w-4 h-4" strokeWidth={1.5} />
+                        </button>
+                      )}
+                      
+                      {/* Guardar/Confirmar (solo si no está auto-guardado) */}
+                      {doc.status !== 'Auto-guardado' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1047,6 +1288,48 @@ const UnicornioInboxPrompt: React.FC = () => {
           }}
         />
       </div>
+
+      {/* Account Selection Modal */}
+      <AccountSelectionModal
+        isOpen={showAccountSelection}
+        onClose={() => {
+          setShowAccountSelection(false);
+          setPendingBankExtract(null);
+        }}
+        onSelectAccount={handleAccountSelection}
+        filename={pendingBankExtract?.filename}
+        title="Seleccionar cuenta para extracto bancario"
+        subtitle="Este extracto bancario necesita ser asociado a una cuenta específica"
+      />
+
+      {/* Document Correction Workflow Modal */}
+      {showCorrectionWorkflow && documentToCorrect && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div 
+              className="fixed inset-0 transition-opacity" 
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              onClick={() => {
+                setShowCorrectionWorkflow(false);
+                setDocumentToCorrect(null);
+              }}
+            />
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <DocumentCorrectionWorkflow
+                documentId={documentToCorrect.id}
+                filename={documentToCorrect.filename}
+                originalFields={documentToCorrect.extractedFields}
+                blockingReasons={documentToCorrect.blockingReasons}
+                onCorrectionComplete={handleCorrectionComplete}
+                onCancel={() => {
+                  setShowCorrectionWorkflow(false);
+                  setDocumentToCorrect(null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
