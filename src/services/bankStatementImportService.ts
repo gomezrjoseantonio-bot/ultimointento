@@ -12,7 +12,7 @@
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { extractIBANFromBankStatement, matchAccountByIBAN } from './ibanAccountMatchingService';
 import { initDB, Movement } from './db';
-import { isDemoModeEnabled } from '../config/envFlags';
+import { FLAGS } from '../config/flags';
 import { safeMatch } from '../utils/safe';
 import toast from 'react-hot-toast';
 
@@ -242,7 +242,7 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
       }
 
       // Reject demo movements (unless demo mode is explicitly enabled)
-      if (!isDemoModeEnabled() && (
+      if (!FLAGS.DEMO_MODE && (
           row.description.toLowerCase().includes('demo') || 
           row.description.toLowerCase().includes('test') ||
           row.description.toLowerCase().includes('sample'))) {

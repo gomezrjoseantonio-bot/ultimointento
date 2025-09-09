@@ -6,7 +6,7 @@
  */
 
 import { Account } from './db';
-import { isDemoModeEnabled } from '../config/envFlags';
+import { FLAGS } from '../config/flags';
 
 /**
  * Check if an account is considered a demo account
@@ -53,7 +53,7 @@ export function isValidAccount(account: Account): boolean {
   if (!account.bank || !account.iban) return false;
 
   // Reject demo accounts unless demo mode is enabled
-  if (!isDemoModeEnabled() && isDemoAccount(account)) return false;
+  if (!FLAGS.DEMO_MODE && isDemoAccount(account)) return false;
 
   return true;
 }
@@ -78,7 +78,7 @@ export function filterAccountsForUI(accounts: Account[], options: {
     }
 
     // Check demo status
-    if (!isDemoModeEnabled() && isDemoAccount(account)) {
+    if (!FLAGS.DEMO_MODE && isDemoAccount(account)) {
       return false;
     }
 
@@ -122,7 +122,7 @@ export function validateAccountForMovements(account: Account): {
     return { valid: false, error: 'La cuenta ha sido eliminada' };
   }
 
-  if (!isDemoModeEnabled() && isDemoAccount(account)) {
+  if (!FLAGS.DEMO_MODE && isDemoAccount(account)) {
     return { valid: false, error: 'No se permiten cuentas demo en producción' };
   }
 
@@ -152,7 +152,7 @@ export async function getSafeAccountList(
   const filteredAccounts = filterAccountsForUI(allValidAccounts, options);
   
   const hasInactive = allValidAccounts.some(acc => !acc.isActive || acc.deleted_at);
-  const hasDemo = isDemoModeEnabled() ? false : allValidAccounts.some(isDemoAccount);
+  const hasDemo = FLAGS.DEMO_MODE ? false : allValidAccounts.some(isDemoAccount);
   const totalFiltered = allValidAccounts.length - filteredAccounts.length;
 
   return {

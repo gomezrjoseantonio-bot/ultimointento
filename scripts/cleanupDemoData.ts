@@ -27,9 +27,9 @@ interface CleanupStats {
 }
 
 /**
- * Main cleanup function
+ * Main cleanup function (exported for use in services)
  */
-async function cleanupDemoData(): Promise<CleanupStats> {
+export async function cleanupDemoData(): Promise<CleanupStats> {
   console.log(`${LOG_PREFIX} Starting demo data cleanup...`);
   
   const stats: CleanupStats = {
