@@ -16,16 +16,25 @@ export function isDemoAccount(account: Account): boolean {
 
   // Check for demo patterns in account data
   const demoPatterns = ['demo', 'test', 'sample', 'ejemplo'];
+  const demoIbanPatterns = ['9999', '0000', '1111']; // Common demo IBAN patterns
   
   const accountName = (account.name || '').toLowerCase();
   const bankName = (account.bank || '').toLowerCase();
   const iban = (account.iban || '').toLowerCase();
 
-  return demoPatterns.some(pattern => 
+  // Check text patterns
+  const hasTextPattern = demoPatterns.some(pattern => 
     accountName.includes(pattern) || 
     bankName.includes(pattern) || 
     iban.includes(pattern)
   );
+
+  // Check IBAN demo patterns
+  const hasIbanPattern = demoIbanPatterns.some(pattern => 
+    iban.includes(pattern)
+  );
+
+  return hasTextPattern || hasIbanPattern;
 }
 
 /**

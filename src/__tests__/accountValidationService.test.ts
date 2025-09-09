@@ -223,7 +223,7 @@ describe('Account Validation Service', () => {
         includeInactive: true
       });
       
-      expect(result.accounts).toHaveLength(1); // Still only 1 because others are demo/deleted
+      expect(result.accounts).toHaveLength(2); // Active + inactive accounts (both non-demo)
       expect(result.hasInactive).toBe(true);
     });
 

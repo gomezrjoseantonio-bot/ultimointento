@@ -2,8 +2,17 @@
  * Tests for Demo Data Cleanup Script
  */
 
-import { cleanupDemoData, CleanupStats } from '../../scripts/cleanupDemoData';
+import { cleanupDemoData } from '../../scripts/cleanupDemoData';
 import { initDB, Account, Movement } from '../services/db';
+
+// Define CleanupStats interface for testing
+interface CleanupStats {
+  demoMovements: number;
+  orphanedMovements: number;
+  demoAccounts: number;
+  accountsRecalculated: number;
+  errors: number;
+}
 
 // Mock the database for testing
 jest.mock('../services/db');
