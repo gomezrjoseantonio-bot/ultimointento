@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { MoreHorizontal } from 'lucide-react';
 import { PanelFilters } from './HorizonVisualPanel';
@@ -24,6 +24,53 @@ interface AccountsCompactSectionProps {
 }
 
 const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo(({ filters }) => {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load real accounts from settings instead of mock data
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const { treasuryAPI } = await import('../../../../services/treasuryApiService');
+        const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
+        const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
+        
+        // Convert to Account format with real data
+        const accountsWithData: Account[] = horizonAccounts.map(acc => {
+          const currentBalance = acc.balance;
+          const projectedBalance = acc.balance; // Simplified - no projection logic for now
+          const threshold = acc.minimumBalance || 1000;
+          
+          // Enhanced IBAN masking for better UX
+          const maskedIban = acc.iban ? 
+            acc.iban.length > 8 ? 
+              `${acc.iban.slice(0, 4)}***${acc.iban.slice(-4)}` : 
+              `***${acc.iban.slice(-4)}`
+            : '****';
+          
+          return {
+            id: acc.id!.toString(),
+            name: acc.name || `Cuenta ${acc.bank}`,
+            maskedIban,
+            currentBalance,
+            projectedBalance,
+            threshold,
+            sparklineData: generateSparklineData(currentBalance, projectedBalance, threshold)
+          };
+        });
+        
+        setAccounts(accountsWithData);
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        setAccounts([]); // Empty array instead of mock data
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAccounts();
+  }, [filters.dateRange]);
+
   // Generate sparkline data
   const generateSparklineData = (current: number, projected: number, threshold?: number): SparklineData[] => {
     const data: SparklineData[] = [];
@@ -44,50 +91,44 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo
   };
 
   // Mock data - 4 accounts (2x2 grid) selectable from Configure Panel
-  const accounts: Account[] = [
-    {
-      id: '1',
-      name: 'Cuenta Principal',
-      maskedIban: 'ES12***9012',
-      currentBalance: 8500,
-      projectedBalance: 7200,
-      threshold: 1000,
-      sparklineData: generateSparklineData(8500, 7200, 1000)
-    },
-    {
-      id: '2',
-      name: 'Cuenta Gastos',
-      maskedIban: 'ES98***1098',
-      currentBalance: 3200,
-      projectedBalance: 2800,
-      threshold: 500,
-      sparklineData: generateSparklineData(3200, 2800, 500)
-    },
-    {
-      id: '3',
-      name: 'Cuenta Reserva',
-      maskedIban: 'ES55***1100',
-      currentBalance: 15000,
-      projectedBalance: 14500,
-      threshold: 5000,
-      sparklineData: generateSparklineData(15000, 14500, 5000)
-    },
-    {
-      id: '4',
-      name: 'Cuenta Operativa',
-      maskedIban: 'ES77***3344',
-      currentBalance: 1200,
-      projectedBalance: 800,
-      threshold: 1000,
-      sparklineData: generateSparklineData(1200, 800, 1000)
-    }
-  ];
+  // REMOVED: This mock data has been replaced with real data from the database
 
-  // Filter accounts based on personal exclusion
+  // Filter accounts based on personal exclusion and ensure exactly 4 accounts for grid
   const filteredAccounts = accounts.filter(account => {
     // In real implementation, would check account.usage property
-    return true; // For demo, show all
+    return true; // For now, show all
   }).slice(0, 4); // Ensure exactly 4 accounts
+
+  // If loading, show loading state
+  if (loading) {
+    return (
+      <div className="h-full bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-3 flex flex-col">
+        <h2 className="text-sm font-semibold text-hz-neutral-900 mb-3">
+          Cuentas destacadas
+        </h2>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-sm text-hz-neutral-500">Cargando cuentas...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no accounts, show empty state
+  if (filteredAccounts.length === 0) {
+    return (
+      <div className="h-full bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-3 flex flex-col">
+        <h2 className="text-sm font-semibold text-hz-neutral-900 mb-3">
+          Cuentas destacadas (0)
+        </h2>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-sm text-hz-neutral-500 mb-1">No hay cuentas disponibles</div>
+            <div className="text-xs text-hz-neutral-400">Configura cuentas en Configuración &gt; Cuentas</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const formatBalance = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -135,7 +176,7 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo
     <div className="h-full bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-3 flex flex-col">
       {/* Header */}
       <h2 className="text-sm font-semibold text-hz-neutral-900 mb-3">
-        Cuentas destacadas (4)
+        Cuentas destacadas ({filteredAccounts.length})
       </h2>
       
       {/* 2x2 Grid of Account Cards - Fixed height with overflow protection */}
