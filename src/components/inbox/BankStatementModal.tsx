@@ -91,8 +91,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
       // Use the unified import service
       const options: ImportOptions = {
         file,
-        accountId: selectedAccountId as number,
-        skipDuplicates: true,
+        destinationAccountId: selectedAccountId as number,
         usuario: 'inbox_ui'
       };
       

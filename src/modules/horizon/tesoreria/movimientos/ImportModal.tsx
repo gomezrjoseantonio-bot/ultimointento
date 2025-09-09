@@ -5,6 +5,7 @@ import { showError } from '../../../../services/toastService';
 import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
 import AccountSelectionModal from '../../../../components/modals/AccountSelectionModal';
 import { importBankStatement, ImportOptions } from '../../../../services/bankStatementImportService';
+import toast from 'react-hot-toast';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -86,11 +87,16 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
     setImporting(true);
     
     try {
-      // Use the unified import service
+      // Use the unified import service  
+      if (!selectedAccount) {
+        toast.error('Debe seleccionar una cuenta de destino');
+        setImporting(false);
+        return;
+      }
+
       const options: ImportOptions = {
         file,
-        accountId: selectedAccount || undefined,
-        skipDuplicates: true,
+        destinationAccountId: selectedAccount,
         usuario: 'tesoreria_ui'
       };
       

@@ -10,7 +10,6 @@
  */
 
 import { BankParserService } from '../features/inbox/importers/bankParser';
-import { extractIBANFromBankStatement, matchAccountByIBAN } from './ibanAccountMatchingService';
 import { initDB, Movement } from './db';
 import { FLAGS } from '../config/flags';
 import { safeMatch } from '../utils/safe';
@@ -47,61 +46,55 @@ export interface ImportResult {
 
 export interface ImportOptions {
   file: File;
-  accountId?: number; // If already known
-  skipDuplicates?: boolean;
+  destinationAccountId: number; // Now required as per requirements  
   usuario?: string;
 }
 
 /**
  * Main entry point for bank statement import
+ * Requirements: Always requires destinationAccountId, no auto-detection
  */
 export async function importBankStatement(options: ImportOptions): Promise<ImportResult> {
-  const { file, accountId, usuario = 'sistema' } = options;
+  const { file, destinationAccountId, usuario = 'sistema' } = options;
   
-  console.info(`${LOG_PREFIX} Start import, file: ${file.name}, size: ${file.size} bytes`);
+  console.info(`${LOG_PREFIX} Start import, file: ${file.name}, destinationAccount: ${destinationAccountId}`);
+  
+  // REQUIREMENT: Reject import if no destinationAccountId provided
+  if (!destinationAccountId) {
+    console.error(`${LOG_PREFIX} No destination account provided`);
+    return {
+      success: false,
+      inserted: 0,
+      duplicates: 0,
+      errors: 1,
+      createdIds: [],
+      batchId: '',
+      requiresAccountSelection: true
+    };
+  }
   
   try {
     // Step 1: Parse file → parsedRows[]
     const parsedRows = await parseFileToRows(file);
     console.info(`${LOG_PREFIX} Rows count: ${parsedRows.length}`);
     
-    // Step 2: Resolve account by IBAN if not provided
-    let finalAccountId = accountId;
-    if (!finalAccountId) {
-      const resolvedAccount = await resolveAccountByIBAN(file);
-      if (resolvedAccount.requiresSelection) {
-        // Return early - UI will handle showing SelectAccountModal
-        return {
-          success: false,
-          inserted: 0,
-          duplicates: 0,
-          errors: 0,
-          createdIds: [],
-          batchId: '',
-          // Special flag to indicate manual selection needed
-          requiresAccountSelection: true,
-          unrecognizedIBAN: resolvedAccount.detectedIBAN,
-          availableAccounts: resolvedAccount.matches || []
-        };
-      }
-      finalAccountId = resolvedAccount.cuenta_id!;
-    }
-    
-    // Step 3: Apply account_id to all rows
+    // Step 2: Apply destinationAccountId to all rows (no auto-detection)
     const rowsWithAccount = parsedRows.map(row => ({
       ...row,
-      account_id: finalAccountId
+      account_id: destinationAccountId
     }));
     
-    console.info(`${LOG_PREFIX} Rows after account resolution: ${rowsWithAccount.length}`);
+    console.info(`${LOG_PREFIX} All ${rowsWithAccount.length} movements assigned to account ${destinationAccountId}`);
     
-    // Step 4: Create movements with ONE bulk call
+    // Step 3: Create movements with ONE bulk call  
     const result = await createMovements(rowsWithAccount, usuario);
     
-    console.info(`${LOG_PREFIX} API payload length: ${rowsWithAccount.length}`);
-    console.info(`${LOG_PREFIX} API response ids length: ${result.createdIds.length}`);
+    console.info(`${LOG_PREFIX} Import completed: ${result.inserted} inserted, ${result.duplicates} duplicates, ${result.errors} errors`);
     
-    // Step 5: Show UI toast final
+    // Step 4: Show UI toast with real counts
+    if (result.success && result.inserted > 0) {
+      toast.success(`Importados ${result.inserted} movimientos en la cuenta seleccionada`);
+    }
     const message = `Importados: ${result.inserted} · Duplicados: ${result.duplicates} · Errores: ${result.errors}`;
     toast.success(message);
     
@@ -166,38 +159,6 @@ async function parseFileToRows(file: File): Promise<ParsedRow[]> {
       originalIndex: index
     };
   });
-}
-
-/**
- * Resolve account by IBAN for the file
- */
-async function resolveAccountByIBAN(file: File): Promise<{
-  cuenta_id?: number;
-  requiresSelection: boolean;
-  detectedIBAN?: string;
-  matches?: Array<{cuenta_id: number; account_name: string; iban?: string; confidence: number}>;
-}> {
-  try {
-    // Extract IBAN from the file
-    const ibanData = await extractIBANFromBankStatement(file, file.name);
-    
-    // Match against registered accounts
-    const matchResult = await matchAccountByIBAN(ibanData);
-    
-    return {
-      cuenta_id: matchResult.cuenta_id,
-      requiresSelection: matchResult.requiresSelection,
-      detectedIBAN: ibanData.iban_completo || ibanData.last4,
-      matches: matchResult.matches
-    };
-  } catch (error) {
-    console.warn(`${LOG_PREFIX} IBAN resolution failed:`, error);
-    // If IBAN detection fails, require manual selection
-    return {
-      requiresSelection: true,
-      detectedIBAN: undefined
-    };
-  }
 }
 
 /**

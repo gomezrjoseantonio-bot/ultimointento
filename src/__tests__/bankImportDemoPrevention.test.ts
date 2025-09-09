@@ -60,7 +60,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
 
     const options: ImportOptions = {
       file: new File(['test'], 'bank-statement.csv', { type: 'text/csv' }),
-      accountId: 1,
+      destinationAccountId: 1,
       usuario: 'test-user'
     };
 
@@ -97,7 +97,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
 
     const options: ImportOptions = {
       file: new File(['test'], 'bank-statement.csv', { type: 'text/csv' }),
-      accountId: 999, // Non-existent account
+      destinationAccountId: 999, // Non-existent account
       usuario: 'test-user'
     };
 
@@ -142,7 +142,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
 
     const options: ImportOptions = {
       file: new File(['test'], 'bank-statement.csv', { type: 'text/csv' }),
-      accountId: 1,
+      destinationAccountId: 1,
       usuario: 'test-user'
     };
 
@@ -196,7 +196,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
 
       const options: ImportOptions = {
         file: new File(['test'], `statement-${description}.csv`, { type: 'text/csv' }),
-        accountId: 1,
+        destinationAccountId: 1,
         usuario: 'test-user'
       };
 
