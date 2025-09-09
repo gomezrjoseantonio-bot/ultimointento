@@ -1640,25 +1640,56 @@ export const resetAllData = async (): Promise<void> => {
   try {
     const db = await initDB();
     
-    // Start transaction to clear all stores
-    const tx = db.transaction(['properties', 'documents', 'contracts', 'rentCalendar', 'rentPayments', 'expenses'], 'readwrite');
+    // Get all existing object stores from the database
+    const storeNames = Array.from(db.objectStoreNames);
+    console.log(`[RESET] Clearing ${storeNames.length} object stores:`, storeNames);
     
-    await Promise.all([
-      tx.objectStore('properties').clear(),
-      tx.objectStore('documents').clear(),
-      tx.objectStore('contracts').clear(),
-      tx.objectStore('rentCalendar').clear(),
-      tx.objectStore('rentPayments').clear(),
-      tx.objectStore('expenses').clear(),
-    ]);
+    // Create transaction for all existing stores
+    const tx = db.transaction(storeNames, 'readwrite');
     
+    // Clear all object stores
+    const clearPromises = storeNames.map(storeName => {
+      console.log(`[RESET] Clearing store: ${storeName}`);
+      return tx.objectStore(storeName).clear();
+    });
+    
+    await Promise.all(clearPromises);
     await tx.done;
     
-    // Also clear localStorage backup
-    localStorage.removeItem('atlas-inbox-documents');
+    // Clear all localStorage items related to the application
+    const localStorageKeys = [
+      'atlas-inbox-documents',
+      'atlas-horizon-settings',
+      'atlas-user-preferences',
+      'classificationRules',
+      'bankProfiles',
+      'demo-mode',
+      'atlas-kpi-configurations',
+      'treasury-cache',
+      'fiscal-cache'
+    ];
+    
+    localStorageKeys.forEach(key => {
+      localStorage.removeItem(key);
+      console.log(`[RESET] Cleared localStorage: ${key}`);
+    });
+    
+    // Clear any remaining localStorage items that might contain Atlas data
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach(key => {
+      if (key.toLowerCase().includes('atlas') || 
+          key.toLowerCase().includes('horizon') || 
+          key.toLowerCase().includes('treasury') ||
+          key.toLowerCase().includes('demo')) {
+        localStorage.removeItem(key);
+        console.log(`[RESET] Cleared localStorage: ${key}`);
+      }
+    });
+    
+    console.log('[RESET] Complete database and localStorage cleanup completed successfully');
     
   } catch (error) {
     console.error('Error resetting data:', error);
-    throw new Error('No se pudo restablecer los datos');
+    throw new Error('No se pudo restablecer los datos completamente');
   }
 };
