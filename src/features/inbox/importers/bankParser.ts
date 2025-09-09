@@ -5,6 +5,7 @@ import { bankProfilesService } from '../../../services/bankProfilesService';
 import { telemetry, qaChecklist } from '../../../services/telemetryService';
 import { parseEsNumber } from '../../../utils/numberUtils';
 import { detectDuplicates } from '../../../utils/duplicateDetection';
+import { safeMatch } from '../../../utils/safe';
 
 // Global aliases for column detection - covers most Spanish banks
 const COLUMN_ALIASES = {
@@ -670,7 +671,7 @@ export class BankParserService {
     ];
     
     for (const format of formats) {
-      const match = cleaned.match(format);
+      const match = safeMatch(cleaned, format);
       if (match) {
         let [, part1, part2, part3] = match;
         let day: number, month: number, year: number;

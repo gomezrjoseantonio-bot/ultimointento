@@ -2,6 +2,7 @@
 // Implements exact requirements from problem statement
 
 import * as XLSX from 'xlsx';
+import { safeMatch } from '../utils/safe';
 
 export interface BankMovement {
   date: string;
@@ -247,7 +248,7 @@ export class BankStatementParser {
     ];
 
     for (const pattern of ibanPatterns) {
-      const ibanMatch = filenameUpper.match(pattern);
+      const ibanMatch = safeMatch(filenameUpper, pattern);
       if (ibanMatch) {
         result.iban = ibanMatch[0].replace(/[-\s]/g, '');
         console.log('Found IBAN in filename:', result.iban);
@@ -264,7 +265,7 @@ export class BankStatementParser {
     ];
 
     for (const pattern of accountPatterns) {
-      const accountMatch = filenameUpper.match(pattern);
+      const accountMatch = safeMatch(filenameUpper, pattern);
       if (accountMatch) {
         const account = accountMatch[0].replace(/[-\s]/g, '').replace(/[A-Z]/g, '');
         if (account.length >= 10) {
@@ -293,7 +294,7 @@ export class BankStatementParser {
         // Enhanced IBAN detection (multiple patterns)
         if (!result.iban) {
           for (const pattern of ibanPatterns) {
-            const ibanMatch = cellClean.match(pattern);
+            const ibanMatch = safeMatch(cellClean, pattern);
             if (ibanMatch) {
               result.iban = ibanMatch[0].replace(/[-\s]/g, '');
               console.log(`Found IBAN in data[${i}][${j}]:`, result.iban);
@@ -306,9 +307,9 @@ export class BankStatementParser {
         if (!result.account) {
           // Look for account number patterns
           const accountMatches = [
-            cellClean.match(/^\d{20}$/), // Exact 20 digits
-            cellClean.match(/^\d{4}\d{4}\d{2}\d{10}$/), // Standard format
-            cellClean.match(/\d{10,20}/), // 10-20 digits anywhere
+            safeMatch(cellClean, /^\d{20}$/), // Exact 20 digits
+            safeMatch(cellClean, /^\d{4}\d{4}\d{2}\d{10}$/), // Standard format
+            safeMatch(cellClean, /\d{10,20}/), // 10-20 digits anywhere
           ];
 
           for (const match of accountMatches) {
@@ -342,7 +343,7 @@ export class BankStatementParser {
               // Check for IBAN in adjacent cell
               if (!result.iban) {
                 for (const pattern of ibanPatterns) {
-                  const ibanMatch = adjClean.match(pattern);
+                  const ibanMatch = safeMatch(adjClean, pattern);
                   if (ibanMatch) {
                     result.iban = ibanMatch[0].replace(/[-\s]/g, '');
                     console.log(`Found IBAN near header "${cell}":`, result.iban);
@@ -353,7 +354,7 @@ export class BankStatementParser {
 
               // Check for account in adjacent cell
               if (!result.account) {
-                const accountMatch = adjClean.match(/\d{10,20}/);
+                const accountMatch = safeMatch(adjClean, /\d{10,20}/);
                 if (accountMatch) {
                   result.account = accountMatch[0];
                   console.log(`Found account near header "${cell}":`, result.account);
@@ -647,7 +648,7 @@ export class BankStatementParser {
       ];
 
       for (const format of formats) {
-        const match = value.match(format);
+        const match = safeMatch(value, format);
         if (match) {
           const [, p1, p2, p3] = match;
           

@@ -2,6 +2,7 @@
 import * as XLSX from 'xlsx';
 import { bankProfilesService } from './bankProfilesService';
 import { BankProfile, ParsedMovement, ParseResult } from '../types/bankProfiles';
+import { safeMatch } from '../utils/safe';
 
 export interface CSVRow {
   [key: string]: string;
@@ -229,7 +230,7 @@ class EnhancedCSVParser {
     }
 
     // Check for separators or empty rows
-    if (rowText.match(/^[\s\-*]+$/)) return true;
+    if (safeMatch(rowText, /^[\s\-*]+$/)) return true;
 
     // Check if all cells are empty
     if (row.every(cell => !cell || String(cell).trim() === '')) return true;
@@ -469,8 +470,8 @@ class EnhancedCSVParser {
    */
   private detectSeparator(csvText: string): ',' | ';' {
     const firstLine = csvText.split('\n')[0];
-    const semicolonCount = (firstLine.match(/;/g) || []).length;
-    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (safeMatch(firstLine, /;/g) || []).length;
+    const commaCount = (safeMatch(firstLine, /,/g) || []).length;
     return semicolonCount > commaCount ? ';' : ',';
   }
 

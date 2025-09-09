@@ -38,6 +38,10 @@ export interface ImportResult {
   errors: number;
   createdIds: number[];
   batchId: string;
+  // For account selection workflow
+  requiresAccountSelection?: boolean;
+  unrecognizedIBAN?: string;
+  availableAccounts?: Array<{cuenta_id: number; account_name: string; iban?: string; confidence: number}>;
 }
 
 export interface ImportOptions {
@@ -77,7 +81,7 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
           requiresAccountSelection: true,
           unrecognizedIBAN: resolvedAccount.detectedIBAN,
           availableAccounts: resolvedAccount.matches || []
-        } as any; // Extend interface as needed
+        };
       }
       finalAccountId = resolvedAccount.cuenta_id!;
     }

@@ -2,6 +2,7 @@
 // Handles automatic routing of documents to their proper destinations following exact requirements
 
 import { RoutingDestinationResult, InboxItem, OCRExtractionResult, ClassificationResult, PropertyDetectionResult } from '../types/inboxTypes';
+import { importBankStatement, ImportOptions } from './bankStatementImportService';
 
 export interface RoutingDestination {
   module: 'tesoreria' | 'fiscalidad' | 'inmuebles' | 'personal';

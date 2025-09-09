@@ -96,10 +96,11 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
       
       const result = await importBankStatement(options);
       
-      if (!result.success && (result as any).requiresAccountSelection) {
+      if (result.requiresAccountSelection) {
         // Show account selection modal
-        setUnrecognizedIBAN((result as any).detectedIBAN || null);
+        setUnrecognizedIBAN(result.unrecognizedIBAN || null);
         setShowAccountSelection(true);
+        setImporting(false);
         return;
       }
       
