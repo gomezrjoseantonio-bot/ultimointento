@@ -13,6 +13,7 @@ import { BankParserService } from '../features/inbox/importers/bankParser';
 import { extractIBANFromBankStatement, matchAccountByIBAN } from './ibanAccountMatchingService';
 import { initDB, Movement } from './db';
 import { isDemoModeEnabled } from '../config/envFlags';
+import { safeMatch } from '../utils/safe';
 import toast from 'react-hot-toast';
 
 // Logging prefix as specified in requirements
@@ -306,7 +307,7 @@ function parseAndNormalizeDateString(dateStr: string): string {
   ];
 
   for (const format of formats) {
-    const match = dateStr.match(format);
+    const match = safeMatch(dateStr, format);
     if (match) {
       const [, p1, p2, p3] = match;
       

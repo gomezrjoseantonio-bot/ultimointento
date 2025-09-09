@@ -2,6 +2,7 @@
 // Handles detection and classification of utility bills
 
 import { UtilityType } from '../types/inboxTypes';
+import { safeMatch } from '../utils/safe';
 
 // Supplier patterns for utility type detection
 const UTILITY_SUPPLIERS = {
@@ -152,7 +153,7 @@ export function extractUtilityFields(
 
   // Extract CUPS (electricity/gas identifier)
   if (utilityType === 'electricity' || utilityType === 'gas') {
-    const cupsMatch = ocrText.match(/CUPS[:\s]*([A-Z]{2}\d{4}[A-Z]{2}\d{10}[A-Z]{2})/i);
+    const cupsMatch = safeMatch(ocrText, /CUPS[:\s]*([A-Z]{2}\d{4}[A-Z]{2}\d{10}[A-Z]{2})/i);
     if (cupsMatch) {
       result.cups = cupsMatch[1];
     }
@@ -168,14 +169,14 @@ export function extractUtilityFields(
 
   const pattern = consumptionPatterns[utilityType];
   if (pattern) {
-    const match = ocrText.match(pattern);
+    const match = safeMatch(ocrText, pattern);
     if (match) {
       result.consumption = match[0];
     }
   }
 
   // Extract IBAN with masking
-  const ibanMatch = ocrText.match(/(?:IBAN[:\s]*)?[A-Z]{2}\d{2}[A-Z0-9*]{4}\*+[A-Z0-9*]{4,}/gi);
+  const ibanMatch = safeMatch(ocrText, /(?:IBAN[:\s]*)?[A-Z]{2}\d{2}[A-Z0-9*]{4}\*+[A-Z0-9*]{4,}/gi);
   if (ibanMatch) {
     result.iban_masked = ibanMatch[0];
   }
@@ -187,7 +188,7 @@ export function extractUtilityFields(
   ];
 
   for (const pattern of addressPatterns) {
-    const match = ocrText.match(pattern);
+    const match = safeMatch(ocrText, pattern);
     if (match && match[1]) {
       result.supply_address = match[1].trim();
       break;

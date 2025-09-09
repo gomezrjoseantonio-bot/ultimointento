@@ -6,6 +6,7 @@ import {
   X, FileText, Image, AlertTriangle, RotateCcw, Trash2,
   ZoomIn, ZoomOut
 } from 'lucide-react';
+import { initDB, Property } from '../../services/db';
 
 interface DocumentEditPanelProps {
   document: any;
@@ -47,6 +48,28 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
   const [showPreview, setShowPreview] = useState(true);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
+
+  // Load properties on component mount
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const allProperties = await db.getAll('properties');
+        // Filter only active properties (not sold or inactive)
+        const activeProperties = allProperties.filter(p => p.state === 'activo');
+        setProperties(activeProperties);
+      } catch (error) {
+        console.error('Error loading properties:', error);
+        setProperties([]);
+      } finally {
+        setPropertiesLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
 
   // Initialize editable fields from document
   useEffect(() => {
@@ -304,9 +327,18 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Seleccionar destino...</option>
-                  <option value="Inmueble: C/ Mayor 123">Inmueble: C/ Mayor 123</option>
-                  <option value="Inmueble: Piso 2A">Inmueble: Piso 2A</option>
-                  <option value="Personal">Personal</option>
+                  {propertiesLoading ? (
+                    <option disabled>Cargando propiedades...</option>
+                  ) : (
+                    <>
+                      {properties.map(property => (
+                        <option key={property.id} value={`Inmueble: ${property.alias}`}>
+                          Inmueble: {property.alias} - {property.address}
+                        </option>
+                      ))}
+                      <option value="Personal">Personal</option>
+                    </>
+                  )}
                 </select>
               </div>
 

@@ -1,6 +1,8 @@
 // Unified OCR Service for calling /.netlify/functions/ocr
 // Implements exact requirements from problem statement
 
+import { safeMatch } from '../utils/safe';
+
 export interface OCRResponse {
   success: boolean;
   data?: {
@@ -229,7 +231,7 @@ export class UnifiedOCRService {
     
     // Fallback: parse from text (DD/MM/YYYY format)
     const text = entity.mentionText;
-    const dateMatch = text?.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    const dateMatch = safeMatch(text, /(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (dateMatch) {
       const [, day, month, year] = dateMatch;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -265,7 +267,7 @@ export class UnifiedOCRService {
   private extractIbanMask(text: string): string | undefined {
     // Look for IBAN patterns with potential masking
     const ibanPattern = /ES\d{2}\s*\d{4}\s*\d{4}\s*\d{2}\s*[\d*•]{12}/g;
-    const match = text.match(ibanPattern);
+    const match = safeMatch(text, ibanPattern);
     
     if (match) {
       return match[0].replace(/\s/g, ''); // Remove spaces
@@ -273,7 +275,7 @@ export class UnifiedOCRService {
     
     // Look for partial IBAN with asterisks
     const partialPattern = /ES\d{2}[\s\d*•]{18,24}/g;
-    const partialMatch = text.match(partialPattern);
+    const partialMatch = safeMatch(text, partialPattern);
     
     if (partialMatch) {
       return partialMatch[0].replace(/\s/g, '');
