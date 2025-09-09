@@ -57,7 +57,7 @@ const InboxPageV2: React.FC = () => {
   }, []);
 
   const loadDocuments = () => {
-    // Mock data for demonstration
+    // Sample data for testing - replace with real data source
     const mockDocs: InboxDocument[] = [
       {
         id: '1',

@@ -56,7 +56,7 @@ const InboxPageNew: React.FC = () => {
   }, []);
 
   const loadDocuments = () => {
-    // Mock data for demonstration - following the requirements exactly
+    // Sample data for testing - following the requirements exactly
     const mockDocs: InboxDocument[] = [
       {
         id: '1',

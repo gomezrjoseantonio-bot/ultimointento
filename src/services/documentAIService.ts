@@ -312,15 +312,8 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   };
 };
 
-// H-OCR-FIX: Main OCR processing function
 export const processDocumentOCR = async (documentBlob: Blob, filename: string): Promise<OCRResult> => {
   try {
-    // DEV: Check for demo/test mode
-    if (process.env.NODE_ENV === 'development' && filename.toLowerCase().includes('demo')) {
-      // Return mock OCR result for testing UI
-      return createMockOCRResult(filename);
-    }
-    
     // Convert blob to file for form data
     const file = new File([documentBlob], filename, { type: documentBlob.type });
     
@@ -343,77 +336,6 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
       error: error instanceof Error ? error.message : 'Error desconocido en OCR'
     };
   }
-};
-
-// H-OCR-DEBUG: Create mock OCR result for testing
-const createMockOCRResult = (filename: string): OCRResult => {
-  return {
-    engine: 'document-ai-invoice:DEMO',
-    timestamp: new Date().toISOString(),
-    confidenceGlobal: 0.87,
-    status: 'completed',
-    fields: [
-      {
-        name: 'supplier_name',
-        value: 'ENDESA ENERGÍA XXI S.L.U.',
-        confidence: 0.95,
-        raw: 'ENDESA ENERGÍA XXI S.L.U.'
-      },
-      {
-        name: 'supplier_tax_id',
-        value: 'B-81948077',
-        confidence: 0.89,
-        raw: 'B-81948077'
-      },
-      {
-        name: 'invoice_id',
-        value: 'FE-2024-001234',
-        confidence: 0.92,
-        raw: 'FE-2024-001234'
-      },
-      {
-        name: 'invoice_date',
-        value: '15/01/2024',
-        confidence: 0.94,
-        raw: '15/01/2024'
-      },
-      {
-        name: 'due_date',
-        value: '15/02/2024',
-        confidence: 0.85,
-        raw: '15/02/2024'
-      },
-      {
-        name: 'total_amount',
-        value: '156,78',
-        confidence: 0.96,
-        raw: '156,78 €'
-      },
-      {
-        name: 'net_amount',
-        value: '129,65',
-        confidence: 0.93,
-        raw: '129,65'
-      },
-      {
-        name: 'tax_amount',
-        value: '27,13',
-        confidence: 0.91,
-        raw: '27,13'
-      },
-      {
-        name: 'currency',
-        value: 'EUR',
-        confidence: 0.99,
-        raw: '€'
-      }
-    ],
-    engineInfo: {
-      type: 'document-ai-invoice',
-      displayName: 'Document AI — Demo Mode',
-      description: 'Mock OCR response for testing'
-    }
-  };
 };
 
 // H-OCR-FIX: Check if OCR suggests expense creation

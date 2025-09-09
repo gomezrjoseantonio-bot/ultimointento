@@ -92,7 +92,7 @@ const EmailEntrante: React.FC = () => {
           type: 'property',
           target: prop.alias,
           tenantToken: 'mock-token-123',
-          isActive: index === 0, // First property active, others inactive for demo
+          isActive: index === 0, // First property active by default
           created: new Date(Date.now() - (index + 1) * 86400000)
         });
       });

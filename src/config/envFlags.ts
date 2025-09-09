@@ -10,6 +10,7 @@ export interface EnvFlags {
   // Development and testing
   ENABLE_TELEMETRY: boolean;
   QA_DASHBOARD: boolean;
+  APP_DEMO_MODE: boolean; // Controls demo data generation and mock responses
   
   // OCR Configuration
   OCR_CONFIDENCE_THRESHOLD: number;
@@ -38,6 +39,7 @@ export const getEnvFlags = (): EnvFlags => {
     // Development flags
     ENABLE_TELEMETRY: parseEnvFlag(process.env.REACT_APP_ENABLE_TELEMETRY, true),
     QA_DASHBOARD: parseEnvFlag(process.env.REACT_APP_QA_DASHBOARD, process.env.NODE_ENV === 'development'),
+    APP_DEMO_MODE: parseEnvFlag(process.env.REACT_APP_DEMO_MODE, false), // Default false for production
     
     // Configuration
     OCR_CONFIDENCE_THRESHOLD: parseEnvNumber(process.env.REACT_APP_OCR_CONFIDENCE_THRESHOLD, 0.80)
@@ -50,6 +52,7 @@ export const isAutoOCREnabled = (): boolean => getEnvFlags().INBOX_AUTO_OCR;
 export const isBankImportEnabled = (): boolean => getEnvFlags().BANK_IMPORT_ENABLE;
 export const isTelemetryEnabled = (): boolean => getEnvFlags().ENABLE_TELEMETRY;
 export const isQADashboardEnabled = (): boolean => getEnvFlags().QA_DASHBOARD;
+export const isDemoModeEnabled = (): boolean => getEnvFlags().APP_DEMO_MODE;
 export const getOCRConfidenceThreshold = (): number => getEnvFlags().OCR_CONFIDENCE_THRESHOLD;
 
 // Log environment flags on startup (dev only)
@@ -59,6 +62,7 @@ if (process.env.NODE_ENV === 'development') {
     'Auto Route': flags.INBOX_AUTO_ROUTE ? '✅' : '❌',
     'Auto OCR': flags.INBOX_AUTO_OCR ? '✅' : '❌', 
     'Bank Import': flags.BANK_IMPORT_ENABLE ? '✅' : '❌',
+    'Demo Mode': flags.APP_DEMO_MODE ? '⚠️ ENABLED' : '✅ DISABLED',
     'Telemetry': flags.ENABLE_TELEMETRY ? '✅' : '❌',
     'OCR Threshold': `${(flags.OCR_CONFIDENCE_THRESHOLD * 100).toFixed(0)}%`
   });

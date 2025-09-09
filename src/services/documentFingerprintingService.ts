@@ -7,7 +7,7 @@ import { DocumentFingerprint } from '../types/inboxTypes';
  * Simple SHA1 implementation for client-side use
  */
 function sha1(data: string): string {
-  // Simple hash implementation (for demo purposes)
+  // Simple hash implementation for client-side use
   // In production, use crypto.subtle.digest or a proper crypto library
   let hash = 0;
   if (data.length === 0) return hash.toString(16);
