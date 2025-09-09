@@ -3,6 +3,7 @@
 
 import { OCRExtractionResult } from '../types/inboxTypes';
 import { processDocumentOCR } from './documentAIService';
+import { safeMatch } from '../utils/safe';
 
 /**
  * Extract required fields from document using OCR
@@ -116,7 +117,7 @@ export async function extractOCRFields(fileUrl: string, mime: string): Promise<O
 function extractIBANMask(text: string): string | undefined {
   // Ejemplo ES: ES\d{2}[\s-]?([X•]{2,8}|[*X•\s\d]{8,})[\s\d]+
   const ibanRegex = /ES\d{2}[\s-]?([X•*]{2,8}|[*X•\s\d]{8,})[\s\d]*/gi;
-  const matches = text.match(ibanRegex);
+  const matches = safeMatch(text, ibanRegex);
   
   if (matches && matches.length > 0) {
     // Return the first match, cleaned up
@@ -135,7 +136,7 @@ function extractIBANMask(text: string): string | undefined {
 
   // Try other patterns for other countries or generic patterns
   const genericIbanRegex = /[A-Z]{2}\d{2}[\s-]?[*•X\d\s]{10,}/gi;
-  const genericMatches = text.match(genericIbanRegex);
+  const genericMatches = safeMatch(text, genericIbanRegex);
   
   if (genericMatches && genericMatches.length > 0) {
     let iban = genericMatches[0].replace(/\s+/g, '');
@@ -169,7 +170,7 @@ function cleanTaxId(value: any): string | undefined {
   cleaned = cleaned.replace(/[^\w\d]/g, '');
   
   // Validate basic Spanish tax ID format
-  if (cleaned.match(/^[A-Z]\d{8}$/) || cleaned.match(/^\d{8}[A-Z]$/)) {
+  if (safeMatch(cleaned, /^[A-Z]\d{8}$/) || safeMatch(cleaned, /^\d{8}[A-Z]$/)) {
     return cleaned;
   }
   
@@ -207,7 +208,8 @@ function parseAmount(value: any): number | undefined {
     }
   } else if (amountStr.includes(',')) {
     // Only comma - could be thousands separator or decimal
-    const commaCount = (amountStr.match(/,/g) || []).length;
+    const commaMatches = safeMatch(amountStr, /,/g);
+    const commaCount = commaMatches ? commaMatches.length : 0;
     if (commaCount === 1 && amountStr.indexOf(',') > amountStr.length - 4) {
       // Likely decimal: 123,45
       amountStr = amountStr.replace(',', '.');
@@ -238,7 +240,7 @@ function formatDateToISO(value: any): string | undefined {
   ];
   
   for (const format of formats) {
-    const match = dateStr.match(format);
+    const match = safeMatch(dateStr, format);
     if (match) {
       let year, month, day;
       
