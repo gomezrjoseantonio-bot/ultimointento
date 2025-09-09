@@ -61,7 +61,7 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
   
   // REQUIREMENT: Reject import if no destinationAccountId provided
   if (!destinationAccountId) {
-    console.error(`${LOG_PREFIX} No destination account provided`);
+    console.error(`${LOG_PREFIX} bankImport:error - No destination account provided`);
     return {
       success: false,
       inserted: 0,
@@ -74,9 +74,11 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
   }
   
   try {
+    console.debug(`${LOG_PREFIX} bankImport:start - Processing file: ${file.name}, size: ${file.size} bytes`);
+    
     // Step 1: Parse file → parsedRows[]
     const parsedRows = await parseFileToRows(file);
-    console.info(`${LOG_PREFIX} Rows count: ${parsedRows.length}`);
+    console.info(`${LOG_PREFIX} bankImport:parsed - ${parsedRows.length} rows extracted from file`);
     
     // Step 2: Apply destinationAccountId to all rows (no auto-detection)
     const rowsWithAccount = parsedRows.map(row => ({
@@ -84,15 +86,16 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
       account_id: destinationAccountId
     }));
     
-    console.info(`${LOG_PREFIX} All ${rowsWithAccount.length} movements assigned to account ${destinationAccountId}`);
+    console.debug(`${LOG_PREFIX} All ${rowsWithAccount.length} movements assigned to account ${destinationAccountId}`);
     
     // Step 3: Create movements with ONE bulk call  
     const result = await createMovements(rowsWithAccount, usuario);
     
-    console.info(`${LOG_PREFIX} Import completed: ${result.inserted} inserted, ${result.duplicates} duplicates, ${result.errors} errors`);
+    console.info(`${LOG_PREFIX} bankImport:persisted - Import completed: ${result.inserted} inserted, ${result.duplicates} duplicates, ${result.errors} errors`);
     
     // Step 4: Show UI toast with real counts
     if (result.success && result.inserted > 0) {
+      console.debug(`${LOG_PREFIX} Showing success toast for ${result.inserted} movements`);
       toast.success(`Importados ${result.inserted} movimientos en la cuenta seleccionada`);
     }
     const message = `Importados: ${result.inserted} · Duplicados: ${result.duplicates} · Errores: ${result.errors}`;
