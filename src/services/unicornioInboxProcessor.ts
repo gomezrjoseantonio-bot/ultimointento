@@ -6,6 +6,7 @@ import { detectUtilityType } from './utilityDetectionService';
 import { calculateDocumentFingerprint } from './documentFingerprintingService';
 import { inferExpenseType } from './expenseTypeInferenceService';
 import { TipoGasto } from './db';
+import { safeMatch } from '../utils/safe';
 
 export interface ProcessingResult {
   success: boolean;
@@ -384,13 +385,13 @@ async function executeInvoiceOCR(file: File, filename: string): Promise<any> {
     
     // Try to extract CUPS from document text if available
     if (documentText) {
-      const cupsMatch = documentText.match(/CUPS[:\s]*([A-Z]{2}\d{16}[A-Z]{2})/i);
+      const cupsMatch = safeMatch(documentText, /CUPS[:\s]*([A-Z]{2}\d{16}[A-Z]{2})/i);
       if (cupsMatch) {
         invoiceData.cups = cupsMatch[1];
       }
       
       // Try to extract masked IBAN
-      const ibanMatch = documentText.match(/\*{4,}(\d{4})/);
+      const ibanMatch = safeMatch(documentText, /\*{4,}(\d{4})/);
       if (ibanMatch) {
         invoiceData.iban_masked = `****${ibanMatch[1]}`;
       }

@@ -155,8 +155,11 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                 </p>
                 <button
                   onClick={() => {
-                    // TODO: Navigate to account configuration
-                    console.log('Navigate to account configuration');
+                    // Navigate to account configuration
+                    onClose();
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.hash = '#/configuracion/cuentas';
+                    window.location.href = currentUrl.toString();
                   }}
                   className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-opacity"
                   style={{ 
@@ -249,6 +252,32 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                       </div>
                     </button>
                   ))}
+                  
+                  {/* Add "Crear cuenta..." option */}
+                  <button
+                    onClick={() => {
+                      onClose();
+                      const currentUrl = new URL(window.location.href);
+                      currentUrl.hash = '#/configuracion/cuentas';
+                      window.location.href = currentUrl.toString();
+                    }}
+                    className="w-full text-left p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 transition-all"
+                    style={{ 
+                      fontFamily: 'Inter, sans-serif'
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <Plus className="w-5 h-5 mr-3 text-gray-500" strokeWidth={1.5} />
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-700">
+                          Crear cuenta…
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Configurar una nueva cuenta bancaria
+                        </p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}

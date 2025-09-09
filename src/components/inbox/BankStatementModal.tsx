@@ -42,7 +42,16 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
   const loadAccounts = async () => {
     try {
       const allAccounts = await treasuryAPI.accounts.getAccounts();
-      setAccounts(allAccounts.filter(acc => acc.isActive));
+      setAccounts(allAccounts.filter(acc => 
+        acc.isActive && 
+        !acc.deleted_at &&
+        !acc.name?.toLowerCase().includes('demo') &&
+        !acc.name?.toLowerCase().includes('sample') &&
+        !acc.name?.toLowerCase().includes('fake') &&
+        !acc.bank?.toLowerCase().includes('demo') &&
+        !acc.bank?.toLowerCase().includes('sample') &&
+        !acc.bank?.toLowerCase().includes('fake')
+      ));
     } catch (error) {
       console.error('Error loading accounts:', error);
       toast.error('Error al cargar las cuentas');
