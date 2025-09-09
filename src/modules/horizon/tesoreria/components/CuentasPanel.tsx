@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown, Eye, EyeOff, Filter, Trash2, X, Play, Pause } from 'lucide-react';
+import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, TrendingDown, Eye, EyeOff, Filter, Trash2, X, Play, Pause, Settings } from 'lucide-react';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
@@ -984,18 +984,28 @@ const CuentasPanel: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => setShowImport(true)}
+            onClick={() => {
+              const currentUrl = new URL(window.location.href);
+              currentUrl.hash = '#/configuracion/cuentas';
+              window.location.href = currentUrl.toString();
+              toast.success('Crea cuentas en Configuración para una gestión centralizada');
+            }}
             className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50"
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Importar
+            <Settings className="w-4 h-4 mr-2" />
+            Crear Cuenta
           </button>
           <button 
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              const currentUrl = new URL(window.location.href);
+              currentUrl.hash = '#/configuracion/cuentas';
+              window.location.href = currentUrl.toString();
+              toast.success('Crea cuentas en Configuración para una gestión centralizada');
+            }}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Cuenta
+            <Settings className="w-4 h-4 mr-2" />
+            Ir a Configuración
           </button>
         </div>
       </div>
@@ -1275,12 +1285,14 @@ const CuentasPanel: React.FC = () => {
                           className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditingAccount(account);
-                            setShowCreateForm(true);
+                            const currentUrl = new URL(window.location.href);
+                            currentUrl.hash = '#/configuracion/cuentas';
+                            window.location.href = currentUrl.toString();
+                            toast.success('Edita cuentas en Configuración para una gestión centralizada');
                           }}
-                          title="Editar cuenta"
+                          title="Editar cuenta en Configuración"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Settings className="w-4 h-4" />
                         </button>
                         <button 
                           className="p-2 text-gray-400 hover:text-error-600 hover:bg-error-50 rounded"
