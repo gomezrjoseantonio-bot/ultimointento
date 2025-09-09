@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { ImportResult } from '../../../../types/unifiedTreasury';
 
@@ -23,11 +23,32 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     detectedAccount?: string;
   } | null>(null);
 
-  // Mock accounts for selection
-  const accounts = [
-    { id: 1, name: 'Cuenta Principal', bank: 'BBVA', iban: '***7891' },
-    { id: 2, name: 'Gastos Inmuebles', bank: 'Santander', iban: '***7892' }
-  ];
+  // Load real accounts from settings
+  const [accounts, setAccounts] = useState<Array<{id: number, name: string, bank: string, iban: string}>>([]);
+  
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const { treasuryAPI } = await import('../../../../services/treasuryApiService');
+        const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
+        const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
+        
+        setAccounts(horizonAccounts.map(acc => ({
+          id: acc.id!,
+          name: acc.name || `Cuenta ${acc.bank}`,
+          bank: acc.bank,
+          iban: `***${acc.iban.slice(-4)}`
+        })));
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        setAccounts([]);
+      }
+    };
+    
+    if (isOpen) {
+      loadAccounts();
+    }
+  }, [isOpen]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();

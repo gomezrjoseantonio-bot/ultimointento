@@ -221,21 +221,35 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             </select>
           </div>
 
-          {/* Help text */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-700">
-              💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
-            </p>
-          </div>
+          {/* Help text and no accounts warning */}
+          {accounts.length === 0 ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-700 mb-2">
+                ⚠️ No hay cuentas configuradas. Debes crear una cuenta antes de poder importar extractos.
+              </p>
+              <button
+                onClick={handleGoToSettings}
+                className="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 transition-colors"
+              >
+                Ir a Configuración &gt; Cuentas
+              </button>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-700">
+                💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleImport}
-              disabled={!selectedAccountId || isLoading}
+              disabled={!selectedAccountId || isLoading || accounts.length === 0}
               className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? 'Importando...' : 'Importar Movimientos'}
+              {isLoading ? 'Importando...' : accounts.length === 0 ? 'Sin cuentas disponibles' : 'Importar Movimientos'}
             </button>
             <button
               onClick={onClose}

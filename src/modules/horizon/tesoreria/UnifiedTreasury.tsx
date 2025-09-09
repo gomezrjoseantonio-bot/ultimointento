@@ -79,6 +79,7 @@ const UnifiedTreasury: React.FC = () => {
         projectedBalance: acc.balance, // Simplified for now
         monthlyMinBalance: acc.minimumBalance || 0,
         includeInConsolidated: acc.includeInConsolidated ?? true,
+        logo_url: acc.logo_url, // Include logo URL from settings
         createdAt: acc.createdAt,
         updatedAt: acc.updatedAt
       }));
@@ -382,9 +383,35 @@ const UnifiedTreasury: React.FC = () => {
                   <div className="flex items-center justify-between">
                     {/* Account Info */}
                     <div className="flex items-center gap-4">
-                      {/* Bank Logo Placeholder */}
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600">{account.bank}</span>
+                      {/* Bank Logo with fallback */}
+                      <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--atlas-navy-1)' }}>
+                        {account.logo_url && (account.logo_url.endsWith('.jpg') || account.logo_url.endsWith('.jpeg') || account.logo_url.endsWith('.png')) ? (
+                          <img 
+                            src={account.logo_url} 
+                            alt={`Logo ${account.bank}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to initials if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              const fallback = document.createElement('div');
+                              fallback.className = 'w-full h-full flex items-center justify-center text-white font-medium text-sm';
+                              fallback.textContent = (account.name || account.bank)
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase())
+                                .slice(0, 2)
+                                .join('');
+                              target.parentNode?.replaceChild(fallback, target);
+                            }}
+                          />
+                        ) : (
+                          <span className="text-white font-medium text-sm">
+                            {(account.name || account.bank)
+                              .split(' ')
+                              .map(word => word.charAt(0).toUpperCase())
+                              .slice(0, 2)
+                              .join('')}
+                          </span>
+                        )}
                       </div>
                       
                       {/* Account Details */}

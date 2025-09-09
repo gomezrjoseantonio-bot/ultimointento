@@ -42,48 +42,71 @@ const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
     }
   }, [openMenuId]);
   
+  const [accounts, setAccounts] = useState<AccountData[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Load real accounts from settings instead of mock data
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const { treasuryAPI } = await import('../../../../services/treasuryApiService');
+        const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
+        const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
+        
+        // Convert to AccountData format with real data
+        const accountsWithData: AccountData[] = horizonAccounts.map(acc => ({
+          id: acc.id!.toString(),
+          name: acc.name || `Cuenta ${acc.bank}`,
+          bank: acc.bank,
+          iban: acc.iban,
+          usage: (acc.usage_scope || 'mixto') as 'personal' | 'inmuebles' | 'mixto',
+          currentBalance: acc.balance,
+          projectedBalance: acc.balance, // Simplified - no projection logic for now
+          threshold: acc.minimumBalance || 1000,
+          sparklineData: generateSparklineData(acc.balance, acc.balance, acc.minimumBalance || 1000, filters.dateRange)
+        }));
+        
+        setAccounts(accountsWithData);
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        setAccounts([]); // Empty array instead of mock data
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAccounts();
+  }, [filters.dateRange]);
+  
   // Mock data - in real implementation would come from treasury services
-  const accounts: AccountData[] = [
-    {
-      id: '1',
-      name: 'Cuenta Principal',
-      bank: 'Santander',
-      iban: 'ES1234567890123456789012',
-      usage: 'inmuebles',
-      currentBalance: 8500,
-      projectedBalance: 7200,
-      threshold: 1000,
-      sparklineData: generateSparklineData(8500, 7200, 1000, filters.dateRange)
-    },
-    {
-      id: '2',
-      name: 'Cuenta Gastos',
-      bank: 'ING Direct',
-      iban: 'ES9876543210987654321098',
-      usage: 'mixto',
-      currentBalance: 3200,
-      projectedBalance: 2800,
-      threshold: 500,
-      sparklineData: generateSparklineData(3200, 2800, 500, filters.dateRange)
-    },
-    {
-      id: '3',
-      name: 'Cuenta Reserva',
-      bank: 'BBVA',
-      iban: 'ES5555444433332222111100',
-      usage: 'inmuebles',
-      currentBalance: 15000,
-      projectedBalance: 14500,
-      threshold: 5000,
-      sparklineData: generateSparklineData(15000, 14500, 5000, filters.dateRange)
-    }
-  ];
+  // REMOVED: This mock data has been replaced with real data from the database
 
   // Filter accounts based on personal exclusion
   const filteredAccounts = accounts.filter(account => {
     if (filters.excludePersonal && account.usage === 'personal') return false;
     return true;
   });
+  
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-hz-neutral-200 p-6">
+        <div className="text-center text-hz-neutral-500">
+          Cargando cuentas...
+        </div>
+      </div>
+    );
+  }
+  
+  if (accounts.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-hz-neutral-200 p-6">
+        <div className="text-center text-hz-neutral-500">
+          <p className="mb-2">No hay cuentas configuradas</p>
+          <p className="text-sm">Ve a Configuración &gt; Cuentas para crear tu primera cuenta</p>
+        </div>
+      </div>
+    );
+  }
 
   const getDaysLabel = () => {
     switch (filters.dateRange) {
