@@ -174,6 +174,11 @@ const UnifiedTreasury: React.FC = () => {
         origin: 'Manual',
         movementState: Math.random() > 0.5 ? 'Previsto' : 'Confirmado',
         unifiedStatus: Math.random() > 0.5 ? 'previsto' : 'confirmado',
+        source: 'manual',
+        category: { 
+          tipo: isIncome ? 'Ingresos' : 'Gastos',
+          subtipo: isIncome ? 'Alquileres' : 'Suministros'
+        },
         sign: isIncome ? '+' : '-',
         canConfirm: Math.random() > 0.5,
         canEdit: true,

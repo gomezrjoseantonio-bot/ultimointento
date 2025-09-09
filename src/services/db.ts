@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 12; // H9: Added new budget system (Presupuesto/PresupuestoLinea) per specification
+const DB_VERSION = 13; // ATLAS HORIZON: Added unified banking movements pipeline tables
 
 export interface Property {
   id?: number;
@@ -528,6 +528,17 @@ export type MovementType = 'Ingreso' | 'Gasto' | 'Transferencia' | 'Ajuste';
 export type MovementOrigin = 'OCR' | 'CSV' | 'Manual';
 export type MovementState = 'Previsto' | 'Confirmado' | 'Conciliado' | 'Revisar';
 
+// ATLAS HORIZON: Unified movement status per problem statement
+export type UnifiedMovementStatus = 
+  | 'previsto'      // forecast income/expense from budget
+  | 'confirmado'    // confirmed transaction matching budget
+  | 'vencido'       // overdue forecast without real transaction
+  | 'no_planificado' // real transaction without budget match
+  | 'conciliado';   // confirmed and reconciled with budget
+
+// ATLAS HORIZON: Movement source types
+export type MovementSource = 'import' | 'manual' | 'inbox';
+
 export interface Movement {
   id?: number;
   accountId: number;
@@ -538,14 +549,34 @@ export interface Movement {
   counterparty?: string;
   reference?: string;
   status: MovementStatus;
-  // Treasury_transactions specific fields
+  
+  // ATLAS HORIZON: Enhanced fields per problem statement
+  // Core identification fields
+  bank_ref?: string;        // bank reference ID if exists
+  iban_detected?: string;   // IBAN detected from file
+  
+  // Status and reconciliation (per problem statement)
+  unifiedStatus: UnifiedMovementStatus; // previsto|confirmado|vencido|no_planificado|conciliado
+  source: MovementSource;   // import|manual|inbox
+  plan_match_id?: string;   // ID of budget item this matches
+  property_id?: string;     // property ID if applicable
+  category: {               // hierarchical category
+    tipo: string;           // e.g., "Suministros"
+    subtipo?: string;       // e.g., "Luz"
+  };
+  
+  // Transfer detection
+  is_transfer?: boolean;
+  transfer_group_id?: string; // groups the two transfer legs
+  
+  // Invoice/OCR linking
+  invoice_id?: string;      // link to OCR invoice if matched
+  
+  // Legacy compatibility fields
   state?: TransactionState; // 'pending'|'reconciled'|'ignored'
   sourceBank?: string; // source_bank field
   currency?: string; // currency field  
   balance?: number; // balance field (different from saldo)
-  
-  // FIX-EXTRACTOS: REMOVED rawRow to comply with privacy requirements
-  // rawRow?: any; // REMOVED - never store original file data
   
   // H10: Enhanced reconciliation fields
   saldo?: number;
@@ -565,7 +596,6 @@ export interface Movement {
   
   // V1.0: New fields per requirements
   type: MovementType; // Ingreso/Gasto/Transferencia/Ajuste
-  category?: string; // Hierarchical category (e.g., "Suministros › Luz")
   origin: MovementOrigin; // OCR/CSV/Manual
   movementState: MovementState; // Previsto/Confirmado/Conciliado/Revisar
   tags?: string[]; // Auto-assigned tags from rules
@@ -577,6 +607,58 @@ export interface Movement {
   // Audit fields for quick actions (section 14)
   lastModifiedBy?: string; // User who made the change
   changeReason?: 'user_ok' | 'inline_edit_amount' | 'inline_edit_date' | 'bulk_ok' | 'manual_edit';
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ATLAS HORIZON: Import logging interface per problem statement (section 11)
+export interface ImportLog {
+  id?: number;
+  fileName: string;
+  fileSize: number;
+  importedAt: string;
+  account_id?: number;
+  detected_iban?: string;
+  
+  // Results summary
+  totalRows: number;
+  created: number;
+  conciliated: number;
+  unplanned: number;
+  skipped: number;
+  transfers: number;
+  errors: number;
+  
+  // Error details
+  errorDetails?: Array<{
+    line: number;
+    error: string;
+    data?: any;
+  }>;
+  
+  // Source information
+  source: 'treasury_import' | 'inbox_auto';
+  batchId: string;
+  userId?: string;
+}
+
+// ATLAS HORIZON: Matching configuration per problem statement (section 6)
+export interface MatchingConfiguration {
+  id?: number;
+  dateWindow: number;        // ±N days (default 5)
+  amountTolerancePercent: number; // ±N% (default 15)
+  amountToleranceFixed: number;   // ±N€ (default 0)
+  
+  // Matching criteria weights
+  useIbanMatching: boolean;
+  useProviderMatching: boolean;
+  useDescriptionMatching: boolean;
+  useCategoryMatching: boolean;
+  
+  // Transfer detection
+  transferDateWindow: number; // ±N days (default 2)
+  transferKeywords: string[]; // keywords for transfer detection
   
   createdAt: string;
   updatedAt: string;
@@ -1018,6 +1100,8 @@ interface AtlasHorizonDB {
   budgetLines: BudgetLine; // H9: Budget line items (legacy)
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
+  importLogs: ImportLog; // ATLAS HORIZON: Import logging for banking movements pipeline
+  matchingConfiguration: MatchingConfiguration; // ATLAS HORIZON: Matching rules configuration
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1252,6 +1336,22 @@ export const initDB = async () => {
           presupuestoLineasStore.createIndex('cuentaId', 'cuentaId', { unique: false });
           presupuestoLineasStore.createIndex('contratoId', 'contratoId', { unique: false });
           presupuestoLineasStore.createIndex('prestamoId', 'prestamoId', { unique: false });
+        }
+
+        // ATLAS HORIZON: Import logs store for banking movements pipeline
+        if (!db.objectStoreNames.contains('importLogs')) {
+          const importLogsStore = db.createObjectStore('importLogs', { keyPath: 'id', autoIncrement: true });
+          importLogsStore.createIndex('fileName', 'fileName', { unique: false });
+          importLogsStore.createIndex('importedAt', 'importedAt', { unique: false });
+          importLogsStore.createIndex('source', 'source', { unique: false });
+          importLogsStore.createIndex('batchId', 'batchId', { unique: false });
+          importLogsStore.createIndex('account_id', 'account_id', { unique: false });
+        }
+
+        // ATLAS HORIZON: Matching configuration store
+        if (!db.objectStoreNames.contains('matchingConfiguration')) {
+          const matchingConfigStore = db.createObjectStore('matchingConfiguration', { keyPath: 'id', autoIncrement: true });
+          matchingConfigStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
         // General key-value store for application configuration

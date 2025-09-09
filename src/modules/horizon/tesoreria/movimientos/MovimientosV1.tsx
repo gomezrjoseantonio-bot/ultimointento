@@ -180,7 +180,8 @@ const MovimientosV1: React.FC = () => {
       filtered = filtered.filter(mov => 
         mov.description.toLowerCase().includes(search) ||
         mov.counterparty?.toLowerCase().includes(search) ||
-        mov.category?.toLowerCase().includes(search) ||
+        mov.category?.tipo?.toLowerCase().includes(search) ||
+        mov.category?.subtipo?.toLowerCase().includes(search) ||
         mov.tags?.some(tag => tag.toLowerCase().includes(search))
       );
     }
@@ -680,7 +681,11 @@ const MovimientosV1: React.FC = () => {
                         {movement.type}
                       </td>
                       <td className="px-4 py-3 text-sm text-hz-text">
-                        {movement.category || '-'}
+                        {movement.category ? 
+                          (movement.category.subtipo ? 
+                            `${movement.category.tipo} › ${movement.category.subtipo}` : 
+                            movement.category.tipo) : 
+                          '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-hz-text">
                         {movement.origin}
