@@ -10,8 +10,6 @@
 
 import { initDB, Movement, Account, Ingreso, Gasto, CAPEX } from './db';
 import { DocumentType } from './unicornioDocumentDetection';
-import { emitTreasuryEvent } from './treasuryEventsService';
-import toast from 'react-hot-toast';
 
 export type TreasuryOrigin = 'ocr_document' | 'bank_extract' | 'manual_entry';
 
@@ -72,8 +70,6 @@ export const createTreasuryMovementFromOCR = async (
   filename: string
 ): Promise<TreasuryMovementCreationResult> => {
   try {
-    const db = await initDB();
-    
     // Validate required fields
     if (!extractedFields.total_amount || extractedFields.total_amount <= 0) {
       return {
@@ -171,12 +167,15 @@ export const createTreasuryMovementFromBankExtract = async (
         counterparty: transaction.counterparty,
         reference: transaction.reference,
         balance: transaction.balance,
-        status: 'pending',
+        status: 'pendiente',
         state: 'pending',
         sourceBank: account.bank,
         currency: 'EUR',
         saldo: transaction.balance,
         estado_conciliacion: 'sin_conciliar',
+        type: transaction.amount > 0 ? 'Ingreso' : 'Gasto',
+        origin: 'CSV',
+        movementState: 'Confirmado',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -184,18 +183,6 @@ export const createTreasuryMovementFromBankExtract = async (
       const movementId = await db.add('movements', movement);
       createdMovements.push(movementId as number);
     }
-
-    // Emit treasury event
-    await emitTreasuryEvent({
-      type: 'bank_extract_imported',
-      accountId: extractData.accountId,
-      movementIds: createdMovements,
-      metadata: {
-        filename,
-        transactionCount: extractData.transactions.length,
-        origen: 'bank_extract'
-      }
-    });
 
     return {
       success: true,
@@ -260,36 +247,22 @@ async function createIngresoFromOCR(
   const db = await initDB();
   
   const ingreso: Omit<Ingreso, 'id'> = {
-    origen: 'ocr_document',
-    origen_id: documentId,
+    origen: 'doc_id',
+    origen_id: parseInt(documentId) || 0,
     proveedor_contraparte: fields.arrendatario_nombre || fields.proveedor_nombre || 'Proveedor no identificado',
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
     importe: fields.total_amount!,
+    moneda: 'EUR',
     estado: 'previsto',
     destino: fields.property_id ? 'inmueble_id' : 'personal',
     destino_id: fields.property_id,
-    metodo_pago: 'Transferencia',
-    iban: fields.iban_detectado,
-    concepto: `Ingreso desde documento: ${filename}`,
     from_doc: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
   
   const ingresoId = await db.add('ingresos', ingreso);
-  
-  // Emit treasury event
-  await emitTreasuryEvent({
-    type: 'ingreso_created_from_ocr',
-    ingresoId: ingresoId as number,
-    metadata: {
-      documentId,
-      filename,
-      origen: 'ocr_document',
-      amount: fields.total_amount
-    }
-  });
   
   return {
     success: true,
@@ -311,41 +284,23 @@ async function createGastoFromOCR(
   const db = await initDB();
   
   const gasto: Omit<Gasto, 'id'> = {
-    origen: 'ocr_document',
-    origen_id: documentId,
-    proveedor: fields.proveedor_nombre || 'Proveedor no identificado',
+    proveedor_nombre: fields.proveedor_nombre || 'Proveedor no identificado',
+    proveedor_nif: '', // Not available from OCR
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
-    fecha_prevista_pago: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
-    importe: fields.total_amount!,
-    estado: 'pendiente',
+    fecha_pago_prevista: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
+    total: fields.total_amount!,
+    base: fields.base_amount,
+    iva: fields.iva_amount,
+    categoria_AEAT: 'suministros', // Default category
+    estado: 'incompleto',
     destino: fields.property_id ? 'inmueble_id' : 'personal',
     destino_id: fields.property_id,
-    metodo_pago: 'Transferencia',
-    iban: fields.iban_detectado,
-    concepto: `Gasto desde documento: ${filename}`,
-    categoria: fields.expense_category || 'Gastos generales',
-    // Tax breakdown
-    base_imponible: fields.base_amount,
-    iva_rate: fields.iva_rate,
-    iva_amount: fields.iva_amount,
-    from_doc: true,
+    source_doc_id: parseInt(documentId) || undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
   
   const gastoId = await db.add('gastos', gasto);
-  
-  // Emit treasury event
-  await emitTreasuryEvent({
-    type: 'gasto_created_from_ocr',
-    gastoId: gastoId as number,
-    metadata: {
-      documentId,
-      filename,
-      origen: 'ocr_document',
-      amount: fields.total_amount
-    }
-  });
   
   return {
     success: true,
@@ -367,41 +322,19 @@ async function createCAPEXFromOCR(
   const db = await initDB();
   
   const capex: Omit<CAPEX, 'id'> = {
-    origen: 'ocr_document',
-    origen_id: documentId,
+    inmueble_id: fields.property_id || 1, // Default to property 1 if not specified
     proveedor: fields.proveedor_nombre || 'Proveedor no identificado',
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
-    fecha_prevista_pago: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
-    importe: fields.total_amount!,
-    estado: 'pendiente',
-    destino: fields.property_id ? 'inmueble_id' : 'personal',
-    destino_id: fields.property_id,
-    metodo_pago: 'Transferencia',
-    iban: fields.iban_detectado,
-    concepto: `CAPEX desde documento: ${filename}`,
-    categoria: fields.expense_category || 'Mejoras',
-    // Tax breakdown
-    base_imponible: fields.base_amount,
-    iva_rate: fields.iva_rate,
-    iva_amount: fields.iva_amount,
-    from_doc: true,
+    total: fields.total_amount!,
+    tipo: 'mejora', // Default CAPEX type
+    anos_amortizacion: 10, // Default amortization years
+    estado: 'incompleto',
+    source_doc_id: parseInt(documentId) || undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
   
   const capexId = await db.add('capex', capex);
-  
-  // Emit treasury event
-  await emitTreasuryEvent({
-    type: 'capex_created_from_ocr',
-    capexId: capexId as number,
-    metadata: {
-      documentId,
-      filename,
-      origen: 'ocr_document',
-      amount: fields.total_amount
-    }
-  });
   
   return {
     success: true,

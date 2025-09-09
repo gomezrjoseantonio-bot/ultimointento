@@ -234,11 +234,11 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                             }`}>
                               IBAN: {formatIBAN(account.iban)}
                             </p>
-                            {account.current_balance !== undefined && (
+                            {account.balance !== undefined && (
                               <p className={`text-xs ${
                                 selectedAccountId === account.id ? 'text-blue-700' : 'text-gray-500'
                               }`}>
-                                Saldo: {account.current_balance.toLocaleString('es-ES', { 
+                                Saldo: {account.balance.toLocaleString('es-ES', { 
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2 
                                 })} €

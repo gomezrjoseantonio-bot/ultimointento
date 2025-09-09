@@ -5,8 +5,8 @@
  * sending to treasury integration.
  */
 
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Check, X, Edit3, Save, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, Check, Edit3, Save, RefreshCw } from 'lucide-react';
 import { DocumentOCRFields } from '../../services/enhancedTreasuryCreationService';
 import { convertToPermanentArchive } from '../../services/enhancedAutoSaveService';
 import toast from 'react-hot-toast';
@@ -170,7 +170,11 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
 
   // Start editing a field
   const startEditing = (field: keyof DocumentOCRFields) => {
-    setEditingFields(prev => new Set([...prev, field]));
+    setEditingFields(prev => {
+      const newSet = new Set(prev);
+      newSet.add(field);
+      return newSet;
+    });
   };
 
   // Stop editing a field
@@ -245,7 +249,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             {fieldDef.type === 'text' && (
               <input
                 type="text"
-                value={value || ''}
+                value={String(value || '')}
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
@@ -260,7 +264,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
               <input
                 type="number"
                 step="0.01"
-                value={value || ''}
+                value={String(value || '')}
                 onChange={(e) => handleFieldChange(fieldDef.field, parseFloat(e.target.value) || undefined)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
@@ -274,7 +278,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             {fieldDef.type === 'date' && (
               <input
                 type="date"
-                value={value || ''}
+                value={String(value || '')}
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
@@ -287,7 +291,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
 
             {fieldDef.type === 'select' && (
               <select
-                value={value || ''}
+                value={String(value || '')}
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
@@ -308,7 +312,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={value || false}
+                  checked={Boolean(value)}
                   onChange={(e) => handleFieldChange(fieldDef.field, e.target.checked)}
                   className="mr-2"
                 />

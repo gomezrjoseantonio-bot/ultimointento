@@ -5,9 +5,7 @@
  * for documents processed in the inbox.
  */
 
-import { initDB } from './db';
 import { createTreasuryMovementFromOCR } from './enhancedTreasuryCreationService';
-import { emitTreasuryEvent } from './treasuryEventsService';
 import toast from 'react-hot-toast';
 
 export interface AutoSaveDocument {
@@ -19,7 +17,7 @@ export interface AutoSaveDocument {
   savedAt: string;
   expiresAt: string;
   treasuryRecordId?: number;
-  treasuryRecordType?: 'ingreso' | 'gasto' | 'capex';
+  treasuryRecordType?: 'ingreso' | 'gasto' | 'capex' | 'movement';
   autoSaveComplete: boolean;
 }
 
@@ -69,18 +67,6 @@ export const autoSaveDocument = async (
     const autoSaveDocs = getAutoSaveDocuments();
     autoSaveDocs[documentId] = autoSaveDoc;
     localStorage.setItem('unicornio_autosave_docs', JSON.stringify(autoSaveDocs));
-
-    // Emit event
-    await emitTreasuryEvent({
-      type: 'document_auto_saved',
-      documentId,
-      metadata: {
-        filename,
-        expiresAt: expiresAt.toISOString(),
-        treasuryCreated: treasuryResult.success,
-        treasuryRecordType: treasuryResult.recordType
-      }
-    });
 
     return {
       success: true,
@@ -157,19 +143,6 @@ export const cleanupExpiredDocuments = async (): Promise<{
     for (const [documentId, doc] of Object.entries(autoSaveDocs)) {
       if (new Date(doc.expiresAt) <= now && doc.status === 'Guardado') {
         expired.push(documentId);
-        
-        // Emit expiration event
-        await emitTreasuryEvent({
-          type: 'document_auto_expired',
-          documentId,
-          metadata: {
-            filename: doc.filename,
-            savedAt: doc.savedAt,
-            expiresAt: doc.expiresAt,
-            treasuryRecordId: doc.treasuryRecordId,
-            treasuryRecordType: doc.treasuryRecordType
-          }
-        });
       }
     }
 
@@ -234,17 +207,6 @@ export const extendDocumentExpiration = async (
       expiresAt: newExpiresAt
     });
 
-    await emitTreasuryEvent({
-      type: 'document_expiration_extended',
-      documentId,
-      metadata: {
-        filename: autoSaveDoc.filename,
-        previousExpiresAt: autoSaveDoc.expiresAt,
-        newExpiresAt,
-        additionalHours
-      }
-    });
-
     return {
       success: true,
       newExpiresAt,
@@ -304,18 +266,6 @@ export const convertToPermanentArchive = async (
 
     // Remove from auto-save (now permanently archived)
     removeAutoSaveDocument(documentId);
-
-    await emitTreasuryEvent({
-      type: 'document_permanently_archived',
-      documentId,
-      metadata: {
-        filename: autoSaveDoc.filename,
-        wasAutoSaved: true,
-        userCorrected: !!(userConfirmedData && Object.keys(userConfirmedData).length > 0),
-        treasuryRecordId: autoSaveDoc.treasuryRecordId,
-        treasuryRecordType: autoSaveDoc.treasuryRecordType
-      }
-    });
 
     return {
       success: true,

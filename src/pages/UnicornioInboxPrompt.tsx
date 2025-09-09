@@ -17,10 +17,8 @@ import {
 } from '../services/enhancedTreasuryCreationService';
 import { 
   autoSaveDocument,
-  getAutoSaveDocument,
   getTimeUntilExpiration,
-  scheduleCleanupCheck,
-  convertToPermanentArchive
+  scheduleCleanupCheck
 } from '../services/enhancedAutoSaveService';
 import DocumentPreview from '../components/DocumentPreview';
 import ReformBreakdownComponent from '../components/ReformBreakdownComponent';
@@ -29,7 +27,7 @@ import AccountSelectionModal from '../components/modals/AccountSelectionModal';
 import DocumentCorrectionWorkflow from '../components/inbox/DocumentCorrectionWorkflow';
 
 // Estados exactos según especificación
-type DocumentStatus = 'Auto-guardado' | 'Revisión' | 'Error';
+type DocumentStatus = 'Auto-guardado' | 'Revisión' | 'Error' | 'Guardado';
 
 interface UnicornioDocument {
   id: string;
@@ -327,7 +325,11 @@ const UnicornioInboxPrompt: React.FC = () => {
     if (!pendingBankExtract) return;
 
     try {
-      setProcessing(prev => new Set([...prev, pendingBankExtract.documentId]));
+      setProcessing(prev => {
+        const newSet = new Set(prev);
+        newSet.add(pendingBankExtract.documentId);
+        return newSet;
+      });
 
       // Create treasury movements from bank extract
       const treasuryResult = await createTreasuryMovementFromBankExtract({
@@ -419,26 +421,6 @@ const UnicornioInboxPrompt: React.FC = () => {
     setDocumentToCorrect(null);
     setSelectedDocument(null);
   };
-  const handleReprocess = useCallback(async (doc: UnicornioDocument) => {
-    if (!doc.file) {
-      toast.error('Archivo no disponible para reprocesar');
-      return;
-    }
-
-    const updatedDoc = {
-      ...doc,
-      logs: [...doc.logs, { timestamp: new Date().toISOString(), action: 'Reprocesamiento iniciado' }]
-    };
-
-    setDocuments(prev => prev.map(d => d.id === doc.id ? updatedDoc : d));
-    setProcessing(prev => {
-      const newSet = new Set(prev);
-      newSet.add(doc.id);
-      return newSet;
-    });
-
-    await executeProcessInboxItem(updatedDoc, doc.file, true);
-  }, [executeProcessInboxItem]);
 
   /**
    * DISPARADOR OBLIGATORIO 3: Al guardar cambios en editor
@@ -1166,7 +1148,7 @@ const UnicornioInboxPrompt: React.FC = () => {
                             categoriaFiscal: 'Completo'
                           });
                         }}
-                        initialBreakdown={selectedDocument.extractedFields.desglose_categorias}
+                        initialBreakdown={undefined}
                       />
                     </div>
                   )}
