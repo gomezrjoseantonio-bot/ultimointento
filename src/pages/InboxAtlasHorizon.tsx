@@ -110,6 +110,10 @@ const InboxAtlasHorizon: React.FC = () => {
       const properties = await db.getAll('properties');
       const formattedProperties = properties
         .filter(p => p.state === 'activo') // Only show active properties
+        .filter(p => !p.alias?.toLowerCase().includes('demo') && 
+                     !p.alias?.toLowerCase().includes('sample') && 
+                     !p.alias?.toLowerCase().includes('fake') &&
+                     !p.alias?.toLowerCase().includes('test'))  // Exclude demo properties
         .map(p => ({
           id: p.id?.toString() || '',
           alias: p.alias,

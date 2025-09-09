@@ -358,7 +358,16 @@ async function createCAPEXFromOCR(
 export const getAvailableAccountsForImport = async (): Promise<Account[]> => {
   const db = await initDB();
   const accounts = await db.getAll('accounts');
-  return accounts.filter(acc => acc.isActive);
+  return accounts.filter(acc => 
+    acc.isActive && 
+    !acc.deleted_at &&
+    !acc.name?.toLowerCase().includes('demo') &&
+    !acc.name?.toLowerCase().includes('sample') &&
+    !acc.name?.toLowerCase().includes('fake') &&
+    !acc.bank?.toLowerCase().includes('demo') &&
+    !acc.bank?.toLowerCase().includes('sample') &&
+    !acc.bank?.toLowerCase().includes('fake')
+  );
 };
 
 /**
