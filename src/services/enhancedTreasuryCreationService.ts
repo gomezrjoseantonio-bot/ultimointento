@@ -176,6 +176,12 @@ export const createTreasuryMovementFromBankExtract = async (
         type: transaction.amount > 0 ? 'Ingreso' : 'Gasto',
         origin: 'CSV',
         movementState: 'Confirmado',
+        // ATLAS HORIZON: Required fields
+        unifiedStatus: 'no_planificado',
+        source: 'import',
+        category: {
+          tipo: transaction.amount > 0 ? 'Ingresos' : 'Gastos'
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

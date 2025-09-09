@@ -103,7 +103,12 @@ const MovimientosPanel: React.FC = () => {
         type: parseFloat(newMovement.amount) >= 0 ? 'Ingreso' : 'Gasto',
         origin: 'Manual',
         movementState: 'Previsto',
-        category: '',
+        category: { 
+          tipo: parseFloat(newMovement.amount) >= 0 ? 'Ingresos' : 'Gastos' 
+        },
+        // ATLAS HORIZON: Required fields
+        unifiedStatus: 'no_planificado' as any,
+        source: 'manual' as any,
         tags: [],
         isAutoTagged: false,
         createdAt: new Date().toISOString(),

@@ -154,12 +154,15 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
           description: `Transferencia a ${accounts.find(a => a.id?.toString() === form.transferToAccountId)?.name || 'cuenta'}`,
           counterparty: form.counterparty || 'Transferencia interna',
           type: 'Transferencia' as 'Transferencia',
-          category: 'Transferencias',
+          category: { tipo: 'Transferencias', subtipo: 'Interna' },
           origin: 'Manual' as 'Manual',
           movementState: form.state,
           transferGroupId,
           tags: ['transferencia'],
           isAutoTagged: true,
+          // ATLAS HORIZON: Required fields
+          unifiedStatus: 'conciliado' as any, // Transfers are auto-reconciled
+          source: 'manual' as any,
           createdAt: now,
           updatedAt: now,
           status: 'pendiente' as 'pendiente'
@@ -173,12 +176,15 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
           description: `Transferencia desde ${accounts.find(a => a.id?.toString() === form.accountId)?.name || 'cuenta'}`,
           counterparty: form.counterparty || 'Transferencia interna',
           type: 'Transferencia' as 'Transferencia',
-          category: 'Transferencias',
+          category: { tipo: 'Transferencias', subtipo: 'Interna' },
           origin: 'Manual' as 'Manual',
           movementState: form.state,
           transferGroupId,
           tags: ['transferencia'],
           isAutoTagged: true,
+          // ATLAS HORIZON: Required fields  
+          unifiedStatus: 'conciliado' as any, // Transfers are auto-reconciled
+          source: 'manual' as any,
           createdAt: now,
           updatedAt: now,
           status: 'pendiente' as 'pendiente'
@@ -205,6 +211,7 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
         
       } else {
         // Create single movement
+        const categoryParts = form.category ? form.category.split(' › ') : [form.type === 'Ingreso' ? 'Ingresos' : 'Gastos'];
         const movement = {
           accountId: Number(form.accountId),
           date: form.date,
@@ -212,11 +219,17 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
           description: form.description,
           counterparty: form.counterparty || undefined,
           type: form.type,
-          category: form.category || undefined,
+          category: { 
+            tipo: categoryParts[0], 
+            subtipo: categoryParts[1] 
+          },
           origin: 'Manual' as 'Manual',
           movementState: form.state,
-          tags: form.category ? [form.category.split(' › ')[0]] : [],
+          tags: form.category ? [categoryParts[0]] : [],
           isAutoTagged: !!form.category,
+          // ATLAS HORIZON: Required fields
+          unifiedStatus: 'confirmado' as any, // Manual entries are confirmed
+          source: 'manual' as any,
           createdAt: now,
           updatedAt: now,
           status: 'pendiente' as 'pendiente'

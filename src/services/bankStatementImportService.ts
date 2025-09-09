@@ -239,11 +239,16 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
         amount: row.type === 'OUT' ? -row.amount : row.amount,
         description: row.description,
         type: row.type === 'IN' ? 'Ingreso' : 'Gasto',
-        category: row.category || '',
+        category: { 
+          tipo: row.category || (row.type === 'IN' ? 'Ingresos' : 'Gastos')
+        },
         origin: 'CSV', // Use CSV as the closest match since we parse files
         movementState: 'Confirmado',
         state: 'pending',
         status: 'pendiente',
+        // ATLAS HORIZON: Required fields
+        unifiedStatus: 'no_planificado',
+        source: 'import',
         tags: [],
         isAutoTagged: false,
         currency: 'EUR',

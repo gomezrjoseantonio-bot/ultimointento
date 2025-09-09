@@ -644,11 +644,15 @@ export class TreasuryImportAPI {
           currency: parsedMovement.currency || 'EUR', // EUR por defecto
           balance: parseEuropeanNumber(parsedMovement.balance || 0),
           
+          // ATLAS HORIZON: Required unified status fields
+          unifiedStatus: 'no_planificado', // Will be updated by matching pipeline
+          source: 'import', // Source type per problem statement
+          category: { tipo: normalizedAmount >= 0 ? 'Ingresos' : 'Gastos' }, // Will be refined by rules engine
+          
           // V1.0 required fields
           type: normalizedAmount >= 0 ? 'Ingreso' : 'Gasto',
           origin: 'CSV',
           movementState: 'Confirmado', // Imported movements are confirmed
-          category: '', // Will be set by rules engine
           tags: [],
           isAutoTagged: false,
           
