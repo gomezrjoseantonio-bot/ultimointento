@@ -23,9 +23,6 @@ const CuentasPanel: React.FC = () => {
   const [accountProjection, setAccountProjection] = useState<AccountProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [showImport, setShowImport] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [usageFilter, setUsageFilter] = useState<'all' | 'personal' | 'inmuebles' | 'mixto'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active'); // FIX PACK v2.0: Status filter
   const [showIbanFull, setShowIbanFull] = useState<{ [key: number]: boolean }>({});
@@ -33,19 +30,6 @@ const CuentasPanel: React.FC = () => {
     !localStorage.getItem('cuentas-unification-banner-dismissed')
   );
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<Account | null>(null);
-  
-  // New account form state
-  const [newAccountForm, setNewAccountForm] = useState({
-    alias: '',
-    bank: '',
-    iban: '',
-    openingBalance: '',
-    minimumBalance: '',
-    includeInConsolidated: true,
-    usage_scope: 'mixto' as 'personal' | 'inmuebles' | 'mixto',
-    logoFile: null as File | null,
-    logoPreview: null as string | null
-  });
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -120,23 +104,6 @@ const CuentasPanel: React.FC = () => {
     setFilteredAccounts(filtered);
   }, [accounts, usageFilter, statusFilter]);
 
-  // Handle editing account - populate form when editingAccount changes
-  useEffect(() => {
-    if (editingAccount) {
-      setNewAccountForm({
-        alias: editingAccount.name || '',
-        bank: editingAccount.bank,
-        iban: editingAccount.iban,
-        openingBalance: editingAccount.openingBalance.toString(),
-        minimumBalance: editingAccount.minimumBalance?.toString() || '',
-        includeInConsolidated: editingAccount.includeInConsolidated ?? true,
-        usage_scope: editingAccount.usage_scope || 'mixto',
-        logoFile: null,
-        logoPreview: editingAccount.logo_url ? getLogoFromStorage(editingAccount.id!) : null
-      });
-    }
-  }, [editingAccount]);
-
   const getAccountStatus = (account: Account): 'healthy' | 'warning' | 'critical' => {
     const minimumBalance = account.minimumBalance || 200;
     
@@ -161,47 +128,13 @@ const CuentasPanel: React.FC = () => {
     }
   };
 
-  // New account form handlers
-  const handleNewAccountChange = (field: string, value: string | boolean | File | null) => {
-    setNewAccountForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Handle logo file selection
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validation = validateLogoFile(file);
-    if (!validation.valid) {
-      toast.error(validation.error!);
-      return;
-    }
-
-    try {
-      const previewUrl = URL.createObjectURL(file);
-      setNewAccountForm(prev => ({
-        ...prev,
-        logoFile: file,
-        logoPreview: previewUrl
-      }));
-    } catch (error) {
-      toast.error('Error procesando el logo');
-    }
-  };
-
-  // Remove logo
-  const handleRemoveLogo = () => {
-    if (newAccountForm.logoPreview) {
-      URL.revokeObjectURL(newAccountForm.logoPreview);
-    }
-    setNewAccountForm(prev => ({
-      ...prev,
-      logoFile: null,
-      logoPreview: null
-    }));
+  const handleGoToSettings = () => {
+    // Navigate to Settings > Accounts
+    const currentUrl = new URL(window.location.href);
+    currentUrl.hash = '#/configuracion/cuentas';
+    window.location.href = currentUrl.toString();
+    
+    toast.success('Redirigiendo a Configuración > Cuentas');
   };
 
   // Usage and display helpers
@@ -247,105 +180,6 @@ const CuentasPanel: React.FC = () => {
         </button>
       </div>
     );
-  };
-
-  const handleCreateAccount = async () => {
-    const isEditing = editingAccount !== null;
-    
-    // Enhanced validation - ALIAS is optional, BANK NAME and IBAN are mandatory
-    if (newAccountForm.alias.trim() && (newAccountForm.alias.trim().length < 2 || newAccountForm.alias.trim().length > 50)) {
-      toast.error('El alias debe tener entre 2 y 50 caracteres');
-      return;
-    }
-    
-    if (!newAccountForm.bank.trim()) {
-      toast.error('El banco es obligatorio');
-      return;
-    }
-
-    if (!newAccountForm.iban.trim()) {
-      toast.error('El IBAN es obligatorio');
-      return;
-    }
-
-    if (!validateIBAN(newAccountForm.iban)) {
-      toast.error('Formato de IBAN inválido');
-      return;
-    }
-
-    try {
-      setIsCreatingAccount(true);
-      
-      let logoUrl = editingAccount?.logo_url; // Keep existing logo for edits
-      
-      // Handle logo upload if present
-      if (newAccountForm.logoFile) {
-        try {
-          const accountId = editingAccount?.id || Date.now();
-          const { logoUrl: uploadedLogoUrl } = await processLogoUpload(newAccountForm.logoFile, accountId);
-          logoUrl = uploadedLogoUrl;
-        } catch (error) {
-          toast.error('Error subiendo el logo, pero la cuenta se guardará sin cambios en el logo');
-        }
-      }
-      
-      const accountData = {
-        alias: newAccountForm.alias.trim() || undefined,
-        bank: newAccountForm.bank.trim(),
-        iban: newAccountForm.iban.trim(),
-        includeInConsolidated: newAccountForm.includeInConsolidated,
-        openingBalance: parseEuropeanNumber(newAccountForm.openingBalance),
-        openingBalanceDate: isEditing ? editingAccount!.openingBalanceDate : new Date().toISOString(),
-        usage_scope: newAccountForm.usage_scope,
-        logo_url: logoUrl
-      };
-
-      let updatedAccount: Account;
-      
-      if (isEditing) {
-        updatedAccount = await treasuryAPI.accounts.updateAccount(editingAccount!.id!, accountData);
-        toast.success('Cuenta actualizada correctamente');
-      } else {
-        updatedAccount = await treasuryAPI.accounts.createAccount(accountData);
-        toast.success('Cuenta creada correctamente');
-      }
-      
-      // Update minimum balance if specified
-      if (newAccountForm.minimumBalance) {
-        const db = await initDB();
-        const accountWithMinBalance = {
-          ...updatedAccount,
-          minimumBalance: parseEuropeanNumber(newAccountForm.minimumBalance)
-        };
-        await db.put('accounts', accountWithMinBalance);
-      }
-      
-      // Reset form and reload accounts
-      if (newAccountForm.logoPreview) {
-        URL.revokeObjectURL(newAccountForm.logoPreview);
-      }
-      setNewAccountForm({
-        alias: '',
-        bank: '',
-        iban: '',
-        openingBalance: '',
-        minimumBalance: '',
-        includeInConsolidated: true,
-        usage_scope: 'mixto',
-        logoFile: null,
-        logoPreview: null
-      });
-      setShowImport(false);
-      setShowCreateForm(false);
-      setEditingAccount(null);
-      await loadAccounts();
-      
-    } catch (error) {
-      console.error('Error saving account:', error);
-      toast.error(error instanceof Error ? error.message : `Error al ${isEditing ? 'actualizar' : 'crear'} la cuenta`);
-    } finally {
-      setIsCreatingAccount(false);
-    }
   };
 
   // Handle account activation/deactivation toggle (FIX PACK v2.0)
@@ -408,8 +242,8 @@ const CuentasPanel: React.FC = () => {
     }
   };
 
-  // Create/Edit Form Modal
-  if (showCreateForm) {
+  // Redirect to Settings instead of showing form
+  if (false) { // Disable form completely
     const isEditing = editingAccount !== null;
     const formTitle = isEditing ? 'Editar Cuenta' : 'Nueva Cuenta';
     
@@ -991,11 +825,11 @@ const CuentasPanel: React.FC = () => {
             Importar
           </button>
           <button 
-            onClick={() => setShowCreateForm(true)}
+            onClick={handleGoToSettings}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-brand-navy hover:bg-navy-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Nueva Cuenta
+            Ir a Configuración > Cuentas
           </button>
         </div>
       </div>

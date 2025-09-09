@@ -147,7 +147,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                   IBAN detectado: <span className="font-mono font-medium">{detectedIBAN}</span>
                 </p>
                 <p className="text-sm text-gray-600">
-                  Para importar movimientos, necesitas crear primero la cuenta en Configuración > Cuentas.
+                  Para importar movimientos, necesitas crear primero la cuenta en Configuración &gt; Cuentas.
                 </p>
               </div>
             </div>
@@ -158,7 +158,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
               >
                 <Settings className="w-4 h-4" />
-                Ir a Configuración > Cuentas
+                Ir a Configuración &gt; Cuentas
               </button>
               <button
                 onClick={() => setShowUnrecognizedIBAN(false)}
@@ -224,7 +224,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
           {/* Help text */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-700">
-              💡 ¿No ves tu cuenta? Ve a <strong>Configuración > Cuentas</strong> para crear una nueva cuenta.
+              💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
             </p>
           </div>
 
