@@ -43,7 +43,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build:bank-profiles": "node scripts/build-bank-profiles.js"
+    "build:bank-profiles": "node scripts/build-bank-profiles.js",
+    "cleanup:complete": "node scripts/completeDataCleanup.js",
+    "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm"
   },
   "eslintConfig": {
     "extends": [
