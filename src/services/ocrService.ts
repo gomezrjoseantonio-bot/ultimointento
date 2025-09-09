@@ -2,6 +2,7 @@
 import { OCRResult, OCRField } from './db';
 import { findProviderByNIF, findProviderByNameOrAlias, initializeDefaultProviders } from './providerDirectoryService';
 import { parseEsNumber, formatEsCurrency, validateInvoiceHarmony } from '../utils/numberUtils';
+import { safeMatch } from '../utils/safe';
 
 // H-OCR-ALIGN: Configuration interface with strict alignment requirements
 interface OCRConfig {
@@ -701,19 +702,19 @@ export const scorePageForInvoiceFields = (pageText: string): number => {
   
   // Positive scoring for relevant keywords
   keywords.forEach(keyword => {
-    const matches = (upperText.match(new RegExp(keyword, 'g')) || []).length;
+    const matches = (safeMatch(upperText, new RegExp(keyword, 'g')) || []).length;
     score += matches * 10;
   });
   
   // Extra points for monetary terms (higher weight for H-OCR-ALIGN)
   monetaryTerms.forEach(term => {
-    const matches = (upperText.match(new RegExp(term, 'g')) || []).length;
+    const matches = (safeMatch(upperText, new RegExp(term, 'g')) || []).length;
     score += matches * 15;
   });
   
   // Penalty for legal/footer content
   legalTerms.forEach(term => {
-    const matches = (upperText.match(new RegExp(term, 'g')) || []).length;
+    const matches = (safeMatch(upperText, new RegExp(term, 'g')) || []).length;
     score -= matches * 20;
   });
   

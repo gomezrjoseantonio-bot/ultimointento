@@ -4,6 +4,7 @@
 import { initDB } from './db';
 import { generateMovementHash } from '../utils/duplicateDetection';
 import JSZip from 'jszip';
+import { safeMatch } from '../utils/safe';
 
 // Issue 1: Email alias generation with tenant tokens
 export interface EmailAlias {
@@ -275,7 +276,7 @@ class EmailIngestService {
     }
     
     // Extract property slug from alias
-    const propertyMatch = alias.match(/inbox\+\w+\.([^@]+)@/);
+    const propertyMatch = safeMatch(alias, /inbox\+\w+\.([^@]+)@/);
     if (propertyMatch && propertyMatch[1] !== 'personal') {
       const propertySlug = propertyMatch[1];
       return {

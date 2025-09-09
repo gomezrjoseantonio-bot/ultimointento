@@ -5,6 +5,8 @@
  * with proper thousand separators and decimal formatting
  */
 
+import { safeMatch } from '../utils/safe';
+
 /**
  * Format currency to Spanish format with thousand separators
  * Example: 1234.56 → "1.234,56 €"
@@ -124,7 +126,7 @@ export function parseSpanishDate(dateStr: string): string {
     ];
     
     for (const pattern of patterns) {
-      const match = cleanDate.match(pattern);
+      const match = safeMatch(cleanDate, pattern);
       if (match) {
         let day, month, year;
         

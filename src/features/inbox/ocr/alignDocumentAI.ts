@@ -1,4 +1,5 @@
 import { parseEsNumber } from '../../../utils/numberUtils';
+import { safeMatch } from '../../../utils/safe';
 
 export type Money = { value: number; currency: string; source: 'ocr'|'derived' };
 export type Confidence = { score: number; sourceId?: string };
@@ -71,16 +72,16 @@ export function alignDocumentAI(result: any): AlignedInvoice {
   const serviceAddress =
     val(pick(ents, 'service_address')) ||
     val(pick(ents, 'receiver_address')) ||
-    (t.match(/(direcci[oó]n(?: de)? (servicio|suministro|instalaci[oó]n)[:\s]+(.+))/i)?.[3] || '') ||
+    (safeMatch(t, /(direcci[oó]n(?: de)? (servicio|suministro|instalaci[oó]n)[:\s]+(.+))/i)?.[3] || '') ||
     '';
 
   // CUPS / supply point:
   const supplyPointId =
     val(pick(ents, 'supply_point_id')) ||
-    (t.match(RE_CUPS)?.[0] || '');
+    (safeMatch(t, RE_CUPS)?.[0] || '');
 
   // IBAN y método de pago:
-  const iban = (t.match(RE_IBAN)?.[0] || '').replace(/\s+/g, '');
+  const iban = (safeMatch(t, RE_IBAN)?.[0] || '').replace(/\s+/g, '');
   let paymentMethod: 'SEPA' | 'Transfer' | 'Tarjeta' | 'Desconocido' = 'Desconocido';
   if (iban) paymentMethod = 'SEPA';
   else if (/transferencia|transfer/i.test(t)) paymentMethod = 'Transfer';
@@ -89,7 +90,7 @@ export function alignDocumentAI(result: any): AlignedInvoice {
   // Fechas
   const invoiceDate = val(pick(ents, 'invoice_date')) || val(pick(ents, 'issue_date')) || '';
   const dueDate = val(pick(ents, 'due_date')) || '';
-  const explicitPay = (t.match(/(fecha de cargo|fecha de pago)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[2]) || '';
+  const explicitPay = (safeMatch(t, /(fecha de cargo|fecha de pago)[:\s]+(\d{1,2}\/\d{1,2}\/\d{2,4})/i)?.[2]) || '';
   const paymentDate = explicitPay || dueDate || invoiceDate || '';
 
   const currency = (valOrig('currency') || 'EUR').replace('€','EUR');

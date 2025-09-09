@@ -73,18 +73,30 @@ export class UnifiedOCRService {
         body: fileBuffer
       });
 
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type') || '';
+      const responseText = await response.text();
+      
+      // Detect HTML response (backend error page)
+      if (!contentType.includes('application/json') || responseText.trim().startsWith('<')) {
+        console.error('OCR service returned HTML instead of JSON:', responseText.slice(0, 200));
+        return {
+          success: false,
+          error: 'El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.',
+          status: response.status
+        };
+      }
+
       let result;
       try {
-        result = await response.json();
+        result = JSON.parse(responseText);
       } catch (jsonError) {
         console.error('JSON parsing error:', jsonError);
-        // Try to read as text to see what the actual response is
-        const textResponse = await response.text();
-        console.error('Raw response:', textResponse);
+        console.error('Raw response:', responseText.slice(0, 200));
         
         return {
           success: false,
-          error: `Error parsing OCR response: ${jsonError}. Raw response: ${textResponse.substring(0, 200)}...`,
+          error: 'El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.',
           status: response.status
         };
       }
@@ -92,15 +104,11 @@ export class UnifiedOCRService {
       if (!response.ok) {
         // Handle error response from ocr-documentai
         let errorMessage = 'Error en el procesamiento OCR';
-        try {
-          const errorResult = await response.json();
-          if (errorResult.message) {
-            errorMessage = errorResult.message;
-          } else if (errorResult.results?.[0]?.error) {
-            errorMessage = errorResult.results[0].error;
-          }
-        } catch {
-          // Use default error message if JSON parsing fails
+        
+        if (result?.message) {
+          errorMessage = result.message;
+        } else if (result?.results?.[0]?.error) {
+          errorMessage = result.results[0].error;
         }
 
         return {
@@ -111,7 +119,7 @@ export class UnifiedOCRService {
       }
 
       // Parse successful response from ocr-documentai
-      const ocrResult = await result;
+      const ocrResult = result;
       
       if (!ocrResult.success || !ocrResult.results?.[0]) {
         return {

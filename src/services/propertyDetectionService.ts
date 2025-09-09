@@ -2,6 +2,7 @@
 // Detects property by address or CUPS matching
 
 import { PropertyDetectionResult, OCRExtractionResult } from '../types/inboxTypes';
+import { safeMatch } from '../utils/safe';
 
 /**
  * Detect property by matching address or CUPS from OCR data
@@ -42,7 +43,7 @@ async function detectByCUPS(ocrData: OCRExtractionResult): Promise<PropertyDetec
 
   // Extract CUPS pattern: ES + 4 digits + 16 alphanumeric
   const cupsPattern = /ES\d{4}[A-Z0-9]{16}/gi;
-  const cupsMatches = ocrData.service_address.match(cupsPattern);
+  const cupsMatches = safeMatch(ocrData.service_address, cupsPattern);
 
   if (cupsMatches && cupsMatches.length > 0) {
     const cups = cupsMatches[0];
@@ -207,7 +208,7 @@ function calculateAddressSimilarity(address1: string, address2: string): number 
  * Extract street number from address
  */
 function extractStreetNumber(address: string): string | null {
-  const numberMatch = address.match(/\b(\d+)\b/);
+  const numberMatch = safeMatch(address, /\b(\d+)\b/);
   return numberMatch ? numberMatch[1] : null;
 }
 
@@ -216,7 +217,7 @@ function extractStreetNumber(address: string): string | null {
  */
 function extractPostalCode(address: string): string | null {
   // Spanish postal codes: 5 digits
-  const postalMatch = address.match(/\b(\d{5})\b/);
+  const postalMatch = safeMatch(address, /\b(\d{5})\b/);
   return postalMatch ? postalMatch[1] : null;
 }
 
