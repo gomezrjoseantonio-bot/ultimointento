@@ -10,7 +10,7 @@ import PendingQueue from '../components/inbox/PendingQueue';
 import BankStatementWizard from '../components/inbox/BankStatementWizard';
 import ReformInvoiceEditor from '../components/inbox/ReformInvoiceEditor';
 import QADashboard from '../components/dev/QADashboard';
-import H8DemoComponent from '../components/dev/H8DemoComponent';
+
 import DiagnosticDashboard from '../components/dev/DiagnosticDashboard';
 import AutoSaveToggle from '../components/documents/AutoSaveToggle';
 import { getOCRConfig } from '../services/ocrService';
@@ -42,8 +42,6 @@ const InboxPage: React.FC = () => {
   const [emailLogFilter, setEmailLogFilter] = useState<string>('');
   // ATLAS HOTFIX: QA Dashboard for development
   const [showQADashboard, setShowQADashboard] = useState(false);
-  // H8: Demo component for development
-  const [showH8Demo, setShowH8Demo] = useState(false);
   // Bank statement modal for detected extracts
   const [showBankStatementModal, setShowBankStatementModal] = useState(false);
   const [bankStatementFile, setBankStatementFile] = useState<File | null>(null);
@@ -67,13 +65,6 @@ const InboxPage: React.FC = () => {
     if (qaDashboard && process.env.NODE_ENV === 'development') {
       setShowQADashboard(true);
     }
-    
-    // H8: Check for H8 demo query parameter
-    const h8Demo = urlParams.get('h8') === 'true';
-    if (h8Demo && process.env.NODE_ENV === 'development') {
-      setShowH8Demo(true);
-    }
-
     // Initialize AutoSave state
     const autoSaveConfig = getAutoSaveConfig();
     setAutoSaveEnabled(autoSaveConfig.enabled);
@@ -1379,12 +1370,6 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      {/* H8: Demo Component - Development only */}
-      {process.env.NODE_ENV === 'development' && showH8Demo && (
-        <H8DemoComponent />
-      )}
-
       {/* Bank Statement Import Modal */}
       <BankStatementModal
         isOpen={showBankStatementModal}

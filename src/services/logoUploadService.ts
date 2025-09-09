@@ -49,7 +49,7 @@ export async function processLogoUpload(file: File, accountId: number): Promise<
   // In a real implementation, this would upload to a proper storage service
   const logoUrl = `uploads/cuentas/${accountId}/logo.${file.name.split('.').pop()}`;
 
-  // Store the file blob in localStorage for demonstration
+  // Store the file blob in localStorage for client-side persistence
   // In production, this would be uploaded to cloud storage
   const reader = new FileReader();
   return new Promise((resolve, reject) => {

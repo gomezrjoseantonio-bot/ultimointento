@@ -31,7 +31,7 @@ const ResumenTab: React.FC = () => {
   const [summaries, setSummaries] = useState<PropertySummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const availableYears = [2023, 2024, 2025]; // Simplified for demo
+  const availableYears = [2023, 2024, 2025]; // Available years for CAPEX summary
 
   const loadData = useCallback(async () => {
     try {

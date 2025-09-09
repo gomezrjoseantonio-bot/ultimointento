@@ -32,25 +32,15 @@ export async function convertWordToPdf(file: File): Promise<ConversionResult> {
     // - CloudConvert API
     // - Custom conversion service
     
-    // For now, we'll simulate the conversion
-    console.log('Converting Word document to PDF:', file.name);
-    
-    // Simulate conversion delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Create a mock PDF blob for demonstration
-    // In real implementation, this would be the converted PDF
-    const mockPdfContent = new Uint8Array([
-      0x25, 0x50, 0x44, 0x46, 0x2D // %PDF- header
-    ]);
-    
-    const pdfBlob = new Blob([mockPdfContent], { type: 'application/pdf' });
+    // Note: Word to PDF conversion requires a backend service
+    // This is a placeholder implementation
+    console.log('Word to PDF conversion requested for:', file.name);
     
     return {
-      success: true,
-      pdfBlob,
+      success: false,
       originalBlob: file,
-      conversionMethod: 'browser-api'
+      error: 'Word to PDF conversion service not implemented. Please convert to PDF manually.',
+      conversionMethod: 'not-supported'
     };
     
   } catch (error) {

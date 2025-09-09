@@ -24,7 +24,7 @@ export const SUPPORTED_ENTITY_TYPES = [
 
 export type SupportedEntityType = typeof SUPPORTED_ENTITY_TYPES[number];
 
-// H-OCR-FIX: Provider blacklist for filtering demo/example terms
+// H-OCR-FIX: Provider blacklist for filtering invalid/example terms
 const PROVIDER_BLACKLIST = [
   'EJEMPLO',
   'DEMO', 

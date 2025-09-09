@@ -12,6 +12,7 @@
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { extractIBANFromBankStatement, matchAccountByIBAN } from './ibanAccountMatchingService';
 import { initDB, Movement } from './db';
+import { isDemoModeEnabled } from '../config/envFlags';
 import toast from 'react-hot-toast';
 
 // Logging prefix as specified in requirements
@@ -209,6 +210,24 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
       
       if (isDuplicate) {
         results.duplicates++;
+        continue;
+      }
+
+      // Validate account exists in database
+      const account = await db.get('accounts', row.account_id!);
+      if (!account) {
+        console.error(`${LOG_PREFIX} Account ${row.account_id} not found, skipping movement`);
+        results.errors++;
+        continue;
+      }
+
+      // Reject demo movements (unless demo mode is explicitly enabled)
+      if (!isDemoModeEnabled() && (
+          row.description.toLowerCase().includes('demo') || 
+          row.description.toLowerCase().includes('test') ||
+          row.description.toLowerCase().includes('sample'))) {
+        console.warn(`${LOG_PREFIX} Rejecting demo movement: ${row.description}`);
+        results.errors++;
         continue;
       }
       

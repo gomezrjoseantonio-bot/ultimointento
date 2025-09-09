@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { initDB } from '../services/db';
 import { 
   RotateCcw,
   ChevronDown, 
@@ -90,21 +91,37 @@ const InboxAtlasHorizon: React.FC = () => {
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
   
-  // H-HOTFIX: Simple properties for demo
-  const availableProperties = [
-    { id: '1', alias: 'C/ Mayor 123', address: 'Calle Mayor 123, Madrid' },
-    { id: '2', alias: 'Piso 2A', address: 'Calle Alcalá 45, 2A, Madrid' },
-    { id: '3', alias: 'Local Centro', address: 'Plaza España 8, Madrid' }
-  ];
+  // Load properties from database
+  const [availableProperties, setAvailableProperties] = useState<any[]>([]);
 
-  // Cargar datos iniciales
+  // Load initial data
   useEffect(() => {
-    loadMockDocuments();
+    loadProperties();
+    loadMockDocuments(); // Keep for now to avoid breaking functionality
     
-    // Limpiar documentos expirados cada minuto
+    // Clean up expired documents every minute
     const interval = setInterval(cleanupExpiredDocuments, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadProperties = async () => {
+    try {
+      const db = await initDB();
+      const properties = await db.getAll('properties');
+      const formattedProperties = properties
+        .filter(p => p.state === 'activo') // Only show active properties
+        .map(p => ({
+          id: p.id?.toString() || '',
+          alias: p.alias,
+          address: p.address
+        }));
+      setAvailableProperties(formattedProperties);
+    } catch (error) {
+      console.error('Error loading properties:', error);
+      // Fallback to empty array if database fails
+      setAvailableProperties([]);
+    }
+  };
 
   const loadMockDocuments = () => {
     // Datos de muestra siguiendo exactamente los requerimientos
@@ -306,10 +323,12 @@ const InboxAtlasHorizon: React.FC = () => {
       const utilityType = detectUtilityType(processed.proveedor, filename);
       processed.utility_type = utilityType || undefined;
       
-      // H-HOTFIX: Simple property assignment for demo
-      const mockPropertyId = '1';
-      processed.property_id = mockPropertyId;
-      processed.inmueble = availableProperties.find(p => p.id === mockPropertyId)?.alias;
+      // Assign to first available property if any exist
+      if (availableProperties.length > 0) {
+        const firstProperty = availableProperties[0];
+        processed.property_id = firstProperty.id;
+        processed.inmueble = firstProperty.alias;
+      }
       
       if (processed.status !== 'revision_requerida') {
         processed.iban = `****${Math.floor(1000 + Math.random() * 9000)}`;
