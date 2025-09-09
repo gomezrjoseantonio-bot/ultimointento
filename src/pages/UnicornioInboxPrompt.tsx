@@ -54,7 +54,7 @@ const UnicornioInboxPrompt: React.FC = () => {
   const [documents, setDocuments] = useState<UnicornioDocument[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<UnicornioDocument | null>(null);
   const [statusFilter, setStatusFilter] = useState<'todos' | DocumentStatus>('todos');
-  const [typeFilter] = useState<'todos' | string>('todos');
+  const [typeFilter, setTypeFilter] = useState<'todos' | string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('72h');
   const [showLogsPanel, setShowLogsPanel] = useState(false);
@@ -367,23 +367,47 @@ const UnicornioInboxPrompt: React.FC = () => {
     }
   };
 
-  // Filtering
+  // Enhanced filtering per specification
   const getFilteredDocuments = () => {
     let filtered = documents;
 
+    // Status filter
     if (statusFilter !== 'todos') {
       filtered = filtered.filter(doc => doc.status === statusFilter);
     }
 
+    // Type filter - categorize by document types
     if (typeFilter !== 'todos') {
-      filtered = filtered.filter(doc => doc.tipo === typeFilter);
+      filtered = filtered.filter(doc => {
+        const docType = doc.documentType;
+        switch (typeFilter) {
+          case 'facturas':
+            return docType.includes('factura') || docType.includes('recibo');
+          case 'extractos':
+            return docType.includes('extracto');
+          case 'contratos':
+            return docType.includes('contrato');
+          case 'otros':
+            return !docType.includes('factura') && !docType.includes('extracto') && !docType.includes('contrato');
+          default:
+            return true;
+        }
+      });
     }
 
+    // Date filter
     if (dateFilter === '72h') {
       const cutoff = new Date(Date.now() - 72 * 60 * 60 * 1000);
       filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
+    } else if (dateFilter === '7d') {
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
+    } else if (dateFilter === '30d') {
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      filtered = filtered.filter(doc => new Date(doc.uploadDate) > cutoff);
     }
 
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(doc => 
@@ -411,11 +435,17 @@ const UnicornioInboxPrompt: React.FC = () => {
   const filteredDocuments = getFilteredDocuments();
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Header - Mantén estilos Atlas */}
-      <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 py-4">
+    <div className="h-full flex flex-col" style={{ backgroundColor: '#F8F9FA' }}>
+      {/* Header - HORIZON styling with exact specification */}
+      <div className="flex-shrink-0 border-b bg-white px-6 py-4" style={{ borderColor: '#DEE2E6' }}>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">Bandeja de entrada</h1>
+          <h1 className="text-2xl font-semibold" style={{ 
+            color: '#303A4C',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: '600' 
+          }}>
+            Bandeja de entrada
+          </h1>
           
           <div className="relative">
             <input
@@ -426,60 +456,141 @@ const UnicornioInboxPrompt: React.FC = () => {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
             <button
-              style={{ backgroundColor: '#113560' }} // Primario Atlas
-              className="hover:bg-[#0A2A57] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              className="text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors hover:opacity-90"
+              style={{ 
+                backgroundColor: '#042C5E',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: '500'
+              }}
             >
-              <Upload className="w-4 h-4" />
-              Subir documentos
+              <Upload className="w-4 h-4" strokeWidth={1.5} />
+              Subir archivo
             </button>
           </div>
         </div>
       </div>
 
-      {/* Barra de utilidades */}
-      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 px-6 py-4">
+      {/* Drag/Drop Zone + Select File Button - per specification */}
+      <div className="flex-shrink-0 bg-white px-6 py-4" style={{ borderBottom: '1px solid #DEE2E6' }}>
+        <div 
+          className="border-2 border-dashed rounded-lg p-6 text-center transition-colors hover:border-opacity-80"
+          style={{ 
+            borderColor: '#DEE2E6',
+            fontFamily: 'Inter, sans-serif'
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files) {
+              handleFileUpload(e.dataTransfer.files);
+            }
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = '#042C5E'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = '#DEE2E6'}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <Upload className="w-8 h-8" strokeWidth={1.5} style={{ color: '#6C757D' }} />
+            <p className="text-sm" style={{ color: '#303A4C', fontFamily: 'Inter, sans-serif' }}>
+              Arrastra archivos aquí o{' '}
+              <label className="font-medium cursor-pointer hover:underline" style={{ color: '#042C5E' }}>
+                selecciona archivos
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.csv,.zip,.eml"
+                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                  className="hidden"
+                />
+              </label>
+            </p>
+            <p className="text-xs" style={{ color: '#6C757D', fontFamily: 'Inter, sans-serif' }}>
+              Facturas/recibos: PDF, JPG, PNG, DOCX • Extractos: CSV, XLS, XLSX • Contratos: PDF • ZIP soportado
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Discrete filters above table - per specification */}
+      <div className="flex-shrink-0 px-6 py-4" style={{ 
+        backgroundColor: '#F8F9FA', 
+        borderBottom: '1px solid #DEE2E6',
+        fontFamily: 'Inter, sans-serif'
+      }}>
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Buscador global */}
+          {/* Global search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" strokeWidth={1.5} style={{ color: '#6C757D' }} />
             <input
               type="text"
-              placeholder="Buscar por proveedor, importe, IBAN, inmueble, id..."
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#113560] text-sm"
+              placeholder="Buscar por proveedor, banco, IBAN, inmueble..."
+              className="w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-hz-primary text-sm bg-white"
+              style={{ 
+                borderColor: '#DEE2E6',
+                fontFamily: 'Inter, sans-serif'
+              }}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Filtro discreto por estado + "Últimas 72 h" */}
-          <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
+          {/* Estado filter */}
+          <div className="flex flex-wrap rounded-lg p-1 gap-1" style={{ backgroundColor: '#DEE2E6' }}>
             {[
               { key: 'todos' as const, label: 'Todos', count: statusCounts.todos },
-              { key: 'Guardado' as const, label: 'Guardado ✅', count: statusCounts.Guardado },
-              { key: 'Revisión' as const, label: 'Revisión ⚠', count: statusCounts.Revisión },
-              { key: 'Error' as const, label: 'Error ⛔', count: statusCounts.Error }
+              { key: 'Guardado' as const, label: 'Auto-guardado', count: statusCounts.Guardado },
+              { key: 'Revisión' as const, label: 'Revisión', count: statusCounts.Revisión },
+              { key: 'Error' as const, label: 'Error', count: statusCounts.Error }
             ].map(({ key, label, count }) => (
               <button
                 key={key}
                 onClick={() => setStatusFilter(key)}
                 className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   statusFilter === key
-                    ? 'bg-white text-[#113560] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white shadow-sm'
+                    : 'hover:bg-white hover:bg-opacity-50'
                 }`}
+                style={{ 
+                  color: statusFilter === key ? '#042C5E' : '#303A4C',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: '500'
+                }}
               >
                 {label} ({count})
               </button>
             ))}
           </div>
 
+          {/* Tipo filter */}
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hz-primary bg-white"
+            style={{ 
+              borderColor: '#DEE2E6',
+              fontFamily: 'Inter, sans-serif'
+            }}
+          >
+            <option value="todos">Todos los tipos</option>
+            <option value="facturas">Facturas</option>
+            <option value="extractos">Extractos</option>
+            <option value="contratos">Contratos</option>
+            <option value="otros">Otros</option>
+          </select>
+
+          {/* Date range filter */}
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#113560]"
+            className="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-hz-primary bg-white"
+            style={{ 
+              borderColor: '#DEE2E6',
+              fontFamily: 'Inter, sans-serif'
+            }}
           >
             <option value="todos">Todas las fechas</option>
             <option value="72h">Últimas 72h</option>
+            <option value="7d">Última semana</option>
+            <option value="30d">Último mes</option>
           </select>
         </div>
       </div>

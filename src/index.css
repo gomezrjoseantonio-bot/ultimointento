@@ -269,16 +269,17 @@ html {
   }
   
   .btn-ghost-pulse {
-    @apply btn-base border-transparent text-atlas-blue bg-transparent hover:bg-neutral-50 focus:ring-atlas-blue;
+    @apply btn-base border-transparent text-hz-primary bg-transparent hover:bg-hz-neutral-100 focus:ring-hz-primary;
   }
   
-  /* Accent buttons (for secondary positive actions) */
+  /* Accent buttons (for secondary positive actions) - HORIZON only uses atlas-blue */
   .btn-accent-horizon {
-    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
+  /* DEPRECATED - Pulse button style not allowed in Horizon */
   .btn-accent-pulse {
-    @apply btn-base bg-atlas-teal text-white hover:bg-teal-600 focus:ring-atlas-teal disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */
