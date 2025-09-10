@@ -45,7 +45,9 @@
     "eject": "react-scripts eject",
     "build:bank-profiles": "node scripts/build-bank-profiles.js",
     "cleanup:complete": "node scripts/completeDataCleanup.js",
-    "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm"
+    "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm",
+    "optimize:bundle": "node scripts/bundleOptimizer.js",
+    "performance:analyze": "npm run build && npm run optimize:bundle"
   },
   "eslintConfig": {
     "extends": [

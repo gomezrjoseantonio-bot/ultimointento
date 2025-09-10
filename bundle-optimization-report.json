@@ -1,0 +1,94 @@
+{
+  "timestamp": "2025-09-10T22:39:12.781Z",
+  "heavyDependencies": [
+    "@testing-library/react",
+    "@testing-library/jest-dom",
+    "@testing-library/user-event",
+    "react-beautiful-dnd",
+    "jspdf",
+    "jspdf-autotable",
+    "jszip",
+    "xlsx",
+    "sheetjs-style"
+  ],
+  "suggestedDynamicImports": [
+    {
+      "component": "PDFViewer",
+      "reason": "jsPDF is heavy and not always needed",
+      "code": "const PDFViewer = lazy(() => import('./PDFViewer'));"
+    },
+    {
+      "component": "ExcelExporter",
+      "reason": "XLSX parsing is heavy",
+      "code": "const ExcelExporter = lazy(() => import('./ExcelExporter'));"
+    },
+    {
+      "component": "DocumentScanner",
+      "reason": "OCR libraries are typically large",
+      "code": "const DocumentScanner = lazy(() => import('./DocumentScanner'));"
+    },
+    {
+      "component": "Charts",
+      "reason": "Chart.js is large for visualization",
+      "code": "const Charts = lazy(() => import('./Charts'));"
+    }
+  ],
+  "webpackOptimizations": {
+    "splitChunks": {
+      "chunks": "all",
+      "cacheGroups": {
+        "vendor": {
+          "test": {},
+          "name": "vendors",
+          "chunks": "all",
+          "maxSize": 200000
+        },
+        "common": {
+          "name": "common",
+          "minChunks": 2,
+          "chunks": "all",
+          "maxSize": 100000
+        }
+      }
+    },
+    "usedExports": true,
+    "sideEffects": false
+  },
+  "largeFiles": [
+    {
+      "path": "/src/modules/horizon/inmuebles/cartera/PropertyForm.tsx",
+      "size": 72,
+      "lines": 1731
+    },
+    {
+      "path": "/src/services/db.ts",
+      "size": 62,
+      "lines": 1746
+    },
+    {
+      "path": "/src/modules/horizon/tesoreria/components/CuentasPanel.tsx",
+      "size": 57,
+      "lines": 1358
+    },
+    {
+      "path": "/src/pages/UnicornioInboxPrompt.tsx",
+      "size": 53,
+      "lines": 1319
+    },
+    {
+      "path": "/src/pages/InboxPage.tsx",
+      "size": 51,
+      "lines": 1420
+    }
+  ],
+  "recommendations": [
+    "Move heavy dependencies to dynamic imports",
+    "Split large components into smaller modules",
+    "Implement code splitting for route-level components",
+    "Consider removing unused dependencies",
+    "Optimize database operations with indexing",
+    "Implement virtualization for large lists",
+    "Use React.memo for expensive components",
+    "Implement proper error boundaries to prevent cascading re-renders"
+  ]
+}
