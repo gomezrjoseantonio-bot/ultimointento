@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { bankProfilesService } from './services/bankProfilesService';
+import { performanceMonitor } from './services/performanceMonitoringService';
 import MainLayout from './layouts/MainLayout';
 
 // Core pages - keep as direct imports for critical path
@@ -69,9 +70,53 @@ const ProfileSeederPage = React.lazy(() =>
 );
 
 function App() {
-  // Initialize bank profiles on app start
-  React.useEffect(() => {
+  // Initialize bank profiles and performance monitoring on app start
+  useEffect(() => {
     bankProfilesService.loadProfiles().catch(console.error);
+    
+    // Performance monitoring setup
+    const performanceObserver = new PerformanceObserver((list) => {
+      list.getEntries().forEach((entry) => {
+        if (entry.entryType === 'navigation') {
+          const navEntry = entry as PerformanceNavigationTiming;
+          performanceMonitor.recordMetric({
+            operation: 'app_load',
+            duration: navEntry.loadEventEnd - navEntry.fetchStart,
+            timestamp: Date.now()
+          });
+        } else if (entry.entryType === 'measure') {
+          performanceMonitor.recordMetric({
+            operation: entry.name,
+            duration: entry.duration,
+            timestamp: Date.now()
+          });
+        }
+      });
+    });
+    
+    // Start observing performance
+    try {
+      performanceObserver.observe({ entryTypes: ['navigation', 'measure'] });
+    } catch (error) {
+      console.warn('Performance Observer not supported:', error);
+    }
+    
+    // Log performance status periodically in development
+    if (process.env.NODE_ENV === 'development') {
+      const interval = setInterval(() => {
+        if (performanceMonitor.needsOptimization()) {
+          console.warn('⚠️ Performance optimization needed');
+          performanceMonitor.logPerformanceStatus();
+        }
+      }, 30000); // Check every 30 seconds
+      
+      return () => {
+        clearInterval(interval);
+        performanceObserver.disconnect();
+      };
+    }
+    
+    return () => performanceObserver.disconnect();
   }, []);
 
   return (

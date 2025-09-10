@@ -18,6 +18,8 @@
  */
 
 import { initDB, resetAllData } from '../src/services/db';
+import { optimizedDbService } from '../src/services/optimizedDbService';
+import { performanceMonitor } from '../src/services/performanceMonitoringService';
 
 const LOG_PREFIX = '[COMPLETE-CLEANUP]';
 
@@ -31,11 +33,11 @@ interface CompleteCleanupStats {
 }
 
 /**
- * Performs complete data cleanup with detailed reporting
+ * Performs complete data cleanup with detailed reporting and performance optimization
  */
 async function performCompleteCleanup(): Promise<CompleteCleanupStats> {
   const startTime = Date.now();
-  console.log(`${LOG_PREFIX} Starting COMPLETE data cleanup...`);
+  console.log(`${LOG_PREFIX} Starting COMPLETE data cleanup with performance optimization...`);
   console.log(`${LOG_PREFIX} WARNING: This will remove ALL data permanently!`);
   
   const stats: CompleteCleanupStats = {
@@ -48,70 +50,57 @@ async function performCompleteCleanup(): Promise<CompleteCleanupStats> {
   };
 
   try {
-    const db = await initDB();
+    // Get initial database stats
+    const initialStats = await optimizedDbService.getDatabaseStats();
+    stats.totalObjectStores = Object.keys(initialStats.storeStats).length;
+    stats.totalRecordsRemoved = initialStats.totalRecords;
     
-    // Step 1: Count existing data before cleanup
-    const storeNames = Array.from(db.objectStoreNames);
-    stats.totalObjectStores = storeNames.length;
-    
-    console.log(`${LOG_PREFIX} Found ${storeNames.length} object stores to clear:`);
-    
-    // Count records in each store before clearing
-    for (const storeName of storeNames) {
-      try {
-        const count = await db.count(storeName);
-        stats.totalRecordsRemoved += count;
-        console.log(`${LOG_PREFIX}   - ${storeName}: ${count} records`);
-      } catch (error) {
-        console.warn(`${LOG_PREFIX} Warning: Could not count records in ${storeName}:`, error);
-      }
-    }
+    console.log(`${LOG_PREFIX} Found ${stats.totalObjectStores} object stores to clear:`);
+    Object.entries(initialStats.storeStats).forEach(([storeName, count]) => {
+      console.log(`${LOG_PREFIX}   - ${storeName}: ${count} records`);
+    });
     
     console.log(`${LOG_PREFIX} Total records to be removed: ${stats.totalRecordsRemoved}`);
+    console.log(`${LOG_PREFIX} Estimated database size: ${(initialStats.estimatedSize / 1024 / 1024).toFixed(2)} MB`);
     
-    // Step 2: Perform the complete cleanup using the enhanced resetAllData function
-    await resetAllData();
-    stats.objectStoresCleared = storeNames.length;
-    
-    // Step 3: Count localStorage items that were cleared
-    // Note: we can't count this precisely since resetAllData already cleared them
-    // But we can estimate based on the keys we know about
-    const knownKeys = [
-      'atlas-inbox-documents',
-      'atlas-horizon-settings', 
-      'atlas-user-preferences',
-      'classificationRules',
-      'bankProfiles',
-      'demo-mode',
-      'atlas-kpi-configurations',
-      'treasury-cache',
-      'fiscal-cache'
-    ];
-    stats.localStorageKeysCleared = knownKeys.length;
-    
-    // Step 4: Verify cleanup was successful
-    console.log(`${LOG_PREFIX} Verifying cleanup...`);
-    
-    for (const storeName of storeNames) {
-      try {
-        const count = await db.count(storeName);
-        if (count > 0) {
-          stats.errors.push(`Store ${storeName} still contains ${count} records after cleanup`);
-        }
-      } catch (error) {
-        stats.errors.push(`Could not verify cleanup of store ${storeName}: ${error}`);
+    // Perform optimized cleanup with progress tracking
+    await optimizedDbService.optimizedResetAllData((progress, currentStore) => {
+      if (progress % 20 === 0 || progress === 100) {
+        console.log(`${LOG_PREFIX} Progress: ${progress}% (${currentStore})`);
       }
-    }
+    });
+    
+    stats.objectStoresCleared = stats.totalObjectStores;
+    
+    // Verify cleanup was successful
+    console.log(`${LOG_PREFIX} Verifying cleanup...`);
+    const finalStats = await optimizedDbService.getDatabaseStats();
+    
+    Object.entries(finalStats.storeStats).forEach(([storeName, count]) => {
+      if (count > 0) {
+        stats.errors.push(`Store ${storeName} still contains ${count} records after cleanup`);
+      }
+    });
     
     stats.duration = Date.now() - startTime;
+    
+    // Log performance metrics
+    const performanceReport = performanceMonitor.getPerformanceReport();
+    console.log(`${LOG_PREFIX} Performance metrics:`, {
+      duration: `${stats.duration}ms`,
+      averageOperationDuration: Math.round(
+        Object.values(performanceReport.averageDurations).reduce((a, b) => a + b, 0) / 
+        Object.keys(performanceReport.averageDurations).length
+      ),
+      memoryTrend: `${(performanceReport.memoryTrend / 1024 / 1024).toFixed(2)} MB`
+    });
     
     if (stats.errors.length === 0) {
       console.log(`${LOG_PREFIX} ✅ Complete cleanup SUCCESS!`);
       console.log(`${LOG_PREFIX} - ${stats.objectStoresCleared} object stores cleared`);
       console.log(`${LOG_PREFIX} - ${stats.totalRecordsRemoved} total records removed`);
-      console.log(`${LOG_PREFIX} - ${stats.localStorageKeysCleared}+ localStorage keys cleared`);
       console.log(`${LOG_PREFIX} - Completed in ${stats.duration}ms`);
-      console.log(`${LOG_PREFIX} Database is now completely empty and ready for fresh use.`);
+      console.log(`${LOG_PREFIX} - Database is now completely empty and optimized for performance.`);
     } else {
       console.error(`${LOG_PREFIX} ❌ Cleanup completed with ${stats.errors.length} errors:`);
       stats.errors.forEach(error => console.error(`${LOG_PREFIX}   - ${error}`));

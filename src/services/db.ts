@@ -1636,6 +1636,7 @@ export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 're
   }
 };
 
+// Enhanced performance-optimized database cleanup
 export const resetAllData = async (): Promise<void> => {
   try {
     const db = await initDB();
@@ -1644,19 +1645,29 @@ export const resetAllData = async (): Promise<void> => {
     const storeNames = Array.from(db.objectStoreNames);
     console.log(`[RESET] Clearing ${storeNames.length} object stores:`, storeNames);
     
-    // Create transaction for all existing stores
-    const tx = db.transaction(storeNames, 'readwrite');
+    // Performance optimization: Process stores in batches to avoid overwhelming the browser
+    const BATCH_SIZE = 8; // Process 8 stores at a time
+    const batches = [];
+    for (let i = 0; i < storeNames.length; i += BATCH_SIZE) {
+      batches.push(storeNames.slice(i, i + BATCH_SIZE));
+    }
     
-    // Clear all object stores
-    const clearPromises = storeNames.map(storeName => {
-      console.log(`[RESET] Clearing store: ${storeName}`);
-      return tx.objectStore(storeName).clear();
-    });
+    // Clear stores in batches for better performance
+    for (const batch of batches) {
+      const tx = db.transaction(batch, 'readwrite');
+      const clearPromises = batch.map(storeName => {
+        console.log(`[RESET] Clearing store: ${storeName}`);
+        return tx.objectStore(storeName).clear();
+      });
+      
+      await Promise.all(clearPromises);
+      await tx.done;
+      
+      // Small delay between batches to prevent blocking the UI
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
     
-    await Promise.all(clearPromises);
-    await tx.done;
-    
-    // Clear all localStorage items related to the application
+    // Clear localStorage more efficiently
     const localStorageKeys = [
       'atlas-inbox-documents',
       'atlas-horizon-settings',
@@ -1669,27 +1680,67 @@ export const resetAllData = async (): Promise<void> => {
       'fiscal-cache'
     ];
     
+    // Clear known keys first
     localStorageKeys.forEach(key => {
-      localStorage.removeItem(key);
-      console.log(`[RESET] Cleared localStorage: ${key}`);
-    });
-    
-    // Clear any remaining localStorage items that might contain Atlas data
-    const allKeys = Object.keys(localStorage);
-    allKeys.forEach(key => {
-      if (key.toLowerCase().includes('atlas') || 
-          key.toLowerCase().includes('horizon') || 
-          key.toLowerCase().includes('treasury') ||
-          key.toLowerCase().includes('demo')) {
+      if (localStorage.getItem(key)) {
         localStorage.removeItem(key);
         console.log(`[RESET] Cleared localStorage: ${key}`);
       }
     });
     
-    console.log('[RESET] Complete database and localStorage cleanup completed successfully');
+    // Performance optimization: Use a more efficient scan for remaining Atlas-related keys
+    const allKeys = Object.keys(localStorage);
+    const atlasKeys = allKeys.filter(key => {
+      const lowerKey = key.toLowerCase();
+      return lowerKey.includes('atlas') || 
+             lowerKey.includes('horizon') || 
+             lowerKey.includes('treasury') ||
+             lowerKey.includes('demo');
+    });
+    
+    atlasKeys.forEach(key => {
+      localStorage.removeItem(key);
+      console.log(`[RESET] Cleared additional localStorage: ${key}`);
+    });
+    
+    // Clear IndexedDB caches and force garbage collection hint
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        const atlasCaches = cacheNames.filter(name => 
+          name.toLowerCase().includes('atlas') ||
+          name.toLowerCase().includes('horizon')
+        );
+        await Promise.all(atlasCaches.map(name => caches.delete(name)));
+        console.log(`[RESET] Cleared ${atlasCaches.length} cache entries`);
+      } catch (error) {
+        console.warn('[RESET] Could not clear caches:', error);
+      }
+    }
+    
+    console.log('[RESET] Enhanced database and localStorage cleanup completed successfully');
     
   } catch (error) {
     console.error('Error resetting data:', error);
     throw new Error('No se pudo restablecer los datos completamente');
+  }
+};
+
+// Performance-optimized bulk data operations
+export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
+  const db = await initDB();
+  const BATCH_SIZE = 5;
+  
+  for (let i = 0; i < storeNames.length; i += BATCH_SIZE) {
+    const batch = storeNames.slice(i, i + BATCH_SIZE);
+    const tx = db.transaction(batch, 'readwrite');
+    
+    await Promise.all(batch.map(storeName => 
+      tx.objectStore(storeName).clear()
+    ));
+    
+    await tx.done;
+    // Micro-delay to prevent UI blocking
+    await new Promise(resolve => setTimeout(resolve, 5));
   }
 };
