@@ -70,6 +70,7 @@ export function hasValidLogo(account: Account): boolean {
 
 /**
  * Get account info for display in movement list
+ * Uses real logos or monogram fallback with Atlas color scheme
  */
 export function getAccountInfo(accountId: number, accounts: Account[]) {
   const account = accounts.find(acc => acc.id === accountId);
@@ -78,18 +79,22 @@ export function getAccountInfo(accountId: number, accounts: Account[]) {
     return {
       name: 'Cuenta desconocida',
       bank: '',
-      logo: '/placeholder-bank.png',
+      logo: null, // No demo logo
       initials: 'CD',
-      isActive: false
+      isActive: false,
+      logoType: 'monogram' as const
     };
   }
+  
+  const hasLogo = hasValidLogo(account);
   
   return {
     name: account.name || 'Cuenta sin nombre',
     bank: account.bank || '',
-    logo: hasValidLogo(account) ? account.logo_url! : '/placeholder-bank.png',
+    logo: hasLogo ? account.logo_url! : null,
     initials: getAccountInitials(account),
-    isActive: account.isActive
+    isActive: account.isActive,
+    logoType: hasLogo ? 'image' as const : 'monogram' as const
   };
 }
 

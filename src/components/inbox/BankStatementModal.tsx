@@ -91,8 +91,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
       // Use the unified import service
       const options: ImportOptions = {
         file,
-        accountId: selectedAccountId as number,
-        skipDuplicates: true,
+        destinationAccountId: selectedAccountId as number,
         usuario: 'inbox_ui'
       };
       
@@ -106,6 +105,9 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
       }
       
       if (result.success) {
+        console.debug('🧭 inbox:toTreasury:ok - Import completed successfully');
+        console.info(`🧭 Inbox import: ${result.inserted} movements saved to Treasury`);
+        
         // Call the completion handler with the expected format
         onImportComplete({
           inserted: result.inserted,
@@ -114,6 +116,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
           batchId: result.batchId
         });
       } else {
+        console.error('🧭 inbox:toTreasury:error - Import failed');
         toast.error('Error al importar el extracto');
       }
       

@@ -2,13 +2,17 @@
 
 import { Prestamo, PlanPagos } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
+import { FLAGS } from '../config/flags';
 
 export class PrestamosService {
   private prestamos: Prestamo[] = [];
   private planesGenerados: Map<string, PlanPagos> = new Map();
 
   constructor() {
-    this.initMockData();
+    // Only initialize mock data if demo mode is enabled
+    if (FLAGS.DEMO_MODE) {
+      this.initMockData();
+    }
   }
 
   /**

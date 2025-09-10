@@ -11,6 +11,7 @@
 import { initDB, Document, Gasto, Contract, AEATFiscalType } from './db';
 import { telemetry } from './telemetryService';
 import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
+import { FLAGS } from '../config/flags';
 
 export interface DocumentIngestionResult {
   success: boolean;
@@ -430,6 +431,21 @@ async function processBankStatement(document: Document): Promise<DocumentIngesti
   }
 
   try {
+    // Check if demo mode is enabled - if not, reject bank statement simulation
+    if (!FLAGS.DEMO_MODE && !FLAGS.PREVIEW_SIMULATION) {
+      return {
+        success: false,
+        message: 'Bank statement simulation disabled in production mode. Use real import from Tesorería or Inbox.',
+        destination: 'Inbox',
+        createdEntries: [],
+        attachedDocumentId: document.id!
+      };
+    }
+
+    // Note: This simulation code should only run in demo mode
+    // In production, bank statements should be imported via the unified bankImportService
+    console.warn('🚧 Bank statement simulation running in demo mode - should not happen in production');
+    
     // Simulate movement creation (in real implementation, this would parse the bank file)
     const movementCount = extractMetadata?.importedRows || Math.floor(Math.random() * 20) + 1;
     
