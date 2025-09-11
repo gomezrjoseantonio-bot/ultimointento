@@ -1,0 +1,9 @@
+{
+  "short_name": "ATLAS",
+  "name": "ATLAS — Horizon & Pulse",
+  "description": "Modern fintech app for real estate and personal finance",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
