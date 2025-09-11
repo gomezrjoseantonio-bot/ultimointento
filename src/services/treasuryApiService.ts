@@ -110,6 +110,11 @@ export class TreasuryAccountsAPI {
     };
 
     const accountId = await db.add('accounts', newAccount);
+    
+    // SOLUTION: Ensure no demo movements are created with new accounts
+    const { ensureCleanAccountCreation } = await import('./demoDataCleanupService');
+    await ensureCleanAccountCreation(accountId as number);
+    
     return { ...newAccount, id: accountId as number };
   }
 

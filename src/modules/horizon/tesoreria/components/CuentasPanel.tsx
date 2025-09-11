@@ -67,7 +67,11 @@ const CuentasPanel: React.FC = () => {
       
       // Get movements for this account
       const allMovements = await db.getAll('movements');
-      const accountMovements = allMovements.filter(mov => mov.accountId === account.id);
+      let accountMovements = allMovements.filter(mov => mov.accountId === account.id);
+      
+      // FIX: Filter out demo movements when displaying account details
+      const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
+      accountMovements = accountMovements.filter(mov => !isDemoMovement(mov));
       
       // Get projections for this specific account
       const { accountBalances } = await getTreasuryProjections(30, [account.id!]);

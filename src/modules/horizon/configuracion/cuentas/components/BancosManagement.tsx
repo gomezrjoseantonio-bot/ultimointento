@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
-import { Banknote, Info, Edit2, Trash2, Upload, X, AlertTriangle } from 'lucide-react';
+import { Banknote, Info, Edit2, Trash2, Upload, X, AlertTriangle, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
 import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFromStorage } from '../../../../../services/logoUploadService';
+import { cleanupAllDemoData } from '../../../../../services/demoDataCleanupService';
 import { Account } from '../../../../../services/db';
 
 interface AccountFormData {
@@ -34,6 +35,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   const [saving, setSaving] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cleaningDemo, setCleaningDemo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<AccountFormData>({
@@ -112,6 +114,31 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
 
   const handleDeleteAccount = (account: Account) => {
     setDeleteConfirmation(account);
+  };
+
+  const handleCleanupDemoData = async () => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar todos los movimientos y cuentas de demostración? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setCleaningDemo(true);
+    try {
+      const result = await cleanupAllDemoData();
+      
+      if (result.errors.length === 0) {
+        toast.success(`Limpieza completada: ${result.removedMovements} movimientos y ${result.removedAccounts} cuentas demo eliminados`);
+      } else {
+        toast.error(`Limpieza completada con ${result.errors.length} errores`);
+      }
+      
+      // Reload accounts to refresh the list
+      await loadAccounts();
+    } catch (error) {
+      console.error('Error during demo cleanup:', error);
+      toast.error('Error durante la limpieza de datos demo');
+    } finally {
+      setCleaningDemo(false);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -298,6 +325,15 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             <h2 className="text-lg font-medium text-atlas-navy-1">
               Cuentas bancarias ({accounts.length})
             </h2>
+            <button
+              onClick={handleCleanupDemoData}
+              disabled={cleaningDemo}
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+              title="Eliminar cuentas y movimientos de demostración"
+            >
+              <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
+              {cleaningDemo ? 'Limpiando...' : 'Limpiar datos demo'}
+            </button>
           </div>
         </div>
 

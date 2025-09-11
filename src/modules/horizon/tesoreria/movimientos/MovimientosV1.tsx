@@ -96,9 +96,13 @@ const MovimientosV1: React.FC = () => {
       // Load movements for Horizon accounts
       const db = await initDB();
       const allMovements = await db.getAll('movements');
-      const horizonMovements = allMovements.filter(mov => 
+      let horizonMovements = allMovements.filter(mov => 
         sortedAccounts.some(acc => acc.id === mov.accountId)
       );
+      
+      // FIX: Filter out demo movements from the movements view
+      const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
+      horizonMovements = horizonMovements.filter(mov => !isDemoMovement(mov));
       
       // Ensure movements have required V1.0 fields with defaults
       const enhancedMovements = horizonMovements.map(mov => ({

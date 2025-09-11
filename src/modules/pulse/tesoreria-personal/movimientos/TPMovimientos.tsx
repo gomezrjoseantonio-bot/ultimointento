@@ -28,9 +28,14 @@ const TPMovimientos: React.FC = () => {
       
       // Load movements for Pulse accounts
       const allMovements = await db.getAll('movements');
-      const pulseMovements = allMovements.filter((mov: Movement) => 
+      let pulseMovements = allMovements.filter((mov: Movement) => 
         pulseAccounts.some((acc: Account) => acc.id === mov.accountId)
       );
+      
+      // FIX: Filter out demo movements from the Pulse movements view
+      const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
+      pulseMovements = pulseMovements.filter(mov => !isDemoMovement(mov));
+      
       setMovements(pulseMovements);
       
     } catch (error) {
