@@ -206,10 +206,21 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
       }
 
       // Reject demo movements (unless demo mode is explicitly enabled)
+      // Enhanced demo detection
+      const { isDemoMovement } = await import('./demoDataCleanupService');
       if (!FLAGS.DEMO_MODE && (
+          isDemoMovement({ 
+            description: row.description, 
+            counterparty: '', 
+            amount: row.amount, 
+            date: row.value_date 
+          } as any) ||
           row.description.toLowerCase().includes('demo') || 
           row.description.toLowerCase().includes('test') ||
-          row.description.toLowerCase().includes('sample'))) {
+          row.description.toLowerCase().includes('sample') ||
+          row.description.toLowerCase().includes('ejemplo') ||
+          row.description.toLowerCase().includes('ficticio')
+        )) {
         console.warn(`${LOG_PREFIX} Rejecting demo movement: ${row.description}`);
         results.errors++;
         continue;

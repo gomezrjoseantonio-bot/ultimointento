@@ -246,5 +246,4 @@ if (require.main === module) {
   main();
 }
 
-export { cleanupDemoData };
 export type { CleanupStats };
