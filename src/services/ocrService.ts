@@ -526,7 +526,7 @@ async function processDocumentOCRFallback(filename: string): Promise<OCRResult> 
   
   if (isInvoice) {
     // H-OCR-FIX: Enhanced mock invoice fields with advanced provider resolution
-    const rawProvider = Math.random() > 0.2 ? 'Endesa Energía XXI, S.L.U.' : 'EMPRESA EJEMPLO S.L.'; // 20% chance of example
+    const rawProvider = 'Endesa Energía XXI, S.L.U.';
     const rawNIF = Math.random() > 0.2 ? 'B82846817' : '';
     const providerResolution = await resolveProviderAdvanced(rawProvider, rawNIF, 0.95);
     
@@ -556,7 +556,7 @@ async function processDocumentOCRFallback(filename: string): Promise<OCRResult> 
     );
   } else {
     // Generic document fields
-    const rawProvider = Math.random() > 0.3 ? 'Empresa Ejemplo S.L.' : 'Naturgy Energy Group S.A.';
+    const rawProvider = 'Naturgy Energy Group S.A.';
     const providerResolution = await resolveProviderAdvanced(rawProvider, '', 0.80);
     
     if (providerResolution.canonicalName) {

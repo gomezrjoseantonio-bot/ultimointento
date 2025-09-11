@@ -1,19 +1,11 @@
-// Préstamos Service - Mock data and CRUD operations
+// Préstamos Service - CRUD operations
 
 import { Prestamo, PlanPagos } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
-import { FLAGS } from '../config/flags';
 
 export class PrestamosService {
   private prestamos: Prestamo[] = [];
   private planesGenerados: Map<string, PlanPagos> = new Map();
-
-  constructor() {
-    // Only initialize mock data if demo mode is enabled
-    if (FLAGS.DEMO_MODE) {
-      this.initMockData();
-    }
-  }
 
   /**
    * Get all loans for a property
@@ -126,136 +118,6 @@ export class PrestamosService {
     return this.updatePrestamo(prestamoId, {
       principalVivo: nuevoPrincipal
     });
-  }
-
-  /**
-   * Initialize mock data for development
-   */
-  private initMockData(): void {
-    const mockPrestamos: Prestamo[] = [
-      {
-        id: 'prestamo_001',
-        inmuebleId: 'property_001',
-        nombre: 'Hipoteca Vivienda Principal',
-        principalInicial: 180000,
-        principalVivo: 165000,
-        fechaFirma: '2023-08-10',
-        plazoMesesTotal: 300,
-        tipo: 'VARIABLE',
-        indice: 'EURIBOR',
-        valorIndiceActual: 0.0365,
-        diferencial: 0.012,
-        periodoRevisionMeses: 12,
-        fechaProximaRevision: '2025-08-10',
-        mesesSoloIntereses: 0,
-        diferirPrimeraCuotaMeses: 2,
-        prorratearPrimerPeriodo: true,
-        cobroMesVencido: true,
-        diaCargoMes: 10,
-        cuentaCargoId: 'cuenta_001',
-        comisionAmortizacionParcial: 0.01,
-        comisionCancelacionTotal: 0.005,
-        gastosFijosOperacion: 30,
-        // Bonifications management
-        maximoBonificacionPorcentaje: 0.006, // 0.60% max bonification
-        periodoRevisionBonificacionMeses: 12, // annual review
-        // Bonifications
-        fechaFinPeriodo: '2025-12-31',
-        fechaEvaluacion: '2025-12-01',
-        offsetEvaluacionDias: 30,
-        bonificaciones: [
-          {
-            id: 'bonif_001',
-            nombre: 'Nómina',
-            reduccionPuntosPorcentuales: 0.003, // 0.30 pp
-            lookbackMeses: 4,
-            regla: { tipo: 'NOMINA', minimoMensual: 1200 },
-            costeAnualEstimado: 0,
-            estado: 'EN_RIESGO',
-            progreso: {
-              descripcion: 'Llevas 2/4 meses de nómina ≥ 1.200€',
-              faltante: 'Faltan 2 meses con nómina ≥ 1.200€'
-            }
-          },
-          {
-            id: 'bonif_002',
-            nombre: 'Seguro Hogar',
-            reduccionPuntosPorcentuales: 0.002, // 0.20 pp
-            lookbackMeses: 12,
-            regla: { tipo: 'SEGURO_HOGAR', activo: true },
-            costeAnualEstimado: 240,
-            estado: 'CUMPLIDA',
-            progreso: {
-              descripcion: 'Seguro activo desde hace 8 meses'
-            }
-          },
-          {
-            id: 'bonif_003',
-            nombre: 'Tarjeta',
-            reduccionPuntosPorcentuales: 0.001, // 0.10 pp
-            lookbackMeses: 3,
-            regla: { tipo: 'TARJETA', movimientosMesMin: 6 },
-            estado: 'CUMPLIDA',
-            progreso: {
-              descripcion: 'Promedio de 8 movimientos/mes últimos 3 meses'
-            }
-          }
-        ],
-        createdAt: '2023-08-10T10:00:00Z',
-        updatedAt: '2024-12-01T15:30:00Z'
-      },
-      {
-        id: 'prestamo_002',
-        inmuebleId: 'property_002',
-        nombre: 'Préstamo Reforma',
-        principalInicial: 45000,
-        principalVivo: 38500,
-        fechaFirma: '2024-03-15',
-        plazoMesesTotal: 120,
-        tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.045,
-        mesesSoloIntereses: 3,
-        diferirPrimeraCuotaMeses: 0,
-        prorratearPrimerPeriodo: false,
-        cobroMesVencido: false,
-        diaCargoMes: 15,
-        cuentaCargoId: 'cuenta_002',
-        comisionAmortizacionParcial: 0.015,
-        comisionCancelacionTotal: 0.01,
-        gastosFijosOperacion: 25,
-        createdAt: '2024-03-15T14:20:00Z',
-        updatedAt: '2024-11-20T09:15:00Z'
-      },
-      {
-        id: 'prestamo_003',
-        inmuebleId: 'property_001',
-        nombre: 'Hipoteca Mixta Inversión',
-        principalInicial: 250000,
-        principalVivo: 240000,
-        fechaFirma: '2024-01-20',
-        plazoMesesTotal: 360,
-        tipo: 'MIXTO',
-        tramoFijoMeses: 60,
-        tipoNominalAnualMixtoFijo: 0.032,
-        indice: 'EURIBOR',
-        valorIndiceActual: 0.0365,
-        diferencial: 0.015,
-        periodoRevisionMeses: 12,
-        mesesSoloIntereses: 6,
-        diferirPrimeraCuotaMeses: 1,
-        prorratearPrimerPeriodo: true,
-        cobroMesVencido: true,
-        diaCargoMes: 20,
-        cuentaCargoId: 'cuenta_003',
-        comisionAmortizacionParcial: 0.008,
-        comisionCancelacionTotal: 0.004,
-        gastosFijosOperacion: 40,
-        createdAt: '2024-01-20T11:45:00Z',
-        updatedAt: '2024-12-01T16:00:00Z'
-      }
-    ];
-
-    this.prestamos = mockPrestamos;
   }
 
   /**
