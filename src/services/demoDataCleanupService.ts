@@ -5,8 +5,8 @@
  * Ensures that newly created accounts don't have any default movements
  */
 
-import { initDB, Movement, Account } from './db';
-import { isDemoAccount, isValidAccount } from './accountValidationService';
+import { initDB, Movement } from './db';
+import { isDemoAccount } from './accountValidationService';
 import toast from 'react-hot-toast';
 
 const LOG_PREFIX = '[DEMO-CLEANUP]';
