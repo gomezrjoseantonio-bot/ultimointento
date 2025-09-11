@@ -48,9 +48,14 @@ const MovimientosPanel: React.FC = () => {
       
       // Load movements for Horizon accounts
       const allMovements = await db.getAll('movements');
-      const horizonMovements = allMovements.filter(mov => 
+      let horizonMovements = allMovements.filter(mov => 
         horizonAccounts.some(acc => acc.id === mov.accountId)
       );
+      
+      // FIX: Filter out demo movements from the movements panel
+      const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
+      horizonMovements = horizonMovements.filter(mov => !isDemoMovement(mov));
+      
       setMovements(horizonMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       
     } catch (error) {
