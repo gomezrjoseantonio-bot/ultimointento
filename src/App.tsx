@@ -69,6 +69,9 @@ const ProfileSeederPage = React.lazy(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// Image Description page - New feature
+const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPage'));
+
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
@@ -130,6 +133,13 @@ function App() {
             <Route path="inbox" element={<UnicornioInboxPrompt />} />
             <Route path="inbox-unified" element={<UnifiedInboxPage />} />
             <Route path="inbox-legacy" element={<InboxAtlasHorizon />} />
+            
+            {/* Image Description Feature */}
+            <Route path="describe-image" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImageDescriptionPage />
+              </React.Suspense>
+            } />
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
