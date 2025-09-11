@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
 import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFromStorage } from '../../../../../services/logoUploadService';
 import { cleanupAllDemoData } from '../../../../../services/demoDataCleanupService';
+import { isDemoModeEnabled } from '../../../../../config/envFlags';
 import { Account } from '../../../../../services/db';
 
 interface AccountFormData {
@@ -325,15 +326,17 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             <h2 className="text-lg font-medium text-atlas-navy-1">
               Cuentas bancarias ({accounts.length})
             </h2>
-            <button
-              onClick={handleCleanupDemoData}
-              disabled={cleaningDemo}
-              className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
-              title="Eliminar cuentas y movimientos de demostración"
-            >
-              <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
-              {cleaningDemo ? 'Limpiando...' : 'Limpiar datos demo'}
-            </button>
+            {(isDemoModeEnabled() || process.env.NODE_ENV === 'development') && (
+              <button
+                onClick={handleCleanupDemoData}
+                disabled={cleaningDemo}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                title="Eliminar cuentas y movimientos de demostración"
+              >
+                <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
+                {cleaningDemo ? 'Limpiando...' : 'Limpiar datos demo'}
+              </button>
+            )}
           </div>
         </div>
 

@@ -54,7 +54,7 @@ export const isAutoOCREnabled = (): boolean => getEnvFlags().INBOX_AUTO_OCR;
 export const isBankImportEnabled = (): boolean => getEnvFlags().BANK_IMPORT_ENABLE;
 export const isTelemetryEnabled = (): boolean => getEnvFlags().ENABLE_TELEMETRY;
 export const isQADashboardEnabled = (): boolean => getEnvFlags().QA_DASHBOARD;
-export const isDemoModeEnabled = (): boolean => FLAGS.DEMO_MODE;
+export const isDemoModeEnabled = (): boolean => getEnvFlags().APP_DEMO_MODE;
 export const getOCRConfidenceThreshold = (): number => getEnvFlags().OCR_CONFIDENCE_THRESHOLD;
 
 // Log environment flags on startup (dev only)
@@ -64,7 +64,7 @@ if (process.env.NODE_ENV === 'development') {
     'Auto Route': flags.INBOX_AUTO_ROUTE ? '✅' : '❌',
     'Auto OCR': flags.INBOX_AUTO_OCR ? '✅' : '❌', 
     'Bank Import': flags.BANK_IMPORT_ENABLE ? '✅' : '❌',
-    'Demo Mode': FLAGS.DEMO_MODE ? '⚠️ ENABLED' : '✅ DISABLED',
+    'Demo Mode': flags.APP_DEMO_MODE ? '⚠️ ENABLED' : '✅ DISABLED',
     'Preview Simulation': FLAGS.PREVIEW_SIMULATION ? '⚠️ ENABLED' : '✅ DISABLED',
     'Telemetry': flags.ENABLE_TELEMETRY ? '✅' : '❌',
     'OCR Threshold': `${(flags.OCR_CONFIDENCE_THRESHOLD * 100).toFixed(0)}%`
