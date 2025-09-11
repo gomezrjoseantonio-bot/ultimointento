@@ -27,11 +27,13 @@ export function isDemoMovement(movement: Movement): boolean {
   const description = movement.description?.toLowerCase() || '';
   const counterparty = movement.counterparty?.toLowerCase() || '';
   
-  // Demo keywords to check
+  // Demo keywords to check - expanded list for better detection
   const demoKeywords = [
     'demo', 'test', 'sample', 'ejemplo', 'prueba',
     'ficticio', 'simulado', 'plantilla', 'muestra',
-    'fake', 'mock', 'provisional'
+    'fake', 'mock', 'provisional', 'temporal',
+    'placeholder', 'default', 'initial',
+    'movimiento de ejemplo', 'movimiento inicial', 'movimiento por defecto'
   ];
 
   // Check if description or counterparty contains demo keywords
@@ -40,23 +42,31 @@ export function isDemoMovement(movement: Movement): boolean {
   );
 
   // Check for typical demo amounts (round numbers like 100, 500, 1000)
-  const isDemoAmount = movement.amount && (
+  const isDemoAmount = movement.amount !== undefined && (
     movement.amount === 100 ||
     movement.amount === 500 ||
     movement.amount === 1000 ||
     movement.amount === -100 ||
     movement.amount === -500 ||
-    movement.amount === -1000
+    movement.amount === -1000 ||
+    movement.amount === 0 // Zero amounts are often demo/placeholder
   );
 
   // Check for demo dates (future dates or specific test dates)
   const isDemoDate = movement.date ? (
     movement.date.includes('2099') ||
     movement.date.includes('1999') ||
-    movement.date.includes('2000-01-01')
+    movement.date.includes('2000-01-01') ||
+    movement.date.includes('1900-01-01')
   ) : false;
 
-  return hasKeywords || (!!isDemoAmount && isDemoDate);
+  // Check for movements without proper metadata (likely auto-generated demo)
+  const lacksMetadata = !movement.createdAt && movement.origin === 'Manual';
+  
+  // Additional production safety: movements with no counterparty and round amounts
+  const suspiciousPattern = !counterparty && isDemoAmount;
+
+  return hasKeywords || (isDemoAmount && isDemoDate) || lacksMetadata || suspiciousPattern;
 }
 
 /**

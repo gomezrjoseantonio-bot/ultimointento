@@ -32,9 +32,15 @@ const TPMovimientos: React.FC = () => {
         pulseAccounts.some((acc: Account) => acc.id === mov.accountId)
       );
       
-      // FIX: Filter out demo movements from the Pulse movements view
+      // ALWAYS filter out demo movements from operational views - regardless of demo mode
       const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
+      const originalCount = pulseMovements.length;
       pulseMovements = pulseMovements.filter(mov => !isDemoMovement(mov));
+      
+      // Log filtered demo movements in development
+      if (process.env.NODE_ENV === 'development' && originalCount !== pulseMovements.length) {
+        console.log(`[TPMovimientos] Filtered out ${originalCount - pulseMovements.length} demo movements`);
+      }
       
       setMovements(pulseMovements);
       
