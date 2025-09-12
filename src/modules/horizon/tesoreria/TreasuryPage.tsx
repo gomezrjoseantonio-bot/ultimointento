@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, Search } from 'lucide-react';
+import { Calendar, Search, ArrowLeftRight, ToggleLeft, ToggleRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageHeader from '../../../components/common/PageHeader';
 import ImportStatementModal from './components/ImportStatementModal';
@@ -26,6 +26,19 @@ interface Movement {
   currency: string;
   source?: string;
   reference?: string;
+  status?: 'previsto' | 'real' | 'no_planificado';
+  category?: string;
+  is_transfer_internal?: boolean;
+  transfer_origin?: string;
+  transfer_destination?: string;
+}
+
+interface CalendarDay {
+  date: Date;
+  dateStr: string;
+  isCurrentMonth: boolean;
+  movements: Movement[];
+  endOfDayBalance: number;
 }
 
 const TreasuryPage: React.FC = () => {
@@ -34,6 +47,8 @@ const TreasuryPage: React.FC = () => {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+  const [excludePersonal, setExcludePersonal] = useState(false);
+  const [calendarSearch, setCalendarSearch] = useState('');
   
   // Filters as specified in problem statement
   const [filters, setFilters] = useState({
@@ -99,19 +114,30 @@ const TreasuryPage: React.FC = () => {
         return movementDate.getFullYear() === year && movementDate.getMonth() === month - 1;
       });
       
-      // Filter by search text (description/counterparty)
+      // Enhance movements with status and classification
+      const enhancedMovements = accountMovements.map(movement => ({
+        ...movement,
+        status: movement.status || (movement.source === 'extracto' ? 'real' : 'no_planificado') as 'previsto' | 'real' | 'no_planificado',
+        category: movement.category,
+        is_transfer_internal: movement.is_transfer_internal || false,
+        transfer_origin: movement.transfer_origin,
+        transfer_destination: movement.transfer_destination
+      }));
+      
+      // Filter by search text (description/counterparty) - applied after calendar search
+      let filteredMovements = enhancedMovements;
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        accountMovements = accountMovements.filter(movement => 
+        filteredMovements = enhancedMovements.filter(movement => 
           movement.description?.toLowerCase().includes(searchLower) ||
           movement.counterparty?.toLowerCase().includes(searchLower)
         );
       }
 
-      // Sort by date descending (newest first)
-      accountMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Sort by date ascending for proper balance calculation
+      filteredMovements.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
-      setMovements(accountMovements);
+      setMovements(filteredMovements);
     } catch (error) {
       console.error('Error loading movements:', error);
       toast.error('Error al cargar los movimientos');
@@ -146,8 +172,135 @@ const TreasuryPage: React.FC = () => {
     toast.success(`Importación completada: ${result.confirmedMovements} movimientos`);
   };
 
+  // Generate calendar days for the selected month
+  const generateCalendarDays = useCallback((): CalendarDay[] => {
+    const [year, month] = filters.monthYear.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1);
+    const startOfWeek = new Date(firstDay);
+    
+    // Adjust to Monday start (getDay() returns 0=Sunday, 1=Monday, etc.)
+    const dayOfWeek = firstDay.getDay();
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startOfWeek.setDate(firstDay.getDate() - daysToSubtract);
+
+    const days: CalendarDay[] = [];
+    const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
+    const initialBalance = selectedAccount?.balance || 0;
+
+    // Generate 35 days (5 weeks × 7 days)
+    for (let i = 0; i < 35; i++) {
+      const currentDate = new Date(startOfWeek);
+      currentDate.setDate(startOfWeek.getDate() + i);
+      
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const isCurrentMonth = currentDate.getMonth() === month - 1;
+      
+      // Get movements for this day
+      const dayMovements = movements.filter(movement => {
+        const movementDate = new Date(movement.date);
+        return movementDate.toDateString() === currentDate.toDateString();
+      });
+
+      // Apply calendar search filter
+      const filteredDayMovements = calendarSearch 
+        ? dayMovements.filter(movement => 
+            movement.description?.toLowerCase().includes(calendarSearch.toLowerCase()) ||
+            movement.counterparty?.toLowerCase().includes(calendarSearch.toLowerCase())
+          )
+        : dayMovements;
+
+      // Filter personal movements if excluded
+      const finalMovements = excludePersonal 
+        ? filteredDayMovements.filter(movement => 
+            movement.category !== 'Personal' && !movement.description?.toLowerCase().includes('personal')
+          )
+        : filteredDayMovements;
+
+      // Calculate end of day balance (cumulative up to this day)
+      const movementsUpToThisDay = movements.filter(movement => {
+        const movementDate = new Date(movement.date);
+        return movementDate <= currentDate && movementDate.getMonth() === month - 1;
+      });
+      
+      const totalMovements = movementsUpToThisDay.reduce((sum, movement) => sum + movement.amount, 0);
+      const endOfDayBalance = initialBalance + totalMovements;
+
+      days.push({
+        date: currentDate,
+        dateStr,
+        isCurrentMonth,
+        movements: finalMovements,
+        endOfDayBalance
+      });
+    }
+
+    return days;
+  }, [filters.monthYear, movements, selectedAccountId, accounts, calendarSearch, excludePersonal]);
+
+  // Get calendar days
+  const calendarDays = generateCalendarDays();
+
   // Get selected account
   const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
+
+  // Helper function to get movement style based on status and type
+  const getMovementStyle = (movement: Movement) => {
+    if (movement.is_transfer_internal) {
+      return 'text-blue-600 text-xs px-2 py-1 bg-blue-50 rounded border-l-2 border-blue-400';
+    }
+    
+    switch (movement.status) {
+      case 'previsto':
+        return movement.amount >= 0 
+          ? 'text-green-600 text-xs px-2 py-1 bg-green-50 rounded border-l-2 border-green-400'
+          : 'text-red-600 text-xs px-2 py-1 bg-red-50 rounded border-l-2 border-red-400';
+      case 'real':
+        return 'text-blue-700 text-xs px-2 py-1 bg-blue-100 rounded border-l-2 border-blue-500';
+      case 'no_planificado':
+      default:
+        return 'text-gray-500 text-xs px-2 py-1 bg-gray-100 rounded border-l-2 border-gray-300';
+    }
+  };
+
+  // Helper function to get movement display text
+  const getMovementDisplay = (movement: Movement) => {
+    if (movement.is_transfer_internal) {
+      return (
+        <div className="flex items-center gap-1">
+          <ArrowLeftRight className="h-3 w-3" />
+          <span className="truncate">
+            {movement.transfer_origin} → {movement.transfer_destination}
+          </span>
+        </div>
+      );
+    }
+    
+    if (movement.status === 'no_planificado') {
+      return (
+        <div>
+          <div className="font-medium">{formatEuro(movement.amount)}</div>
+          <div className="text-xs bg-gray-200 text-gray-600 px-1 rounded">No planificado</div>
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        <div className="font-medium">{formatEuro(movement.amount)}</div>
+        <div className="truncate" title={movement.description}>
+          {movement.description?.slice(0, 20)}...
+        </div>
+      </div>
+    );
+  };
+
+  // Helper function to get balance color
+  const getBalanceColor = (balance: number) => {
+    return balance >= 0 ? 'text-gray-700' : 'text-red-600 font-semibold';
+  };
+
+  // Day names for calendar header (Spanish, Monday start)
+  const dayNames = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -221,83 +374,152 @@ const TreasuryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Movements Table */}
+      {/* Calendar View */}
       <div className="p-6">
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
-              <span className="ml-2 text-gray-600">Cargando movimientos...</span>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+            <span className="ml-2 text-gray-600">Cargando movimientos...</span>
+          </div>
+        ) : !selectedAccount ? (
+          <div className="p-12 text-center text-gray-500">
+            <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium mb-2">Selecciona una cuenta</h3>
+            <p>Elige una cuenta bancaria para ver sus movimientos</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Account Calendar Header */}
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* Account Info */}
+                  <div className="flex items-center gap-3">
+                    {selectedAccount.logo_url ? (
+                      <div className="w-8 h-8 rounded overflow-hidden">
+                        <img 
+                          src={selectedAccount.logo_url} 
+                          alt={`Logo ${selectedAccount.bank}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-600">
+                        {selectedAccount.bank.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {selectedAccount.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {selectedAccount.iban.slice(-4)} · {selectedAccount.bank}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Current Balance */}
+                  <div className="text-sm">
+                    <span className="text-gray-500">Saldo hoy: </span>
+                    <span className={`font-semibold ${getBalanceColor(selectedAccount.balance)}`}>
+                      {formatEuro(selectedAccount.balance)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  {/* Exclude Personal Toggle */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-700">Excluir personal</label>
+                    <button
+                      onClick={() => setExcludePersonal(!excludePersonal)}
+                      className={`p-1 rounded transition-colors ${
+                        excludePersonal ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                    >
+                      {excludePersonal ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                    </button>
+                  </div>
+
+                  {/* Calendar Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={calendarSearch}
+                      onChange={(e) => setCalendarSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : !selectedAccount ? (
-            <div className="p-12 text-center text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium mb-2">Selecciona una cuenta</h3>
-              <p>Elige una cuenta bancaria para ver sus movimientos</p>
+
+            {/* Calendar Grid */}
+            <div className="p-6">
+              {/* Calendar Header */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {dayNames.map((day) => (
+                  <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Body */}
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((day, index) => (
+                  <div
+                    key={index}
+                    className={`min-h-[120px] p-2 border border-gray-200 rounded ${
+                      day.isCurrentMonth 
+                        ? 'bg-white' 
+                        : 'bg-gray-50 text-gray-400'
+                    }`}
+                  >
+                    {/* Date and Balance */}
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-sm font-medium ${
+                        day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                      }`}>
+                        {day.date.getDate()}
+                      </span>
+                      {day.isCurrentMonth && (
+                        <div className={`text-xs px-1 py-0.5 bg-gray-100 rounded ${getBalanceColor(day.endOfDayBalance)}`}>
+                          {formatEuro(day.endOfDayBalance)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Movements */}
+                    {day.isCurrentMonth && day.movements.length > 0 && (
+                      <div className="space-y-1">
+                        {day.movements.slice(0, 3).map((movement) => (
+                          <div
+                            key={movement.id}
+                            className={getMovementStyle(movement)}
+                            title={`${movement.description} - ${formatEuro(movement.amount)}`}
+                          >
+                            {getMovementDisplay(movement)}
+                          </div>
+                        ))}
+                        {day.movements.length > 3 && (
+                          <div className="text-xs text-gray-400 text-center">
+                            +{day.movements.length - 3} más
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-          ) : movements.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium mb-2">No hay movimientos</h3>
-              <p>No se encontraron movimientos para los filtros seleccionados</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Descripción
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contraparte
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Importe
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Moneda
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fuente
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {movements.map((movement) => (
-                    <tr key={movement.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(movement.date).toLocaleDateString('es-ES')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {movement.description}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {movement.counterparty || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                        <span className={movement.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {movement.amount >= 0 ? '+' : ''}{formatEuro(movement.amount)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                        {movement.currency || 'EUR'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 text-center">
-                        {movement.source === 'extracto' ? 'Extracto' : 
-                         movement.source === 'inbox' ? 'Inbox' : 
-                         movement.source || 'Manual'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Import Modal */}
