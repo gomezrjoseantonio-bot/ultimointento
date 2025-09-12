@@ -66,15 +66,15 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
   const getMovementColor = (movement: Movement): string => {
     switch (movement.unifiedStatus) {
       case 'previsto':
-        return movement.type === 'Ingreso' ? 'text-green-600' : 'text-red-600';
+        return movement.type === 'Ingreso' ? 'text-movement-previsto-ingreso' : 'text-movement-previsto-gasto';
       case 'confirmado':
-        return 'text-blue-600';
+        return 'text-movement-confirmado';
       case 'no_planificado':
-        return 'text-gray-600';
+        return 'text-movement-no-previsto';
       case 'vencido':
-        return 'text-amber-600';
+        return 'text-movement-vencido';
       default:
-        return 'text-gray-600';
+        return 'text-movement-no-previsto';
     }
   };
 
@@ -89,21 +89,21 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
   const weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
   return (
-    <div className="bg-white">
+    <div className="bg-hz-card-bg">
       {/* Calendar Header */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 border border-gray-200 rounded-t-lg">
+      <div className="grid grid-cols-7 gap-px bg-hz-neutral-300 border border-hz-neutral-300 rounded-t-lg">
         {weekDays.map(day => (
-          <div key={day} className="bg-gray-50 p-3 text-center text-sm font-medium text-gray-700">
+          <div key={day} className="bg-hz-neutral-100 p-3 text-center text-sm font-medium text-hz-neutral-800">
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 border-x border-b border-gray-200 rounded-b-lg">
+      <div className="grid grid-cols-7 gap-px bg-hz-neutral-300 border-x border-b border-hz-neutral-300 rounded-b-lg">
         {days.map((day, index) => {
           if (day === null) {
-            return <div key={index} className="bg-gray-50 h-32" />;
+            return <div key={index} className="bg-hz-neutral-100 h-32" />;
           }
 
           const dayMovements = getMovementsForDay(day);
@@ -113,8 +113,8 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
           return (
             <div 
               key={day} 
-              className={`bg-white p-2 h-32 border-r border-b border-gray-100 relative overflow-hidden ${
-                today ? 'bg-blue-50 border-blue-200' : ''
+              className={`bg-hz-card-bg p-2 h-32 border-r border-b border-hz-neutral-200 relative overflow-hidden ${
+                today ? 'bg-primary-50 border-primary-200' : ''
               }`}
             >
               {/* Day Number and Balance */}
@@ -140,7 +140,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                     key={movement.id} 
                     className="group relative"
                   >
-                    <div className={`text-xs p-1 rounded border ${getMovementColor(movement)} bg-white hover:bg-gray-50 cursor-pointer`}>
+                    <div className={`text-xs p-1 rounded border ${getMovementColor(movement)} bg-hz-card-bg hover:bg-hz-neutral-100 cursor-pointer`}>
                       <div className="flex items-center justify-between gap-1">
                         <div className="flex-1 min-w-0">
                           <div className="truncate font-medium">
@@ -150,7 +150,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                               minimumFractionDigits: 0
                             })}
                           </div>
-                          <div className="truncate text-gray-600">
+                          <div className="truncate text-hz-neutral-700">
                             {movement.description}
                           </div>
                         </div>
@@ -161,7 +161,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                       </div>
                       
                       {/* Quick Actions - Show on Hover */}
-                      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-gray-200 rounded shadow-lg p-1 z-10">
+                      <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-hz-card-bg border border-hz-neutral-300 rounded shadow-lg p-1 z-10">
                         <MovementQuickActions
                           movement={movement}
                           onConfirm={() => onMovementAction(movement, 'confirm')}
