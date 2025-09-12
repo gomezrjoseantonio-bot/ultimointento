@@ -29,7 +29,7 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
       type: 'critical',
       title: 'Riesgo de descubierto',
       description: 'Cuenta Santander proyectada en negativo en 5 días',
-      account: 'Santander ***1234',
+      account: 'Santander · 1234',
       currentBalance: 850,
       threshold: 500,
       projectedBalance: -200
@@ -39,7 +39,7 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
       type: 'warning',
       title: 'Umbral de seguridad',
       description: 'ING próximo al límite mínimo establecido',
-      account: 'ING ***5678',
+      account: 'ING · 5678',
       currentBalance: 750,
       threshold: 500,
       projectedBalance: 400
@@ -49,7 +49,7 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
       type: 'info',
       title: 'Revisión hipoteca',
       description: 'Próxima revisión de tipo variable en 15 días',
-      account: 'BBVA ***9012'
+      account: 'BBVA · 9012'
     }
   ];
 

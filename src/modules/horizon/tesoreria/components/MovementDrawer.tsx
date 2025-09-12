@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Check, Edit3, Trash2, FileText, Building, User } from 'lucide-react';
 import { formatEuro } from '../../../../utils/formatUtils';
+import { MovementStatusChip } from '../../../../components/treasury/MovementStatusChip';
 
 interface Movement {
   id: number;
@@ -35,31 +36,26 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedMovement, setEditedMovement] = useState<Movement>(movement);
 
-  // Get movement status badge
+  // Get movement status badge - now using color-only chips per requirements
   const getStatusBadge = (movement: Movement) => {
+    // Map old status fields to new unified status
+    let unifiedStatus: 'previsto' | 'confirmado' | 'no_planificado' = 'no_planificado';
+    
     if (movement.confirmed || movement.status === 'confirmado') {
-      return (
-        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-hz-primary text-white">
-          <Check className="h-3 w-3 mr-1" />
-          Confirmado
-        </span>
-      );
+      unifiedStatus = 'confirmado';
+    } else if (movement.planned || movement.status === 'previsto') {
+      unifiedStatus = 'previsto';
     }
     
-    if (movement.planned || movement.status === 'previsto') {
-      return (
-        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-white ${
-          movement.amount >= 0 ? 'bg-hz-success' : 'bg-hz-error'
-        }`}>
-          Previsto
-        </span>
-      );
-    }
+    // Determine movement type from amount for color coding
+    const movementType = movement.amount >= 0 ? 'Ingreso' : 'Gasto';
     
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-hz-neutral-500 text-white">
-        No planificado
-      </span>
+      <MovementStatusChip 
+        status={unifiedStatus}
+        movementType={movementType}
+        className="ml-2"
+      />
     );
   };
 

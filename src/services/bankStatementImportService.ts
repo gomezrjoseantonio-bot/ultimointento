@@ -328,8 +328,10 @@ function inferCategoryFromDescription(description: string): string | undefined {
   if (desc.includes('gas') || desc.includes('naturgy')) {
     return 'Suministros › Gas';
   }
-  if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar')) {
-    return 'Suministros › Internet';
+  if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || 
+      desc.includes('telefon') || desc.includes('telco') || desc.includes('vodafone') ||
+      desc.includes('orange') || desc.includes('telecomunicac')) {
+    return 'Suministros › Telco';
   }
   if (desc.includes('alquiler') || desc.includes('rent')) {
     return 'Alquiler › Ingresos';

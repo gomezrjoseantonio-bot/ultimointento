@@ -406,8 +406,10 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
     if (desc.includes('gas') || desc.includes('naturgy')) {
       return 'Suministros › Gas';
     }
-    if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || desc.includes('vodafone')) {
-      return 'Suministros › Internet';
+    if (desc.includes('internet') || desc.includes('fibra') || desc.includes('movistar') || 
+        desc.includes('vodafone') || desc.includes('telefon') || desc.includes('telco') ||
+        desc.includes('orange') || desc.includes('telecomunicac')) {
+      return 'Suministros › Telco';
     }
     if (desc.includes('alquiler') || desc.includes('rent')) {
       return 'Alquiler › Ingresos';
@@ -734,9 +736,9 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
                 >
                   <option value="">Seleccionar cuenta...</option>
-                  <option value="santander-corriente">Santander - Cuenta Corriente (**1234)</option>
-                  <option value="bbva-empresas">BBVA - Cuenta Empresas (**5678)</option>
-                  <option value="caixabank-ahorro">CaixaBank - Cuenta Ahorro (**9012)</option>
+                  <option value="santander-corriente">Santander · 1234</option>
+                  <option value="bbva-empresas">BBVA · 5678</option>
+                  <option value="caixabank-ahorro">CaixaBank · 9012</option>
                 </select>
               </div>
 
