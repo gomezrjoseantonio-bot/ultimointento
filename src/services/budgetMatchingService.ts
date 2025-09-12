@@ -13,18 +13,6 @@ import { initDB, Movement, PresupuestoLinea, MatchingConfiguration, UnifiedMovem
 const LOG_PREFIX = '[BUDGET-MATCH]';
 
 // Helper functions for date manipulation
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-}
-
-function subDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() - days);
-  return result;
-}
-
 function parseISO(dateString: string): Date {
   return new Date(dateString);
 }
@@ -138,9 +126,7 @@ async function getBudgetCandidates(movement: Movement, config: MatchingConfigura
       candidates = candidates.filter(line => line.accountId === movement.accountId.toString());
     }
     
-    // Filter by date window
-    const dateStart = subDays(movementDate, config.dateWindow);
-    const dateEnd = addDays(movementDate, config.dateWindow);
+    // Filter by date window and month
     const monthIndex = movementDate.getMonth(); // 0-11
     
     // Only consider lines that have amount for this month
