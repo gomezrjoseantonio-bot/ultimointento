@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { ImportResult } from '../../../../types/unifiedTreasury';
+import { importBankStatement, ImportOptions } from '../../../../services/bankStatementImportService';
+import toast from 'react-hot-toast';
 
 interface ImportStatementModalProps {
   isOpen: boolean;
@@ -70,7 +72,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     }
   }, []);
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -78,40 +80,76 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      alert('Solo se permiten archivos Excel (.xls, .xlsx) y CSV');
+      toast.error('Solo se permiten archivos Excel (.xls, .xlsx) y CSV');
       return;
     }
     
     setSelectedFile(file);
-    // Mock preview generation
-    setPreview({
-      totalLines: 45,
-      unplannedLines: 12,
-      detectedAccount: 'BBVA ***7891'
-    });
+    
+    // Try to parse the file to show real preview
+    try {
+      const { BankParserService } = await import('../../../../features/inbox/importers/bankParser');
+      const parser = new BankParserService();
+      const parseResult = await parser.parseFile(file);
+      
+      if (parseResult.success && parseResult.movements) {
+        setPreview({
+          totalLines: parseResult.movements.length,
+          unplannedLines: parseResult.movements.length, // All are unplanned initially
+          detectedAccount: undefined // Account will be manually selected
+        });
+      } else {
+        setPreview(null);
+        toast.error('No se pudieron leer movimientos del archivo');
+      }
+    } catch (error) {
+      console.error('Error parsing file for preview:', error);
+      setPreview(null);
+    }
   };
 
   const handleImport = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !selectedAccount) {
+      toast.error('Por favor selecciona un archivo y una cuenta de destino');
+      return;
+    }
     
     setImporting(true);
     
     try {
-      // Mock import process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const result: ImportResult = {
-        totalLines: 45,
-        confirmedMovements: 33,
-        unplannedMovements: 12,
-        detectedTransfers: 2,
-        errors: []
+      // Use the real unified import service
+      const options: ImportOptions = {
+        file: selectedFile,
+        destinationAccountId: parseInt(selectedAccount),
+        usuario: 'treasury_ui'
       };
       
-      onImportComplete(result);
-      onClose();
+      const result = await importBankStatement(options);
+      
+      // Convert to UnifiedTreasury ImportResult format
+      const treasuryResult: ImportResult = {
+        totalLines: result.inserted + result.duplicates + result.errors,
+        confirmedMovements: result.inserted,
+        unplannedMovements: result.inserted, // All imported movements are initially unplanned
+        detectedTransfers: 0, // Transfer detection happens separately
+        errors: result.errors > 0 ? [`${result.errors} errores durante la importación`] : []
+      };
+      
+      if (result.success && result.inserted > 0) {
+        toast.success(`Importados: ${result.inserted} · Duplicados: ${result.duplicates} · Errores: ${result.errors}`);
+        onImportComplete(treasuryResult);
+        onClose();
+      } else if (result.duplicates > 0 && result.inserted === 0) {
+        toast.error('Todo eran duplicados: no se insertó ningún movimiento');
+        onImportComplete(treasuryResult);
+        onClose();
+      } else {
+        toast.error('No se pudo importar el archivo');
+      }
+      
     } catch (error) {
       console.error('Import failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Error durante la importación');
     } finally {
       setImporting(false);
     }

@@ -1,19 +1,19 @@
 import React from 'react';
-import UnifiedTreasury from './UnifiedTreasury';
+import TreasuryPage from './TreasuryPage';
 
 /**
- * Tesorería - Single Radar View (per ATLAS Design Guide)
+ * Tesorería - Single unified view (per problem statement)
  * 
- * No subtabs - unified view with:
- * - "Excluir personal" switch
- * - Account cards with timeline expansion  
- * - Transaction state color coding
+ * Single screen with:
+ * - Account selector with logos
+ * - Date range and search filters
+ * - Movement table
  * - Import functionality
  * 
- * All account management and rules moved to Configuración > Cuentas
+ * No sub-tabs, no multiple screens
  */
 const Tesoreria: React.FC = () => {
-  return <UnifiedTreasury />;
+  return <TreasuryPage />;
 };
 
 export default Tesoreria;

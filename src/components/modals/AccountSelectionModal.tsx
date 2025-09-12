@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Plus, AlertCircle } from 'lucide-react';
+import { X, Plus, AlertCircle } from 'lucide-react';
 import { Account } from '../../services/db';
 import { getAvailableAccountsForImport } from '../../services/enhancedTreasuryCreationService';
 
@@ -209,12 +209,36 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                       }}
                     >
                       <div className="flex items-center">
-                        <CreditCard 
-                          className={`w-5 h-5 mr-3 ${
-                            selectedAccountId === account.id ? 'text-blue-600' : 'text-gray-400'
-                          }`} 
-                          strokeWidth={1.5} 
-                        />
+                        {/* Account logo or fallback */}
+                        <div className="w-10 h-10 rounded-lg mr-3 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#042C5E' }}>
+                          {account.logo_url && (account.logo_url.endsWith('.jpg') || account.logo_url.endsWith('.jpeg') || account.logo_url.endsWith('.png')) ? (
+                            <img 
+                              src={account.logo_url} 
+                              alt={`Logo ${account.bank}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to initials if image fails to load
+                                const target = e.target as HTMLImageElement;
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-full h-full flex items-center justify-center text-white font-medium text-xs';
+                                fallback.textContent = (account.name || account.bank)
+                                  .split(' ')
+                                  .map(word => word.charAt(0).toUpperCase())
+                                  .slice(0, 2)
+                                  .join('');
+                                target.parentNode?.replaceChild(fallback, target);
+                              }}
+                            />
+                          ) : (
+                            <span className="text-white font-medium text-xs">
+                              {(account.name || account.bank)
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase())
+                                .slice(0, 2)
+                                .join('')}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <h4 className={`text-sm font-medium ${

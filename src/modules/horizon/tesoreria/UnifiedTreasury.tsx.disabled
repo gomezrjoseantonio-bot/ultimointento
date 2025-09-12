@@ -34,16 +34,15 @@ import { formatEuro } from '../../../services/aeatClassificationService';
 const UnifiedTreasury: React.FC = () => {
   // State management
   const [accounts, setAccounts] = useState<UnifiedAccount[]>([]);
-  const [expandedAccount, setExpandedAccount] = useState<number | null>(null);
-  const [accountTimeline, setAccountTimeline] = useState<AccountTimeline | null>(null);
+  const [movements, setMovements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   
-  // Filter state
-  const [filters, setFilters] = useState<TreasuryFilters>({
+  // Filter state - as specified in problem statement
+  const [filters, setFilters] = useState({
     monthYear: new Date().toISOString().slice(0, 7), // Current month YYYY-MM
-    excludePersonal: false,
-    status: 'todos',
-    search: ''
+    search: '',
+    accountId: null as number | null
   });
 
   // Modal states
