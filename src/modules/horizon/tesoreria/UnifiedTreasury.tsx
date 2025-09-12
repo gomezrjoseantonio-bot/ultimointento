@@ -109,87 +109,116 @@ const UnifiedTreasury: React.FC = () => {
 
     setExpandedAccount(accountId);
     
-    // Load timeline for the account
+    // Load real timeline for the account - NO MOCK DATA
     try {
-      // TODO: Replace with actual API call
-      const mockTimeline: AccountTimeline = {
-        account: accounts.find(a => a.id === accountId)!,
-        days: generateMockTimelineDays(),
+      const account = accounts.find(a => a.id === accountId);
+      if (!account) return;
+
+      // Load real movements from database directly
+      const { initDB } = await import('../../../services/db');
+      const db = await initDB();
+      const allMovements = await db.getAll('movements');
+      const accountMovements = allMovements.filter(m => m.accountId === accountId);
+      
+      // Filter movements by month if needed
+      const [year, month] = filters.monthYear.split('-').map(Number);
+      const filteredMovements = accountMovements.filter(movement => {
+        const movementDate = new Date(movement.date);
+        return movementDate.getFullYear() === year && movementDate.getMonth() === month - 1;
+      });
+      
+      // Generate timeline with real data only
+      const timeline: AccountTimeline = {
+        account: account,
+        days: generateTimelineDaysFromMovements(filteredMovements, account),
         monthProjection: {
-          projectedBalance: 16270.50,
-          minBalance: 12100.00,
+          projectedBalance: account.balance,
+          minBalance: account.monthlyMinBalance,
           needsTransfer: false,
           transferRecommendation: undefined
         }
       };
       
-      setAccountTimeline(mockTimeline);
+      setAccountTimeline(timeline);
     } catch (error) {
       console.error('Error loading account timeline:', error);
+      // Set empty timeline on error - NO FALLBACK TO MOCK DATA
+      const account = accounts.find(a => a.id === accountId);
+      if (account) {
+        setAccountTimeline({
+          account: account,
+          days: [],
+          monthProjection: {
+            projectedBalance: account.balance,
+            minBalance: account.monthlyMinBalance,
+            needsTransfer: false,
+            transferRecommendation: undefined
+          }
+        });
+      }
     }
   };
 
-  // Generate mock timeline data
-  const generateMockTimelineDays = (): TimelineDay[] => {
+  // Generate timeline data from real movements only - NO MOCK DATA
+  const generateTimelineDaysFromMovements = (movements: any[], account: UnifiedAccount): TimelineDay[] => {
     const days: TimelineDay[] = [];
-    const currentDate = new Date();
-    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    const [year, month] = filters.monthYear.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    // Group movements by date
+    const movementsByDate = new Map<string, any[]>();
+    movements.forEach(movement => {
+      const dateStr = movement.date;
+      if (!movementsByDate.has(dateStr)) {
+        movementsByDate.set(dateStr, []);
+      }
+      movementsByDate.get(dateStr)!.push(movement);
+    });
+    
+    // Calculate running balance
+    let runningBalance = account.openingBalance || 0;
     
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const date = new Date(year, month - 1, day);
       const dateStr = date.toISOString().split('T')[0];
+      const dayMovements = movementsByDate.get(dateStr) || [];
+      
+      // Update running balance with day's movements
+      dayMovements.forEach(movement => {
+        runningBalance += movement.amount || 0;
+      });
       
       days.push({
         date: dateStr,
-        movements: generateMockMovements(date),
-        dailyBalance: 15000 + (Math.random() - 0.5) * 2000,
-        isToday: day === currentDate.getDate(),
+        movements: dayMovements.map(movement => ({
+          id: movement.id,
+          accountId: movement.accountId,
+          date: movement.date,
+          amount: movement.amount,
+          description: movement.description,
+          counterparty: movement.counterparty,
+          status: movement.status,
+          type: movement.amount > 0 ? 'Ingreso' : 'Gasto',
+          origin: movement.source || 'Manual',
+          movementState: movement.unifiedStatus === 'confirmado' ? 'Confirmado' : 'Previsto',
+          unifiedStatus: movement.unifiedStatus || 'no_planificado',
+          source: movement.source || 'manual',
+          category: movement.category || { tipo: movement.amount > 0 ? 'Ingresos' : 'Gastos' },
+          sign: movement.amount > 0 ? '+' : '-',
+          canConfirm: true,
+          canEdit: true,
+          canDelete: true,
+          canReclassify: true,
+          createdAt: movement.createdAt,
+          updatedAt: movement.updatedAt
+        })),
+        dailyBalance: runningBalance,
+        isToday: dateStr === new Date().toISOString().split('T')[0],
         isWeekend: date.getDay() === 0 || date.getDay() === 6
       });
     }
     
     return days;
-  };
-
-  // Generate mock movements for a day
-  const generateMockMovements = (date: Date): UnifiedMovement[] => {
-    if (Math.random() > 0.3) return []; // 70% chance of no movements
-    
-    const movements: UnifiedMovement[] = [];
-    const numMovements = Math.floor(Math.random() * 3) + 1;
-    
-    for (let i = 0; i < numMovements; i++) {
-      const isIncome = Math.random() > 0.6;
-      const amount = Math.random() * 500 + 50;
-      
-      movements.push({
-        id: Math.floor(Math.random() * 10000),
-        accountId: 1,
-        date: date.toISOString().split('T')[0],
-        amount: isIncome ? amount : -amount,
-        description: isIncome ? 'Ingreso alquiler' : 'Gasto suministros',
-        counterparty: isIncome ? 'Inquilino H1' : 'Iberdrola',
-        status: 'pendiente',
-        type: isIncome ? 'Ingreso' : 'Gasto',
-        origin: 'Manual',
-        movementState: Math.random() > 0.5 ? 'Previsto' : 'Confirmado',
-        unifiedStatus: Math.random() > 0.5 ? 'previsto' : 'confirmado',
-        source: 'manual',
-        category: { 
-          tipo: isIncome ? 'Ingresos' : 'Gastos',
-          subtipo: isIncome ? 'Alquileres' : 'Suministros'
-        },
-        sign: isIncome ? '+' : '-',
-        canConfirm: Math.random() > 0.5,
-        canEdit: true,
-        canDelete: true,
-        canReclassify: Math.random() > 0.7,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-    }
-    
-    return movements;
   };
 
   // Render movement chip with appropriate styling
