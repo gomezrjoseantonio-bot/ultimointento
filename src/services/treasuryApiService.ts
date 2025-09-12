@@ -708,6 +708,39 @@ export class TreasuryImportAPI {
       }
     }
 
+    // TELEMETRY: Log import results per problem statement
+    const telemetryData = {
+      ownerId: usuario || 'unknown', // User ID for filtering
+      accountId,
+      inserted: results.inserted,
+      deduped: results.duplicates,
+      failed: results.failed,
+      filename: file.name,
+      batchId: importBatchId,
+      timestamp: now
+    };
+    
+    console.log(`[TREASURY-IMPORT] Import completed:`, telemetryData);
+    
+    // Store telemetry for analytics if service is available
+    try {
+      const { telemetry } = await import('./telemetryService');
+      // Use the existing bankParseComplete method
+      const operationId = `import_${importBatchId}`;
+      telemetry.bankParseComplete(operationId, {
+        fileName: file.name,
+        fileSize: file.size,
+        parseTimeMs: 0, // We don't track this separately in this context
+        bankDetected: account.bank,
+        confidence: 1.0,
+        movementsCount: results.inserted,
+        needsManualMapping: results.failed > 0
+      });
+    } catch (error) {
+      // Telemetry is optional, don't fail import if it's unavailable
+      console.warn('[TREASURY-IMPORT] Telemetry service unavailable:', error);
+    }
+
     return {
       ...results,
       batchId: importBatchId

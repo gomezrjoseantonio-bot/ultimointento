@@ -18,6 +18,8 @@ const PreferenciasDatos: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSecondConfirm, setShowSecondConfirm] = useState(false);
+  const [showAtlasResetConfirm, setShowAtlasResetConfirm] = useState(false);
+  const [atlasResetText, setAtlasResetText] = useState('');
   const [importMode, setImportMode] = useState<'replace' | 'merge'>('replace');
 
   // Handle URL hash for tab navigation
@@ -93,6 +95,43 @@ const PreferenciasDatos: React.FC = () => {
       window.location.reload();
     } catch (error) {
       toast.error('Error al restablecer los datos: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+    }
+  };
+
+  const handleResetAtlas = async () => {
+    // Require exact confirmation text per problem statement
+    if (atlasResetText !== 'ELIMINAR DATOS LOCALES') {
+      toast.error('Debes escribir exactamente "ELIMINAR DATOS LOCALES" para confirmar');
+      return;
+    }
+
+    try {
+      // Clear localStorage
+      localStorage.clear();
+      
+      // Delete IndexedDB per problem statement
+      if ('indexedDB' in window) {
+        const deleteRequest = indexedDB.deleteDatabase('AtlasHorizonDB');
+        await new Promise((resolve, reject) => {
+          deleteRequest.onsuccess = () => resolve(true);
+          deleteRequest.onerror = () => reject(deleteRequest.error);
+        });
+      }
+      
+      // Show confirmation toast per problem statement
+      toast.success('Datos locales eliminados. Recarga para aplicar.');
+      
+      // Close modal
+      setShowAtlasResetConfirm(false);
+      setAtlasResetText('');
+      
+      // Hard reload after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      toast.error('Error al limpiar datos locales: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     }
   };
 
@@ -282,6 +321,68 @@ const PreferenciasDatos: React.FC = () => {
                         Haz clic en "Confirmar Restablecimiento" para proceder definitivamente.
                       </p>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Reset Atlas Section - per problem statement */}
+          <div className="bg-white rounded-lg border border-neutral-200 p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Reset Atlas (limpieza local)</h2>
+            <p className="text-neutral-600 mb-6">
+              <strong className="text-error-600">¡Atención!</strong> Esta acción limpia únicamente el almacenamiento local 
+              (localStorage e IndexedDB) eliminando cachés y datos temporales. No afecta a tus datos principales.
+            </p>
+            
+            {!showAtlasResetConfirm ? (
+              <button
+                onClick={() => setShowAtlasResetConfirm(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Reset Atlas (limpieza local)
+              </button>
+            ) : (
+              <div className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-orange-900 mb-2">
+                      Confirmación requerida para limpieza local
+                    </h4>
+                    <p className="text-sm text-orange-700 mb-4">
+                      Esta acción eliminará localStorage e IndexedDB. Para confirmar, 
+                      escribe exactamente <strong>"ELIMINAR DATOS LOCALES"</strong> en el campo de abajo:
+                    </p>
+                    <input
+                      type="text"
+                      value={atlasResetText}
+                      onChange={(e) => setAtlasResetText(e.target.value)}
+                      placeholder="Escribe: ELIMINAR DATOS LOCALES"
+                      className="w-full p-2 border border-orange-300 rounded mb-4 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleResetAtlas}
+                        disabled={atlasResetText !== 'ELIMINAR DATOS LOCALES'}
+                        className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Confirmar Limpieza Local
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAtlasResetConfirm(false);
+                          setAtlasResetText('');
+                        }}
+                        className="px-4 py-2 bg-neutral-200 text-neutral-700 text-sm rounded-lg hover:bg-neutral-300 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    <p className="text-xs text-orange-600 mt-2">
+                      Tras la limpieza, la página se recargará automáticamente.
+                    </p>
                   </div>
                 </div>
               </div>

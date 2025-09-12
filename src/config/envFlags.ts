@@ -41,7 +41,7 @@ export const getEnvFlags = (): EnvFlags => {
     // Development flags
     ENABLE_TELEMETRY: parseEnvFlag(process.env.REACT_APP_ENABLE_TELEMETRY, true),
     QA_DASHBOARD: parseEnvFlag(process.env.REACT_APP_QA_DASHBOARD, process.env.NODE_ENV === 'development'),
-    APP_DEMO_MODE: parseEnvFlag(process.env.REACT_APP_DEMO_MODE, false), // Default false for production
+    APP_DEMO_MODE: false, // FORCE DISABLED per problem statement - eliminate phantom movements
     
     // Configuration
     OCR_CONFIDENCE_THRESHOLD: parseEnvNumber(process.env.REACT_APP_OCR_CONFIDENCE_THRESHOLD, 0.80)
