@@ -72,6 +72,9 @@ const ProfileSeederPage = React.lazy(() =>
 // Image Description page - New feature
 const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPage'));
 
+// Demo page for color-coded movement display requirements
+const ColorCodedMovementDemo = React.lazy(() => import('./pages/ColorCodedMovementDemo'));
+
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
@@ -473,14 +476,24 @@ function App() {
             
             {/* Development only routes */}
             {(import.meta as any).env?.DEV && (
-              <Route 
-                path="__profiles" 
-                element={
-                  <React.Suspense fallback={<div>Cargando...</div>}>
-                    <ProfileSeederPage />
-                  </React.Suspense>
-                } 
-              />
+              <>
+                <Route 
+                  path="__profiles" 
+                  element={
+                    <React.Suspense fallback={<div>Cargando...</div>}>
+                      <ProfileSeederPage />
+                    </React.Suspense>
+                  } 
+                />
+                <Route 
+                  path="__demo-colors" 
+                  element={
+                    <React.Suspense fallback={<div>Cargando...</div>}>
+                      <ColorCodedMovementDemo />
+                    </React.Suspense>
+                  } 
+                />
+              </>
             )}
             
             <Route path="*" element={<Navigate to="/panel" replace />} />
