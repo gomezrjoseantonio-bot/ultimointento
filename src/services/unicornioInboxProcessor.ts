@@ -109,22 +109,33 @@ async function processBankStatement(
       throw new Error('Archivo vacío o sin datos');
     }
 
-    // Mock movement detection with date range
-    const movements = lines.slice(1).map((line, index) => {
-      const baseDate = new Date();
-      baseDate.setDate(baseDate.getDate() - (lines.length - index));
+    // Parse real movements using proper bank parser
+    const { BankParserService } = await import('../features/inbox/importers/bankParser');
+    const parser = new BankParserService();
+    
+    let movements: any[];
+    
+    try {
+      const parseResult = await parser.parseFile(file);
+      movements = parseResult.movements.map(mov => ({
+        fecha: mov.valueDate?.toISOString().split('T')[0] || mov.date.toISOString().split('T')[0],
+        descripcion: mov.description || '',
+        importe: mov.amount || 0,
+        saldo: mov.balance,
+        contraparte: mov.counterparty || '',
+        referencia: mov.reference || ''
+      }));
       
-      return {
-        fecha: baseDate.toISOString().split('T')[0],
-        descripcion: `Movimiento ${index + 1}`,
-        importe: (Math.random() - 0.5) * 1000,
-        saldo: 1000 + index * 100,
-        contraparte: 'Entidad comercial',
-        referencia: `REF${index + 1}`
-      };
-    });
-
-    addLog(`${movements.length} movimientos parseados`);
+      if (movements.length === 0) {
+        throw new Error('No se encontraron movimientos válidos en el archivo');
+      }
+      
+      addLog(`${movements.length} movimientos parseados`);
+      
+    } catch (parseError) {
+      console.error('Error parsing bank statement:', parseError);
+      throw new Error('No se ha podido leer el archivo. Asegura que es .xls, .xlsx o .csv válido.');
+    }
     
     // 4. CRITICAL: Only create movements if account is determined
     if (!accountMatch.requiresSelection && accountMatch.cuenta_id) {
