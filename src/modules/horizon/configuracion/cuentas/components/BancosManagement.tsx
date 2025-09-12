@@ -82,8 +82,63 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
     return masked;
   };
 
+  /**
+   * Detects if form data contains demo/example patterns
+   */
+  const hasDemoPatterns = (data: AccountFormData): string | null => {
+    const demoKeywords = [
+      'demo', 'test', 'sample', 'ejemplo', 'prueba',
+      'ficticio', 'simulado', 'plantilla', 'muestra',
+      'fake', 'mock', 'provisional', 'temporal',
+      'placeholder', 'default', 'initial'
+    ];
+
+    const alias = data.alias.toLowerCase().trim();
+    const bank = data.bank.toLowerCase().trim();
+    const iban = data.iban.toLowerCase().trim();
+
+    // Check for demo keywords in any field
+    for (const keyword of demoKeywords) {
+      if (alias.includes(keyword)) {
+        return `El alias contiene texto de ejemplo: "${keyword}"`;
+      }
+      if (bank.includes(keyword)) {
+        return `El nombre del banco contiene texto de ejemplo: "${keyword}"`;
+      }
+      if (iban.includes(keyword)) {
+        return `El IBAN contiene texto de ejemplo: "${keyword}"`;
+      }
+    }
+
+    // Check for common placeholder patterns
+    if (alias === 'cuenta principal' || alias === 'mi cuenta') {
+      return 'El alias parece ser un ejemplo. Use un nombre específico.';
+    }
+
+    if (bank === 'banco santander' || bank === 'bbva' || bank === 'caixabank') {
+      return 'El nombre del banco parece ser un ejemplo. Verifique el nombre correcto.';
+    }
+
+    // Check for demo IBAN patterns
+    const cleanIban = iban.replace(/\s/g, '');
+    const demoIbanPatterns = ['9999', '0000', '1111', '2222', '3333'];
+    if (demoIbanPatterns.some(pattern => cleanIban.includes(pattern))) {
+      return 'El IBAN contiene patrones típicos de ejemplos.';
+    }
+
+    // Check for the old placeholder that was causing issues
+    if (iban.includes('es91 2100 0418 4502 0005 1332') || 
+        cleanIban.includes('es9121000418450200051332')) {
+      return 'No puede usar el IBAN de ejemplo del formulario.';
+    }
+
+    return null; // No demo patterns detected
+  };
+
   const handleNewAccount = () => {
     setEditingAccount(null);
+    
+    // Clear all form state completely
     setFormData({
       alias: '',
       bank: '',
@@ -92,6 +147,12 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       logoUrl: null
     });
     setFormErrors({});
+    
+    // Clear any file input state
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
     setShowModal(true);
   };
 
@@ -144,6 +205,14 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
+
+    // Check for demo patterns first - only in production mode
+    if (!isDemoModeEnabled()) {
+      const demoError = hasDemoPatterns(formData);
+      if (demoError) {
+        errors.demo = demoError;
+      }
+    }
 
     // ALIAS is optional - only validate if provided
     if (formData.alias.trim() && formData.alias.trim().length < 2) {
@@ -281,10 +350,15 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   };
 
   const handleCloseModal = () => {
+    // Clean up logo URL to prevent memory leaks
     if (formData.logoUrl && formData.logoFile) {
       URL.revokeObjectURL(formData.logoUrl);
     }
+    
     setShowModal(false);
+    setEditingAccount(null);
+    
+    // Completely reset form state
     setFormData({
       alias: '',
       bank: '',
@@ -293,6 +367,11 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       logoUrl: null
     });
     setFormErrors({});
+    
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   if (loading) {
@@ -414,6 +493,20 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             </div>
 
             <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+              {/* Demo Data Warning */}
+              {formErrors.demo && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
+                    <div>
+                      <h4 className="font-medium text-red-800 mb-1">Datos de ejemplo detectados</h4>
+                      <p className="text-sm text-red-700">{formErrors.demo}</p>
+                      <p className="text-sm text-red-700 mt-1">Por favor, ingrese datos reales de su cuenta bancaria.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Alias Field */}
               <div>
                 <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
@@ -426,7 +519,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                     formErrors.alias ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="ej. Cuenta Principal"
+                  placeholder="Mi cuenta personal, Nómina, etc."
                   disabled={saving}
                 />
                 {formErrors.alias && (
@@ -446,7 +539,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                     formErrors.bank ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="ej. Banco Santander"
+                  placeholder="Nombre completo de su banco"
                   disabled={saving}
                 />
                 {formErrors.bank && (
@@ -466,7 +559,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue font-mono ${
                     formErrors.iban ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="ES91 2100 0418 4502 0005 1332"
+                  placeholder="ES00 0000 0000 0000 0000 0000"
                   disabled={saving}
                 />
                 {formErrors.iban && (
