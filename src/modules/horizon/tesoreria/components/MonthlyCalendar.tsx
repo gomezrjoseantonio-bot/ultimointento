@@ -156,6 +156,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                         </div>
                         <MovementStatusChip 
                           status={movement.unifiedStatus as any} 
+                          movementType={movement.type}
                           className="flex-shrink-0"
                         />
                       </div>
