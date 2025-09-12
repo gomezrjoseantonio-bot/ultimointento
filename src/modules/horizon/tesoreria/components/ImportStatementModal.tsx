@@ -163,10 +163,10 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Importar extracto</h3>
+          <h3 className="text-lg font-semibold text-hz-neutral-900">Importar extracto</h3>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-hz-neutral-500 hover:text-hz-neutral-700"
           >
             <X className="h-6 w-6" />
           </button>
@@ -196,18 +196,18 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
             {selectedFile ? (
               <div className="space-y-2">
                 <FileText className="h-8 w-8 text-hz-primary mx-auto" />
-                <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-medium text-hz-neutral-900">{selectedFile.name}</p>
+                <p className="text-xs text-hz-neutral-700">
                   {(selectedFile.size / 1024).toFixed(1)} KB
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                <p className="text-sm text-gray-600">
+                <Upload className="h-8 w-8 text-hz-neutral-500 mx-auto" />
+                <p className="text-sm text-hz-neutral-700">
                   Arrastra tu archivo aquí o <span className="text-hz-primary">selecciona un archivo</span>
                 </p>
-                <p className="text-xs text-gray-500">Excel (.xls, .xlsx) o CSV</p>
+                <p className="text-xs text-hz-neutral-700">Excel (.xls, .xlsx) o CSV</p>
               </div>
             )}
           </div>
@@ -215,7 +215,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
           {/* Account Selection */}
           {(!preview?.detectedAccount || selectedFile) && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-hz-neutral-900">
                 Cuenta de destino
               </label>
               <select
@@ -235,19 +235,19 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
 
           {/* Preview */}
           {preview && (
-            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-              <h4 className="font-medium text-gray-900">Vista previa</h4>
+            <div className="bg-hz-neutral-100 p-4 rounded-lg space-y-3">
+              <h4 className="font-medium text-hz-neutral-900">Vista previa</h4>
               
               {preview.detectedAccount && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-sm text-gray-700">
+                  <CheckCircle className="h-4 w-4 text-hz-success" />
+                  <span className="text-sm text-hz-neutral-700">
                     Cuenta detectada: <span className="font-medium">{preview.detectedAccount.name || preview.detectedAccount.bank}</span>
                   </span>
                 </div>
               )}
               
-              <div className="text-sm text-gray-700 space-y-1">
+              <div className="text-sm text-hz-neutral-700 space-y-1">
                 <p>• {preview.totalMovements} movimientos a importar</p>
                 <p>• {preview.confirmedMovements} serán confirmados automáticamente</p>
                 <p>• {preview.unplannedMovements} quedarán como no planificados</p>
@@ -260,8 +260,8 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
                 <div className="space-y-1">
                   {preview.warnings.map((warning, index) => (
                     <div key={index} className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                      <span className="text-sm text-amber-700">{warning}</span>
+                      <AlertCircle className="h-4 w-4 text-hz-warning mt-0.5" />
+                      <span className="text-sm text-hz-warning">{warning}</span>
                     </div>
                   ))}
                 </div>
@@ -271,8 +271,8 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
                 <div className="space-y-1">
                   {preview.errors.map((error, index) => (
                     <div key={index} className="flex items-start gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
-                      <span className="text-sm text-red-700">{error}</span>
+                      <AlertCircle className="h-4 w-4 text-hz-error mt-0.5" />
+                      <span className="text-sm text-hz-error">{error}</span>
                     </div>
                   ))}
                 </div>
@@ -282,10 +282,10 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-hz-neutral-300">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-sm font-medium text-hz-neutral-700 bg-hz-card-bg border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100"
             disabled={importing}
           >
             Cancelar
