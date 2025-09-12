@@ -184,9 +184,9 @@ const UnifiedTreasury: React.FC = () => {
       const dayMovements = movementsByDate.get(dateStr) || [];
       
       // Update running balance with day's movements
-      dayMovements.forEach(movement => {
+      for (const movement of dayMovements) {
         runningBalance += movement.amount || 0;
-      });
+      }
       
       days.push({
         date: dateStr,
