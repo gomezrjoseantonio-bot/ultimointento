@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { enhancedStatementImportService } from '../../../../services/enhancedStatementImportService';
+import { initDB, Account } from '../../../../services/db';
 import { ImportResult } from '../../../../types/unifiedTreasury';
-import { importBankStatement, ImportOptions } from '../../../../services/bankStatementImportService';
 import toast from 'react-hot-toast';
 
 interface ImportStatementModalProps {
@@ -20,27 +21,25 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<{
-    totalLines: number;
-    unplannedLines: number;
-    detectedAccount?: string;
+    totalMovements: number;
+    confirmedMovements: number;
+    unplannedMovements: number;
+    transferMovements: number;
+    detectedAccount?: Account;
+    errors: string[];
+    warnings: string[];
   } | null>(null);
 
-  // Load real accounts from settings
-  const [accounts, setAccounts] = useState<Array<{id: number, name: string, bank: string, iban: string}>>([]);
+  // Load real accounts from database
+  const [accounts, setAccounts] = useState<Account[]>([]);
   
   useEffect(() => {
     const loadAccounts = async () => {
       try {
-        const { treasuryAPI } = await import('../../../../services/treasuryApiService');
-        const allAccounts = await treasuryAPI.accounts.getAccounts(false); // Only active accounts
-        const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
-        
-        setAccounts(horizonAccounts.map(acc => ({
-          id: acc.id!,
-          name: acc.name || `Cuenta ${acc.bank}`,
-          bank: acc.bank,
-          iban: `***${acc.iban.slice(-4)}`
-        })));
+        const db = await initDB();
+        const allAccounts = await db.getAll('accounts');
+        const activeAccounts = allAccounts.filter(acc => acc.isActive && !acc.deleted_at);
+        setAccounts(activeAccounts);
       } catch (error) {
         console.error('Error loading accounts:', error);
         setAccounts([]);
@@ -86,25 +85,25 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     
     setSelectedFile(file);
     
-    // Try to parse the file to show real preview
+    // Try to preview the file
     try {
-      const { BankParserService } = await import('../../../../features/inbox/importers/bankParser');
-      const parser = new BankParserService();
-      const parseResult = await parser.parseFile(file);
+      const previewResult = await enhancedStatementImportService.previewImport(file);
+      setPreview(previewResult);
       
-      if (parseResult.success && parseResult.movements) {
-        setPreview({
-          totalLines: parseResult.movements.length,
-          unplannedLines: parseResult.movements.length, // All are unplanned initially
-          detectedAccount: undefined // Account will be manually selected
-        });
-      } else {
-        setPreview(null);
-        toast.error('No se pudieron leer movimientos del archivo');
+      // Auto-select account if detected
+      if (previewResult.detectedAccount) {
+        setSelectedAccount(previewResult.detectedAccount.id!.toString());
       }
+      
+      // Show warnings if any
+      if (previewResult.warnings.length > 0) {
+        previewResult.warnings.forEach(warning => toast.error(warning));
+      }
+      
     } catch (error) {
-      console.error('Error parsing file for preview:', error);
+      console.error('Error previewing file:', error);
       setPreview(null);
+      toast.error('Error analizando el archivo');
     }
   };
 
@@ -117,34 +116,24 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     setImporting(true);
     
     try {
-      // Use the real unified import service
-      const options: ImportOptions = {
-        file: selectedFile,
-        destinationAccountId: parseInt(selectedAccount),
-        usuario: 'treasury_ui'
-      };
+      const result = await enhancedStatementImportService.processImport(
+        selectedFile,
+        parseInt(selectedAccount)
+      );
       
-      const result = await importBankStatement(options);
-      
-      // Convert to UnifiedTreasury ImportResult format
-      const treasuryResult: ImportResult = {
-        totalLines: result.inserted + result.duplicates + result.errors,
-        confirmedMovements: result.inserted,
-        unplannedMovements: result.inserted, // All imported movements are initially unplanned
-        detectedTransfers: 0, // Transfer detection happens separately
-        errors: result.errors > 0 ? [`${result.errors} errores durante la importación`] : []
-      };
-      
-      if (result.success && result.inserted > 0) {
-        toast.success(`Importados: ${result.inserted} · Duplicados: ${result.duplicates} · Errores: ${result.errors}`);
-        onImportComplete(treasuryResult);
-        onClose();
-      } else if (result.duplicates > 0 && result.inserted === 0) {
-        toast.error('Todo eran duplicados: no se insertó ningún movimiento');
-        onImportComplete(treasuryResult);
+      if (result.success) {
+        toast.success(`Importados: ${result.imported} | Duplicados: ${result.duplicates} | Errores: ${result.errors}`);
+        onImportComplete({
+          totalLines: result.imported + result.duplicates + result.errors,
+          confirmedMovements: result.confirmed,
+          unplannedMovements: result.unplanned,
+          detectedTransfers: result.transfers,
+          errors: result.errorDetails
+        });
         onClose();
       } else {
-        toast.error('No se pudo importar el archivo');
+        toast.error('Error en la importación');
+        console.error('Import errors:', result.errorDetails);
       }
       
     } catch (error) {
@@ -237,7 +226,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
                 <option value="">Seleccionar cuenta...</option>
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
-                    {account.name} - {account.bank} {account.iban}
+                    {account.name || account.bank} - {account.bank} ****{account.iban?.slice(-4)}
                   </option>
                 ))}
               </select>
@@ -251,25 +240,41 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
               
               {preview.detectedAccount && (
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-success-500" />
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                   <span className="text-sm text-gray-700">
-                    Cuenta detectada: <span className="font-medium">{preview.detectedAccount}</span>
+                    Cuenta detectada: <span className="font-medium">{preview.detectedAccount.name || preview.detectedAccount.bank}</span>
                   </span>
                 </div>
               )}
               
               <div className="text-sm text-gray-700 space-y-1">
-                <p>• {preview.totalLines} movimientos a importar</p>
-                <p>• {preview.totalLines - preview.unplannedLines} serán confirmados automáticamente</p>
-                <p>• {preview.unplannedLines} quedarán como no planificados</p>
+                <p>• {preview.totalMovements} movimientos a importar</p>
+                <p>• {preview.confirmedMovements} serán confirmados automáticamente</p>
+                <p>• {preview.unplannedMovements} quedarán como no planificados</p>
+                {preview.transferMovements > 0 && (
+                  <p>• {preview.transferMovements} transferencias detectadas</p>
+                )}
               </div>
               
-              {preview.unplannedLines > 0 && (
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-warning-500 mt-0.5" />
-                  <span className="text-sm text-warning-700">
-                    Los movimientos no planificados requerirán clasificación manual
-                  </span>
+              {preview.warnings.length > 0 && (
+                <div className="space-y-1">
+                  {preview.warnings.map((warning, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
+                      <span className="text-sm text-amber-700">{warning}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {preview.errors.length > 0 && (
+                <div className="space-y-1">
+                  {preview.errors.map((error, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-500 mt-0.5" />
+                      <span className="text-sm text-red-700">{error}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
