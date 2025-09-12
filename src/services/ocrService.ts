@@ -49,12 +49,7 @@ const KNOWN_PROVIDER_ALIASES = {
   'IBERDROLA': ['Iberdrola Clientes', 'Iberdrola Comercializacion']
 };
 
-// H-OCR-FIX: Engine configuration
-interface OCREngineInfo {
-  type: 'document-ai-invoice' | 'vision-fallback';
-  displayName: string;
-  description: string;
-}
+// ELIMINATED: OCREngineInfo interface removed since mock fallback was eliminated
 
 // H-OCR: Mapped invoice fields from Google Document AI
 // interface InvoiceFields {
@@ -485,129 +480,12 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
       console.warn('📝 Document AI not configured, using mock fallback');
     }
     
-    // Fallback to mock data
-    return await processDocumentOCRFallback(filename);
+    // ELIMINATED: No more mock fallbacks per problem statement - fail fast instead
+    throw new Error('Document AI no disponible. Configure el servicio para procesar documentos.');
   }
 };
 
-// Fallback OCR processing with mock data when Document AI is not available
-async function processDocumentOCRFallback(filename: string): Promise<OCRResult> {
-  console.warn('🔄 Using fallback mock OCR processing');
-  
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-  // Determine engine type (simulate fallback logic)
-  const shouldUseInvoiceParser = filename.toLowerCase().includes('factura') || 
-                                filename.toLowerCase().includes('invoice') ||
-                                filename.toLowerCase().includes('recibo');
-  
-  const engineInfo: OCREngineInfo = shouldUseInvoiceParser && Math.random() > 0.1 
-    ? { type: 'document-ai-invoice', displayName: 'Document AI — Invoice (EU) [FALLBACK]', description: 'Fallback mock processor' }
-    : { type: 'vision-fallback', displayName: 'Vision OCR (generic) [FALLBACK]', description: 'Fallback mock processor' };
-  
-  // Simulate different outcomes based on file type
-  const isInvoice = filename.toLowerCase().includes('factura') || 
-                   filename.toLowerCase().includes('invoice') ||
-                   filename.toLowerCase().includes('recibo');
-  
-  const isConstructionRelated = filename.toLowerCase().includes('obra') ||
-                               filename.toLowerCase().includes('reforma') ||
-                               filename.toLowerCase().includes('construccion') ||
-                               filename.toLowerCase().includes('material');
-
-  if (Math.random() < 0.05) {
-    // 5% chance of error (reduced for fallback)
-    throw new Error('Error al procesar el documento: archivo no válido o dañado');
-  }
-
-  // Generate mock OCR fields based on document type
-  const fields: OCRField[] = [];
-  
-  if (isInvoice) {
-    // H-OCR-FIX: Enhanced mock invoice fields with advanced provider resolution
-    const rawProvider = 'Endesa Energía XXI, S.L.U.';
-    const rawNIF = Math.random() > 0.2 ? 'B82846817' : '';
-    const providerResolution = await resolveProviderAdvanced(rawProvider, rawNIF, 0.95);
-    
-    // Only add provider if not blacklisted
-    if (providerResolution.canonicalName) {
-      fields.push({
-        name: 'proveedor',
-        value: providerResolution.canonicalName,
-        confidence: providerResolution.confidence,
-        raw: rawProvider
-      });
-    }
-    
-    if (rawNIF) {
-      fields.push({ name: 'proveedorNIF', value: rawNIF, confidence: 0.92 });
-    }
-    
-    fields.push(
-      { name: 'numeroFactura', value: 'FE-2024-001234', confidence: 0.98 },
-      { name: 'fechaEmision', value: normalizeDateToSpanish('2024-01-15'), confidence: 0.94 },
-      { name: 'fechaVencimiento', value: normalizeDateToSpanish('2024-02-15'), confidence: 0.89 },
-      { name: 'importe', value: normalizeAmountToSpanish(156.78), confidence: 0.96 },
-      { name: 'base', value: normalizeAmountToSpanish(129.65), confidence: 0.93 },
-      { name: 'iva', value: normalizeAmountToSpanish(27.13), confidence: 0.91 },
-      { name: 'cups', value: 'ES0031406512345678JY0F', confidence: 0.87 },
-      { name: 'direccionSuministro', value: 'Calle Mayor, 123, 28001 Madrid', confidence: 0.85 }
-    );
-  } else {
-    // Generic document fields
-    const rawProvider = 'Naturgy Energy Group S.A.';
-    const providerResolution = await resolveProviderAdvanced(rawProvider, '', 0.80);
-    
-    if (providerResolution.canonicalName) {
-      fields.push({
-        name: 'proveedor',
-        value: providerResolution.canonicalName,
-        confidence: providerResolution.confidence,
-        raw: rawProvider
-      });
-    }
-    
-    fields.push(
-      { name: 'fechaEmision', value: normalizeDateToSpanish('2024-01-20'), confidence: 0.88 },
-      { name: 'importe', value: normalizeAmountToSpanish(245.30), confidence: 0.82 }
-    );
-  }
-
-  // Add construction-related indicators for CAPEX detection
-  if (isConstructionRelated) {
-    fields.push(
-      { name: 'categoria', value: 'Reforma/CAPEX', confidence: 0.78 },
-      { name: 'concepto', value: 'Material de construcción', confidence: 0.82 }
-    );
-  }
-
-  // H-OCR-FIX: Simulate multi-page processing
-  const mockPages = [
-    'FACTURA Nº FE-2024-001234\nEndesa Energía XXI, S.L.U.\nNIF: B82846817\nIMPORTE TOTAL: 156,78 €\nIVA: 27,13 €\nBASE: 129,65 €',
-    'CONDICIONES LEGALES\nTérminos y condiciones de suministro\nPolítica de privacidad\nProtección de datos personales',
-    'CUPS: ES0031406512345678JY0F\nDirección: Calle Mayor, 123\n28001 Madrid'
-  ];
-  
-  const pageAnalysis = selectBestPageForExtraction(mockPages);
-
-  const globalConfidence = fields.reduce((sum, field) => sum + field.confidence, 0) / fields.length;
-
-  return {
-    engine: `${engineInfo.type}:${engineInfo.displayName}`,
-    timestamp: new Date().toISOString(),
-    confidenceGlobal: globalConfidence,
-    fields,
-    status: 'completed',
-    engineInfo, // H-OCR-FIX: Add engine details for transparency
-    pageInfo: {
-      totalPages: mockPages.length,
-      selectedPage: pageAnalysis.bestPageIndex + 1, // 1-based for UI
-      pageScore: pageAnalysis.score,
-      allPageScores: pageAnalysis.allScores
-    }
-  };
-};
+// ELIMINATED: Mock fallback function removed per problem statement to eliminate phantom data
 
 // H-OCR: Check if document suggests expense creation
 export const shouldSuggestExpense = (ocrResult: OCRResult): boolean => {

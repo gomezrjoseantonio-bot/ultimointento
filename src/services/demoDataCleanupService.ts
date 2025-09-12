@@ -19,7 +19,7 @@ export interface CleanupResult {
 }
 
 /**
- * Detects if a movement is a demo/example movement
+ * Detects if a movement is a demo/example movement - enhanced patterns per problem statement
  */
 export function isDemoMovement(movement: Movement): boolean {
   if (!movement) return false;
@@ -27,13 +27,14 @@ export function isDemoMovement(movement: Movement): boolean {
   const description = movement.description?.toLowerCase() || '';
   const counterparty = movement.counterparty?.toLowerCase() || '';
   
-  // Demo keywords to check - expanded list for better detection
+  // Demo keywords to check - expanded list for better detection per problem statement
   const demoKeywords = [
     'demo', 'test', 'sample', 'ejemplo', 'prueba',
     'ficticio', 'simulado', 'plantilla', 'muestra',
     'fake', 'mock', 'provisional', 'temporal',
-    'placeholder', 'default', 'initial',
-    'movimiento de ejemplo', 'movimiento inicial', 'movimiento por defecto'
+    'placeholder', 'default', 'initial', 'preview',
+    'movimiento de ejemplo', 'movimiento inicial', 'movimiento por defecto',
+    'movimiento simulado', 'movimiento preview', 'movimiento plantilla'
   ];
 
   // Check if description or counterparty contains demo keywords
@@ -41,15 +42,23 @@ export function isDemoMovement(movement: Movement): boolean {
     description.includes(keyword) || counterparty.includes(keyword)
   );
 
-  // Check for typical demo amounts (round numbers like 100, 500, 1000)
+  // Check for typical demo amounts (round numbers like 100, 500, 1000) 
+  // BUT only when combined with other demo indicators to avoid false positives
   const isDemoAmount = movement.amount !== undefined && (
     movement.amount === 100 ||
     movement.amount === 500 ||
-    movement.amount === 1000 ||
     movement.amount === -100 ||
     movement.amount === -500 ||
-    movement.amount === -1000 ||
-    movement.amount === 0 // Zero amounts are often demo/placeholder
+    movement.amount === 0 || // Zero amounts are often demo/placeholder
+    movement.amount === 1234.56 || // Common test amounts
+    movement.amount === 999.99 ||
+    movement.amount === 123.45
+  );
+
+  // Larger round amounts (1000) only count as demo if combined with demo keywords or dates
+  const isLargeDemoAmount = movement.amount !== undefined && (
+    movement.amount === 1000 ||
+    movement.amount === -1000
   );
 
   // Check for demo dates (future dates or specific test dates)
@@ -57,7 +66,8 @@ export function isDemoMovement(movement: Movement): boolean {
     movement.date.includes('2099') ||
     movement.date.includes('1999') ||
     movement.date.includes('2000-01-01') ||
-    movement.date.includes('1900-01-01')
+    movement.date.includes('1900-01-01') ||
+    movement.date.includes('2024-12-31') // Common test date
   ) : false;
 
   // Check for movements without proper metadata (likely auto-generated demo)
@@ -66,7 +76,20 @@ export function isDemoMovement(movement: Movement): boolean {
   // Additional production safety: movements with no counterparty and round amounts
   const suspiciousPattern = !counterparty && isDemoAmount;
 
-  return hasKeywords || (isDemoAmount && isDemoDate) || lacksMetadata || suspiciousPattern;
+  // NEW: Check for missing required fields that indicate auto-generated data
+  const missingRequiredFields = !movement.accountId || (movement.accountId < 0);
+
+  // NEW: Check for placeholder reference patterns
+  const hasPlaceholderRef = (movement.reference?.toLowerCase().includes('ref-') || 
+                           movement.reference?.toLowerCase().includes('placeholder')) ?? false;
+
+  return hasKeywords || 
+         (isDemoAmount && isDemoDate) || 
+         (isLargeDemoAmount && (hasKeywords || isDemoDate)) || // Large amounts need additional evidence
+         lacksMetadata || 
+         suspiciousPattern ||
+         missingRequiredFields ||
+         hasPlaceholderRef;
 }
 
 /**
