@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye } from 'lucide-react';
-import { PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago } from '../../../../../services/db';
+import { PresupuestoLinea, TipoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, Property, initDB } from '../../../../../services/db';
 import { generarCalendarioLinea, validarLinea } from '../services/presupuestoService';
 
 interface PresupuestoLineaModalProps {
@@ -48,6 +48,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
 
   const [showPreview, setShowPreview] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   useEffect(() => {
     if (linea) {
@@ -83,6 +84,20 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
       });
     }
   }, [linea]);
+
+  // Load properties for dynamic dropdown
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const propertiesData = await db.getAll('properties');
+        setProperties(propertiesData);
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      }
+    };
+    loadProperties();
+  }, []);
 
   const categoriasGasto: CategoriaGasto[] = [
     "Suministros", "Seguros", "Comunidad", "IBI", "InteresesHipoteca",
@@ -193,8 +208,11 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 >
                   <option value="">Global</option>
-                  <option value="prop-1">Inmueble 1</option>
-                  <option value="prop-2">Inmueble 2</option>
+                  {properties.map(property => (
+                    <option key={property.id} value={`prop-${property.id}`}>
+                      {property.alias || property.address}
+                    </option>
+                  ))}
                 </select>
               </div>
 
