@@ -9,6 +9,7 @@ import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
+import DynamicImportDemo from '../components/DynamicImportDemo';
 
 const Dashboard: React.FC = () => {
   const { currentModule } = useTheme();
@@ -193,6 +194,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Bundle Optimization Demo */}
+      <DynamicImportDemo />
+      
       {/* Dashboard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
