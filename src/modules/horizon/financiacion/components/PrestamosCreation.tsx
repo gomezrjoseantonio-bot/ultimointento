@@ -5,14 +5,12 @@ import {
   ChevronDown, 
   ChevronUp,
   User,
-  Home,
   CreditCard,
   Calculator,
   CheckCircle,
-  AlertCircle,
-  Calendar
+  AlertCircle
 } from 'lucide-react';
-import { PrestamoFinanciacion, BonificacionFinanciacion, CalculoLive, ResumenFinal, ValidationError } from '../../../../types/financiacion';
+import { PrestamoFinanciacion, CalculoLive, ValidationError } from '../../../../types/financiacion';
 import { prestamosService } from '../../../../services/prestamosService';
 
 // Import block components (to be created)
@@ -260,7 +258,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({ prestamoId, onSuc
           nombre: b.nombre,
           reduccionPuntosPorcentuales: b.descuentoTIN,
           lookbackMeses: b.ventanaEvaluacion,
-          regla: { tipo: 'OTRA', descripcion: b.condicionParametrizable },
+          regla: { tipo: 'OTRA' as const, descripcion: b.condicionParametrizable },
           estado: 'PENDIENTE' as const
         }))
       };

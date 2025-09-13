@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, TrendingUp, Clock, Euro, Percent } from 'lucide-react';
+import { Calculator, Clock, Euro, Percent } from 'lucide-react';
 import { PrestamoFinanciacion, ValidationError, CalculoLive } from '../../../../../types/financiacion';
 
 interface CondicionesFinancierasBlockProps {
