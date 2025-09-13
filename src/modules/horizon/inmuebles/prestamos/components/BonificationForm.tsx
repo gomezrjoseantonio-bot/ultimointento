@@ -312,7 +312,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                   }
                 }
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
               placeholder="1.200"
             />
           </div>
@@ -332,7 +332,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                   movimientosMesMin: parseInt(e.target.value) || undefined,
                   importeMinimo: bonification.regla.tipo === 'TARJETA' ? bonification.regla.importeMinimo : undefined
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
                 placeholder="6"
                 min="0"
               />
@@ -349,7 +349,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                   movimientosMesMin: bonification.regla.tipo === 'TARJETA' ? bonification.regla.movimientosMesMin : undefined,
                   importeMinimo: parseInt(e.target.value) || undefined
                 })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
                 placeholder="3000"
                 min="0"
               />
@@ -377,7 +377,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 tipo: 'OTRA',
                 descripcion: e.target.value
               })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
               placeholder="Describe las condiciones para obtener esta bonificación"
               rows={3}
             />

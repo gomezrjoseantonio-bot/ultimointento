@@ -83,7 +83,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-atlas-blue"></div>
       </div>
     );
   }
@@ -94,7 +94,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
         <p className="text-gray-500">No se pudo cargar la información del préstamo.</p>
         <button 
           onClick={onBack}
-          className="mt-4 text-primary-700 hover:text-primary-800 font-medium"
+          className="mt-4 text-atlas-blue hover:text-[#033A73] font-medium"
         >
           ← Volver a préstamos
         </button>
@@ -116,22 +116,22 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
           <div className="flex items-center space-x-3">
             <button 
               onClick={onBack}
-              className="text-gray-500 hover:text-primary-700 transition-colors"
+              className="text-gray-500 hover:text-atlas-blue transition-colors"
             >
               <ChevronRight className="h-5 w-5 rotate-180" />
             </button>
             <div className="flex items-center space-x-2">
-              <Home className="h-5 w-5 text-primary-700" />
+              <Home className="h-5 w-5 text-atlas-blue" />
               <h1 className="text-xl font-semibold text-neutral-900">{prestamo.nombre}</h1>
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="px-3 py-1 bg-[#F8F9FA] text-primary-700 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-[#F8F9FA] text-atlas-blue rounded-full text-sm font-medium">
               {getTipoDisplay(prestamo)}
             </span>
             <button
               onClick={() => setShowSimulator(true)}
-              className="px-4 py-2 bg-primary-700 text-white rounded-lg hover:bg-[#033A73] transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-[#033A73] transition-colors flex items-center space-x-2"
             >
               <Calculator className="h-4 w-4" />
               <span>Simular amortización</span>
@@ -142,21 +142,21 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
         {/* Key metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-primary-700">{formatEuro(prestamo.principalVivo)}</div>
+            <div className="text-2xl font-bold text-atlas-blue">{formatEuro(prestamo.principalVivo)}</div>
             <div className="text-sm text-gray-500">Principal vivo</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-primary-700">
+            <div className="text-2xl font-bold text-atlas-blue">
               {planPagos.periodos[0]?.cuota ? formatEuro(planPagos.periodos[0].cuota) : '—'}
             </div>
             <div className="text-sm text-gray-500">Cuota actual</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-primary-700">{prestamo.plazoMesesTotal} meses</div>
+            <div className="text-2xl font-bold text-atlas-blue">{prestamo.plazoMesesTotal} meses</div>
             <div className="text-sm text-gray-500">Plazo total</div>
           </div>
           <div className="text-center p-4 bg-[#F8F9FA] rounded-lg">
-            <div className="text-2xl font-bold text-primary-700">{formatDate(planPagos.resumen.fechaFinalizacion)}</div>
+            <div className="text-2xl font-bold text-atlas-blue">{formatDate(planPagos.resumen.fechaFinalizacion)}</div>
             <div className="text-sm text-gray-500">Fin previsto</div>
           </div>
         </div>
@@ -181,7 +181,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-neutral-900 flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-primary-700" />
+            <Calendar className="h-5 w-5 text-atlas-blue" />
             <span>Plan de pagos</span>
           </h2>
           <div className="text-sm text-gray-500">
