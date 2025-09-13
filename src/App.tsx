@@ -29,7 +29,6 @@ const UnifiedInboxPage = React.lazy(() => import('./pages/UnifiedInboxPage'));
 // Horizon (Investment) Module Components
 const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
 const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Prestamos = React.lazy(() => import('./modules/horizon/inmuebles/prestamos/Prestamos'));
 const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
 
 // Financing Module - New standalone financing module
@@ -193,11 +192,6 @@ function App() {
               <Route path="contratos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Contratos />
-                </React.Suspense>
-              } />
-              <Route path="prestamos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Prestamos />
                 </React.Suspense>
               } />
               <Route path="gastos-capex" element={

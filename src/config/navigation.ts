@@ -1,4 +1,4 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox } from 'lucide-react';
+import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -35,10 +35,16 @@ export const navigationConfig: NavigationItem[] = [
     subTabs: [
       { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
       { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
-      { name: 'Préstamos', href: '/inmuebles/prestamos', icon: Banknote, module: 'horizon' },
       { name: 'Gastos', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
       { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
     ]
+  },
+  {
+    name: 'Financiación',
+    href: '/financiacion',
+    icon: Receipt,
+    module: 'horizon',
+    // NO subtabs - single consolidated financing view
   },
   {
     name: 'Tesorería',
