@@ -21,8 +21,8 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
   const handleOpenContracts = () => {
     toast.loading('Abriendo gestión de contratos...', { id: 'contracts-nav' });
     setTimeout(() => {
-      toast.success('Redirigiendo a Inmuebles', { id: 'contracts-nav' });
-      navigate('/inmuebles/cartera', { state: { view: 'contracts' } });
+      toast.success('Redirigiendo a Contratos', { id: 'contracts-nav' });
+      navigate('/inmuebles/contratos');
     }, 500);
   };
   // Mock data - in real implementation would come from contracts service
