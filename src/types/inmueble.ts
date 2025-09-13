@@ -60,6 +60,10 @@ export interface CompraInmueble {
   gastos: GastosCompra;
   impuestos: ImpuestosCompra; // todos guardados en €, no en %
   
+  // Base ITP configuration
+  base_itp_modo?: 'auto' | 'manual'; // modo de cálculo de base ITP
+  base_itp_valor?: number | null; // valor manual de base ITP (si modo es manual)
+  
   // Derivados (persistidos para reporting y consistencia temporal)
   total_gastos: number; // suma de gastos
   total_impuestos: number; // suma de impuestos en €

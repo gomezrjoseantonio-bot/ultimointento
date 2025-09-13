@@ -358,7 +358,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
           <Step3Coste 
             data={step3Data}
             onChange={setStep3Data}
-            direccionCa={step1Data.direccion?.ca}
+            direccionCp={step1Data.direccion?.cp}
           />
         );
       case 4:

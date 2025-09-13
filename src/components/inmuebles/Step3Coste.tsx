@@ -1,26 +1,40 @@
 // Step 3: Coste de adquisición - Régimen, Precio, Gastos, Impuestos (en valores absolutos €)
 // Following Horizon design system with automatic tax calculations
+// Enhanced with Spanish Euro formatting and improved ITP calculation per requirements
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { CurrencyEuroIcon, CalculatorIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
-import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount, detectPercentageInput } from '../../utils/inmuebleUtils';
+import { validateStep3, calculateTotalTaxAmount } from '../../utils/inmuebleUtils';
+import { 
+  calculateITPWithBase, 
+  calculateIVAAmount, 
+  calculateAJDAmount,
+  formatPercentageChip,
+  formatEuroDisplay,
+  parseSpanishEuroInput,
+  getSpecialTaxWarning,
+  getCCAAFromPostalCode,
+  BaseITPConfig
+} from '../../utils/taxCalculationUtils';
 
 interface Step3CosteProps {
   data: InmuebleStep3;
   onChange: (data: InmuebleStep3) => void;
-  direccionCa?: string; // Para cálculo automático de impuestos
+  direccionCp?: string; // Postal code for automatic tax calculations
   errors?: string[];
 }
 
 const Step3Coste: React.FC<Step3CosteProps> = ({
   data,
   onChange,
-  direccionCa,
+  direccionCp,
   errors = []
 }) => {
   const [localErrors, setLocalErrors] = useState<string[]>([]);
-  const [percentageMessage, setPercentageMessage] = useState<string>('');
+  const [taxCalculationMode, setTaxCalculationMode] = useState<'auto' | 'manual'>('auto');
+  const [baseItpConfig, setBaseItpConfig] = useState<BaseITPConfig>({ modo: 'auto', valor: null });
+  const [manualItpBase, setManualItpBase] = useState<string>('');
 
   const updateCompra = useCallback((field: string, value: any) => {
     const updatedCompra = {
@@ -67,43 +81,84 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
     setLocalErrors(validation.errors);
   }, [data]);
 
-  // Auto-calculate taxes when regime, price, or CCAA changes (only if not manually set)
+  // Auto-calculate taxes when regime, price, or postal code changes (only if auto mode is active)
+  const shouldRecalculate = useCallback(() => {
+    return taxCalculationMode === 'auto' && 
+           data.compra?.regimen && 
+           data.compra?.precio_compra && 
+           direccionCp;
+  }, [taxCalculationMode, data.compra?.regimen, data.compra?.precio_compra, direccionCp]);
+
   useEffect(() => {
-    if (data.compra?.regimen && data.compra?.precio_compra && direccionCa) {
-      const taxes = calculateTotalTaxes(
-        data.compra.precio_compra,
-        data.compra.regimen,
-        direccionCa as any
-      );
-      
-      // Only set calculated values if user hasn't manually entered them
-      const currentTaxes = data.compra.impuestos;
-      const shouldUpdate = !currentTaxes || 
-        (data.compra.regimen === 'USADA_ITP' && currentTaxes.itp_importe === undefined) ||
-        (data.compra.regimen === 'NUEVA_IVA_AJD' && (currentTaxes.iva_importe === undefined || currentTaxes.ajd_importe === undefined));
-      
-      if (shouldUpdate) {
-        const newTaxes = { ...taxes };
-        
-        if (data.compra.regimen === 'USADA_ITP') {
-          // If user has manually set ITP amount, keep it
-          if (currentTaxes?.itp_importe !== undefined) {
-            newTaxes.itp_importe = currentTaxes.itp_importe;
-          }
-        } else if (data.compra.regimen === 'NUEVA_IVA_AJD') {
-          // If user has manually set IVA or AJD, keep them
-          if (currentTaxes?.iva_importe !== undefined) {
-            newTaxes.iva_importe = currentTaxes.iva_importe;
-          }
-          if (currentTaxes?.ajd_importe !== undefined) {
-            newTaxes.ajd_importe = currentTaxes.ajd_importe;
-          }
+    if (!shouldRecalculate()) return;
+
+    const precioCompra = data.compra!.precio_compra!;
+    
+    if (data.compra!.regimen === 'USADA_ITP') {
+      const itpResult = calculateITPWithBase(precioCompra, direccionCp!, baseItpConfig);
+      if (itpResult) {
+        // Check if we need to update (avoid infinite loops)
+        const currentItp = data.compra?.impuestos?.itp_importe;
+        if (Math.abs((currentItp || 0) - itpResult.importe) > 0.01) {
+          const newData = {
+            ...data,
+            compra: {
+              ...data.compra!,
+              impuestos: {
+                ...data.compra?.impuestos,
+                itp_importe: itpResult.importe,
+                itp_porcentaje_info: itpResult.porcentaje
+              },
+              base_itp_modo: baseItpConfig.modo,
+              base_itp_valor: baseItpConfig.valor
+            }
+          };
+          
+          // Recalculate totals
+          const gastos = newData.compra.gastos || {
+            notaria: 0, registro: 0, gestoria: 0, inmobiliaria: 0, psi: 0, otros: 0
+          };
+          newData.compra.total_gastos = Object.values(gastos).reduce((sum, val) => sum + (val || 0), 0);
+          newData.compra.total_impuestos = calculateTotalTaxAmount(newData.compra.impuestos);
+          newData.compra.coste_total_compra = precioCompra + (newData.compra.total_gastos || 0) + (newData.compra.total_impuestos || 0);
+          
+          onChange(newData);
         }
+      }
+    } else if (data.compra!.regimen === 'NUEVA_IVA_AJD') {
+      const ivaResult = calculateIVAAmount(precioCompra);
+      const ajdResult = calculateAJDAmount(precioCompra);
+      
+      // Check if we need to update (avoid infinite loops)
+      const currentIva = data.compra?.impuestos?.iva_importe || 0;
+      const currentAjd = data.compra?.impuestos?.ajd_importe || 0;
+      if (Math.abs(currentIva - ivaResult.importe) > 0.01 || Math.abs(currentAjd - ajdResult.importe) > 0.01) {
+        const newData = {
+          ...data,
+          compra: {
+            ...data.compra!,
+            impuestos: {
+              ...data.compra?.impuestos,
+              iva_importe: ivaResult.importe,
+              iva_porcentaje_info: ivaResult.porcentaje,
+              ajd_importe: ajdResult.importe,
+              ajd_porcentaje_info: ajdResult.porcentaje
+            }
+          }
+        };
         
-        updateCompra('impuestos', newTaxes);
+        // Recalculate totals
+        const gastos = newData.compra.gastos || {
+          notaria: 0, registro: 0, gestoria: 0, inmobiliaria: 0, psi: 0, otros: 0
+        };
+        newData.compra.total_gastos = Object.values(gastos).reduce((sum, val) => sum + (val || 0), 0);
+        newData.compra.total_impuestos = calculateTotalTaxAmount(newData.compra.impuestos);
+        newData.compra.coste_total_compra = precioCompra + (newData.compra.total_gastos || 0) + (newData.compra.total_impuestos || 0);
+        
+        onChange(newData);
       }
     }
-  }, [data.compra?.regimen, data.compra?.precio_compra, data.compra?.impuestos, direccionCa, updateCompra]);
+  }, [shouldRecalculate, baseItpConfig, direccionCp, data, onChange]);
 
   const allErrors = [...errors, ...localErrors];
 
@@ -116,38 +171,33 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
   };
 
   const formatCurrency = (value: number | undefined): string => {
-    return value ? formatEuroAmount(value) : '0,00 €';
+    return formatEuroDisplay(value);
   };
 
-  // Helper function to handle tax input with percentage detection
-  const handleTaxInput = (taxType: 'itp_importe' | 'iva_importe' | 'ajd_importe', inputValue: string) => {
-    const numericValue = parseFloat(inputValue) || 0;
-    const precioCompra = data.compra?.precio_compra || 0;
-    
-    // Check for percentage detection
-    const detection = detectPercentageInput(numericValue, precioCompra);
-    
-    if (detection.isPercentage && detection.convertedAmount && detection.message) {
-      // Show conversion message
-      setPercentageMessage(detection.message);
-      setTimeout(() => setPercentageMessage(''), 3000); // Clear message after 3 seconds
-      
-      // Update with converted amount
-      updateCompra('impuestos', {
-        ...data.compra?.impuestos,
-        [taxType]: detection.convertedAmount
-      });
+  // Handle manual ITP base input
+  const handleManualItpBaseChange = (value: string) => {
+    setManualItpBase(value);
+    const parsedValue = parseSpanishEuroInput(value);
+    setBaseItpConfig({
+      modo: 'manual',
+      valor: parsedValue > 0 ? parsedValue : null
+    });
+  };
+
+  // Handle switching between auto and manual base
+  const handleBaseItpModeChange = (isAuto: boolean) => {
+    if (isAuto) {
+      setBaseItpConfig({ modo: 'auto', valor: null });
+      setManualItpBase('');
     } else {
-      // Clear any previous message
-      setPercentageMessage('');
-      
-      // Update with entered value
-      updateCompra('impuestos', {
-        ...data.compra?.impuestos,
-        [taxType]: Math.round(numericValue * 100) / 100
-      });
+      setBaseItpConfig({ modo: 'manual', valor: data.compra?.precio_compra || null });
+      setManualItpBase(formatEuroDisplay(data.compra?.precio_compra || 0));
     }
   };
+
+  // Get current CCAA info for display
+  const ccaaInfo = direccionCp ? getCCAAFromPostalCode(direccionCp) : null;
+  const specialWarning = ccaaInfo ? getSpecialTaxWarning(ccaaInfo.ccaa) : null;
 
   return (
     <div className="p-6">
@@ -363,53 +413,137 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
           </div>
         </div>
 
-        {/* Impuestos - Editables con sugerencias calculadas */}
-        {data.compra?.regimen && data.compra?.precio_compra && direccionCa && (
+        {/* Impuestos - Enhanced with Euro amounts and automatic calculation */}
+        {data.compra?.regimen && data.compra?.precio_compra && direccionCp && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center mb-4">
               <CalculatorIcon className="w-5 h-5 text-[#042C5E] mr-2" />
               <h3 className="text-lg font-medium text-gray-900">Impuestos *</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Importes calculados automáticamente según CCAA. Puedes editar los valores finales en €.
-            </p>
+            
+            {/* Calculation Mode Toggle */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">
+                  Usar cálculo automático
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={taxCalculationMode === 'auto'}
+                    onChange={(e) => setTaxCalculationMode(e.target.checked ? 'auto' : 'manual')}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-hz-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-hz-primary"></div>
+                </label>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                {taxCalculationMode === 'auto' 
+                  ? 'Los importes se calculan automáticamente según CCAA y régimen'
+                  : 'Edita manualmente los importes finales'
+                }
+              </p>
+            </div>
+
+            {/* Base ITP Section (only for USADA_ITP) */}
+            {data.compra.regimen === 'USADA_ITP' && (
+              <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Base imponible ITP</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        checked={baseItpConfig.modo === 'auto'}
+                        onChange={() => handleBaseItpModeChange(true)}
+                        className="mr-2 text-hz-primary focus:ring-hz-primary"
+                      />
+                      <span className="text-sm text-gray-700">Automática (precio de compra)</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        checked={baseItpConfig.modo === 'manual'}
+                        onChange={() => handleBaseItpModeChange(false)}
+                        className="mr-2 text-hz-primary focus:ring-hz-primary"
+                      />
+                      <span className="text-sm text-gray-700">Manual</span>
+                    </label>
+                  </div>
+                  
+                  {baseItpConfig.modo === 'manual' && (
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Base ITP manual
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={manualItpBase}
+                          onChange={(e) => handleManualItpBaseChange(e.target.value)}
+                          placeholder="Ej: 200.000,00"
+                          className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary text-sm"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                          <span className="text-gray-500 text-xs">€</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             
             {data.compra.regimen === 'USADA_ITP' ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ITP - {direccionCa} *
-                    <span className="text-xs text-gray-500 ml-2">
-                      (Sugerido: {data.compra.impuestos?.itp_porcentaje_info?.toFixed(2)}%)
-                    </span>
-                  </label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      ITP *
+                    </label>
+                    {ccaaInfo && data.compra.impuestos?.itp_porcentaje_info && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                        ITP ({formatPercentageChip(data.compra.impuestos.itp_porcentaje_info)})
+                      </span>
+                    )}
+                    {!ccaaInfo?.isKnown && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+                        ITP (8%*)
+                      </span>
+                    )}
+                  </div>
+                  
                   <div className="relative">
                     <input
-                      type="number"
-                      value={data.compra.impuestos?.itp_importe || ''}
+                      type="text"
+                      value={formatEuroDisplay(data.compra.impuestos?.itp_importe || 0)}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          itp_importe: value,
-                          itp_porcentaje_info: data.compra.impuestos?.itp_porcentaje_info
-                        });
+                        if (taxCalculationMode === 'manual') {
+                          const value = parseSpanishEuroInput(e.target.value);
+                          updateCompra('impuestos', {
+                            ...data.compra?.impuestos,
+                            itp_importe: value
+                          });
+                        }
                       }}
-                      onBlur={(e) => {
-                        handleTaxInput('itp_importe', e.target.value);
-                      }}
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                      disabled={taxCalculationMode === 'auto' || !data.compra?.precio_compra}
+                      placeholder={!data.compra?.precio_compra ? "Completa precio y CCAA" : "0,00"}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                        taxCalculationMode === 'auto' || !data.compra?.precio_compra ? 'bg-gray-50 text-gray-500' : ''
+                      }`}
+                      title={!data.compra?.precio_compra ? "Completa precio y CCAA" : ""}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm">€</span>
-                    </div>
                   </div>
+                  
                   {data.compra.impuestos?.itp_importe && data.compra?.precio_compra && (
                     <p className="text-xs text-gray-500 mt-1">
                       Equivale al {((data.compra.impuestos.itp_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
+                    </p>
+                  )}
+                  
+                  {!ccaaInfo?.isKnown && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      * CCAA no detectada automáticamente. Se aplica tipo general 8%.
                     </p>
                   )}
                 </div>
@@ -417,36 +551,37 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    IVA (10% obra nueva) *
-                    <span className="text-xs text-gray-500 ml-2">
-                      (Sugerido: {data.compra.impuestos?.iva_porcentaje_info?.toFixed(2)}%)
-                    </span>
-                  </label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      IVA *
+                    </label>
+                    {data.compra.impuestos?.iva_porcentaje_info && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                        IVA ({formatPercentageChip(data.compra.impuestos.iva_porcentaje_info)})
+                      </span>
+                    )}
+                  </div>
+                  
                   <div className="relative">
                     <input
-                      type="number"
-                      value={data.compra.impuestos?.iva_importe || ''}
+                      type="text"
+                      value={formatEuroDisplay(data.compra.impuestos?.iva_importe || 0)}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          iva_importe: value,
-                          iva_porcentaje_info: data.compra.impuestos?.iva_porcentaje_info
-                        });
+                        if (taxCalculationMode === 'manual') {
+                          const value = parseSpanishEuroInput(e.target.value);
+                          updateCompra('impuestos', {
+                            ...data.compra?.impuestos,
+                            iva_importe: value
+                          });
+                        }
                       }}
-                      onBlur={(e) => {
-                        handleTaxInput('iva_importe', e.target.value);
-                      }}
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                      disabled={taxCalculationMode === 'auto'}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                        taxCalculationMode === 'auto' ? 'bg-gray-50 text-gray-500' : ''
+                      }`}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm">€</span>
-                    </div>
                   </div>
+                  
                   {data.compra.impuestos?.iva_importe && data.compra?.precio_compra && (
                     <p className="text-xs text-gray-500 mt-1">
                       Equivale al {((data.compra.impuestos.iva_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
@@ -455,36 +590,37 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    AJD (1.5% estándar) *
-                    <span className="text-xs text-gray-500 ml-2">
-                      (Sugerido: {data.compra.impuestos?.ajd_porcentaje_info?.toFixed(2)}%)
-                    </span>
-                  </label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      AJD *
+                    </label>
+                    {data.compra.impuestos?.ajd_porcentaje_info && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                        AJD ({formatPercentageChip(data.compra.impuestos.ajd_porcentaje_info)})
+                      </span>
+                    )}
+                  </div>
+                  
                   <div className="relative">
                     <input
-                      type="number"
-                      value={data.compra.impuestos?.ajd_importe || ''}
+                      type="text"
+                      value={formatEuroDisplay(data.compra.impuestos?.ajd_importe || 0)}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          ajd_importe: value,
-                          ajd_porcentaje_info: data.compra.impuestos?.ajd_porcentaje_info
-                        });
+                        if (taxCalculationMode === 'manual') {
+                          const value = parseSpanishEuroInput(e.target.value);
+                          updateCompra('impuestos', {
+                            ...data.compra?.impuestos,
+                            ajd_importe: value
+                          });
+                        }
                       }}
-                      onBlur={(e) => {
-                        handleTaxInput('ajd_importe', e.target.value);
-                      }}
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                      disabled={taxCalculationMode === 'auto'}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                        taxCalculationMode === 'auto' ? 'bg-gray-50 text-gray-500' : ''
+                      }`}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm">€</span>
-                    </div>
                   </div>
+                  
                   {data.compra.impuestos?.ajd_importe && data.compra?.precio_compra && (
                     <p className="text-xs text-gray-500 mt-1">
                       Equivale al {((data.compra.impuestos.ajd_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
@@ -494,17 +630,17 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
               </div>
             )}
             
-            {/* Percentage conversion message */}
-            {percentageMessage && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4">
+            {/* Special tax warnings */}
+            {specialWarning && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mt-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-blue-700">{percentageMessage}</p>
+                    <p className="text-sm text-yellow-700">{specialWarning}</p>
                   </div>
                 </div>
               </div>
