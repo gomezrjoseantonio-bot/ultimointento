@@ -77,26 +77,32 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
       
       // Only set calculated values if user hasn't manually entered them
       const currentTaxes = data.compra.impuestos;
-      const newTaxes = { ...taxes };
+      const shouldUpdate = !currentTaxes || 
+        (data.compra.regimen === 'USADA_ITP' && currentTaxes.itp_importe === undefined) ||
+        (data.compra.regimen === 'NUEVA_IVA_AJD' && (currentTaxes.iva_importe === undefined || currentTaxes.ajd_importe === undefined));
       
-      if (data.compra.regimen === 'USADA_ITP') {
-        // If user has manually set ITP amount, keep it
-        if (currentTaxes?.itp_importe !== undefined) {
-          newTaxes.itp_importe = currentTaxes.itp_importe;
+      if (shouldUpdate) {
+        const newTaxes = { ...taxes };
+        
+        if (data.compra.regimen === 'USADA_ITP') {
+          // If user has manually set ITP amount, keep it
+          if (currentTaxes?.itp_importe !== undefined) {
+            newTaxes.itp_importe = currentTaxes.itp_importe;
+          }
+        } else if (data.compra.regimen === 'NUEVA_IVA_AJD') {
+          // If user has manually set IVA or AJD, keep them
+          if (currentTaxes?.iva_importe !== undefined) {
+            newTaxes.iva_importe = currentTaxes.iva_importe;
+          }
+          if (currentTaxes?.ajd_importe !== undefined) {
+            newTaxes.ajd_importe = currentTaxes.ajd_importe;
+          }
         }
-      } else if (data.compra.regimen === 'NUEVA_IVA_AJD') {
-        // If user has manually set IVA or AJD, keep them
-        if (currentTaxes?.iva_importe !== undefined) {
-          newTaxes.iva_importe = currentTaxes.iva_importe;
-        }
-        if (currentTaxes?.ajd_importe !== undefined) {
-          newTaxes.ajd_importe = currentTaxes.ajd_importe;
-        }
+        
+        updateCompra('impuestos', newTaxes);
       }
-      
-      updateCompra('impuestos', newTaxes);
     }
-  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa]);
+  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa, updateCompra]);
 
   const allErrors = [...errors, ...localErrors];
 
