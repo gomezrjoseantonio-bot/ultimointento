@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PlusIcon, MagnifyingGlassIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, initDB } from '../../../../services/db';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 
 const Cartera: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,16 @@ const Cartera: React.FC = () => {
 
   useEffect(() => {
     loadProperties();
-  }, []);
+    
+    // Check for refresh parameter
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam === '1') {
+      // Remove the refresh parameter from URL without reloading
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('refresh');
+      setSearchParams(newSearchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const filterAndSortProperties = useCallback(() => {
     let filtered = [...properties];
@@ -91,7 +101,15 @@ const Cartera: React.FC = () => {
       setLoading(true);
       const db = await initDB();
       const allProperties = await db.getAll('properties');
-      setProperties(allProperties);
+      
+      // Sort by creation date (newest first) to show new properties at the top
+      const sortedProperties = allProperties.sort((a, b) => {
+        const dateA = new Date(a.purchaseDate);
+        const dateB = new Date(b.purchaseDate);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setProperties(sortedProperties);
     } catch (error) {
       console.error('Error loading properties:', error);
       toast.error('Error al cargar las propiedades');
