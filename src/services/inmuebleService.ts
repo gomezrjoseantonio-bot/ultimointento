@@ -10,24 +10,26 @@ import {
 import { 
   calculateTotalTaxes,
   calculateTotalTaxAmount,
-  calculateConstructionPercentage,
-  calculateCompletionStatus,
-  generateInmuebleId
+  calculateConstructionPercentage
 } from '../utils/inmuebleUtils';
 import { getLocationFromPostalCode } from '../utils/locationUtils';
 
 class InmuebleService {
-  private readonly STORAGE_KEY = 'horizon_inmuebles';
+  private readonly BASE_URL = '/api/inmuebles';
 
   /**
    * Get all inmuebles
    */
   async getAll(): Promise<Inmueble[]> {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const response = await fetch(this.BASE_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch inmuebles: ${response.statusText}`);
+      }
+      return await response.json();
     } catch (error) {
       console.error('Error loading inmuebles:', error);
+      // Fallback to empty array for now, but log the error
       return [];
     }
   }
@@ -36,16 +38,25 @@ class InmuebleService {
    * Get inmueble by ID
    */
   async getById(id: string): Promise<Inmueble | null> {
-    const inmuebles = await this.getAll();
-    return inmuebles.find(inmueble => inmueble.id === id) || null;
+    try {
+      const response = await fetch(`${this.BASE_URL}/${id}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null;
+        }
+        throw new Error(`Failed to fetch inmueble: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading inmueble:', error);
+      return null;
+    }
   }
 
   /**
    * Create new inmueble
    */
   async create(data: NuevoInmueble, userId: string = 'system'): Promise<Inmueble> {
-    const now = new Date().toISOString();
-    
     // Auto-complete location data if postal code is provided
     if (data.direccion.cp) {
       const locationData = getLocationFromPostalCode(data.direccion.cp);
@@ -59,87 +70,69 @@ class InmuebleService {
     // Calculate derived values
     const derivedData = this.calculateDerivedValues(data);
 
-    const inmueble: Inmueble = {
-      id: generateInmuebleId(),
+    // Prepare the inmueble data for creation
+    const inmuebleData = {
       ...derivedData,
-      relaciones: {
-        contratos_ids: [],
-        prestamos_ids: [],
-        cuentas_bancarias_ids: [],
-        documentos_ids: []
-      },
-      auditoria: {
-        created_at: now,
-        created_by: userId,
-        updated_at: now,
-        updated_by: userId,
-        version: 1
-      },
-      completitud: calculateCompletionStatus(derivedData)
+      estado: data.estado || 'ACTIVO',
+      fecha_alta: new Date().toISOString(),
+      fecha_venta: data.estado === 'VENDIDO' ? data.fecha_venta : undefined
     };
 
-    // Save to storage
-    const inmuebles = await this.getAll();
-    inmuebles.push(inmueble);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(inmuebles));
+    try {
+      const response = await fetch(this.BASE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(inmuebleData)
+      });
 
-    return inmueble;
+      if (!response.ok) {
+        throw new Error(`Failed to create inmueble: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating inmueble:', error);
+      throw error;
+    }
   }
 
   /**
    * Update existing inmueble
    */
   async update(id: string, data: Partial<NuevoInmueble>, userId: string = 'system'): Promise<Inmueble> {
-    const inmuebles = await this.getAll();
-    const index = inmuebles.findIndex(inmueble => inmueble.id === id);
-    
-    if (index === -1) {
-      throw new Error('Inmueble not found');
-    }
-
-    const existing = inmuebles[index];
-    const now = new Date().toISOString();
-
-    // Merge data
-    const mergedData = {
-      ...existing,
-      ...data,
-      id: existing.id, // Preserve ID
-      relaciones: existing.relaciones, // Preserve relations
-      auditoria: {
-        ...existing.auditoria,
-        updated_at: now,
-        updated_by: userId,
-        version: existing.auditoria.version + 1
-      }
-    };
-
-    // Auto-complete location data if postal code changed
-    if (data.direccion?.cp && data.direccion.cp !== existing.direccion.cp) {
+    // Auto-complete location data if postal code is provided
+    if (data.direccion?.cp) {
       const locationData = getLocationFromPostalCode(data.direccion.cp);
       if (locationData) {
-        mergedData.direccion = {
-          ...mergedData.direccion,
-          municipio: data.direccion.municipio || locationData.municipalities[0] || '',
-          provincia: data.direccion.provincia || locationData.province,
-          ca: data.direccion.ca || locationData.ccaa as any
-        };
+        data.direccion.municipio = data.direccion.municipio || locationData.municipalities[0] || '';
+        data.direccion.provincia = data.direccion.provincia || locationData.province;
+        data.direccion.ca = data.direccion.ca || locationData.ccaa as any;
       }
     }
 
     // Calculate derived values
-    const derivedData = this.calculateDerivedValues(mergedData);
-    const updatedInmueble = {
-      ...derivedData,
-      relaciones: existing.relaciones,
-      auditoria: mergedData.auditoria,
-      completitud: calculateCompletionStatus(derivedData)
-    };
+    const derivedData = this.calculateDerivedValues(data);
 
-    inmuebles[index] = updatedInmueble;
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(inmuebles));
+    try {
+      const response = await fetch(`${this.BASE_URL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(derivedData)
+      });
 
-    return updatedInmueble;
+      if (!response.ok) {
+        throw new Error(`Failed to update inmueble: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating inmueble:', error);
+      throw error;
+    }
   }
 
   /**
@@ -170,27 +163,18 @@ class InmuebleService {
    * Delete inmueble
    */
   async delete(id: string): Promise<void> {
-    const inmuebles = await this.getAll();
-    const index = inmuebles.findIndex(inmueble => inmueble.id === id);
-    
-    if (index === -1) {
-      throw new Error('Inmueble not found');
+    try {
+      const response = await fetch(`${this.BASE_URL}/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete inmueble: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Error deleting inmueble:', error);
+      throw error;
     }
-
-    // Check for relations
-    const inmueble = inmuebles[index];
-    const hasRelations = 
-      inmueble.relaciones.contratos_ids.length > 0 ||
-      inmueble.relaciones.prestamos_ids.length > 0 ||
-      inmueble.relaciones.cuentas_bancarias_ids.length > 0 ||
-      inmueble.relaciones.documentos_ids.length > 0;
-
-    if (hasRelations) {
-      throw new Error(INMUEBLE_ERRORS.ERR_RELACIONES_PENDIENTES);
-    }
-
-    inmuebles.splice(index, 1);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(inmuebles));
   }
 
   /**

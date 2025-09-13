@@ -22,30 +22,19 @@ interface InmuebleWizardLayoutProps {
 }
 
 const StatusChip: React.FC<{ status: ComplecionStatus }> = ({ status }) => {
+  // Only show two visual states: Green (complete) or Gray (pending/partial)
+  const isComplete = status === 'COMPLETO';
+  
   const config = {
-    'PENDIENTE': {
-      color: 'bg-error-100 text-error-700 border-error-200',
-      icon: '🟥',
-      text: 'Pendiente'
-    },
-    'PARCIAL': {
-      color: 'bg-warning-100 text-warning-700 border-warning-200',
-      icon: '🟨',
-      text: 'Parcial'
-    },
-    'COMPLETO': {
-      color: 'bg-success-100 text-success-700 border-success-200',
-      icon: '🟩',
-      text: 'Completo'
-    }
+    color: isComplete 
+      ? 'bg-[#042C5E] bg-opacity-10 text-[#042C5E] border-[#042C5E] border-opacity-20' 
+      : 'bg-gray-100 text-gray-600 border-gray-200',
+    text: isComplete ? 'Completo' : 'Pendiente'
   };
 
-  const { color, icon, text } = config[status];
-
   return (
-    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium border rounded-md ${color}`}>
-      <span className="mr-1">{icon}</span>
-      {text}
+    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium border rounded-md ${config.color}`}>
+      {config.text}
     </span>
   );
 };
@@ -82,14 +71,14 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                       className={`
                         flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors
                         ${step.isActive 
-                          ? 'border-hz-primary bg-hz-primary text-white' 
-                          : step.isCompleted 
-                            ? 'border-success-500 bg-success-500 text-white'
-                            : 'border-gray-300 bg-white text-gray-500 hover:border-hz-primary'
+                          ? 'border-[#042C5E] bg-[#042C5E] text-white' 
+                          : step.status === 'COMPLETO'
+                            ? 'border-[#042C5E] bg-[#042C5E] text-white'
+                            : 'border-gray-300 bg-white text-gray-500 hover:border-[#042C5E]'
                         }
                       `}
                     >
-                      {step.isCompleted ? (
+                      {step.status === 'COMPLETO' && !step.isActive ? (
                         <CheckIcon className="w-5 h-5" />
                       ) : (
                         <span className="text-sm font-medium">{step.id}</span>
@@ -100,7 +89,7 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                     <div className="ml-4 min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <p className={`text-sm font-medium ${
-                          step.isActive ? 'text-hz-primary' : 'text-gray-900'
+                          step.isActive ? 'text-[#042C5E]' : 'text-gray-900'
                         }`}>
                           {step.title}
                         </p>
