@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Building, User, Calendar, Euro, CreditCard, Info } from 'lucide-react';
 import { Property, Contract, Account, initDB } from '../../../../../services/db';
 import { 
@@ -9,7 +9,7 @@ import {
   calculateHabitualEndDate,
   calculateDuration
 } from '../../../../../services/contractServiceNew';
-import { formatEuro, parseEuroInput } from '../../../../../utils/formatUtils';
+import { parseEuroInput } from '../../../../../utils/formatUtils';
 import FormFooter from '../../../../../components/common/FormFooter';
 import toast from 'react-hot-toast';
 
@@ -104,12 +104,44 @@ const ContractsNuevoEnhanced: React.FC<ContractsNuevoEnhancedProps> = ({
   const [showIndexationWarning, setShowIndexationWarning] = useState(false);
   const [calculatedDuration, setCalculatedDuration] = useState('');
 
+  const loadData = useCallback(async () => {
+    try {
+      const db = await initDB();
+      
+      // Load properties
+      const propertiesData = await db.getAll('properties');
+      setProperties(propertiesData);
+      
+      // Load bank accounts
+      const accountsData = await db.getAll('accounts');
+      const activeAccounts = accountsData.filter(account => account.isActive);
+      setAccounts(activeAccounts);
+      
+      if (propertiesData.length > 0 && !editingContract) {
+        setFormData(prev => ({ ...prev, inmuebleId: propertiesData[0].id || 0 }));
+        setSelectedProperty(propertiesData[0]);
+      }
+      
+      if (activeAccounts.length > 0 && !editingContract) {
+        setFormData(prev => ({ ...prev, cuentaCobroId: activeAccounts[0].id || 0 }));
+      }
+      
+      // If editing, load the selected property
+      if (editingContract && propertiesData.length > 0) {
+        const property = propertiesData.find(p => p.id === editingContract.inmuebleId);
+        if (property) {
+          setSelectedProperty(property);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Error al cargar los datos');
+    }
+  }, [editingContract]);
+
   useEffect(() => {
     loadData();
-  }, []);
-
-  // Auto-suggest indexation based on start date
-  useEffect(() => {
+  }, [loadData]);
     if (formData.fechaInicio) {
       const suggested = suggestIndexation(formData.fechaInicio);
       setSuggestedIndexation(suggested);
@@ -269,6 +301,10 @@ const ContractsNuevoEnhanced: React.FC<ContractsNuevoEnhancedProps> = ({
   const formatAccountDisplay = (account: Account): string => {
     const lastFourDigits = account.iban.slice(-4);
     return `${account.name || account.bank} (***${lastFourDigits})`;
+  };
+
+  const handleSave = () => {
+    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
   };
 
   return (
@@ -725,8 +761,9 @@ const ContractsNuevoEnhanced: React.FC<ContractsNuevoEnhancedProps> = ({
 
       {/* Form Footer */}
       <FormFooter
+        onSave={handleSave}
         onCancel={onCancel}
-        submitLabel={editingContract ? "Actualizar contrato" : "Crear contrato"}
+        saveLabel={editingContract ? "Actualizar contrato" : "Crear contrato"}
         isSubmitting={loading}
       />
     </form>

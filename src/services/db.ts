@@ -222,15 +222,15 @@ export interface Document {
 export interface Contract {
   id?: number;
   
-  // Property and unit information
+  // NEW FIELDS: Property and unit information
   inmuebleId: number; // Changed from propertyId for Spanish terminology
   unidadTipo: 'vivienda' | 'habitacion'; // Unit type: complete dwelling or room
   habitacionId?: string; // Specific room ID if type is 'habitacion'
   
-  // Contract modality
+  // NEW FIELDS: Contract modality
   modalidad: 'habitual' | 'temporada'; // Dwelling type: habitual or seasonal
   
-  // Tenant information (complete as required)
+  // NEW FIELDS: Tenant information (complete as required)
   inquilino: {
     nombre: string;
     apellidos: string;
@@ -239,16 +239,16 @@ export interface Contract {
     email: string;
   };
   
-  // Contract dates (mandatory for all contracts)
+  // NEW FIELDS: Contract dates (mandatory for all contracts)
   fechaInicio: string;
   fechaFin: string; // Always required, auto-calculated for habitual (+5 years, editable)
   
-  // Financial terms
+  // NEW FIELDS: Financial terms
   rentaMensual: number; // Monthly rent (current/active amount)
   diaPago: number; // Payment day (1-31)
   margenGraciaDias: number; // Grace period in days (default 5)
   
-  // Indexation system
+  // NEW FIELDS: Indexation system
   indexacion: 'none' | 'ipc' | 'irav' | 'otros'; // Indexation type
   indexOtros?: {
     formula: string; // Formula or percentage for 'otros'
@@ -256,7 +256,7 @@ export interface Contract {
     nota?: string; // Reference note
   };
   
-  // Historical indexations tracking
+  // NEW FIELDS: Historical indexations tracking
   historicoIndexaciones: Array<{
     fecha: string; // Date when indexation was applied
     indice: string; // Index used (IPC, IRAV, otros)
@@ -264,7 +264,7 @@ export interface Contract {
     rentaResultante: number; // Resulting rent amount
   }>;
   
-  // Deposit information
+  // NEW FIELDS: Deposit information
   fianzaMeses: number; // Number of months (0..∞, default 1)
   fianzaImporte: number; // Amount calculated (months × current rent, editable)
   fianzaEstado: 'retenida' | 'devuelta_parcial' | 'devuelta_total'; // Deposit status
@@ -273,20 +273,71 @@ export interface Contract {
     devolucion?: string; // Date when deposit was returned
   };
   
-  // Bank account for payment collection (mandatory)
+  // NEW FIELDS: Bank account for payment collection (mandatory)
   cuentaCobroId: number; // ID of bank account for collections
   
-  // Contract status
+  // NEW FIELDS: Contract status
   estadoContrato: 'activo' | 'rescindido' | 'finalizado';
   
-  // Rescission information
+  // NEW FIELDS: Rescission information
   rescision?: {
     fecha: string; // Rescission date
     motivo: string; // Rescission reason
   };
   
-  // Legacy fields for backward compatibility
+  // LEGACY FIELDS for backward compatibility
+  propertyId?: number; // Maps to inmuebleId
+  scope?: 'full-property' | 'units';
+  selectedUnits?: string[]; // For multi-unit properties (e.g., ['H1', 'H2'])
+  type?: 'vivienda' | 'habitacion';
+  
+  // Legacy tenant information
+  tenant?: {
+    name?: string;
+    nif?: string;
+    email?: string;
+  };
+  
+  // Legacy contract dates
+  startDate?: string;
+  endDate?: string; // Optional for indefinite contracts
+  isIndefinite?: boolean;
+  noticePeriodDays?: number;
+  
+  // Legacy financial terms
+  monthlyRent?: number;
+  paymentDay?: number; // 1-31
+  periodicity?: 'monthly'; // Only monthly for now
+  
+  // Legacy rent updates
+  rentUpdate?: {
+    type: 'none' | 'fixed-percentage' | 'ipc';
+    fixedPercentage?: number; // For fixed percentage updates
+    ipcPercentage?: number; // Manual IPC percentage
+  };
+  
+  // Legacy deposit and guarantees
+  deposit?: {
+    months: number;
+    amount: number; // Calculated but editable
+  };
+  additionalGuarantees?: number;
+  
+  // Legacy services (informational checkboxes)
+  includedServices?: {
+    electricity?: boolean;
+    water?: boolean;
+    gas?: boolean;
+    internet?: boolean;
+    cleaning?: boolean;
+    [key: string]: boolean | undefined;
+  };
+  
+  // Legacy notes and status
+  privateNotes?: string;
   status: 'active' | 'upcoming' | 'terminated'; // Maps to estadoContrato
+  
+  // Documents
   documents: number[];
   
   // Metadata

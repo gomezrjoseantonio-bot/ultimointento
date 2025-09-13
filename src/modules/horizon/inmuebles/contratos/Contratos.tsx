@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { useTheme } from '../../../../contexts/ThemeContext';
 import { Contract } from '../../../../services/db';
 import ContractsListaEnhanced from './components/ContractsListaEnhanced';
-import ContractsNuevoEnhanced from './components/ContractsNuevoEnhanced';
+import ContractsNuevo from './components/ContractsNuevo';
 import ContractsCalendario from './components/ContractsCalendario';
 import ContractsCobros from './components/ContractsCobros';
 
@@ -27,7 +26,6 @@ const Contratos: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [showNewContract, setShowNewContract] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
-  const { currentModule } = useTheme();
 
   const handleContractCreated = () => {
     setRefreshKey(prev => prev + 1);
@@ -54,7 +52,7 @@ const Contratos: React.FC = () => {
   const renderTabContent = () => {
     if (showNewContract) {
       return (
-        <ContractsNuevoEnhanced 
+        <ContractsNuevo 
           editingContract={editingContract}
           onContractCreated={handleContractCreated} 
           onCancel={handleCancelEdit} 

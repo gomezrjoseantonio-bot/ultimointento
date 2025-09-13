@@ -351,7 +351,6 @@ export const validateOccupancy = async (contract: Partial<Contract>): Promise<st
   }
   
   try {
-    const db = await initDB();
     const existingContracts = await getContractsByProperty(contract.inmuebleId);
     
     // Filter out the current contract if we're editing

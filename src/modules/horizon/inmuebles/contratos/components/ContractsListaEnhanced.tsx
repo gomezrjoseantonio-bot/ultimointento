@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Banknote } from 'lucide-react';
-import { Contract, Property, Account } from '../../../../../services/db';
+import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro } from 'lucide-react';
+import { Contract, Property } from '../../../../../services/db';
 import { getAllContracts, deleteContract, rescindContract, getContractStatus } from '../../../../../services/contractServiceNew';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
@@ -13,7 +13,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'terminated'>('all');
@@ -73,8 +72,8 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       setProperties(propertiesData);
       
       // Load accounts for display
-      const accountsData = await db.getAll('accounts');
-      setAccounts(accountsData);
+      // const accountsData = await db.getAll('accounts');
+      // setAccounts(accountsData);
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -119,14 +118,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const getPropertyName = (inmuebleId: number): string => {
     const property = properties.find(p => p.id === inmuebleId);
     return property ? property.alias : `Inmueble ${inmuebleId}`;
-  };
-
-  const getAccountName = (cuentaCobroId: number): string => {
-    const account = accounts.find(a => a.id === cuentaCobroId);
-    if (!account) return 'Cuenta no encontrada';
-    
-    const lastFourDigits = account.iban.slice(-4);
-    return `${account.name || account.bank} (***${lastFourDigits})`;
   };
 
   const getStatusBadge = (contract: Contract) => {

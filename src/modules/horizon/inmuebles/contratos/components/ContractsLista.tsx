@@ -26,11 +26,16 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
 
     // Filter by search term (tenant name)
     if (searchTerm.trim()) {
-      filtered = filtered.filter(contract =>
-        contract.tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (contract.tenant.nif && contract.tenant.nif.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (contract.tenant.email && contract.tenant.email.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(contract => {
+        const tenantName = contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                          contract.tenant?.name || '';
+        const tenantDni = contract.inquilino?.dni || contract.tenant?.nif || '';
+        const tenantEmail = contract.inquilino?.email || contract.tenant?.email || '';
+        
+        return tenantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               tenantDni.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               tenantEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      });
     }
 
     // Filter by status
@@ -40,7 +45,9 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
 
     // Filter by property
     if (selectedPropertyId !== 'all') {
-      filtered = filtered.filter(contract => contract.propertyId.toString() === selectedPropertyId);
+      filtered = filtered.filter(contract => 
+        (contract.inmuebleId || contract.propertyId || 0).toString() === selectedPropertyId
+      );
     }
 
     setFilteredContracts(filtered);
@@ -83,7 +90,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
     if (!terminationDate) return;
 
     try {
-      await terminateContract(id, terminationDate);
+      await terminateContract(id, terminationDate, 'Manual termination');
       toast.success('Contrato terminado correctamente');
       loadContracts();
     } catch (error) {
@@ -244,25 +251,26 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-neutral-900">
-                            {contract.tenant.name}
+                            {contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                             contract.tenant?.name || 'Inquilino sin nombre'}
                           </div>
-                          {contract.tenant.nif && (
+                          {(contract.inquilino?.dni || contract.tenant?.nif) && (
                             <div className="text-sm text-neutral-500">
-                              {contract.tenant.nif}
+                              {contract.inquilino?.dni || contract.tenant?.nif}
                             </div>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                        {formatContractType(contract.type)}
+                        {formatContractType(contract.unidadTipo || contract.type || 'vivienda')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm text-neutral-900">
-                            {formatDate(contract.startDate)}
+                            {formatDate(contract.fechaInicio || contract.startDate || '')}
                           </div>
                           <div className="text-sm text-neutral-500">
-                            {contract.isIndefinite ? 'Indef.' : (contract.endDate ? formatDate(contract.endDate) : '—')}
+                            {contract.isIndefinite ? 'Indef.' : ((contract.fechaFin || contract.endDate) ? formatDate(contract.fechaFin || contract.endDate || '') : '—')}
                           </div>
                         </div>
                       </td>

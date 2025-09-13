@@ -34,7 +34,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
         : new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000);
 
       let currentDate = new Date(today);
-      currentDate.setDate(contract.paymentDay);
+      currentDate.setDate(contract.diaPago || contract.paymentDay || 1);
       
       // If payment day has passed this month, start next month
       if (currentDate <= today) {
@@ -48,7 +48,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
           proveedor_contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
           fecha_emision: currentDate.toISOString().split('T')[0],
           fecha_prevista_cobro: currentDate.toISOString().split('T')[0],
-          importe: contract.monthlyRent,
+          importe: contract.rentaMensual || contract.monthlyRent || 0,
           moneda: 'EUR',
           destino: 'inmueble_id',
           destino_id: contract.propertyId,

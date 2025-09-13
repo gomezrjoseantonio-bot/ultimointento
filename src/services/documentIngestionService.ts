@@ -255,6 +255,10 @@ async function processContract(document: Document): Promise<DocumentIngestionRes
   const metadata = document.metadata || {};
 
   // Extract basic contract information from metadata
+  // DISABLED: Temporarily disabled while migrating to new Contract interface
+  throw new Error('Contract creation from documents is temporarily disabled during migration');
+  
+  /*
   const propertyId = metadata.entityId || 1;
 
   // Create basic contract record - in a real implementation,
@@ -303,6 +307,7 @@ async function processContract(document: Document): Promise<DocumentIngestionRes
     }],
     attachedDocumentId: document.id!
   };
+  */
 }
 
 /*
