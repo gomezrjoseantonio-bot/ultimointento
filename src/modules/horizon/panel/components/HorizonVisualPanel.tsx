@@ -74,7 +74,7 @@ const HorizonVisualPanel: React.FC = () => {
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
                     filters.dateRange === key
                       ? 'bg-hz-primary text-white'
-                      : 'text-hz-neutral-700 hover:text-hz-neutral-900'
+                      : 'text-hz-neutral-900 hover:text-hz-neutral-900'
                   }`}
                 >
                   {label}
@@ -86,7 +86,7 @@ const HorizonVisualPanel: React.FC = () => {
           {/* Right side: Configure Panel button */}
           <button 
             onClick={handleConfigureClick}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-hz-neutral-700 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-hz-neutral-900 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100 transition-colors"
           >
             <Settings className="w-4 h-4" />
             Configurar Panel

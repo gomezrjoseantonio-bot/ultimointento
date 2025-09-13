@@ -52,6 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <button
             className="md:hidden text-white hover:text-gray-200 focus:outline-none"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú lateral"
           >
             <X className="h-6 w-6" />
           </button>

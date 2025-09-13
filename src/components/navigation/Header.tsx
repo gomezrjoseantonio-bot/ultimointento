@@ -33,6 +33,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             type="button"
             className="md:hidden text-gray-600 hover:text-gray-900 focus:outline-none"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menú lateral"
           >
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
@@ -83,6 +84,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
               onMouseEnter={() => setAccountMenuOpen(true)}
               onMouseLeave={() => setAccountMenuOpen(false)}
               className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 rounded-atlas p-1"
+              aria-label="Menú de cuenta"
             >
               <UserCircle className="h-8 w-8 text-gray-500" />
               <span className="hidden md:inline-block text-sm font-medium text-gray-700">
