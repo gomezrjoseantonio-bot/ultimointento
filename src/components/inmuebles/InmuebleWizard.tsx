@@ -21,8 +21,9 @@ import {
   EstadoInmueble,
   ComplecionStatus
 } from '../../types/inmueble';
-import { inmuebleService } from '../../services/inmuebleService';
+import { initDB, Property } from '../../services/db';
 import { calculateCompletionStatus, validateForSave } from '../../utils/inmuebleUtils';
+import { mapInmuebleToProperty, mapPropertyToInmueble } from '../../utils/propertyMapper';
 
 interface InmuebleWizardProps {
   mode: 'create' | 'edit' | 'duplicate';
@@ -99,32 +100,84 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
   const loadInmuebleData = useCallback(async (inmuebleId: string) => {
     try {
       setIsLoading(true);
-      const inmueble = await inmuebleService.getById(inmuebleId);
+      const db = await initDB();
+      const propertyId = parseInt(inmuebleId, 10);
       
-      if (!inmueble) {
+      if (isNaN(propertyId)) {
+        toast.error('ID de inmueble inválido');
+        navigate('/inmuebles/cartera');
+        return;
+      }
+      
+      const property = await db.get('properties', propertyId);
+      
+      if (!property) {
         toast.error('Inmueble no encontrado');
         navigate('/inmuebles/cartera');
         return;
       }
 
+      // Convert Property to Inmueble format
+      const inmueble = mapPropertyToInmueble(property);
+
       // Populate form data
       setStep1Data({
-        alias: inmueble.alias,
-        direccion: inmueble.direccion,
-        ref_catastral: inmueble.ref_catastral,
-        estado: inmueble.estado
+        alias: inmueble.alias || '',
+        direccion: inmueble.direccion || {
+          calle: '',
+          numero: '',
+          piso: '',
+          puerta: '',
+          cp: '',
+          municipio: '',
+          provincia: '',
+          ca: 'Madrid'
+        },
+        ref_catastral: inmueble.ref_catastral || '',
+        estado: inmueble.estado || 'ACTIVO'
       });
 
       setStep2Data({
-        caracteristicas: inmueble.caracteristicas
+        caracteristicas: inmueble.caracteristicas || {
+          m2: 0,
+          habitaciones: 0,
+          banos: 0,
+          anio_construccion: undefined
+        }
       });
 
       setStep3Data({
-        compra: inmueble.compra
+        compra: inmueble.compra || {
+          fecha_compra: '',
+          regimen: 'USADA_ITP',
+          precio_compra: 0,
+          gastos: {
+            notaria: 0,
+            registro: 0,
+            gestoria: 0,
+            inmobiliaria: 0,
+            psi: 0,
+            otros: 0
+          },
+          impuestos: {},
+          total_gastos: 0,
+          total_impuestos: 0,
+          coste_total_compra: 0,
+          eur_por_m2: 0
+        }
       });
 
       setStep4Data({
-        fiscalidad: inmueble.fiscalidad
+        fiscalidad: inmueble.fiscalidad || {
+          valor_catastral_total: 0,
+          valor_catastral_construccion: 0,
+          porcentaje_construccion: 0,
+          tipo_adquisicion: 'LUCRATIVA_ONEROSA',
+          metodo_amortizacion: 'REGLA_GENERAL_3',
+          amortizacion_anual_base: 0,
+          porcentaje_amortizacion_info: 3.0000,
+          nota: ''
+        }
       });
 
     } catch (error) {
@@ -226,77 +279,53 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       // Validate MVP minimum requirements before saving
       const validation = validateForSave(combinedData);
       if (!validation.isValid) {
-        toast.error('No se puede guardar: ' + validation.errors.join(', '));
+        // Show individual field errors
+        validation.errors.forEach(error => {
+          console.error('Validation error:', error);
+        });
+        
+        toast.error(`Faltan datos obligatorios: ${validation.errors.join(', ')}`);
         setIsSaving(false);
         return;
       }
       
-      // Build the final inmueble data
-      const inmuebleData = {
-        alias: combinedData.alias || '',
-        direccion: {
-          calle: combinedData.direccion?.calle || '',
-          numero: combinedData.direccion?.numero || '',
-          piso: combinedData.direccion?.piso,
-          puerta: combinedData.direccion?.puerta,
-          cp: combinedData.direccion?.cp || '',
-          municipio: combinedData.direccion?.municipio || '',
-          provincia: combinedData.direccion?.provincia || '',
-          ca: combinedData.direccion?.ca || 'Madrid'
-        },
-        ref_catastral: combinedData.ref_catastral,
-        estado: combinedData.estado || 'ACTIVO',
-        fecha_alta: new Date().toISOString().split('T')[0],
-        fecha_venta: combinedData.estado === 'VENDIDO' ? new Date().toISOString().split('T')[0] : undefined,
-        caracteristicas: {
-          m2: combinedData.caracteristicas?.m2 || 0,
-          habitaciones: combinedData.caracteristicas?.habitaciones || 0,
-          banos: combinedData.caracteristicas?.banos || 0,
-          anio_construccion: combinedData.caracteristicas?.anio_construccion
-        },
-        compra: {
-          fecha_compra: combinedData.compra?.fecha_compra || '',
-          regimen: combinedData.compra?.regimen || 'USADA_ITP',
-          precio_compra: combinedData.compra?.precio_compra || 0,
-          gastos: combinedData.compra?.gastos || {
-            notaria: 0,
-            registro: 0,
-            gestoria: 0,
-            inmobiliaria: 0,
-            psi: 0,
-            otros: 0
-          },
-          impuestos: combinedData.compra?.impuestos || {},
-          total_gastos: combinedData.compra?.total_gastos || 0,
-          total_impuestos: combinedData.compra?.total_impuestos || 0,
-          coste_total_compra: combinedData.compra?.coste_total_compra || 0,
-          eur_por_m2: combinedData.compra?.eur_por_m2 || 0
-        },
-        fiscalidad: {
-          valor_catastral_total: combinedData.fiscalidad?.valor_catastral_total || 0,
-          valor_catastral_construccion: combinedData.fiscalidad?.valor_catastral_construccion || 0,
-          porcentaje_construccion: combinedData.fiscalidad?.porcentaje_construccion || 0,
-          tipo_adquisicion: 'LUCRATIVA_ONEROSA' as const,
-          metodo_amortizacion: combinedData.fiscalidad?.metodo_amortizacion || 'REGLA_GENERAL_3',
-          amortizacion_anual_base: combinedData.fiscalidad?.amortizacion_anual_base || 0,
-          porcentaje_amortizacion_info: combinedData.fiscalidad?.porcentaje_amortizacion_info || 3.0000,
-          nota: combinedData.fiscalidad?.nota
-        }
-      };
-
+      // Convert Inmueble data to Property format for IndexedDB
+      const propertyData = mapInmuebleToProperty(combinedData);
+      
+      // Add createdAt timestamp for proper sorting (remove unused variable)
+      const db = await initDB();
+      
       if (mode === 'edit' && id) {
-        await inmuebleService.update(id, inmuebleData);
+        // Update existing property
+        const propertyId = parseInt(id, 10);
+        if (isNaN(propertyId)) {
+          throw new Error('ID de inmueble inválido');
+        }
+        
+        const updatedProperty: Property = {
+          ...propertyData,
+          id: propertyId
+        };
+        
+        await db.put('properties', updatedProperty);
         toast.success('Inmueble actualizado correctamente');
       } else {
-        await inmuebleService.create(inmuebleData);
-        toast.success('Inmueble creado correctamente');
+        // Create new property
+        const newProperty: Omit<Property, 'id'> = {
+          ...propertyData
+        };
+        
+        await db.add('properties', newProperty);
+        toast.success('Inmueble guardado');
       }
 
-      navigate('/inmuebles/cartera');
+      // Navigate to cartera with refresh parameter
+      navigate('/inmuebles/cartera?refresh=1');
       
     } catch (error) {
       console.error('Error saving inmueble:', error);
-      toast.error('Error al guardar el inmueble');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al guardar el inmueble: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
@@ -329,7 +358,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
           <Step3Coste 
             data={step3Data}
             onChange={setStep3Data}
-            direccionCa={step1Data.direccion?.ca}
+            direccionCp={step1Data.direccion?.cp}
           />
         );
       case 4:
