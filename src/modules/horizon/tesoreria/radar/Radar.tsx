@@ -333,7 +333,7 @@ const Radar: React.FC = () => {
                         </span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           account.usage === 'Personal' ? 'bg-blue-100 text-blue-800' :
-                          account.usage === 'Inmuebles' ? 'bg-green-100 text-green-800' :
+                          account.usage === 'Inmuebles' ? 'bg-primary-100 text-primary-800' :
                           'bg-info-100 text-info-800'
                         }`}>
                           {account.usage}
