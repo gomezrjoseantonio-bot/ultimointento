@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Edit3, 
+  Eye,
+  Trash2,
   Calculator,
   Calendar,
   CreditCard,
@@ -9,20 +11,33 @@ import {
   User,
   TrendingUp,
   DollarSign,
-  Clock
+  Clock,
+  ArrowUpDown
 } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
 import { Prestamo } from '../../../../types/prestamos';
+import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
 }
+
+type SortField = 'nombre' | 'tin' | 'capitalVivo' | 'vencimiento';
+type SortDirection = 'asc' | 'desc';
+type StatusFilter = 'ALL' | 'ACTIVO' | 'CANCELADO';
 
 const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'PERSONAL' | 'INMUEBLE'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [sortField, setSortField] = useState<SortField>('nombre');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  
+  // Detail drawer state
+  const [selectedPrestamoForDetail, setSelectedPrestamoForDetail] = useState<Prestamo | null>(null);
+  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
 
   // Load loans
   useEffect(() => {
@@ -82,28 +97,70 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   };
 
   // Filter and search loans
-  const filteredPrestamos = prestamos.filter(prestamo => {
-    const matchesSearch = prestamo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prestamo.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = filter === 'ALL' || 
-                         (filter === 'INMUEBLE' && prestamo.inmuebleId !== 'standalone') ||
-                         (filter === 'PERSONAL' && prestamo.inmuebleId === 'standalone');
-    
-    return matchesSearch && matchesFilter;
-  });
+  const filteredPrestamos = prestamos
+    .filter(prestamo => {
+      const matchesSearch = prestamo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           prestamo.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           // Add search by account IBAN (when available)
+                           (prestamo.cuentaCargoId && prestamo.cuentaCargoId.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesFilter = filter === 'ALL' || 
+                           (filter === 'INMUEBLE' && prestamo.inmuebleId !== 'standalone') ||
+                           (filter === 'PERSONAL' && prestamo.inmuebleId === 'standalone');
+      
+      // For now, assuming all loans are "ACTIVO" since there's no status field in the model
+      // TODO: Add status field to Prestamo model when backend supports it
+      const matchesStatus = statusFilter === 'ALL' || statusFilter === 'ACTIVO';
+      
+      return matchesSearch && matchesFilter && matchesStatus;
+    })
+    .sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortField) {
+        case 'nombre':
+          valueA = a.nombre.toLowerCase();
+          valueB = b.nombre.toLowerCase();
+          break;
+        case 'tin':
+          valueA = calculateEffectiveTIN(a);
+          valueB = calculateEffectiveTIN(b);
+          break;
+        case 'capitalVivo':
+          valueA = a.principalVivo;
+          valueB = b.principalVivo;
+          break;
+        case 'vencimiento':
+          // Calculate loan end date
+          const fechaA = new Date(a.fechaFirma);
+          fechaA.setMonth(fechaA.getMonth() + a.plazoMesesTotal);
+          const fechaB = new Date(b.fechaFirma);
+          fechaB.setMonth(fechaB.getMonth() + b.plazoMesesTotal);
+          valueA = fechaA.getTime();
+          valueB = fechaB.getTime();
+          break;
+        default:
+          valueA = a.nombre.toLowerCase();
+          valueB = b.nombre.toLowerCase();
+      }
+      
+      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
-  // Calculate comprehensive loan statistics
+  // Calculate comprehensive loan statistics based on filtered loans
   const calculateLoanStats = () => {
-    const capitalSolicitado = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
-    const capitalPendiente = prestamos.reduce((sum, p) => sum + p.principalVivo, 0);
-    const cuotaTotal = prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
+    const loansToCalculate = filteredPrestamos; // Use filtered loans for dynamic updates
+    const capitalSolicitado = loansToCalculate.reduce((sum, p) => sum + p.principalInicial, 0);
+    const capitalPendiente = loansToCalculate.reduce((sum, p) => sum + p.principalVivo, 0);
+    const cuotaTotal = loansToCalculate.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
     
     // Calculate paid and pending interests (estimation based on elapsed time)
     let interesesPagados = 0;
     let interesesPendientes = 0;
     
-    prestamos.forEach(prestamo => {
+    loansToCalculate.forEach(prestamo => {
       const fechaFirma = new Date(prestamo.fechaFirma);
       const fechaActual = new Date();
       const mesesTranscurridos = Math.max(0, Math.floor((fechaActual.getTime() - fechaFirma.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
@@ -134,6 +191,47 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
   const loanStats = calculateLoanStats();
 
+  // Action handlers
+  const handleViewDetail = (prestamo: Prestamo) => {
+    setSelectedPrestamoForDetail(prestamo);
+    setIsDetailDrawerOpen(true);
+  };
+
+  const handleCloseDetailDrawer = () => {
+    setIsDetailDrawerOpen(false);
+    setSelectedPrestamoForDetail(null);
+  };
+
+  const handleDeletePrestamo = async (prestamoId: string) => {
+    if (window.confirm('¿Está seguro de que desea eliminar este préstamo?')) {
+      try {
+        await prestamosService.deletePrestamo(prestamoId);
+        // Reload loans
+        const allPrestamos = await prestamosService.getAllPrestamos();
+        setPrestamos(allPrestamos);
+        handleCloseDetailDrawer();
+      } catch (error) {
+        console.error('Error deleting loan:', error);
+      }
+    }
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-text-gray ml-1" />;
+    return sortDirection === 'asc' ? 
+      <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1" /> : 
+      <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1 transform rotate-180" />;
+  };
+
   // Mock account data
   const mockAccounts = [
     { id: 'acc1', iban: 'ES91 2100 0418 4502 0005 1332', entidad: 'CaixaBank' },
@@ -159,41 +257,97 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   return (
     <div className="space-y-6">
       {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-text-gray" />
+      <div className="flex flex-col gap-4">
+        {/* Search and Type Filters Row */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-text-gray" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por alias, IBAN o banco..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-atlas focus:outline-none focus:ring-atlas-blue focus:border-atlas-blue"
+            />
           </div>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar préstamos..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-atlas focus:outline-none focus:ring-atlas-blue focus:border-atlas-blue"
-          />
+
+          {/* Type Filter */}
+          <div className="flex space-x-2">
+            {[
+              { value: 'ALL', label: 'Todos', icon: null },
+              { value: 'PERSONAL', label: 'Personal', icon: User },
+              { value: 'INMUEBLE', label: 'Inmueble', icon: Building }
+            ].map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setFilter(value as any)}
+                className={`inline-flex items-center px-3 py-2 border rounded-atlas text-sm font-medium transition-colors ${
+                  filter === value
+                    ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
+                    : 'border-gray-300 bg-white text-atlas-navy-1 hover:bg-gray-50'
+                }`}
+              >
+                {Icon && <Icon className="h-4 w-4 mr-1" />}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Filter */}
-        <div className="flex space-x-2">
-          {[
-            { value: 'ALL', label: 'Todos', icon: null },
-            { value: 'PERSONAL', label: 'Personal', icon: User },
-            { value: 'INMUEBLE', label: 'Inmueble', icon: Building }
-          ].map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setFilter(value as any)}
-              className={`inline-flex items-center px-3 py-2 border rounded-atlas text-sm font-medium transition-colors ${
-                filter === value
-                  ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
-                  : 'border-gray-300 bg-white text-atlas-navy-1 hover:bg-gray-50'
-              }`}
-            >
-              {Icon && <Icon className="h-4 w-4 mr-1" />}
-              {label}
-            </button>
-          ))}
+        {/* Status Filter and Sorting Row */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          {/* Status Filter */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-atlas-navy-1">Estado:</span>
+            <div className="flex space-x-2">
+              {[
+                { value: 'ALL', label: 'Todos' },
+                { value: 'ACTIVO', label: 'Activo' },
+                { value: 'CANCELADO', label: 'Cancelado' }
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setStatusFilter(value as StatusFilter)}
+                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                    statusFilter === value
+                      ? 'bg-atlas-blue text-white'
+                      : 'bg-gray-100 text-atlas-navy-1 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sort Options */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-atlas-navy-1">Ordenar por:</span>
+            <div className="flex space-x-1">
+              {[
+                { value: 'nombre', label: 'Nombre' },
+                { value: 'tin', label: 'TIN' },
+                { value: 'capitalVivo', label: 'Capital' },
+                { value: 'vencimiento', label: 'Vencimiento' }
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => handleSort(value as SortField)}
+                  className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors ${
+                    sortField === value
+                      ? 'bg-atlas-blue text-white'
+                      : 'text-atlas-navy-1 hover:bg-gray-100'
+                  }`}
+                >
+                  {label}
+                  {getSortIcon(value as SortField)}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -283,17 +437,35 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Préstamo
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('nombre')}
+                  >
+                    <div className="flex items-center">
+                      Préstamo
+                      {getSortIcon('nombre')}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider">
                     Tipo
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Capital Vivo
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('capitalVivo')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Capital Vivo
+                      {getSortIcon('capitalVivo')}
+                    </div>
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider">
-                    TIN Efectivo
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('tin')}
+                  >
+                    <div className="flex items-center justify-end">
+                      TIN Efectivo
+                      {getSortIcon('tin')}
+                    </div>
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider">
                     Cuota Est.
@@ -374,11 +546,25 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => onEdit(prestamo.id)}
+                            onClick={() => handleViewDetail(prestamo)}
                             className="text-atlas-blue hover:text-primary-800 transition-colors"
+                            title="Ver detalle"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => onEdit(prestamo.id)}
+                            className="text-text-gray hover:text-atlas-blue transition-colors"
                             title="Editar"
                           >
                             <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePrestamo(prestamo.id)}
+                            className="text-text-gray hover:text-error transition-colors"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -390,6 +576,15 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
           </div>
         </div>
       )}
+      
+      {/* Loan Detail Drawer */}
+      <PrestamoDetailDrawer
+        prestamo={selectedPrestamoForDetail}
+        isOpen={isDetailDrawerOpen}
+        onClose={handleCloseDetailDrawer}
+        onEdit={onEdit}
+        onDelete={handleDeletePrestamo}
+      />
     </div>
   );
 };
