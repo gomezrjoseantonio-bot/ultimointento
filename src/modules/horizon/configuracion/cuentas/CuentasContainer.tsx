@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Banknote, Settings } from 'lucide-react';
 import PageHeader from '../../../../components/common/PageHeader';
-import BancosManagement, { BancosManagementRef } from './components/BancosManagement';
+// Temporarily commented out for bundle optimization testing
+// import BancosManagement, { BancosManagementRef } from './components/BancosManagement';
 import ReglasAlertas from './components/ReglasAlertas';
 
 /**
@@ -13,7 +14,7 @@ import ReglasAlertas from './components/ReglasAlertas';
  */
 const Cuentas: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'bancos' | 'reglas'>('bancos');
-  const bancosRef = useRef<BancosManagementRef>(null);
+  // const bancosRef = useRef<BancosManagementRef>(null);
 
   const tabs = [
     {

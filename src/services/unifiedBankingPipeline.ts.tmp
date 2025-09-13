@@ -11,7 +11,8 @@
  */
 
 import { initDB, Movement, ImportLog, UnifiedMovementStatus, MovementSource } from './db';
-import { BankParserService } from '../features/inbox/importers/bankParser';
+// Temporarily commented out for bundle optimization testing
+// import { BankParserService } from '../features/inbox/importers/bankParser';
 import { extractIBANFromBankStatement, matchAccountByIBAN } from './ibanAccountMatchingService';
 import { deduplicateMovements, MovementToCheck } from './enhancedDeduplicationService';
 import { matchMovementsToBudget, MatchResult } from './budgetMatchingService';

@@ -3,7 +3,8 @@ import { Banknote, Edit, Plus, AlertTriangle, ArrowLeft, Upload, TrendingUp, Tre
 import { initDB, Account, Movement } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
-import { treasuryAPI, validateIBAN, parseEuropeanNumber } from '../../../../services/treasuryApiService';
+// Temporarily commented out for bundle optimization testing
+// import { treasuryAPI, validateIBAN, parseEuropeanNumber } from '../../../../services/treasuryApiService';
 import { maskIBAN } from '../../../../services/ibanAccountMatchingService';
 import { validateLogoFile, processLogoUpload, getLogoFromStorage } from '../../../../services/logoUploadService';
 import toast from 'react-hot-toast';

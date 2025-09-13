@@ -1,8 +1,10 @@
 import React from 'react';
-import MovimientosV1 from './MovimientosV1';
+// Temporarily commented out for bundle optimization testing
+// import MovimientosV1 from './MovimientosV1';
 
 const Movimientos: React.FC = () => {
-  return <MovimientosV1 />;
+  // return <MovimientosV1 />;
+  return <div>Movimientos temporalmente deshabilitado para optimización de bundle</div>;
 };
 
 export default Movimientos;

@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 
 import { DocumentType } from '../services/unicornioDocumentDetection';
-import { processInboxItem, classifyAndArchive } from '../services/unicornioInboxProcessor';
+// Temporarily commented out for bundle optimization testing
+// import { processInboxItem, classifyAndArchive } from '../services/unicornioInboxProcessor';
 import { 
   createTreasuryMovementFromOCR, 
   createTreasuryMovementFromBankExtract,

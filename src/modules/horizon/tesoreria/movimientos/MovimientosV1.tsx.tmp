@@ -15,7 +15,8 @@ import {
 import { initDB, Account, Movement, MovementType, MovementOrigin, MovementState } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { showSuccess, showError } from '../../../../services/toastService';
-import { treasuryAPI } from '../../../../services/treasuryApiService';
+// Temporarily commented out for bundle optimization testing
+// import { treasuryAPI } from '../../../../services/treasuryApiService';
 import ImportModal from './ImportModal';
 import NewMovementModal from './NewMovementModal';
 // FIX PACK v1.0: Import new utilities

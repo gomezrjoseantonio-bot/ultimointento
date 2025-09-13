@@ -539,10 +539,13 @@ export class TreasuryImportAPI {
         throw new Error('Formato de archivo no soportado. Use CSV, XLS o XLSX');
     }
 
+    // Temporarily commented out for bundle optimization testing
+    throw new Error('Bank parsing temporarily disabled for bundle optimization');
+    
     // Parse bank statement file using BankParserService
-    const { BankParserService } = await import('../features/inbox/importers/bankParser');
-    const bankParser = new BankParserService();
-    const parseResult = await bankParser.parseFile(file);
+    // const { BankParserService } = await import('../features/inbox/importers/bankParser');
+    // const bankParser = new BankParserService();
+    // const parseResult = await bankParser.parseFile(file);
     
     if (!parseResult.success || !parseResult.movements || parseResult.movements.length === 0) {
       throw new Error('No se pudieron procesar movimientos del archivo');

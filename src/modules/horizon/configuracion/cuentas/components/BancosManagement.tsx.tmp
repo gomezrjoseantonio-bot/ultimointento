@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
 import { Banknote, Info, Edit2, Trash2, Upload, X, AlertTriangle, Trash } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
+// Temporarily commented out for bundle optimization testing
+// import { TreasuryAccountsAPI, validateIBAN } from '../../../../../services/treasuryApiService';
 import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFromStorage } from '../../../../../services/logoUploadService';
 import { cleanupAllDemoData } from '../../../../../services/demoDataCleanupService';
 import { isDemoModeEnabled } from '../../../../../config/envFlags';

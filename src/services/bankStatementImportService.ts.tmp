@@ -9,7 +9,8 @@
  * 5. Refresh store and table
  */
 
-import { BankParserService } from '../features/inbox/importers/bankParser';
+// Temporarily commented out for bundle optimization testing
+// import { BankParserService } from '../features/inbox/importers/bankParser';
 import { initDB, Movement } from './db';
 import { FLAGS } from '../config/flags';
 import { safeMatch } from '../utils/safe';
@@ -123,14 +124,17 @@ export async function importBankStatement(options: ImportOptions): Promise<Impor
  * Parse file to standardized rows format
  */
 async function parseFileToRows(file: File): Promise<ParsedRow[]> {
-  const bankParser = new BankParserService();
-  const parseResult = await bankParser.parseFile(file);
+  // Temporarily commented out for bundle optimization testing
+  throw new Error('Bank statement parsing temporarily disabled for bundle optimization');
   
-  if (!parseResult.success || !parseResult.movements) {
-    throw new Error('No se pudieron procesar movimientos del archivo');
-  }
+  // const bankParser = new BankParserService();
+  // const parseResult = await bankParser.parseFile(file);
   
-  return parseResult.movements.map((movement, index) => {
+  // if (!parseResult.success || !parseResult.movements) {
+  //   throw new Error('No se pudieron procesar movimientos del archivo');
+  // }
+  
+  // return parseResult.movements.map((movement, index) => {
     // Convert to standardized row format
     const amount = typeof movement.amount === 'number' ? movement.amount : parseFloat(String(movement.amount));
     

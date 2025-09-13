@@ -1,7 +1,6 @@
 // Bank Statement Parser Service for XLS/XLSX/CSV files
 // Implements exact requirements from problem statement
 
-import * as XLSX from 'xlsx';
 import { safeMatch } from '../utils/safe';
 
 export interface BankMovement {
@@ -72,9 +71,12 @@ export class BankStatementParser {
 
       console.log(`Processing bank file: ${file.name}, type: ${file.type}, extension: ${extension}`);
 
+      // Dynamic import of XLSX to reduce main bundle size
+      const XLSX = await import('xlsx');
+
       // Read file data
       const fileBuffer = await file.arrayBuffer();
-      let workbook: XLSX.WorkBook;
+      let workbook: any;
 
       if (extension === 'csv') {
         // Enhanced CSV processing with better encoding detection
@@ -209,7 +211,7 @@ export class BankStatementParser {
       }
 
       // Parse movements with enhanced error handling
-      const movements = this.parseMovements(jsonData, mappingResult.mapping, mappingResult.headerRowIndex);
+      const movements = this.parseMovements(jsonData, mappingResult.mapping, mappingResult.headerRowIndex, XLSX);
       console.log(`Successfully parsed ${movements.length} movements`);
 
       return {
@@ -588,7 +590,7 @@ export class BankStatementParser {
     };
   }
 
-  private parseMovements(data: any[][], mapping: ColumnMapping, headerRowIndex: number = 0): BankMovement[] {
+  private parseMovements(data: any[][], mapping: ColumnMapping, headerRowIndex: number = 0, XLSX?: any): BankMovement[] {
     const movements: BankMovement[] = [];
 
     // Skip header row(s) - start from the row after the detected header
@@ -607,7 +609,7 @@ export class BankStatementParser {
 
       try {
         const movement: BankMovement = {
-          date: this.parseDate(row[mapping.dateColumn]),
+          date: this.parseDate(row[mapping.dateColumn], XLSX),
           description: this.parseDescription(row[mapping.descriptionColumn]),
           amount: this.parseAmount(row[mapping.amountColumn])
         };
@@ -635,7 +637,7 @@ export class BankStatementParser {
     return movements;
   }
 
-  private parseDate(value: any): string {
+  private parseDate(value: any, XLSX?: any): string {
     if (!value) return '';
 
     // If it's already a date string
@@ -664,8 +666,8 @@ export class BankStatementParser {
       }
     }
 
-    // If it's a number (Excel date serial)
-    if (typeof value === 'number') {
+    // If it's a number (Excel date serial) and XLSX is available
+    if (typeof value === 'number' && XLSX?.SSF?.parse_date_code) {
       const date = XLSX.SSF.parse_date_code(value);
       if (date) {
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;

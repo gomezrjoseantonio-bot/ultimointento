@@ -1,5 +1,4 @@
 import { openDB, IDBPDatabase } from 'idb';
-import JSZip from 'jszip';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
@@ -1571,6 +1570,9 @@ export const exportSnapshot = async (): Promise<void> => {
       db.getAll('expenses'),
     ]);
 
+    // Dynamic import of JSZip to reduce main bundle size
+    const JSZip = (await import('jszip')).default;
+    
     // Create a new ZIP file
     const zip = new JSZip();
     
@@ -1636,6 +1638,9 @@ export const exportSnapshot = async (): Promise<void> => {
 export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 'replace'): Promise<void> => {
   try {
     const db = await initDB();
+    
+    // Dynamic import of JSZip to reduce main bundle size
+    const JSZip = (await import('jszip')).default;
     
     // Read the ZIP file
     const zip = new JSZip();
