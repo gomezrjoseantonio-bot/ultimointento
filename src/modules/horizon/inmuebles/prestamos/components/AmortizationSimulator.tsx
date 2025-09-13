@@ -97,7 +97,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
           <div className="bg-white px-6 py-4 border-b border-[#F3F4F6]">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <Calculator className="h-6 w-6 text-primary-700" />
+                <Calculator className="h-6 w-6 text-atlas-blue" />
                 <h3 className="text-lg font-semibold text-neutral-900">
                   Simulador de amortización
                 </h3>
@@ -140,7 +140,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                     type="number"
                     value={importe}
                     onChange={(e) => setImporte(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
                     placeholder="0,00"
                     min="0"
                     max={prestamo.principalVivo}
@@ -163,7 +163,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   type="date"
                   value={fechaAmortizacion}
                   onChange={(e) => setFechaAmortizacion(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
                 />
               </div>
             </div>
@@ -178,12 +178,12 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   onClick={() => setModo('REDUCIR_PLAZO')}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
                     modo === 'REDUCIR_PLAZO'
-                      ? 'border-primary-700 bg-[#F8F9FA]'
+                      ? 'border-atlas-blue bg-[#F8F9FA]'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <div className="flex items-center space-x-2 mb-2">
-                    <Calendar className="h-5 w-5 text-primary-700" />
+                    <Calendar className="h-5 w-5 text-atlas-blue" />
                     <span className="font-medium">Reducir plazo</span>
                   </div>
                   <p className="text-sm text-gray-500">
@@ -195,12 +195,12 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   onClick={() => setModo('REDUCIR_CUOTA')}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
                     modo === 'REDUCIR_CUOTA'
-                      ? 'border-primary-700 bg-[#F8F9FA]'
+                      ? 'border-atlas-blue bg-[#F8F9FA]'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <div className="flex items-center space-x-2 mb-2">
-                    <TrendingDown className="h-5 w-5 text-primary-700" />
+                    <TrendingDown className="h-5 w-5 text-atlas-blue" />
                     <span className="font-medium">Reducir cuota</span>
                   </div>
                   <p className="text-sm text-gray-500">
@@ -221,7 +221,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
             {/* Loading */}
             {loading && (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-atlas-blue"></div>
               </div>
             )}
 
@@ -313,7 +313,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
               <button
                 onClick={handleApply}
                 disabled={!calculo || !isValidAmount()}
-                className="px-6 py-2 bg-primary-700 text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Aplicar amortización
               </button>

@@ -27,7 +27,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
     return (
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
         <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
-          <CreditCard className="h-5 w-5 text-primary-700" />
+          <CreditCard className="h-5 w-5 text-atlas-blue" />
           <span>Bonificaciones</span>
         </h2>
         <div className="text-center py-8">
@@ -72,7 +72,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
   return (
     <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
       <h2 className="text-lg font-semibold text-neutral-900 mb-6 flex items-center space-x-2">
-        <CreditCard className="h-5 w-5 text-primary-700" />
+        <CreditCard className="h-5 w-5 text-atlas-blue" />
         <span>Bonificaciones y Ahorro</span>
       </h2>
 
