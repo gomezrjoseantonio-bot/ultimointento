@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CurrencyEuroIcon, CalculatorIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
-import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount } from '../../utils/inmuebleUtils';
+import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount, detectPercentageInput } from '../../utils/inmuebleUtils';
 
 interface Step3CosteProps {
   data: InmuebleStep3;
@@ -20,6 +20,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
   errors = []
 }) => {
   const [localErrors, setLocalErrors] = useState<string[]>([]);
+  const [percentageMessage, setPercentageMessage] = useState<string>('');
 
   const updateCompra = useCallback((field: string, value: any) => {
     const updatedCompra = {
@@ -116,6 +117,36 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
   const formatCurrency = (value: number | undefined): string => {
     return value ? formatEuroAmount(value) : '0,00 €';
+  };
+
+  // Helper function to handle tax input with percentage detection
+  const handleTaxInput = (taxType: 'itp_importe' | 'iva_importe' | 'ajd_importe', inputValue: string) => {
+    const numericValue = parseFloat(inputValue) || 0;
+    const precioCompra = data.compra?.precio_compra || 0;
+    
+    // Check for percentage detection
+    const detection = detectPercentageInput(numericValue, precioCompra);
+    
+    if (detection.isPercentage && detection.convertedAmount && detection.message) {
+      // Show conversion message
+      setPercentageMessage(detection.message);
+      setTimeout(() => setPercentageMessage(''), 3000); // Clear message after 3 seconds
+      
+      // Update with converted amount
+      updateCompra('impuestos', {
+        ...data.compra?.impuestos,
+        [taxType]: detection.convertedAmount
+      });
+    } else {
+      // Clear any previous message
+      setPercentageMessage('');
+      
+      // Update with entered value
+      updateCompra('impuestos', {
+        ...data.compra?.impuestos,
+        [taxType]: Math.round(numericValue * 100) / 100
+      });
+    }
   };
 
   return (
@@ -365,11 +396,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         });
                       }}
                       onBlur={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          itp_importe: Math.round(value * 100) / 100
-                        });
+                        handleTaxInput('itp_importe', e.target.value);
                       }}
                       step="0.01"
                       min="0"
@@ -380,6 +407,11 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       <span className="text-gray-500 text-sm">€</span>
                     </div>
                   </div>
+                  {data.compra.impuestos?.itp_importe && data.compra?.precio_compra && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Equivale al {((data.compra.impuestos.itp_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -404,11 +436,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         });
                       }}
                       onBlur={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          iva_importe: Math.round(value * 100) / 100
-                        });
+                        handleTaxInput('iva_importe', e.target.value);
                       }}
                       step="0.01"
                       min="0"
@@ -419,6 +447,11 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       <span className="text-gray-500 text-sm">€</span>
                     </div>
                   </div>
+                  {data.compra.impuestos?.iva_importe && data.compra?.precio_compra && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Equivale al {((data.compra.impuestos.iva_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
+                    </p>
+                  )}
                 </div>
                 
                 <div>
@@ -441,11 +474,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         });
                       }}
                       onBlur={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        updateCompra('impuestos', {
-                          ...data.compra?.impuestos,
-                          ajd_importe: Math.round(value * 100) / 100
-                        });
+                        handleTaxInput('ajd_importe', e.target.value);
                       }}
                       step="0.01"
                       min="0"
@@ -455,6 +484,27 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <span className="text-gray-500 text-sm">€</span>
                     </div>
+                  </div>
+                  {data.compra.impuestos?.ajd_importe && data.compra?.precio_compra && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Equivale al {((data.compra.impuestos.ajd_importe / data.compra.precio_compra) * 100).toFixed(2)}% del precio de compra
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Percentage conversion message */}
+            {percentageMessage && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mt-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">{percentageMessage}</p>
                   </div>
                 </div>
               </div>

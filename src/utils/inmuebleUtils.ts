@@ -178,16 +178,19 @@ export function validateStep1(data: any): { isValid: boolean; errors: string[] }
 export function validateStep2(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
   
+  // For MVP, only superficie (m2) is required
+  // habitaciones and banos are optional for saving but needed for completion status
   if (!data.caracteristicas?.m2 || data.caracteristicas.m2 <= 0) {
     errors.push('La superficie debe ser mayor que 0');
   }
   
-  if (data.caracteristicas?.habitaciones === undefined || data.caracteristicas?.habitaciones < 0) {
-    errors.push('El número de habitaciones es obligatorio y debe ser mayor o igual a 0');
+  // Show warnings for incomplete data but don't block saving
+  if (data.caracteristicas?.habitaciones === undefined) {
+    // Could add a warning here but don't block save
   }
   
-  if (data.caracteristicas?.banos === undefined || data.caracteristicas?.banos < 0) {
-    errors.push('El número de baños es obligatorio y debe ser mayor o igual a 0');
+  if (data.caracteristicas?.banos === undefined) {
+    // Could add a warning here but don't block save
   }
   
   return { isValid: errors.length === 0, errors };
@@ -221,21 +224,64 @@ export function validateStep3(data: any): { isValid: boolean; errors: string[] }
 export function validateStep4(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
   
-  // Step 4 requires valor_catastral_total and valor_catastral_construccion
-  // Values must be greater than 0 to be considered valid (0 means empty/not filled)
-  if (data.fiscalidad?.valor_catastral_total === undefined || data.fiscalidad.valor_catastral_total <= 0) {
-    errors.push('El valor catastral total es obligatorio y debe ser mayor que 0');
+  // Step 4 is now OPTIONAL for saving (per MVP requirements)
+  // Fiscal values are optional and don't block saving
+  // Only show warning if partially filled
+  if (data.fiscalidad?.valor_catastral_total && !data.fiscalidad?.valor_catastral_construccion) {
+    errors.push('Si introduces valor catastral total, también debe introducirse el valor de construcción');
   }
   
-  if (data.fiscalidad?.valor_catastral_construccion === undefined || data.fiscalidad.valor_catastral_construccion <= 0) {
-    errors.push('El valor catastral de construcción es obligatorio y debe ser mayor que 0');
+  if (!data.fiscalidad?.valor_catastral_total && data.fiscalidad?.valor_catastral_construccion) {
+    errors.push('Si introduces valor catastral de construcción, también debe introducirse el valor total');
   }
   
   return { isValid: errors.length === 0, errors };
 }
 
 /**
- * Calculate completion status for each section
+ * Validate minimum required fields for saving (MVP requirements)
+ * Only these fields are required: alias, direccion.cp, compra.regimen, compra.precio_compra
+ */
+export function validateForSave(data: any): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // MVP Required fields
+  if (!data.alias?.trim()) {
+    errors.push('El alias es obligatorio');
+  }
+  
+  if (!data.direccion?.cp?.trim()) {
+    errors.push('El código postal es obligatorio');
+  } else if (!validatePostalCode(data.direccion.cp)) {
+    errors.push('El código postal debe tener 5 dígitos');
+  }
+  
+  if (!data.compra?.regimen) {
+    errors.push('Selecciona el régimen de la compra (usada u obra nueva)');
+  }
+  
+  if (!data.compra?.precio_compra || data.compra.precio_compra <= 0) {
+    errors.push('El precio de compra debe ser mayor que 0');
+  }
+  
+  // Auto-completed location fields (required by postcall)
+  if (!data.direccion?.municipio?.trim()) {
+    errors.push('El municipio es obligatorio (debe autocompletarse por código postal)');
+  }
+  
+  if (!data.direccion?.provincia?.trim()) {
+    errors.push('La provincia es obligatoria (debe autocompletarse por código postal)');
+  }
+  
+  if (!data.direccion?.ca?.trim()) {
+    errors.push('La comunidad autónoma es obligatoria (debe autocompletarse por código postal)');
+  }
+  
+  return { isValid: errors.length === 0, errors };
+}
+
+/**
+ * Calculate completion status for each section (updated for MVP requirements)
  */
 export function calculateCompletionStatus(data: any): {
   identificacion_status: ComplecionStatus;
@@ -243,7 +289,7 @@ export function calculateCompletionStatus(data: any): {
   compra_status: ComplecionStatus;
   fiscalidad_status: ComplecionStatus;
 } {
-  // Identificación - required: alias, direccion.cp and at least municipio/provincia/ccaa filled (autocomplete or manual)
+  // Identificación - required for save: alias, direccion.cp and location autocomplete
   const identificacionComplete = !!(
     data.alias?.trim() &&
     data.direccion?.cp?.trim() &&
@@ -253,28 +299,21 @@ export function calculateCompletionStatus(data: any): {
     data.direccion?.ca?.trim()
   );
 
-  // Características - required: superficie_m2, habitaciones, banos
+  // Características - OPTIONAL for save, but shows completion status for stepper
   const caracteristicasComplete = !!(
     data.caracteristicas?.m2 > 0 &&
     data.caracteristicas?.habitaciones !== undefined &&
     data.caracteristicas?.banos !== undefined
   );
 
-  // Coste de adquisición - required: regimen, precio_compra and at least one tax value (edited or calculated)
+  // Coste de adquisición - required for save: regimen, precio_compra (taxes calculated automatically)
   const compraComplete = !!(
     data.compra?.regimen &&
-    data.compra?.precio_compra > 0 &&
-    (
-      // Either has ITP (for USADA_ITP)
-      (data.compra?.impuestos?.itp_importe !== undefined && data.compra?.impuestos?.itp_importe >= 0) ||
-      // Or has IVA+AJD (for NUEVA_IVA_AJD)
-      (data.compra?.impuestos?.iva_importe !== undefined && data.compra?.impuestos?.iva_importe >= 0 &&
-       data.compra?.impuestos?.ajd_importe !== undefined && data.compra?.impuestos?.ajd_importe >= 0)
-    )
+    data.compra?.precio_compra > 0
   );
 
-  // Fiscalidad (AEAT) - required: valor_catastral_vc, valor_catastral_construccion_vcc (we calculate %)
-  // Values must be greater than 0 to be considered complete (0 means empty/not filled)
+  // Fiscalidad (AEAT) - OPTIONAL for save (per MVP requirements)
+  // Shows complete only if both values are filled
   const fiscalidadComplete = !!(
     data.fiscalidad?.valor_catastral_total !== undefined && data.fiscalidad?.valor_catastral_total > 0 &&
     data.fiscalidad?.valor_catastral_construccion !== undefined && data.fiscalidad?.valor_catastral_construccion > 0
@@ -313,4 +352,26 @@ export function parseEuroInput(input: string): number {
   const cleaned = input.replace(/[€\s]/g, '').replace(',', '.');
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? 0 : Math.round(parsed * 100) / 100;
+}
+
+/**
+ * Detect if user entered a percentage (like 0.08) instead of euro amount
+ * Returns { isPercentage: boolean, convertedAmount?: number, message?: string }
+ */
+export function detectPercentageInput(input: number, precioCompra: number): {
+  isPercentage: boolean;
+  convertedAmount?: number;
+  message?: string;
+} {
+  // Detect if input looks like a percentage (between 0.01 and 0.99)
+  if (input > 0 && input < 1 && precioCompra > 0) {
+    const convertedAmount = Math.round((input * precioCompra) * 100) / 100;
+    return {
+      isPercentage: true,
+      convertedAmount,
+      message: `Convertido de ${(input * 100).toFixed(2)}% a importe en euros`
+    };
+  }
+  
+  return { isPercentage: false };
 }

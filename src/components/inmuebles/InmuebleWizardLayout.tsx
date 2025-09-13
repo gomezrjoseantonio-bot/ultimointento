@@ -21,24 +21,6 @@ interface InmuebleWizardLayoutProps {
   title?: string;
 }
 
-const StatusChip: React.FC<{ status: ComplecionStatus }> = ({ status }) => {
-  // Only show two visual states: Green (complete) or Gray (pending/partial)
-  const isComplete = status === 'COMPLETO';
-  
-  const config = {
-    color: isComplete 
-      ? 'bg-[#042C5E] bg-opacity-10 text-[#042C5E] border-[#042C5E] border-opacity-20' 
-      : 'bg-gray-100 text-gray-600 border-gray-200',
-    text: isComplete ? 'Completo' : 'Pendiente'
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium border rounded-md ${config.color}`}>
-      {config.text}
-    </span>
-  );
-};
-
 const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
   currentStep,
   steps,
@@ -50,18 +32,18 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
     <div className="min-h-screen bg-hz-bg">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h1 className="text-2xl font-semibold text-hz-text font-inter">
             {title}
           </h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Progress Steps */}
-        <div className="mb-8">
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        {/* Progress Steps - Compact Design */}
+        <div className="mb-6">
           <nav aria-label="Progreso">
-            <ol className="flex items-center justify-between">
+            <ol className="flex items-center justify-between space-x-2">
               {steps.map((step, index) => (
                 <li key={step.id} className="flex-1">
                   <div className="flex items-center">
@@ -69,7 +51,7 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                     <button
                       onClick={() => onStepClick(step.id)}
                       className={`
-                        flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors
+                        flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors text-xs font-medium
                         ${step.isActive 
                           ? 'border-[#042C5E] bg-[#042C5E] text-white' 
                           : step.status === 'COMPLETO'
@@ -79,27 +61,24 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                       `}
                     >
                       {step.status === 'COMPLETO' && !step.isActive ? (
-                        <CheckIcon className="w-5 h-5" />
+                        <CheckIcon className="w-4 h-4" />
                       ) : (
-                        <span className="text-sm font-medium">{step.id}</span>
+                        <span>{step.id}</span>
                       )}
                     </button>
 
-                    {/* Step Content */}
-                    <div className="ml-4 min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className={`text-sm font-medium ${
-                          step.isActive ? 'text-[#042C5E]' : 'text-gray-900'
-                        }`}>
-                          {step.title}
-                        </p>
-                        <StatusChip status={step.status} />
-                      </div>
+                    {/* Step Title - Compact */}
+                    <div className="ml-2 min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${
+                        step.isActive ? 'text-[#042C5E]' : 'text-gray-700'
+                      }`}>
+                        {step.title}
+                      </p>
                     </div>
 
                     {/* Connector Line */}
                     {index < steps.length - 1 && (
-                      <div className="hidden sm:block w-12 h-0.5 bg-gray-300 ml-4" />
+                      <div className="hidden sm:block w-8 h-0.5 bg-gray-300 ml-2" />
                     )}
                   </div>
                 </li>

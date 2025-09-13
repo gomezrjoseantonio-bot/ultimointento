@@ -107,7 +107,7 @@ export interface Inmueble {
   id: string; // UUID PK
   alias: string; // 1-80 chars - nombre corto visible
   direccion: DireccionInmueble;
-  ref_catastral?: string; // 0-30 chars, opcional
+  ref_catastral?: string; // 0-20 chars, opcional
   estado: EstadoInmueble; // por defecto ACTIVO
   fecha_alta: string; // date-iso - set por sistema
   fecha_venta?: string; // date-iso, opcional - requerido sólo si estado=VENDIDO

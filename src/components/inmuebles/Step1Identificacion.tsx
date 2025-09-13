@@ -286,7 +286,7 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
             })}
             placeholder="Opcional"
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-            maxLength={30}
+            maxLength={20}
           />
           <p className="text-xs text-gray-500 mt-1">
             Campo opcional, puede completarse más adelante

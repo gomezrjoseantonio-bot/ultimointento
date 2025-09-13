@@ -22,7 +22,7 @@ import {
   ComplecionStatus
 } from '../../types/inmueble';
 import { inmuebleService } from '../../services/inmuebleService';
-import { calculateCompletionStatus } from '../../utils/inmuebleUtils';
+import { calculateCompletionStatus, validateForSave } from '../../utils/inmuebleUtils';
 
 interface InmuebleWizardProps {
   mode: 'create' | 'edit' | 'duplicate';
@@ -223,6 +223,14 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       
       const combinedData = getCombinedData();
       
+      // Validate MVP minimum requirements before saving
+      const validation = validateForSave(combinedData);
+      if (!validation.isValid) {
+        toast.error('No se puede guardar: ' + validation.errors.join(', '));
+        setIsSaving(false);
+        return;
+      }
+      
       // Build the final inmueble data
       const inmuebleData = {
         alias: combinedData.alias || '',
@@ -393,16 +401,25 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
           <div className="flex space-x-2">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
+              className="px-4 py-2 text-gray-700 hover:text-gray-900 focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
             >
               Cancelar
+            </button>
+            
+            {/* Guardar button - available at any step if minimum requirements are met */}
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 bg-[#042C5E] text-white rounded-md hover:bg-[#031F47] focus:ring-2 focus:ring-[#042C5E] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Guardando...' : 'Guardar'}
             </button>
             
             <button
               onClick={currentStep === 4 ? () => setCurrentStep(5) : nextStep}
               className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
             >
-              {currentStep === 4 ? 'Revisar y guardar' : 'Siguiente'}
+              {currentStep === 4 ? 'Revisar' : 'Siguiente'}
             </button>
           </div>
         </div>

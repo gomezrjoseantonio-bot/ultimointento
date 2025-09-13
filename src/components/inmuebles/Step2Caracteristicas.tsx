@@ -46,7 +46,7 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
           Paso 2 · Características físicas
         </h2>
         <p className="text-sm text-gray-600">
-          Información sobre las dimensiones y características del inmueble
+          Información sobre las dimensiones y características del inmueble. Solo la superficie es obligatoria.
         </p>
       </div>
 
