@@ -77,16 +77,21 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   }, [loadData]);
 
   const filterContracts = useCallback(() => {
-    let filtered = [...contracts];
+    // First filter out any undefined or invalid contracts
+    let filtered = contracts.filter(contract => contract && contract.inquilino);
 
     // Filter by search term (tenant name, DNI, or email)
     if (searchTerm.trim()) {
-      filtered = filtered.filter(contract =>
-        contract.inquilino.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.inquilino.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.inquilino.dni.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contract.inquilino.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(contract => {
+        // Check if contract and inquilino exist before accessing properties
+        if (!contract || !contract.inquilino) {
+          return false;
+        }
+        return contract.inquilino.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               contract.inquilino.apellidos?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               contract.inquilino.dni?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               contract.inquilino.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      });
     }
 
     // Filter by status
@@ -101,7 +106,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
     // Filter by property
     if (selectedPropertyId !== 'all') {
-      filtered = filtered.filter(contract => contract.inmuebleId.toString() === selectedPropertyId);
+      filtered = filtered.filter(contract => contract && contract.inmuebleId?.toString() === selectedPropertyId);
     }
 
     setFilteredContracts(filtered);
@@ -112,6 +117,11 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   }, [filterContracts]);
 
   const handleDeleteContract = async (contract: Contract) => {
+    if (!contract || !contract.inquilino) {
+      toast.error('Contrato inválido');
+      return;
+    }
+
     if (!window.confirm(`¿Estás seguro de que quieres eliminar el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}?`)) {
       return;
     }
@@ -156,7 +166,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       terminated: { bg: 'bg-error', text: 'text-white', label: 'Finalizado' }
     };
 
-    const config = statusConfig[status];
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
@@ -385,7 +395,9 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredContracts.map((contract) => (
+                {filteredContracts
+                  .filter(contract => contract && contract.inquilino) // Filter out undefined contracts
+                  .map((contract) => (
                   <tr key={contract.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -405,10 +417,10 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         <User className="h-4 w-4 text-gray-400 mr-2" />
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {contract.inquilino.nombre} {contract.inquilino.apellidos}
+                            {contract.inquilino?.nombre || 'N/A'} {contract.inquilino?.apellidos || ''}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {contract.inquilino.dni}
+                            {contract.inquilino?.dni || 'N/A'}
                           </div>
                         </div>
                       </div>
