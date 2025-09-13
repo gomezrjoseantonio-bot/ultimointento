@@ -222,12 +222,13 @@ export function validateStep4(data: any): { isValid: boolean; errors: string[] }
   const errors: string[] = [];
   
   // Step 4 requires valor_catastral_total and valor_catastral_construccion
-  if (data.fiscalidad?.valor_catastral_total === undefined || data.fiscalidad.valor_catastral_total < 0) {
-    errors.push('El valor catastral total es obligatorio y debe ser mayor o igual a 0');
+  // Values must be greater than 0 to be considered valid (0 means empty/not filled)
+  if (data.fiscalidad?.valor_catastral_total === undefined || data.fiscalidad.valor_catastral_total <= 0) {
+    errors.push('El valor catastral total es obligatorio y debe ser mayor que 0');
   }
   
-  if (data.fiscalidad?.valor_catastral_construccion === undefined || data.fiscalidad.valor_catastral_construccion < 0) {
-    errors.push('El valor catastral de construcción es obligatorio y debe ser mayor o igual a 0');
+  if (data.fiscalidad?.valor_catastral_construccion === undefined || data.fiscalidad.valor_catastral_construccion <= 0) {
+    errors.push('El valor catastral de construcción es obligatorio y debe ser mayor que 0');
   }
   
   return { isValid: errors.length === 0, errors };
@@ -273,9 +274,10 @@ export function calculateCompletionStatus(data: any): {
   );
 
   // Fiscalidad (AEAT) - required: valor_catastral_vc, valor_catastral_construccion_vcc (we calculate %)
+  // Values must be greater than 0 to be considered complete (0 means empty/not filled)
   const fiscalidadComplete = !!(
-    data.fiscalidad?.valor_catastral_total !== undefined && data.fiscalidad?.valor_catastral_total >= 0 &&
-    data.fiscalidad?.valor_catastral_construccion !== undefined && data.fiscalidad?.valor_catastral_construccion >= 0
+    data.fiscalidad?.valor_catastral_total !== undefined && data.fiscalidad?.valor_catastral_total > 0 &&
+    data.fiscalidad?.valor_catastral_construccion !== undefined && data.fiscalidad?.valor_catastral_construccion > 0
   );
 
   return {
