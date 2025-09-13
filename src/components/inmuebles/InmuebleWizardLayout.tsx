@@ -55,7 +55,7 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                         ${step.isActive 
                           ? 'border-[#042C5E] bg-[#042C5E] text-white' 
                           : step.status === 'COMPLETO'
-                            ? 'border-[#28A745] bg-[#28A745] text-white'
+                            ? 'border-[#042C5E] bg-[#042C5E] text-white'
                             : 'border-gray-300 bg-white text-gray-500 hover:border-[#042C5E]'
                         }
                       `}

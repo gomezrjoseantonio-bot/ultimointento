@@ -410,7 +410,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-2 bg-[#28A745] text-white rounded-md hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-[#042C5E] text-white rounded-md hover:bg-[#031F47] focus:ring-2 focus:ring-[#042C5E] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? 'Guardando...' : 'Guardar'}
             </button>
