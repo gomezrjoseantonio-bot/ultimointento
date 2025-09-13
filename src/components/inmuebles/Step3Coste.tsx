@@ -102,7 +102,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         updateCompra('impuestos', newTaxes);
       }
     }
-  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa, updateCompra]);
+  }, [data.compra?.regimen, data.compra?.precio_compra, data.compra?.impuestos, direccionCa, updateCompra]);
 
   const allErrors = [...errors, ...localErrors];
 
