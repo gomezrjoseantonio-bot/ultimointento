@@ -80,8 +80,9 @@ const ContractsCobros: React.FC = () => {
           const paymentsWithContractInfo = contractPayments.map(payment => ({
             ...payment,
             contractInfo: {
-              tenantName: contract.tenant.name,
-              propertyId: contract.propertyId,
+              tenantName: contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                         contract.tenant?.name || 'Inquilino sin nombre',
+              propertyId: contract.inmuebleId || contract.propertyId || 0,
             },
           }));
           allPayments.push(...paymentsWithContractInfo);
@@ -266,7 +267,8 @@ const ContractsCobros: React.FC = () => {
               <option value="all">Todos los contratos</option>
               {contracts.map(contract => (
                 <option key={contract.id} value={contract.id}>
-                  {contract.tenant.name} - Inmueble #{contract.propertyId}
+                  {contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                   contract.tenant?.name || 'Inquilino sin nombre'} - Inmueble #{contract.inmuebleId || contract.propertyId}
                 </option>
               ))}
             </select>

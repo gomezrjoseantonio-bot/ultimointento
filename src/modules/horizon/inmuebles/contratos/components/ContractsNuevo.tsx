@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building, User, Calendar, Euro, FileText } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../../services/db';
-import { saveContract, updateContract, validateContract } from '../../../../../services/contractService';
+import { validateContract } from '../../../../../services/contractService';
 import { formatEuro, parseEuroInput, parsePercentageInput } from '../../../../../utils/formatUtils';
 import FormFooter from '../../../../../components/common/FormFooter';
 import toast from 'react-hot-toast';
@@ -214,12 +214,12 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
     try {
       if (editingContract?.id) {
         // Update existing contract
-        await updateContract(editingContract.id, contract);
-        toast.success('Contrato actualizado correctamente');
+        // await updateContract(editingContract.id, contract);
+        toast.error('Esta funcionalidad está siendo migrada. Use el nuevo formulario.');
       } else {
         // Create new contract
-        await saveContract(contract);
-        toast.success('Contrato creado correctamente');
+        // await saveContract(contract);
+        toast.error('Esta funcionalidad está siendo migrada. Use el nuevo formulario.');
       }
       onContractCreated();
     } catch (error) {

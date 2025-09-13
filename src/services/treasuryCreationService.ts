@@ -18,9 +18,9 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
   
   try {
     // Get property information for destination
-    const property = await db.get('properties', contract.propertyId);
+    const property = await db.get('properties', contract.inmuebleId);
     if (!property) {
-      throw new Error(`Property ${contract.propertyId} not found`);
+      throw new Error(`Property ${contract.inmuebleId} not found`);
     }
 
     // Generate income records for active contracts
@@ -34,7 +34,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
         : new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000);
 
       let currentDate = new Date(today);
-      currentDate.setDate(contract.paymentDay);
+      currentDate.setDate(contract.diaPago || contract.paymentDay || 1);
       
       // If payment day has passed this month, start next month
       if (currentDate <= today) {
@@ -45,10 +45,10 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
         const ingreso: Omit<Ingreso, 'id'> = {
           origen: 'contrato_id',
           origen_id: contract.id!,
-          proveedor_contraparte: contract.tenant.name,
+          proveedor_contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
           fecha_emision: currentDate.toISOString().split('T')[0],
           fecha_prevista_cobro: currentDate.toISOString().split('T')[0],
-          importe: contract.monthlyRent,
+          importe: contract.rentaMensual || contract.monthlyRent || 0,
           moneda: 'EUR',
           destino: 'inmueble_id',
           destino_id: contract.propertyId,

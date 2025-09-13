@@ -369,7 +369,7 @@ export const getHistoricalDataStats = async (propertyId: number): Promise<{
   const propertySummaries = fiscalSummaries.filter(s => s.propertyId === propertyId);
 
   // Find oldest dates
-  const contractDates = propertyContracts.map(c => c.startDate).filter(Boolean);
+  const contractDates = propertyContracts.map(c => c.fechaInicio || c.startDate).filter(Boolean);
   const documentDates = propertyDocuments
     .map(d => d.metadata.financialData?.issueDate)
     .filter(Boolean) as string[];

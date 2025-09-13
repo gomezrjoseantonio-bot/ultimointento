@@ -410,18 +410,19 @@ export class KPIService {
   private calculateIngresosAnuales(contracts: Contract[]): number {
     const now = new Date();
     const activeContracts = contracts.filter(c => {
-      const startDate = new Date(c.startDate);
+      const startDate = new Date(c.fechaInicio || c.startDate || '');
       if (startDate > now) return false; // Not started yet
       
       if (c.isIndefinite) return true; // Indefinite contracts are active
       
-      if (c.endDate) {
-        return new Date(c.endDate) > now; // Check if not ended
+      const endDate = c.fechaFin || c.endDate;
+      if (endDate) {
+        return new Date(endDate) > now; // Check if not ended
       }
       
       return true; // If no end date and not indefinite, assume active
     });
-    return activeContracts.reduce((total, contract) => total + (contract.monthlyRent * 12), 0);
+    return activeContracts.reduce((total, contract) => total + ((contract.rentaMensual || contract.monthlyRent || 0) * 12), 0);
   }
 
   private calculateGastosExplotacion(expenses: ExpenseH5[]): number {
@@ -519,7 +520,7 @@ export class KPIService {
     
     const now = new Date();
     const activeContracts = contracts.filter(c => {
-      const startDate = new Date(c.startDate);
+      const startDate = new Date(c.fechaInicio || c.startDate || '');
       if (startDate > now) return false; // Not started yet
       
       if (c.isIndefinite) return true; // Indefinite contracts are active

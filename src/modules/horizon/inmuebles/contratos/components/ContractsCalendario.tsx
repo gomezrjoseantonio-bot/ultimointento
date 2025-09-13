@@ -67,8 +67,9 @@ const ContractsCalendario: React.FC = () => {
           const entriesWithContractInfo = entries.map(entry => ({
             ...entry,
             contractInfo: {
-              tenantName: contract.tenant.name,
-              propertyId: contract.propertyId,
+              tenantName: contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                         contract.tenant?.name || 'Inquilino sin nombre',
+              propertyId: contract.inmuebleId || contract.propertyId || 0,
             },
           }));
           allEntries.push(...entriesWithContractInfo);
@@ -183,7 +184,8 @@ const ContractsCalendario: React.FC = () => {
               <option value="all">Todos los contratos</option>
               {contracts.map(contract => (
                 <option key={contract.id} value={contract.id}>
-                  {contract.tenant.name} - Inmueble #{contract.propertyId}
+                  {contract.inquilino ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}` : 
+                   contract.tenant?.name || 'Inquilino sin nombre'} - Inmueble #{contract.inmuebleId || contract.propertyId}
                 </option>
               ))}
             </select>
@@ -347,7 +349,8 @@ const ContractsCalendario: React.FC = () => {
             return (
               <div>
                 <h3 className="text-lg font-semibold text-neutral-900 mb-6">
-                  {selectedContract.tenant.name} - Inmueble #{selectedContract.propertyId}
+                  {selectedContract.inquilino ? `${selectedContract.inquilino.nombre} ${selectedContract.inquilino.apellidos}` : 
+                   selectedContract.tenant?.name || 'Inquilino sin nombre'} - Inmueble #{selectedContract.inmuebleId || selectedContract.propertyId}
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
