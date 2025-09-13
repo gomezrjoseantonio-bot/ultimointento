@@ -1,5 +1,4 @@
 // ATLAS HOTFIX: Robust Bank Statement Parser - XLS/XLSX/CSV with header detection and fallback
-import * as XLSX from 'xlsx';
 import { ParsedMovement, SheetInfo, HeaderDetectionResult, BankParseResult } from '../../../types/bankProfiles';
 import { bankProfilesService } from '../../../services/bankProfilesService';
 import { telemetry, qaChecklist } from '../../../services/telemetryService';
@@ -59,14 +58,17 @@ export class BankParserService {
     
     try {
       const fileType = this.detectFileType(file);
-      let workbook: XLSX.WorkBook;
+      let workbook: any; // Dynamic import type
+      
+      // Dynamic import of XLSX to avoid bundle bloat
+      const XLSX = await import('xlsx');
       
       // QA: Test file format support
       qaChecklist.bankParsing.fileSupport([fileType]);
       
       if (fileType === 'csv') {
         const text = await this.readFileAsText(file);
-        workbook = this.parseCSVEnhanced(text);
+        workbook = this.parseCSVEnhanced(text, XLSX);
       } else if (fileType === 'xlsx' || fileType === 'xls') {
         const buffer = await this.readFileAsArrayBuffer(file);
         workbook = XLSX.read(buffer, { type: 'array' });
@@ -75,7 +77,7 @@ export class BankParserService {
       }
 
       // Get sheet information
-      const sheetInfo = this.getSheetInfo(workbook);
+      const sheetInfo = this.getSheetInfo(workbook, XLSX);
       
       // Auto-select best sheet (first with data)
       const bestSheet = sheetInfo.find(s => s.hasData) || sheetInfo[0];
@@ -83,7 +85,7 @@ export class BankParserService {
         throw new Error('No se encontraron hojas con datos');
       }
 
-      const parseResult = await this.parseSheet(workbook, bestSheet.name);
+      const parseResult = await this.parseSheet(workbook, bestSheet.name, XLSX);
       const parseTime = Date.now() - startTime;
       
       // Telemetry for successful parse
@@ -154,11 +156,14 @@ export class BankParserService {
   }> {
     try {
       const fileType = this.detectFileType(file);
-      let workbook: XLSX.WorkBook;
+      let workbook: any; // Dynamic import type
+      
+      // Dynamic import of XLSX to avoid bundle bloat
+      const XLSX = await import('xlsx');
       
       if (fileType === 'csv') {
         const text = await this.readFileAsText(file);
-        workbook = this.parseCSVEnhanced(text);
+        workbook = this.parseCSVEnhanced(text, XLSX);
       } else if (fileType === 'xlsx' || fileType === 'xls') {
         const buffer = await this.readFileAsArrayBuffer(file);
         workbook = XLSX.read(buffer, { type: 'array' });
@@ -167,7 +172,7 @@ export class BankParserService {
       }
 
       // Get sheet information and select best sheet
-      const sheetInfo = this.getSheetInfo(workbook);
+      const sheetInfo = this.getSheetInfo(workbook, XLSX);
       const bestSheet = sheetInfo.find(s => s.hasData) || sheetInfo[0];
       if (!bestSheet) {
         throw new Error('No se encontraron hojas con datos');
@@ -256,7 +261,7 @@ export class BankParserService {
   /**
    * Parse specific sheet with header detection and fallback
    */
-  async parseSheet(workbook: XLSX.WorkBook, sheetName: string): Promise<BankParseResult> {
+  async parseSheet(workbook: any, sheetName: string, XLSX: any): Promise<BankParseResult> {
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) {
       throw new Error(`Hoja '${sheetName}' no encontrada`);
@@ -335,7 +340,7 @@ export class BankParserService {
   /**
    * Parse CSV with smart delimiter detection
    */
-  private parseCSV(text: string): XLSX.WorkBook {
+  private parseCSV(text: string, XLSX: any): any {
     // Detect delimiter (comma, semicolon, tab)
     const delimiters = [',', ';', '\t'];
     let bestDelimiter = ',';
@@ -356,7 +361,7 @@ export class BankParserService {
   /**
    * Enhanced CSV parsing with improved delimiter detection and European decimal support
    */
-  private parseCSVEnhanced(text: string): XLSX.WorkBook {
+  private parseCSVEnhanced(text: string, XLSX: any): any {
     // Detect delimiter more robustly
     const delimiters = [',', ';', '\t', '|'];
     let bestDelimiter = ',';
@@ -403,8 +408,8 @@ export class BankParserService {
   /**
    * Get information about all sheets in workbook
    */
-  private getSheetInfo(workbook: XLSX.WorkBook): SheetInfo[] {
-    return workbook.SheetNames.map(name => {
+  private getSheetInfo(workbook: any, XLSX: any): SheetInfo[] {
+    return workbook.SheetNames.map((name: any) => {
       const worksheet = workbook.Sheets[name];
       const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
       const rowCount = range.e.r + 1;
@@ -770,11 +775,14 @@ export class BankParserService {
     
     try {
       const fileType = this.detectFileType(file);
-      let workbook: XLSX.WorkBook;
+      let workbook: any; // Dynamic import type
+      
+      // Dynamic import of XLSX to avoid bundle bloat
+      const XLSX = await import('xlsx');
       
       if (fileType === 'csv') {
         const text = await this.readFileAsText(file);
-        workbook = this.parseCSV(text);
+        workbook = this.parseCSV(text, XLSX);
       } else {
         const buffer = await this.readFileAsArrayBuffer(file);
         workbook = XLSX.read(buffer, { type: 'array' });

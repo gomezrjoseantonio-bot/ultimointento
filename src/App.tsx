@@ -6,11 +6,7 @@ import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import MainLayout from './layouts/MainLayout';
 
-// Core pages - keep as direct imports for critical path
-import Dashboard from './pages/Dashboard';
-import InboxAtlasHorizon from './pages/InboxAtlasHorizon';
-import UnicornioInboxPrompt from './pages/UnicornioInboxPrompt';
-import UnifiedInboxPage from './pages/UnifiedInboxPage';
+// Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
 
 // Loading component for better UX
@@ -22,6 +18,14 @@ const LoadingSpinner = () => (
 );
 
 // Lazy-loaded components for route-based code splitting
+// Core dashboard with charts - lazy load to reduce main bundle
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+
+// Inbox pages - lazy load to reduce main bundle
+const InboxAtlasHorizon = React.lazy(() => import('./pages/InboxAtlasHorizon'));
+const UnicornioInboxPrompt = React.lazy(() => import('./pages/UnicornioInboxPrompt'));
+const UnifiedInboxPage = React.lazy(() => import('./pages/UnifiedInboxPage'));
+
 // Horizon (Investment) Module Components
 const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
 const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
@@ -132,10 +136,26 @@ function App() {
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
-            <Route path="panel" element={<Dashboard />} />
-            <Route path="inbox" element={<UnicornioInboxPrompt />} />
-            <Route path="inbox-unified" element={<UnifiedInboxPage />} />
-            <Route path="inbox-legacy" element={<InboxAtlasHorizon />} />
+            <Route path="panel" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <Dashboard />
+              </React.Suspense>
+            } />
+            <Route path="inbox" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <UnicornioInboxPrompt />
+              </React.Suspense>
+            } />
+            <Route path="inbox-unified" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <UnifiedInboxPage />
+              </React.Suspense>
+            } />
+            <Route path="inbox-legacy" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InboxAtlasHorizon />
+              </React.Suspense>
+            } />
             
             {/* Image Description Feature */}
             <Route path="describe-image" element={

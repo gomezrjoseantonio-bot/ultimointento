@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Check, AlertCircle, Upload, ArrowRight, ArrowLeft } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 interface BankStatementWizardProps {
   isOpen: boolean;
@@ -160,8 +159,11 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
     try {
       setError(null);
       
+      // Dynamic import of XLSX to avoid bundle bloat
+      const XLSX = await import('xlsx');
+      
       const arrayBuffer = await file.arrayBuffer();
-      let workbook: XLSX.WorkBook;
+      let workbook: any;
       
       // Parse based on file type
       if (file.name.toLowerCase().endsWith('.csv')) {
