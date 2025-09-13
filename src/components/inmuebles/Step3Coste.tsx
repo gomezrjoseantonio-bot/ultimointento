@@ -1,0 +1,431 @@
+// Step 3: Coste de adquisición - Régimen, Precio, Gastos, Impuestos (en valores absolutos €)
+// Following Horizon design system with automatic tax calculations
+
+import React, { useState, useEffect } from 'react';
+import { CurrencyEuroIcon, CalculatorIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
+import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount, parseEuroInput } from '../../utils/inmuebleUtils';
+
+interface Step3CosteProps {
+  data: InmuebleStep3;
+  onChange: (data: InmuebleStep3) => void;
+  direccionCa?: string; // Para cálculo automático de impuestos
+  errors?: string[];
+}
+
+const Step3Coste: React.FC<Step3CosteProps> = ({
+  data,
+  onChange,
+  direccionCa,
+  errors = []
+}) => {
+  const [localErrors, setLocalErrors] = useState<string[]>([]);
+
+  // Validate on data change
+  useEffect(() => {
+    const validation = validateStep3(data);
+    setLocalErrors(validation.errors);
+  }, [data]);
+
+  // Auto-calculate taxes when regime, price, or CCAA changes
+  useEffect(() => {
+    if (data.compra?.regimen && data.compra?.precio_compra && direccionCa) {
+      const taxes = calculateTotalTaxes(
+        data.compra.precio_compra,
+        data.compra.regimen,
+        direccionCa as any
+      );
+      
+      updateCompra('impuestos', taxes);
+    }
+  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa]);
+
+  const allErrors = [...errors, ...localErrors];
+
+  const updateCompra = (field: string, value: any) => {
+    const updatedCompra = {
+      ...data.compra,
+      [field]: value
+    };
+
+    // Recalculate totals
+    if (field === 'gastos' || field === 'impuestos' || field === 'precio_compra') {
+      const gastos = updatedCompra.gastos || {};
+      updatedCompra.total_gastos = 
+        (gastos.notaria || 0) + 
+        (gastos.registro || 0) + 
+        (gastos.gestoria || 0) + 
+        (gastos.inmobiliaria || 0) + 
+        (gastos.psi || 0) + 
+        (gastos.otros || 0);
+
+      updatedCompra.total_impuestos = updatedCompra.impuestos ? 
+        calculateTotalTaxAmount(updatedCompra.impuestos) : 0;
+
+      updatedCompra.coste_total_compra = 
+        (updatedCompra.precio_compra || 0) + 
+        updatedCompra.total_gastos + 
+        updatedCompra.total_impuestos;
+    }
+
+    onChange({
+      ...data,
+      compra: updatedCompra
+    });
+  };
+
+  const updateGasto = (gastoField: string, value: number) => {
+    const gastos = {
+      ...data.compra?.gastos,
+      [gastoField]: value
+    };
+    updateCompra('gastos', gastos);
+  };
+
+  const formatCurrency = (value: number | undefined): string => {
+    return value ? formatEuroAmount(value) : '0,00 €';
+  };
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-hz-text mb-2 font-inter">
+          Paso 3 · Coste de adquisición
+        </h2>
+        <p className="text-sm text-gray-600">
+          Régimen de compra, precio y gastos asociados
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        
+        {/* Régimen de compra */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <DocumentTextIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <h3 className="text-lg font-medium text-gray-900">Régimen de compra *</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <label className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input
+                type="radio"
+                value="USADA_ITP"
+                checked={data.compra?.regimen === 'USADA_ITP'}
+                onChange={(e) => updateCompra('regimen', e.target.value as RegimenCompra)}
+                className="mr-3 text-hz-primary focus:ring-hz-primary"
+              />
+              <div>
+                <div className="font-medium text-gray-900">Vivienda usada (ITP)</div>
+                <div className="text-sm text-gray-600">Se aplica Impuesto de Transmisiones Patrimoniales</div>
+              </div>
+            </label>
+            
+            <label className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <input
+                type="radio"
+                value="NUEVA_IVA_AJD"
+                checked={data.compra?.regimen === 'NUEVA_IVA_AJD'}
+                onChange={(e) => updateCompra('regimen', e.target.value as RegimenCompra)}
+                className="mr-3 text-hz-primary focus:ring-hz-primary"
+              />
+              <div>
+                <div className="font-medium text-gray-900">Obra nueva (IVA + AJD)</div>
+                <div className="text-sm text-gray-600">Se aplica IVA y Actos Jurídicos Documentados</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Precio de compra */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <CurrencyEuroIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <h3 className="text-lg font-medium text-gray-900">Precio de compra *</h3>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Precio de adquisición
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={data.compra?.precio_compra || ''}
+                onChange={(e) => updateCompra('precio_compra', parseFloat(e.target.value) || 0)}
+                placeholder="Ej: 250000"
+                min="0"
+                step="0.01"
+                className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <span className="text-gray-500 text-sm">€</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Precio de compra sin impuestos ni gastos
+            </p>
+          </div>
+        </div>
+
+        {/* Gastos asociados */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <CalculatorIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <h3 className="text-lg font-medium text-gray-900">Gastos asociados</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Notaría
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.notaria || ''}
+                  onChange={(e) => updateGasto('notaria', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Registro
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.registro || ''}
+                  onChange={(e) => updateGasto('registro', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gestoría
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.gestoria || ''}
+                  onChange={(e) => updateGasto('gestoria', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Inmobiliaria
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.inmobiliaria || ''}
+                  onChange={(e) => updateGasto('inmobiliaria', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                PSI
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.psi || ''}
+                  onChange={(e) => updateGasto('psi', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Personal Shopper Inmobiliario</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Otros
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={data.compra?.gastos?.otros || ''}
+                  onChange={(e) => updateGasto('otros', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-2">
+                  <span className="text-gray-500 text-xs">€</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Impuestos calculados automáticamente */}
+        {data.compra?.regimen && data.compra?.precio_compra && direccionCa && (
+          <div className="bg-hz-primary bg-opacity-5 border border-hz-primary border-opacity-20 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-hz-primary mb-4">
+              Impuestos calculados automáticamente
+            </h3>
+            
+            {data.compra.regimen === 'USADA_ITP' ? (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">ITP ({direccionCa}):</span>
+                  <div className="text-right">
+                    <div className="font-medium">
+                      {formatCurrency(data.compra.impuestos?.itp_importe)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {data.compra.impuestos?.itp_porcentaje_info?.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">IVA:</span>
+                  <div className="text-right">
+                    <div className="font-medium">
+                      {formatCurrency(data.compra.impuestos?.iva_importe)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {data.compra.impuestos?.iva_porcentaje_info?.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-700">AJD:</span>
+                  <div className="text-right">
+                    <div className="font-medium">
+                      {formatCurrency(data.compra.impuestos?.ajd_importe)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {data.compra.impuestos?.ajd_porcentaje_info?.toFixed(2)}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="border-t border-hz-primary border-opacity-20 mt-4 pt-2">
+              <div className="flex justify-between items-center font-medium">
+                <span>Total impuestos:</span>
+                <span className="text-hz-primary">
+                  {formatCurrency(data.compra.total_impuestos)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Resumen de costes */}
+        {data.compra?.precio_compra && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen de costes</h3>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Precio de compra:</span>
+                <span className="font-medium">{formatCurrency(data.compra.precio_compra)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Total gastos:</span>
+                <span className="font-medium">{formatCurrency(data.compra.total_gastos)}</span>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Total impuestos:</span>
+                <span className="font-medium">{formatCurrency(data.compra.total_impuestos)}</span>
+              </div>
+              
+              <div className="border-t border-gray-200 pt-3">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span className="text-gray-900">Coste total:</span>
+                  <span className="text-hz-primary">{formatCurrency(data.compra.coste_total_compra)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fecha de compra */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Fecha de compra *</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fecha de adquisición
+            </label>
+            <input
+              type="date"
+              value={data.compra?.fecha_compra || ''}
+              onChange={(e) => updateCompra('fecha_compra', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Fecha de escrituración o contrato de compraventa
+            </p>
+          </div>
+        </div>
+
+        {/* Error Messages */}
+        {allErrors.length > 0 && (
+          <div className="bg-error-50 border border-error-200 rounded-md p-4">
+            <h4 className="text-sm font-medium text-error-800 mb-2">
+              Errores de validación:
+            </h4>
+            <ul className="text-sm text-error-700 space-y-1">
+              {allErrors.map((error, index) => (
+                <li key={index}>• {error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Step3Coste;
