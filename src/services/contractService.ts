@@ -1,28 +1,71 @@
-import { initDB, Contract, RentCalendar, RentPayment } from './db';
+import { initDB, Contract, RentCalendar, RentPayment, RentaMensual } from './db';
 import { generateIncomeFromContract } from './treasuryCreationService';
 
-// Contract management service for H7 functionality
+// Enhanced contract management service for CONTRATOS module
+
+// Helper function to suggest indexation based on start date
+export const suggestIndexation = (fechaInicio: string): 'ipc' | 'irav' => {
+  const startDate = new Date(fechaInicio);
+  const cutoffDate = new Date('2023-05-25');
+  
+  return startDate < cutoffDate ? 'ipc' : 'irav';
+};
+
+// Helper function to calculate end date for habitual contracts
+export const calculateHabitualEndDate = (fechaInicio: string): string => {
+  const startDate = new Date(fechaInicio);
+  startDate.setFullYear(startDate.getFullYear() + 5);
+  return startDate.toISOString().split('T')[0];
+};
+
+// Helper function to calculate duration for temporal contracts
+export const calculateDuration = (fechaInicio: string, fechaFin: string): string => {
+  const start = new Date(fechaInicio);
+  const end = new Date(fechaFin);
+  
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  const months = Math.floor(diffDays / 30);
+  const days = diffDays % 30;
+  
+  return `${months}m ${days}d`;
+};
 
 export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> => {
   const db = await initDB();
   const now = new Date().toISOString();
   
-  const newContract: Omit<Contract, 'id'> = {
+  // Ensure default values for required fields
+  const enhancedContract: Omit<Contract, 'id'> = {
     ...contract,
+    // Set defaults for backward compatibility
+    status: contract.estadoContrato === 'activo' ? 'active' : 
+           contract.estadoContrato === 'finalizado' ? 'terminated' : 'upcoming',
+    documents: contract.documents || [],
+    
+    // Ensure default grace period
+    margenGraciaDias: contract.margenGraciaDias || 5,
+    
+    // Initialize empty historical indexations
+    historicoIndexaciones: contract.historicoIndexaciones || [],
+    
+    // Set default deposit status
+    fianzaEstado: contract.fianzaEstado || 'retenida',
+    
     createdAt: now,
     updatedAt: now,
   };
   
-  const contractId = await db.add('contracts', newContract);
+  const contractId = await db.add('contracts', enhancedContract);
   
-  // Generate rent calendar and payments
-  await generateRentCalendar(contractId as number, contract);
-  await generateRentPayments(contractId as number, contract);
+  // Generate monthly rent forecasts (RentaMensual)
+  await generateRentaMensual(contractId as number, enhancedContract);
   
   // H10: Generate Treasury income records for active contracts
-  if (contract.status === 'active') {
+  if (enhancedContract.estadoContrato === 'activo') {
     try {
-      const fullContract = { ...newContract, id: contractId as number };
+      const fullContract = { ...enhancedContract, id: contractId as number };
       await generateIncomeFromContract(fullContract);
     } catch (error) {
       console.error('Error generating income from contract:', error);
@@ -31,6 +74,109 @@ export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' |
   }
   
   return contractId as number;
+};
+
+// Generate monthly rent forecasts for treasury integration
+export const generateRentaMensual = async (contratoId: number, contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+  const db = await initDB();
+  const periods = calculateRentPeriodsNew(contract);
+  
+  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods.map(period => ({
+    contratoId,
+    periodo: period.periodo,
+    importePrevisto: period.importe,
+    importeCobradoAcum: 0,
+    estado: 'pendiente',
+    movimientosVinculados: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
+  
+  // Clear existing entries and add new ones
+  await clearRentaMensual(contratoId);
+  for (const entry of rentaMensualEntries) {
+    await db.add('rentaMensual', entry);
+  }
+};
+
+// Calculate rent periods for new Contract interface
+interface RentPeriodNew {
+  periodo: string; // YYYY-MM
+  importe: number;
+  esProrrata: boolean;
+  diasProrrata?: number;
+  diasTotalesMes?: number;
+  notas?: string;
+}
+
+export const calculateRentPeriodsNew = (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): RentPeriodNew[] => {
+  const periods: RentPeriodNew[] = [];
+  const startDate = new Date(contract.fechaInicio);
+  const endDate = new Date(contract.fechaFin);
+  
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    const periodo = formatYearMonth(current);
+    const isFirstMonth = current.getMonth() === startDate.getMonth() && current.getFullYear() === startDate.getFullYear();
+    const isLastMonth = current.getMonth() === endDate.getMonth() && current.getFullYear() === endDate.getFullYear();
+    
+    let importe = contract.rentaMensual;
+    let esProrrata = false;
+    let diasProrrata: number | undefined;
+    let diasTotalesMes: number | undefined;
+    let notas: string | undefined;
+    
+    if (isFirstMonth && startDate.getDate() > 1) {
+      // Prorate first month
+      const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+      const daysRented = daysInMonth - startDate.getDate() + 1;
+      importe = (contract.rentaMensual * daysRented) / daysInMonth;
+      esProrrata = true;
+      diasProrrata = daysRented;
+      diasTotalesMes = daysInMonth;
+      notas = `Prorrateo: ${daysRented}/${daysInMonth} días`;
+    }
+    
+    if (isLastMonth && endDate.getDate() < new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate()) {
+      // Prorate last month
+      const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+      const daysRented = endDate.getDate();
+      importe = (contract.rentaMensual * daysRented) / daysInMonth;
+      esProrrata = true;
+      diasProrrata = daysRented;
+      diasTotalesMes = daysInMonth;
+      notas = `Prorrateo: ${daysRented}/${daysInMonth} días`;
+    }
+    
+    periods.push({
+      periodo,
+      importe: Math.round(importe * 100) / 100, // Round to 2 decimal places
+      esProrrata,
+      diasProrrata,
+      diasTotalesMes,
+      notas,
+    });
+    
+    // Move to next month
+    current.setMonth(current.getMonth() + 1);
+  }
+  
+  return periods;
+};
+
+export const clearRentaMensual = async (contratoId: number): Promise<void> => {
+  const db = await initDB();
+  const tx = db.transaction(['rentaMensual'], 'readwrite');
+  const entries = await tx.objectStore('rentaMensual').index('contratoId').getAll(contratoId);
+  
+  for (const entry of entries) {
+    if (entry.id) {
+      await tx.objectStore('rentaMensual').delete(entry.id);
+    }
+  }
+  
+  await tx.done;
 };
 
 export const updateContract = async (id: number, updates: Partial<Contract>): Promise<void> => {

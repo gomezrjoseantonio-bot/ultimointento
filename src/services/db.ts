@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 13; // ATLAS HORIZON: Added unified banking movements pipeline tables
+const DB_VERSION = 14; // ATLAS HORIZON: Added RentaMensual for contract treasury integration
 
 export interface Property {
   id?: number;
@@ -218,65 +218,91 @@ export interface Document {
   uploadDate: string;
 }
 
-// H7: Enhanced Contract interface
+// Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
-  propertyId: number;
-  // Property scope
-  scope: 'full-property' | 'units';
-  selectedUnits?: string[]; // For multi-unit properties (e.g., ['H1', 'H2'])
-  type: 'vivienda' | 'habitacion';
   
-  // Tenant information
-  tenant: {
-    name: string;
-    nif?: string;
-    email?: string;
+  // Property and unit information
+  inmuebleId: number; // Changed from propertyId for Spanish terminology
+  unidadTipo: 'vivienda' | 'habitacion'; // Unit type: complete dwelling or room
+  habitacionId?: string; // Specific room ID if type is 'habitacion'
+  
+  // Contract modality
+  modalidad: 'habitual' | 'temporada'; // Dwelling type: habitual or seasonal
+  
+  // Tenant information (complete as required)
+  inquilino: {
+    nombre: string;
+    apellidos: string;
+    dni: string;
+    telefono: string;
+    email: string;
   };
   
-  // Contract dates
-  startDate: string;
-  endDate?: string; // Optional for indefinite contracts
-  isIndefinite: boolean;
-  noticePeriodDays?: number;
+  // Contract dates (mandatory for all contracts)
+  fechaInicio: string;
+  fechaFin: string; // Always required, auto-calculated for habitual (+5 years, editable)
   
   // Financial terms
-  monthlyRent: number;
-  paymentDay: number; // 1-31
-  periodicity: 'monthly'; // Only monthly for now
+  rentaMensual: number; // Monthly rent (current/active amount)
+  diaPago: number; // Payment day (1-31)
+  margenGraciaDias: number; // Grace period in days (default 5)
   
-  // Rent updates
-  rentUpdate: {
-    type: 'none' | 'fixed-percentage' | 'ipc';
-    fixedPercentage?: number; // For fixed percentage updates
-    ipcPercentage?: number; // Manual IPC percentage
+  // Indexation system
+  indexacion: 'none' | 'ipc' | 'irav' | 'otros'; // Indexation type
+  indexOtros?: {
+    formula: string; // Formula or percentage for 'otros'
+    frecuencia: string; // Frequency (e.g., 'anual')
+    nota?: string; // Reference note
   };
   
-  // Deposit and guarantees
-  deposit: {
-    months: number;
-    amount: number; // Calculated but editable
+  // Historical indexations tracking
+  historicoIndexaciones: Array<{
+    fecha: string; // Date when indexation was applied
+    indice: string; // Index used (IPC, IRAV, otros)
+    porcentajeAplicado: number; // Percentage applied
+    rentaResultante: number; // Resulting rent amount
+  }>;
+  
+  // Deposit information
+  fianzaMeses: number; // Number of months (0..∞, default 1)
+  fianzaImporte: number; // Amount calculated (months × current rent, editable)
+  fianzaEstado: 'retenida' | 'devuelta_parcial' | 'devuelta_total'; // Deposit status
+  fechasFianza?: {
+    cobro?: string; // Date when deposit was collected
+    devolucion?: string; // Date when deposit was returned
   };
-  additionalGuarantees?: number;
   
-  // Services (informational checkboxes)
-  includedServices: {
-    electricity?: boolean;
-    water?: boolean;
-    gas?: boolean;
-    internet?: boolean;
-    cleaning?: boolean;
-    [key: string]: boolean | undefined;
+  // Bank account for payment collection (mandatory)
+  cuentaCobroId: number; // ID of bank account for collections
+  
+  // Contract status
+  estadoContrato: 'activo' | 'rescindido' | 'finalizado';
+  
+  // Rescission information
+  rescision?: {
+    fecha: string; // Rescission date
+    motivo: string; // Rescission reason
   };
   
-  // Notes and status
-  privateNotes?: string;
-  status: 'active' | 'upcoming' | 'terminated';
-  
-  // Documents
+  // Legacy fields for backward compatibility
+  status: 'active' | 'upcoming' | 'terminated'; // Maps to estadoContrato
   documents: number[];
   
   // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Monthly rent tracking for treasury integration
+export interface RentaMensual {
+  id?: number;
+  contratoId: number;
+  periodo: string; // YYYY-MM format
+  importePrevisto: number; // Expected amount for the period
+  importeCobradoAcum: number; // Accumulated collected amount
+  estado: 'pendiente' | 'parcial' | 'cobrada' | 'impago' | 'revision'; // Payment status
+  movimientosVinculados: number[]; // Linked treasury movement IDs
   createdAt: string;
   updatedAt: string;
 }
@@ -1079,6 +1105,7 @@ interface AtlasHorizonDB {
   contracts: Contract;
   rentCalendar: RentCalendar; // H7: Rent calendar entries
   rentPayments: RentPayment; // H7: Rent payment tracking
+  rentaMensual: RentaMensual; // CONTRATOS: Monthly rent tracking for treasury integration
   expenses: Expense; // Legacy
   expensesH5: ExpenseH5; // H5: New expense system
   reforms: Reform; // H5: CAPEX reforms
@@ -1208,6 +1235,14 @@ export const initDB = async () => {
           rentPaymentsStore.createIndex('contractId', 'contractId', { unique: false });
           rentPaymentsStore.createIndex('period', 'period', { unique: false });
           rentPaymentsStore.createIndex('status', 'status', { unique: false });
+        }
+
+        // CONTRATOS: Monthly rent tracking for treasury integration
+        if (!db.objectStoreNames.contains('rentaMensual')) {
+          const rentaMensualStore = db.createObjectStore('rentaMensual', { keyPath: 'id', autoIncrement: true });
+          rentaMensualStore.createIndex('contratoId', 'contratoId', { unique: false });
+          rentaMensualStore.createIndex('periodo', 'periodo', { unique: false });
+          rentaMensualStore.createIndex('estado', 'estado', { unique: false });
         }
 
         // H8: Treasury Accounts store

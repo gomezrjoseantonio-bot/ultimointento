@@ -18,9 +18,9 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
   
   try {
     // Get property information for destination
-    const property = await db.get('properties', contract.propertyId);
+    const property = await db.get('properties', contract.inmuebleId);
     if (!property) {
-      throw new Error(`Property ${contract.propertyId} not found`);
+      throw new Error(`Property ${contract.inmuebleId} not found`);
     }
 
     // Generate income records for active contracts
@@ -45,7 +45,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
         const ingreso: Omit<Ingreso, 'id'> = {
           origen: 'contrato_id',
           origen_id: contract.id!,
-          proveedor_contraparte: contract.tenant.name,
+          proveedor_contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
           fecha_emision: currentDate.toISOString().split('T')[0],
           fecha_prevista_cobro: currentDate.toISOString().split('T')[0],
           importe: contract.monthlyRent,

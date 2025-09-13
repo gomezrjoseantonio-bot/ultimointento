@@ -3,8 +3,8 @@ import { Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { Contract } from '../../../../services/db';
-import ContractsLista from './components/ContractsLista';
-import ContractsNuevo from './components/ContractsNuevo';
+import ContractsListaEnhanced from './components/ContractsListaEnhanced';
+import ContractsNuevoEnhanced from './components/ContractsNuevoEnhanced';
 import ContractsCalendario from './components/ContractsCalendario';
 import ContractsCobros from './components/ContractsCobros';
 
@@ -54,7 +54,7 @@ const Contratos: React.FC = () => {
   const renderTabContent = () => {
     if (showNewContract) {
       return (
-        <ContractsNuevo 
+        <ContractsNuevoEnhanced 
           editingContract={editingContract}
           onContractCreated={handleContractCreated} 
           onCancel={handleCancelEdit} 
@@ -64,20 +64,20 @@ const Contratos: React.FC = () => {
 
     switch (activeTab) {
       case 'lista':
-        return <ContractsLista key={refreshKey} onEditContract={handleEditContract} />;
+        return <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />;
       case 'calendario':
         return <ContractsCalendario key={refreshKey} />;
       case 'cobros':
         return <ContractsCobros key={refreshKey} />;
       default:
-        return <ContractsLista key={refreshKey} onEditContract={handleEditContract} />;
+        return <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />;
     }
   };
 
   return (
     <PageLayout 
       title="Contratos" 
-      subtitle="Gestión de contratos de alquiler por inmueble completo o por unidades."
+      subtitle="Gestión de contratos de alquiler con control completo de ocupación, indexación automática y integración con tesorería."
       showInfoIcon={true}
       primaryAction={!showNewContract ? {
         label: "Nuevo contrato",
@@ -91,7 +91,7 @@ const Contratos: React.FC = () => {
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              const activeColor = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
+              const activeColor = 'text-atlas-blue'; // Always use ATLAS blue for Horizon
               
               return (
                 <button
