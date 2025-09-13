@@ -1,0 +1,248 @@
+import React, { useState, useRef } from 'react';
+import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
+import { FEINProcessingResult } from '../../types/fein';
+import { feinOcrService } from '../../services/feinOcrService';
+
+interface FEINUploaderProps {
+  onFEINProcessed: (result: FEINProcessingResult) => void;
+  onCancel: () => void;
+}
+
+const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelection(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelection(e.target.files[0]);
+    }
+  };
+
+  const handleFileSelection = async (file: File) => {
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      alert('Solo se permiten archivos PDF para documentos FEIN');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('El archivo es demasiado grande. Máximo 10MB permitido.');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setUploadProgress(20);
+
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      // Process FEIN document
+      const result = await feinOcrService.processFEINDocument(file);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      // Small delay to show completion
+      setTimeout(() => {
+        setIsProcessing(false);
+        onFEINProcessed(result);
+      }, 500);
+
+    } catch (error) {
+      console.error('Error processing FEIN:', error);
+      setIsProcessing(false);
+      alert('Error procesando el documento FEIN. Inténtelo de nuevo.');
+    }
+  };
+
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="mb-6">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin" style={{ color: 'var(--atlas-blue)' }} />
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
+              Procesando documento FEIN
+            </h3>
+            
+            <p className="text-sm mb-4" style={{ color: 'var(--text-gray)' }}>
+              Extrayendo información del préstamo...
+            </p>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <div 
+                className="h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${uploadProgress}%`,
+                  backgroundColor: 'var(--atlas-blue)'
+                }}
+              />
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--text-gray)' }}>
+              {uploadProgress}% completado
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-bg">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 
+              className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
+              style={{ color: 'var(--hz-text)' }}
+            >
+              Crear préstamo desde FEIN
+            </h1>
+            <p className="text-neutral-600 text-sm leading-5 font-normal mt-1">
+              Suba su documento FEIN (PDF) para crear automáticamente el préstamo
+            </p>
+          </div>
+          
+          <button
+            onClick={onCancel}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-gray-100"
+            style={{ color: 'var(--text-gray)' }}
+          >
+            <X className="h-4 w-4" />
+            Cancelar
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6">
+        <div className="max-w-2xl mx-auto">
+          {/* Upload Area */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+              dragActive 
+                ? 'border-blue-400 bg-blue-50' 
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <FileText 
+              className="mx-auto h-16 w-16 mb-4" 
+              style={{ color: 'var(--atlas-blue)' }}
+            />
+            
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
+              Subir documento FEIN
+            </h3>
+            
+            <p className="mb-4" style={{ color: 'var(--text-gray)' }}>
+              Arrastra y suelta tu documento FEIN aquí o haz clic para seleccionar
+            </p>
+            
+            <p className="text-sm mb-6" style={{ color: 'var(--text-gray)' }}>
+              Solo archivos PDF • Máximo 10MB
+            </p>
+            
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90"
+              style={{ backgroundColor: 'var(--atlas-blue)' }}
+            >
+              Seleccionar archivo FEIN
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              onChange={handleFileInput}
+              className="hidden"
+            />
+          </div>
+
+          {/* Information Panel */}
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 mt-0.5 text-blue-600" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">
+                  ¿Qué información extraeremos de su FEIN?
+                </h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Entidad bancaria emisora</li>
+                  <li>• Capital inicial del préstamo</li>
+                  <li>• TIN y TAE</li>
+                  <li>• Plazo en años/meses</li>
+                  <li>• Tipo de interés (Fijo/Variable/Mixto)</li>
+                  <li>• Bonificaciones (seguros, domiciliaciones, etc.)</li>
+                  <li>• Comisiones (apertura, amortización, cancelación)</li>
+                  <li>• Cuenta de cargo (IBAN)</li>
+                  <li>• Fecha prevista de primer pago</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Warning Panel */}
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 mt-0.5 text-yellow-600" />
+              <div>
+                <h4 className="font-medium text-yellow-900 mb-1">
+                  Importante
+                </h4>
+                <p className="text-sm text-yellow-800">
+                  Si el documento no se puede leer correctamente, le permitiremos crear el préstamo manualmente 
+                  con los datos básicos precargados.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default FEINUploader;

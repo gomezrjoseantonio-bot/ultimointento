@@ -21,11 +21,17 @@ import ResumenFinalBlock from './blocks/ResumenFinalBlock';
 
 interface PrestamosCreationProps {
   prestamoId?: string;
+  initialData?: Partial<PrestamoFinanciacion>; // For FEIN pre-filled data
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-const PrestamosCreation: React.FC<PrestamosCreationProps> = ({ prestamoId, onSuccess, onCancel }) => {
+const PrestamosCreation: React.FC<PrestamosCreationProps> = ({ 
+  prestamoId, 
+  initialData, 
+  onSuccess, 
+  onCancel 
+}) => {
   // Block visibility state
   const [visibleBlocks, setVisibleBlocks] = useState({
     identificacion: true,
@@ -35,16 +41,32 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({ prestamoId, onSuc
   });
 
   // Form data state
-  const [formData, setFormData] = useState<Partial<PrestamoFinanciacion>>({
-    ambito: 'PERSONAL',
-    esquemaPrimerRecibo: 'NORMAL',
-    tipo: 'FIJO',
-    plazoPeriodo: 'AÑOS',
-    carencia: 'NINGUNA',
-    sistema: 'FRANCES',
-    revision: 12,
-    diaCobroMes: 1,
-    bonificaciones: []
+  const [formData, setFormData] = useState<Partial<PrestamoFinanciacion>>(() => {
+    // If initialData is provided (from FEIN), use it as starting point
+    if (initialData) {
+      return {
+        ...initialData,
+        // Ensure required defaults are set
+        esquemaPrimerRecibo: initialData.esquemaPrimerRecibo || 'NORMAL',
+        sistema: initialData.sistema || 'FRANCES',
+        revision: initialData.revision || 12,
+        diaCobroMes: initialData.diaCobroMes || 1,
+        bonificaciones: initialData.bonificaciones || []
+      };
+    }
+    
+    // Default values for manual creation
+    return {
+      ambito: 'PERSONAL',
+      esquemaPrimerRecibo: 'NORMAL',
+      tipo: 'FIJO',
+      plazoPeriodo: 'AÑOS',
+      carencia: 'NINGUNA',
+      sistema: 'FRANCES',
+      revision: 12,
+      diaCobroMes: 1,
+      bonificaciones: []
+    };
   });
 
   // Live calculation state
