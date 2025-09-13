@@ -14,14 +14,67 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'terminated'>('all');
   const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
 
+  const loadData = useCallback(async (retry = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Load contracts with timeout
+      const contractsPromise = getAllContracts();
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout loading contracts')), 10000)
+      );
+      
+      const contractsData = await Promise.race([contractsPromise, timeoutPromise]);
+      setContracts(contractsData);
+      
+      // Load properties for display with timeout
+      const dbPromise = (await import('../../../../../services/db')).initDB();
+      const dbTimeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout initializing database')), 5000)
+      );
+      
+      const db = await Promise.race([dbPromise, dbTimeoutPromise]);
+      const propertiesData = await db.getAll('properties');
+      setProperties(propertiesData);
+      
+      setRetryCount(0);
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setError(`Error al cargar los datos: ${errorMessage}`);
+      
+      // Auto-retry logic for certain errors
+      if (retryCount < 3 && (
+        errorMessage.includes('Timeout') || 
+        errorMessage.includes('Database') ||
+        errorMessage.includes('network')
+      )) {
+        console.log(`Retrying data load (attempt ${retryCount + 1})`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => loadData(true), 2000);
+        return;
+      }
+      
+      if (!retry) {
+        toast.error('Error al cargar los datos. Intente recargar la página.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [retryCount]);
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const filterContracts = useCallback(() => {
     let filtered = [...contracts];
@@ -57,31 +110,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   useEffect(() => {
     filterContracts();
   }, [filterContracts]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Load contracts
-      const contractsData = await getAllContracts();
-      setContracts(contractsData);
-      
-      // Load properties for display
-      const db = await (await import('../../../../../services/db')).initDB();
-      const propertiesData = await db.getAll('properties');
-      setProperties(propertiesData);
-      
-      // Load accounts for display
-      // const accountsData = await db.getAll('accounts');
-      // setAccounts(accountsData);
-      
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error('Error al cargar los datos');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDeleteContract = async (contract: Contract) => {
     if (!window.confirm(`¿Estás seguro de que quieres eliminar el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}?`)) {
@@ -190,9 +218,40 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex flex-col items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
-        <span className="ml-2 text-gray-600">Cargando contratos...</span>
+        <span className="ml-2 text-gray-600 mt-2">
+          Cargando contratos...
+          {retryCount > 0 && ` (reintento ${retryCount})`}
+        </span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <div className="flex items-center mb-4">
+            <XCircle className="h-6 w-6 text-red-500 mr-2" />
+            <h3 className="text-lg font-medium text-red-900">Error de carga</h3>
+          </div>
+          <p className="text-red-700 mb-4">{error}</p>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => loadData()}
+              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-dark transition-colors"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

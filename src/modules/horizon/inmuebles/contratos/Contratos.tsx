@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, CreditCard, List } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
+import ErrorBoundary from '../../../../components/common/ErrorBoundary';
 import { Contract } from '../../../../services/db';
 import ContractsListaEnhanced from './components/ContractsListaEnhanced';
 import ContractsNuevo from './components/ContractsNuevo';
@@ -52,23 +53,41 @@ const Contratos: React.FC = () => {
   const renderTabContent = () => {
     if (showNewContract) {
       return (
-        <ContractsNuevo 
-          editingContract={editingContract}
-          onContractCreated={handleContractCreated} 
-          onCancel={handleCancelEdit} 
-        />
+        <ErrorBoundary>
+          <ContractsNuevo 
+            editingContract={editingContract}
+            onContractCreated={handleContractCreated} 
+            onCancel={handleCancelEdit} 
+          />
+        </ErrorBoundary>
       );
     }
 
     switch (activeTab) {
       case 'lista':
-        return <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />;
+        return (
+          <ErrorBoundary>
+            <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />
+          </ErrorBoundary>
+        );
       case 'calendario':
-        return <ContractsCalendario key={refreshKey} />;
+        return (
+          <ErrorBoundary>
+            <ContractsCalendario key={refreshKey} />
+          </ErrorBoundary>
+        );
       case 'cobros':
-        return <ContractsCobros key={refreshKey} />;
+        return (
+          <ErrorBoundary>
+            <ContractsCobros key={refreshKey} />
+          </ErrorBoundary>
+        );
       default:
-        return <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />;
+        return (
+          <ErrorBoundary>
+            <ContractsListaEnhanced key={refreshKey} onEditContract={handleEditContract} />
+          </ErrorBoundary>
+        );
     }
   };
 

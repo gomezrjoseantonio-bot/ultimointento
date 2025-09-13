@@ -98,8 +98,21 @@ export const getContractsByProperty = async (inmuebleId: number): Promise<Contra
 };
 
 export const getAllContracts = async (): Promise<Contract[]> => {
-  const db = await initDB();
-  return await db.getAll('contracts');
+  try {
+    const db = await initDB();
+    return await db.getAll('contracts');
+  } catch (error) {
+    console.error('Error fetching contracts:', error);
+    
+    // Return empty array as fallback instead of throwing
+    // This prevents the page from becoming completely unusable
+    if (error instanceof Error && error.message.includes('Database')) {
+      console.warn('Database error, returning empty contracts array');
+      return [];
+    }
+    
+    throw error;
+  }
 };
 
 export const deleteContract = async (id: number): Promise<void> => {
