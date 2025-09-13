@@ -102,7 +102,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             <button
               type="button"
               onClick={() => setIsExpanded(true)}
-              className="text-gray-500 hover:text-gray-700 text-sm"
+              className="text-atlas-blue hover:text-[#033A73] text-sm font-medium"
             >
               Editar
             </button>
@@ -170,7 +170,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             type="text"
             value={bonification.nombre}
             onChange={(e) => handleFieldChange('nombre', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
             placeholder="ej: Nómina"
           />
         </div>
@@ -193,11 +193,11 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 }
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
             placeholder="0,300"
           />
           <p className="text-xs text-gray-500 mt-1">
-            ej: 0,300 = 0,30 puntos porcentuales
+            ej: 0,300 = 0,30 puntos porcentuales (escribir como 0,30)
           </p>
         </div>
 
@@ -209,7 +209,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             type="number"
             value={bonification.lookbackMeses}
             onChange={(e) => handleFieldChange('lookbackMeses', parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
             placeholder="3"
             min="1"
           />
@@ -236,7 +236,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 handleFieldChange('costeAnualEstimado', undefined);
               }
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
             placeholder="240"
           />
         </div>
@@ -278,7 +278,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             
             handleRuleChange(newRule);
           }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-700 focus:border-primary-700"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
         >
           {getTipoOptions().map(option => (
             <option key={option.value} value={option.value}>
