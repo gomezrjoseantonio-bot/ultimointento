@@ -1,10 +1,10 @@
 // Step 3: Coste de adquisición - Régimen, Precio, Gastos, Impuestos (en valores absolutos €)
 // Following Horizon design system with automatic tax calculations
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CurrencyEuroIcon, CalculatorIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
-import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount, parseEuroInput } from '../../utils/inmuebleUtils';
+import { validateStep3, calculateTotalTaxes, calculateTotalTaxAmount, formatEuroAmount } from '../../utils/inmuebleUtils';
 
 interface Step3CosteProps {
   data: InmuebleStep3;
@@ -21,28 +21,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 }) => {
   const [localErrors, setLocalErrors] = useState<string[]>([]);
 
-  // Validate on data change
-  useEffect(() => {
-    const validation = validateStep3(data);
-    setLocalErrors(validation.errors);
-  }, [data]);
-
-  // Auto-calculate taxes when regime, price, or CCAA changes
-  useEffect(() => {
-    if (data.compra?.regimen && data.compra?.precio_compra && direccionCa) {
-      const taxes = calculateTotalTaxes(
-        data.compra.precio_compra,
-        data.compra.regimen,
-        direccionCa as any
-      );
-      
-      updateCompra('impuestos', taxes);
-    }
-  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa]);
-
-  const allErrors = [...errors, ...localErrors];
-
-  const updateCompra = (field: string, value: any) => {
+  const updateCompra = useCallback((field: string, value: any) => {
     const updatedCompra = {
       ...data.compra,
       [field]: value
@@ -50,7 +29,14 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
     // Recalculate totals
     if (field === 'gastos' || field === 'impuestos' || field === 'precio_compra') {
-      const gastos = updatedCompra.gastos || {};
+      const gastos = updatedCompra.gastos || {
+        notaria: 0,
+        registro: 0,
+        gestoria: 0,
+        inmobiliaria: 0,
+        psi: 0,
+        otros: 0
+      };
       updatedCompra.total_gastos = 
         (gastos.notaria || 0) + 
         (gastos.registro || 0) + 
@@ -72,7 +58,28 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
       ...data,
       compra: updatedCompra
     });
-  };
+  }, [data, onChange]);
+
+  // Validate on data change
+  useEffect(() => {
+    const validation = validateStep3(data);
+    setLocalErrors(validation.errors);
+  }, [data]);
+
+  // Auto-calculate taxes when regime, price, or CCAA changes
+  useEffect(() => {
+    if (data.compra?.regimen && data.compra?.precio_compra && direccionCa) {
+      const taxes = calculateTotalTaxes(
+        data.compra.precio_compra,
+        data.compra.regimen,
+        direccionCa as any
+      );
+      
+      updateCompra('impuestos', taxes);
+    }
+  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa, updateCompra]);
+
+  const allErrors = [...errors, ...localErrors];
 
   const updateGasto = (gastoField: string, value: number) => {
     const gastos = {

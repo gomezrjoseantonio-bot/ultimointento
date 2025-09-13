@@ -38,7 +38,7 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
       if (locationData) {
         newData.direccion = {
           ...newData.direccion,
-          municipio: locationData.municipality,
+          municipio: locationData.municipalities[0] || '',
           provincia: locationData.province,
           ca: locationData.ccaa as ComunidadAutonoma
         };

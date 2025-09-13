@@ -5,8 +5,7 @@ import {
   Inmueble, 
   NuevoInmueble, 
   EstadoInmueble,
-  INMUEBLE_ERRORS,
-  CompletitudInmueble 
+  INMUEBLE_ERRORS
 } from '../types/inmueble';
 import { 
   calculateTotalTaxes,
@@ -51,7 +50,7 @@ class InmuebleService {
     if (data.direccion.cp) {
       const locationData = getLocationFromPostalCode(data.direccion.cp);
       if (locationData) {
-        data.direccion.municipio = data.direccion.municipio || locationData.municipality;
+        data.direccion.municipio = data.direccion.municipio || locationData.municipalities[0] || '';
         data.direccion.provincia = data.direccion.provincia || locationData.province;
         data.direccion.ca = data.direccion.ca || locationData.ccaa as any;
       }
@@ -121,7 +120,7 @@ class InmuebleService {
       if (locationData) {
         mergedData.direccion = {
           ...mergedData.direccion,
-          municipio: data.direccion.municipio || locationData.municipality,
+          municipio: data.direccion.municipio || locationData.municipalities[0] || '',
           provincia: data.direccion.provincia || locationData.province,
           ca: data.direccion.ca || locationData.ccaa as any
         };

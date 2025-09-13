@@ -1,7 +1,7 @@
 // Main 4-step wizard component for property creation/editing
 // Following Horizon design system and specifications
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -96,14 +96,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
     }
   });
 
-  // Load existing data for edit mode
-  useEffect(() => {
-    if (mode === 'edit' && id) {
-      loadInmuebleData(id);
-    }
-  }, [mode, id]);
-
-  const loadInmuebleData = async (inmuebleId: string) => {
+  const loadInmuebleData = useCallback(async (inmuebleId: string) => {
     try {
       setIsLoading(true);
       const inmueble = await inmuebleService.getById(inmuebleId);
@@ -141,16 +134,23 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
+
+  // Load existing data for edit mode
+  useEffect(() => {
+    if (mode === 'edit' && id) {
+      loadInmuebleData(id);
+    }
+  }, [mode, id, loadInmuebleData]);
 
   // Combine all data for calculations and summary
-  const getCombinedData = () => {
+  const getCombinedData = (): Partial<Inmueble> => {
     return {
       ...step1Data,
       ...step2Data,
       ...step3Data,
       ...step4Data
-    };
+    } as Partial<Inmueble>;
   };
 
   // Calculate completion status for each step

@@ -1,7 +1,7 @@
 // Step 4: Fiscalidad y amortización - Valores catastrales, % construcción, tipo fiscal
 // Following Horizon design system with automatic calculations
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DocumentChartBarIcon, CalculatorIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { InmuebleStep4, MetodoAmortizacion } from '../../types/inmueble';
 import { validateStep4, calculateConstructionPercentage, formatEuroAmount } from '../../utils/inmuebleUtils';
@@ -19,6 +19,16 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
 }) => {
   const [localErrors, setLocalErrors] = useState<string[]>([]);
 
+  const updateFiscalidad = useCallback((field: string, value: any) => {
+    onChange({
+      ...data,
+      fiscalidad: {
+        ...data.fiscalidad,
+        [field]: value
+      }
+    });
+  }, [data, onChange]);
+
   // Validate on data change
   useEffect(() => {
     const validation = validateStep4(data);
@@ -35,19 +45,9 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
       
       updateFiscalidad('porcentaje_construccion', percentage);
     }
-  }, [data.fiscalidad?.valor_catastral_total, data.fiscalidad?.valor_catastral_construccion]);
+  }, [data.fiscalidad?.valor_catastral_total, data.fiscalidad?.valor_catastral_construccion, updateFiscalidad]);
 
   const allErrors = [...errors, ...localErrors];
-
-  const updateFiscalidad = (field: string, value: any) => {
-    onChange({
-      ...data,
-      fiscalidad: {
-        ...data.fiscalidad,
-        [field]: value
-      }
-    });
-  };
 
   const formatCurrency = (value: number | undefined): string => {
     return value ? formatEuroAmount(value) : '0,00 €';

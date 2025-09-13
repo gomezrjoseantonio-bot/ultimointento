@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { CheckIcon } from '@heroicons/react/24/solid';
-import { CircleIcon } from 'lucide-react';
 import { ComplecionStatus } from '../../types/inmueble';
 
 interface WizardStep {
