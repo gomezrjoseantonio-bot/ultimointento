@@ -29,8 +29,10 @@ const UnifiedInboxPage = React.lazy(() => import('./pages/UnifiedInboxPage'));
 // Horizon (Investment) Module Components
 const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
 const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Prestamos = React.lazy(() => import('./modules/horizon/inmuebles/prestamos/Prestamos'));
 const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+
+// Financing Module - New standalone financing module
+const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const TesRadar = React.lazy(() => import('./modules/horizon/tesoreria/radar/Radar'));
 const TesIngresos = React.lazy(() => import('./modules/horizon/tesoreria/ingresos/Ingresos'));
@@ -192,11 +194,6 @@ function App() {
                   <Contratos />
                 </React.Suspense>
               } />
-              <Route path="prestamos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Prestamos />
-                </React.Suspense>
-              } />
               <Route path="gastos-capex" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <GastosCapex />
@@ -270,6 +267,13 @@ function App() {
                 </React.Suspense>
               } />
             </Route>
+            
+            {/* Financing Module - Standalone loan management */}
+            <Route path="financiacion" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <Financiacion />
+              </React.Suspense>
+            } />
             
             <Route path="proyeccion">
               <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
