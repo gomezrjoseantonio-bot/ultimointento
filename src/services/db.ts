@@ -1444,7 +1444,21 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('keyval')) {
           db.createObjectStore('keyval');
         }
+      },
+      blocked() {
+        console.warn('Database upgrade blocked by another connection');
+      },
+      blocking() {
+        console.warn('This connection is blocking a database upgrade');
+      },
+      terminated() {
+        console.warn('Database connection was terminated');
+        dbPromise = null!; // Reset promise to allow reconnection
       }
+    }).catch(error => {
+      console.error('Database initialization failed:', error);
+      dbPromise = null!; // Reset promise to allow retry
+      throw error;
     });
   }
   return dbPromise;
