@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Settings, Inbox } from 'lucide-react';
@@ -265,4 +265,5 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+// Memoize Dashboard component for performance optimization
+export default memo(Dashboard);

@@ -1,0 +1,13 @@
+{
+  "totalJSSize": 3183,
+  "mainJSSize": 223,
+  "totalCSSSize": 202,
+  "chunkCount": 61,
+  "timestamp": "2025-09-13T22:23:28.438Z",
+  "optimizations": {
+    "criticalCSS": true,
+    "deferredCSS": true,
+    "inlineCSS": true,
+    "cssReduction": 84
+  }
+}

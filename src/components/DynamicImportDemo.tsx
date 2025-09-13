@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 
 const DynamicImportDemo: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -115,4 +115,5 @@ Bundle optimization working - heavy library only loaded when needed.`);
   );
 };
 
-export default DynamicImportDemo;
+// Memoize DynamicImportDemo component for performance
+export default memo(DynamicImportDemo);

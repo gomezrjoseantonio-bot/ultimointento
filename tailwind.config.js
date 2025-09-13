@@ -4,6 +4,47 @@ module.exports = {
     './src/**/*.{js,jsx,ts,tsx}',
     './public/index.html',
   ],
+  // Enable aggressive CSS purging for production
+  purge: {
+    enabled: process.env.NODE_ENV === 'production',
+    content: [
+      './src/**/*.{js,jsx,ts,tsx}',
+      './public/index.html',
+    ],
+    // Safelist critical classes that might be dynamically generated
+    safelist: [
+      'animate-spin',
+      'bg-atlas-blue',
+      'text-white',
+      'loading-spinner',
+      'btn-primary',
+      'card',
+      // Movement state classes (dynamically applied)
+      'movement-previsto-ingreso',
+      'movement-previsto-gasto', 
+      'movement-confirmado',
+      'movement-vencido',
+      'movement-no-previsto',
+      // Badge classes (dynamically applied)
+      'horizon-badge-success',
+      'horizon-badge-warning',
+      'horizon-badge-error',
+      'horizon-badge-info',
+      // Theme classes
+      'theme-horizon',
+      'theme-pulse',
+      // Responsive utilities commonly used dynamically
+      /^(sm|md|lg|xl|2xl):/,
+      // Color variations that might be computed
+      /^(bg|text|border)-(primary|success|warning|error|neutral)-(50|100|500|700|900)$/,
+    ],
+    // More aggressive pattern matching
+    defaultExtractor: (content) => {
+      const broadMatches = content.match(/[^<>"'`\s]*[^<>"'`\s:]/g) || [];
+      const innerMatches = content.match(/[^<>"'`\s.()]*[^<>"'`\s.():]/g) || [];
+      return broadMatches.concat(innerMatches);
+    }
+  },
   theme: {
     extend: {
       colors: {

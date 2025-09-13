@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -9,27 +9,39 @@ import MainLayout from './layouts/MainLayout';
 // Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
 
-// Loading component for better UX
-const LoadingSpinner = () => (
+// Optimized loading component with better performance
+const LoadingSpinner = memo(() => (
   <div className="flex items-center justify-center min-h-[200px]">
     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
     <span className="ml-2 text-gray-600">Cargando...</span>
   </div>
-);
+));
+LoadingSpinner.displayName = 'LoadingSpinner';
+
+// Enhanced lazy loading with preloading capabilities
+const createLazyComponent = (importFn: () => Promise<{ default: React.ComponentType<any> }>, componentName: string) => {
+  const LazyComponent = React.lazy(importFn);
+  
+  // Add preload method for better UX
+  (LazyComponent as any).preload = importFn;
+  (LazyComponent as any).displayName = componentName;
+  
+  return LazyComponent;
+};
 
 // Lazy-loaded components for route-based code splitting
 // Core dashboard with charts - lazy load to reduce main bundle
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Dashboard = createLazyComponent(() => import('./pages/Dashboard'), 'Dashboard');
 
 // Inbox pages - lazy load to reduce main bundle
-const InboxAtlasHorizon = React.lazy(() => import('./pages/InboxAtlasHorizon'));
-const UnicornioInboxPrompt = React.lazy(() => import('./pages/UnicornioInboxPrompt'));
-const UnifiedInboxPage = React.lazy(() => import('./pages/UnifiedInboxPage'));
+const InboxAtlasHorizon = createLazyComponent(() => import('./pages/InboxAtlasHorizon'), 'InboxAtlasHorizon');
+const UnicornioInboxPrompt = createLazyComponent(() => import('./pages/UnicornioInboxPrompt'), 'UnicornioInboxPrompt');
+const UnifiedInboxPage = createLazyComponent(() => import('./pages/UnifiedInboxPage'), 'UnifiedInboxPage');
 
-// Horizon (Investment) Module Components
-const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
-const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+// Horizon (Investment) Module Components - optimized lazy loading
+const Cartera = createLazyComponent(() => import('./modules/horizon/inmuebles/cartera/Cartera'), 'Cartera');
+const Contratos = createLazyComponent(() => import('./modules/horizon/inmuebles/contratos/Contratos'), 'Contratos');
+const Analisis = createLazyComponent(() => import('./modules/horizon/inmuebles/analisis/Analisis'), 'Analisis');
 
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));

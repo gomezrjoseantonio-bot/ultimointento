@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-13T17:14:59.656Z",
+  "timestamp": "2025-09-13T22:23:28.390Z",
   "heavyDependencies": [
     "@testing-library/react",
     "@testing-library/jest-dom",
@@ -59,6 +59,11 @@
       "path": "/src/services/db.ts",
       "size": 66,
       "lines": 1851
+    },
+    {
+      "path": "/src/modules/horizon/inmuebles/prestamos/components/PrestamoForm.tsx",
+      "size": 53,
+      "lines": 1232
     },
     {
       "path": "/src/pages/InboxPage.tsx",

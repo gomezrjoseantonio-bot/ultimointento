@@ -47,7 +47,12 @@
     "cleanup:complete": "node scripts/completeDataCleanup.js",
     "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm",
     "optimize:bundle": "node scripts/bundleOptimizer.js",
-    "performance:analyze": "npm run build && npm run optimize:bundle"
+    "performance:analyze": "npm run build && npm run optimize:bundle",
+    "build:optimized": "bash build-optimized.sh",
+    "build:analyze": "npm run build && npm run optimize:bundle && npm run optimize:css",
+    "optimize:css": "node scripts/extractCriticalCSS.js",
+    "optimize:performance": "node scripts/performanceOptimizer.js",
+    "performance:full": "npm run build:optimized && npm run optimize:performance"
   },
   "eslintConfig": {
     "extends": [
