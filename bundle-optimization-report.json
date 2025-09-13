@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-10T22:39:12.781Z",
+  "timestamp": "2025-09-13T15:46:48.857Z",
   "heavyDependencies": [
     "@testing-library/react",
     "@testing-library/jest-dom",
@@ -56,19 +56,14 @@
   },
   "largeFiles": [
     {
-      "path": "/src/modules/horizon/inmuebles/cartera/PropertyForm.tsx",
-      "size": 72,
-      "lines": 1731
-    },
-    {
       "path": "/src/services/db.ts",
-      "size": 62,
-      "lines": 1746
+      "size": 66,
+      "lines": 1846
     },
     {
       "path": "/src/modules/horizon/tesoreria/components/CuentasPanel.tsx",
       "size": 57,
-      "lines": 1358
+      "lines": 1362
     },
     {
       "path": "/src/pages/UnicornioInboxPrompt.tsx",

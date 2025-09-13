@@ -1,4 +1,5 @@
-import { BankParserService } from '../features/inbox/importers/bankParser';
+// Temporarily commented out for bundle optimization testing
+// import { BankParserService } from '../features/inbox/importers/bankParser';
 
 /**
  * Detects if a file is likely a bank statement based on:
@@ -28,13 +29,17 @@ export async function isBankStatementFile(file: File): Promise<boolean> {
   
   // Try to parse the file headers to detect bank patterns
   try {
-    const bankParser = new BankParserService();
-    const parseResult = await bankParser.parseFile(file);
+    // Temporarily commented out for bundle optimization testing
+    // const bankParser = new BankParserService();
+    // const parseResult = await bankParser.parseFile(file);
     
     // If bank parser successfully detected a bank and found movements, it's likely a bank statement
-    return parseResult.success && 
-           parseResult.metadata?.bankDetected && 
-           (parseResult.movements?.length || 0) > 0;
+    // return parseResult.success && 
+    //        parseResult.metadata?.bankDetected && 
+    //        (parseResult.movements?.length || 0) > 0;
+    
+    // Fallback detection for now
+    return false;
   } catch (error) {
     // If parsing fails, fallback to filename-based detection
     console.warn('Bank detection failed, using filename fallback:', error);
@@ -47,10 +52,12 @@ export async function isBankStatementFile(file: File): Promise<boolean> {
  */
 export async function detectBankFromFile(file: File): Promise<string | null> {
   try {
-    const bankParser = new BankParserService();
-    const parseResult = await bankParser.parseFile(file);
+    // Temporarily commented out for bundle optimization testing
+    // const bankParser = new BankParserService();
+    // const parseResult = await bankParser.parseFile(file);
     
-    return parseResult.metadata?.bankDetected?.bankKey || null;
+    // return parseResult.metadata?.bankDetected?.bankKey || null;
+    return null;
   } catch (error) {
     console.warn('Bank detection failed:', error);
     return null;

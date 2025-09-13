@@ -1,5 +1,4 @@
 // H8 REFACTOR: Enhanced CSV/Excel Parser Service with Bank Profile Detection
-import * as XLSX from 'xlsx';
 import { bankProfilesService } from './bankProfilesService';
 import { BankProfile, ParsedMovement, ParseResult } from '../types/bankProfiles';
 import { safeMatch } from '../utils/safe';
@@ -111,7 +110,7 @@ class EnhancedCSVParser {
       const originalRowIndex = headerRow + 1 + i;
 
       try {
-        const movement = this.parseMovement(row, headerMapping, profile, originalRowIndex);
+        const movement = await this.parseMovement(row, headerMapping, profile, originalRowIndex);
         if (movement) {
           movements.push(movement);
           validRowCount++;
@@ -241,12 +240,12 @@ class EnhancedCSVParser {
   /**
    * Parse a single movement from a data row
    */
-  private parseMovement(
+  private async parseMovement(
     row: any[], 
     mapping: Record<string, number>, 
     profile: BankProfile,
     originalRow: number
-  ): ParsedMovement | null {
+  ): Promise<ParsedMovement | null> {
     
     // Extract values
     const dateValue = row[mapping.date];
@@ -260,7 +259,7 @@ class EnhancedCSVParser {
 
     try {
       // Parse date
-      const date = this.parseDate(dateValue, profile);
+      const date = await this.parseDate(dateValue, profile);
       if (!date) throw new Error('Fecha inválida');
 
       // Parse amount
@@ -270,7 +269,7 @@ class EnhancedCSVParser {
       // Parse value date if present
       let valueDate: Date | undefined;
       if (valueDateValue) {
-        const parsed = this.parseDate(valueDateValue, profile);
+        const parsed = await this.parseDate(valueDateValue, profile);
         valueDate = parsed || undefined;
       }
 
@@ -296,11 +295,13 @@ class EnhancedCSVParser {
   /**
    * Parse date with multiple format support
    */
-  private parseDate(value: any, profile: BankProfile): Date | null {
+  private async parseDate(value: any, profile: BankProfile): Promise<Date | null> {
     if (!value) return null;
 
     // Handle Excel serial dates
     if (typeof value === 'number' && profile.dateHints?.includes('excel-serial')) {
+      // Dynamic import only when needed for Excel serial dates
+      const XLSX = await import('xlsx');
       const date = XLSX.SSF.parse_date_code(value);
       if (date) {
         return new Date(date.y, date.m - 1, date.d); // Note: month is 0-indexed in Date
@@ -393,6 +394,9 @@ class EnhancedCSVParser {
    * Parse Excel file
    */
   private async parseExcel(file: File): Promise<{ data: any[][]; sheetName: string }> {
+    // Dynamic import of XLSX to reduce main bundle size
+    const XLSX = await import('xlsx');
+    
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
 

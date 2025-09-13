@@ -3,8 +3,6 @@ import { Download, Calendar, User, Archive } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property } from '../../../../services/db';
 import { getFiscalSummary } from '../../../../services/fiscalSummaryService';
-import * as XLSX from 'xlsx';
-import JSZip from 'jszip';
 
 interface ExportHistory {
   id: string;
@@ -147,7 +145,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
 `;
   };
 
-  const generateExcelData = (propertyData: any, year: number) => {
+  const generateExcelData = (propertyData: any, year: number, XLSX: any) => {
     const workbook = XLSX.utils.book_new();
 
     // Función para formatear números en formato español
@@ -449,7 +447,13 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     setIsGenerating(true);
     
     try {
-      const zip = new JSZip();
+      // Dynamic imports to reduce main bundle size
+      const [XLSX, JSZip] = await Promise.all([
+        import('xlsx'),
+        import('jszip')
+      ]);
+      
+      const zip = new JSZip.default();
       
       if (selectedProperty === 'todos') {
         // Generate for all properties + summary
@@ -489,7 +493,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
           const pdfContent = generatePDFContent(propertyData, selectedYear);
           zip.file(`${property.alias}_${selectedYear}.txt`, pdfContent);
           
-          const workbook = generateExcelData(propertyData, selectedYear);
+          const workbook = generateExcelData(propertyData, selectedYear, XLSX);
           const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
           zip.file(`${property.alias}_${selectedYear}.xlsx`, excelBuffer);
           
@@ -511,7 +515,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         const summaryPdf = generatePDFContent(summaryData, selectedYear);
         zip.file(`RESUMEN_TODOS_${selectedYear}.txt`, summaryPdf);
         
-        const summaryWorkbook = generateExcelData(summaryData, selectedYear);
+        const summaryWorkbook = generateExcelData(summaryData, selectedYear, XLSX);
         const summaryExcelBuffer = XLSX.write(summaryWorkbook, { type: 'array', bookType: 'xlsx' });
         zip.file(`RESUMEN_TODOS_${selectedYear}.xlsx`, summaryExcelBuffer);
         
@@ -542,7 +546,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         const pdfContent = generatePDFContent(propertyData, selectedYear);
         zip.file(`${property.alias}_${selectedYear}.txt`, pdfContent);
         
-        const workbook = generateExcelData(propertyData, selectedYear);
+        const workbook = generateExcelData(propertyData, selectedYear, XLSX);
         const excelBuffer = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' });
         zip.file(`${property.alias}_${selectedYear}.xlsx`, excelBuffer);
         

@@ -3,7 +3,6 @@
 
 import { initDB } from './db';
 import { generateMovementHash } from '../utils/duplicateDetection';
-import JSZip from 'jszip';
 import { safeMatch } from '../utils/safe';
 
 // Issue 1: Email alias generation with tenant tokens
@@ -344,6 +343,8 @@ class EmailIngestService {
     const documents: any[] = [];
     
     try {
+      // Dynamic import of JSZip to reduce main bundle size
+      const JSZip = (await import('jszip')).default;
       const zip = await JSZip.loadAsync(zipFile);
       
       for (const [filename, zipEntry] of Object.entries(zip.files)) {

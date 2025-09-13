@@ -1,7 +1,6 @@
 // ZIP Processing Service for Bandeja de entrada
 // Implements ZIP decompression, package creation, and child document processing
 
-import JSZip from 'jszip';
 import { detectDocumentType } from './documentTypeDetectionService';
 
 export interface ZipPackage {
@@ -67,6 +66,8 @@ export async function processZipFile(
   zipFile: File,
   emailLogId?: string
 ): Promise<ZipProcessingResult> {
+  // Dynamic import of JSZip to reduce main bundle size
+  const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
   
   try {
