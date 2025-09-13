@@ -5,10 +5,11 @@
  * sending to treasury integration.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Check, Edit3, Save, RefreshCw } from 'lucide-react';
 import { DocumentOCRFields } from '../../services/enhancedTreasuryCreationService';
 import { convertToPermanentArchive } from '../../services/enhancedAutoSaveService';
+import { Property, initDB } from '../../services/db';
 import toast from 'react-hot-toast';
 
 interface DocumentCorrectionWorkflowProps {
@@ -43,9 +44,24 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
   const [editingFields, setEditingFields] = useState<Set<keyof DocumentOCRFields>>(new Set());
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
 
-  // Field definitions with validation
-  const fieldDefinitions: FieldCorrection[] = [
+  // Load properties for dynamic dropdown
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const propertiesData = await db.getAll('properties');
+        setProperties(propertiesData);
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      }
+    };
+    loadProperties();
+  }, []);
+
+  // Generate field definitions dynamically
+  const getFieldDefinitions = (): FieldCorrection[] => [
     {
       field: 'proveedor_nombre',
       label: 'Proveedor/Emisor',
@@ -81,9 +97,24 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
       type: 'select',
       options: [
         { value: '', label: 'Personal' },
-        { value: 'Inmueble 1', label: 'C/ Mayor 123' },
-        { value: 'Inmueble 2', label: 'Piso 2A' },
-        { value: 'Inmueble 3', label: 'Local Centro' }
+        ...properties.map(property => ({
+          value: property.alias || `property-${property.id}`,
+          label: property.alias || property.address
+        }))
+      ]
+    },
+    {
+      field: 'expense_category',
+      label: 'Categoría de gasto',
+      type: 'select',
+      options: [
+        { value: 'Suministros', label: 'Suministros' },
+        { value: 'Mantenimiento', label: 'Mantenimiento' },
+        { value: 'Administración', label: 'Administración' },
+        { value: 'Reforma', label: 'Reforma' },
+        { value: 'Mobiliario', label: 'Mobiliario' },
+        { value: 'Servicios profesionales', label: 'Servicios profesionales' },
+        { value: 'Otros', label: 'Otros' }
       ]
     },
     {
@@ -136,8 +167,9 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
   // Validate all fields
   const validateFields = (): boolean => {
     const errors: Record<string, string> = {};
+    const fieldDefinitions = getFieldDefinitions();
     
-    fieldDefinitions.forEach(fieldDef => {
+    fieldDefinitions.forEach((fieldDef: FieldCorrection) => {
       if (fieldDef.validation) {
         const value = correctedFields[fieldDef.field];
         const error = fieldDef.validation(value);
@@ -381,7 +413,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
 
       {/* Field editors */}
       <div className="px-6 py-4 space-y-6 max-h-96 overflow-y-auto">
-        {fieldDefinitions.map(renderFieldEditor)}
+        {getFieldDefinitions().map(renderFieldEditor)}
       </div>
 
       {/* Footer */}

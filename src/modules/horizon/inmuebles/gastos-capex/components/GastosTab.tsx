@@ -293,7 +293,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Mejora</div>
-          <div className="text-2xl font-bold text-purple-600">
+          <div className="text-2xl font-bold text-info-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mejora').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>

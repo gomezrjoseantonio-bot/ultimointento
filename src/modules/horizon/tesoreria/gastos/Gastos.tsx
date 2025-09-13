@@ -123,10 +123,10 @@ const Gastos: React.FC = () => {
   const getCategoryColor = (categoria: string) => {
     switch (categoria) {
       case 'suministros': return 'bg-warning-100 text-yellow-800';
-      case 'comunidad': return 'bg-purple-100 text-purple-800';
+      case 'comunidad': return 'bg-info-100 text-info-800';
       case 'seguros': return 'bg-primary-100 text-primary-800';
       case 'tributos-locales': return 'bg-error-100 text-error-800';
-      case 'servicios-personales': return 'bg-success-100 text-success-800';
+      case 'servicios-personales': return 'bg-primary-100 text-primary-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Download, Repeat } from 'lucide-react';
-import { Presupuesto, UUID } from '../../../../../services/db';
+import { Presupuesto, UUID, Property, initDB } from '../../../../../services/db';
 
 interface PresupuestoHeaderProps {
   year: number;
@@ -21,6 +21,21 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
   onAddLinea,
   onExport
 }) => {
+  const [properties, setProperties] = useState<Property[]>([]);
+
+  // Load properties for dynamic dropdown
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const propertiesData = await db.getAll('properties');
+        setProperties(propertiesData);
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      }
+    };
+    loadProperties();
+  }, []);
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="flex justify-between items-start">
@@ -45,9 +60,11 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
             className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
           >
             <option value="todos">Todos los inmuebles</option>
-            {/* TODO: Load actual properties */}
-            <option value="prop-1">Inmueble 1</option>
-            <option value="prop-2">Inmueble 2</option>
+            {properties.map(property => (
+              <option key={property.id} value={`prop-${property.id}`}>
+                {property.alias || property.address}
+              </option>
+            ))}
           </select>
           
           <button

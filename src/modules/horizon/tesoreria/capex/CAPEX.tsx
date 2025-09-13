@@ -93,7 +93,7 @@ const CapexComponent: React.FC = () => {
   const getStatusColor = (estado: string) => {
     switch (estado) {
       case 'pagado': return 'bg-success-100 text-success-800';
-      case 'amortizando': return 'bg-purple-100 text-purple-800';
+      case 'amortizando': return 'bg-info-100 text-info-800';
       case 'completo': return 'bg-primary-100 text-primary-800';
       case 'incompleto': return 'bg-warning-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -102,7 +102,7 @@ const CapexComponent: React.FC = () => {
 
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
-      case 'mejora': return 'bg-success-100 text-success-800';
+      case 'mejora': return 'bg-primary-100 text-primary-800';
       case 'ampliacion': return 'bg-primary-100 text-primary-800';
       case 'mobiliario': return 'bg-warning-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';

@@ -92,7 +92,7 @@ const CAPEXPanel: React.FC = () => {
       case 'pagado': return 'bg-success-100 text-success-800';
       case 'completo': return 'bg-primary-100 text-primary-800';
       case 'incompleto': return 'bg-warning-100 text-orange-800';
-      case 'amortizando': return 'bg-purple-100 text-purple-800';
+      case 'amortizando': return 'bg-info-100 text-info-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -100,7 +100,7 @@ const CAPEXPanel: React.FC = () => {
   const getTipoColor = (tipo: string) => {
     switch (tipo) {
       case 'mejora': return 'bg-primary-100 text-primary-800';
-      case 'ampliacion': return 'bg-success-100 text-success-800';
+      case 'ampliacion': return 'bg-primary-100 text-primary-800';
       case 'mobiliario': return 'bg-warning-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -222,7 +222,7 @@ const CAPEXPanel: React.FC = () => {
             <h3 className="text-sm font-medium text-gray-500">Amortizando</h3>
             <FileText className="w-5 h-5 text-gray-400" />
           </div>
-          <div className="mt-2 text-2xl font-bold text-purple-600">
+          <div className="mt-2 text-2xl font-bold text-info-600">
             {filteredCapex.filter(c => c.estado === 'amortizando').length}
           </div>
         </div>
