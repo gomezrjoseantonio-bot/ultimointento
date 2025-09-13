@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-09-13T15:46:48.857Z",
+  "timestamp": "2025-09-13T17:03:16.404Z",
   "heavyDependencies": [
     "@testing-library/react",
     "@testing-library/jest-dom",
@@ -58,17 +58,7 @@
     {
       "path": "/src/services/db.ts",
       "size": 66,
-      "lines": 1846
-    },
-    {
-      "path": "/src/modules/horizon/tesoreria/components/CuentasPanel.tsx",
-      "size": 57,
-      "lines": 1362
-    },
-    {
-      "path": "/src/pages/UnicornioInboxPrompt.tsx",
-      "size": 53,
-      "lines": 1319
+      "lines": 1851
     },
     {
       "path": "/src/pages/InboxPage.tsx",
