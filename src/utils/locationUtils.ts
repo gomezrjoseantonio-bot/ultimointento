@@ -251,6 +251,108 @@ const POSTAL_CODE_MAP: Record<string, LocationData> = {
   '39010': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
   '39011': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
   '39012': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  
+  // Galicia - A Coruña (15xxx)
+  '15001': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15002': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15003': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15004': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15005': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  // Santiago de Compostela
+  '15701': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  '15702': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  '15703': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  // Vigo (Pontevedra)
+  '36201': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36202': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36203': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36204': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36205': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  
+  // País Vasco - Bilbao (48xxx)
+  '48001': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48002': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48003': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48004': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48005': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  // San Sebastián (Gipuzkoa)
+  '20001': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20002': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20003': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20004': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20005': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  // Vitoria-Gasteiz (Álava)
+  '01001': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01002': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01003': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01004': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01005': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  
+  // Zaragoza (50xxx)
+  '50001': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50002': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50003': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50004': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50005': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  
+  // Murcia (30xxx)
+  '30001': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30002': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30003': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30201': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Cartagena'] },
+  '30202': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Cartagena'] },
+  
+  // Extremadura - Badajoz (06xxx)
+  '06001': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  '06002': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  '06003': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  // Cáceres
+  '10001': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  '10002': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  '10003': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  
+  // Castilla y León - Valladolid (47xxx)
+  '47001': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47002': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47003': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47004': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47005': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  
+  // Canarias - Las Palmas (35xxx)
+  '35001': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35002': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35003': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35004': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35005': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  // Santa Cruz de Tenerife
+  '38001': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  '38002': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  '38003': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  
+  // Baleares - Palma (07xxx)
+  '07001': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07002': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07003': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07004': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07005': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  
+  // La Rioja - Logroño (26xxx)
+  '26001': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  '26002': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  '26003': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  
+  // Navarra - Pamplona (31xxx)
+  '31001': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  '31002': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  '31003': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  
+  // Ceuta (51xxx)
+  '51001': { province: 'Ceuta', ccaa: 'Ceuta', municipalities: ['Ceuta'] },
+  '51002': { province: 'Ceuta', ccaa: 'Ceuta', municipalities: ['Ceuta'] },
+  
+  // Melilla (52xxx)
+  '52001': { province: 'Melilla', ccaa: 'Melilla', municipalities: ['Melilla'] },
+  '52002': { province: 'Melilla', ccaa: 'Melilla', municipalities: ['Melilla'] },
 };
 
 export const getLocationFromPostalCode = (postalCode: string): LocationData | null => {

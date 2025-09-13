@@ -66,7 +66,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
     setLocalErrors(validation.errors);
   }, [data]);
 
-  // Auto-calculate taxes when regime, price, or CCAA changes
+  // Auto-calculate taxes when regime, price, or CCAA changes (only if not manually set)
   useEffect(() => {
     if (data.compra?.regimen && data.compra?.precio_compra && direccionCa) {
       const taxes = calculateTotalTaxes(
@@ -75,9 +75,28 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         direccionCa as any
       );
       
-      updateCompra('impuestos', taxes);
+      // Only set calculated values if user hasn't manually entered them
+      const currentTaxes = data.compra.impuestos;
+      const newTaxes = { ...taxes };
+      
+      if (data.compra.regimen === 'USADA_ITP') {
+        // If user has manually set ITP amount, keep it
+        if (currentTaxes?.itp_importe !== undefined) {
+          newTaxes.itp_importe = currentTaxes.itp_importe;
+        }
+      } else if (data.compra.regimen === 'NUEVA_IVA_AJD') {
+        // If user has manually set IVA or AJD, keep them
+        if (currentTaxes?.iva_importe !== undefined) {
+          newTaxes.iva_importe = currentTaxes.iva_importe;
+        }
+        if (currentTaxes?.ajd_importe !== undefined) {
+          newTaxes.ajd_importe = currentTaxes.ajd_importe;
+        }
+      }
+      
+      updateCompra('impuestos', newTaxes);
     }
-  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa, updateCompra]);
+  }, [data.compra?.regimen, data.compra?.precio_compra, direccionCa]);
 
   const allErrors = [...errors, ...localErrors];
 
@@ -307,58 +326,138 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
           </div>
         </div>
 
-        {/* Impuestos calculados automáticamente */}
+        {/* Impuestos - Editables con sugerencias calculadas */}
         {data.compra?.regimen && data.compra?.precio_compra && direccionCa && (
-          <div className="bg-hz-primary bg-opacity-5 border border-hz-primary border-opacity-20 rounded-lg p-6">
-            <h3 className="text-lg font-medium text-hz-primary mb-4">
-              Impuestos calculados automáticamente
-            </h3>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center mb-4">
+              <CalculatorIcon className="w-5 h-5 text-[#042C5E] mr-2" />
+              <h3 className="text-lg font-medium text-gray-900">Impuestos *</h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Importes calculados automáticamente según CCAA. Puedes editar los valores finales en €.
+            </p>
             
             {data.compra.regimen === 'USADA_ITP' ? (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">ITP ({direccionCa}):</span>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {formatCurrency(data.compra.impuestos?.itp_importe)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {data.compra.impuestos?.itp_porcentaje_info?.toFixed(2)}%
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ITP - {direccionCa} *
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Sugerido: {data.compra.impuestos?.itp_porcentaje_info?.toFixed(2)}%)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={data.compra.impuestos?.itp_importe || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          itp_importe: value,
+                          itp_porcentaje_info: data.compra.impuestos?.itp_porcentaje_info
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          itp_importe: Math.round(value * 100) / 100
+                        });
+                      }}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">€</span>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">IVA:</span>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {formatCurrency(data.compra.impuestos?.iva_importe)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {data.compra.impuestos?.iva_porcentaje_info?.toFixed(2)}%
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    IVA (10% obra nueva) *
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Sugerido: {data.compra.impuestos?.iva_porcentaje_info?.toFixed(2)}%)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={data.compra.impuestos?.iva_importe || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          iva_importe: value,
+                          iva_porcentaje_info: data.compra.impuestos?.iva_porcentaje_info
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          iva_importe: Math.round(value * 100) / 100
+                        });
+                      }}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">€</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700">AJD:</span>
-                  <div className="text-right">
-                    <div className="font-medium">
-                      {formatCurrency(data.compra.impuestos?.ajd_importe)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {data.compra.impuestos?.ajd_porcentaje_info?.toFixed(2)}%
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    AJD (1.5% estándar) *
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Sugerido: {data.compra.impuestos?.ajd_porcentaje_info?.toFixed(2)}%)
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={data.compra.impuestos?.ajd_importe || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          ajd_importe: value,
+                          ajd_porcentaje_info: data.compra.impuestos?.ajd_porcentaje_info
+                        });
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateCompra('impuestos', {
+                          ...data.compra?.impuestos,
+                          ajd_importe: Math.round(value * 100) / 100
+                        });
+                      }}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-[#042C5E] focus:border-[#042C5E] pr-12"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">€</span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
             
-            <div className="border-t border-hz-primary border-opacity-20 mt-4 pt-2">
+            <div className="border-t border-gray-200 mt-4 pt-4">
               <div className="flex justify-between items-center font-medium">
                 <span>Total impuestos:</span>
-                <span className="text-hz-primary">
+                <span className="text-[#042C5E]">
                   {formatCurrency(data.compra.total_impuestos)}
                 </span>
               </div>

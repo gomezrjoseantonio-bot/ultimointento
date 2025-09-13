@@ -153,18 +153,23 @@ export function validateStep1(data: any): { isValid: boolean; errors: string[] }
     errors.push('El alias es obligatorio');
   }
   
-  if (!data.direccion?.calle?.trim()) {
-    errors.push('La calle es obligatoria');
-  }
-  
-  if (!data.direccion?.numero?.trim()) {
-    errors.push('El número es obligatorio');
-  }
-  
   if (!data.direccion?.cp?.trim()) {
     errors.push('El código postal es obligatorio');
   } else if (!validatePostalCode(data.direccion.cp)) {
     errors.push('El código postal debe tener 5 dígitos');
+  }
+  
+  // Check if location fields are filled (auto-completed or manually entered)
+  if (!data.direccion?.municipio?.trim()) {
+    errors.push('El municipio es obligatorio');
+  }
+  
+  if (!data.direccion?.provincia?.trim()) {
+    errors.push('La provincia es obligatoria');
+  }
+  
+  if (!data.direccion?.ca?.trim()) {
+    errors.push('La comunidad autónoma es obligatoria');
   }
   
   return { isValid: errors.length === 0, errors };
@@ -177,12 +182,12 @@ export function validateStep2(data: any): { isValid: boolean; errors: string[] }
     errors.push('La superficie debe ser mayor que 0');
   }
   
-  if (data.caracteristicas?.habitaciones < 0) {
-    errors.push('El número de habitaciones no puede ser negativo');
+  if (data.caracteristicas?.habitaciones === undefined || data.caracteristicas?.habitaciones < 0) {
+    errors.push('El número de habitaciones es obligatorio y debe ser mayor o igual a 0');
   }
   
-  if (data.caracteristicas?.banos < 0) {
-    errors.push('El número de baños no puede ser negativo');
+  if (data.caracteristicas?.banos === undefined || data.caracteristicas?.banos < 0) {
+    errors.push('El número de baños es obligatorio y debe ser mayor o igual a 0');
   }
   
   return { isValid: errors.length === 0, errors };
@@ -199,8 +204,15 @@ export function validateStep3(data: any): { isValid: boolean; errors: string[] }
     errors.push('El precio de compra debe ser mayor que 0');
   }
   
-  if (!data.compra?.fecha_compra) {
-    errors.push('La fecha de compra es obligatoria');
+  // Check that at least one tax value is provided (edited or calculated)
+  const hasITP = data.compra?.impuestos?.itp_importe !== undefined && data.compra?.impuestos?.itp_importe >= 0;
+  const hasIVA = data.compra?.impuestos?.iva_importe !== undefined && data.compra?.impuestos?.iva_importe >= 0;
+  const hasAJD = data.compra?.impuestos?.ajd_importe !== undefined && data.compra?.impuestos?.ajd_importe >= 0;
+  
+  if (data.compra?.regimen === 'USADA_ITP' && !hasITP) {
+    errors.push('El importe del ITP es obligatorio para vivienda usada');
+  } else if (data.compra?.regimen === 'NUEVA_IVA_AJD' && (!hasIVA || !hasAJD)) {
+    errors.push('Los importes del IVA y AJD son obligatorios para obra nueva');
   }
   
   return { isValid: errors.length === 0, errors };
@@ -209,15 +221,13 @@ export function validateStep3(data: any): { isValid: boolean; errors: string[] }
 export function validateStep4(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
   
-  // Step 4 fields are optional for now, can be completed later
-  // Only validate if provided
-  
-  if (data.fiscalidad?.valor_catastral_total !== undefined && data.fiscalidad.valor_catastral_total < 0) {
-    errors.push('El valor catastral no puede ser negativo');
+  // Step 4 requires valor_catastral_total and valor_catastral_construccion
+  if (data.fiscalidad?.valor_catastral_total === undefined || data.fiscalidad.valor_catastral_total < 0) {
+    errors.push('El valor catastral total es obligatorio y debe ser mayor o igual a 0');
   }
   
-  if (data.fiscalidad?.valor_catastral_construccion !== undefined && data.fiscalidad.valor_catastral_construccion < 0) {
-    errors.push('El valor catastral de construcción no puede ser negativo');
+  if (data.fiscalidad?.valor_catastral_construccion === undefined || data.fiscalidad.valor_catastral_construccion < 0) {
+    errors.push('El valor catastral de construcción es obligatorio y debe ser mayor o igual a 0');
   }
   
   return { isValid: errors.length === 0, errors };
@@ -232,43 +242,47 @@ export function calculateCompletionStatus(data: any): {
   compra_status: ComplecionStatus;
   fiscalidad_status: ComplecionStatus;
 } {
-  // Identificación - required: alias, direccion (calle, numero, cp)
+  // Identificación - required: alias, direccion.cp and at least municipio/provincia/ccaa filled (autocomplete or manual)
   const identificacionComplete = !!(
     data.alias?.trim() &&
-    data.direccion?.calle?.trim() &&
-    data.direccion?.numero?.trim() &&
     data.direccion?.cp?.trim() &&
-    validatePostalCode(data.direccion.cp)
+    validatePostalCode(data.direccion.cp) &&
+    data.direccion?.municipio?.trim() &&
+    data.direccion?.provincia?.trim() &&
+    data.direccion?.ca?.trim()
   );
 
-  // Características - required: m2, optional: habitaciones, banos, anio_construccion
-  const caracteristicasComplete = !!(data.caracteristicas?.m2 > 0);
-  const caracteristicasPartial = !!(
-    data.caracteristicas?.habitaciones !== undefined ||
-    data.caracteristicas?.banos !== undefined ||
-    data.caracteristicas?.anio_construccion !== undefined
+  // Características - required: superficie_m2, habitaciones, banos
+  const caracteristicasComplete = !!(
+    data.caracteristicas?.m2 > 0 &&
+    data.caracteristicas?.habitaciones !== undefined &&
+    data.caracteristicas?.banos !== undefined
   );
 
-  // Compra - required: regimen, precio_compra, fecha_compra
+  // Coste de adquisición - required: regimen, precio_compra and at least one tax value (edited or calculated)
   const compraComplete = !!(
     data.compra?.regimen &&
     data.compra?.precio_compra > 0 &&
-    data.compra?.fecha_compra
+    (
+      // Either has ITP (for USADA_ITP)
+      (data.compra?.impuestos?.itp_importe !== undefined && data.compra?.impuestos?.itp_importe >= 0) ||
+      // Or has IVA+AJD (for NUEVA_IVA_AJD)
+      (data.compra?.impuestos?.iva_importe !== undefined && data.compra?.impuestos?.iva_importe >= 0 &&
+       data.compra?.impuestos?.ajd_importe !== undefined && data.compra?.impuestos?.ajd_importe >= 0)
+    )
   );
 
-  // Fiscalidad - all optional, but if any is provided, consider partial
-  const fiscalidadPartial = !!(
-    data.fiscalidad?.valor_catastral_total !== undefined ||
-    data.fiscalidad?.valor_catastral_construccion !== undefined ||
-    data.fiscalidad?.nota?.trim()
+  // Fiscalidad (AEAT) - required: valor_catastral_vc, valor_catastral_construccion_vcc (we calculate %)
+  const fiscalidadComplete = !!(
+    data.fiscalidad?.valor_catastral_total !== undefined && data.fiscalidad?.valor_catastral_total >= 0 &&
+    data.fiscalidad?.valor_catastral_construccion !== undefined && data.fiscalidad?.valor_catastral_construccion >= 0
   );
 
   return {
     identificacion_status: identificacionComplete ? 'COMPLETO' : 'PENDIENTE',
-    caracteristicas_status: caracteristicasComplete ? 'COMPLETO' : 
-      (caracteristicasPartial ? 'PARCIAL' : 'PENDIENTE'),
+    caracteristicas_status: caracteristicasComplete ? 'COMPLETO' : 'PENDIENTE',
     compra_status: compraComplete ? 'COMPLETO' : 'PENDIENTE',
-    fiscalidad_status: fiscalidadPartial ? 'PARCIAL' : 'PENDIENTE'
+    fiscalidad_status: fiscalidadComplete ? 'COMPLETO' : 'PENDIENTE'
   };
 }
 
