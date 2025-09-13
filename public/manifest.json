@@ -14,6 +14,11 @@
       "type": "image/svg+xml"
     },
     {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
       "src": "icon-512x512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml"
@@ -29,7 +34,7 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "theme_color": "#3b82f6",
+  "theme_color": "#042C5E",
   "background_color": "#ffffff",
   "categories": ["finance", "business", "productivity"]
 }
