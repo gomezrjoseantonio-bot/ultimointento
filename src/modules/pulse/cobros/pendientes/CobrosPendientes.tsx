@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Euro, Building, AlertCircle } from 'lucide-react';
+import { Calendar, Euro, Building } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { RentaMensual, Contract, Property, initDB } from '../../../../services/db';
 
@@ -109,7 +109,7 @@ const CobrosPendientes: React.FC = () => {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="space-y-2">
+                        <div>
                           <div className="flex items-center space-x-3 mb-2">
                             <Building className="h-5 w-5 text-gray-400" />
                             <h4 className="text-sm font-medium text-gray-900">
@@ -129,25 +129,6 @@ const CobrosPendientes: React.FC = () => {
                               <Euro className="h-4 w-4" />
                               <span>Previsto: {formatEuro(rent.importePrevisto)}</span>
                             </div>
-                            {rent.importeCobradoAcum > 0 && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-success-600">
-                                  Cobrado: {formatEuro(rent.importeCobradoAcum)}
-                                </span>
-                              </div>
-                            )}
-                            {rent.estado === 'parcial' && (
-                              <div className="flex items-center space-x-2 text-warning-600">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>
-                                  Pendiente: {formatEuro(rent.importePrevisto - rent.importeCobradoAcum)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="mt-2 text-sm text-gray-500">
-                            Inquilino: {contract?.inquilino || 'No especificado'}
                           </div>
                         </div>
                       </div>
