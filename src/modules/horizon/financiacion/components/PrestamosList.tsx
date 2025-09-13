@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
   Search, 
   Edit3, 
   Calculator,
@@ -8,17 +7,18 @@ import {
   CreditCard,
   Building,
   User,
-  TrendingUp
+  TrendingUp,
+  DollarSign,
+  Clock
 } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
 import { Prestamo } from '../../../../types/prestamos';
 
 interface PrestamosListProps {
-  onCreateNew: () => void;
   onEdit: (prestamoId: string) => void;
 }
 
-const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) => {
+const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,6 +93,47 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
     return matchesSearch && matchesFilter;
   });
 
+  // Calculate comprehensive loan statistics
+  const calculateLoanStats = () => {
+    const capitalSolicitado = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
+    const capitalPendiente = prestamos.reduce((sum, p) => sum + p.principalVivo, 0);
+    const cuotaTotal = prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
+    
+    // Calculate paid and pending interests (estimation based on elapsed time)
+    let interesesPagados = 0;
+    let interesesPendientes = 0;
+    
+    prestamos.forEach(prestamo => {
+      const fechaFirma = new Date(prestamo.fechaFirma);
+      const fechaActual = new Date();
+      const mesesTranscurridos = Math.max(0, Math.floor((fechaActual.getTime() - fechaFirma.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
+      
+      const effectiveTIN = calculateEffectiveTIN(prestamo);
+      const monthlyRate = effectiveTIN / 12 / 100;
+      
+      // Estimate interests paid (simplified calculation)
+      const mesesPagados = Math.min(mesesTranscurridos, prestamo.plazoMesesTotal);
+      
+      // For simplicity, estimate that ~70% of early payments are interest
+      const interesesPorCuota = prestamo.principalVivo * monthlyRate;
+      interesesPagados += interesesPorCuota * mesesPagados * 0.7;
+      
+      // Estimate remaining interests
+      const mesesRestantes = Math.max(0, prestamo.plazoMesesTotal - mesesTranscurridos);
+      interesesPendientes += interesesPorCuota * mesesRestantes * 0.5; // Decreasing over time
+    });
+    
+    return {
+      capitalSolicitado,
+      capitalPendiente,
+      interesesPagados,
+      interesesPendientes,
+      cuotaTotal
+    };
+  };
+
+  const loanStats = calculateLoanStats();
+
   // Mock account data
   const mockAccounts = [
     { id: 'acc1', iban: 'ES91 2100 0418 4502 0005 1332', entidad: 'CaixaBank' },
@@ -117,22 +158,6 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-atlas-navy-1">Préstamos</h2>
-          <p className="text-text-gray">Gestión de financiación ATLAS Horizon</p>
-        </div>
-        
-        <button
-          onClick={onCreateNew}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-atlas text-white bg-atlas-blue hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue transition-colors"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Crear Préstamo
-        </button>
-      </div>
-
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4 items-center">
         {/* Search */}
@@ -173,24 +198,14 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-atlas border border-gray-200 p-4">
           <div className="flex items-center">
-            <CreditCard className="h-8 w-8 text-atlas-blue" />
+            <Calculator className="h-8 w-8 text-atlas-blue" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Total Préstamos</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">{prestamos.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Calculator className="h-8 w-8 text-ok" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Capital Total</p>
+              <p className="text-sm font-medium text-text-gray">Capital Solicitado</p>
               <p className="text-2xl font-bold text-atlas-navy-1">
-                {formatNumber(prestamos.reduce((sum, p) => sum + p.principalVivo, 0))} €
+                {formatNumber(loanStats.capitalSolicitado)} €
               </p>
             </div>
           </div>
@@ -198,13 +213,35 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
 
         <div className="bg-white rounded-atlas border border-gray-200 p-4">
           <div className="flex items-center">
-            <TrendingUp className="h-8 w-8 text-warn" />
+            <DollarSign className="h-8 w-8 text-warn" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">TIN Medio</p>
+              <p className="text-sm font-medium text-text-gray">Capital Pendiente</p>
               <p className="text-2xl font-bold text-atlas-navy-1">
-                {prestamos.length > 0 ? formatPercentage(
-                  prestamos.reduce((sum, p) => sum + calculateEffectiveTIN(p), 0) / prestamos.length
-                ) : '0,00'} %
+                {formatNumber(loanStats.capitalPendiente)} €
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+          <div className="flex items-center">
+            <TrendingUp className="h-8 w-8 text-ok" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-text-gray">Intereses Pagados</p>
+              <p className="text-2xl font-bold text-atlas-navy-1">
+                {formatNumber(loanStats.interesesPagados)} €
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+          <div className="flex items-center">
+            <Clock className="h-8 w-8 text-error" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-text-gray">Intereses Pendientes</p>
+              <p className="text-2xl font-bold text-atlas-navy-1">
+                {formatNumber(loanStats.interesesPendientes)} €
               </p>
             </div>
           </div>
@@ -216,7 +253,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
             <div className="ml-4">
               <p className="text-sm font-medium text-text-gray">Cuota Total</p>
               <p className="text-2xl font-bold text-atlas-navy-1">
-                {formatNumber(prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0))} €
+                {formatNumber(loanStats.cuotaTotal)} €
               </p>
             </div>
           </div>
@@ -230,14 +267,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onCreateNew, onEdit }) =>
             <>
               <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
               <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
-              <p className="text-text-gray mb-6">Comience creando su primer préstamo</p>
-              <button
-                onClick={onCreateNew}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-atlas text-white bg-atlas-blue hover:bg-primary-800 transition-colors"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Primer Préstamo
-              </button>
+              <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
             </>
           ) : (
             <>

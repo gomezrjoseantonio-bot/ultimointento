@@ -44,7 +44,6 @@ const Financiacion: React.FC = () => {
       default:
         return (
           <PrestamosList
-            onCreateNew={handleCreateNew}
             onEdit={handleEdit}
           />
         );
@@ -60,6 +59,10 @@ const Financiacion: React.FC = () => {
     <PageLayout 
       title="Financiación" 
       subtitle="Alta y gestión de préstamos manuales para ATLAS Horizon."
+      primaryAction={{
+        label: "Crear Préstamo",
+        onClick: handleCreateNew
+      }}
     >
       {renderContent()}
     </PageLayout>
