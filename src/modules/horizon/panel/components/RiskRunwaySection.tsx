@@ -72,7 +72,7 @@ const RiskRunwaySection: React.FC<RiskRunwaySectionProps> = ({ filters }) => {
         
         {/* Subtitle with status */}
         <div className="text-center">
-          <div className="text-xs text-hz-neutral-700 mb-1">
+          <div className="text-xs text-hz-neutral-900 mb-1">
             Runway: {runwayDays} días | Umbral: €{thresholdAmount.toLocaleString()}
           </div>
           
