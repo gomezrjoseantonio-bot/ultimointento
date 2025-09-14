@@ -52,12 +52,6 @@ interface DocumentAIRequest {
     content: string; // Base64 encoded
     mimeType: string;
   };
-  processOptions: {
-    ocrConfig: {
-      languageHints: string[];
-      enableNativePdfParsing: boolean;
-    };
-  };
 }
 
 // Supported MIME types for processing
@@ -219,19 +213,18 @@ export async function processWithDocAI({ base64, mime }: { base64: string; mime:
     // Construct processor path for EU region
     const processorPath = `https://eu-documentai.googleapis.com/v1/projects/${process.env.DOC_AI_PROJECT_ID}/locations/${process.env.DOC_AI_LOCATION}/processors/${process.env.DOC_AI_PROCESSOR_ID}:process`;
     
-    // Build correct request body with rawDocument and processOptions
+    // Build correct request body with rawDocument only
     const requestBody: DocumentAIRequest = {
       rawDocument: {
         content: base64,
         mimeType: fileMime
-      },
-      processOptions: {
-        ocrConfig: {
-          languageHints: ['es'],
-          enableNativePdfParsing: true
-        }
       }
     };
+    
+    // Add development logging
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[DocAI] request sent without processOptions');
+    }
 
     // Call Google Document AI
     const response = await fetch(processorPath, {
