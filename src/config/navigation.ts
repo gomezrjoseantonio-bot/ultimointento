@@ -1,4 +1,4 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt } from 'lucide-react';
+import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -7,81 +7,25 @@ export interface NavigationItem {
   icon: any;
   module: AppModule | 'shared';
   subTabs?: NavigationItem[];
+  section?: 'horizon' | 'pulse' | 'documentation';
 }
 
+// ATLAS Unified Navigation - exactly 9 entries as specified
 export const navigationConfig: NavigationItem[] = [
-  // Panel is shared but content differs per module
+  // HORIZON — Supervisión (items 1-7)
   {
-    name: 'Panel',
+    name: 'Dashboard',
     href: '/panel',
     icon: Home,
     module: 'shared',
+    section: 'horizon'
   },
-  
-  // Bandeja de entrada - Horizon specific
-  {
-    name: 'Bandeja de entrada',
-    href: '/inbox',
-    icon: Inbox,
-    module: 'horizon',
-  },
-  
-  // Horizon (Invest) specific navigation
-  {
-    name: 'Inmuebles',
-    href: '/inmuebles',
-    icon: Building,
-    module: 'horizon',
-    subTabs: [
-      { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
-      { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
-      { name: 'Gastos', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
-      { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
-    ]
-  },
-  {
-    name: 'Financiación',
-    href: '/financiacion',
-    icon: Receipt,
-    module: 'horizon',
-    // NO subtabs - single consolidated financing view
-  },
-  {
-    name: 'Tesorería',
-    href: '/tesoreria',
-    icon: Banknote,
-    module: 'horizon',
-    // NO subtabs - single Radar view per ATLAS guide
-  },
-  {
-    name: 'Fiscalidad',
-    href: '/fiscalidad',
-    icon: Calculator,
-    module: 'horizon',
-    subTabs: [
-      { name: 'Resumen', href: '/fiscalidad/resumen', icon: Calculator, module: 'horizon' },
-      { name: 'Detalle', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
-      { name: 'Declaraciones', href: '/fiscalidad/declaraciones', icon: Settings, module: 'horizon' },
-    ]
-  },
-  {
-    name: 'Proyección',
-    href: '/proyeccion',
-    icon: TrendingUp,
-    module: 'horizon',
-    subTabs: [
-      { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
-      { name: 'Desviaciones', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
-      { name: 'Horizontes', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
-    ]
-  },
-  
-  // Personal section within Horizon (neutral styling)
   {
     name: 'Personal',
     href: '/personal',
     icon: Users,
     module: 'horizon',
+    section: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/personal/resumen', icon: Home, module: 'horizon' },
       { name: 'Cuentas', href: '/personal/cuentas', icon: Banknote, module: 'horizon' },
@@ -90,93 +34,97 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Reglas', href: '/personal/reglas', icon: Settings, module: 'horizon' },
     ]
   },
-  
-  // Pulse (Management) specific navigation
   {
-    name: 'Contratos',
+    name: 'Inmuebles',
+    href: '/inmuebles',
+    icon: Building,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
+      { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
+      { name: 'Gastos', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
+      { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
+      { name: 'Tareas', href: '/inmuebles/tareas', icon: Settings, module: 'horizon' }, // Tareas moved here as tab
+    ]
+  },
+  {
+    name: 'Tesorería',
+    href: '/tesoreria',
+    icon: Banknote,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Radar', href: '/tesoreria', icon: Banknote, module: 'horizon' },
+      { name: 'Cobros/Pagos', href: '/tesoreria/cobros-pagos', icon: DollarSign, module: 'horizon' },
+      { name: 'Importar', href: '/tesoreria/importar', icon: Inbox, module: 'horizon' },
+    ]
+  },
+  {
+    name: 'Proyecciones',
+    href: '/proyeccion',
+    icon: TrendingUp,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
+      { name: 'Desviaciones', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
+      { name: 'Horizontes', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
+    ]
+  },
+  {
+    name: 'Fiscalidad',
+    href: '/fiscalidad',
+    icon: Calculator,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Resumen', href: '/fiscalidad/resumen', icon: Calculator, module: 'horizon' },
+      { name: 'Detalle', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
+      { name: 'Declaraciones', href: '/fiscalidad/declaraciones', icon: Settings, module: 'horizon' },
+    ]
+  },
+  {
+    name: 'Financiación',
+    href: '/financiacion',
+    icon: Receipt,
+    module: 'horizon',
+    section: 'horizon'
+  },
+  
+  // PULSE — Gestión (item 8)
+  {
+    name: 'Alquileres',
     href: '/contratos',
     icon: Users,
     module: 'pulse',
+    section: 'pulse',
     subTabs: [
       { name: 'Lista', href: '/contratos/lista', icon: Users, module: 'pulse' },
       { name: 'Nuevo', href: '/contratos/nuevo', icon: Users, module: 'pulse' },
-      { name: 'Gestión', href: '/contratos/gestion', icon: Settings, module: 'pulse' },
-    ]
-  },
-  {
-    name: 'Firmas',
-    href: '/firmas',
-    icon: CreditCard,
-    module: 'pulse',
-    subTabs: [
-      { name: 'Pendientes', href: '/firmas/pendientes', icon: CreditCard, module: 'pulse' },
-      { name: 'Completadas', href: '/firmas/completadas', icon: CreditCard, module: 'pulse' },
-      { name: 'Plantillas', href: '/firmas/plantillas', icon: Settings, module: 'pulse' },
-    ]
-  },
-  {
-    name: 'Cobros',
-    href: '/cobros',
-    icon: DollarSign,
-    module: 'pulse',
-    subTabs: [
-      { name: 'Pendientes', href: '/cobros/pendientes', icon: DollarSign, module: 'pulse' },
-      { name: 'Conciliación', href: '/cobros/conciliacion', icon: Banknote, module: 'pulse' },
-      { name: 'Histórico', href: '/cobros/historico', icon: TrendingUp, module: 'pulse' },
-    ]
-  },
-  {
-    name: 'Automatizaciones',
-    href: '/automatizaciones',
-    icon: Settings,
-    module: 'pulse',
-    subTabs: [
-      { name: 'Reglas', href: '/automatizaciones/reglas', icon: Settings, module: 'pulse' },
-      { name: 'Flujos', href: '/automatizaciones/flujos', icon: TrendingUp, module: 'pulse' },
-      { name: 'Historial', href: '/automatizaciones/historial', icon: Users, module: 'pulse' },
-    ]
-  },
-  {
-    name: 'Tareas',
-    href: '/tareas',
-    icon: TrendingUp,
-    module: 'pulse',
-    subTabs: [
-      { name: 'Pendientes', href: '/tareas/pendientes', icon: TrendingUp, module: 'pulse' },
-      { name: 'Completadas', href: '/tareas/completadas', icon: TrendingUp, module: 'pulse' },
-      { name: 'Programadas', href: '/tareas/programadas', icon: Settings, module: 'pulse' },
+      { name: 'Renovación', href: '/contratos/renovacion', icon: Settings, module: 'pulse' },
+      { name: 'Subidas', href: '/contratos/subidas', icon: TrendingUp, module: 'pulse' },
+      { name: 'Envío a firmar', href: '/firmas', icon: CreditCard, module: 'pulse' },
     ]
   },
   
-  // Configuración for Horizon
+  // DOCUMENTACIÓN (item 9)
   {
-    name: 'Configuración',
-    href: '/configuracion',
-    icon: Settings,
-    module: 'horizon',
+    name: 'Documentación',
+    href: '/documentacion',
+    icon: FileText,
+    module: 'shared',
+    section: 'documentation',
     subTabs: [
-      { name: 'Usuarios y roles', href: '/configuracion/usuarios-roles', icon: Users, module: 'horizon' },
-      { name: 'Preferencias y datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'horizon' },
-      { name: 'Cuentas', href: '/configuracion/cuentas', icon: Banknote, module: 'horizon' },
-      { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'horizon' },
-    ]
-  },
-
-  // Configuración for Pulse
-  {
-    name: 'Configuración',
-    href: '/configuracion',
-    icon: Settings,
-    module: 'pulse',
-    subTabs: [
-      { name: 'Preferencias & Datos', href: '/configuracion/preferencias-datos', icon: Settings, module: 'pulse' },
-      { name: 'Email entrante', href: '/configuracion/email-entrante', icon: Inbox, module: 'pulse' },
+      { name: 'Repositorio', href: '/documentacion', icon: FileText, module: 'shared' },
+      { name: 'Filtros', href: '/documentacion/filtros', icon: Settings, module: 'shared' },
+      { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Calculator, module: 'shared' },
+      { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: Users, module: 'shared' },
     ]
   },
 ];
 
-export const getNavigationForModule = (module: AppModule): NavigationItem[] => {
-  return navigationConfig.filter(item => 
-    item.module === module || item.module === 'shared'
-  );
+export const getNavigationForModule = (): NavigationItem[] => {
+  // Return all navigation items - unified sidebar
+  return navigationConfig;
 };
