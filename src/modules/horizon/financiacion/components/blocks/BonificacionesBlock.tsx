@@ -28,8 +28,14 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
   calculoLive 
 }) => {
   const [showCustomBonification, setShowCustomBonification] = useState(false);
+  const [customBonification, setCustomBonification] = useState({
+    nombre: '',
+    descuentoTIN: 0,
+    condicionParametrizable: ''
+  });
+  const [maxBonificacion, setMaxBonificacion] = useState(1.5); // User-configurable maximum
 
-  // Standard bonification templates
+  // Standard bonification templates (now editable)
   const standardBonifications = [
     {
       tipo: 'NOMINA' as const,
@@ -39,7 +45,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.30,
       ventanaEvaluacion: 6,
       fuenteVerificacion: 'TESORERIA' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'RECIBOS' as const,
@@ -49,7 +56,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.15,
       ventanaEvaluacion: 3,
       fuenteVerificacion: 'TESORERIA' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'TARJETA' as const,
@@ -59,7 +67,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.20,
       ventanaEvaluacion: 3,
       fuenteVerificacion: 'TESORERIA' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'SEGURO_HOGAR' as const,
@@ -69,7 +78,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.25,
       ventanaEvaluacion: 12,
       fuenteVerificacion: 'SEGUROS' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'SEGURO_VIDA' as const,
@@ -79,7 +89,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.35,
       ventanaEvaluacion: 12,
       fuenteVerificacion: 'SEGUROS' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'PLAN_PENSIONES' as const,
@@ -89,7 +100,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.40,
       ventanaEvaluacion: 6,
       fuenteVerificacion: 'MANUAL' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'ALARMA' as const,
@@ -99,7 +111,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.10,
       ventanaEvaluacion: 12,
       fuenteVerificacion: 'MANUAL' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     },
     {
       tipo: 'INGRESOS_RECURRENTES' as const,
@@ -109,7 +122,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       descuentoTIN: 0.25,
       ventanaEvaluacion: 6,
       fuenteVerificacion: 'TESORERIA' as const,
-      estadoInicial: 'NO_CUMPLE' as const
+      estadoInicial: 'NO_CUMPLE' as const,
+      editable: true
     }
   ];
 
@@ -118,11 +132,51 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
     return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  // Parse Spanish formatted number
+  const parseNumber = (value: string) => {
+    if (!value) return 0;
+    return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+  };
+
+  // Add custom bonification
+  const addCustomBonification = () => {
+    if (!customBonification.nombre || customBonification.descuentoTIN <= 0) {
+      return; // Validation
+    }
+
+    const newBonification: BonificacionFinanciacion = {
+      id: `custom_bonif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      tipo: 'OTROS',
+      nombre: customBonification.nombre,
+      condicionParametrizable: customBonification.condicionParametrizable || 'Condición personalizada',
+      descuentoTIN: customBonification.descuentoTIN,
+      ventanaEvaluacion: 12, // Default
+      fuenteVerificacion: 'MANUAL',
+      estadoInicial: 'NO_CUMPLE',
+      activa: true
+    };
+
+    const currentBonifications = formData.bonificaciones || [];
+    updateFormData({ 
+      bonificaciones: [...currentBonifications, newBonification]
+    });
+
+    // Reset form
+    setCustomBonification({ nombre: '', descuentoTIN: 0, condicionParametrizable: '' });
+    setShowCustomBonification(false);
+  };
+
   // Add bonification
   const addBonification = (template: typeof standardBonifications[0]) => {
     const newBonification: BonificacionFinanciacion = {
       id: `bonif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      ...template,
+      tipo: template.tipo,
+      nombre: template.nombre,
+      condicionParametrizable: template.condicionParametrizable,
+      descuentoTIN: template.descuentoTIN,
+      ventanaEvaluacion: template.ventanaEvaluacion,
+      fuenteVerificacion: template.fuenteVerificacion,
+      estadoInicial: template.estadoInicial,
       activa: true
     };
 
@@ -162,6 +216,34 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Maximum Bonification Configuration */}
+      <div className="bg-info-50 border border-info-200 rounded-atlas p-4">
+        <h4 className="font-medium text-atlas-blue mb-3">
+          Configuración de Límites
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
+              Bonificación máxima permitida (p.p.)
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formatPercentage(maxBonificacion)}
+                onChange={(e) => setMaxBonificacion(parseNumber(e.target.value))}
+                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <span className="text-text-gray text-sm">p.p.</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-sm text-info-600">
+            Límite configurado por el usuario para alertas de validación
+          </div>
+        </div>
+      </div>
+
       {/* Standard Bonifications Selector */}
       <div>
         <h4 className="font-medium text-atlas-navy-1 mb-4 flex items-center">
@@ -214,10 +296,69 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
         {showCustomBonification && (
           <div className="mt-4 p-4 border border-gray-200 rounded-atlas bg-gray-50">
             <h5 className="font-medium text-atlas-navy-1 mb-3">Nueva Bonificación Personalizada</h5>
-            {/* Custom bonification form would go here */}
-            <p className="text-sm text-text-gray">
-              Funcionalidad de bonificaciones personalizadas disponible próximamente.
-            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Nombre de la bonificación *
+                </label>
+                <input
+                  type="text"
+                  value={customBonification.nombre}
+                  onChange={(e) => setCustomBonification(prev => ({ ...prev, nombre: e.target.value }))}
+                  placeholder="Ej: Vinculación especial"
+                  className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Descuento (puntos porcentuales) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={customBonification.descuentoTIN ? formatPercentage(customBonification.descuentoTIN) : ''}
+                    onChange={(e) => setCustomBonification(prev => ({ ...prev, descuentoTIN: parseNumber(e.target.value) }))}
+                    placeholder="0,50"
+                    className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-text-gray text-sm">p.p.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                Condición (opcional)
+              </label>
+              <input
+                type="text"
+                value={customBonification.condicionParametrizable}
+                onChange={(e) => setCustomBonification(prev => ({ ...prev, condicionParametrizable: e.target.value }))}
+                placeholder="Descripción de la condición para aplicar la bonificación"
+                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomBonification(false);
+                  setCustomBonification({ nombre: '', descuentoTIN: 0, condicionParametrizable: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-atlas text-atlas-navy-1 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={addCustomBonification}
+                disabled={!customBonification.nombre || customBonification.descuentoTIN <= 0}
+                className="px-4 py-2 bg-atlas-blue text-white rounded-atlas hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Añadir Bonificación
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -316,14 +457,14 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
           </div>
 
           {/* Tope acumulado warning */}
-          {totalBonificaciones > 1.5 && (
+          {totalBonificaciones > maxBonificacion && (
             <div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-atlas">
               <div className="flex items-start">
                 <AlertTriangle className="h-4 w-4 text-warning-600 flex-shrink-0 mt-0.5" />
                 <div className="ml-2 text-sm">
-                  <p className="text-warning-700 font-medium">Tope de bonificaciones</p>
+                  <p className="text-warning-700 font-medium">Tope de bonificaciones superado</p>
                   <p className="text-warning-600">
-                    El descuento total supera el tope habitual de -1,50 p.p. 
+                    El descuento total ({formatPercentage(totalBonificaciones)} p.p.) supera el máximo configurado de {formatPercentage(maxBonificacion)} p.p.
                     Revise las condiciones específicas del producto.
                   </p>
                 </div>
