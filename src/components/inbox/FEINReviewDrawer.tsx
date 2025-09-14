@@ -24,7 +24,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
   readonly = false,
   loanId
 }) => {
-  const [editableData, setEditableData] = useState<FEINData>(feinResult.data || {});
+  const [editableData, setEditableData] = useState<FEINData>(feinResult.rawData || {});
   const [isEditing, setIsEditing] = useState(!readonly && feinResult.fieldsMissing.length > 0);
 
   if (!isOpen) return null;

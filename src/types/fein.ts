@@ -1,6 +1,66 @@
 // FEIN (Financial Information Extraction) types for loan creation
-// Implements requirements from PROMPT 3 — CREACIÓN DE PRÉSTAMOS DESDE FEIN
+// Implements requirements from OCR FEIN - Canonical JSON Schema
 
+// Canonical JSON schema following problem statement exactly
+export interface FEINCanonicalData {
+  docMeta: {
+    sourceFile: string;
+    uuid: string;
+    pages: number;
+    parsedAt: string;
+    parserVersion: string;
+  };
+  prestamo: {
+    alias: string;
+    tipo: 'FIJO' | 'VARIABLE' | 'MIXTO';
+    capitalInicial: number;
+    plazoMeses: number;                     // Always in months, convert from years if needed
+    cuentaCargo: { 
+      iban: string; 
+      banco: string; 
+    };
+    sistemaAmortizacion: 'FRANCES';        // Only French system supported
+    carencia: 'NINGUNA' | 'CAPITAL' | 'TOTAL';
+    comisiones: {
+      aperturaPrc: number;                 // % in human format (2.95 = 2.95%)
+      mantenimientoMes: number;            // € monthly
+      amortizacionAnticipadaPrc: number;   // %
+    };
+    fijo?: {
+      tinFijoPrc: number;
+    };
+    variable?: {
+      indice: string;
+      valorIndiceActualPrc: number;
+      diferencialPrc: number;
+      revisionMeses: 6 | 12;
+    };
+    mixto?: {
+      tramoFijoAnios: number;
+      tinFijoTramoPrc: number;
+      posteriorVariable: {
+        indice: string;
+        diferencialPrc: number;
+        revisionMeses: 6 | 12;
+      };
+    };
+    bonificaciones: FEINBonificacionCanonical[];
+    complementos: {
+      taeAproxPrc?: number;
+      cuotaEstim?: number;
+      proximaRevision?: string;
+    };
+  };
+}
+
+export interface FEINBonificacionCanonical {
+  tipo: 'NOMINA' | 'RECIBOS' | 'TARJETA' | 'SEGURO_HOGAR' | 'SEGURO_VIDA' | 
+        'ALARMA' | 'PLAN_PENSIONES' | 'INGRESOS_RECURRENTES';
+  pp: number;                           // Points percentage (negative if reduces rate)
+  estado: 'PENDIENTE' | 'CUMPLE' | 'NO_CUMPLE';
+}
+
+// Legacy FEINData interface for backward compatibility during parsing
 export interface FEINData {
   // Bank and Entity Information
   bancoEntidad?: string;              // Bank / Entity issuer
@@ -50,12 +110,19 @@ export interface FEINBonificacion {
 
 export interface FEINProcessingResult {
   success: boolean;
-  data?: FEINData;
+  data?: FEINCanonicalData;          // Now returns canonical format
+  rawData?: FEINData;                // Legacy format for debugging
   errors: string[];
   warnings: string[];
   confidence?: number;               // Overall confidence score (0-1)
   fieldsExtracted: string[];         // List of successfully extracted fields
   fieldsMissing: string[];           // List of missing critical fields
+  uuid?: string;                     // UUID for file tracking
+  persistedFiles?: {                 // File persistence references
+    rawPdf: string;                  // /fein/raw/{uuid}.pdf
+    canonicalJson: string;           // /fein/json/{uuid}.json
+    processingLog: string;           // /fein/logs/{uuid}.json
+  };
 }
 
 export interface FEINValidationResult {
@@ -73,4 +140,34 @@ export interface FEINToLoanMapping {
   inmuebleId?: string;              // Property ID (if ambito is INMUEBLE)
   cuentaCargoId: string;            // Charge account ID (user-selected from existing accounts)
   // All other fields mapped from FEIN data
+}
+
+// Processing log structure for audit trail
+export interface FEINProcessingLog {
+  uuid: string;
+  startTime: string;
+  endTime?: string;
+  stages: FEINProcessingStage[];
+  errors: string[];
+  fileInfo: {
+    name: string;
+    size: number;
+    pages: number;
+    mimeType: string;
+  };
+  ocrInfo: {
+    isNativeText: boolean;
+    pagesProcessed: number;
+    totalChunks?: number;
+    retriesRequired?: number;
+  };
+}
+
+export interface FEINProcessingStage {
+  stage: 'upload' | 'validation' | 'ocr' | 'parsing' | 'persistence' | 'complete';
+  timestamp: string;
+  duration?: number;
+  success: boolean;
+  details?: any;
+  error?: string;
 }
