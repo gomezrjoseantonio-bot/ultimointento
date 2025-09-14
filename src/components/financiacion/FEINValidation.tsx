@@ -24,7 +24,9 @@ interface FEINValidationProps {
 }
 
 const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps) => {
-  const [editableData, setEditableData] = useState<FEINData>(feinResult.data || {});
+  // Use rawData for editing (legacy format) and data for canonical display
+  const [editableData, setEditableData] = useState<FEINData>(feinResult.rawData || {});
+  // Note: canonicalData (feinResult.data) is available for display if needed
   const [mapping, setMapping] = useState<FEINToLoanMapping>({
     ambito: 'PERSONAL',
     cuentaCargoId: ''
