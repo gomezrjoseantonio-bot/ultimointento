@@ -423,4 +423,337 @@ describe('normalizeFeinFromDocAI', () => {
       expect(result.fields.tin).toBe('2,95 %');
     });
   });
+
+  describe('Precision booster (regex extraction)', () => {
+    it('should extract capital_inicial from Spanish text when missing from DocAI', () => {
+      const mockText = `
+        Solicitud de préstamo hipotecario
+        Capital solicitado: 250.000,00 €
+        Plazo: 25 años
+        TIN: 3,25 %
+        TAE: 3,41 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], // No DocAI entities
+        text: mockText 
+      });
+
+      expect(result.fields.capital_inicial).toBe('250.000,00 €');
+      expect(result.byField.capital_inicial?.source).toBe('regex:capital');
+      expect(result.byField.capital_inicial?.confidence).toBe(0.70);
+    });
+
+    it('should extract plazo in years and convert to months', () => {
+      const mockText = `
+        Préstamo hipotecario
+        Plazo: 25 años
+        TIN: 3,25 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.plazoMeses).toBe(300); // 25 * 12
+      expect(result.byField.plazoMeses?.source).toBe('regex:plazo_anos');
+      expect(result.byField.plazoMeses?.confidence).toBe(0.75);
+    });
+
+    it('should extract plazo in months directly', () => {
+      const mockText = `
+        Préstamo hipotecario
+        Plazo: 300 meses
+        TIN: 3,25 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.plazoMeses).toBe(300);
+      expect(result.byField.plazoMeses?.source).toBe('regex:plazo_meses');
+    });
+
+    it('should prioritize years over months in plazo extraction', () => {
+      const mockText = `
+        Préstamo hipotecario
+        Plazo: 25 años (300 meses)
+        TIN: 3,25 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.plazoMeses).toBe(300); // 25 * 12
+      expect(result.byField.plazoMeses?.source).toBe('regex:plazo_anos');
+    });
+
+    it('should extract TIN and TAE percentages', () => {
+      const mockText = `
+        Condiciones del préstamo
+        TIN: 3,25 %
+        TAE: 3,41 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.tin).toBe('3,25 %');
+      expect(result.byField.tin?.source).toBe('regex:tin');
+      expect(result.fields.tae).toBe('3,41 %');
+      expect(result.byField.tae?.source).toBe('regex:tae');
+    });
+
+    it('should extract cuota mensual', () => {
+      const mockText = `
+        Información del préstamo
+        Cuota mensual aproximada: 1.263,45 €
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      // The formatter produces 1263,45 € for amounts < 10000 (no thousand separator)
+      expect(result.fields.cuota).toBe('1263,45 €');
+      expect(result.byField.cuota?.source).toBe('regex:cuota');
+    });
+
+    it('should extract and normalize EURIBOR index', () => {
+      const mockText = `
+        Índice de referencia
+        EURIBOR 12 meses
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.indice).toBe('EURIBOR_12M');
+      expect(result.byField.indice?.source).toBe('regex:indice');
+    });
+
+    it('should extract EURIBOR 6M variant', () => {
+      const mockText = `
+        Índice de referencia
+        EURIBOR 6 meses
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.indice).toBe('EURIBOR_6M');
+    });
+
+    it('should default to EURIBOR_12M when no period specified', () => {
+      const mockText = `
+        Índice de referencia
+        EURIBOR
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.indice).toBe('EURIBOR_12M');
+    });
+
+    it('should extract diferencial with + sign', () => {
+      const mockText = `
+        Condiciones del préstamo
+        Diferencial: +1,50 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.diferencial).toBe('+1,50 %');
+      expect(result.byField.diferencial?.source).toBe('regex:diferencial');
+    });
+
+    it('should extract diferencial without + sign', () => {
+      const mockText = `
+        Condiciones del préstamo
+        Diferencial: 1,50 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.diferencial).toBe('+1,50 %');
+    });
+
+    it('should extract sistema de amortización Francés', () => {
+      const mockText = `
+        Condiciones del préstamo
+        Sistema de amortización: Francés
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.sistemaAmortizacion).toBe('FRANCES');
+      expect(result.byField.sistemaAmortizacion?.source).toBe('regex:sistema');
+    });
+
+    it('should extract sistema de amortización Alemán', () => {
+      const mockText = `
+        Condiciones del préstamo
+        Amortización: Alemán
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.sistemaAmortizacion).toBe('ALEMAN');
+    });
+
+    it('should extract and format IBAN correctly', () => {
+      const mockText = `
+        Cuenta de cargo
+        ES1200491234123412345678
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.cuentaCargo).toBe('ES12 0049 1234 1234 1234 5678');
+      expect(result.byField.cuentaCargo?.source).toBe('regex:iban');
+    });
+
+    it('should extract IBAN with existing spaces', () => {
+      const mockText = `
+        Cuenta de cargo
+        ES12 0049 1234 1234 1234 5678
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(result.fields.cuentaCargo).toBe('ES12 0049 1234 1234 1234 5678');
+    });
+
+    it('should not overwrite existing DocAI fields', () => {
+      const mockEntities = [
+        {
+          type: 'loan_amount',
+          mentionText: '300.000,00 €',
+          normalizedValue: {
+            moneyValue: {
+              currencyCode: 'EUR',
+              units: '300000',
+              nanos: '0'
+            }
+          },
+          confidence: 0.85
+        }
+      ];
+
+      const mockText = `
+        Capital solicitado: 250.000,00 €
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: mockEntities, 
+        text: mockText 
+      });
+
+      // Should keep DocAI value, not regex value
+      expect(result.fields.capital_inicial).toBe('300.000,00 €');
+      expect(result.byField.capital_inicial?.source).toBe('docai:loan_amount');
+    });
+
+    it('should calculate confidence correctly for regex-only extraction', () => {
+      const mockText = `
+        Capital inicial: 250.000,00 €
+        Plazo: 25 años
+        TIN: 3,25 %
+        TAE: 3,41 %
+        Cuota mensual: 1.263,45 €
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      // All fields extracted by regex, should be capped between 0.65-0.75
+      expect(result.confidenceGlobal).toBeGreaterThanOrEqual(0.65);
+      expect(result.confidenceGlobal).toBeLessThanOrEqual(0.75);
+    });
+
+    it('should calculate mixed confidence for DocAI + regex extraction', () => {
+      const mockEntities = [
+        {
+          type: 'loan_amount',
+          mentionText: '250.000,00 €',
+          normalizedValue: {
+            moneyValue: {
+              currencyCode: 'EUR',
+              units: '250000',
+              nanos: '0'
+            }
+          },
+          confidence: 0.90
+        }
+      ];
+
+      const mockText = `
+        TIN: 3,25 %
+        TAE: 3,41 %
+      `;
+
+      const result = normalizeFeinFromDocAI({ 
+        entities: mockEntities, 
+        text: mockText 
+      });
+
+      // Mixed DocAI + regex, should not be capped
+      expect(result.confidenceGlobal).toBeGreaterThan(0.75);
+    });
+
+    it('should log filled fields safely', () => {
+      const consoleSpy = jest.spyOn(console, 'info').mockImplementation();
+      
+      const mockText = `
+        Capital inicial: 250.000,00 €
+        TIN: 3,25 %
+      `;
+
+      normalizeFeinFromDocAI({ 
+        entities: [], 
+        text: mockText 
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith('[FEIN] booster', { 
+        filled: expect.arrayContaining(['capital_inicial', 'tin'])
+      });
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
