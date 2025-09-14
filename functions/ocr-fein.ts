@@ -243,11 +243,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Normalize FEIN data from DocAI entities
     const normalizedResult = normalizeFeinFromDocAI({
       entities: ocrResult.entities || [],
-      text: ocrResult.text
+      text: ocrResult.text || ''
     });
 
+    console.info('Normalized result:', { normalizedResult, hasResult: !!normalizedResult });
+
     // Ensure response size is under 100KB
-    const responseSize = JSON.stringify(normalizedResult).length;
+    const responseSize = JSON.stringify(normalizedResult || {}).length;
     console.info('Response size', { bytes: responseSize, limit: 100000 });
 
     // Return normalized response
@@ -258,9 +260,9 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         success: true,
         providerUsed: usedFallback ? 'docai-direct' : 'docai',
         docId,
-        fields: normalizedResult.fields,
-        confidenceGlobal: normalizedResult.confidenceGlobal,
-        pending: normalizedResult.pending
+        fields: normalizedResult?.fields || {},
+        confidenceGlobal: normalizedResult?.confidenceGlobal || 0,
+        pending: normalizedResult?.pending || []
       })
     };
 
