@@ -60,13 +60,13 @@ describe('FEINUploader Component', () => {
     );
 
     const fileInput = screen.getByDisplayValue('');
-    // Create a file larger than 20MB
-    const largeFile = new File(['x'.repeat(21 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
+    // Create a file larger than 8MB
+    const largeFile = new File(['x'.repeat(9 * 1024 * 1024)], 'large.pdf', { type: 'application/pdf' });
 
     fireEvent.change(fileInput, { target: { files: [largeFile] } });
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith('El archivo es demasiado grande. Máximo 20MB permitido.');
+      expect(showError).toHaveBeenCalledWith('El archivo es demasiado grande. Máximo 8MB permitido.');
     });
   });
 

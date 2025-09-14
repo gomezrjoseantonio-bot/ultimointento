@@ -368,6 +368,9 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
       // Pass as binary and let ocr-documentai handle MIME detection
       detectedMime = 'application/pdf'; // Default to PDF for FEIN processing
     }
+
+    // Extract filename from custom header if provided
+    filename = event.headers['x-file-name'] || event.headers['X-File-Name'];
   }
 
   // Validate that we have content
@@ -393,7 +396,7 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
 // CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, X-File-Name, X-File-Type',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
 };
 
