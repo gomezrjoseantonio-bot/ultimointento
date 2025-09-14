@@ -26,12 +26,7 @@ export interface FEINProcessingResult {
   data?: any; // For compatibility with existing code
 }
 
-// New interface for the updated flow
-export interface FEINServiceResponse {
-  mode: 'sync' | 'background';
-  result?: FEINProcessingResult;
-  jobId?: string;
-}
+
 
 export class FEINOCRService {
   private static instance: FEINOCRService;
@@ -56,154 +51,20 @@ export class FEINOCRService {
     file: File, 
     onProgress?: ProgressCallback
   ): Promise<FEINProcessingResult> {
-    const startTime = performance.now();
-    
-    console.log('[FEIN] Processing document:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
-    
-    try {
-      // Validate file
-      const validation = this.validateFile(file);
-      if (!validation.isValid) {
-        return {
-          success: false,
-          errors: [validation.error!],
-          warnings: [],
-          fieldsExtracted: [],
-          fieldsMissing: ['all'], // All fields missing if validation failed
-          pendingFields: ['all']
-        };
-      }
-
-      onProgress?.({
-        currentPage: 0,
-        totalPages: 0,
-        stage: 'uploading',
-        message: 'Subiendo documento para análisis...'
-      });
-
-      // Call serverless function with PDF blob
-      const response = await fetch('/.netlify/functions/ocr-fein', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/pdf'
-        },
-        body: file
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = 'Error procesando documento FEIN';
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (errorJson.message) {
-            errorMessage = errorJson.message;
-          } else if (errorJson.error) {
-            errorMessage = errorJson.error;
-          }
-        } catch {
-          errorMessage = errorText.slice(0, 200) || 'Error de comunicación con el servidor';
-        }
-
-        return {
-          success: false,
-          errors: [errorMessage],
-          warnings: [],
-          fieldsExtracted: [],
-          fieldsMissing: ['all'],
-          pendingFields: ['all']
-        };
-      }
-
-      // Parse response
-      const json = await response.json();
-      
-      // Handle 200 (sync) response
-      if (response.status === 200) {
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] mode', 'sync', null);
-        }
-        
-        console.info('[FEIN] DocAI response', json);
-
-        onProgress?.({
-          currentPage: 1,
-          totalPages: 1,
-          stage: 'complete',
-          message: 'Procesamiento completado'
-        });
-
-        // Assert success and return sync result
-        if (!json.success) {
-          return {
-            success: false,
-            errors: [json.error || 'Error procesando documento con DocAI'],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all'],
-            providerUsed: json.providerUsed
-          };
-        }
-
-        return this.processCompletedResult(json, file.name, startTime);
-      }
-
-      // Handle 202 (background) response
-      if (response.status === 202) {
-        const { jobId } = json;
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] mode', 'background', jobId);
-        }
-        
-        onProgress?.({
-          currentPage: 1,
-          totalPages: 1,
-          stage: 'processing',
-          message: 'Procesando FEIN en segundo plano...'
-        });
-
-        // Start polling
-        return await this.pollForResult(jobId, onProgress, file.name, startTime);
-      }
-
-      // Unexpected status code
-      return {
-        success: false,
-        errors: [`Respuesta inesperada del servidor: ${response.status}`],
-        warnings: [],
-        fieldsExtracted: [],
-        fieldsMissing: ['all'],
-        pendingFields: ['all']
-      };
-
-    } catch (error) {
-      console.error('[FEIN] Error processing FEIN document:', error);
-      
-      return {
-        success: false,
-        errors: ['Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.'],
-        warnings: [],
-        fieldsExtracted: [],
-        fieldsMissing: ['all'],
-        pendingFields: ['all']
-      };
-    }
+    // Redirect to new synchronous implementation
+    return await this.processFEINDocumentNew(file, onProgress);
   }
 
   /**
-   * New method: Process FEIN PDF and return sync/background mode
+   * Process FEIN PDF synchronously - new simplified implementation
    * @param file - PDF file  
    * @param onProgress - Progress callback for UI updates
-   * @returns Promise with mode and result or jobId
+   * @returns Promise with processing result
    */
   async processFEINDocumentNew(
     file: File, 
     onProgress?: ProgressCallback
-  ): Promise<FEINServiceResponse> {
+  ): Promise<FEINProcessingResult> {
     const startTime = performance.now();
     
     onProgress?.({
@@ -217,21 +78,25 @@ export class FEINOCRService {
     const validation = this.validateFile(file);
     if (!validation.isValid) {
       return {
-        mode: 'sync',
-        result: {
-          success: false,
-          errors: [validation.error!],
-          warnings: [],
-          fieldsExtracted: [],
-          fieldsMissing: ['all'],
-          pendingFields: ['all']
-        }
+        success: false,
+        errors: [validation.error!],
+        warnings: [],
+        fieldsExtracted: [],
+        fieldsMissing: ['all'],
+        pendingFields: ['all']
       };
     }
 
     try {
       // Read file as ArrayBuffer and send as raw binary data
       const arrayBuffer = await file.arrayBuffer();
+
+      onProgress?.({
+        currentPage: 1,
+        totalPages: 1,
+        stage: 'processing',
+        message: 'Procesando FEIN...'
+      });
 
       const response = await fetch('/.netlify/functions/ocr-fein', {
         method: 'POST',
@@ -259,92 +124,55 @@ export class FEINOCRService {
         }
 
         return {
-          mode: 'sync',
-          result: {
-            success: false,
-            errors: [errorMessage],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all']
-          }
-        };
-      }
-
-      // Parse response
-      const json = await response.json();
-      
-      // Handle 200 (sync) response
-      if (response.status === 200) {
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] mode', 'sync');
-        }
-
-        // Assert success and return sync result
-        if (!json.success) {
-          return {
-            mode: 'sync',
-            result: {
-              success: false,
-              errors: [json.error || json.message || 'Error procesando documento con DocAI'],
-              warnings: [],
-              fieldsExtracted: [],
-              fieldsMissing: ['all'],
-              pendingFields: ['all'],
-              providerUsed: json.providerUsed
-            }
-          };
-        }
-
-        const result = this.processCompletedResult(json, file.name, startTime);
-        return {
-          mode: 'sync',
-          result
-        };
-      }
-
-      // Handle 202 (background) response
-      if (response.status === 202) {
-        const { jobId } = json;
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] mode', 'background', jobId);
-        }
-
-        return {
-          mode: 'background',
-          jobId
-        };
-      }
-
-      // Unexpected status code
-      return {
-        mode: 'sync',
-        result: {
           success: false,
-          errors: [`Respuesta inesperada del servidor: ${response.status}`],
+          errors: [errorMessage],
           warnings: [],
           fieldsExtracted: [],
           fieldsMissing: ['all'],
           pendingFields: ['all']
-        }
-      };
+        };
+      }
+
+      // Parse response - only expect 200 responses now
+      const json = await response.json();
+      
+      // Telemetry logging for development
+      if (process.env.NODE_ENV === 'development') {
+        console.info('[FEIN] Synchronous processing completed');
+      }
+
+      // Assert success and return result
+      if (!json.success) {
+        return {
+          success: false,
+          errors: [json.message || 'Error procesando documento con DocAI'],
+          warnings: [],
+          fieldsExtracted: [],
+          fieldsMissing: ['all'],
+          pendingFields: ['all'],
+          providerUsed: json.providerUsed
+        };
+      }
+
+      onProgress?.({
+        currentPage: 1,
+        totalPages: 1,
+        stage: 'complete',
+        message: 'Procesamiento completado'
+      });
+
+      return this.processCompletedResult(json, file.name, startTime);
 
     } catch (error) {
       console.error('[FEIN] Error processing FEIN document:', error);
       
       return {
-        mode: 'sync',
-        result: {
-          success: false,
-          errors: ['Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.'],
-          warnings: [],
-          fieldsExtracted: [],
-          fieldsMissing: ['all'],
-          pendingFields: ['all']
-        }
+        success: false,
+        errors: ['Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.'],
+        warnings: [],
+        fieldsExtracted: [],
+        fieldsMissing: ['all'],
+        pendingFields: ['all']
       };
     }
   }
@@ -556,255 +384,6 @@ export class FEINOCRService {
       pendingFields: json.pending || [],
       providerUsed: json.providerUsed,
       data: loanDraft // For compatibility
-    };
-  }
-
-  /**
-   * Poll for background processing result
-   */
-  private async pollForResult(
-    jobId: string, 
-    onProgress?: ProgressCallback, 
-    fileName?: string, 
-    startTime?: number
-  ): Promise<FEINProcessingResult> {
-    const POLL_INTERVAL_MS = 2000; // 2 seconds
-    const MAX_POLL_TIME_MS = 60000; // 60 seconds
-    const MAX_ATTEMPTS = Math.floor(MAX_POLL_TIME_MS / POLL_INTERVAL_MS); // 30 attempts
-    
-    let attempts = 0;
-    
-    while (attempts < MAX_ATTEMPTS) {
-      try {
-        attempts++;
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] polling attempt', attempts);
-        }
-        
-        const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${jobId}`);
-        
-        if (!response.ok) {
-          throw new Error(`Polling failed: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] polling status', result.status);
-        }
-        
-        onProgress?.({
-          currentPage: 1,
-          totalPages: 1,
-          stage: 'processing',
-          message: `Procesando FEIN en segundo plano... (${attempts}/${MAX_ATTEMPTS})`
-        });
-        
-        if (result.success && result.status === 'completed' && result.result) {
-          // Processing completed successfully
-          onProgress?.({
-            currentPage: 1,
-            totalPages: 1,
-            stage: 'complete',
-            message: 'Procesamiento completado'
-          });
-          
-          return this.processCompletedResult(result.result, fileName || 'unknown.pdf', startTime || performance.now());
-        }
-        
-        if (result.status === 'failed') {
-          // Processing failed
-          return {
-            success: false,
-            errors: [result.message || 'Error procesando documento en segundo plano'],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all']
-          };
-        }
-        
-        // Still pending/processing, wait and retry
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-        
-      } catch (error) {
-        console.error(`[FEIN] Polling attempt ${attempts} failed:`, error);
-        
-        // On the last attempt, return error
-        if (attempts >= MAX_ATTEMPTS) {
-          return {
-            success: false,
-            errors: ['Error verificando el estado del procesamiento'],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all']
-          };
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-      }
-    }
-    
-    // Timeout reached
-    return {
-      success: false,
-      errors: ['Tiempo de espera agotado. Intenta de nuevo'],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all']
-    };
-  }
-
-  /**
-   * New polling method for background processing result with proper 404 handling
-   */
-  async pollForBackgroundResult(
-    jobId: string, 
-    onProgress?: (progress: { percent: number; message: string }) => void
-  ): Promise<FEINProcessingResult> {
-    const POLL_INTERVAL_MS = 2000; // 2 seconds
-    const MAX_POLL_TIME_MS = 60000; // 60 seconds
-    const MAX_ATTEMPTS = Math.floor(MAX_POLL_TIME_MS / POLL_INTERVAL_MS); // 30 attempts
-    const MAX_404_RETRIES = 5; // 404 retry limit
-    
-    let attempts = 0;
-    let notFoundRetries = 0;
-    
-    while (attempts < MAX_ATTEMPTS) {
-      try {
-        attempts++;
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] polling', { status: 'polling', attempt: attempts });
-        }
-        
-        const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${jobId}`);
-        
-        // Handle 404 - job not ready yet, retry silently up to 5 times
-        if (response.status === 404) {
-          notFoundRetries++;
-          if (notFoundRetries <= MAX_404_RETRIES) {
-            // Wait 1 second and retry for 404s (silent retry)
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            continue;
-          } else {
-            throw new Error('Job not found after multiple retries');
-          }
-        }
-        
-        if (!response.ok) {
-          throw new Error(`Polling failed: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // Telemetry logging for development
-        if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] polling', { status: result.status, percent: result.progress?.percent || 0 });
-        }
-        
-        // Update progress with backend progress
-        onProgress?.({
-          percent: result.progress?.percent || Math.round((attempts / MAX_ATTEMPTS) * 70), // Fallback to simulated progress
-          message: 'Procesando FEIN...'
-        });
-        
-        if (result.success && result.status === 'completed' && result.result) {
-          // Processing completed successfully
-          if (process.env.NODE_ENV === 'development') {
-            console.info('[FEIN] completed', result.result.providerUsed, result.result.confidenceGlobal);
-          }
-          
-          // Use the backend result directly
-          const loanDraft = this.mapFieldsToLoanDraft(result.result.fields, 'background-processed.pdf');
-          const { fieldsExtracted, fieldsMissing } = this.analyzeFields(result.result.fields);
-          
-          return {
-            success: true,
-            loanDraft,
-            confidence: result.result.confidenceGlobal,
-            errors: [],
-            warnings: result.result.pending?.length > 0 ? [`${result.result.pending.length} campos marcados como pendientes`] : [],
-            fieldsExtracted,
-            fieldsMissing,
-            pendingFields: result.result.pending || [],
-            providerUsed: result.result.providerUsed,
-            data: loanDraft
-          };
-        }
-        
-        if (result.status === 'failed') {
-          // Processing failed - return single toast message per requirements
-          return {
-            success: false,
-            errors: [result.message || 'No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.'],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all']
-          };
-        }
-        
-        // Still pending/processing, wait and retry
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-        
-      } catch (error) {
-        console.error(`[FEIN] Polling attempt ${attempts} failed:`, error);
-        
-        // On the last attempt, return error
-        if (attempts >= MAX_ATTEMPTS) {
-          return {
-            success: false,
-            errors: ['Error verificando el estado del procesamiento'],
-            warnings: [],
-            fieldsExtracted: [],
-            fieldsMissing: ['all'],
-            pendingFields: ['all']
-          };
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-      }
-    }
-    
-    // Timeout reached
-    return {
-      success: false,
-      errors: ['Tardando más de lo habitual. Inténtalo de nuevo.'],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all']
-    };
-  }
-
-  // Legacy methods for backward compatibility (deprecated)
-  async processFEINDocumentChunked(file: File): Promise<any> {
-    console.warn('[FEIN] Using deprecated chunked method - redirecting to new implementation');
-    const result = await this.processFEINDocument(file);
-    
-    return {
-      success: result.success,
-      jobId: 'legacy-' + Date.now(),
-      pagesTotal: 1,
-      totalChunks: 1,
-      error: result.errors.length > 0 ? result.errors[0] : undefined
-    };
-  }
-
-  async checkFEINJobStatus(jobId: string): Promise<any> {
-    console.warn('[FEIN] checkFEINJobStatus is deprecated with new implementation');
-    return {
-      success: false,
-      error: 'Método obsoleto - use processFEINDocument directamente'
     };
   }
 
