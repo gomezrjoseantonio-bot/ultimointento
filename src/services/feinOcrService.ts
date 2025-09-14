@@ -26,6 +26,13 @@ export interface FEINProcessingResult {
   data?: any; // For compatibility with existing code
 }
 
+// New interface for the updated flow
+export interface FEINServiceResponse {
+  mode: 'sync' | 'background';
+  result?: FEINProcessingResult;
+  jobId?: string;
+}
+
 export class FEINOCRService {
   private static instance: FEINOCRService;
   
@@ -183,6 +190,128 @@ export class FEINOCRService {
         fieldsExtracted: [],
         fieldsMissing: ['all'],
         pendingFields: ['all']
+      };
+    }
+  }
+
+  /**
+   * New method: Process FEIN PDF and return sync/background mode
+   * @param file - PDF file  
+   * @param onProgress - Progress callback for UI updates
+   * @returns Promise with mode and result or jobId
+   */
+  async processFEINDocumentNew(
+    file: File, 
+    onProgress?: ProgressCallback
+  ): Promise<FEINServiceResponse> {
+    const startTime = performance.now();
+    
+    onProgress?.({
+      currentPage: 1,
+      totalPages: 1,
+      stage: 'uploading',
+      message: 'Preparando documento...'
+    });
+
+    // Validate file
+    const validation = this.validateFile(file);
+    if (!validation.isValid) {
+      return {
+        mode: 'sync',
+        result: {
+          success: false,
+          errors: [validation.error!],
+          warnings: [],
+          fieldsExtracted: [],
+          fieldsMissing: ['all'],
+          pendingFields: ['all']
+        }
+      };
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/.netlify/functions/ocr-fein', {
+        method: 'POST',
+        body: formData
+      });
+
+      // Parse response
+      const json = await response.json();
+      
+      // Handle 200 (sync) response
+      if (response.status === 200) {
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] mode', 'sync');
+        }
+
+        // Assert success and return sync result
+        if (!json.success) {
+          return {
+            mode: 'sync',
+            result: {
+              success: false,
+              errors: [json.error || 'Error procesando documento con DocAI'],
+              warnings: [],
+              fieldsExtracted: [],
+              fieldsMissing: ['all'],
+              pendingFields: ['all'],
+              providerUsed: json.providerUsed
+            }
+          };
+        }
+
+        const result = this.processCompletedResult(json, file.name, startTime);
+        return {
+          mode: 'sync',
+          result
+        };
+      }
+
+      // Handle 202 (background) response
+      if (response.status === 202) {
+        const { jobId } = json;
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] mode', 'background', jobId);
+        }
+
+        return {
+          mode: 'background',
+          jobId
+        };
+      }
+
+      // Unexpected status code
+      return {
+        mode: 'sync',
+        result: {
+          success: false,
+          errors: [`Respuesta inesperada del servidor: ${response.status}`],
+          warnings: [],
+          fieldsExtracted: [],
+          fieldsMissing: ['all'],
+          pendingFields: ['all']
+        }
+      };
+
+    } catch (error) {
+      console.error('[FEIN] Error processing FEIN document:', error);
+      
+      return {
+        mode: 'sync',
+        result: {
+          success: false,
+          errors: ['Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.'],
+          warnings: [],
+          fieldsExtracted: [],
+          fieldsMissing: ['all'],
+          pendingFields: ['all']
+        }
       };
     }
   }
@@ -499,6 +628,131 @@ export class FEINOCRService {
     };
   }
 
+  /**
+   * New polling method for background processing result with proper 404 handling
+   */
+  async pollForBackgroundResult(
+    jobId: string, 
+    onProgress?: (progress: { percent: number; message: string }) => void
+  ): Promise<FEINProcessingResult> {
+    const POLL_INTERVAL_MS = 2000; // 2 seconds
+    const MAX_POLL_TIME_MS = 60000; // 60 seconds
+    const MAX_ATTEMPTS = Math.floor(MAX_POLL_TIME_MS / POLL_INTERVAL_MS); // 30 attempts
+    const MAX_404_RETRIES = 5; // 404 retry limit
+    
+    let attempts = 0;
+    let notFoundRetries = 0;
+    
+    while (attempts < MAX_ATTEMPTS) {
+      try {
+        attempts++;
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] polling', { status: 'polling', percent: Math.round((attempts / MAX_ATTEMPTS) * 100) });
+        }
+        
+        const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${jobId}`);
+        
+        // Handle 404 - job not ready yet
+        if (response.status === 404) {
+          notFoundRetries++;
+          if (notFoundRetries <= MAX_404_RETRIES) {
+            // Wait 1 second and retry for 404s
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          } else {
+            throw new Error('Job not found after multiple retries');
+          }
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Polling failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] polling', { status: result.status, percent: result.progress?.percent || 0 });
+        }
+        
+        // Update progress with backend progress
+        onProgress?.({
+          percent: result.progress?.percent || Math.round((attempts / MAX_ATTEMPTS) * 70), // Fallback to simulated progress
+          message: 'Procesando FEIN...'
+        });
+        
+        if (result.success && result.status === 'completed' && result.result) {
+          // Processing completed successfully
+          if (process.env.NODE_ENV === 'development') {
+            console.info('[FEIN] completed', result.result.providerUsed, result.result.confidenceGlobal);
+          }
+          
+          // Use the backend result directly
+          const loanDraft = this.mapFieldsToLoanDraft(result.result.fields, 'background-processed.pdf');
+          const { fieldsExtracted, fieldsMissing } = this.analyzeFields(result.result.fields);
+          
+          return {
+            success: true,
+            loanDraft,
+            confidence: result.result.confidenceGlobal,
+            errors: [],
+            warnings: result.result.pending?.length > 0 ? [`${result.result.pending.length} campos marcados como pendientes`] : [],
+            fieldsExtracted,
+            fieldsMissing,
+            pendingFields: result.result.pending || [],
+            providerUsed: result.result.providerUsed,
+            data: loanDraft
+          };
+        }
+        
+        if (result.status === 'failed') {
+          // Processing failed
+          return {
+            success: false,
+            errors: [result.message || 'No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.'],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all']
+          };
+        }
+        
+        // Still pending/processing, wait and retry
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+        
+      } catch (error) {
+        console.error(`[FEIN] Polling attempt ${attempts} failed:`, error);
+        
+        // On the last attempt, return error
+        if (attempts >= MAX_ATTEMPTS) {
+          return {
+            success: false,
+            errors: ['Error verificando el estado del procesamiento'],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all']
+          };
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+    }
+    
+    // Timeout reached
+    return {
+      success: false,
+      errors: ['Tardando más de lo habitual. Inténtalo de nuevo.'],
+      warnings: [],
+      fieldsExtracted: [],
+      fieldsMissing: ['all'],
+      pendingFields: ['all']
+    };
+  }
+
   // Legacy methods for backward compatibility (deprecated)
   async processFEINDocumentChunked(file: File): Promise<any> {
     console.warn('[FEIN] Using deprecated chunked method - redirecting to new implementation');
@@ -519,6 +773,146 @@ export class FEINOCRService {
       success: false,
       error: 'Método obsoleto - use processFEINDocument directamente'
     };
+  }
+
+  /**
+   * New secure field mapping function per requirements
+   * Safely converts ES formatted numbers and maps fields with optional chaining
+   */
+  static mapFieldsToLoanDraft(fields: any, pending: string[]): any {
+    if (!fields) return {};
+
+    const parseEsAmount = (value: string | number | undefined): number | undefined => {
+      if (!value) return undefined;
+      if (typeof value === 'number') return value;
+      
+      // Parse ES format: "1.234,56 €" → 1234.56
+      const cleaned = value.toString()
+        .replace(/[€\s]/g, '')  // Remove € and spaces
+        .replace(/\./g, '')     // Remove thousands separators
+        .replace(',', '.');     // Replace decimal comma with dot
+      
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? undefined : parsed;
+    };
+
+    const parseEsPercentage = (value: string | number | undefined): number | undefined => {
+      if (!value) return undefined;
+      if (typeof value === 'number') return value;
+      
+      // Parse ES format: "3,25 %" → 3.25
+      const cleaned = value.toString()
+        .replace(/[%\s]/g, '')  // Remove % and spaces
+        .replace(',', '.');     // Replace decimal comma with dot
+      
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? undefined : parsed;
+    };
+
+    const formatIban = (iban: string | undefined): string | undefined => {
+      if (!iban) return undefined;
+      
+      // Remove spaces and format with spaces every 4 characters
+      const cleaned = iban.replace(/\s/g, '');
+      return cleaned.replace(/(.{4})/g, '$1 ').trim();
+    };
+
+    // Map fields with optional chaining
+    const draft: any = {};
+
+    // Prestamo section
+    if (fields?.capital_inicial !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.capitalInicial = parseEsAmount(fields.capital_inicial);
+    }
+
+    if (fields?.plazoMeses !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.plazoMeses = parseEsAmount(fields.plazoMeses);
+    }
+
+    if (fields?.tin !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.tinPct = parseEsPercentage(fields.tin);
+    }
+
+    if (fields?.tae !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.taePct = parseEsPercentage(fields.tae);
+    }
+
+    if (fields?.cuota !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.cuotaEstim = parseEsAmount(fields.cuota);
+    }
+
+    if (fields?.sistemaAmortizacion !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.sistema = fields.sistemaAmortizacion; // 'FRANCES'|'ALEMAN'|...
+    }
+
+    if (fields?.indice !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.indice = fields.indice; // 'EURIBOR_12M'|...
+    }
+
+    if (fields?.diferencial !== undefined) {
+      draft.prestamo = draft.prestamo || {};
+      draft.prestamo.diferencialPct = parseEsPercentage(fields.diferencial);
+    }
+
+    // Cuenta cargo section
+    if (fields?.cuentaCargo !== undefined) {
+      draft.cuentaCargo = draft.cuentaCargo || {};
+      draft.cuentaCargo.iban = formatIban(fields.cuentaCargo);
+    }
+
+    // Bonificaciones
+    if (fields?.vinculaciones && Array.isArray(fields.vinculaciones)) {
+      draft.bonificaciones = fields.vinculaciones;
+    }
+
+    // Costes section  
+    if (fields?.comisiones !== undefined) {
+      draft.costes = draft.costes || {};
+      draft.costes.comisiones = fields.comisiones;
+    }
+
+    if (fields?.gastos !== undefined) {
+      draft.costes = draft.costes || {};
+      draft.costes.gastos = fields.gastos;
+    }
+
+    return draft;
+  }
+
+  /**
+   * Apply FEIN result to form with deep merge preserving user input
+   */
+  static applyFeinToForm(result: any, currentForm: any, setFormValues: (updater: (prev: any) => any) => void): void {
+    if (!result?.fields) return;
+
+    const draft = this.mapFieldsToLoanDraft(result.fields, result.pending || []);
+    
+    // Deep merge preserving user input (don't overwrite non-null values)
+    const deepMergePreservingUser = (target: any, source: any): any => {
+      const merged = { ...target };
+      
+      for (const key in source) {
+        if (source[key] !== null && source[key] !== undefined) {
+          if (target[key] === null || target[key] === undefined) {
+            // Only set if target doesn't have a value
+            merged[key] = typeof source[key] === 'object' && !Array.isArray(source[key])
+              ? deepMergePreservingUser(target[key] || {}, source[key])
+              : source[key];
+          }
+        }
+      }
+      
+      return merged;
+    };
+
+    setFormValues(prev => deepMergePreservingUser(prev, draft));
   }
 }
 
