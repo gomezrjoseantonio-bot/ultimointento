@@ -20,12 +20,7 @@ describe('ocr-fein multipart support', () => {
   });
 
   it('should detect PDF content type in multipart', () => {
-    const multipartPart = `
-Content-Disposition: form-data; name="file"; filename="test.pdf"
-Content-Type: application/pdf
-
-PDF content here
-`;
+    const multipartPart = `Content-Disposition: form-data; name="file"; filename="test.pdf"\r\nContent-Type: application/pdf\r\n\r\nPDF content here\r\n`;
     
     const lines = multipartPart.split('\r\n');
     let contentType = '';
