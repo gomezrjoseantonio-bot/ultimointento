@@ -89,6 +89,45 @@ export function formatSpanishDate(date: string | Date): string {
 }
 
 /**
+ * Parse Spanish percentage format to standard number
+ * Examples: 
+ * - "3,45%" → 3.45
+ * - "3,45" → 3.45 
+ * - "0,0345" → 3.45 (converts from decimal to percentage)
+ * - "3.45%" → 3.45
+ * Flexible input: accepts various percentage formats and converts to percentage points
+ */
+export function parseSpanishPercentage(value: string | number): number {
+  if (typeof value === 'number') {
+    // If value is very small (< 1), assume it's already in decimal form and convert to percentage
+    return value < 1 ? value * 100 : value;
+  }
+  if (!value) return 0;
+  
+  try {
+    const cleanValue = value.toString().trim();
+    
+    // Remove % symbol if present
+    const withoutPercent = cleanValue.replace(/%/g, '');
+    
+    // Handle Spanish format: replace comma with dot
+    const normalized = withoutPercent.replace(/,/g, '.');
+    
+    const parsed = parseFloat(normalized);
+    if (isNaN(parsed)) return 0;
+    
+    // If value is very small (< 1), assume it's in decimal form (0.0345) and convert to percentage (3.45)
+    if (parsed < 1 && !cleanValue.includes('%')) {
+      return parsed * 100;
+    }
+    
+    return parsed;
+  } catch (error) {
+    console.error('Error parsing Spanish percentage:', error);
+    return 0;
+  }
+}
+/**
  * Parse Spanish number format (1.234,56) to standard number
  * Example: "1.234,56" → 1234.56
  */
@@ -107,6 +146,63 @@ export function parseSpanishNumber(value: string | number): number {
   } catch (error) {
     console.error('Error parsing Spanish number:', error);
     return 0;
+  }
+}
+
+/**
+ * Parse and validate IBAN format, supporting masked IBANs
+ * Examples:
+ * - "ES21 1234 5678 9012 3456 7890" → "ES2112345678901234567890"
+ * - "ES21 **** **** **** 7890" → "ES21****************7890" (masked)
+ * - "ES21************7890" → "ES21************7890" (already masked)
+ */
+export function parseSpanishIBAN(iban: string): { value: string; isMasked: boolean } {
+  if (!iban) return { value: '', isMasked: false };
+  
+  try {
+    // Remove spaces and normalize
+    const cleanIBAN = iban.toString().replace(/\s/g, '').toUpperCase();
+    
+    // Check if IBAN is masked (contains * characters)
+    const isMasked = cleanIBAN.includes('*');
+    
+    // Validate IBAN format (basic validation)
+    const ibanPattern = /^[A-Z]{2}\d{2}[A-Z0-9*]{16,}$/;
+    
+    if (!ibanPattern.test(cleanIBAN)) {
+      console.warn('Invalid IBAN format:', iban);
+      return { value: cleanIBAN, isMasked };
+    }
+    
+    return { value: cleanIBAN, isMasked };
+  } catch (error) {
+    console.error('Error parsing IBAN:', error);
+    return { value: iban, isMasked: false };
+  }
+}
+
+/**
+ * Format IBAN for display with proper spacing
+ * Example: "ES2112345678901234567890" → "ES21 1234 5678 9012 3456 7890"
+ */
+export function formatIBANDisplay(iban: string): string {
+  if (!iban) return '';
+  
+  try {
+    const cleanIBAN = iban.replace(/\s/g, '');
+    
+    // Add spaces every 4 characters after country code
+    if (cleanIBAN.length > 4) {
+      const countryCode = cleanIBAN.slice(0, 4);
+      const numbers = cleanIBAN.slice(4);
+      const spacedNumbers = numbers.replace(/(.{4})/g, '$1 ').trim();
+      return `${countryCode} ${spacedNumbers}`;
+    }
+    
+    return cleanIBAN;
+  } catch (error) {
+    console.error('Error formatting IBAN:', error);
+    return iban;
   }
 }
 
