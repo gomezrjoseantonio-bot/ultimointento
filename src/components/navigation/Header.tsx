@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown } from 'lucide-react';
+import { Menu, UserCircle, ChevronDown, HelpCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface HeaderProps {
@@ -10,11 +10,40 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
   const { currentModule, setCurrentModule } = useTheme();
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close help menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (helpMenuRef.current && !helpMenuRef.current.contains(event.target as Node)) {
+        setHelpMenuOpen(false);
+      }
+    };
+
+    if (helpMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [helpMenuOpen]);
 
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
     setAccountMenuOpen(false);
+  };
+
+  const handleHelpClick = () => {
+    setHelpMenuOpen(!helpMenuOpen);
+  };
+
+  const handleDesignBibleClick = () => {
+    // Navigate to Design Bible page within the app
+    navigate('/design-bible');
+    setHelpMenuOpen(false);
   };
 
   const handleModuleChange = (module: 'horizon' | 'pulse') => {
@@ -76,7 +105,55 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             </button>
           </nav>
           
-
+          {/* Help Menu */}
+          <div className="relative" ref={helpMenuRef}>
+            <button 
+              onClick={handleHelpClick}
+              className="flex items-center space-x-1 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 rounded-atlas p-2 hover:bg-gray-50"
+              aria-label="Menú de ayuda"
+            >
+              <HelpCircle className="h-5 w-5 text-gray-500" />
+              <span className="hidden md:inline-block text-sm font-medium text-gray-700">
+                Ayuda
+              </span>
+            </button>
+            
+            {/* Help Dropdown Menu */}
+            {helpMenuOpen && (
+              <div className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  <button
+                    onClick={handleDesignBibleClick}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
+                  >
+                    📘 Guía ATLAS
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Design Bible completo
+                    </div>
+                  </button>
+                  <div className="border-t border-gray-100 my-1"></div>
+                  <button
+                    onClick={() => { 
+                      navigate('/documentacion'); 
+                      setHelpMenuOpen(false); 
+                    }}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
+                  >
+                    📚 Documentación
+                  </button>
+                  <button
+                    onClick={() => { 
+                      window.open('mailto:soporte@atlas.com', '_blank'); 
+                      setHelpMenuOpen(false); 
+                    }}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
+                  >
+                    💬 Contactar Soporte
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           
           <div className="relative">
             <button 

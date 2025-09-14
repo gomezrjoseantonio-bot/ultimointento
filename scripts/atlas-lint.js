@@ -8,7 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Patterns that should fail the build (per ATLAS requirements)
+// Patterns that should fail the build (per ATLAS Design Bible)
 const FORBIDDEN_PATTERNS = {
   // Dark themes and overlays - ATLAS requires light themes only
   darkThemes: [
@@ -20,9 +20,13 @@ const FORBIDDEN_PATTERNS = {
     /bg-opacity-90/g,
     /bg-gray-900/g,
     /bg-gray-800/g,
+    /bg-slate-900/g,
+    /bg-slate-800/g,
     /dark:/g,
     /className.*dark/g,
     /bg-opacity-\d+/g,  // Any bg-opacity class
+    /backdrop-.*black/g, // Black backdrops
+    /rgba\(0,\s*0,\s*0,/g, // Black rgba overlays
   ],
   
   // Non-ATLAS colors (hardcoded hex values) - Exception for token definitions
@@ -52,6 +56,10 @@ const FORBIDDEN_PATTERNS = {
     /import.*react-icons/g,
     /from ['"]@mui\/icons/g,
     /import.*@mui\/icons/g,
+    /from ['"]@fortawesome/g,
+    /import.*@fortawesome/g,
+    /from ['"]feather-icons/g,
+    /import.*feather-icons/g,
   ],
   
   // Non-Inter fonts - ATLAS requires Inter only
@@ -61,7 +69,10 @@ const FORBIDDEN_PATTERNS = {
     /'Helvetica'(?!.*system-ui)/g,
     /'Times'/g,
     /'Georgia'/g,
+    /'Comic Sans'/g,
+    /'Verdana'/g,
     /font-sans.*(?!Inter)/g,
+    /@import.*google.*fonts/g, // Google Fonts imports
   ],
   
   // Browser alerts - Should use ATLAS toast system
@@ -71,18 +82,48 @@ const FORBIDDEN_PATTERNS = {
     /prompt\(/g,
   ],
   
-  // Help pattern violations - Must use ATLAS SUA patterns
+  // Help pattern violations - Must use ATLAS SUA patterns only
   invalidHelp: [
     // Help text in H1/H2 (forbidden per requirements)
     /<h[12][^>]*>.*(?:ayuda|help|asistencia|soporte)/gi,
-    // Loose help text not in approved patterns
-    /className.*help.*text/g,
+    // Non-SUA help patterns
+    /className.*help.*modal/g,
+    /className.*help.*sidebar/g,
+    /className.*help.*overlay/g,
+    /className.*tour/g,
+    /className.*walkthrough/g,
+    // Invalid help implementations
+    /helpText(?!.*(?:EmptyState|InlineHint|InfoTooltip|HelperBanner))/g,
   ],
   
   // Non-ES locale formatting - Must use ES-ES format
   invalidLocale: [
     /toLocaleString\(['"](?!es-ES)/g,
     /new Intl\..*\(['"](?!es-ES)/g,
+    /toLocaleDateString\(['"](?!es-ES)/g,
+    /new Intl\.NumberFormat\(['"](?!es-ES)/g,
+  ],
+
+  // Sidebar order violations - Must maintain canonical order
+  sidebarOrder: [
+    // Check for wrong navigation order in config files
+    /navigationConfig.*(?:Alquileres.*Dashboard|Documentación.*Personal|Financiación.*Tesorería)/g,
+  ],
+
+  // Non-ATLAS button patterns
+  invalidButtons: [
+    // Non-standard button classes
+    /btn-(?!primary|secondary|destructive|ghost)/g,
+    /button.*(?!atlas-btn-)/g,
+  ],
+
+  // Overlay violations - No dark overlays allowed
+  darkOverlays: [
+    /overlay.*black/g,
+    /modal.*dark/g,
+    /backdrop.*dark/g,
+    /bg-black.*modal/g,
+    /bg-gray-900.*overlay/g,
   ],
 };
 
@@ -94,11 +135,20 @@ const EXCEPTIONS = [
   '.git',
   'package-lock.json',
   'atlas-lint.js', // This file itself
+  'design-bible',  // Design Bible can contain examples
   'test.',
   'spec.',
   '.test.',
   '.spec.',
-  'stories.'
+  'stories.',
+  'storybook',
+  '.md',           // Markdown files
+  'README',
+  'CHANGELOG',
+  '__tests__',
+  'jest.config',
+  'tailwind.config.js', // Config files need color definitions
+  'tsconfig.json'
 ];
 
 function getAllFiles(dir, extensions = ['.tsx', '.ts', '.jsx', '.js', '.css']) {
@@ -134,7 +184,7 @@ function lintFile(filePath) {
   const errors = [];
   const warnings = [];
   
-  // Check for dark themes
+  // Check for dark themes and overlays
   for (const pattern of FORBIDDEN_PATTERNS.darkThemes) {
     const matches = content.match(pattern);
     if (matches) {
@@ -142,7 +192,20 @@ function lintFile(filePath) {
         type: 'DARK_THEME',
         pattern: pattern.toString(),
         matches: matches.length,
-        message: 'Dark theme detected - ATLAS requires light themes only'
+        message: 'Dark theme/overlay detected - ATLAS requires light themes only'
+      });
+    }
+  }
+
+  // Check for dark overlays specifically
+  for (const pattern of FORBIDDEN_PATTERNS.darkOverlays) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'DARK_OVERLAY',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Dark overlay detected - ATLAS requires light overlays only'
       });
     }
   }
@@ -179,7 +242,11 @@ function lintFile(filePath) {
         !content.includes(`--bg: ${match}`) &&
         !content.includes(`--text-gray: ${match}`) &&
         // Allow in CSS files if it's a token definition
-        !(filePath.endsWith('.css') && content.includes(`: ${match};`))
+        !(filePath.endsWith('.css') && content.includes(`: ${match};`)) &&
+        // Allow in tailwind config
+        !filePath.includes('tailwind.config') &&
+        // Allow in design bible examples
+        !filePath.includes('design-bible')
       );
       
       if (filteredMatches.length > 0) {
@@ -210,7 +277,7 @@ function lintFile(filePath) {
   for (const pattern of FORBIDDEN_PATTERNS.forbiddenFonts) {
     const matches = content.match(pattern);
     if (matches) {
-      warnings.push({
+      errors.push({
         type: 'FORBIDDEN_FONTS',
         pattern: pattern.toString(),
         matches: matches.length,
@@ -240,7 +307,7 @@ function lintFile(filePath) {
         type: 'INVALID_HELP_PATTERN',
         pattern: pattern.toString(),
         matches: matches.length,
-        message: 'Invalid help pattern - must use ATLAS SUA patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner)'
+        message: 'Invalid help pattern - must use ATLAS SUA patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner) only'
       });
     }
   }
@@ -254,6 +321,34 @@ function lintFile(filePath) {
         pattern: pattern.toString(),
         matches: matches.length,
         message: 'Non-ES locale detected - ATLAS requires es-ES formatting (1.234,56 €, DD/MM/AAAA)'
+      });
+    }
+  }
+
+  // Check for sidebar order violations (in navigation config files)
+  if (filePath.includes('navigation')) {
+    for (const pattern of FORBIDDEN_PATTERNS.sidebarOrder) {
+      const matches = content.match(pattern);
+      if (matches) {
+        errors.push({
+          type: 'SIDEBAR_ORDER_VIOLATION',
+          pattern: pattern.toString(),
+          matches: matches.length,
+          message: 'Sidebar navigation order violation - must follow canonical ATLAS order'
+        });
+      }
+    }
+  }
+
+  // Check for invalid button patterns
+  for (const pattern of FORBIDDEN_PATTERNS.invalidButtons) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'INVALID_BUTTON_PATTERN',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-standard button pattern - should use ATLAS button classes'
       });
     }
   }
@@ -325,6 +420,13 @@ function main() {
   console.log('  - Use ATLAS color tokens instead of hardcoded colors');
   console.log('  - Import icons from lucide-react only');
   console.log('  - Replace browser alerts with ATLAS toast system');
+  console.log('  - Use only 4 SUA help patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner)');
+  console.log('  - Maintain canonical sidebar navigation order');
+  console.log('  - Apply Inter font family with approved fallbacks');
+  console.log('  - Use es-ES locale for all formatting');
+  console.log('  - Remove prohibited color #09182E');
+  console.log('');
+  console.log('📖 See ATLAS Design Bible at /design-bible/ for complete specifications');
   
   // Fail build if there are errors (warnings are allowed)
   if (totalErrors > 0) {
