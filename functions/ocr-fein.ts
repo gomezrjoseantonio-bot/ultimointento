@@ -5,6 +5,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { PDFDocument } from 'pdf-lib';
 import { normalizeFeinFromDocAI } from '../src/services/ocr/normalize-docai';
 import { processWithDocAI } from '../src/services/documentaiClient';
+import { OCR_CONFIG } from '../src/config/ocr.config';
 
 // Constants for chunking and processing
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
@@ -234,11 +235,12 @@ const callBackgroundFunction = async (jobId: string, pdfBase64: string): Promise
 };
 
 // Extract file from request
-const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeType: string; sizeKB: number } | null => {
+const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeType: string; sizeKB: number; filename?: string } | null => {
   const contentType = event.headers['content-type'] || event.headers['Content-Type'] || '';
   
-  // Accept application/pdf and application/octet-stream
-  const isValidContentType = contentType.includes('application/pdf') || 
+  // Accept multipart/form-data, application/pdf and application/octet-stream
+  const isValidContentType = contentType.includes('multipart/form-data') ||
+                            contentType.includes('application/pdf') || 
                             contentType.includes('application/octet-stream') ||
                             contentType === '';
 
@@ -252,30 +254,123 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
 
   let fileBase64: string;
   let detectedMime = 'application/pdf'; // Default
+  let filename: string | undefined;
 
-  // Handle base64 encoding based on event.isBase64Encoded
-  if (event.isBase64Encoded === true) {
-    fileBase64 = event.body;
+  // Handle multipart/form-data
+  if (contentType.includes('multipart/form-data')) {
+    try {
+      // Extract boundary from content-type header
+      const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
+      if (!boundaryMatch) {
+        console.warn('No boundary found in multipart/form-data');
+        return null;
+      }
+      
+      const boundary = boundaryMatch[1];
+      
+      // Convert event body to Buffer
+      let bodyBuffer: Buffer;
+      if (event.isBase64Encoded === true) {
+        bodyBuffer = Buffer.from(event.body, 'base64');
+      } else {
+        bodyBuffer = Buffer.from(event.body, 'binary');
+      }
+      
+      // Split by boundary
+      const boundaryBytes = Buffer.from(`--${boundary}`);
+      const parts = [];
+      let currentIndex = 0;
+      
+      while (currentIndex < bodyBuffer.length) {
+        const nextBoundary = bodyBuffer.indexOf(boundaryBytes, currentIndex);
+        if (nextBoundary === -1) break;
+        
+        if (currentIndex > 0) {
+          // Extract part content (skip the boundary itself)
+          const partStart = currentIndex;
+          const partEnd = nextBoundary;
+          parts.push(bodyBuffer.slice(partStart, partEnd));
+        }
+        
+        currentIndex = nextBoundary + boundaryBytes.length;
+      }
+      
+      // Find the part with name="file" and/or Content-Type: application/pdf
+      let fileBuffer: Buffer | null = null;
+      
+      for (const part of parts) {
+        const partStr = part.toString('binary');
+        
+        // Look for Content-Disposition header with name="file"
+        const contentDispositionMatch = partStr.match(/Content-Disposition:\s*form-data[^;]*;\s*name="file"/i);
+        const contentTypeMatch = partStr.match(/Content-Type:\s*application\/pdf/i);
+        const filenameMatch = partStr.match(/filename="([^"]+)"/i);
+        
+        if (contentDispositionMatch || contentTypeMatch) {
+          // Find the double newline that separates headers from content
+          const headerEndIndex = partStr.indexOf('\r\n\r\n');
+          if (headerEndIndex === -1) continue;
+          
+          // Extract the file content (after headers)
+          const contentStartIndex = headerEndIndex + 4; // Skip \r\n\r\n
+          fileBuffer = part.slice(contentStartIndex);
+          
+          // Extract filename if present
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+          
+          break;
+        }
+      }
+      
+      if (!fileBuffer || fileBuffer.length === 0) {
+        console.warn('No file content found in multipart/form-data');
+        return null;
+      }
+      
+      // Convert to base64
+      fileBase64 = fileBuffer.toString('base64');
+      detectedMime = 'application/pdf';
+      
+    } catch (error) {
+      console.error('Error parsing multipart/form-data:', error);
+      return null;
+    }
   } else {
-    fileBase64 = Buffer.from(event.body, 'binary').toString('base64');
+    // Handle application/pdf and application/octet-stream (existing logic)
+    if (event.isBase64Encoded === true) {
+      fileBase64 = event.body;
+    } else {
+      fileBase64 = Buffer.from(event.body, 'binary').toString('base64');
+    }
+
+    // Set MIME type based on content-type
+    if (contentType.includes('application/pdf')) {
+      detectedMime = 'application/pdf';
+    } else if (contentType.includes('application/octet-stream') || contentType === '') {
+      // Pass as binary and let ocr-documentai handle MIME detection
+      detectedMime = 'application/pdf'; // Default to PDF for FEIN processing
+    }
+  }
+
+  // Validate that we have content
+  if (!fileBase64) {
+    return null;
   }
 
   // Calculate file size
   const fileSizeBytes = (fileBase64.length * 3) / 4;
   const sizeKB = Math.round(fileSizeBytes / 1024);
 
-  // If octet-stream, let ocr-documentai auto-detect
-  if (contentType.includes('application/pdf')) {
-    detectedMime = 'application/pdf';
-  } else if (contentType.includes('application/octet-stream') || contentType === '') {
-    // Pass as binary and let ocr-documentai handle MIME detection
-    detectedMime = 'application/octet-stream';
-  }
+  // Safe logging (no sensitive data)
+  console.info('OCR Upload', { mimeType: detectedMime, sizeKB });
 
   return {
     content: fileBase64,
     mimeType: detectedMime,
-    sizeKB
+    sizeKB,
+    filename
   };
 };
 
@@ -283,7 +378,7 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
 };
 
 // Main handler
@@ -396,20 +491,20 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: 'Archivo PDF requerido. Tipos válidos: application/pdf, application/octet-stream'
+          error: 'Archivo vacío o no recibido. Tipos válidos: multipart/form-data (campo "file"), application/pdf, application/octet-stream'
         })
       };
     }
 
-    // Validate file size (8MB limit)
+    // Validate file size using OCR_CONFIG limit
     const fileSizeBytes = (fileData.content.length * 3) / 4;
-    if (fileSizeBytes > MAX_FILE_SIZE_BYTES) {
+    if (fileSizeBytes > OCR_CONFIG.maxPdfSizeBytes) {
       return {
         statusCode: 413,
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: 'Archivo demasiado grande (máx. 8 MB)'
+          error: `Archivo demasiado grande (máx. ${OCR_CONFIG.maxPdfSizeBytes / (1024 * 1024)} MB)`
         })
       };
     }
