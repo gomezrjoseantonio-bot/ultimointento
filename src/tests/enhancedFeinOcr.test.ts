@@ -2,6 +2,7 @@
 // Tests the improvements made for better Spanish text extraction
 
 import { feinOcrService } from '../services/feinOcrService';
+import { FEINBonificacion } from '../types/fein';
 
 describe('Enhanced FEIN OCR Service', () => {
   
@@ -82,7 +83,7 @@ describe('Enhanced FEIN OCR Service', () => {
       const result = service.extractBonificaciones(text, text);
       
       // Should not create duplicates for similar keywords
-      const hogarBonifs = result.filter(b => b.tipo === 'SEGURO_HOGAR');
+      const hogarBonifs = result.filter((b: FEINBonificacion) => b.tipo === 'SEGURO_HOGAR');
       expect(hogarBonifs.length).toBeLessThanOrEqual(3); // Max one per distinct keyword
     });
   });
