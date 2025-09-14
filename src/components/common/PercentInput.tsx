@@ -114,9 +114,12 @@ const PercentInput: React.FC<PercentInputProps> = ({
       return;
     }
     
-    // Allow: digits, comma, dot
+    // Allow: digits, minus sign (for negative differentials), comma, dot
     if ((e.keyCode >= 48 && e.keyCode <= 57) || // 0-9
         (e.keyCode >= 96 && e.keyCode <= 105) || // numpad 0-9
+        e.keyCode === 109 || // minus (numpad)
+        e.keyCode === 173 || // minus (regular)
+        e.keyCode === 189 || // minus (regular)
         e.keyCode === 188 || // comma
         e.keyCode === 190) { // dot
       return;
@@ -138,10 +141,12 @@ const PercentInput: React.FC<PercentInputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onWheel={(e) => e.currentTarget.blur()} // Prevent wheel changes
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel || 'Porcentaje'}
         className={`${baseClassName} ${className}`}
+        inputMode="decimal" // Show numeric keyboard on mobile
       />
       {!isFocused && (
         <span className="absolute right-3 top-2 text-neutral-500 pointer-events-none">

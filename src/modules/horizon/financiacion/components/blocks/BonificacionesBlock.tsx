@@ -150,9 +150,13 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       nombre: customBonification.nombre,
       condicionParametrizable: customBonification.condicionParametrizable || 'Condición personalizada',
       descuentoTIN: customBonification.descuentoTIN,
+      impacto: { puntos: customBonification.descuentoTIN },
+      aplicaEn: 'FIJO', // Default to FIJO
       ventanaEvaluacion: 12, // Default
       fuenteVerificacion: 'MANUAL',
       estadoInicial: 'NO_CUMPLE',
+      seleccionado: false,
+      graciaMeses: 0,
       activa: true
     };
 
@@ -174,9 +178,13 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       nombre: template.nombre,
       condicionParametrizable: template.condicionParametrizable,
       descuentoTIN: template.descuentoTIN,
+      impacto: { puntos: template.descuentoTIN },
+      aplicaEn: 'FIJO', // Default to FIJO
       ventanaEvaluacion: template.ventanaEvaluacion,
       fuenteVerificacion: template.fuenteVerificacion,
       estadoInicial: template.estadoInicial,
+      seleccionado: false,
+      graciaMeses: 0,
       activa: true
     };
 

@@ -36,7 +36,29 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
 
   // Parse Spanish Euro input - strict Spanish format interpretation
   const parseSpanishEuroInput = useCallback((input: string): number | null => {
-    const result = parseEsNumber(input);
+    // Clean input: remove spaces and euro symbol
+    let cleanInput = input.replace(/[€\s]/g, '');
+    
+    // Handle shorthand formats like 1,2M, 500K, etc.
+    if (/[\d,]+[kKmM]$/i.test(cleanInput)) {
+      const match = cleanInput.match(/^([\d,]+)([kKmM])$/i);
+      if (match) {
+        const numberPart = match[1].replace(',', '.');
+        const multiplier = match[2].toLowerCase();
+        const baseNumber = parseFloat(numberPart);
+        
+        if (!isNaN(baseNumber)) {
+          switch (multiplier) {
+            case 'k':
+              return baseNumber * 1000;
+            case 'm':
+              return baseNumber * 1000000;
+          }
+        }
+      }
+    }
+    
+    const result = parseEsNumber(cleanInput);
     return result.value;
   }, []);
 
@@ -76,6 +98,13 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
         setValidationError('Usa formato español: 1.234,56');
       } else {
         setValidationError('Formato no válido');
+      }
+    } else if (parsedValue !== null) {
+      // Check range for loan capital (5.000–3.000.000)
+      if (parsedValue < 5000) {
+        setValidationError('Importe mínimo: 5.000 €');
+      } else if (parsedValue > 3000000) {
+        setValidationError('Importe máximo: 3.000.000 €');
       }
     }
     
@@ -121,6 +150,12 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Block mouse wheel to prevent accidental changes
+    if (e.type === 'wheel') {
+      e.preventDefault();
+      return;
+    }
+    
     // Allow: backspace, delete, tab, escape, enter, home, end, left, right
     if ([8, 9, 27, 13, 46, 35, 36, 37, 39].indexOf(e.keyCode) !== -1 ||
         // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
@@ -131,12 +166,14 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
       return;
     }
     
-    // Allow: digits, comma, dot, euro symbol
+    // Allow: digits, comma, dot, euro symbol, k/K, m/M for shorthand
     if ((e.keyCode >= 48 && e.keyCode <= 57) || // 0-9
         (e.keyCode >= 96 && e.keyCode <= 105) || // numpad 0-9
         e.keyCode === 188 || // comma
         e.keyCode === 190 || // dot
-        e.keyCode === 32) { // space
+        e.keyCode === 32 || // space
+        e.keyCode === 75 || // k/K
+        e.keyCode === 77) { // m/M
       return;
     }
     
@@ -156,10 +193,12 @@ const MoneyInput: React.FC<MoneyInputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        onWheel={(e) => e.currentTarget.blur()} // Prevent wheel changes
         placeholder={placeholder}
         disabled={disabled}
         aria-label={ariaLabel || 'Importe en euros'}
         className={`${baseClassName} ${className}`}
+        inputMode="decimal" // Show numeric keyboard on mobile
       />
       {!isFocused && (
         <span className="absolute right-3 top-2 text-neutral-500 pointer-events-none">

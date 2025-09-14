@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PrestamoFinanciacion, CalculoLive, ValidationError } from '../../../../types/financiacion';
 import { prestamosService } from '../../../../services/prestamosService';
+import { LiveCalculationService } from '../../../../services/liveCalculationService';
 
 // Import block components (to be created)
 import IdentificacionBlock from './blocks/IdentificacionBlock';
@@ -114,13 +115,17 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
               comisionAmortizacionAnticipada: prestamo.comisionAmortizacionParcial,
               bonificaciones: prestamo.bonificaciones?.map(b => ({
                 id: b.id,
-                tipo: 'OTROS',
+                tipo: 'OTROS' as const,
                 nombre: b.nombre,
                 condicionParametrizable: 'Condición personalizada',
                 descuentoTIN: b.reduccionPuntosPorcentuales,
+                impacto: { puntos: b.reduccionPuntosPorcentuales },
+                aplicaEn: 'FIJO' as const,
                 ventanaEvaluacion: b.lookbackMeses,
-                fuenteVerificacion: 'MANUAL',
-                estadoInicial: 'NO_CUMPLE',
+                fuenteVerificacion: 'MANUAL' as const,
+                estadoInicial: 'NO_CUMPLE' as const,
+                seleccionado: false,
+                graciaMeses: 0 as const,
                 activa: true
               })) || []
             });
@@ -205,45 +210,10 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
 
   // Calculate live values
   useEffect(() => {
-    if (formData.capitalInicial && formData.plazoTotal && formData.tipo) {
-      // Simulate live calculation (you would implement actual calculation service)
-      const baseRate = formData.tipo === 'FIJO' ? (formData.tinFijo || 0) :
-                      formData.tipo === 'VARIABLE' ? ((formData.valorIndice || 0) + (formData.diferencial || 0)) :
-                      formData.tinTramoFijo || 0;
-
-      const totalBonificaciones = (formData.bonificaciones || [])
-        .filter(b => b.activa)
-        .reduce((sum, b) => sum + b.descuentoTIN, 0);
-
-      const tinEfectivo = Math.max(0, baseRate - totalBonificaciones);
-      
-      // Simple French payment calculation (monthly)
-      const plazoMeses = formData.plazoPeriodo === 'AÑOS' ? formData.plazoTotal * 12 : formData.plazoTotal;
-      const tasaMensual = tinEfectivo / 12 / 100;
-      const cuotaEstimada = tasaMensual > 0 ? 
-        (formData.capitalInicial * tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / 
-        (Math.pow(1 + tasaMensual, plazoMeses) - 1) : 
-        formData.capitalInicial / plazoMeses;
-
-      // Calculate savings
-      const cuotaSinBonif = baseRate > 0 ? 
-        (formData.capitalInicial * (baseRate/12/100) * Math.pow(1 + baseRate/12/100, plazoMeses)) / 
-        (Math.pow(1 + baseRate/12/100, plazoMeses) - 1) : 
-        formData.capitalInicial / plazoMeses;
-
-      const ahorroMensual = cuotaSinBonif - cuotaEstimada;
-      const ahorroAnual = ahorroMensual * 12;
-
-      setCalculoLive({
-        cuotaEstimada,
-        taeAproximada: tinEfectivo * 1.05, // Rough approximation
-        tinEfectivo,
-        ahorroMensual,
-        ahorroAnual,
-        proximaFechaRevision: formData.tipo === 'VARIABLE' ? 
-          new Date(Date.now() + (formData.revision || 12) * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : 
-          undefined
-      });
+    if (formData.capitalInicial && formData.plazoTotal && formData.tipo && formData.fechaFirma) {
+      // Use the enhanced live calculation service
+      const calculo = LiveCalculationService.calculateFromPrestamo(formData as PrestamoFinanciacion);
+      setCalculoLive(calculo);
     } else {
       setCalculoLive(null);
     }
@@ -280,10 +250,17 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
         comisionAmortizacionParcial: formData.comisionAmortizacionAnticipada,
         bonificaciones: formData.bonificaciones?.map(b => ({
           id: b.id,
+          tipo: b.tipo === 'PLAN_PENSIONES' ? 'PENSIONES' as const : 
+                b.tipo === 'INGRESOS_RECURRENTES' ? 'OTROS' as const :
+                b.tipo as 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'ALARMA'|'OTROS',
           nombre: b.nombre,
           reduccionPuntosPorcentuales: b.descuentoTIN,
+          impacto: b.impacto,
+          aplicaEn: b.aplicaEn,
           lookbackMeses: b.ventanaEvaluacion,
           regla: { tipo: 'OTRA' as const, descripcion: b.condicionParametrizable },
+          seleccionado: b.seleccionado,
+          graciaMeses: b.graciaMeses,
           estado: 'PENDIENTE' as const
         }))
       };
