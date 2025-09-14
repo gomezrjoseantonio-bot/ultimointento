@@ -81,6 +81,9 @@ const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPa
 // Demo page for color-coded movement display requirements
 const ColorCodedMovementDemo = React.lazy(() => import('./pages/ColorCodedMovementDemo'));
 
+// Design Bible page - ATLAS Design System reference
+const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
+
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
@@ -188,6 +191,13 @@ function App() {
             <Route path="describe-image" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <ImageDescriptionPage />
+              </React.Suspense>
+            } />
+            
+            {/* Design Bible - ATLAS Design System */}
+            <Route path="design-bible" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <DesignBiblePage />
               </React.Suspense>
             } />
             
