@@ -1,5 +1,5 @@
 /**
- * Tests for Account Validation Service
+ * Tests for Account Validation Services
  */
 
 import { 
