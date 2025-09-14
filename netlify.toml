@@ -5,6 +5,8 @@
 [functions]
   directory = "functions"
   node_bundler = "esbuild"
+
+[functions."*"]
   timeout = 26
 
 [[redirects]]
