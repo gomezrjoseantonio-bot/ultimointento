@@ -238,6 +238,34 @@ export class FEINOCRService {
         body: formData
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Error procesando documento FEIN';
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          } else if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        } catch {
+          errorMessage = errorText.slice(0, 200) || 'Error de comunicación con el servidor';
+        }
+
+        return {
+          mode: 'sync',
+          result: {
+            success: false,
+            errors: [errorMessage],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all']
+          }
+        };
+      }
+
       // Parse response
       const json = await response.json();
       
@@ -254,7 +282,7 @@ export class FEINOCRService {
             mode: 'sync',
             result: {
               success: false,
-              errors: [json.error || 'Error procesando documento con DocAI'],
+              errors: [json.error || json.message || 'Error procesando documento con DocAI'],
               warnings: [],
               fieldsExtracted: [],
               fieldsMissing: ['all'],
@@ -649,16 +677,16 @@ export class FEINOCRService {
         
         // Telemetry logging for development
         if (process.env.NODE_ENV === 'development') {
-          console.info('[FEIN] polling', { status: 'polling', percent: Math.round((attempts / MAX_ATTEMPTS) * 100) });
+          console.info('[FEIN] polling', { status: 'polling', attempt: attempts });
         }
         
         const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${jobId}`);
         
-        // Handle 404 - job not ready yet
+        // Handle 404 - job not ready yet, retry silently up to 5 times
         if (response.status === 404) {
           notFoundRetries++;
           if (notFoundRetries <= MAX_404_RETRIES) {
-            // Wait 1 second and retry for 404s
+            // Wait 1 second and retry for 404s (silent retry)
             await new Promise(resolve => setTimeout(resolve, 1000));
             continue;
           } else {
@@ -708,7 +736,7 @@ export class FEINOCRService {
         }
         
         if (result.status === 'failed') {
-          // Processing failed
+          // Processing failed - return single toast message per requirements
           return {
             success: false,
             errors: [result.message || 'No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.'],
@@ -889,7 +917,7 @@ export class FEINOCRService {
   /**
    * Apply FEIN result to form with deep merge preserving user input
    */
-  static applyFeinToForm(result: any, currentForm: any, setFormValues: (updater: (prev: any) => any) => void): void {
+  static applyFeinToForm(result: any, setFormValues: (updater: (prev: any) => any) => void): void {
     if (!result?.fields) return;
 
     const draft = this.mapFieldsToLoanDraft(result.fields, result.pending || []);
@@ -913,6 +941,15 @@ export class FEINOCRService {
     };
 
     setFormValues(prev => deepMergePreservingUser(prev, draft));
+    
+    // Log chips/pending info for UI display
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[FEIN] Applied to form', { 
+        fieldsCount: Object.keys(result.fields || {}).length,
+        pendingCount: (result.pending || []).length,
+        confidenceGlobal: result.confidenceGlobal
+      });
+    }
   }
 }
 

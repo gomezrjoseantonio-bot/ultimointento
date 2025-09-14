@@ -28,6 +28,20 @@ jest.mock('../../../src/services/ocr/normalize-docai', () => ({
   })
 }));
 
+// Mock PDF functions
+jest.mock('pdf-lib', () => ({
+  PDFDocument: {
+    load: jest.fn().mockResolvedValue({
+      getPageCount: jest.fn().mockReturnValue(5) // Mock 5 pages for tests
+    }),
+    create: jest.fn().mockResolvedValue({
+      copyPages: jest.fn().mockResolvedValue([]),
+      addPage: jest.fn(),
+      save: jest.fn().mockResolvedValue(new Uint8Array())
+    })
+  }
+}));
+
 // Mock the documentai client for fallback scenarios
 jest.mock('../../../src/services/documentaiClient', () => ({
   processWithDocAI: jest.fn().mockResolvedValue({
