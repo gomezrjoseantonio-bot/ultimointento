@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Save, Download } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
 import { createPresupuesto, createPresupuestoLinea } from '../services/presupuestoService';
@@ -37,7 +38,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
 
       // Validate budget name
       if (!budgetName.trim()) {
-        alert('El nombre del presupuesto es obligatorio');
+        toast.error('El nombre del presupuesto es obligatorio');
         return;
       }
 
@@ -69,11 +70,11 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       }
 
       // Success
-      alert('Presupuesto creado exitosamente');
+      toast.error('Presupuesto creado exitosamente');
       onComplete();
     } catch (error) {
       console.error('Error saving budget:', error);
-      alert('Error al guardar el presupuesto. Inténtalo de nuevo.');
+      toast.error('Error al guardar el presupuesto. Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }

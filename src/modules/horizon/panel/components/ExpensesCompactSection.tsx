@@ -112,7 +112,7 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
         </h2>
         <button 
           onClick={handleOpenBudget}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark"
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light "
         >
           <ExternalLink className="w-3 h-3" />
           Abrir Presupuesto

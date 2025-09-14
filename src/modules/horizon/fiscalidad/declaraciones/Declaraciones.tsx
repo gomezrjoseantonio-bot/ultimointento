@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Download, Calendar, User, Archive } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property } from '../../../../services/db';
@@ -584,7 +585,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
       
     } catch (error) {
       console.error('Error generating declaration:', error);
-      alert('Error generando la declaración: ' + error);
+      toast.error('Error generando la declaración: ' + error);
     } finally {
       setIsGenerating(false);
     }

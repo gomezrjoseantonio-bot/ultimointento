@@ -22,11 +22,11 @@
   --error: #DC3545;                /* Error red */
   
   /* PROHIBITED COLORS - DO NOT USE */
-  /* #09182E */                    /* NEVER USE - forbidden */
+  /* #1e40af */                    /* NEVER USE - forbidden */
   
   /* Horizon Module - ATLAS Design System Tokens (EXACT per requirements) */
   --hz-primary: var(--atlas-blue);          /* #042C5E */
-  --hz-primary-dark: var(--atlas-blue);     /* Same as primary */
+  --hz-primary: var(--atlas-blue);     /* Same as primary */
   --hz-bg: var(--bg);                       /* #F8F9FA */
   --hz-text: var(--atlas-navy-1);           /* #303A4C */
   
@@ -51,8 +51,7 @@
   --movement-vencido: var(--warn);         /* Amber for overdue */
   --movement-no-previsto: var(--text-gray); /* Gray for unplanned */
   
-  /* Typography - Inter as specified */
-  --font-ui: 'Inter', system-ui, sans-serif;
+  /* Typography - Inter as specified - using direct declarations */
   
   /* Legacy cleanup - redirect to Horizon tokens */
   --text: var(--hz-text);
@@ -77,8 +76,7 @@
   --horizon-primary-hover: var(--hz-primary-600);
   --horizon-bg-soft: var(--hz-bg);
 
-  /* ATLAS Typography System - Exact requirements */
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  /* ATLAS Typography System - Direct Inter font declarations */
   
   /* ATLAS Typography Scale */
   --text-h1: 1.5rem;              /* H1: 1.5-1.75rem (Semibold) */
@@ -123,7 +121,7 @@
 
 /* ATLAS Global Typography - Apply Inter and tabular-nums */
 html, body { 
-  font-family: var(--font-sans); 
+  font-family: Inter, system-ui, sans-serif; 
   color: var(--atlas-navy-1); 
   background: var(--bg); 
   margin: 0;
@@ -401,7 +399,7 @@ table td,
   border: 1px solid var(--border); 
   border-radius: var(--radius-md); 
   padding: .55rem .7rem; 
-  font-family: var(--font-sans);
+  font-family: Inter, system-ui, sans-serif;
   color: var(--text);
   width: 100%;
 }
@@ -470,12 +468,12 @@ table td,
   
   /* Accent buttons (for secondary positive actions) - HORIZON only uses atlas-blue */
   .btn-accent-horizon {
-    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* DEPRECATED - Pulse button style not allowed in Horizon */
   .btn-accent-pulse {
-    @apply btn-base bg-hz-success text-white hover:bg-opacity-90 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */

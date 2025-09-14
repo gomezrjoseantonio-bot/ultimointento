@@ -69,7 +69,7 @@ class ErrorBoundary extends Component<Props, State> {
             <div className="flex space-x-3">
               <button
                 onClick={() => window.location.reload()}
-                className="flex items-center px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-dark transition-colors"
+                className="flex items-center px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-700 transition-colors"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Recargar página

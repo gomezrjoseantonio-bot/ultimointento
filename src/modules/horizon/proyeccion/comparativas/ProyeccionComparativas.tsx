@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Download, TrendingUp, Edit } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro, formatPercentage } from '../../../../utils/formatUtils';
@@ -77,7 +78,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
 
   const handleExportPDF = () => {
     // TODO: Implement PDF export functionality
-    alert('Exportar comparativa a PDF - Funcionalidad por implementar');
+    toast.error('Exportar comparativa a PDF - Funcionalidad por implementar');
   };
 
   const handleEditScenario = (scenarioId: number) => {

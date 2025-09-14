@@ -575,7 +575,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
       {/* Preview Modal */}
       {showPreviewModal && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-4 border-b">
               <h4 className="text-lg font-medium">Vista previa del documento</h4>
@@ -599,7 +599,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h4 className="text-lg font-medium mb-4">¿Eliminar documento?</h4>
             <p className="text-neutral-600 mb-6">
@@ -625,7 +625,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
       {/* Enhanced Assign Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h4 className="text-lg font-medium mb-4">
               {metadata.status === 'Asignado' ? 'Reasignar Documento' : 'Asignar Documento'}

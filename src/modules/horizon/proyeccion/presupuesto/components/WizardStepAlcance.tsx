@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Building, Calendar, Check, ChevronRight } from 'lucide-react';
 import { Property, initDB } from '../../../../../services/db';
 
@@ -70,7 +71,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
   const handleContinue = () => {
     // Allow testing mode when no properties exist
     if (selectedPropertyIds.length === 0 && properties.length > 0) {
-      alert('Debes seleccionar al menos un inmueble.');
+      toast.error('Debes seleccionar al menos un inmueble.');
       return;
     }
 

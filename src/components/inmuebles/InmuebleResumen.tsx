@@ -325,7 +325,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
           <button
             onClick={onSave}
             disabled={isSaving}
-            className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark focus:ring-2 focus:ring-hz-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary- light focus:ring-2 focus:ring-hz-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isSaving ? (
               <>

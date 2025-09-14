@@ -177,7 +177,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
 
   return (
     <>
-      <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
           <div className="p-6">
             {/* Header */}
@@ -220,7 +220,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
                 />
                 <label
                   htmlFor="file-upload"
-                  className="inline-flex items-center px-4 py-2 bg-hz-primary-dark text-white rounded-lg hover:bg-opacity-90 cursor-pointer transition-colors"
+                  className="inline-flex items-center px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-600 cursor-pointer transition-colors"
                 >
                   Seleccionar archivo
                 </label>
@@ -335,7 +335,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
                 <button
                   onClick={handleImport}
                   disabled={importing || (!selectedAccount && !detectedBank)}
-                  className="flex items-center gap-2 px-4 py-2 bg-hz-primary-dark text-white rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {importing ? (
                     <>

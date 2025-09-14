@@ -137,7 +137,7 @@ const Tesoreria: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
             >
               <Upload size={16} />
               Importar extracto

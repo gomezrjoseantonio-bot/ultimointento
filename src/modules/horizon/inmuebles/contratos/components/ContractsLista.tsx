@@ -86,6 +86,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleTerminateContract = async (id: number) => {
+    // TODO: Replace with ATLAS input modal
     const terminationDate = prompt('Ingrese la fecha de terminación (YYYY-MM-DD):');
     if (!terminationDate) return;
 

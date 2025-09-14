@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import PageLayout from '../../../components/common/PageLayout';
 import PrestamosCreation from './components/PrestamosCreation';
 import PrestamosList from './components/PrestamosList';
@@ -57,7 +58,7 @@ const Financiacion: React.FC = () => {
       ].filter(Boolean).join('. ');
       
       if (warningMsg) {
-        alert(`Datos extraídos del FEIN. ${warningMsg}.`);
+        toast.error(`Datos extraídos del FEIN. ${warningMsg}.`);
       }
     }
     

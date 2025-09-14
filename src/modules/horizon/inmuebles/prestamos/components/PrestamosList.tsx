@@ -1,6 +1,7 @@
 // Préstamos List View Component
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Calculator, Home } from 'lucide-react';
 import { formatEuro, formatDate, formatPercentage } from '../../../../../utils/formatUtils';
 import { Prestamo } from '../../../../../types/prestamos';
@@ -53,11 +54,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
         // Reload the list after deletion
         await loadPrestamos();
       } else {
-        alert('Error al eliminar el préstamo');
+        toast.error('Error al eliminar el préstamo');
       }
     } catch (error) {
       console.error('Error deleting préstamo:', error);
-      alert('Error al eliminar el préstamo');
+      toast.error('Error al eliminar el préstamo');
     } finally {
       setLoading(false);
     }

@@ -140,6 +140,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     const motivo = window.prompt('Motivo de la rescisión:');
     if (!motivo) return;
 
+    // TODO: Replace with ATLAS input modal
     const fechaRescision = window.prompt('Fecha de rescisión (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
     if (!fechaRescision) return;
 
@@ -250,7 +251,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           <div className="flex space-x-3">
             <button
               onClick={() => loadData()}
-              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-dark transition-colors"
+              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-700 transition-colors"
             >
               Reintentar
             </button>

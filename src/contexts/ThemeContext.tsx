@@ -150,7 +150,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     root.style.setProperty('--text-gray', ATLAS_TOKENS.colors.textGray);
     
     // Apply Inter font family globally
-    root.style.setProperty('--font-sans', ATLAS_TOKENS.fonts.sans);
+    root.style.setProperty('--font-inter', ATLAS_TOKENS.fonts.sans);
     root.style.fontFamily = ATLAS_TOKENS.fonts.sans;
     
     // Enable tabular numbers globally for financial data

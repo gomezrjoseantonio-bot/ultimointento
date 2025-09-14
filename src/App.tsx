@@ -142,12 +142,12 @@ function App() {
           toastOptions={{
             duration: 4000,
             style: {
-              fontFamily: 'var(--font-sans)',
+              fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
               color: 'var(--atlas-navy-1)',
               background: 'white',
               border: '1px solid var(--hz-neutral-300)',
               borderRadius: '10px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 6px rgba(156, 163, 175, 0.1)',
             },
             success: {
               iconTheme: {

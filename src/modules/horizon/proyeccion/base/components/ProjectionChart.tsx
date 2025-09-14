@@ -108,7 +108,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(156, 163, 175, 0.1)',
         titleColor: '#ffffff',
         bodyColor: '#ffffff',
         borderColor: '#0F2C5C', // Official Horizon primary

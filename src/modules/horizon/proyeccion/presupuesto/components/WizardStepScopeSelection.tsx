@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Building, User, CheckCircle, ChevronRight } from 'lucide-react';
 
 interface ScopeSelectionData {
@@ -38,7 +39,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
 
   const handleContinue = () => {
     if (selectedScopes.length === 0) {
-      alert('Debes seleccionar al menos un ámbito.');
+      toast.error('Debes seleccionar al menos un ámbito.');
       return;
     }
 
