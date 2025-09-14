@@ -827,7 +827,7 @@ function detectCapitalInicial(docText: string, docTextLower: string): Candidate[
   const candidates: Candidate[] = [];
   
   // For backward compatibility with tests, use simple regex first
-  const capitalRegex = /Capital( (solicitado|inicial))?:?\s*([0-9\.\s]+,\d{2})\s*€/i;
+  const capitalRegex = /Capital( (solicitado|inicial|del préstamo))?:?\s*([0-9\.\s]+,\d{2})\s*€/i;
   const match = docText.match(capitalRegex);
   if (match && match[3]) {
     const amount = parseMoneyES(match[0]);
@@ -866,23 +866,30 @@ function detectCapitalInicial(docText: string, docTextLower: string): Candidate[
       }
     }
     
+    // Also check for simple "capital" near the amount
+    if (context.includes("capital")) {
+      hasPositiveAnchor = true;
+      score += 0.2;
+    }
+    
     // Check for exclusions
     for (const exclusion of exclusionsFuertes) {
       if (context.includes(exclusion)) {
         hasExclusion = true;
-        score -= 0.5;
+        score -= 0.8; // Strong penalty for exclusions
         break;
       }
+    }
+    
+    // Check for "tasación" as exclusion indicator
+    if (context.includes("tasación")) {
+      hasExclusion = true;
+      score -= 0.8;
     }
     
     // Bonus for "préstamo" in context
     if (context.includes("préstamo")) {
       score += 0.2;
-    }
-    
-    // Penalty for "tasación"
-    if (context.includes("tasación")) {
-      score -= 0.5;
     }
     
     if (hasPositiveAnchor && !hasExclusion && score > 0.5) {
