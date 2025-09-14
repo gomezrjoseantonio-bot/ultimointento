@@ -15,9 +15,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [processingStage, setProcessingStage] = useState('');
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [lastPercent, setLastPercent] = useState(0); // For monotonic progress
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -35,7 +32,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
     setDragActive(false);
     
     // Prevent drop if already processing
-    if (isProcessing || showProgressModal) {
+    if (isProcessing) {
       return;
     }
     
@@ -46,7 +43,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Prevent input if already processing
-    if (isProcessing || showProgressModal) {
+    if (isProcessing) {
       return;
     }
     
@@ -57,7 +54,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
 
   const handleFileSelection = async (file: File) => {
     // Prevent duplicate uploads
-    if (isProcessing || showProgressModal) {
+    if (isProcessing) {
       return;
     }
 
@@ -78,88 +75,34 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
       setUploadProgress(20);
       setProcessingStage('Preparando documento...');
 
-      // Use new implementation
-      const response = await feinOcrService.processFEINDocumentNew(file);
-      
-      if (response.mode === 'sync') {
-        // Sync response - no progress panel needed
-        setUploadProgress(100);
-        setProcessingStage('Procesamiento completado');
-        
-        setTimeout(() => {
-          setIsProcessing(false);
-          
-          if (response.result?.success && response.result.loanDraft) {
-            // Apply to form using new method
-            console.log('[FEIN] Successfully extracted data:', response.result.loanDraft);
-            onFEINDraftReady(response.result.loanDraft);
-          } else {
-            handleProcessingError(response.result?.errors || ['Error procesando documento'], file);
-          }
-        }, 500);
-        
-      } else if (response.mode === 'background') {
-        // Background processing - show unified progress modal
-        setIsProcessing(false); // Stop initial processing state
-        setShowProgressModal(true);
-        setProgressPercent(10); // Start with 10%
-        setLastPercent(10); // Initialize monotonic progress
-        
-        // Simulate progress increase to avoid static UI
-        const progressSimulation = setInterval(() => {
-          setProgressPercent(prev => {
-            const newPercent = Math.min(prev + 2, 70);
-            setLastPercent(current => Math.max(current, newPercent)); // Ensure monotonic
-            return newPercent;
-          });
-        }, 1000);
-        
-        // Start polling
-        try {
-          const result = await feinOcrService.pollForBackgroundResult(response.jobId!, (progress) => {
-            clearInterval(progressSimulation);
-            // Ensure monotonic progress - never decrease
-            const apiPercent = progress.percent || 0;
-            setProgressPercent(prevPercent => {
-              const displayPercent = Math.max(lastPercent, apiPercent);
-              setLastPercent(displayPercent);
-              // Don't exceed 95% until completed
-              return progress.percent === 100 ? 100 : Math.min(displayPercent, 95);
-            });
-          });
-          
-          clearInterval(progressSimulation);
-          
-          if (result.success && result.loanDraft) {
-            // Set to 100% and show completion
-            setProgressPercent(100);
-            setLastPercent(100);
-            
-            // Brief pause to show 100% before closing
-            setTimeout(() => {
-              setShowProgressModal(false);
-              console.log('[FEIN] Background processing completed:', result.loanDraft);
-              if (result.loanDraft) {
-                onFEINDraftReady(result.loanDraft);
-              }
-            }, 500);
-          } else {
-            // Single toast message per requirements
-            setShowProgressModal(false);
-            handleProcessingError(result.errors, file);
-          }
-          
-        } catch (error) {
-          clearInterval(progressSimulation);
-          setShowProgressModal(false);
-          handleProcessingError(['Tardando más de lo habitual. Inténtalo de nuevo.'], file);
+      // Use new synchronous implementation  
+      const result = await feinOcrService.processFEINDocumentNew(file, (progress) => {
+        setProcessingStage(progress.message);
+        if (progress.stage === 'processing') {
+          setUploadProgress(50);
+        } else if (progress.stage === 'complete') {
+          setUploadProgress(100);
         }
-      }
+      });
+      
+      setProcessingStage('Procesamiento completado');
+      setUploadProgress(100);
+      
+      setTimeout(() => {
+        setIsProcessing(false);
+        
+        if (result.success && result.loanDraft) {
+          // Apply to form using new method
+          console.log('[FEIN] Successfully extracted data:', result.loanDraft);
+          onFEINDraftReady(result.loanDraft);
+        } else {
+          handleProcessingError(result.errors || ['Error procesando documento'], file);
+        }
+      }, 500);
 
     } catch (error) {
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      setShowProgressModal(false);
       handleProcessingError(['Error de conexión. Inténtalo de nuevo.'], file);
     }
   };
@@ -239,53 +182,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
     );
   }
 
-  // Background Processing Modal
-  if (showProgressModal) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
-          <div className="text-center">
-            <div className="mb-6">
-              <Loader2 className="h-12 w-12 mx-auto animate-spin" style={{ color: 'var(--atlas-blue)' }} />
-            </div>
-            
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
-              Procesando FEIN…
-            </h3>
-            
-            <p className="text-sm mb-6" style={{ color: 'var(--text-gray)' }}>
-              Estamos extrayendo los datos del documento.
-            </p>
 
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-              <div 
-                className="h-3 rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${progressPercent}%`,
-                  backgroundColor: 'var(--atlas-blue)'
-                }}
-              />
-            </div>
-
-            <p className="text-xs mb-4" style={{ color: 'var(--text-gray)' }}>
-              {progressPercent}% completado
-            </p>
-
-            <button
-              onClick={() => {
-                setShowProgressModal(false);
-                onCancel();
-              }}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-bg">
@@ -321,7 +218,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           {/* Upload Area - Horizon colors */}
           <div
             className={`border-2 border-dashed rounded-atlas p-12 text-center transition-colors ${
-              isProcessing || showProgressModal
+              isProcessing
                 ? 'opacity-50 cursor-not-allowed'
                 : dragActive 
                   ? 'bg-primary-50' 
@@ -355,7 +252,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing || showProgressModal}
+              disabled={isProcessing}
               className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--atlas-blue)' }}
             >
@@ -367,7 +264,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               type="file"
               accept=".pdf"
               onChange={handleFileInput}
-              disabled={isProcessing || showProgressModal}
+              disabled={isProcessing}
               className="hidden"
             />
           </div>
