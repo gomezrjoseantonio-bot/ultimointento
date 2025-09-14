@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { 
   CheckCircle, 
-  AlertTriangle, 
   XCircle, 
-  ArrowLeft,
-  Euro,
-  Percent
+  ArrowLeft
 } from 'lucide-react';
 import { FEINProcessingResult, FEINData, FEINToLoanMapping } from '../../types/fein';
 import { PrestamoFinanciacion } from '../../types/financiacion';
@@ -16,7 +13,7 @@ interface FEINValidationProps {
   onBack: () => void;
 }
 
-const FEINValidation: React.FC<FEINValidationProps> = ({ feinResult, onContinue, onBack }) => {
+const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps) => {
   const [editableData, setEditableData] = useState<FEINData>(feinResult.data || {});
   const [mapping, setMapping] = useState<FEINToLoanMapping>({
     ambito: 'PERSONAL',
