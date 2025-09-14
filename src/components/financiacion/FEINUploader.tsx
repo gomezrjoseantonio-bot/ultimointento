@@ -1,18 +1,96 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
-import { FEINProcessingResult } from '../../types/fein';
+import { FEINProcessingResult, FeinLoanDraft } from '../../types/fein';
 import { feinOcrService } from '../../services/feinOcrService';
 
 interface FEINUploaderProps {
   onFEINProcessed: (result: FEINProcessingResult) => void;
+  onFEINDraftReady?: (draft: FeinLoanDraft) => void; // New callback for chunked processing
   onCancel: () => void;
 }
 
-const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }) => {
+const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraftReady, onCancel }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [processingStage, setProcessingStage] = useState('');
+  const [currentJob, setCurrentJob] = useState<{
+    jobId: string;
+    pagesTotal: number;
+    totalChunks: number;
+  } | null>(null);
+
+  // Poll job status when processing
+  useEffect(() => {
+    if (!currentJob) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusResult = await feinOcrService.checkFEINJobStatus(currentJob.jobId);
+        
+        if (!statusResult.success) {
+          console.error('Error checking job status:', statusResult.error);
+          return;
+        }
+
+        const job = statusResult.job!;
+        
+        // Update progress
+        const progressPercent = job.progress.pagesTotal > 0 
+          ? Math.round((job.progress.pagesProcessed / job.progress.pagesTotal) * 100)
+          : 0;
+        
+        setUploadProgress(progressPercent);
+        
+        // Update stage description
+        if (job.status === 'processing' && job.progress.currentChunk !== undefined) {
+          setProcessingStage(`Leyendo páginas ${job.progress.pagesProcessed + 1} de ${job.progress.pagesTotal}`);
+        }
+
+        // Handle completion
+        if (job.status === 'completed' && job.result) {
+          clearInterval(pollInterval);
+          setUploadProgress(100);
+          setProcessingStage('Listo');
+          
+          // Small delay to show completion
+          setTimeout(() => {
+            setIsProcessing(false);
+            setCurrentJob(null);
+            
+            // Use new callback for FeinLoanDraft if available
+            if (onFEINDraftReady) {
+              onFEINDraftReady(job.result!);
+            } else {
+              // Fallback to legacy callback (convert to old format)
+              const legacyResult: FEINProcessingResult = {
+                success: true,
+                errors: job.result!.metadata.warnings || [],
+                warnings: [],
+                fieldsExtracted: Object.keys(job.result!.prestamo).filter(key => 
+                  job.result!.prestamo[key as keyof typeof job.result.prestamo] != null
+                ),
+                fieldsMissing: []
+              };
+              onFEINProcessed(legacyResult);
+            }
+          }, 1000);
+          
+        } else if (job.status === 'failed') {
+          clearInterval(pollInterval);
+          setIsProcessing(false);
+          setCurrentJob(null);
+          alert(`Error procesando FEIN: ${job.error || 'Error desconocido'}`);
+        }
+
+      } catch (error) {
+        console.error('Error polling job status:', error);
+      }
+    }, 1500); // Poll every 1.5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [currentJob, onFEINProcessed, onFEINDraftReady]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -55,30 +133,26 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
 
     try {
       setIsProcessing(true);
-      setUploadProgress(20);
+      setUploadProgress(0);
+      setProcessingStage('Preparando documento...');
 
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 300);
-
-      // Process FEIN document
-      const result = await feinOcrService.processFEINDocument(file);
+      // Start chunked processing
+      const result = await feinOcrService.processFEINDocumentChunked(file);
       
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-      
-      // Small delay to show completion
-      setTimeout(() => {
+      if (!result.success) {
         setIsProcessing(false);
-        onFEINProcessed(result);
-      }, 500);
+        alert(result.error || 'Error iniciando procesamiento FEIN');
+        return;
+      }
+
+      // Set up job tracking
+      setCurrentJob({
+        jobId: result.jobId!,
+        pagesTotal: result.pagesTotal!,
+        totalChunks: result.totalChunks!
+      });
+      
+      setProcessingStage(`Iniciando procesamiento de ${result.pagesTotal} páginas...`);
 
     } catch (error) {
       console.error('Error processing FEIN:', error);
@@ -97,11 +171,11 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
             </div>
             
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
-              Procesando documento FEIN
+              Procesando FEIN
             </h3>
             
             <p className="text-sm mb-4" style={{ color: 'var(--text-gray)' }}>
-              Extrayendo información del préstamo...
+              {processingStage || 'Extrayendo información del préstamo...'}
             </p>
 
             {/* Progress Bar */}
@@ -115,9 +189,20 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
               />
             </div>
 
-            <p className="text-xs" style={{ color: 'var(--text-gray)' }}>
+            <p className="text-xs mb-4" style={{ color: 'var(--text-gray)' }}>
               {uploadProgress}% completado
             </p>
+
+            {/* Additional info for chunked processing */}
+            {currentJob && (
+              <div className="text-xs space-y-1" style={{ color: 'var(--text-gray)' }}>
+                <p>Total páginas: {currentJob.pagesTotal}</p>
+                <p>Bloques a procesar: {currentJob.totalChunks}</p>
+                {uploadProgress === 100 && (
+                  <p className="text-green-600 font-medium">✓ Ensamblando resultado final...</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

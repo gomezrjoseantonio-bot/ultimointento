@@ -171,3 +171,66 @@ export interface FEINProcessingStage {
   details?: any;
   error?: string;
 }
+
+// New compact response type for chunk-based processing (problem statement requirement)
+export interface FeinLoanDraft {
+  metadata: {
+    sourceFileName: string;
+    pagesTotal: number;
+    pagesProcessed: number;
+    ocrProvider: 'google' | 'tesseract' | 'azure' | string;
+    processedAt: string; // ISO timestamp
+    warnings?: string[];
+  };
+  prestamo: {
+    aliasSugerido?: string;
+    tipo: 'FIJO' | 'VARIABLE' | 'MIXTO' | null;
+    capitalInicial?: number;           // €
+    plazoMeses?: number;               // months
+    periodicidadCuota?: 'MENSUAL' | 'TRIMESTRAL' | null;
+    revisionMeses?: 6 | 12 | null;     // only variable/mixed
+    indiceReferencia?: 'EURIBOR' | 'IRPH' | null;
+    valorIndiceActual?: number | null; // %
+    diferencial?: number | null;       // %
+    tinFijo?: number | null;           // % for fixed portion if applicable
+    comisionAperturaPct?: number | null;
+    comisionMantenimientoMes?: number | null; // €
+    amortizacionAnticipadaPct?: number | null;
+    fechaFirmaPrevista?: string | null; // ISO date
+    banco?: string | null;
+    ibanCargoParcial?: string | null;   // last 4 digits if present
+  };
+  bonificaciones?: Array<{
+    id: string;               // slug e.g. 'nomina', 'recibos', 'tarjeta', 'hogar', 'vida', 'pensiones', 'alarma', 'ingresos_recurrentes', 'otros'
+    etiqueta: string;
+    descuentoPuntos?: number; // percentage points
+    criterio?: string;        // short requirement text
+  }>;
+}
+
+// Job-based processing interfaces for async chunk processing
+export interface FeinOcrJob {
+  jobId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: {
+    pagesTotal: number;
+    pagesProcessed: number;
+    currentChunk?: number;
+    totalChunks?: number;
+  };
+  result?: FeinLoanDraft;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChunkProcessingResult {
+  chunkIndex: number;
+  pageRange: { from: number; to: number };
+  extractedData: Partial<FeinLoanDraft['prestamo']>;
+  bonificaciones: FeinLoanDraft['bonificaciones'];
+  confidence: number;
+  processingTimeMs: number;
+  retryCount: number;
+  error?: string;
+}

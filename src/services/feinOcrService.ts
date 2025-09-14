@@ -1,10 +1,15 @@
-// FEIN OCR Service - Specialized OCR processing for FEIN documents
-// Implements partitioning for large PDFs and canonical JSON schema
-// Following OCR FEIN requirements with robust error handling
+// FEIN OCR Service - Specialized OCR processing for FEIN documents  
+// Implements chunk-based processing to avoid ResponseSizeTooLarge errors
+// Following OCR FEIN requirements with robust error handling and compact JSON response
 
 import { unifiedOcrService } from './unifiedOcrService';
-import { FEINData, FEINBonificacion, FEINProcessingResult, FEINCanonicalData, FEINBonificacionCanonical, FEINProcessingLog, FEINProcessingStage } from '../types/fein';
+import { 
+  FEINData, FEINBonificacion, FEINProcessingResult, FEINCanonicalData, 
+  FEINBonificacionCanonical, FEINProcessingLog, FEINProcessingStage,
+  FeinOcrJob
+} from '../types/fein';
 import { safeMatch } from '../utils/safe';
+import { OCR_CONFIG } from '../config/ocr.config';
 
 export class FEINOCRService {
   private static instance: FEINOCRService;
@@ -22,9 +27,117 @@ export class FEINOCRService {
   }
 
   /**
-   * Process FEIN document and extract loan information
+   * Process FEIN document using new chunk-based endpoint 
+   * This replaces the old processFEINDocument method to avoid ResponseSizeTooLarge
    * @param file - PDF file containing FEIN
+   * @returns Promise with job ID for tracking progress
+   */
+  async processFEINDocumentChunked(file: File): Promise<{
+    success: boolean;
+    jobId?: string;
+    pagesTotal?: number;
+    totalChunks?: number;
+    error?: string;
+  }> {
+    console.log('[FEIN] Starting chunked FEIN processing:', file.name);
+    
+    try {
+      // Validate file is PDF
+      if (file.type !== 'application/pdf') {
+        console.log('[FEIN] Invalid file type:', file.type);
+        return {
+          success: false,
+          error: 'Solo se permiten archivos PDF para documentos FEIN'
+        };
+      }
+
+      // Validate file size
+      if (file.size > OCR_CONFIG.maxPdfSizeBytes) {
+        return {
+          success: false,
+          error: `Archivo demasiado grande. Máximo ${OCR_CONFIG.maxPdfSizeBytes / (1024 * 1024)}MB`
+        };
+      }
+
+      // Convert file to array buffer for binary upload
+      const fileBuffer = await file.arrayBuffer();
+      
+      // Call the new ocr-fein endpoint
+      const response = await fetch('/.netlify/functions/ocr-fein', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        body: fileBuffer
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('[FEIN] Chunk processing failed:', result);
+        return {
+          success: false,
+          error: result.error || 'Error iniciando procesamiento por chunks'
+        };
+      }
+
+      console.log('[FEIN] Chunk processing started:', result);
+      return {
+        success: true,
+        jobId: result.jobId,
+        pagesTotal: result.pagesTotal,
+        totalChunks: result.totalChunks
+      };
+
+    } catch (error) {
+      console.error('[FEIN] Error starting chunked processing:', error);
+      return {
+        success: false,
+        error: 'Error interno iniciando procesamiento FEIN'
+      };
+    }
+  }
+
+  /**
+   * Check status of chunked FEIN processing job
+   * @param jobId - Job ID returned by processFEINDocumentChunked
+   * @returns Current job status and result if completed
+   */
+  async checkFEINJobStatus(jobId: string): Promise<{
+    success: boolean;
+    job?: FeinOcrJob;
+    error?: string;
+  }> {
+    try {
+      const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${encodeURIComponent(jobId)}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return {
+          success: false,
+          error: result.error || 'Error consultando estado del job'
+        };
+      }
+
+      return {
+        success: true,
+        job: result.job
+      };
+
+    } catch (error) {
+      console.error('[FEIN] Error checking job status:', error);
+      return {
+        success: false,
+        error: 'Error interno consultando estado'
+      };
+    }
+  }
+
+  /**
+   * Process FEIN document and extract loan information (LEGACY - kept for backward compatibility)
+   * @param file - PDF file containing FEIN  
    * @returns Structured FEIN data with validation
+   * @deprecated Use processFEINDocumentChunked for new implementations
    */
   async processFEINDocument(file: File): Promise<FEINProcessingResult> {
     console.log('[FEIN] Starting FEIN processing:', file.name);
