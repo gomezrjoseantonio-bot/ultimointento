@@ -1117,10 +1117,15 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     onClick={() => {
                       const newBonif: Bonificacion = {
                         id: `bonif_${Date.now()}`,
+                        tipo: 'NOMINA',
                         nombre: '',
                         reduccionPuntosPorcentuales: 0,
+                        impacto: { puntos: 0 },
+                        aplicaEn: 'FIJO',
                         lookbackMeses: parseInt(periodoRevisionBonificacionMeses),
                         regla: { tipo: 'NOMINA', minimoMensual: 1000 },
+                        seleccionado: false,
+                        graciaMeses: 0,
                         estado: 'PENDIENTE'
                       };
                       setBonificaciones([...bonificaciones, newBonif]);

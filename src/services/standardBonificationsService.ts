@@ -124,11 +124,16 @@ export class StandardBonificationsService {
   createBonificationFromStandard(standard: StandardBonification): Bonificacion {
     return {
       id: `bonif_${standard.id}_${Date.now()}`,
+      tipo: 'OTROS',
       nombre: standard.nombre,
       reduccionPuntosPorcentuales: standard.reduccionPuntosPorcentuales,
+      impacto: { puntos: standard.reduccionPuntosPorcentuales },
+      aplicaEn: 'FIJO',
       lookbackMeses: standard.lookbackMeses,
       regla: standard.regla,
       costeAnualEstimado: standard.costeAnualEstimado,
+      seleccionado: false,
+      graciaMeses: 0,
       estado: 'PENDIENTE'
     };
   }

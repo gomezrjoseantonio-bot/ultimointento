@@ -183,9 +183,13 @@ export class FEINLoanCreationService {
       nombre: bonif.descripcion,
       condicionParametrizable: bonif.condicion || bonif.descripcion,
       descuentoTIN: bonif.descuento || 0,
+      impacto: { puntos: bonif.descuento || 0 },
+      aplicaEn: 'FIJO' as const,
       ventanaEvaluacion: 6,
       fuenteVerificacion: this.mapVerificationSource(bonif.tipo),
-      estadoInicial: 'NO_CUMPLE',
+      estadoInicial: 'NO_CUMPLE' as const,
+      seleccionado: false,
+      graciaMeses: 0 as const,
       activa: true
     }));
   }

@@ -58,13 +58,20 @@ export interface BonificacionFinanciacion {
   nombre: string;                       // Display name
   condicionParametrizable: string;      // Parametrizable condition description
   descuentoTIN: number;                // TIN discount in percentage points (p.p.)
+  impacto: { puntos: number };         // p.ej. -0,10 p.p.
+  aplicaEn: 'FIJO'|'VARIABLE'|'MIXTO_SECCION_FIJA'|'MIXTO_SECCION_VARIABLE';
   ventanaEvaluacion: number;           // Evaluation window in months (e.g., 6)
   periodicidadRevision?: number;       // Review periodicity (inherits from loan if not defined)
   periodoGraciaInicial?: number;       // Initial grace period in months (e.g., 6)
   fuenteVerificacion: 'TESORERIA' | 'SEGUROS' | 'MANUAL'; // Verification source
   estadoInicial: 'CUMPLE' | 'NO_CUMPLE' | 'GRACIA_ACTIVA'; // Initial state
   topeAcumulado?: number;              // Accumulated cap in p.p. (e.g., -1.20)
-  activa: boolean;                     // Whether bonification is active
+  
+  // Alta (día 1):
+  seleccionado?: boolean;              // el usuario lo marca
+  graciaMeses?: 0|6|12;               // opcional (selector)
+  
+  activa: boolean;                     // Whether bonification is active/selected
 }
 
 export interface CalculoLive {
@@ -72,8 +79,15 @@ export interface CalculoLive {
   taeAproximada: number;               // Approximate APR
   proximaFechaRevision?: string;       // Next review date (if variable/mixed)
   tinEfectivo: number;                 // Effective TIN (base TIN - bonifications)
+  tinBase: number;                     // Base TIN before bonifications
+  sumaPuntosAplicada: number;          // Total bonification points applied
   ahorroMensual?: number;              // Monthly savings with bonifications
   ahorroAnual?: number;                // Annual savings with bonifications
+  proximoCambio?: {                    // Next expected change
+    fecha: string;                     // Date of next change
+    tipo: 'FIN_PROMO' | 'REVISION_ANUAL'; // Type of change
+    descripcion: string;               // Human readable description
+  };
 }
 
 export interface CuadroAmortizacion {

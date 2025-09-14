@@ -93,9 +93,13 @@ export class FeinToPrestamoMapper {
       nombre: bonif.etiqueta,
       condicionParametrizable: bonif.criterio || bonif.etiqueta,
       descuentoTIN: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0, // Convert percentage points to decimal
+      impacto: { puntos: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0 },
+      aplicaEn: 'FIJO' as const,
       ventanaEvaluacion: 6, // Default 6 months evaluation window
       fuenteVerificacion: this.mapVerificationSource(bonif.id),
       estadoInicial: 'NO_CUMPLE' as const, // Default to not met
+      seleccionado: false,
+      graciaMeses: 0 as const,
       activa: true
     }));
   }

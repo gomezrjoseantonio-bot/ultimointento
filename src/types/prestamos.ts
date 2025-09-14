@@ -48,6 +48,11 @@ export interface Prestamo {
   maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
   periodoRevisionBonificacionMeses?: number; // bonification review period: 6 or 12 months
   fechaFinMaximaBonificacion?: string;       // end date for maximum bonification period
+  
+  // Reglas por defecto de bonificaciones
+  topeBonificacionesTotal?: number;          // Tope acumulado de descuentos: -1,00 p.p.
+  tinMin?: number;                          // Suelo TIN para FIJO: 1,00%
+  diferencialMin?: number;                  // Suelo diferencial para VARIABLE: 0,40%
 
   // Bonification evaluation parameters (when bonifications are active)
   fechaFinPeriodo?: string;           // end of evaluation period (ISO date)
@@ -61,13 +66,23 @@ export interface Prestamo {
 
 export interface Bonificacion {
   id: string;
+  tipo: 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'ALARMA'|'OTROS';
   nombre: string;                 // "Nómina", "Seguro hogar", "Tarjeta"…
   reduccionPuntosPorcentuales: number; // e.g., 0.003 = 0.30 pp
+  impacto: { puntos: number };    // p.ej. -0,10 p.p.
+  aplicaEn: 'FIJO'|'VARIABLE'|'MIXTO_SECCION_FIJA'|'MIXTO_SECCION_VARIABLE';
   lookbackMeses: number;          // compliance window
   regla: ReglaBonificacion;       // declarative rule
   costeAnualEstimado?: number;    // e.g., insurance premium
   cuentaExigidaId?: string;       // if bank requires specific account
-  estado: 'PENDIENTE' | 'EN_RIESGO' | 'CUMPLIDA' | 'PERDIDA';
+  
+  // Alta (día 1):
+  seleccionado?: boolean;         // el usuario lo marca
+  graciaMeses?: 0|6|12;          // opcional (selector)
+  
+  // Estados a futuro (no en esta vista):
+  estado: 'INACTIVO'|'SELECCIONADO'|'ACTIVO_POR_GRACIA'|'ACTIVO_POR_CUMPLIMIENTO'|'PENDIENTE'|'EN_RIESGO'|'CUMPLIDA'|'PERDIDA';
+  
   // Progress tracking (for UI)
   progreso?: {
     descripcion: string; // "Llevas 2/4 meses de nómina ≥ 1.200€"
