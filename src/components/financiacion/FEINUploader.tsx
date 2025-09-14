@@ -47,9 +47,9 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('El archivo es demasiado grande. Máximo 10MB permitido.');
+    // Validate file size (max 20MB as per FEIN requirements)
+    if (file.size > 20 * 1024 * 1024) {
+      alert('El archivo es demasiado grande. Máximo 20MB permitido.');
       return;
     }
 
@@ -185,7 +185,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
             </p>
             
             <p className="text-sm mb-6" style={{ color: 'var(--text-gray)' }}>
-              Solo archivos PDF • Máximo 10MB
+              Solo archivos PDF • Máximo 20MB
             </p>
             
             <button
