@@ -17,12 +17,15 @@ export interface FEINData {
   indice?: string;                    // Index reference (e.g., EURIBOR)
   diferencial?: number;               // Differential
   tramoFijoAnos?: number;            // Fixed period for mixed loans
+  periodicidadRevision?: number;      // Review periodicity in months (6 or 12)
   
   // Account Information
   cuentaCargoIban?: string;          // Charge account IBAN
+  ibanMascarado?: boolean;           // Whether IBAN is masked with ****
   
   // Dates
   fechaPrimerPago?: string;          // Expected first payment date
+  fechaEmisionFEIN?: string;         // FEIN emission date
   
   // Bonifications (seguros, domiciliaciones, tarjetas, ingresos recurrentes, plan pensiones)
   bonificaciones?: FEINBonificacion[];
@@ -31,6 +34,7 @@ export interface FEINData {
   comisionApertura?: number;         // Opening commission %
   comisionAmortizacionParcial?: number; // Partial amortization commission %
   comisionCancelacionTotal?: number;  // Total cancellation commission %
+  comisionSubrogacion?: number;       // Subrogation commission %
   
   // Raw OCR text for debugging
   rawText?: string;

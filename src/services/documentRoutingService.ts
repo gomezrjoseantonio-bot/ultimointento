@@ -48,6 +48,10 @@ export async function routeInboxDocument(
     case 'factura_generica':
       return await routeFacturaGenerica(item, ocrData, propertyDetection);
     
+    case 'fein_completa':
+    case 'fein_revision':
+      return await routeFEIN(item, ocrData, classification);
+    
     default:
       return {
         success: false,
@@ -496,7 +500,115 @@ export function canAutoRoute(document: any, autoSaveConfig: any): boolean {
     case 'extracto bancario':
       return !!(classification.metadata?.detectedAccount);
     
+    case 'fein':
+      // FEIN documents can be auto-routed if all critical fields are present
+      return !!(classification.metadata?.capitalInicial && 
+                classification.metadata?.plazo && 
+                classification.metadata?.tipo);
+    
     default:
       return true; // Other documents can usually be auto-routed
+  }
+}
+
+/**
+ * Route FEIN documents to Financiación with automatic loan creation
+ */
+async function routeFEIN(
+  item: InboxItem,
+  ocrData: OCRExtractionResult,
+  classification: ClassificationResult
+): Promise<RoutingDestinationResult> {
+  const { feinOcrService } = await import('./feinOcrService');
+  const { feinLoanCreationService } = await import('./feinLoanCreationService');
+  
+  try {
+    // Process FEIN document
+    console.log('[Routing] Processing FEIN document:', item.filename);
+    
+    // Create a File object from the item (this would need proper implementation)
+    // For now, we'll assume the FEIN processing has already been done
+    const feinResult = ocrData.metadata?.feinData;
+    
+    if (!feinResult) {
+      console.log('[Routing] No FEIN data found in OCR metadata');
+      return {
+        success: false,
+        requiresReview: true,
+        errorMessage: 'No se pudieron extraer datos válidos de la FEIN'
+      };
+    }
+
+    // Check if all critical fields are present
+    const hasCriticalFields = feinResult.capitalInicial && 
+                             feinResult.plazo && 
+                             feinResult.tipo;
+
+    if (!hasCriticalFields) {
+      // Mark for review
+      console.log('[Routing] FEIN missing critical fields - marking for review');
+      
+      return {
+        success: true,
+        requiresReview: true,
+        destRef: {
+          kind: 'fein_review',
+          id: item.id,
+          path: 'Inbox › Revisión FEIN'
+        },
+        message: 'FEIN procesada pero requiere revisión por campos faltantes',
+        warnings: [`Faltan campos críticos: ${['capitalInicial', 'plazo', 'tipo'].filter(f => !feinResult[f]).join(', ')}`]
+      };
+    }
+
+    // Auto-create loan draft
+    try {
+      const loanResult = await feinLoanCreationService.createLoanFromFEIN(
+        feinResult,
+        {
+          ambito: 'PERSONAL', // Default, can be changed by user
+          cuentaCargoId: 'default_account' // This should be set properly
+        },
+        item.fileUrl
+      );
+
+      if (loanResult.success) {
+        console.log(`[Routing] FEIN loan created successfully: ${loanResult.loanId}`);
+        
+        return {
+          success: true,
+          requiresReview: false,
+          destRef: {
+            kind: 'prestamo',
+            id: loanResult.loanId!,
+            path: 'Financiación › Préstamos'
+          },
+          message: 'Préstamo creado automáticamente desde FEIN',
+          warnings: loanResult.warnings
+        };
+      } else {
+        console.log('[Routing] FEIN loan creation failed:', loanResult.errors);
+        return {
+          success: false,
+          requiresReview: true,
+          errorMessage: `Error creando préstamo: ${loanResult.errors.join(', ')}`
+        };
+      }
+    } catch (error) {
+      console.error('[Routing] Error in loan creation:', error);
+      return {
+        success: false,
+        requiresReview: true,
+        errorMessage: 'Error interno creando el préstamo desde FEIN'
+      };
+    }
+
+  } catch (error) {
+    console.error('[Routing] Error processing FEIN:', error);
+    return {
+      success: false,
+      requiresReview: true,
+      errorMessage: 'Error procesando el documento FEIN'
+    };
   }
 }

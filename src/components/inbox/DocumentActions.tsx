@@ -2,7 +2,7 @@
 // Provides Ver, Asignar/Reasignar, Eliminar (with confirmation), Descargar actions
 
 import React, { useState } from 'react';
-import { Eye, FolderOpen, Trash2, Download, AlertTriangle } from 'lucide-react';
+import { Eye, FolderOpen, Trash2, Download, AlertTriangle, FileText, ExternalLink } from 'lucide-react';
 
 interface DocumentActionsProps {
   document: any;
@@ -10,6 +10,8 @@ interface DocumentActionsProps {
   onAssign?: (document: any) => void;
   onDelete?: (documentId: number) => void;
   onDownload?: (document: any) => void;
+  onViewFEINFields?: (document: any) => void;
+  onOpenInFinanciacion?: (loanId: string) => void;
   className?: string;
 }
 
@@ -19,6 +21,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
   onAssign,
   onDelete,
   onDownload,
+  onViewFEINFields,
+  onOpenInFinanciacion,
   className = ''
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -74,8 +78,23 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
     setShowDeleteConfirm(false);
   };
 
-  const isAssigned = document.metadata?.inmuebleId || document.metadata?.isPersonal;
+  const isAssigned = document.metadata?.inmuebleId || document.metadata?.isPersonal || document.destRef;
   const assignButtonText = isAssigned ? 'Reasignar' : 'Asignar';
+  const isFEINDocument = document.documentType === 'fein' || document.subtype?.includes('fein');
+  const isCompleteFEIN = document.subtype === 'fein_completa';
+  const hasLoanId = document.destRef?.kind === 'prestamo' && document.destRef?.id;
+
+  const handleViewFEINFields = () => {
+    if (onViewFEINFields) {
+      onViewFEINFields(document);
+    }
+  };
+
+  const handleOpenInFinanciacion = () => {
+    if (onOpenInFinanciacion && hasLoanId) {
+      onOpenInFinanciacion(document.destRef.id);
+    }
+  };
 
   return (
     <div className={`flex items-center gap-1 ${className}`}>
@@ -88,18 +107,45 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
         <Eye className="w-4 h-4" />
       </button>
 
-      {/* Asignar/Reasignar */}
-      <button
-        onClick={handleAssign}
-        className={`p-1.5 rounded-lg transition-colors ${
-          isAssigned 
-            ? 'text-primary-600 hover:text-primary-800 hover:bg-primary-50' 
-            : 'text-warning-600 hover:text-orange-800 hover:bg-orange-50'
-        }`}
-        title={`${assignButtonText} a inmueble o personal`}
-      >
-        <FolderOpen className="w-4 h-4" />
-      </button>
+      {/* Asignar/Reasignar - Hide for completed FEIN documents */}
+      {!isCompleteFEIN && (
+        <button
+          onClick={handleAssign}
+          className={`p-1.5 rounded-lg transition-colors ${
+            isAssigned 
+              ? 'text-primary-600 hover:text-primary-800 hover:bg-primary-50' 
+              : 'text-warning-600 hover:text-orange-800 hover:bg-orange-50'
+          }`}
+          title={`${assignButtonText} a inmueble o personal`}
+        >
+          <FolderOpen className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* FEIN-specific actions */}
+      {isFEINDocument && (
+        <>
+          {/* Ver campos FEIN */}
+          <button
+            onClick={handleViewFEINFields}
+            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Ver campos extraídos de la FEIN"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+          
+          {/* Abrir en Financiación - Only for completed FEIN with loan */}
+          {hasLoanId && (
+            <button
+              onClick={handleOpenInFinanciacion}
+              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+              title="Abrir préstamo en Financiación"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          )}
+        </>
+      )}
 
       {/* Descargar */}
       <button

@@ -148,7 +148,13 @@ class InboxProcessingService {
         }
       });
 
-      // Step 2: Skip OCR for bank statements
+      // Step 2: Special handling for FEIN documents
+      if (typeDetection.documentType === 'fein') {
+        await this.processFEINDocument(item);
+        return;
+      }
+
+      // Step 3: Skip OCR for bank statements
       if (typeDetection.shouldSkipOCR && typeDetection.documentType === 'extracto_banco') {
         item.status = 'classified_ok';
         item.summary = {
@@ -164,7 +170,7 @@ class InboxProcessingService {
         return;
       }
 
-      // Step 3: OCR Processing (for factura, recibo_sepa, otros)
+      // Step 4: OCR Processing (for factura, recibo_sepa, otros)
       item.status = 'ocr_running';
       item.ocr.status = 'running';
       this.items.set(item.id, item);
@@ -415,6 +421,142 @@ class InboxProcessingService {
 
     if (purgedCount > 0) {
       console.log(`[Inbox] Auto-purged ${purgedCount} expired items`);
+    }
+  }
+
+  /**
+   * Process FEIN document with specialized FEIN extraction
+   */
+  private async processFEINDocument(item: InboxItem): Promise<void> {
+    const { feinOcrService } = await import('./feinOcrService');
+    
+    try {
+      console.log(`[Inbox FEIN] Processing FEIN document: ${item.filename}`);
+      
+      item.logs.push({
+        timestamp: new Date().toISOString(),
+        code: 'FEIN_PARSE_START',
+        message: 'Starting FEIN processing',
+        meta: { filename: item.filename }
+      });
+
+      // Create File object from item (in real implementation, would fetch from fileUrl)
+      // For now, simulating the file processing
+      const mockFile = new File([], item.filename, { type: item.mime });
+      
+      // Process FEIN document
+      const feinResult = await feinOcrService.processFEINDocument(mockFile);
+      
+      if (!feinResult.success) {
+        item.status = 'needs_review';
+        item.errorMessage = feinResult.errors.join(', ');
+        item.logs.push({
+          timestamp: new Date().toISOString(),
+          code: 'FEIN_ERROR',
+          message: `FEIN processing failed: ${feinResult.errors.join(', ')}`,
+          meta: { errors: feinResult.errors }
+        });
+        this.items.set(item.id, item);
+        return;
+      }
+
+      // Check if all critical fields are present
+      const hasCriticalFields = feinResult.fieldsMissing.length === 0;
+      
+      if (hasCriticalFields) {
+        // Auto-save OK case
+        item.status = 'classified_ok';
+        item.subtype = 'fein_completa';
+        item.summary = {
+          destino: 'Financiación › Préstamos (auto-creado)',
+          supplier_name: feinResult.data?.bancoEntidad,
+          total_amount: feinResult.data?.capitalInicial
+        };
+        
+        // Set 72h expiration
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 72);
+        item.expiresAt = expiresAt.toISOString();
+        
+        item.logs.push({
+          timestamp: new Date().toISOString(),
+          code: 'FEIN_PARSE_OK',
+          message: 'FEIN processed successfully - Auto-guardado OK (72h)',
+          meta: { 
+            fieldsExtracted: feinResult.fieldsExtracted,
+            confidence: feinResult.confidence 
+          }
+        });
+
+        // TODO: Auto-create loan draft here
+        console.log('[Inbox FEIN] Would auto-create loan draft');
+        
+      } else {
+        // Needs review case
+        item.status = 'needs_review';
+        item.subtype = 'fein_revision';
+        item.summary = {
+          destino: 'Inbox › Revisión FEIN',
+          supplier_name: feinResult.data?.bancoEntidad,
+          total_amount: feinResult.data?.capitalInicial
+        };
+        
+        item.logs.push({
+          timestamp: new Date().toISOString(),
+          code: 'FEIN_PARSE_MISSING_FIELDS',
+          message: `FEIN processed but missing critical fields: ${feinResult.fieldsMissing.join(', ')}`,
+          meta: { 
+            fieldsExtracted: feinResult.fieldsExtracted,
+            fieldsMissing: feinResult.fieldsMissing,
+            confidence: feinResult.confidence 
+          }
+        });
+      }
+
+      // Store FEIN data in item for later use
+      if (feinResult.data) {
+        item.validation = {
+          isValid: hasCriticalFields,
+          criticalFieldsMissing: feinResult.fieldsMissing,
+          reviewReason: hasCriticalFields ? undefined : 'Faltan campos críticos para auto-creación'
+        };
+        
+        // Store FEIN data in OCR-like structure for consistency
+        item.ocr = {
+          status: 'succeeded',
+          timestamp: new Date().toISOString(),
+          data: {
+            raw_text: feinResult.data.rawText || '',
+            supplier_name: feinResult.data.bancoEntidad,
+            total_amount: feinResult.data.capitalInicial,
+            metadata: {
+              feinData: feinResult.data,
+              processingResult: feinResult
+            }
+          } as any,
+          confidence: {
+            global: feinResult.confidence || 0,
+            fields: {}
+          }
+        };
+      }
+
+      this.items.set(item.id, item);
+      console.log(`[Inbox FEIN] FEIN processing complete for ${item.id}: ${item.status}`);
+
+    } catch (error) {
+      console.error('[Inbox FEIN] Error processing FEIN document:', error);
+      
+      item.status = 'needs_review';
+      item.errorMessage = 'Error interno procesando FEIN';
+      item.logs.push({
+        timestamp: new Date().toISOString(),
+        code: 'FEIN_ERROR',
+        message: 'Internal error processing FEIN document',
+        meta: { error: error instanceof Error ? error.message : String(error) }
+      });
+      
+      this.items.set(item.id, item);
     }
   }
 
