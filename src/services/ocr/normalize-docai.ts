@@ -53,6 +53,11 @@ export function normalizeFeinFromDocAI(input: NormalizeFeinInput): NormalizeFein
   // Map DocAI entities to normalized fields
   mapEntities(input.entities, fields, byField);
 
+  // Apply precision booster for missing fields
+  if (input.text) {
+    applyPrecisionBooster(input.text, fields, byField);
+  }
+
   // Calculate global confidence based on critical fields
   const confidenceGlobal = calculateGlobalConfidence(byField);
 
@@ -506,16 +511,31 @@ function calculateGlobalConfidence(byField: Record<string, FieldConfidence>): nu
   
   let weightedSum = 0;
   let totalWeight = 0;
+  let allRegexBased = true;
 
   for (const field of criticalFields) {
     if (byField[field]) {
       const weight = weights[field as keyof typeof weights] || 0.1;
-      weightedSum += byField[field].confidence * weight;
+      let confidence = byField[field].confidence;
+      
+      // Check if this field was filled by regex vs DocAI
+      if (byField[field].source?.startsWith('docai:')) {
+        allRegexBased = false;
+      }
+      
+      weightedSum += confidence * weight;
       totalWeight += weight;
     }
   }
 
-  return totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) / 100 : 0;
+  let globalConfidence = totalWeight > 0 ? weightedSum / totalWeight : 0;
+  
+  // If all fields are regex-based, cap confidence between 0.65-0.75
+  if (allRegexBased && totalWeight > 0) {
+    globalConfidence = Math.min(Math.max(globalConfidence, 0.65), 0.75);
+  }
+
+  return Math.round(globalConfidence * 100) / 100;
 }
 
 /**
@@ -564,4 +584,156 @@ function validateFieldRelationships(fields: NormalizedFeinFields): void {
   // Validate plazo coherence (already handled in extractTermInMonths)
   
   // Other validations could be added here
+}
+
+/**
+ * Apply precision booster using Spanish regex patterns to fill missing fields
+ */
+function applyPrecisionBooster(
+  docText: string, 
+  fields: NormalizedFeinFields, 
+  byField: Record<string, FieldConfidence>
+): void {
+  const filledFields: string[] = [];
+  
+  // Only apply if field is missing or empty
+  
+  // capital_inicial: /Capital( (solicitado|inicial))?:?\s*([0-9\.\s]+,\d{2})\s*€/i
+  if (!fields.capital_inicial) {
+    const capitalRegex = /Capital( (solicitado|inicial))?:?\s*([0-9\.\s]+,\d{2})\s*€/i;
+    const match = docText.match(capitalRegex);
+    if (match && match[3]) {
+      const amount = parseSpanishNumber(match[3]);
+      fields.capital_inicial = formatEuroAmount(amount);
+      byField.capital_inicial = { confidence: 0.70, source: 'regex:capital' };
+      filledFields.push('capital_inicial');
+    }
+  }
+
+  // plazoMeses: prioritize años → meses, then meses
+  if (!fields.plazoMeses) {
+    // Try years first: /Plazo:?\s*(\d{1,2})\s*años?/i  ⇒ 12
+    const yearRegex = /Plazo:?\s*(\d{1,2})\s*años?/i;
+    const yearMatch = docText.match(yearRegex);
+    if (yearMatch && yearMatch[1]) {
+      fields.plazoMeses = parseInt(yearMatch[1]) * 12;
+      byField.plazoMeses = { confidence: 0.75, source: 'regex:plazo_anos' };
+      filledFields.push('plazoMeses');
+    } else {
+      // Try months: /Plazo:?\s*(\d{1,3})\s*meses?/i
+      const monthRegex = /Plazo:?\s*(\d{1,3})\s*meses?/i;
+      const monthMatch = docText.match(monthRegex);
+      if (monthMatch && monthMatch[1]) {
+        fields.plazoMeses = parseInt(monthMatch[1]);
+        byField.plazoMeses = { confidence: 0.75, source: 'regex:plazo_meses' };
+        filledFields.push('plazoMeses');
+      }
+    }
+  }
+
+  // tin: /TIN:?\s*([\d,\.\-]+)\s*%/i
+  if (!fields.tin) {
+    const tinRegex = /TIN:?\s*([\d,\.\-]+)\s*%/i;
+    const match = docText.match(tinRegex);
+    if (match && match[1]) {
+      const rate = parseSpanishNumber(match[1]);
+      fields.tin = formatPercentage(rate);
+      byField.tin = { confidence: 0.70, source: 'regex:tin' };
+      filledFields.push('tin');
+    }
+  }
+
+  // tae: /TAE:?\s*([\d,\.\-]+)\s*%/i
+  if (!fields.tae) {
+    const taeRegex = /TAE:?\s*([\d,\.\-]+)\s*%/i;
+    const match = docText.match(taeRegex);
+    if (match && match[1]) {
+      const rate = parseSpanishNumber(match[1]);
+      fields.tae = formatPercentage(rate);
+      byField.tae = { confidence: 0.70, source: 'regex:tae' };
+      filledFields.push('tae');
+    }
+  }
+
+  // cuota: /(Cuota (mensual )?(aprox\.?|estimada)?:?)\s*([0-9\.\s]+,\d{2})\s*€/i
+  if (!fields.cuota) {
+    const cuotaRegex = /(Cuota( mensual)?( aprox\.?| aproximada| estimada)?:?)\s*([0-9\.\s]+,\d{2})\s*€/i;
+    const match = docText.match(cuotaRegex);
+    if (match && match[4]) {
+      const amount = parseSpanishNumber(match[4]);
+      fields.cuota = formatEuroAmount(amount);
+      byField.cuota = { confidence: 0.70, source: 'regex:cuota' };
+      filledFields.push('cuota');
+    }
+  }
+
+  // indice: /(EURIBOR)\s*(?:[0-9]{1,2}\s*m(es)?(es)?)?/i ⇒ normaliza a 'EURIBOR_12M' si aparece "12" cerca
+  if (!fields.indice) {
+    const indiceRegex = /(EURIBOR)\s*(?:([0-9]{1,2})\s*m(es)?(es)?)?/i;
+    const match = docText.match(indiceRegex);
+    if (match) {
+      let normalizedIndex = 'EURIBOR_12M'; // Default
+      if (match[2]) {
+        const months = parseInt(match[2]);
+        if (months === 6) {
+          normalizedIndex = 'EURIBOR_6M';
+        } else if (months === 12) {
+          normalizedIndex = 'EURIBOR_12M';
+        }
+      }
+      fields.indice = normalizedIndex;
+      byField.indice = { confidence: 0.75, source: 'regex:indice' };
+      filledFields.push('indice');
+    }
+  }
+
+  // diferencial: /(Diferencial|spread):?\s*\+?([\d,\.\-]+)\s*%/i
+  if (!fields.diferencial) {
+    const diferencialRegex = /(Diferencial|spread):?\s*\+?([\d,\.\-]+)\s*%/i;
+    const match = docText.match(diferencialRegex);
+    if (match && match[2]) {
+      const rate = parseSpanishNumber(match[2]);
+      fields.diferencial = formatDifferential(rate);
+      byField.diferencial = { confidence: 0.70, source: 'regex:diferencial' };
+      filledFields.push('diferencial');
+    }
+  }
+
+  // sistema: /(Sistema de amortización|Amortización):?\s*(Franc[e|é]s|Alem[a|á]n)/i ⇒ 'FRANCES'|'ALEMAN'
+  if (!fields.sistemaAmortizacion) {
+    const sistemaRegex = /(Sistema de amortización|Amortización):?\s*(Franc[e|é]s|Alem[a|á]n)/i;
+    const match = docText.match(sistemaRegex);
+    if (match && match[2]) {
+      const system = match[2].toLowerCase();
+      if (system.includes('franc')) {
+        fields.sistemaAmortizacion = 'FRANCES';
+      } else if (system.includes('alem')) {
+        fields.sistemaAmortizacion = 'ALEMAN';
+      }
+      byField.sistemaAmortizacion = { confidence: 0.75, source: 'regex:sistema' };
+      filledFields.push('sistemaAmortizacion');
+    }
+  }
+
+  // IBAN: /\bES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}\b/ ⇒ formatea con espacios cada 4
+  if (!fields.cuentaCargo) {
+    const ibanRegex = /\bES\d{2}[\s\d]{20,}\b/;
+    const match = docText.match(ibanRegex);
+    if (match) {
+      // Clean and validate IBAN format
+      const cleanIban = match[0].replace(/\s/g, '');
+      if (cleanIban.length === 24 && cleanIban.match(/^ES\d{22}$/)) {
+        // Format with spaces every 4 characters
+        const formattedIban = cleanIban.replace(/(.{4})/g, '$1 ').trim();
+        fields.cuentaCargo = formattedIban;
+        byField.cuentaCargo = { confidence: 0.75, source: 'regex:iban' };
+        filledFields.push('cuentaCargo');
+      }
+    }
+  }
+
+  // Safe logging (no sensitive data)
+  if (filledFields.length > 0) {
+    console.info('[FEIN] booster', { filled: filledFields });
+  }
 }
