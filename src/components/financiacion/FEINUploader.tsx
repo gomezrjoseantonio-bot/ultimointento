@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { FeinLoanDraft } from '../../types/fein';
 import { feinOcrService } from '../../services/feinOcrService';
+import { showError, showSuccess, showInfo } from '../../services/toastService';
 
 interface FEINUploaderProps {
   onFEINDraftReady: (draft: FeinLoanDraft) => void; // Main callback for new implementation
@@ -16,6 +17,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const [processingStage, setProcessingStage] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [isBackgroundProcessing, setIsBackgroundProcessing] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -46,20 +48,13 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const handleFileSelection = async (file: File) => {
     // Validate file type
     if (file.type !== 'application/pdf') {
-      // Use toast instead of alert - ATLAS requirement
-      const errorMsg = 'Solo se permiten archivos PDF para documentos FEIN';
-      console.error('[FEIN Upload]', errorMsg);
-      // For now use console since we don't have toast imported
-      // In production this should be: toast.error(errorMsg);
+      showError('Solo se permiten archivos PDF para documentos FEIN');
       return;
     }
 
     // Validate file size (max 20MB as per FEIN requirements)
     if (file.size > 20 * 1024 * 1024) {
-      const errorMsg = 'El archivo es demasiado grande. Máximo 20MB permitido.';
-      console.error('[FEIN Upload]', errorMsg);
-      // For now use console since we don't have toast imported
-      // In production this should be: toast.error(errorMsg);
+      showError('El archivo es demasiado grande. Máximo 20MB permitido.');
       return;
     }
 
@@ -77,14 +72,20 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
         setTotalPages(progress.totalPages);
         setProcessingStage(progress.message);
         
+        // Detect background processing
+        if (progress.message.includes('segundo plano')) {
+          setIsBackgroundProcessing(true);
+        }
+        
         // Calculate overall progress
         let overallProgress = 0;
         if (progress.stage === 'uploading') {
           overallProgress = 20;
         } else if (progress.stage === 'processing') {
-          overallProgress = 70;
+          overallProgress = isBackgroundProcessing ? 50 : 70; // Show ongoing for background
         } else if (progress.stage === 'complete') {
           overallProgress = 100;
+          setIsBackgroundProcessing(false);
         }
         
         setUploadProgress(Math.min(overallProgress, 100));
@@ -96,6 +97,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
       // Small delay to show completion
       setTimeout(() => {
         setIsProcessing(false);
+        setIsBackgroundProcessing(false);
         
         if (result.success && result.loanDraft) {
           // Show success message if we have some data extracted
@@ -105,10 +107,11 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           
           if (hasData) {
             console.log('[FEIN] Successfully extracted data:', result.loanDraft);
+            showSuccess('FEIN procesado correctamente. Datos extraídos y prellenados.');
             onFEINDraftReady(result.loanDraft);
           } else {
             console.warn('[FEIN] No sufficient data extracted, allowing manual completion');
-            // Still pass the draft with whatever was extracted
+            showInfo('FEIN procesado. Complete manualmente los campos faltantes.');
             onFEINDraftReady(result.loanDraft);
           }
         } else {
@@ -116,7 +119,12 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           const errorMsg = result.errors.length > 0 
             ? result.errors.join('. ') 
             : 'No se pudo procesar el documento FEIN';
-          console.error('[FEIN] Processing error:', errorMsg);
+          
+          if (result.errors.some(error => error.includes('Tiempo de espera agotado'))) {
+            showError(errorMsg, 'Intenta de nuevo o procesa manualmente');
+          } else {
+            showError(errorMsg, 'Puedes crear el préstamo manualmente');
+          }
           
           // Create empty draft for manual entry
           const emptyDraft: FeinLoanDraft = {
@@ -141,6 +149,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               amortizacionAnticipadaPct: null,
               fechaFirmaPrevista: null,
               banco: null,
+              capitalInicial: undefined,
+              plazoMeses: undefined,
               ibanCargoParcial: null
             },
             bonificaciones: []
@@ -153,8 +163,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
     } catch (error) {
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      // Replace alert with console error - ATLAS requirement (no browser alerts)
-      console.error('[FEIN] Processing failed - please try again');
+      setIsBackgroundProcessing(false);
+      showError('Error procesando FEIN', 'Intenta de nuevo o crea el préstamo manualmente');
     }
   };
 
@@ -168,12 +178,24 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             </div>
             
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
-              Procesando FEIN
+              {isBackgroundProcessing ? 'Procesando FEIN en segundo plano' : 'Procesando FEIN'}
             </h3>
             
             <p className="text-sm mb-4" style={{ color: 'var(--text-gray)' }}>
               {processingStage || 'Extrayendo información del préstamo...'}
             </p>
+
+            {/* Background processing banner */}
+            {isBackgroundProcessing && (
+              <div className="mb-4 p-3 rounded-md" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--atlas-blue)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--atlas-blue)' }}>
+                  📄 Procesando FEIN en segundo plano…
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-gray)' }}>
+                  El documento es grande y se está procesando de manera asíncrona
+                </p>
+              </div>
+            )}
 
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
