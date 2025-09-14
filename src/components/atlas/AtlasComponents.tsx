@@ -102,19 +102,19 @@ export const AtlasChip: React.FC<AtlasChipProps> = ({
       color: 'var(--chip-text)',
     },
     pulse: {
-      backgroundColor: 'rgba(29, 160, 186, 0.1)',
+      backgroundColor: 'color-mix(in srgb, var(--atlas-teal) 10%, transparent)',
       color: 'var(--atlas-teal)',
     },
     success: {
-      backgroundColor: 'rgba(40, 167, 69, 0.1)',
+      backgroundColor: 'color-mix(in srgb, var(--ok) 10%, transparent)',
       color: 'var(--ok)',
     },
     warning: {
-      backgroundColor: 'rgba(255, 193, 7, 0.1)',
+      backgroundColor: 'color-mix(in srgb, var(--warn) 10%, transparent)',
       color: 'var(--warn)',
     },
     error: {
-      backgroundColor: 'rgba(220, 53, 69, 0.1)',
+      backgroundColor: 'color-mix(in srgb, var(--error) 10%, transparent)',
       color: 'var(--error)',
     },
   };
@@ -287,12 +287,12 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
 }) => {
   const variantStyles = {
     info: {
-      backgroundColor: '#E8F0FF',
+      backgroundColor: 'color-mix(in srgb, var(--atlas-blue) 8%, white)',
       borderColor: 'var(--atlas-blue)',
       color: 'var(--atlas-navy-1)',
     },
     warning: {
-      backgroundColor: '#FFF7E6',
+      backgroundColor: 'color-mix(in srgb, var(--warn) 8%, white)',
       borderColor: 'var(--warn)',
       color: 'var(--atlas-navy-1)',
     },
@@ -317,7 +317,7 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="flex-shrink-0 ml-3 p-1 rounded hover:bg-black hover:bg-opacity-5"
+          className="flex-shrink-0 ml-3 p-1 rounded hover:bg-gray-100"
         >
           <X size={16} style={{ color: 'var(--text-gray)' }} />
         </button>
@@ -355,7 +355,7 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Light overlay - no dark overlays per ATLAS */}
       <div 
-        className="absolute inset-0 bg-white bg-opacity-75"
+        className="absolute inset-0 bg-gray-200 bg-opacity-50"
         onClick={onClose}
       />
       

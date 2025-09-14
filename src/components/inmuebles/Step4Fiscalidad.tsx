@@ -2,7 +2,7 @@
 // Following Horizon design system with automatic calculations
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DocumentChartBarIcon, CalculatorIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { BarChart3, Calculator, Info } from 'lucide-react';
 import { InmuebleStep4, MetodoAmortizacion } from '../../types/inmueble';
 import { validateStep4, calculateConstructionPercentage, formatEuroAmount } from '../../utils/inmuebleUtils';
 
@@ -69,7 +69,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
       {/* Optional Notice */}
       <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center">
-          <InformationCircleIcon className="w-5 h-5 text-blue-600 mr-2" />
+          <Info className="w-5 h-5 text-blue-600 mr-2" size={24}  />
           <div>
             <h4 className="text-sm font-medium text-blue-800">Información opcional</h4>
             <p className="text-sm text-blue-700 mt-1">
@@ -84,7 +84,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         {/* Valores catastrales */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center mb-4">
-            <DocumentChartBarIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <BarChart3 className="w-5 h-5 text-hz-primary mr-2"  />
             <h3 className="text-lg font-medium text-gray-900">Valores catastrales</h3>
           </div>
           
@@ -140,7 +140,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
           {data.fiscalidad?.valor_catastral_total && data.fiscalidad?.valor_catastral_construccion && (
             <div className="mt-6 bg-hz-primary bg-opacity-5 border border-hz-primary border-opacity-20 rounded-lg p-4">
               <div className="flex items-center mb-2">
-                <CalculatorIcon className="w-4 h-4 text-hz-primary mr-2" />
+                <Calculator className="w-4 h-4 text-hz-primary mr-2" size={24}  />
                 <span className="text-sm font-medium text-hz-primary">Cálculo automático</span>
               </div>
               
@@ -198,7 +198,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         {/* Tipo fiscal y amortización */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center mb-4">
-            <InformationCircleIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <Info className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Configuración fiscal</h3>
           </div>
           

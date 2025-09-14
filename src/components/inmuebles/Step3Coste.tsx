@@ -3,7 +3,7 @@
 // Enhanced with Spanish Euro formatting and improved ITP calculation per requirements
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CurrencyEuroIcon, CalculatorIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { Euro, Calculator, FileText } from 'lucide-react';
 import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
 import { validateStep3, calculateTotalTaxAmount } from '../../utils/inmuebleUtils';
 import { 
@@ -216,7 +216,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         {/* Régimen de compra */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center mb-4">
-            <DocumentTextIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <FileText className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Régimen de compra *</h3>
           </div>
           
@@ -254,7 +254,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         {/* Precio de compra */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center mb-4">
-            <CurrencyEuroIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <Euro className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Precio de compra *</h3>
           </div>
           
@@ -285,7 +285,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         {/* Gastos asociados */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <div className="flex items-center mb-4">
-            <CalculatorIcon className="w-5 h-5 text-hz-primary mr-2" />
+            <Calculator className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Gastos asociados</h3>
           </div>
           
@@ -417,7 +417,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         {data.compra?.regimen && data.compra?.precio_compra && direccionCp && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center mb-4">
-              <CalculatorIcon className="w-5 h-5 text-[#042C5E] mr-2" />
+              <Calculator className="w-5 h-5 text-[#042C5E] mr-2" size={24}  />
               <h3 className="text-lg font-medium text-gray-900">Impuestos *</h3>
             </div>
             

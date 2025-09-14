@@ -109,7 +109,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-gray-200 bg-opacity-75"
         onClick={onClose}
       />
       

@@ -2,7 +2,7 @@
 // Following Horizon design system with clean input styling
 
 import React, { useState, useEffect } from 'react';
-import { MapPinIcon, BuildingOfficeIcon, HashtagIcon } from '@heroicons/react/24/outline';
+import { MapPin, Building2, Hash } from 'lucide-react';
 import { InmuebleStep1, EstadoInmueble, ComunidadAutonoma } from '../../types/inmueble';
 import { getLocationFromPostalCode, validatePostalCode } from '../../utils/locationUtils';
 import { validateStep1 } from '../../utils/inmuebleUtils';
@@ -75,7 +75,7 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         {/* Alias */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <BuildingOfficeIcon className="w-4 h-4 inline mr-2" />
+            <Building2 className="w-4 h-4 inline mr-2"  />
             Alias *
           </label>
           <input
@@ -98,7 +98,7 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              <MapPinIcon className="w-4 h-4 inline mr-2" />
+              <MapPin className="w-4 h-4 inline mr-2" size={24}  />
               Calle *
             </label>
             <input
@@ -274,7 +274,7 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         {/* Referencia Catastral */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <HashtagIcon className="w-4 h-4 inline mr-2" />
+            <Hash className="w-4 h-4 inline mr-2" size={24}  />
             Referencia Catastral
           </label>
           <input

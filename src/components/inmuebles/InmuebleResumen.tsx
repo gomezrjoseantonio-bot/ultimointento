@@ -2,7 +2,7 @@
 // Following Horizon design system with completion status and action buttons
 
 import React from 'react';
-import { CheckCircleIcon, ExclamationTriangleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { Inmueble, ComplecionStatus } from '../../types/inmueble';
 import { formatEuroAmount } from '../../utils/inmuebleUtils';
 
@@ -18,12 +18,12 @@ interface InmuebleResumenProps {
 const StatusIcon: React.FC<{ status: ComplecionStatus }> = ({ status }) => {
   switch (status) {
     case 'COMPLETO':
-      return <CheckCircleIcon className="w-5 h-5 text-success-500" />;
+      return <CheckCircle className="w-5 h-5 text-success-500" size={24}  />;
     case 'PARCIAL':
-      return <ExclamationTriangleIcon className="w-5 h-5 text-warning-500" />;
+      return <AlertTriangle className="w-5 h-5 text-warning-500" size={24}  />;
     case 'PENDIENTE':
     default:
-      return <ClockIcon className="w-5 h-5 text-error-500" />;
+      return <Clock className="w-5 h-5 text-error-500" size={24}  />;
   }
 };
 

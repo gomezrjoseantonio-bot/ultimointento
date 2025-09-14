@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PlusIcon, MagnifyingGlassIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Plus, Search, Eye, Pencil, Trash2 } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, initDB } from '../../../../services/db';
 import { formatEuro, formatDate, formatInteger } from '../../../../utils/formatUtils';
@@ -191,7 +191,7 @@ const Cartera: React.FC = () => {
         <div className="flex justify-between items-center">
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-3 text-neutral-400" />
+              <Search className="h-5 w-5 absolute left-3 top-3 text-neutral-400" size={24}  />
               <input
                 type="text"
                 placeholder="Buscar por alias, dirección o ref. catastral..."
@@ -205,7 +205,7 @@ const Cartera: React.FC = () => {
             onClick={() => navigate('/inmuebles/cartera/nuevo')}
             className="flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
+            <Plus className="h-5 w-5 mr-2" size={24}  />
             Nuevo inmueble
           </button>
         </div>
@@ -320,7 +320,7 @@ const Cartera: React.FC = () => {
                   onClick={() => navigate('/inmuebles/cartera/nuevo')}
                   className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
                 >
-                  <PlusIcon className="h-5 w-5 mr-2" />
+                  <Plus className="h-5 w-5 mr-2" size={24}  />
                   Nuevo inmueble
                 </button>
               )}
@@ -444,21 +444,21 @@ const Cartera: React.FC = () => {
                               className="text-brand-navy hover:text-brand-navy/80"
                               title="Ver"
                             >
-                              <EyeIcon className="h-4 w-4" />
+                              <Eye className="h-4 w-4" size={24}  />
                             </button>
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
                               className="text-brand-navy hover:text-brand-navy/80"
                               title="Editar"
                             >
-                              <PencilIcon className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" size={24}  />
                             </button>
                             <button
                               onClick={() => handleDelete(property)}
                               className="text-error-600 hover:text-error-800"
                               title="Borrar"
                             >
-                              <TrashIcon className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4"  />
                             </button>
                           </div>
                         </td>
