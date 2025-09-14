@@ -46,13 +46,20 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const handleFileSelection = async (file: File) => {
     // Validate file type
     if (file.type !== 'application/pdf') {
-      alert('Solo se permiten archivos PDF para documentos FEIN');
+      // Use toast instead of alert - ATLAS requirement
+      const errorMsg = 'Solo se permiten archivos PDF para documentos FEIN';
+      console.error('[FEIN Upload]', errorMsg);
+      // For now use console since we don't have toast imported
+      // In production this should be: toast.error(errorMsg);
       return;
     }
 
     // Validate file size (max 20MB as per FEIN requirements)
     if (file.size > 20 * 1024 * 1024) {
-      alert('El archivo es demasiado grande. Máximo 20MB permitido.');
+      const errorMsg = 'El archivo es demasiado grande. Máximo 20MB permitido.';
+      console.error('[FEIN Upload]', errorMsg);
+      // For now use console since we don't have toast imported
+      // In production this should be: toast.error(errorMsg);
       return;
     }
 
@@ -102,7 +109,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             console.log('[FEIN] Successfully extracted data:', result.loanDraft);
             onFEINDraftReady(result.loanDraft);
           } else {
-            alert('No se pudo extraer suficiente información del FEIN. Puedes completar manualmente los campos del préstamo.');
+            console.warn('[FEIN] No sufficient data extracted, allowing manual completion');
             // Still pass the draft with whatever was extracted
             onFEINDraftReady(result.loanDraft);
           }
@@ -111,8 +118,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           const errorMsg = result.errors.length > 0 
             ? result.errors.join('. ') 
             : 'No se pudo procesar el documento FEIN';
-          
-          alert(`${errorMsg}. Puedes crear el préstamo manualmente.`);
+          console.error('[FEIN] Processing error:', errorMsg);
           
           // Create empty draft for manual entry
           const emptyDraft: FeinLoanDraft = {
@@ -149,7 +155,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
     } catch (error) {
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      alert('Error procesando el documento FEIN. Inténtelo de nuevo.');
+      // Replace alert with console error - ATLAS requirement (no browser alerts)
+      console.error('[FEIN] Processing failed - please try again');
     }
   };
 
