@@ -87,21 +87,27 @@ export class FeinToPrestamoMapper {
   private static mapBonificaciones(
     feinBonificaciones: NonNullable<FeinLoanDraft['bonificaciones']>
   ): BonificacionFinanciacion[] {
-    return feinBonificaciones.map((bonif, index) => ({
-      id: `fein_${bonif.id}_${index}`,
-      tipo: this.mapBonificationType(bonif.id),
-      nombre: bonif.etiqueta,
-      condicionParametrizable: bonif.criterio || bonif.etiqueta,
-      descuentoTIN: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0, // Convert percentage points to decimal
-      impacto: { puntos: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0 },
-      aplicaEn: 'FIJO' as const,
-      ventanaEvaluacion: 6, // Default 6 months evaluation window
-      fuenteVerificacion: this.mapVerificationSource(bonif.id),
-      estadoInicial: 'NO_CUMPLE' as const, // Default to not met
-      seleccionado: false,
-      graciaMeses: 0 as const,
-      activa: true
-    }));
+    return feinBonificaciones.map((bonif, index) => {
+      const bonifAny = bonif as any; // For future FEIN fields
+      
+      return {
+        id: `fein_${bonif.id}_${index}`,
+        tipo: this.mapBonificationType(bonif.id),
+        nombre: bonif.etiqueta,
+        condicionParametrizable: bonif.criterio || bonif.etiqueta,
+        descuentoTIN: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0, // Convert percentage points to decimal
+        impacto: { puntos: bonif.descuentoPuntos ? bonif.descuentoPuntos / 100 : 0 },
+        aplicaEn: 'FIJO' as const,
+        ventanaEvaluacion: 6, // Default 6 months evaluation window
+        fuenteVerificacion: this.mapVerificationSource(bonif.id),
+        estadoInicial: 'NO_CUMPLE' as const, // Default to not met
+        // Auto-select bonifications if FEIN indicates they are "included" or "active"
+        seleccionado: bonifAny.incluido === true || bonifAny.activo === true || false,
+        // Set grace period if FEIN specifies promotional period
+        graciaMeses: this.mapGracePeriod(bonifAny.promocionMeses) as 0|6|12,
+        activa: bonifAny.incluido === true || bonifAny.activo === true || false
+      };
+    });
   }
 
   /**
@@ -132,6 +138,20 @@ export class FeinToPrestamoMapper {
     } else {
       return 'MANUAL';
     }
+  }
+
+  /**
+   * Map FEIN promotional period to grace months
+   */
+  private static mapGracePeriod(promocionMeses?: number): 0|6|12 {
+    if (!promocionMeses) return 0;
+    
+    // Map common promotional periods
+    if (promocionMeses <= 6) return 6;
+    if (promocionMeses <= 12) return 12;
+    
+    // Default to 6 months for any other promotional period
+    return 6;
   }
 
   /**

@@ -51,7 +51,8 @@
     "optimize:bundle": "node scripts/bundleOptimizer.js",
     "performance:analyze": "npm run build && npm run optimize:bundle",
     "lint:atlas": "node scripts/atlas-lint.js",
-    "build:atlas": "npm run lint:atlas && npm run build"
+    "build:atlas": "npm run lint:atlas && npm run build",
+    "qa:bonifications": "node scripts/qa-bonifications-tests.js"
   },
   "eslintConfig": {
     "extends": [
