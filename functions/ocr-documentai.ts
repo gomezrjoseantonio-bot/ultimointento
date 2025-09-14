@@ -8,6 +8,12 @@ interface DocumentAIRequest {
     content: string; // Base64 encoded
     mimeType: string;
   };
+  processOptions: {
+    ocrConfig: {
+      languageHints: string[];
+      enableNativePdfParsing: boolean;
+    };
+  };
 }
 
 interface DocumentAIResponse {
@@ -52,6 +58,33 @@ const SUPPORTED_MIME_TYPES = [
   'image/jpeg', 
   'image/png'
 ];
+
+// Detect MIME type from file content using magic numbers
+const detectMimeFromContent = (base64Content: string): string | null => {
+  try {
+    // Decode first few bytes to check magic numbers
+    const buffer = Buffer.from(base64Content.slice(0, 32), 'base64');
+    
+    // PDF: starts with %PDF-
+    if (buffer.toString('utf8', 0, 4) === '%PDF') {
+      return 'application/pdf';
+    }
+    
+    // JPEG: starts with 0xFF, 0xD8, 0xFF
+    if (buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      return 'image/jpeg';
+    }
+    
+    // PNG: starts with 0x89, 'P', 'N', 'G'
+    if (buffer.length >= 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+      return 'image/png';
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 // Validate environment configuration
 const validateEnvironment = (): { isValid: boolean; error?: string; } => {
@@ -158,15 +191,25 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     let fileBase64: string;
     let fileMime: string;
     
-    if (!contentType.includes('application/octet-stream')) {
+    // Accept standard MIME types and octet-stream
+    const acceptedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/octet-stream'];
+    const hasValidContentType = acceptedTypes.some(type => contentType.includes(type));
+    
+    if (!hasValidContentType && contentType !== '') {
       return {
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ 
           success: false,
-          code: 'INVALID_ARGUMENT',
+          results: [{
+            status: 'error',
+            error: `Tipo MIME no reconocido. Tipos válidos: ${acceptedTypes.join(', ')}`,
+            entities: [],
+            pages: []
+          }],
+          code: 'INVALID_MIME_TYPE',
           status: 400,
-          message: 'Se requiere Content-Type: application/octet-stream' 
+          message: `Tipo MIME no reconocido. Tipos válidos: ${acceptedTypes.join(', ')}` 
         })
       };
     }
@@ -183,25 +226,19 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           headers: corsHeaders,
           body: JSON.stringify({ 
             success: false,
+            results: [{
+              status: 'error',
+              error: 'Fichero vacío o no recibido. Es requerido.',
+              entities: [],
+              pages: []
+            }],
             code: 'INVALID_ARGUMENT',
             status: 400,
-            message: 'Fichero vacío o no recibido' 
+            message: 'Fichero vacío o no recibido. Es requerido.' 
           })
         };
       }
       fileBase64 = Buffer.from(event.body, 'binary').toString('base64');
-    }
-
-    // Detect MIME type with priority to headers
-    if (contentType.includes('application/pdf')) {
-      fileMime = 'application/pdf';
-    } else if (contentType.includes('image/jpeg')) {
-      fileMime = 'image/jpeg';
-    } else if (contentType.includes('image/png')) {
-      fileMime = 'image/png';
-    } else {
-      // Default fallback to PDF
-      fileMime = 'application/pdf';
     }
 
     // Check if empty body
@@ -213,15 +250,50 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           success: false,
           results: [{
             status: 'error',
-            error: 'Fichero vacío o no recibido',
+            error: 'Fichero vacío o no recibido. Es requerido.',
             entities: [],
             pages: []
           }],
           code: 'INVALID_ARGUMENT',
           status: 400,
-          message: 'Fichero vacío o no recibido' 
+          message: 'Fichero vacío o no recibido. Es requerido.' 
         })
       };
+    }
+
+    // Detect MIME type with priority to headers, fallback to content detection
+    if (contentType.includes('application/pdf')) {
+      fileMime = 'application/pdf';
+    } else if (contentType.includes('image/jpeg')) {
+      fileMime = 'image/jpeg';
+    } else if (contentType.includes('image/png')) {
+      fileMime = 'image/png';
+    } else if (contentType.includes('application/octet-stream') || contentType === '') {
+      // Detect MIME from content using magic numbers
+      const detectedMime = detectMimeFromContent(fileBase64);
+      if (detectedMime) {
+        fileMime = detectedMime;
+      } else {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            success: false,
+            results: [{
+              status: 'error',
+              error: 'Tipo MIME no reconocido. Tipos válidos: application/pdf, image/jpeg, image/png',
+              entities: [],
+              pages: []
+            }],
+            code: 'INVALID_MIME_TYPE',
+            status: 400,
+            message: 'Tipo MIME no reconocido' 
+          })
+        };
+      }
+    } else {
+      // Should not reach here due to earlier validation, but fallback
+      fileMime = 'application/pdf';
     }
 
     // Validate MIME type against supported types
@@ -244,11 +316,36 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       };
     }
 
-    // Calculate file size
+    // Calculate file size and check 8MB limit
     const fileSizeKB = Math.round((fileBase64.length * 3) / 4 / 1024); // Approximate KB from base64
     
-    // Log file info safely
-    console.info("File info", { fileMime, fileSizeKB, fileName: "document.pdf" });
+    if (fileSizeKB > 8192) {
+      return {
+        statusCode: 413,
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          success: false,
+          results: [{
+            status: 'error',
+            error: 'Archivo demasiado grande (máx. 8 MB)',
+            entities: [],
+            pages: []
+          }],
+          code: 'FILE_TOO_LARGE',
+          status: 413,
+          message: 'Archivo demasiado grande (máx. 8 MB)' 
+        })
+      };
+    }
+    
+    // Log file info safely - only in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.info("File info", { 
+        mimeType: fileMime, 
+        sizeKB: fileSizeKB, 
+        endpointHost: "eu-documentai.googleapis.com" 
+      });
+    }
 
     // Get access token
     const accessToken = await createAuthenticatedClient();
@@ -256,11 +353,17 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     // Construct processor path for EU region
     const processorPath = `https://eu-documentai.googleapis.com/v1/projects/${process.env.DOC_AI_PROJECT_ID}/locations/${process.env.DOC_AI_LOCATION}/processors/${process.env.DOC_AI_PROCESSOR_ID}:process`;
     
-    // Build correct request body with rawDocument instead of document
+    // Build correct request body with rawDocument and processOptions
     const requestBody: DocumentAIRequest = {
       rawDocument: {
         content: fileBase64,
         mimeType: fileMime
+      },
+      processOptions: {
+        ocrConfig: {
+          languageHints: ['es'],
+          enableNativePdfParsing: true
+        }
       }
     };
 
@@ -293,13 +396,17 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         // Use original response text if not JSON
       }
 
-      console.error("Document AI processing error", { 
-        status: response.status, 
-        errorCode,
-        message: errorMessage 
-      });
+      // Enhanced logging - only in development
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Document AI processing error", { 
+          status: response.status, 
+          errorCode,
+          message: errorMessage,
+          endpointHost: "eu-documentai.googleapis.com"
+        });
+      }
 
-      // Return proper error format based on status
+      // Return proper error format based on status with clear messages
       let userMessage = errorMessage;
       if (response.status === 403) {
         userMessage = "403: Sin permisos para OCR";
@@ -351,9 +458,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
     };
 
   } catch (error) {
-    console.error("Document AI processing error", { 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+    // Enhanced logging - only in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("Document AI processing error", { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        endpointHost: "eu-documentai.googleapis.com"
+      });
+    }
     
     return {
       statusCode: 500,
@@ -362,13 +473,13 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         success: false,
         results: [{
           status: 'error',
-          error: 'Error interno del servidor OCR',
+          error: 'Error interno del servicio OCR',
           entities: [],
           pages: []
         }],
         code: 'INTERNAL_ERROR',
         status: 500,
-        message: 'Error interno del servidor OCR'
+        message: 'Error interno del servicio OCR'
       })
     };
   }
