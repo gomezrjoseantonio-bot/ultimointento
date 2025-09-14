@@ -170,8 +170,45 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
     setShowCustomBonification(false);
   };
 
-  // Add bonification
-  const addBonification = (template: typeof standardBonifications[0]) => {
+
+
+  // Remove bonification
+  const removeBonification = (id: string) => {
+    const currentBonifications = formData.bonificaciones || [];
+    updateFormData({ 
+      bonificaciones: currentBonifications.filter(b => b.id !== id)
+    });
+  };
+
+  // Toggle bonification selection (new: seleccionado field)
+  const toggleBonificationSelection = (id: string) => {
+    const currentBonifications = formData.bonificaciones || [];
+    updateFormData({ 
+      bonificaciones: currentBonifications.map(b => 
+        b.id === id ? { ...b, seleccionado: !b.seleccionado } : b
+      )
+    });
+  };
+
+  // Update grace period for bonification
+  const updateGracePeriod = (id: string, graciaMeses: 0|6|12) => {
+    const currentBonifications = formData.bonificaciones || [];
+    updateFormData({ 
+      bonificaciones: currentBonifications.map(b => 
+        b.id === id ? { ...b, graciaMeses } : b
+      )
+    });
+  };
+
+  // Add standard bonification with new fields
+  const addStandardBonification = (template: typeof standardBonifications[0]) => {
+    const currentBonifications = formData.bonificaciones || [];
+    
+    // Check if already exists
+    if (currentBonifications.some(b => b.tipo === template.tipo)) {
+      return; // Don't add duplicates
+    }
+    
     const newBonification: BonificacionFinanciacion = {
       id: `bonif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       tipo: template.tipo,
@@ -183,38 +220,19 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       ventanaEvaluacion: template.ventanaEvaluacion,
       fuenteVerificacion: template.fuenteVerificacion,
       estadoInicial: template.estadoInicial,
-      seleccionado: false,
-      graciaMeses: 0,
-      activa: true
+      seleccionado: false, // User needs to select it
+      graciaMeses: 0, // Default no grace
+      activa: false // Will be activated when selected
     };
 
-    const currentBonifications = formData.bonificaciones || [];
     updateFormData({ 
       bonificaciones: [...currentBonifications, newBonification]
     });
   };
 
-  // Remove bonification
-  const removeBonification = (id: string) => {
-    const currentBonifications = formData.bonificaciones || [];
-    updateFormData({ 
-      bonificaciones: currentBonifications.filter(b => b.id !== id)
-    });
-  };
-
-  // Toggle bonification active state
-  const toggleBonificationActive = (id: string) => {
-    const currentBonifications = formData.bonificaciones || [];
-    updateFormData({ 
-      bonificaciones: currentBonifications.map(b => 
-        b.id === id ? { ...b, activa: !b.activa } : b
-      )
-    });
-  };
-
-  // Calculate total bonifications
+  // Calculate total bonifications (based on selected bonifications)
   const totalBonificaciones = (formData.bonificaciones || [])
-    .filter(b => b.activa)
+    .filter(b => b.seleccionado)
     .reduce((sum, b) => sum + b.descuentoTIN, 0);
 
   // Check if bonification template is already added
@@ -267,7 +285,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
               <button
                 key={template.tipo}
                 type="button"
-                onClick={() => !isAdded && addBonification(template)}
+                onClick={() => !isAdded && addStandardBonification(template)}
                 disabled={isAdded}
                 className={`p-4 rounded-atlas border-2 text-left transition-all ${
                   isAdded
@@ -371,72 +389,101 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
         )}
       </div>
 
-      {/* Applied Bonifications */}
+      {/* Bonifications Checklist - New Simplified UI */}
       {(formData.bonificaciones || []).length > 0 && (
         <div>
-          <h4 className="font-medium text-atlas-navy-1 mb-4">Bonificaciones Aplicadas</h4>
-          <div className="space-y-3">
+          <h4 className="font-medium text-atlas-navy-1 mb-4 flex items-center">
+            <CreditCard className="h-5 w-5 mr-2" />
+            Bonificaciones Disponibles
+          </h4>
+          <div className="space-y-4">
             {(formData.bonificaciones || []).map((bonificacion) => (
               <div 
                 key={bonificacion.id} 
-                className={`p-4 rounded-atlas border transition-all ${
-                  bonificacion.activa 
-                    ? 'border-ok-200 bg-ok-50' 
-                    : 'border-gray-200 bg-gray-50'
-                }`}
+                className="border border-gray-200 rounded-lg p-4 hover:border-atlas-blue transition-colors"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center mb-2">
-                      <h5 className={`font-medium ${bonificacion.activa ? 'text-ok-700' : 'text-text-gray'}`}>
-                        {bonificacion.nombre}
-                      </h5>
-                      <span className={`ml-2 text-sm font-medium ${
-                        bonificacion.activa ? 'text-ok-600' : 'text-text-gray'
-                      }`}>
-                        -{formatPercentage(bonificacion.descuentoTIN)} p.p.
-                      </span>
+                {/* Header with checkbox */}
+                <div className="flex items-start space-x-3 mb-3">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bonificacion.seleccionado || false}
+                      onChange={() => toggleBonificationSelection(bonificacion.id)}
+                      className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300 rounded"
+                    />
+                    <span className="ml-3 text-sm font-medium text-gray-900">
+                      La cumpliré
+                    </span>
+                  </label>
+                  
+                  {/* Impact chip */}
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-atlas-blue text-white">
+                    −{formatPercentage(bonificacion.descuentoTIN)} p.p.
+                  </span>
+                </div>
+
+                {/* Bonification details */}
+                <div className="mb-3">
+                  <h5 className="font-medium text-gray-900 mb-1">
+                    {bonificacion.nombre}
+                  </h5>
+                  <p className="text-sm text-gray-600">
+                    {bonificacion.condicionParametrizable}
+                  </p>
+                </div>
+
+                {/* Grace period selector - only show if selected */}
+                {bonificacion.seleccionado && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Aplicar como promo durante:
+                    </label>
+                    <div className="flex space-x-3">
+                      {[0, 6, 12].map((meses) => (
+                        <label key={meses} className="flex items-center cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`gracia-${bonificacion.id}`}
+                            checked={(bonificacion.graciaMeses || 0) === meses}
+                            onChange={() => updateGracePeriod(bonificacion.id, meses as 0|6|12)}
+                            className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300"
+                          />
+                          <span className="ml-2 text-sm text-gray-900">
+                            {meses === 0 ? 'Sin promo' : `${meses} meses`}
+                          </span>
+                        </label>
+                      ))}
                     </div>
-                    <p className="text-sm text-text-gray mb-2">
-                      {bonificacion.condicionParametrizable}
-                    </p>
-                    <div className="flex items-center space-x-4 text-xs text-text-gray">
-                      <span>Evaluación: {bonificacion.ventanaEvaluacion} meses</span>
-                      <span>Fuente: {bonificacion.fuenteVerificacion}</span>
-                      <span className={`px-2 py-1 rounded ${
-                        bonificacion.estadoInicial === 'CUMPLE' ? 'bg-ok-100 text-ok-700' :
-                        bonificacion.estadoInicial === 'GRACIA_ACTIVA' ? 'bg-warning-100 text-warning-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {bonificacion.estadoInicial === 'CUMPLE' ? 'Cumple' :
-                         bonificacion.estadoInicial === 'GRACIA_ACTIVA' ? 'Gracia activa' :
-                         'No cumple'}
-                      </span>
-                    </div>
+                    {(bonificacion.graciaMeses || 0) > 0 && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        Durante la promo, el descuento se aplica aunque aún no verifiquemos el cumplimiento.
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleBonificationActive(bonificacion.id)}
-                      className={`px-3 py-1 rounded-atlas text-sm font-medium transition-colors ${
-                        bonificacion.activa
-                          ? 'bg-warn text-white hover:bg-warning-600'
-                          : 'bg-ok text-white hover:bg-success-600'
-                      }`}
-                    >
-                      {bonificacion.activa ? 'Desactivar' : 'Activar'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeBonification(bonificacion.id)}
-                      className="p-1 text-error-500 hover:text-error-700 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                )}
+
+                {/* Remove button */}
+                <div className="flex justify-end mt-3">
+                  <button
+                    type="button"
+                    onClick={() => removeBonification(bonificacion.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    title="Eliminar bonificación"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Note about promotional periods */}
+          <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-sm text-gray-600">
+              <strong>Nota:</strong> Las bonificaciones promocionales se aplicarán automáticamente durante 
+              el período seleccionado. Tras el período promocional, será necesario verificar el cumplimiento 
+              de las condiciones para mantener el descuento.
+            </p>
           </div>
         </div>
       )}
@@ -449,31 +496,48 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
             Resumen de Bonificaciones
           </h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-text-gray block">Bonificaciones activas</span>
+              <span className="text-text-gray block">Bonificaciones seleccionadas</span>
               <span className="font-semibold text-atlas-navy-1">
-                {(formData.bonificaciones || []).filter(b => b.activa).length} de {(formData.bonificaciones || []).length}
+                {(formData.bonificaciones || []).filter(b => b.seleccionado).length} de {(formData.bonificaciones || []).length}
               </span>
             </div>
             <div>
-              <span className="text-text-gray block">Descuento total</span>
+              <span className="text-text-gray block">Descuento aplicado</span>
               <span className="font-semibold text-atlas-navy-1">
-                -{formatPercentage(totalBonificaciones)} p.p.
+                -{formatPercentage(calculoLive?.sumaPuntosAplicada || 0)} p.p.
+              </span>
+            </div>
+            <div>
+              <span className="text-text-gray block">Tipo efectivo</span>
+              <span className="font-semibold text-atlas-navy-1">
+                {calculoLive?.tinEfectivo ? formatPercentage(calculoLive.tinEfectivo) : '—'} %
               </span>
             </div>
           </div>
 
-          {/* Tope acumulado warning */}
-          {totalBonificaciones > maxBonificacion && (
-            <div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-atlas">
+          {/* Next change information */}
+          {calculoLive?.proximoCambio && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <h5 className="font-medium text-blue-700 mb-1">Próximo cambio</h5>
+              <p className="text-sm text-blue-600">
+                <strong>{new Date(calculoLive.proximoCambio.fecha).toLocaleDateString('es-ES')}</strong>
+                {' — '}
+                {calculoLive.proximoCambio.descripcion}
+              </p>
+            </div>
+          )}
+
+          {/* Cap warning */}
+          {totalBonificaciones > 1.0 && (
+            <div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-lg">
               <div className="flex items-start">
                 <AlertTriangle className="h-4 w-4 text-warning-600 flex-shrink-0 mt-0.5" />
                 <div className="ml-2 text-sm">
-                  <p className="text-warning-700 font-medium">Tope de bonificaciones superado</p>
+                  <p className="text-warning-700 font-medium">Tope de bonificaciones aplicado</p>
                   <p className="text-warning-600">
-                    El descuento total ({formatPercentage(totalBonificaciones)} p.p.) supera el máximo configurado de {formatPercentage(maxBonificacion)} p.p.
-                    Revise las condiciones específicas del producto.
+                    El descuento se limita a -1,00 p.p. según las condiciones del producto.
                   </p>
                 </div>
               </div>
