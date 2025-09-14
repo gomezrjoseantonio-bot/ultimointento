@@ -105,13 +105,13 @@ const Financiacion: React.FC = () => {
       title="Financiación" 
       subtitle="Alta y gestión de préstamos manuales para ATLAS Horizon."
       primaryAction={{
-        label: "Crear Préstamo",
-        onClick: handleCreateNew
+        label: "Crear desde FEIN (PDF)",
+        onClick: handleCreateFromFEIN
       }}
       secondaryActions={[
         {
-          label: "Crear desde FEIN",
-          onClick: handleCreateFromFEIN
+          label: "Crear Préstamo",
+          onClick: handleCreateNew
         }
       ]}
     >

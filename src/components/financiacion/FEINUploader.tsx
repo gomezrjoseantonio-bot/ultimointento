@@ -155,13 +155,17 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
       {/* Content */}
       <div className="p-6">
         <div className="max-w-2xl mx-auto">
-          {/* Upload Area */}
+          {/* Upload Area - Horizon colors */}
           <div
-            className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-atlas p-12 text-center transition-colors ${
               dragActive 
-                ? 'border-blue-400 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
+                ? 'bg-primary-50' 
+                : 'hover:border-gray-400'
             }`}
+            style={{ 
+              borderColor: dragActive ? 'var(--atlas-blue)' : 'var(--text-gray)',
+              backgroundColor: dragActive ? 'var(--bg)' : 'transparent'
+            }}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
@@ -201,15 +205,15 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
             />
           </div>
 
-          {/* Information Panel */}
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          {/* Information Panel - Horizon colors */}
+          <div className="mt-8 border rounded-atlas p-6" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--atlas-blue)' }}>
             <div className="flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 mt-0.5 text-blue-600" />
+              <CheckCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--atlas-blue)' }} />
               <div>
-                <h4 className="font-medium text-blue-900 mb-2">
+                <h4 className="font-medium mb-2" style={{ color: 'var(--atlas-blue)' }}>
                   ¿Qué información extraeremos de su FEIN?
                 </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
+                <ul className="text-sm space-y-1" style={{ color: 'var(--atlas-navy-1)' }}>
                   <li>• Entidad bancaria emisora</li>
                   <li>• Capital inicial del préstamo</li>
                   <li>• TIN y TAE</li>
@@ -224,15 +228,15 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onCancel }
             </div>
           </div>
 
-          {/* Warning Panel */}
-          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          {/* Warning Panel - Horizon colors */}
+          <div className="mt-4 border rounded-atlas p-4" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--warn)' }}>
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 mt-0.5 text-yellow-600" />
+              <AlertTriangle className="h-5 w-5 mt-0.5" style={{ color: 'var(--warn)' }} />
               <div>
-                <h4 className="font-medium text-yellow-900 mb-1">
+                <h4 className="font-medium mb-1" style={{ color: 'var(--atlas-navy-1)' }}>
                   Importante
                 </h4>
-                <p className="text-sm text-yellow-800">
+                <p className="text-sm" style={{ color: 'var(--text-gray)' }}>
                   Si el documento no se puede leer correctamente, le permitiremos crear el préstamo manualmente 
                   con los datos básicos precargados.
                 </p>
