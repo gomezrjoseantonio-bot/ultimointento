@@ -50,6 +50,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               value={formData.capitalInicial ? formatNumber(formData.capitalInicial) : ''}
               onChange={(e) => updateFormData({ capitalInicial: parseNumber(e.target.value) })}
               placeholder="0,00"
+              min="0"
+              max="999999.99"
+              step="0.01"
               className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
                   ? 'border-error-300 focus:border-error-500' 
@@ -371,17 +374,6 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
           </p>
         </div>
       )}
-
-      {/* Sistema */}
-      <div>
-        <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
-          Sistema de amortización
-        </label>
-        <div className="inline-flex items-center px-3 py-2 rounded-atlas bg-gray-100 border border-gray-200">
-          <span className="text-atlas-navy-1 font-medium">Sistema Francés</span>
-          <span className="ml-2 text-sm text-text-gray">(cuotas constantes)</span>
-        </div>
-      </div>
 
       {/* Commissions */}
       <div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, 
   Edit3, 
   Eye,
   Trash2,
@@ -24,14 +23,10 @@ interface PrestamosListProps {
 
 type SortField = 'nombre' | 'tin' | 'capitalVivo' | 'vencimiento';
 type SortDirection = 'asc' | 'desc';
-type StatusFilter = 'ALL' | 'ACTIVO' | 'CANCELADO';
 
 const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'ALL' | 'PERSONAL' | 'INMUEBLE'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortField, setSortField] = useState<SortField>('nombre');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
@@ -96,24 +91,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
     }
   };
 
-  // Filter and search loans
-  const filteredPrestamos = prestamos
-    .filter(prestamo => {
-      const matchesSearch = prestamo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           prestamo.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           // Add search by account IBAN (when available)
-                           (prestamo.cuentaCargoId && prestamo.cuentaCargoId.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesFilter = filter === 'ALL' || 
-                           (filter === 'INMUEBLE' && prestamo.inmuebleId !== 'standalone') ||
-                           (filter === 'PERSONAL' && prestamo.inmuebleId === 'standalone');
-      
-      // For now, assuming all loans are "ACTIVO" since there's no status field in the model
-      // TODO: Add status field to Prestamo model when backend supports it
-      const matchesStatus = statusFilter === 'ALL' || statusFilter === 'ACTIVO';
-      
-      return matchesSearch && matchesFilter && matchesStatus;
-    })
+  // Sort loans without complex filtering
+  const sortedPrestamos = prestamos
     .sort((a, b) => {
       let valueA: any, valueB: any;
       
@@ -149,9 +128,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       return 0;
     });
 
-  // Calculate comprehensive loan statistics based on filtered loans
+  // Calculate comprehensive loan statistics based on all loans
   const calculateLoanStats = () => {
-    const loansToCalculate = filteredPrestamos; // Use filtered loans for dynamic updates
+    const loansToCalculate = sortedPrestamos; // Use all loans
     const capitalSolicitado = loansToCalculate.reduce((sum, p) => sum + p.principalInicial, 0);
     const capitalPendiente = loansToCalculate.reduce((sum, p) => sum + p.principalVivo, 0);
     const cuotaTotal = loansToCalculate.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
@@ -248,99 +227,12 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
   return (
     <div className="space-y-6">
-      {/* Filters and Search */}
-      <div className="flex flex-col gap-4">
-        {/* Search and Type Filters Row */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-text-gray" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por alias, IBAN o banco..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-atlas focus:outline-none focus:ring-atlas-blue focus:border-atlas-blue"
-            />
-          </div>
-
-          {/* Type Filter */}
-          <div className="flex space-x-2">
-            {[
-              { value: 'ALL', label: 'Todos', icon: null },
-              { value: 'PERSONAL', label: 'Personal', icon: User },
-              { value: 'INMUEBLE', label: 'Inmueble', icon: Building }
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setFilter(value as any)}
-                className={`inline-flex items-center px-3 py-2 border rounded-atlas text-sm font-medium transition-colors ${
-                  filter === value
-                    ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
-                    : 'border-gray-300 bg-white text-atlas-navy-1 hover:bg-gray-50'
-                }`}
-              >
-                {Icon && <Icon className="h-4 w-4 mr-1" />}
-                {label}
-              </button>
-            ))}
-          </div>
+      {/* Information text with icon */}
+      <div className="flex items-center space-x-2 text-sm text-text-gray">
+        <div className="flex-shrink-0 w-4 h-4 rounded-full bg-primary-100 flex items-center justify-center">
+          <span className="text-xs font-medium text-atlas-blue">i</span>
         </div>
-
-        {/* Status Filter and Sorting Row */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          {/* Status Filter */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-atlas-navy-1">Estado:</span>
-            <div className="flex space-x-2">
-              {[
-                { value: 'ALL', label: 'Todos' },
-                { value: 'ACTIVO', label: 'Activo' },
-                { value: 'CANCELADO', label: 'Cancelado' }
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setStatusFilter(value as StatusFilter)}
-                  className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                    statusFilter === value
-                      ? 'bg-atlas-blue text-white'
-                      : 'bg-gray-100 text-atlas-navy-1 hover:bg-gray-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Sort Options */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-atlas-navy-1">Ordenar por:</span>
-            <div className="flex space-x-1">
-              {[
-                { value: 'nombre', label: 'Nombre' },
-                { value: 'tin', label: 'TIN' },
-                { value: 'capitalVivo', label: 'Capital' },
-                { value: 'vencimiento', label: 'Vencimiento' }
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => handleSort(value as SortField)}
-                  className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors ${
-                    sortField === value
-                      ? 'bg-atlas-blue text-white'
-                      : 'text-atlas-navy-1 hover:bg-gray-100'
-                  }`}
-                >
-                  {label}
-                  {getSortIcon(value as SortField)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <span>Gestione sus préstamos hipotecarios y personales. Puede ordenar las columnas haciendo clic en los encabezados.</span>
       </div>
 
       {/* Stats Cards */}
@@ -407,21 +299,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       </div>
 
       {/* Loans List */}
-      {filteredPrestamos.length === 0 ? (
+      {sortedPrestamos.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-atlas border border-gray-200">
-          {prestamos.length === 0 ? (
-            <>
-              <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
-              <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
-            </>
-          ) : (
-            <>
-              <Search className="h-12 w-12 text-text-gray mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No se encontraron préstamos</h3>
-              <p className="text-text-gray">Intente modificar los criterios de búsqueda</p>
-            </>
-          )}
+          <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
+          <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
         </div>
       ) : (
         <div className="bg-white rounded-atlas border border-gray-200 overflow-hidden">
@@ -471,7 +353,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredPrestamos.map((prestamo) => {
+                {sortedPrestamos.map((prestamo) => {
                   const effectiveTIN = calculateEffectiveTIN(prestamo);
                   const monthlyPayment = estimateMonthlyPayment(prestamo);
                   const isPersonal = prestamo.inmuebleId === 'standalone';
