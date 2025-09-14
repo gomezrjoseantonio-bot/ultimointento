@@ -146,7 +146,8 @@ const Cartera: React.FC = () => {
   };
 
   const handleDelete = async (property: Property) => {
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar "${property.alias}"?`)) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(`¿Estás seguro de que quieres eliminar "${property.alias}"?`)) {
       return;
     }
 

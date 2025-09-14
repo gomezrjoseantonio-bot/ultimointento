@@ -71,7 +71,8 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleDeleteContract = async (id: number) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar este contrato? Esta acción no se puede deshacer.')) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Está seguro de que desea eliminar este contrato? Esta acción no se puede deshacer.')) {
       return;
     }
 
@@ -86,7 +87,8 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleTerminateContract = async (id: number) => {
-    const terminationDate = prompt('Ingrese la fecha de terminación (YYYY-MM-DD):');
+    const terminationDate = // TODO: Replace with ATLAS input modal
+    // prompt('Ingrese la fecha de terminación (YYYY-MM-DD):');
     if (!terminationDate) return;
 
     try {

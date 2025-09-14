@@ -88,7 +88,8 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteProvider = async (id: number, name: string) => {
-    if (!window.confirm(`¿Eliminar proveedor "${name}"?`)) return;
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(`¿Eliminar proveedor "${name}"?`)) return;
 
     try {
       await deleteProvider(id);
@@ -213,7 +214,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Add/Edit Provider Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-medium">

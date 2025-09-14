@@ -77,7 +77,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
 
   const handleExportPDF = () => {
     // TODO: Implement PDF export functionality
-    alert('Exportar comparativa a PDF - Funcionalidad por implementar');
+    toast.error('Exportar comparativa a PDF - Funcionalidad por implementar');
   };
 
   const handleEditScenario = (scenarioId: number) => {

@@ -57,7 +57,7 @@ const Financiacion: React.FC = () => {
       ].filter(Boolean).join('. ');
       
       if (warningMsg) {
-        alert(`Datos extraídos del FEIN. ${warningMsg}.`);
+        toast.error(`Datos extraídos del FEIN. ${warningMsg}.`);
       }
     }
     

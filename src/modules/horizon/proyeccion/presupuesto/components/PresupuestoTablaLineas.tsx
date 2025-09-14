@@ -155,7 +155,8 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                   </button>
                   <button
                     onClick={() => {
-                      if (window.confirm('¿Estás seguro de que quieres eliminar esta línea?')) {
+                      if (window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que quieres eliminar esta línea?')) {
                         onDelete(linea.id);
                       }
                     }}

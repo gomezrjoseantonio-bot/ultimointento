@@ -88,7 +88,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 
   // Handle delete
   const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
+    if (window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
       // TODO: Implement delete
       console.log('Delete movement:', movement.id);
       onClose();
@@ -109,7 +110,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-gray-200 bg-opacity-75"
+        className="absolute inset-0 bg-gray-200"
         onClick={onClose}
       />
       

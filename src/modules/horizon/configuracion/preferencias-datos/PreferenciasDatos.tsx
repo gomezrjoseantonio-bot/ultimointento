@@ -60,7 +60,8 @@ const PreferenciasDatos: React.FC = () => {
       ? `¿Estás seguro de que quieres importar este archivo? Esto reemplazará TODOS tus datos actuales con los del archivo ${file.name}. Esta acción no se puede deshacer.`
       : `¿Quieres fusionar los datos del archivo ${file.name} con tus datos actuales?`;
     
-    if (!window.confirm(confirmMessage)) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(confirmMessage)) {
       event.target.value = ''; // Reset file input
       return;
     }

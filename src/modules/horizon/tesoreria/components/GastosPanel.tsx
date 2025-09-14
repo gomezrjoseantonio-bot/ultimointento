@@ -85,7 +85,8 @@ const GastosPanel: React.FC = () => {
 
     // Business logic validation: Some categories should typically be property-related
     if (formData.categoria_AEAT === 'suministros' && formData.destino === 'personal') {
-      const shouldProceed = window.confirm(
+      const shouldProceed = window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(
         '⚠️ Los suministros suelen estar asociados a inmuebles. ¿Estás seguro de que es un gasto personal?'
       );
       if (!shouldProceed) return;
@@ -372,7 +373,7 @@ const GastosPanel: React.FC = () => {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nuevo Gasto</h3>

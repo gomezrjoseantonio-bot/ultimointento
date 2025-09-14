@@ -584,7 +584,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
       
     } catch (error) {
       console.error('Error generating declaration:', error);
-      alert('Error generando la declaración: ' + error);
+      toast.error('Error generando la declaración: ' + error);
     } finally {
       setIsGenerating(false);
     }

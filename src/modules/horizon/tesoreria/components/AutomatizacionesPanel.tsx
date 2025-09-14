@@ -108,7 +108,8 @@ const AutomatizacionesPanel: React.FC = () => {
   };
 
   const deleteRule = async (ruleId: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta regla?')) return;
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que quieres eliminar esta regla?')) return;
     
     const updatedRules = rules.filter(r => r.id !== ruleId);
     setRules(updatedRules);
@@ -426,7 +427,7 @@ const AutomatizacionesPanel: React.FC = () => {
 
       {/* Create/Edit Rule Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">

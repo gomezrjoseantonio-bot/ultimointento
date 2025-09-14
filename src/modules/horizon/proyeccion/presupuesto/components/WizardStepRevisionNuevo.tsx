@@ -37,14 +37,15 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
 
       // Validate budget name
       if (!budgetName.trim()) {
-        alert('El nombre del presupuesto es obligatorio');
+        toast.error('El nombre del presupuesto es obligatorio');
         return;
       }
 
       // Validate account assignments
       const linesWithoutAccount = wizardData.lines.filter(line => !line.accountId);
       if (linesWithoutAccount.length > 0) {
-        const shouldContinue = window.confirm(
+        const shouldContinue = window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(
           `Hay ${linesWithoutAccount.length} líneas sin cuenta asignada. ¿Deseas continuar?`
         );
         if (!shouldContinue) return;
@@ -69,11 +70,11 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       }
 
       // Success
-      alert('Presupuesto creado exitosamente');
+      toast.error('Presupuesto creado exitosamente');
       onComplete();
     } catch (error) {
       console.error('Error saving budget:', error);
-      alert('Error al guardar el presupuesto. Inténtalo de nuevo.');
+      toast.error('Error al guardar el presupuesto. Inténtalo de nuevo.');
     } finally {
       setSaving(false);
     }

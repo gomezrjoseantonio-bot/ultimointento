@@ -46,7 +46,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
     const markedCount = scenarios.filter(s => s.markedForComparison).length;
     
     if (!scenario.markedForComparison && markedCount >= 3) {
-      alert('Ya tienes 3 escenarios en comparativa. Desmarca uno para añadir otro.');
+      toast.error('Ya tienes 3 escenarios en comparativa. Desmarca uno para añadir otro.');
       return;
     }
 
@@ -75,7 +75,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   };
 
   const handleDeleteScenario = async (scenario: Scenario) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
+    if (window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
       const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
       setScenarios(updatedScenarios);
       
@@ -165,7 +166,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
-                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                className="fixed inset-0 bg-gray-500 transition-opacity"
                 onClick={() => setShowModal(false)}
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">
@@ -383,7 +384,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
-                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                className="fixed inset-0 bg-gray-500 transition-opacity"
                 onClick={() => setShowModal(false)}
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-xl shadow-xl sm:my-8 sm:align-middle sm:p-6">

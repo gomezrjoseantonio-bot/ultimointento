@@ -42,7 +42,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
   };
 
   const handleDeletePrestamo = async (prestamoId: string, prestamoNombre: string) => {
-    if (!window.confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
       return;
     }
 
@@ -53,11 +54,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
         // Reload the list after deletion
         await loadPrestamos();
       } else {
-        alert('Error al eliminar el préstamo');
+        toast.error('Error al eliminar el préstamo');
       }
     } catch (error) {
       console.error('Error deleting préstamo:', error);
-      alert('Error al eliminar el préstamo');
+      toast.error('Error al eliminar el préstamo');
     } finally {
       setLoading(false);
     }

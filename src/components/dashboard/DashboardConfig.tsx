@@ -98,7 +98,8 @@ const DashboardConfig: React.FC = () => {
   };
 
   const handleResetToDefault = async () => {
-    if (!window.confirm('¿Estás seguro de que quieres restaurar la configuración por defecto? Esto eliminará todas las personalizaciones.')) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que quieres restaurar la configuración por defecto? Esto eliminará todas las personalizaciones.')) {
       return;
     }
 

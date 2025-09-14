@@ -122,7 +122,8 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       return;
     }
 
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}?`)) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm(`¿Estás seguro de que quieres eliminar el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}?`)) {
       return;
     }
 
@@ -137,10 +138,12 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   };
 
   const handleRescindContract = async (contract: Contract) => {
-    const motivo = window.prompt('Motivo de la rescisión:');
+    const motivo = window.// TODO: Replace with ATLAS input modal
+    // prompt('Motivo de la rescisión:');
     if (!motivo) return;
 
-    const fechaRescision = window.prompt('Fecha de rescisión (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    const fechaRescision = window.// TODO: Replace with ATLAS input modal
+    // prompt('Fecha de rescisión (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
     if (!fechaRescision) return;
 
     try {

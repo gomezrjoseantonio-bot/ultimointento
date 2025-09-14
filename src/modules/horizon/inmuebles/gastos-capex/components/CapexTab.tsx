@@ -60,7 +60,8 @@ const CapexTab: React.FC = () => {
   };
 
   const handleDeleteReform = async (reformId: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta reforma?')) {
+    if (!window.// TODO: Replace with ATLAS confirmation modal
+    // confirm('¿Estás seguro de que deseas eliminar esta reforma?')) {
       return;
     }
 

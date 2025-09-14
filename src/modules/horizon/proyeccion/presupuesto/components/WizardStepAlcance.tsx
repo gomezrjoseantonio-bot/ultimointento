@@ -70,7 +70,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
   const handleContinue = () => {
     // Allow testing mode when no properties exist
     if (selectedPropertyIds.length === 0 && properties.length > 0) {
-      alert('Debes seleccionar al menos un inmueble.');
+      toast.error('Debes seleccionar al menos un inmueble.');
       return;
     }
 
