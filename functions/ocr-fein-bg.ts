@@ -4,27 +4,25 @@
 import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { PDFDocument } from 'pdf-lib';
 import { normalizeFeinFromDocAI } from '../src/services/ocr/normalize-docai';
+import { getStore } from '@netlify/blobs';
 
 // Interfaces for job management
 interface FeinBackgroundJob {
-  jobId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: { 
+    percent: number; 
+    pageCurrent?: number; 
+    pagesTotal?: number; 
+  };
   result?: {
-    success: boolean;
     providerUsed: string;
-    docId: string;
     fields: any;
-    confidenceGlobal: number;
     pending: string[];
+    confidenceGlobal: number;
   };
   error?: string;
-  startedAt: string;
-  completedAt?: string;
-  metadata?: {
-    totalPages: number;
-    chunks: number;
-    processingTimeMs?: number;
-  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Constants
@@ -35,23 +33,39 @@ const MAX_CONCURRENT_CHUNKS = 2;
 // Helper to generate document ID
 const generateDocId = (): string => `fein_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-// Job storage using Netlify Blobs (simplified implementation using environment for demo)
-// In production, you would use Netlify Blobs, KV store, or database
+// Netlify Blobs storage helpers
+const BUCKET = 'fein-jobs';
+const jobKey = (id: string) => `job:${id}`;
+
+const putJob = async (id: string, data: FeinBackgroundJob): Promise<void> => {
+  try {
+    const store = getStore(BUCKET);
+    await store.set(jobKey(id), JSON.stringify(data));
+    console.info('[FEIN] job', { jobId: id, status: data.status, percent: data.progress?.percent });
+  } catch (error) {
+    console.error('Error saving job to blobs:', error);
+    throw error;
+  }
+};
+
+const getJob = async (id: string): Promise<FeinBackgroundJob | null> => {
+  try {
+    const store = getStore(BUCKET);
+    const jobData = await store.get(jobKey(id));
+    return jobData ? JSON.parse(jobData) : null;
+  } catch (error) {
+    console.error('Error retrieving job from blobs:', error);
+    return null;
+  }
+};
+
+// Job storage using Netlify Blobs
 const setJobStatus = async (jobId: string, job: FeinBackgroundJob): Promise<void> => {
-  // For demo purposes, we'll use a simple in-memory store
-  // In production, use Netlify Blobs:
-  // const { store } = await getStore({ name: 'fein-jobs', siteID: process.env.SITE_ID });
-  // await store.set(jobId, JSON.stringify(job));
-  console.info(`[BG] Job ${jobId} status:`, job.status);
+  await putJob(jobId, job);
 };
 
 const getJobStatus = async (jobId: string): Promise<FeinBackgroundJob | null> => {
-  // For demo purposes, return null (not found)
-  // In production, retrieve from Netlify Blobs:
-  // const { store } = await getStore({ name: 'fein-jobs', siteID: process.env.SITE_ID });
-  // const jobData = await store.get(jobId);
-  // return jobData ? JSON.parse(jobData) : null;
-  return null;
+  return await getJob(jobId);
 };
 
 // Split PDF into chunks of maximum pages
@@ -190,28 +204,32 @@ const processDocumentInBackground = async (jobId: string, pdfBytes: Uint8Array):
   const startTime = Date.now();
   
   try {
-    // Update job status to processing
-    await setJobStatus(jobId, {
-      jobId,
-      status: 'processing',
-      startedAt: new Date().toISOString(),
-      metadata: { totalPages: 0, chunks: 0 }
-    });
-
-    // Load PDF and get page count
+    // Load PDF and get page count first
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const totalPages = pdfDoc.getPageCount();
     
     console.info(`[BG] Processing PDF: ${totalPages} pages, jobId: ${jobId}`);
 
+    // Update job status to processing
+    const now = new Date().toISOString();
+    await setJobStatus(jobId, {
+      status: 'processing',
+      progress: { 
+        percent: 0, 
+        pagesTotal: totalPages 
+      },
+      createdAt: now,
+      updatedAt: now
+    });
+
     // Check page limit
     if (totalPages > MAX_PAGES_TOTAL) {
       await setJobStatus(jobId, {
-        jobId,
         status: 'failed',
+        progress: { percent: 0, pagesTotal: totalPages },
         error: `PDF demasiado largo (${totalPages} págs). Máximo permitido: ${MAX_PAGES_TOTAL} páginas`,
-        startedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: new Date().toISOString()
       });
       return;
     }
@@ -219,15 +237,7 @@ const processDocumentInBackground = async (jobId: string, pdfBytes: Uint8Array):
     // Split into chunks
     const chunks = await splitPdfIntoChunks(pdfBytes, PAGES_PER_CHUNK);
     
-    // Update job with metadata
-    await setJobStatus(jobId, {
-      jobId,
-      status: 'processing',
-      startedAt: new Date().toISOString(),
-      metadata: { totalPages, chunks: chunks.length }
-    });
-
-    // Process chunks with controlled concurrency
+    // Process chunks with progress tracking
     const chunkResults: any[] = [];
     
     for (let i = 0; i < chunks.length; i += MAX_CONCURRENT_CHUNKS) {
@@ -238,18 +248,32 @@ const processDocumentInBackground = async (jobId: string, pdfBytes: Uint8Array):
       
       const batchResults = await Promise.all(batchPromises);
       chunkResults.push(...batchResults);
+      
+      // Update progress after each batch (monotonic 0→95%)
+      const pagesDone = (i + batchChunks.length) * PAGES_PER_CHUNK;
+      const progressPercent = Math.min(95, Math.floor((pagesDone / totalPages) * 100));
+      
+      await setJobStatus(jobId, {
+        status: 'processing',
+        progress: { 
+          percent: progressPercent, 
+          pageCurrent: Math.min(pagesDone, totalPages),
+          pagesTotal: totalPages 
+        },
+        createdAt: now,
+        updatedAt: new Date().toISOString()
+      });
     }
 
     // Check if any chunk failed
     const failedChunk = chunkResults.find(result => !result.success);
     if (failedChunk) {
       await setJobStatus(jobId, {
-        jobId,
         status: 'failed',
+        progress: { percent: 0, pagesTotal: totalPages },
         error: `Error procesando el documento (chunk ${failedChunk.chunkIndex + 1})`,
-        startedAt: new Date().toISOString(),
-        completedAt: new Date().toISOString(),
-        metadata: { totalPages, chunks: chunks.length }
+        createdAt: now,
+        updatedAt: new Date().toISOString()
       });
       return;
     }
@@ -268,25 +292,18 @@ const processDocumentInBackground = async (jobId: string, pdfBytes: Uint8Array):
 
     const processingTime = Date.now() - startTime;
     
-    // Complete job
+    // Complete job with normalized result
     await setJobStatus(jobId, {
-      jobId,
       status: 'completed',
+      progress: { percent: 100, pagesTotal: totalPages },
       result: {
-        success: true,
         providerUsed: 'docai',
-        docId,
         fields: normalizedResult?.fields || {},
         confidenceGlobal: normalizedResult?.confidenceGlobal || 0,
         pending: normalizedResult?.pending || []
       },
-      startedAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-      metadata: { 
-        totalPages, 
-        chunks: chunks.length,
-        processingTimeMs: processingTime
-      }
+      createdAt: now,
+      updatedAt: new Date().toISOString()
     });
 
     console.info(`[BG] Job ${jobId} completed in ${processingTime}ms`);
@@ -295,13 +312,13 @@ const processDocumentInBackground = async (jobId: string, pdfBytes: Uint8Array):
     const processingTime = Date.now() - startTime;
     console.error(`[BG] Job ${jobId} failed after ${processingTime}ms:`, error);
     
+    const now = new Date().toISOString();
     await setJobStatus(jobId, {
-      jobId,
       status: 'failed',
+      progress: { percent: 0 },
       error: error instanceof Error ? error.message : 'Error interno procesando documento',
-      startedAt: new Date().toISOString(),
-      completedAt: new Date().toISOString(),
-      metadata: { totalPages: 0, chunks: 0, processingTimeMs: processingTime }
+      createdAt: now,
+      updatedAt: new Date().toISOString()
     });
   }
 };

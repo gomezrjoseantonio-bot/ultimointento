@@ -17,6 +17,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const [processingStage, setProcessingStage] = useState('');
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [progressPercent, setProgressPercent] = useState(0);
+  const [lastPercent, setLastPercent] = useState(0); // For monotonic progress
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -86,28 +87,50 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
         // Background processing - show unified progress modal
         setIsProcessing(false); // Stop initial processing state
         setShowProgressModal(true);
-        setProgressPercent(5); // Start with small progress
+        setProgressPercent(10); // Start with 10%
+        setLastPercent(10); // Initialize monotonic progress
         
         // Simulate progress increase to avoid static UI
         const progressSimulation = setInterval(() => {
-          setProgressPercent(prev => Math.min(prev + 2, 70));
+          setProgressPercent(prev => {
+            const newPercent = Math.min(prev + 2, 70);
+            setLastPercent(current => Math.max(current, newPercent)); // Ensure monotonic
+            return newPercent;
+          });
         }, 1000);
         
         // Start polling
         try {
           const result = await feinOcrService.pollForBackgroundResult(response.jobId!, (progress) => {
             clearInterval(progressSimulation);
-            setProgressPercent(progress.percent);
+            // Ensure monotonic progress - never decrease
+            const apiPercent = progress.percent || 0;
+            setProgressPercent(prevPercent => {
+              const displayPercent = Math.max(lastPercent, apiPercent);
+              setLastPercent(displayPercent);
+              // Don't exceed 95% until completed
+              return progress.percent === 100 ? 100 : Math.min(displayPercent, 95);
+            });
           });
           
           clearInterval(progressSimulation);
-          setShowProgressModal(false);
           
           if (result.success && result.loanDraft) {
-            console.log('[FEIN] Background processing completed:', result.loanDraft);
-            onFEINDraftReady(result.loanDraft);
+            // Set to 100% and show completion
+            setProgressPercent(100);
+            setLastPercent(100);
+            
+            // Brief pause to show 100% before closing
+            setTimeout(() => {
+              setShowProgressModal(false);
+              console.log('[FEIN] Background processing completed:', result.loanDraft);
+              if (result.loanDraft) {
+                onFEINDraftReady(result.loanDraft);
+              }
+            }, 500);
           } else {
             // Single toast message per requirements
+            setShowProgressModal(false);
             handleProcessingError(result.errors, file);
           }
           
