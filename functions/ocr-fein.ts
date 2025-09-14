@@ -5,6 +5,7 @@ import { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { PDFDocument } from 'pdf-lib';
 import { normalizeFeinFromDocAI } from '../src/services/ocr/normalize-docai';
 import { processWithDocAI } from '../src/services/documentaiClient';
+import { OCR_CONFIG } from '../src/config/ocr.config';
 
 // Constants for chunking and processing
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
@@ -233,19 +234,59 @@ const callBackgroundFunction = async (jobId: string, pdfBase64: string): Promise
   }
 };
 
+// Parse multipart/form-data to extract PDF file
+const parseMultipartFormData = (body: string, boundary: string): { content: string; mimeType: string } | null => {
+  try {
+    const parts = body.split(`--${boundary}`);
+    
+    for (const part of parts) {
+      if (!part.includes('Content-Disposition')) continue;
+      
+      // Look for file upload with PDF content type
+      const lines = part.split('\r\n');
+      let contentType = '';
+      let isFileUpload = false;
+      
+      for (const line of lines) {
+        if (line.includes('Content-Disposition') && line.includes('filename')) {
+          isFileUpload = true;
+        }
+        if (line.startsWith('Content-Type:')) {
+          contentType = line.substring('Content-Type:'.length).trim();
+        }
+      }
+      
+      // Check if this part contains a PDF file
+      if (isFileUpload && contentType.includes('application/pdf')) {
+        // Find the binary content (after the headers)
+        const contentIndex = part.indexOf('\r\n\r\n');
+        if (contentIndex === -1) continue;
+        
+        const binaryContent = part.substring(contentIndex + 4);
+        // Remove trailing boundary markers
+        const cleanContent = binaryContent.replace(/\r\n--.*$/, '');
+        
+        if (cleanContent.length > 0) {
+          const fileBase64 = Buffer.from(cleanContent, 'binary').toString('base64');
+          return {
+            content: fileBase64,
+            mimeType: 'application/pdf'
+          };
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing multipart form data:', error);
+    return null;
+  }
+};
+
 // Extract file from request
 const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeType: string; sizeKB: number } | null => {
   const contentType = event.headers['content-type'] || event.headers['Content-Type'] || '';
   
-  // Accept application/pdf and application/octet-stream
-  const isValidContentType = contentType.includes('application/pdf') || 
-                            contentType.includes('application/octet-stream') ||
-                            contentType === '';
-
-  if (!isValidContentType) {
-    return null;
-  }
-
   if (!event.body) {
     return null;
   }
@@ -253,24 +294,62 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
   let fileBase64: string;
   let detectedMime = 'application/pdf'; // Default
 
-  // Handle base64 encoding based on event.isBase64Encoded
-  if (event.isBase64Encoded === true) {
-    fileBase64 = event.body;
-  } else {
-    fileBase64 = Buffer.from(event.body, 'binary').toString('base64');
+  // Handle multipart/form-data
+  if (contentType.includes('multipart/form-data')) {
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
+    if (!boundaryMatch) {
+      return null;
+    }
+    
+    const boundary = boundaryMatch[1];
+    let bodyContent = event.body;
+    
+    // Handle base64 encoded multipart data
+    if (event.isBase64Encoded === true) {
+      bodyContent = Buffer.from(event.body, 'base64').toString('binary');
+    }
+    
+    const parsed = parseMultipartFormData(bodyContent, boundary);
+    if (!parsed) {
+      return null;
+    }
+    
+    fileBase64 = parsed.content;
+    detectedMime = parsed.mimeType;
+  } 
+  // Handle direct file uploads (application/pdf, application/octet-stream)
+  else if (contentType.includes('application/pdf') || 
+           contentType.includes('application/octet-stream') ||
+           contentType === '') {
+    
+    // Handle base64 encoding based on event.isBase64Encoded
+    if (event.isBase64Encoded === true) {
+      fileBase64 = event.body;
+    } else {
+      fileBase64 = Buffer.from(event.body, 'binary').toString('base64');
+    }
+
+    // If octet-stream, let ocr-documentai auto-detect
+    if (contentType.includes('application/pdf')) {
+      detectedMime = 'application/pdf';
+    } else if (contentType.includes('application/octet-stream') || contentType === '') {
+      // Pass as binary and let ocr-documentai handle MIME detection
+      detectedMime = 'application/octet-stream';
+    }
+  } 
+  // Invalid content type
+  else {
+    return null;
+  }
+
+  // Validate that we have file content
+  if (!fileBase64 || fileBase64.length === 0) {
+    return null;
   }
 
   // Calculate file size
   const fileSizeBytes = (fileBase64.length * 3) / 4;
   const sizeKB = Math.round(fileSizeBytes / 1024);
-
-  // If octet-stream, let ocr-documentai auto-detect
-  if (contentType.includes('application/pdf')) {
-    detectedMime = 'application/pdf';
-  } else if (contentType.includes('application/octet-stream') || contentType === '') {
-    // Pass as binary and let ocr-documentai handle MIME detection
-    detectedMime = 'application/octet-stream';
-  }
 
   return {
     content: fileBase64,
@@ -396,20 +475,27 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: 'Archivo PDF requerido. Tipos válidos: application/pdf, application/octet-stream'
+          message: 'Archivo no recibido o inválido'
         })
       };
     }
 
-    // Validate file size (8MB limit)
+    // Secure logging after file extraction
+    console.info('OCR Upload', { 
+      mimeType: fileData.mimeType, 
+      sizeKB: fileData.sizeKB 
+    });
+
+    // Validate file size using OCR_CONFIG limit (20MB)
     const fileSizeBytes = (fileData.content.length * 3) / 4;
-    if (fileSizeBytes > MAX_FILE_SIZE_BYTES) {
+    if (fileSizeBytes > OCR_CONFIG.maxPdfSizeBytes) {
+      const maxSizeMB = Math.round(OCR_CONFIG.maxPdfSizeBytes / (1024 * 1024));
       return {
         statusCode: 413,
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: 'Archivo demasiado grande (máx. 8 MB)'
+          error: `Archivo demasiado grande (máx. ${maxSizeMB} MB)`
         })
       };
     }
