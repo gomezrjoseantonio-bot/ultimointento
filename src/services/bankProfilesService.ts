@@ -109,6 +109,111 @@ class BankProfilesService {
     return mapping;
   }
 
+  /**
+   * Get bank logo URL by bank key or IBAN
+   */
+  getBankLogo(bankKey: string, iban?: string): string | null {
+    // First try to find by bank key
+    let profile = this.profiles.find(p => p.bankKey.toLowerCase() === bankKey.toLowerCase());
+    
+    // If not found, fallback to generic
+    if (profile) {
+      // Construct logo path from bank key
+      return `/assets/bank-logos/${profile.bankKey.toLowerCase()}.svg`;
+    }
+    
+    // Fallback to generic bank icon
+    return '/assets/icons/bank-generic.svg';
+  }
+
+  /**
+   * Get bank display name with enhanced formatting
+   */
+  getBankDisplayName(bankKey: string, iban?: string): string {
+    const profile = this.profiles.find(p => p.bankKey.toLowerCase() === bankKey.toLowerCase());
+    
+    if (profile) {
+      return profile.bankKey;
+    }
+    
+    return bankKey;
+  }
+
+  /**
+   * Enhanced IBAN formatting with bank context
+   */
+  formatIBANWithBankInfo(iban: string): {
+    iban: string;
+    maskedIban: string;
+    bankKey?: string;
+    logoUrl?: string;
+  } {
+    if (!iban || !iban.startsWith('ES')) {
+      return { iban, maskedIban: iban };
+    }
+    
+    // Try to identify bank from existing profiles by IBAN pattern matching
+    let bankKey: string | undefined;
+    let logoUrl: string | undefined;
+    
+    // Simple bank identification based on common patterns
+    if (iban.includes('2100')) bankKey = 'CaixaBank';
+    else if (iban.includes('0049')) bankKey = 'Santander';
+    else if (iban.includes('0182')) bankKey = 'BBVA';
+    else if (iban.includes('0081')) bankKey = 'Sabadell';
+    
+    if (bankKey) {
+      logoUrl = `/assets/bank-logos/${bankKey.toLowerCase()}.svg`;
+    }
+    
+    // Format IBAN with spaces: ES12 3456 7890 1234 5678 90
+    const formattedIban = iban.replace(/(.{4})/g, '$1 ').trim();
+    
+    // Create masked version: ES12 **** **** **** **** 7890
+    const maskedIban = `${iban.substring(0, 4)} **** **** **** **** ${iban.substring(iban.length - 4)}`;
+    
+    return {
+      iban: formattedIban,
+      maskedIban,
+      bankKey,
+      logoUrl: logoUrl || '/assets/icons/bank-generic.svg'
+    };
+  }
+
+  /**
+   * Get comprehensive bank information from IBAN
+   */
+  getBankInfoFromIBAN(iban: string): {
+    bankCode: string;
+    bankKey?: string;
+    logoUrl?: string;
+  } | null {
+    if (!iban || !iban.startsWith('ES') || iban.length < 8) {
+      return null;
+    }
+    
+    const bankCode = iban.substring(4, 8);
+    let bankKey: string | undefined;
+    
+    // Map common bank codes to keys
+    const bankCodeMap: Record<string, string> = {
+      '2100': 'CaixaBank',
+      '0049': 'Santander', 
+      '0182': 'BBVA',
+      '0081': 'Sabadell',
+      '0128': 'Bankinter',
+      '1465': 'ING'
+    };
+    
+    bankKey = bankCodeMap[bankCode];
+    
+    return {
+      bankCode,
+      bankKey,
+      logoUrl: bankKey ? `/assets/bank-logos/${bankKey.toLowerCase()}.svg` : '/assets/icons/bank-generic.svg'
+    };
+  }
+
   private normalizeText(text: string): string {
     return text
       .toLowerCase()

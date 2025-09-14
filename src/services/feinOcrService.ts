@@ -143,22 +143,58 @@ export class FEINOCRService {
   }
 
   private extractBankEntity(text: string): string | undefined {
-    // Common Spanish bank patterns
+    // Enhanced Spanish bank patterns with more comprehensive coverage
     const bankPatterns = [
-      /banco\s+([a-záéíóúñ\s]+)/i,
-      /caixa\s+([a-záéíóúñ\s]+)/i,
-      /bbva\s*([a-záéíóúñ\s]*)/i,
-      /santander\s*([a-záéíóúñ\s]*)/i,
-      /sabadell\s*([a-záéíóúñ\s]*)/i,
-      /bankia\s*([a-záéíóúñ\s]*)/i,
-      /ing\s+([a-záéíóúñ\s]*)/i,
-      /entidad\s*financiera[:\s]*([a-záéíóúñ\s]+)/i
+      // Major Spanish banks with full names
+      /banco\s+santander[,\s]*(s\.?a\.?)?/i,
+      /bbva\s*(?:banco\s+bilbao\s+vizcaya\s+argentaria)?[,\s]*(s\.?a\.?)?/i,
+      /caixabank[,\s]*(s\.?a\.?)?/i,
+      /la\s+caixa/i,
+      /banco\s+sabadell[,\s]*(s\.?a\.?)?/i,
+      /bankinter[,\s]*(s\.?a\.?)?/i,
+      /ing\s+(?:direct|bank)?[,\s]*(españa)?/i,
+      /unicaja\s+banco[,\s]*(s\.?a\.?)?/i,
+      /kutxabank[,\s]*(s\.?a\.?)?/i,
+      /ibercaja\s+banco[,\s]*(s\.?a\.?)?/i,
+      /abanca[,\s]*(s\.?a\.?)?/i,
+      /liberbank[,\s]*(s\.?a\.?)?/i,
+      /cajamar\s+caja\s+rural[,\s]*(s\.?c\.?c\.?)?/i,
+      /openbank[,\s]*(s\.?a\.?)?/i,
+      /evo\s+banco[,\s]*(s\.?a\.?)?/i,
+      /pibank[,\s]*(s\.?a\.?)?/i,
+      /banco\s+mediolanum[,\s]*(s\.?a\.?)?/i,
+      /banco\s+pichincha[,\s]*españa[,\s]*(s\.?a\.?)?/i,
+      
+      // Generic bank patterns
+      /banco\s+([a-záéíóúñ\s]+?)(?:[,.]|s\.?a\.?|$)/i,
+      /caja\s+(?:de\s+)?([a-záéíóúñ\s]+?)(?:[,.]|s\.?c\.?c\.?|$)/i,
+      /cooperativa\s+de\s+crédito\s+([a-záéíóúñ\s]+?)(?:[,.]|s\.?c\.?c\.?|$)/i,
+      /entidad\s*(?:financiera|bancaria)[:\s]*([a-záéíóúñ\s]+?)(?:[,.]|$)/i,
+      
+      // International banks operating in Spain
+      /deutsche\s+bank[,\s]*(s\.?a\.?e\.?)?/i,
+      /bnp\s+paribas[,\s]*(?:españa)?[,\s]*(s\.?a\.?)?/i,
+      /credit\s+suisse[,\s]*(?:españa)?[,\s]*(s\.?a\.?)?/i,
+      /jpmorgan\s+chase\s+bank[,\s]*(sucursal\s+españa)?/i
     ];
 
     for (const pattern of bankPatterns) {
       const match = this.extractMatch(text, pattern);
       if (match) {
-        return match.trim();
+        // Clean up the extracted bank name
+        let bankName = match.trim()
+          .replace(/\s*s\.?a\.?$/i, '')
+          .replace(/\s*s\.?c\.?c\.?$/i, '')
+          .replace(/\s*s\.?a\.?e\.?$/i, '')
+          .replace(/\s*[,.]$/, '')
+          .trim();
+        
+        // Capitalize first letter of each word
+        bankName = bankName.split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+          
+        return bankName;
       }
     }
     return undefined;
@@ -314,20 +350,42 @@ export class FEINOCRService {
   }
 
   private extractIBAN(text: string): string | undefined {
-    // Enhanced IBAN patterns including masked ones
+    // Enhanced IBAN patterns including masked ones with better Spanish format detection
     const ibanPatterns = [
+      // Complete IBAN patterns
+      /ES[0-9]{2}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}/i,
+      
+      // Masked IBAN patterns (common in FEIN documents)
       /ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      /ES[0-9]{2}\s*\*{4}\s*\*{4}\s*\*{4}\s*\*{4}\s*[0-9]{4}/i,
+      /ES[0-9]{2}\s*[*x•]{4}\s*[*x•]{4}\s*[*x•]{4}\s*[*x•]{4}\s*[0-9]{4}/i,
+      
+      // With context indicators
       /iban[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
-      /cuenta[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i
+      /cuenta[:\s]*(?:de\s+)?cargo[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      /cuenta[:\s]*(?:corriente|asociada)[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      /número\s+de\s+cuenta[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      
+      // Separated by different characters
+      /ES[0-9*]{2}[-\s][0-9*]{4}[-\s][0-9*]{4}[-\s][0-9*]{4}[-\s][0-9*]{4}[-\s][0-9*]{4}/i,
+      
+      // More flexible patterns for OCR text
+      /ES[0-9*]{2}[^\w]*[0-9*]{4}[^\w]*[0-9*]{4}[^\w]*[0-9*]{4}[^\w]*[0-9*]{4}[^\w]*[0-9*]{4}/i
     ];
     
     for (const pattern of ibanPatterns) {
       const match = this.extractMatch(text, pattern, 0); // Get full match, not group
       if (match) {
-        // Extract just the IBAN part and clean spaces
-        const iban = match.replace(/.*?(ES[0-9*]{22}).*/, '$1').replace(/\s/g, '');
+        // Clean and standardize the IBAN
+        let iban = match
+          .replace(/^.*?(ES[0-9*]{22}).*$/, '$1') // Extract just the IBAN part
+          .replace(/[^ES0-9*]/g, ''); // Remove all non-IBAN characters
+        
+        // Ensure it's exactly 24 characters and starts with ES
         if (iban.startsWith('ES') && iban.length === 24) {
-          return iban;
+          // Convert to standard format with spaces
+          const formatted = iban.replace(/(.{4})/g, '$1 ').trim();
+          return formatted;
         }
       }
     }
@@ -412,37 +470,77 @@ export class FEINOCRService {
     const bonificaciones: FEINBonificacion[] = [];
     const fullText = originalText || text;
     
-    // Enhanced bonification patterns with structured format
+    // Enhanced bonification patterns with more comprehensive Spanish keywords
     const patterns = [
       { 
         type: 'SEGURO_HOGAR', 
-        keywords: ['seguro hogar', 'seguro vivienda', 'seguro del hogar'],
-        conditions: /seguro\s+hogar.*?(\d+[.,]\d+)\s*%?/i
+        keywords: [
+          'seguro hogar', 'seguro vivienda', 'seguro del hogar', 'seguro de hogar',
+          'póliza hogar', 'póliza vivienda', 'seguro multirriesgo hogar',
+          'multirriesgo hogar', 'seguro del inmueble', 'seguro de la vivienda'
+        ],
+        conditions: /(?:seguro|póliza)\s+(?:del?\s+)?(?:hogar|vivienda|inmueble).*?(\d+[.,]\d+)\s*%?/i
       },
       { 
         type: 'SEGURO_VIDA', 
-        keywords: ['seguro vida', 'seguro de vida'],
-        conditions: /seguro\s+vida.*?(\d+[.,]\d+)\s*%?/i
+        keywords: [
+          'seguro vida', 'seguro de vida', 'póliza vida', 'póliza de vida',
+          'seguro individual vida', 'vida riesgo', 'riesgo de vida'
+        ],
+        conditions: /(?:seguro|póliza)\s+(?:de\s+|individual\s+)?vida.*?(\d+[.,]\d+)\s*%?/i
       },
       { 
         type: 'RECIBOS', 
-        keywords: ['domiciliación', 'recibos', 'domiciliaciones'],
+        keywords: [
+          'domiciliación', 'domiciliaciones', 'recibos', 'recibos domiciliados',
+          'adeudos directos', 'mandatos sepa', 'órdenes de domiciliación',
+          'pagos automáticos', 'cargos recurrentes'
+        ],
         conditions: /(?:domiciliación|recibos).*?≥?\s*([0-9]+).*?(\d+[.,]\d+)\s*%?/i
       },
       { 
         type: 'TARJETA', 
-        keywords: ['tarjeta', 'card', 'tarjetas'],
-        conditions: /tarjeta.*?≥?\s*([0-9]+)\s*(?:usos?|operaciones?).*?(\d+[.,]\d+)\s*%?/i
+        keywords: [
+          'tarjeta', 'tarjetas', 'card', 'visa', 'mastercard',
+          'uso tarjeta', 'facturación tarjeta', 'compras tarjeta',
+          'operaciones tarjeta', 'movimientos tarjeta'
+        ],
+        conditions: /tarjeta.*?≥?\s*([0-9]+)\s*(?:usos?|operaciones?|movimientos?).*?(\d+[.,]\d+)\s*%?/i
       },
       { 
         type: 'PLAN_PENSIONES', 
-        keywords: ['plan pensiones', 'pensión', 'plan de pensiones'],
-        conditions: /plan\s+pensiones.*?(\d+[.,]\d+)\s*%?/i
+        keywords: [
+          'plan pensiones', 'plan de pensiones', 'pensión', 'planes pensiones',
+          'fondo pensiones', 'pp', 'ppa', 'plan previsión asegurado',
+          'aportaciones pensiones', 'plan individual pensiones'
+        ],
+        conditions: /plan\s+(?:de\s+)?pensiones.*?(\d+[.,]\d+)\s*%?/i
       },
       { 
         type: 'NOMINA', 
-        keywords: ['nómina', 'nomina', 'ingresos recurrentes'],
-        conditions: /nómina.*?≥?\s*([0-9.,]+)\s*€?.*?(\d+[.,]\d+)\s*%?/i
+        keywords: [
+          'nómina', 'nomina', 'ingresos recurrentes', 'salario',
+          'sueldo', 'haberes', 'ingresos por trabajo', 'retribución',
+          'ingresos regulares', 'ingresos mensuales', 'pensión pública'
+        ],
+        conditions: /(?:nómina|ingresos\s+recurrentes).*?≥?\s*([0-9.,]+)\s*€?.*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'ALARMA', 
+        keywords: [
+          'alarma', 'sistema alarma', 'seguridad hogar', 'sistema seguridad',
+          'servicio alarma', 'central alarmas', 'seguridad vivienda'
+        ],
+        conditions: /(?:sistema\s+)?alarma.*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'INGRESOS_RECURRENTES', 
+        keywords: [
+          'ingresos recurrentes', 'ingresos regulares', 'ingresos periódicos',
+          'rentas', 'pensiones', 'prestaciones', 'subsidios',
+          'ingresos por alquiler', 'rentas inmobiliarias'
+        ],
+        conditions: /ingresos\s+(?:recurrentes|regulares).*?≥?\s*([0-9.,]+)\s*€?.*?(\d+[.,]\d+)\s*%?/i
       }
     ];
 
@@ -455,7 +553,7 @@ export class FEINOCRService {
           let condicion: string | undefined;
           
           if (conditionMatch) {
-            if (type === 'NOMINA') {
+            if (type === 'NOMINA' || type === 'INGRESOS_RECURRENTES') {
               condicion = `Ingresos ≥ ${conditionMatch[1]} €`;
               descuento = conditionMatch[2] ? this.parsePercentage(conditionMatch[2]) : undefined;
             } else if (type === 'TARJETA') {
@@ -468,18 +566,35 @@ export class FEINOCRService {
               descuento = this.parsePercentage(conditionMatch[1]);
             }
           } else {
-            // Fallback: try to find any percentage near the keyword
-            const discountPattern = new RegExp(`${keyword}[^0-9]*([0-9]+[.,][0-9]+)\\s*%?`, 'i');
-            const discountMatch = this.extractMatch(text, discountPattern);
-            descuento = discountMatch ? this.parsePercentage(discountMatch) : undefined;
+            // Enhanced fallback: try to find any percentage near the keyword with more flexible patterns
+            const discountPatterns = [
+              new RegExp(`${keyword}[^0-9]*([0-9]+[.,][0-9]+)\\s*(?:%|puntos?\\s+básicos?|p\\.?b\\.?)`, 'i'),
+              new RegExp(`([0-9]+[.,][0-9]+)\\s*(?:%|puntos?\\s+básicos?|p\\.?b\\.?)[^0-9]*${keyword}`, 'i'),
+              new RegExp(`bonificación[^0-9]*${keyword}[^0-9]*([0-9]+[.,][0-9]+)\\s*%?`, 'i')
+            ];
+            
+            for (const pattern of discountPatterns) {
+              const discountMatch = this.extractMatch(text, pattern);
+              if (discountMatch) {
+                descuento = this.parsePercentage(discountMatch);
+                break;
+              }
+            }
           }
           
-          bonificaciones.push({
-            tipo: type as any,
-            descripcion: keyword,
-            descuento,
-            condicion
-          });
+          // Only add bonification if not already added (avoid duplicates)
+          const exists = bonificaciones.some(b => 
+            b.tipo === type && b.descripcion.toLowerCase() === keyword.toLowerCase()
+          );
+          
+          if (!exists) {
+            bonificaciones.push({
+              tipo: type as any,
+              descripcion: keyword.charAt(0).toUpperCase() + keyword.slice(1),
+              descuento,
+              condicion
+            });
+          }
         }
       });
     });
