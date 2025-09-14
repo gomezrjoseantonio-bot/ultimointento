@@ -248,7 +248,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                 Ver respuesta cruda (DEV)
               </button>
               {showDevJson && (
-                <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96 mt-2">
+                <pre className="bg-gray-50 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96 mt-2">
                   {JSON.stringify(ocrResult, null, 2)}
                 </pre>
               )}
@@ -558,7 +558,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
           
           {showDevJson && (
             <div className="mt-4">
-              <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96">
+              <pre className="bg-gray-50 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96">
                 {JSON.stringify(ocrResult, null, 2)}
               </pre>
             </div>

@@ -161,7 +161,7 @@ const Dashboard: React.FC = () => {
         {/* Empty State */}
         <div className="bg-white shadow rounded-lg border border-neutral-200">
           <div className="text-center py-16 px-6">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-navy-900 bg-opacity-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-navy-900">
               <Inbox className="w-8 h-8 text-navy-900" />
             </div>
             <h3 className="text-lg font-medium text-neutral-900 mb-2">Empezar</h3>

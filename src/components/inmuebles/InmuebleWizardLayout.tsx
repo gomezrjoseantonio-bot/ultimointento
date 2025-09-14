@@ -2,7 +2,7 @@
 // Following Horizon design system with clean card layout
 
 import React from 'react';
-import { CheckIcon } from '@heroicons/react/24/solid';
+import { Check } from 'lucide-react';
 import { ComplecionStatus } from '../../types/inmueble';
 
 interface WizardStep {
@@ -61,7 +61,7 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                       `}
                     >
                       {step.status === 'COMPLETO' && !step.isActive ? (
-                        <CheckIcon className="w-4 h-4" />
+                        <Check className="w-4 h-4" size={24}  />
                       ) : (
                         <span>{step.id}</span>
                       )}

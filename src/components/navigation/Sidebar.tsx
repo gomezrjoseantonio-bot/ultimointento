@@ -11,14 +11,14 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const navigation = getNavigationForModule();
 
-  // ATLAS brand consistent colors - both modules use navy primary
+  // ATLAS brand consistent colors - exact specification
   const getThemeClasses = () => {
     return {
-      sidebarBg: 'bg-brand-navy', // Both modules use navy background
-      logoIcon: 'bg-brand-teal', // Both modules use teal accent for logo
-      activeItem: 'bg-blue-600', // Use --atlas-blue for active items
-      hoverItem: 'hover:bg-navy-800', // Both modules use darker navy for hover
-      separatorText: 'text-gray-400 text-xs font-semibold uppercase tracking-wider',
+      sidebarBg: 'atlas-navy-2', // Use ATLAS navy-2 for sidebar background
+      logoIcon: 'atlas-teal', // Use ATLAS teal for logo accent
+      activeItem: 'atlas-blue', // Use ATLAS blue for active items
+      hoverItem: 'hover:opacity-80', // Simple opacity hover for better UX
+      separatorText: 'text-gray-300 text-xs font-semibold uppercase tracking-wider',
     };
   };
 
@@ -36,10 +36,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       className={({ isActive }) =>
         `${
           isActive
-            ? `${themeClasses.activeItem} text-white`
+            ? 'text-white'
             : `text-gray-300 ${themeClasses.hoverItem} hover:text-white`
-        } group flex items-center px-2 py-2 text-base font-medium rounded-atlas transition-colors duration-200`
+        } group flex items-center px-2 py-2 text-base font-medium rounded-lg transition-colors duration-200`
       }
+      style={({ isActive }) => ({
+        backgroundColor: isActive ? 'var(--atlas-blue)' : 'transparent',
+      })}
     >
       <item.icon
         className="mr-3 h-6 w-6 flex-shrink-0"
@@ -51,22 +54,26 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
   return (
     <>
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar - Light overlay only per ATLAS */}
       <div
-        className={`fixed inset-0 z-40 bg-gray-600 bg-opacity-75 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-40 bg-white transition-opacity md:hidden ${
           sidebarOpen ? 'ease-out duration-300 opacity-100' : 'ease-in duration-200 opacity-0 pointer-events-none'
         }`}
         onClick={() => setSidebarOpen(false)}
       />
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-64 ${themeClasses.sidebarBg} transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
           sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'
         }`}
+        style={{ backgroundColor: 'var(--atlas-navy-2)' }}
       >
         <div className="flex items-center justify-between px-4 py-5">
           <div className="flex items-center space-x-2">
-            <div className={`h-8 w-8 rounded-full ${themeClasses.logoIcon} flex items-center justify-center text-white font-bold text-sm`}>
+            <div 
+              className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+              style={{ backgroundColor: 'var(--atlas-teal)' }}
+            >
               A
             </div>
             <h1 className="text-white text-xl font-bold">

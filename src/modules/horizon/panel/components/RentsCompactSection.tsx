@@ -126,10 +126,10 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
               </span>
               <div className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                 property.collectionPercent === 100 
-                  ? 'bg-hz-success bg-opacity-10 text-hz-success'
+                  ? 'bg-hz-success text-hz-success'
                   : property.collectionPercent === 0
-                  ? 'bg-hz-error bg-opacity-10 text-hz-error'
-                  : 'bg-hz-warning bg-opacity-10 text-hz-warning'
+                  ? 'bg-hz-error text-hz-error'
+                  : 'bg-hz-warning text-hz-warning'
               }`}>
                 {property.collectionPercent}%
               </div>

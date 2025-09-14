@@ -281,8 +281,8 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
                 {property.deviation !== 0 && (
                   <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                     property.deviation > 0 
-                      ? 'bg-hz-success bg-opacity-10 text-hz-success'
-                      : 'bg-hz-error bg-opacity-10 text-hz-error'
+                      ? 'bg-hz-success text-hz-success'
+                      : 'bg-hz-error text-hz-error'
                   }`}>
                     {property.deviation > 0 ? (
                       <TrendingUp className="w-3 h-3" />
@@ -293,7 +293,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
                   </div>
                 )}
                 {property.deviation === 0 && (
-                  <div className="px-2 py-1 rounded-full text-xs font-medium bg-hz-success bg-opacity-10 text-hz-success">
+                  <div className="px-2 py-1 rounded-full text-xs font-medium bg-hz-success text-hz-success">
                     ✓ OK
                   </div>
                 )}

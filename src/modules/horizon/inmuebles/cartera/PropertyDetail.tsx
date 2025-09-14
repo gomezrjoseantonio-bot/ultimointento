@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, PencilIcon, DocumentIcon, ClipboardDocumentIcon } from '@heroicons/react/24/outline';
+import { ArrowLeft, Pencil, FileText, Clipboard } from 'lucide-react';
 import { Property, initDB } from '../../../../services/db';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
@@ -101,7 +101,7 @@ const PropertyDetail: React.FC = () => {
             onClick={() => navigate('/inmuebles/cartera')}
             className="p-2 text-neutral-600 hover:text-neutral-800 transition-colors"
           >
-            <ArrowLeftIcon className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" size={24}  />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">{property.alias}</h1>
@@ -112,7 +112,7 @@ const PropertyDetail: React.FC = () => {
           onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
           className="flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
         >
-          <PencilIcon className="h-5 w-5 mr-2" />
+          <Pencil className="h-5 w-5 mr-2" size={24}  />
           Editar
         </button>
       </div>
@@ -378,7 +378,7 @@ const PropertyDetail: React.FC = () => {
             onClick={viewDocuments}
             className="flex items-center w-full p-3 text-left border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
           >
-            <DocumentIcon className="h-5 w-5 text-brand-navy mr-3" />
+            <FileText className="h-5 w-5 text-brand-navy mr-3" size={24}  />
             <div>
               <div className="text-sm font-medium text-neutral-900">Ver documentos de este inmueble</div>
               <div className="text-xs text-neutral-500">Abre la bandeja filtrada por este inmueble</div>
@@ -389,7 +389,7 @@ const PropertyDetail: React.FC = () => {
             onClick={copyEmailAlias}
             className="flex items-center w-full p-3 text-left border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
           >
-            <ClipboardDocumentIcon className="h-5 w-5 text-brand-navy mr-3" />
+            <Clipboard className="h-5 w-5 text-brand-navy mr-3" size={24}  />
             <div>
               <div className="text-sm font-medium text-neutral-900">Copiar alias de email del inmueble</div>
               <div className="text-xs text-neutral-500">Copia la dirección de email para envío de documentos</div>

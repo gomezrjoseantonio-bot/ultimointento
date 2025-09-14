@@ -10,7 +10,7 @@ const path = require('path');
 
 // Patterns that should fail the build (per ATLAS requirements)
 const FORBIDDEN_PATTERNS = {
-  // Dark themes and overlays
+  // Dark themes and overlays - ATLAS requires light themes only
   darkThemes: [
     /bg-black/g,
     /bg-opacity-50/g,
@@ -21,16 +21,27 @@ const FORBIDDEN_PATTERNS = {
     /bg-gray-900/g,
     /bg-gray-800/g,
     /dark:/g,
-    /className.*dark/g
+    /className.*dark/g,
+    /bg-opacity-\d+/g,  // Any bg-opacity class
   ],
   
-  // Non-ATLAS colors (hardcoded hex values)
+  // Non-ATLAS colors (hardcoded hex values) - Exception for token definitions
   hardcodedColors: [
     /#[0-9A-Fa-f]{6}/g,  // Hex colors (should use tokens)
     /#[0-9A-Fa-f]{3}/g,  // Short hex colors
+    /rgb\(/g,             // RGB colors
+    /rgba\(/g,            // RGBA colors
+    /hsl\(/g,             // HSL colors
+    /hsla\(/g,            // HSLA colors
   ],
   
-  // Non-Lucide icon imports
+  // Forbidden color - #09182E specifically mentioned as prohibited
+  prohibitedColors: [
+    /#09182E/gi,
+    /#091/gi,  // Short version
+  ],
+  
+  // Non-Lucide icon imports - ATLAS requires Lucide only
   forbiddenIcons: [
     /@heroicons\/react/g,
     /from ['"]@heroicons/g,
@@ -38,25 +49,41 @@ const FORBIDDEN_PATTERNS = {
     /from ['"]@material-ui/g,
     /import.*@material-ui/g,
     /from ['"]react-icons/g,
-    /import.*react-icons/g
+    /import.*react-icons/g,
+    /from ['"]@mui\/icons/g,
+    /import.*@mui\/icons/g,
   ],
   
-  // Non-Inter fonts
+  // Non-Inter fonts - ATLAS requires Inter only
   forbiddenFonts: [
-    /font-family.*(?!Inter)/g,
-    /'Arial'/g,
-    /'Helvetica'/g,
+    /font-family.*(?!Inter|system-ui|sans-serif|var\(--font)/g,
+    /'Arial'(?!.*system-ui)/g,
+    /'Helvetica'(?!.*system-ui)/g,
     /'Times'/g,
     /'Georgia'/g,
-    /font-sans.*(?!Inter)/g
+    /font-sans.*(?!Inter)/g,
   ],
   
-  // Browser alerts (should use ATLAS toasts)
+  // Browser alerts - Should use ATLAS toast system
   browserAlerts: [
     /alert\(/g,
     /confirm\(/g,
-    /prompt\(/g
-  ]
+    /prompt\(/g,
+  ],
+  
+  // Help pattern violations - Must use ATLAS SUA patterns
+  invalidHelp: [
+    // Help text in H1/H2 (forbidden per requirements)
+    /<h[12][^>]*>.*(?:ayuda|help|asistencia|soporte)/gi,
+    // Loose help text not in approved patterns
+    /className.*help.*text/g,
+  ],
+  
+  // Non-ES locale formatting - Must use ES-ES format
+  invalidLocale: [
+    /toLocaleString\(['"](?!es-ES)/g,
+    /new Intl\..*\(['"](?!es-ES)/g,
+  ],
 };
 
 // Allowed exceptions (files that can be skipped)
@@ -120,7 +147,20 @@ function lintFile(filePath) {
     }
   }
   
-  // Check for hardcoded colors (but allow CSS custom properties)
+  // Check for prohibited color #09182E
+  for (const pattern of FORBIDDEN_PATTERNS.prohibitedColors) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'PROHIBITED_COLOR',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Prohibited color #09182E detected - this color is forbidden in ATLAS'
+      });
+    }
+  }
+  
+  // Check for hardcoded colors (but allow CSS custom properties and ATLAS token definitions)
   for (const pattern of FORBIDDEN_PATTERNS.hardcodedColors) {
     const matches = content.match(pattern);
     if (matches) {
@@ -137,7 +177,9 @@ function lintFile(filePath) {
         !content.includes(`--warn: ${match}`) &&
         !content.includes(`--error: ${match}`) &&
         !content.includes(`--bg: ${match}`) &&
-        !content.includes(`--text-gray: ${match}`)
+        !content.includes(`--text-gray: ${match}`) &&
+        // Allow in CSS files if it's a token definition
+        !(filePath.endsWith('.css') && content.includes(`: ${match};`))
       );
       
       if (filteredMatches.length > 0) {
@@ -164,6 +206,19 @@ function lintFile(filePath) {
     }
   }
   
+  // Check for non-Inter fonts
+  for (const pattern of FORBIDDEN_PATTERNS.forbiddenFonts) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'FORBIDDEN_FONTS',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-Inter font detected - ATLAS requires Inter with approved fallbacks only'
+      });
+    }
+  }
+  
   // Check for browser alerts
   for (const pattern of FORBIDDEN_PATTERNS.browserAlerts) {
     const matches = content.match(pattern);
@@ -173,6 +228,32 @@ function lintFile(filePath) {
         pattern: pattern.toString(),
         matches: matches.length,
         message: 'Browser alert detected - should use ATLAS toast system'
+      });
+    }
+  }
+  
+  // Check for invalid help patterns
+  for (const pattern of FORBIDDEN_PATTERNS.invalidHelp) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'INVALID_HELP_PATTERN',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Invalid help pattern - must use ATLAS SUA patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner)'
+      });
+    }
+  }
+  
+  // Check for non-ES locale formatting
+  for (const pattern of FORBIDDEN_PATTERNS.invalidLocale) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'INVALID_LOCALE',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-ES locale detected - ATLAS requires es-ES formatting (1.234,56 €, DD/MM/AAAA)'
       });
     }
   }

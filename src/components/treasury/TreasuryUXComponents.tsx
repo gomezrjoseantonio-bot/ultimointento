@@ -219,7 +219,7 @@ export const TreasuryFieldHelp: React.FC<{
     <div className={`group relative ${className}`}>
       <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
       <div className="absolute z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-300 bottom-full left-1/2 transform -translate-x-1/2 mb-2">
-        <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 max-w-xs">
+        <div className="bg-gray-50 text-white text-xs rounded-lg py-2 px-3 max-w-xs">
           <div className="font-medium mb-1">{help.title}</div>
           <div>{help.content}</div>
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>

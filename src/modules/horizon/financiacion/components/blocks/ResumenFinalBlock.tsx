@@ -212,7 +212,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
           {/* Bonifications Summary */}
           {bonificacionesTotales > 0 && (
-            <div className="bg-atlas-blue bg-opacity-5 border border-atlas-blue border-opacity-20 rounded-atlas p-4 mb-6">
+            <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 rounded-atlas p-4 mb-6">
               <h4 className="font-medium text-atlas-blue mb-3">Beneficio de Bonificaciones</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>

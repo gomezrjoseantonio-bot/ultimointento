@@ -167,8 +167,8 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
                       key={index}
                       className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${
                         item.type === 'income' 
-                          ? 'bg-hz-success bg-opacity-10 text-hz-success border border-hz-success border-opacity-20'
-                          : 'bg-hz-error bg-opacity-10 text-hz-error border border-hz-error border-opacity-20'
+                          ? 'bg-hz-success text-hz-success border border-hz-success border-opacity-20'
+                          : 'bg-hz-error text-hz-error border border-hz-error border-opacity-20'
                       }`}
                     >
                       <span className="font-medium">

@@ -7,7 +7,7 @@ const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   return (
-    <div className="flex h-screen bg-neutral-50">
+    <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">

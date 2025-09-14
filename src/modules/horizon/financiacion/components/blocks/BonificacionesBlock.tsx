@@ -435,7 +435,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
       {/* Bonifications Summary */}
       {(formData.bonificaciones || []).length > 0 && (
-        <div className="bg-atlas-blue bg-opacity-5 border border-atlas-blue border-opacity-20 rounded-atlas p-4">
+        <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 rounded-atlas p-4">
           <h4 className="font-medium text-atlas-blue mb-3 flex items-center">
             <Calculator className="h-4 w-4 mr-2" />
             Resumen de Bonificaciones

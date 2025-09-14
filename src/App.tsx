@@ -9,11 +9,11 @@ import MainLayout from './layouts/MainLayout';
 // Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
 
-// Loading component for better UX
+// Loading component for better UX - ATLAS compliant
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-500 border-t-transparent"></div>
-    <span className="ml-2 text-gray-600">Cargando...</span>
+    <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
+    <span className="ml-2" style={{ color: 'var(--text-gray)' }}>Cargando...</span>
   </div>
 );
 
@@ -134,7 +134,32 @@ function App() {
   return (
     <ThemeProvider>
       <Router>
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontFamily: 'var(--font-sans)',
+              color: 'var(--atlas-navy-1)',
+              background: 'white',
+              border: '1px solid var(--hz-neutral-300)',
+              borderRadius: '10px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            },
+            success: {
+              iconTheme: {
+                primary: 'var(--ok)',
+                secondary: 'white',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: 'var(--error)',
+                secondary: 'white',
+              },
+            },
+          }}
+        />
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/panel" replace />} />
