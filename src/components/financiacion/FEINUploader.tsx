@@ -107,6 +107,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             console.log('[FEIN] Background processing completed:', result.loanDraft);
             onFEINDraftReady(result.loanDraft);
           } else {
+            // Single toast message per requirements
             handleProcessingError(result.errors, file);
           }
           
@@ -126,11 +127,9 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   };
 
   const handleProcessingError = (errors: string[], file: File) => {
-    if (errors.some(error => error.includes('Tardando más de lo habitual'))) {
-      showError('Tardando más de lo habitual. Inténtalo de nuevo.');
-    } else {
-      showError('No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.');
-    }
+    // Show single toast message per requirements - no duplicates
+    const errorMessage = errors.length > 0 ? errors[0] : 'No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.';
+    showError(errorMessage);
     
     // Create empty draft for manual entry
     const emptyDraft: FeinLoanDraft = {

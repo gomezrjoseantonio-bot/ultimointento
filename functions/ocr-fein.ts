@@ -8,12 +8,11 @@ import { processWithDocAI } from '../src/services/documentaiClient';
 import { OCR_CONFIG } from '../src/config/ocr.config';
 
 // Constants for chunking and processing
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 const MAX_PAGES_TOTAL = 60; // Hard cap: >60 pages = 413 error
 const PAGES_PER_CHUNK = 15; // Maximum pages per DocAI request
 const SYNC_TIMEOUT_MS = 8000; // 8 second timeout for sync processing
 const MAX_CONCURRENT_CHUNKS = 2; // Concurrency limit for chunk processing
-const BACKGROUND_THRESHOLD_PAGES = 30; // Auto-background if >30 pages
+const BACKGROUND_THRESHOLD_PAGES = 15; // Auto-background if >15 pages
 const BACKGROUND_THRESHOLD_KB = 8192; // Auto-background if >8MB
 
 // Interfaces for job management
@@ -434,9 +433,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         success: true,
         status: job.status,
         progress: {
-          percent: job.status === 'pending' ? 30 : job.status === 'processing' ? 60 : 100,
-          pageCurrent: job.metadata?.chunks ? Math.min(job.metadata.chunks, job.metadata?.totalPages || 1) : 1,
-          pagesTotal: job.metadata?.totalPages || 1
+          percent: job.status === 'pending' ? 30 : job.status === 'processing' ? 60 : 100
         }
       };
 
@@ -491,7 +488,7 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: 'Archivo vacío o no recibido. Tipos válidos: multipart/form-data (campo "file"), application/pdf, application/octet-stream'
+          message: 'Archivo no recibido'
         })
       };
     }
@@ -685,9 +682,9 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
   }
 };
 
-// Process PDF synchronously with chunking
+// Process PDF synchronously with chunking for >15 pages
 const processSynchronously = async (pdfBytes: Uint8Array, totalPages: number, docId: string): Promise<any> => {
-  // Single chunk optimization
+  // Single chunk optimization for ≤15 pages
   if (totalPages <= PAGES_PER_CHUNK) {
     console.info(`Single chunk processing: ${totalPages} pages`);
     
@@ -716,8 +713,8 @@ const processSynchronously = async (pdfBytes: Uint8Array, totalPages: number, do
     };
   }
 
-  // Multi-chunk processing
-  console.info(`Multi-chunk processing: ${totalPages} pages`);
+  // Multi-chunk processing for >15 pages
+  console.info(`Multi-chunk processing: ${totalPages} pages, chunks: ${Math.ceil(totalPages / PAGES_PER_CHUNK)}`);
   
   const chunks = await splitPdfIntoChunks(pdfBytes, PAGES_PER_CHUNK);
   const chunkResults: any[] = [];
