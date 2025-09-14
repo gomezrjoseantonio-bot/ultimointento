@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { FeinLoanDraft } from '../../types/fein';
-import { feinOcrService, FEINProcessingResult } from '../../services/feinOcrService';
+import { feinOcrService } from '../../services/feinOcrService';
 
 interface FEINUploaderProps {
   onFEINDraftReady: (draft: FeinLoanDraft) => void; // Main callback for new implementation

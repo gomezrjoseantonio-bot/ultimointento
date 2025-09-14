@@ -4,7 +4,7 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 import { FeinLoanDraft } from '../types/fein';
-import { FeinTextParser, FeinParseResult } from './fein/parseFeinText';
+import { FeinTextParser } from './fein/parseFeinText';
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -35,6 +35,9 @@ export interface FEINProcessingResult {
   warnings: string[];
   pagesProcessed: number;
   ocrPagesUsed: number;
+  fieldsExtracted: string[];
+  fieldsMissing: string[];
+  data?: any; // For compatibility with existing code
 }
 
 export class FEINOCRService {
@@ -74,7 +77,9 @@ export class FEINOCRService {
           errors: [validation.error!],
           warnings: [],
           pagesProcessed: 0,
-          ocrPagesUsed: 0
+          ocrPagesUsed: 0,
+          fieldsExtracted: [],
+          fieldsMissing: ['all'] // All fields missing if file is invalid
         };
       }
 
@@ -155,7 +160,9 @@ export class FEINOCRService {
           errors: ['No se pudo extraer suficiente texto del documento FEIN'],
           warnings: [],
           pagesProcessed: totalPages,
-          ocrPagesUsed
+          ocrPagesUsed,
+          fieldsExtracted: [],
+          fieldsMissing: ['all'] // All fields missing if no text extracted
         };
       }
 
@@ -180,12 +187,31 @@ export class FEINOCRService {
           errors: parseResult.errors,
           warnings: parseResult.warnings,
           pagesProcessed: totalPages,
-          ocrPagesUsed
+          ocrPagesUsed,
+          fieldsExtracted: [],
+          fieldsMissing: ['all'] // All fields missing if parsing failed
         };
       }
 
       // Check if we have minimum required fields
       const hasMinimumData = this.validateMinimumFields(parseResult.loanDraft);
+      
+      // Determine extracted and missing fields
+      const fieldsExtracted: string[] = [];
+      const fieldsMissing: string[] = [];
+      
+      const draft = parseResult.loanDraft;
+      if (draft.prestamo.banco) fieldsExtracted.push('banco');
+      else fieldsMissing.push('banco');
+      
+      if (draft.prestamo.tipo) fieldsExtracted.push('tipo');
+      else fieldsMissing.push('tipo');
+      
+      if (draft.prestamo.capitalInicial) fieldsExtracted.push('capitalInicial');
+      else fieldsMissing.push('capitalInicial');
+      
+      if (draft.prestamo.plazoMeses) fieldsExtracted.push('plazoMeses');
+      else fieldsMissing.push('plazoMeses');
       
       return {
         success: true,
@@ -194,7 +220,10 @@ export class FEINOCRService {
         errors: hasMinimumData.errors,
         warnings: [...parseResult.warnings, ...hasMinimumData.warnings],
         pagesProcessed: totalPages,
-        ocrPagesUsed
+        ocrPagesUsed,
+        fieldsExtracted,
+        fieldsMissing,
+        data: parseResult.loanDraft // For compatibility
       };
 
     } catch (error) {
@@ -204,7 +233,9 @@ export class FEINOCRService {
         errors: ['Error interno procesando el documento FEIN'],
         warnings: [],
         pagesProcessed: 0,
-        ocrPagesUsed: 0
+        ocrPagesUsed: 0,
+        fieldsExtracted: [],
+        fieldsMissing: ['all'] // All fields missing on error
       };
     }
   }
@@ -284,7 +315,8 @@ export class FEINOCRService {
       // Render page
       await page.render({
         canvasContext: context,
-        viewport: scaledViewport
+        viewport: scaledViewport,
+        canvas: canvas
       }).promise;
 
       // Convert to image and compress
