@@ -28,14 +28,34 @@ jest.mock('../../../src/services/ocr/normalize-docai', () => ({
   })
 }));
 
+// Mock the documentai client for fallback scenarios
+jest.mock('../../../src/services/documentaiClient', () => ({
+  processWithDocAI: jest.fn().mockResolvedValue({
+    success: true,
+    results: [{
+      status: 'success',
+      entities: [
+        { type: 'loan_amount', mentionText: '250000.00', confidence: 0.90 },
+        { type: 'term_months', mentionText: '300', confidence: 0.85 },
+        { type: 'interest_rate', mentionText: '3.25%', confidence: 0.88 },
+        { type: 'apr', mentionText: '3.41%', confidence: 0.86 },
+        { type: 'monthly_payment', mentionText: '1263.45', confidence: 0.82 }
+      ],
+      text: 'FEIN Document Content...'
+    }]
+  })
+}));
+
 // Mock fetch for ocr-documentai calls
 global.fetch = jest.fn();
 
 describe('ocr-fein E2E Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Set up environment variables for tests
-    process.env.NETLIFY_FUNCTIONS_URL = 'http://localhost:8888/.netlify/functions';
+    // Set up environment variables for tests - with deployment URL for absolute endpoint
+    process.env.URL = 'https://test-deployment.netlify.app';
+    // Clear old env var that's no longer used
+    delete process.env.NETLIFY_FUNCTIONS_URL;
   });
 
   describe('CORS handling', () => {
