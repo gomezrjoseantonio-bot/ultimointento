@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { FeinLoanDraft } from '../../types/fein';
 import { feinOcrService } from '../../services/feinOcrService';
-import { showError, showSuccess, showInfo } from '../../services/toastService';
+import { showError } from '../../services/toastService';
 
 interface FEINUploaderProps {
   onFEINDraftReady: (draft: FeinLoanDraft) => void; // Main callback for new implementation
@@ -15,9 +15,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [processingStage, setProcessingStage] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [isBackgroundProcessing, setIsBackgroundProcessing] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -60,112 +59,110 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
 
     try {
       setIsProcessing(true);
-      setUploadProgress(0);
+      setUploadProgress(20);
       setProcessingStage('Preparando documento...');
-      setCurrentPage(0);
-      setTotalPages(0);
 
-      // Process with new implementation
-      const result = await feinOcrService.processFEINDocument(file, (progress) => {
-        // Update progress based on stage
-        setCurrentPage(progress.currentPage);
-        setTotalPages(progress.totalPages);
-        setProcessingStage(progress.message);
-        
-        // Detect background processing
-        if (progress.message.includes('segundo plano')) {
-          setIsBackgroundProcessing(true);
-        }
-        
-        // Calculate overall progress
-        let overallProgress = 0;
-        if (progress.stage === 'uploading') {
-          overallProgress = 20;
-        } else if (progress.stage === 'processing') {
-          overallProgress = isBackgroundProcessing ? 50 : 70; // Show ongoing for background
-        } else if (progress.stage === 'complete') {
-          overallProgress = 100;
-          setIsBackgroundProcessing(false);
-        }
-        
-        setUploadProgress(Math.min(overallProgress, 100));
-      });
+      // Use new implementation
+      const response = await feinOcrService.processFEINDocumentNew(file);
       
-      setUploadProgress(100);
-      setProcessingStage('Procesamiento completado');
-      
-      // Small delay to show completion
-      setTimeout(() => {
-        setIsProcessing(false);
-        setIsBackgroundProcessing(false);
+      if (response.mode === 'sync') {
+        // Sync response - no progress panel needed
+        setUploadProgress(100);
+        setProcessingStage('Procesamiento completado');
         
-        if (result.success && result.loanDraft) {
-          // Show success message if we have some data extracted
-          const hasData = result.loanDraft.prestamo.capitalInicial || 
-                          result.loanDraft.prestamo.banco || 
-                          result.loanDraft.prestamo.tipo;
+        setTimeout(() => {
+          setIsProcessing(false);
           
-          if (hasData) {
-            console.log('[FEIN] Successfully extracted data:', result.loanDraft);
-            showSuccess('FEIN procesado correctamente. Datos extraídos y prellenados.');
+          if (response.result?.success && response.result.loanDraft) {
+            // Apply to form using new method
+            console.log('[FEIN] Successfully extracted data:', response.result.loanDraft);
+            onFEINDraftReady(response.result.loanDraft);
+          } else {
+            handleProcessingError(response.result?.errors || ['Error procesando documento'], file);
+          }
+        }, 500);
+        
+      } else if (response.mode === 'background') {
+        // Background processing - show unified progress modal
+        setIsProcessing(false); // Stop initial processing state
+        setShowProgressModal(true);
+        setProgressPercent(5); // Start with small progress
+        
+        // Simulate progress increase to avoid static UI
+        const progressSimulation = setInterval(() => {
+          setProgressPercent(prev => Math.min(prev + 2, 70));
+        }, 1000);
+        
+        // Start polling
+        try {
+          const result = await feinOcrService.pollForBackgroundResult(response.jobId!, (progress) => {
+            clearInterval(progressSimulation);
+            setProgressPercent(progress.percent);
+          });
+          
+          clearInterval(progressSimulation);
+          setShowProgressModal(false);
+          
+          if (result.success && result.loanDraft) {
+            console.log('[FEIN] Background processing completed:', result.loanDraft);
             onFEINDraftReady(result.loanDraft);
           } else {
-            console.warn('[FEIN] No sufficient data extracted, allowing manual completion');
-            showInfo('FEIN procesado. Complete manualmente los campos faltantes.');
-            onFEINDraftReady(result.loanDraft);
-          }
-        } else {
-          // Show error but allow manual creation
-          const errorMsg = result.errors.length > 0 
-            ? result.errors.join('. ') 
-            : 'No se pudo procesar el documento FEIN';
-          
-          if (result.errors.some(error => error.includes('Tiempo de espera agotado'))) {
-            showError(errorMsg, 'Intenta de nuevo o procesa manualmente');
-          } else {
-            showError(errorMsg, 'Puedes crear el préstamo manualmente');
+            handleProcessingError(result.errors, file);
           }
           
-          // Create empty draft for manual entry
-          const emptyDraft: FeinLoanDraft = {
-            metadata: {
-              sourceFileName: file.name,
-              pagesTotal: 1,
-              pagesProcessed: 1,
-              ocrProvider: 'failed',
-              processedAt: new Date().toISOString(),
-              warnings: result.warnings
-            },
-            prestamo: {
-              tipo: null,
-              periodicidadCuota: 'MENSUAL',
-              revisionMeses: null,
-              indiceReferencia: null,
-              valorIndiceActual: null,
-              diferencial: null,
-              tinFijo: null,
-              comisionAperturaPct: null,
-              comisionMantenimientoMes: null,
-              amortizacionAnticipadaPct: null,
-              fechaFirmaPrevista: null,
-              banco: null,
-              capitalInicial: undefined,
-              plazoMeses: undefined,
-              ibanCargoParcial: null
-            },
-            bonificaciones: []
-          };
-          
-          onFEINDraftReady(emptyDraft);
+        } catch (error) {
+          clearInterval(progressSimulation);
+          setShowProgressModal(false);
+          handleProcessingError(['Tardando más de lo habitual. Inténtalo de nuevo.'], file);
         }
-      }, 1000);
+      }
 
     } catch (error) {
       console.error('Error processing FEIN:', error);
       setIsProcessing(false);
-      setIsBackgroundProcessing(false);
-      showError('Error procesando FEIN', 'Intenta de nuevo o crea el préstamo manualmente');
+      setShowProgressModal(false);
+      handleProcessingError(['Error de conexión. Inténtalo de nuevo.'], file);
     }
+  };
+
+  const handleProcessingError = (errors: string[], file: File) => {
+    if (errors.some(error => error.includes('Tardando más de lo habitual'))) {
+      showError('Tardando más de lo habitual. Inténtalo de nuevo.');
+    } else {
+      showError('No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.');
+    }
+    
+    // Create empty draft for manual entry
+    const emptyDraft: FeinLoanDraft = {
+      metadata: {
+        sourceFileName: file.name,
+        pagesTotal: 1,
+        pagesProcessed: 1,
+        ocrProvider: 'failed',
+        processedAt: new Date().toISOString(),
+        warnings: errors
+      },
+      prestamo: {
+        tipo: null,
+        periodicidadCuota: 'MENSUAL',
+        revisionMeses: null,
+        indiceReferencia: null,
+        valorIndiceActual: null,
+        diferencial: null,
+        tinFijo: null,
+        comisionAperturaPct: null,
+        comisionMantenimientoMes: null,
+        amortizacionAnticipadaPct: null,
+        fechaFirmaPrevista: null,
+        banco: null,
+        capitalInicial: undefined,
+        plazoMeses: undefined,
+        ibanCargoParcial: null
+      },
+      bonificaciones: []
+    };
+    
+    onFEINDraftReady(emptyDraft);
   };
 
   if (isProcessing) {
@@ -178,24 +175,12 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             </div>
             
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
-              {isBackgroundProcessing ? 'Procesando FEIN en segundo plano' : 'Procesando FEIN'}
+              Procesando FEIN
             </h3>
             
             <p className="text-sm mb-4" style={{ color: 'var(--text-gray)' }}>
               {processingStage || 'Extrayendo información del préstamo...'}
             </p>
-
-            {/* Background processing banner */}
-            {isBackgroundProcessing && (
-              <div className="mb-4 p-3 rounded-md" style={{ backgroundColor: 'var(--bg)', border: '1px solid var(--atlas-blue)' }}>
-                <p className="text-sm font-medium" style={{ color: 'var(--atlas-blue)' }}>
-                  📄 Procesando FEIN en segundo plano…
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-gray)' }}>
-                  El documento es grande y se está procesando de manera asíncrona
-                </p>
-              </div>
-            )}
 
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
@@ -211,16 +196,54 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             <p className="text-xs mb-4" style={{ color: 'var(--text-gray)' }}>
               {uploadProgress}% completado
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-            {/* Page-specific info */}
-            {totalPages > 0 && (
-              <div className="text-xs space-y-1" style={{ color: 'var(--text-gray)' }}>
-                <p>Página {currentPage} de {totalPages}</p>
-                {uploadProgress === 100 && (
-                  <p className="text-green-600 font-medium">✓ Análisis completado</p>
-                )}
-              </div>
-            )}
+  // Background Processing Modal
+  if (showProgressModal) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="mb-6">
+              <Loader2 className="h-12 w-12 mx-auto animate-spin" style={{ color: 'var(--atlas-blue)' }} />
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--hz-text)' }}>
+              Procesando FEIN…
+            </h3>
+            
+            <p className="text-sm mb-6" style={{ color: 'var(--text-gray)' }}>
+              Estamos extrayendo los datos del documento.
+            </p>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
+              <div 
+                className="h-3 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${progressPercent}%`,
+                  backgroundColor: 'var(--atlas-blue)'
+                }}
+              />
+            </div>
+
+            <p className="text-xs mb-4" style={{ color: 'var(--text-gray)' }}>
+              {progressPercent}% completado
+            </p>
+
+            <button
+              onClick={() => {
+                setShowProgressModal(false);
+                onCancel();
+              }}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       </div>

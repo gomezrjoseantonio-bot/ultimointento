@@ -329,15 +329,20 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
           headers: corsHeaders,
           body: JSON.stringify({
             success: false,
-            error: 'Job not found'
+            message: 'Job no encontrado'
           })
         };
       }
 
-      // Return job status with consistent shape
+      // Return job status with consistent shape per requirements
       const response: any = {
         success: true,
-        status: job.status
+        status: job.status,
+        progress: {
+          percent: job.status === 'pending' ? 30 : job.status === 'processing' ? 60 : 100,
+          pageCurrent: job.metadata?.chunks ? Math.min(job.metadata.chunks, job.metadata?.totalPages || 1) : 1,
+          pagesTotal: job.metadata?.totalPages || 1
+        }
       };
 
       if (job.status === 'completed' && job.result) {
