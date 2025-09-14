@@ -50,6 +50,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               value={formData.capitalInicial ? formatNumber(formData.capitalInicial) : ''}
               onChange={(e) => updateFormData({ capitalInicial: parseNumber(e.target.value) })}
               placeholder="0,00"
+              min="0"
+              max="999999.99"
+              step="0.01"
               className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
                   ? 'border-error-300 focus:border-error-500' 
@@ -317,71 +320,151 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
       {formData.tipo === 'MIXTO' && (
         <div className="bg-info-50 p-4 rounded-atlas border border-info-200">
           <h4 className="font-medium text-atlas-blue mb-3">Configuración Tipo Mixto</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="tramoFijoAnos" className="block text-sm font-medium text-atlas-navy-1 mb-2">
-                Tramo fijo (años) *
-              </label>
-              <input
-                type="number"
-                id="tramoFijoAnos"
-                value={formData.tramoFijoAnos || ''}
-                onChange={(e) => updateFormData({ tramoFijoAnos: parseInt(e.target.value) || undefined })}
-                placeholder="5"
-                min="1"
-                className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue ${
-                  getFieldError('tramoFijoAnos') 
-                    ? 'border-error-300 focus:border-error-500' 
-                    : 'border-gray-300 focus:border-atlas-blue'
-                }`}
-              />
-              {getFieldError('tramoFijoAnos') && (
-                <p className="mt-1 text-sm text-error-600">{getFieldError('tramoFijoAnos')}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="tinTramoFijo" className="block text-sm font-medium text-atlas-navy-1 mb-2">
-                TIN tramo fijo (%) *
-              </label>
-              <div className="relative">
+          
+          {/* Fixed portion */}
+          <div className="mb-4">
+            <h5 className="font-medium text-atlas-navy-1 mb-2">Tramo Fijo</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="tramoFijoAnos" className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Duración (años) *
+                </label>
                 <input
-                  type="text"
-                  id="tinTramoFijo"
-                  value={formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : ''}
-                  onChange={(e) => updateFormData({ tinTramoFijo: parseNumber(e.target.value) })}
-                  placeholder="2,95"
-                  className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
-                    getFieldError('tinTramoFijo') 
+                  type="number"
+                  id="tramoFijoAnos"
+                  value={formData.tramoFijoAnos || ''}
+                  onChange={(e) => updateFormData({ tramoFijoAnos: parseInt(e.target.value) || undefined })}
+                  placeholder="5"
+                  min="1"
+                  className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue ${
+                    getFieldError('tramoFijoAnos') 
                       ? 'border-error-300 focus:border-error-500' 
                       : 'border-gray-300 focus:border-atlas-blue'
                   }`}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span className="text-text-gray text-sm">%</span>
-                </div>
+                {getFieldError('tramoFijoAnos') && (
+                  <p className="mt-1 text-sm text-error-600">{getFieldError('tramoFijoAnos')}</p>
+                )}
               </div>
-              {getFieldError('tinTramoFijo') && (
-                <p className="mt-1 text-sm text-error-600">{getFieldError('tinTramoFijo')}</p>
-              )}
+
+              <div>
+                <label htmlFor="tinTramoFijo" className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  TIN fijo (%) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="tinTramoFijo"
+                    value={formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : ''}
+                    onChange={(e) => updateFormData({ tinTramoFijo: parseNumber(e.target.value) })}
+                    placeholder="2,95"
+                    className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
+                      getFieldError('tinTramoFijo') 
+                        ? 'border-error-300 focus:border-error-500' 
+                        : 'border-gray-300 focus:border-atlas-blue'
+                    }`}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-text-gray text-sm">%</span>
+                  </div>
+                </div>
+                {getFieldError('tinTramoFijo') && (
+                  <p className="mt-1 text-sm text-error-600">{getFieldError('tinTramoFijo')}</p>
+                )}
+              </div>
             </div>
           </div>
-          <p className="text-sm text-text-gray mt-2">
-            Después del tramo fijo, el préstamo pasará a tipo variable (EURIBOR + diferencial)
-          </p>
+
+          {/* Variable portion */}
+          <div className="border-t border-info-200 pt-4">
+            <h5 className="font-medium text-atlas-navy-1 mb-2">Tramo Variable (después del período fijo)</h5>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="indiceMixto" className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Índice de referencia
+                </label>
+                <select
+                  id="indiceMixto"
+                  value={formData.indice || 'EURIBOR'}
+                  onChange={(e) => updateFormData({ indice: e.target.value as 'EURIBOR' | 'OTRO' })}
+                  className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                >
+                  <option value="EURIBOR">EURIBOR</option>
+                  <option value="OTRO">Otro índice</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="valorIndiceMixto" className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Valor índice actual (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="valorIndiceMixto"
+                    value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
+                    onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
+                    placeholder="4,20"
+                    className="w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-text-gray text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="diferencialMixto" className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                  Diferencial (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="diferencialMixto"
+                    value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
+                    onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
+                    placeholder="0,85"
+                    className="w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-text-gray text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
+                Revisión del tramo variable
+              </label>
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => updateFormData({ revision: 6 })}
+                  className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                    formData.revision === 6
+                      ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
+                      : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
+                  }`}
+                >
+                  6 meses
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFormData({ revision: 12 })}
+                  className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                    formData.revision === 12
+                      ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
+                      : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
+                  }`}
+                >
+                  12 meses
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Sistema */}
-      <div>
-        <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
-          Sistema de amortización
-        </label>
-        <div className="inline-flex items-center px-3 py-2 rounded-atlas bg-gray-100 border border-gray-200">
-          <span className="text-atlas-navy-1 font-medium">Sistema Francés</span>
-          <span className="ml-2 text-sm text-text-gray">(cuotas constantes)</span>
-        </div>
-      </div>
 
       {/* Commissions */}
       <div>

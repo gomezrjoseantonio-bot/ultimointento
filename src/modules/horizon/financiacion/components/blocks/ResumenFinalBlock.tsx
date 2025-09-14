@@ -173,7 +173,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           {calculoLive && (
             <div className="bg-ok-50 border border-ok-200 rounded-atlas p-4 mb-6">
               <h4 className="font-medium text-ok-700 mb-3">Cálculo Financiero</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
                   <span className="text-text-gray text-sm block">Cuota Estimada</span>
                   <span className="text-lg font-semibold text-atlas-navy-1">
@@ -184,6 +184,18 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
                   <span className="text-text-gray text-sm block">TAE Aproximada</span>
                   <span className="text-lg font-semibold text-atlas-navy-1">
                     {formatPercentage(calculoLive.taeAproximada)} %
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-gray text-sm block">Coste Total</span>
+                  <span className="text-lg font-semibold text-atlas-navy-1">
+                    {formatNumber((calculoLive.cuotaEstimada * (formData.plazoPeriodo === 'AÑOS' ? (formData.plazoTotal || 0) * 12 : (formData.plazoTotal || 0))))} €
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-gray text-sm block">Intereses Totales</span>
+                  <span className="text-lg font-semibold text-atlas-navy-1">
+                    {formatNumber((calculoLive.cuotaEstimada * (formData.plazoPeriodo === 'AÑOS' ? (formData.plazoTotal || 0) * 12 : (formData.plazoTotal || 0))) - (formData.capitalInicial || 0))} €
                   </span>
                 </div>
                 {calculoLive.proximaFechaRevision && (
@@ -288,10 +300,6 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-text-gray">Sistema:</span>
-                  <span className="font-medium text-atlas-navy-1">Francés</span>
-                </div>
                 {formData.comisionApertura && formData.comisionApertura > 0 && (
                   <div className="flex justify-between">
                     <span className="text-text-gray">Comisión apertura:</span>

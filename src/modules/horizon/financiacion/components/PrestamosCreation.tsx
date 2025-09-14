@@ -165,8 +165,11 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     }
 
     // Step 2 validation
-    if (!formData.capitalInicial || formData.capitalInicial <= 0) {
-      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial es obligatorio y debe ser mayor que 0' });
+    if (!formData.capitalInicial || formData.capitalInicial < 0) {
+      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial es obligatorio y debe ser mayor o igual a 0' });
+    }
+    if (formData.capitalInicial && formData.capitalInicial > 999999.99) {
+      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial no puede superar 999.999,99€' });
     }
     if (!formData.plazoTotal || formData.plazoTotal <= 0) {
       newErrors.push({ field: 'plazoTotal', message: 'El plazo total es obligatorio y debe ser mayor que 0' });
@@ -372,24 +375,6 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
               </p>
             </div>
           </div>
-          
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-atlas text-white bg-atlas-blue hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Guardando...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Guardar
-              </>
-            )}
-          </button>
         </div>
 
         {/* General errors */}
@@ -447,6 +432,27 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
             )}
           </div>
         ))}
+
+        {/* Save Button at Bottom Right */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-atlas text-white bg-atlas-blue hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Guardar
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
