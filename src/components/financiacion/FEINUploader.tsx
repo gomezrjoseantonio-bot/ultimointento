@@ -79,12 +79,10 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
         
         // Calculate overall progress
         let overallProgress = 0;
-        if (progress.stage === 'extracting') {
-          overallProgress = Math.round((progress.currentPage / progress.totalPages) * 60);
-        } else if (progress.stage === 'ocr') {
-          overallProgress = 60 + Math.round((progress.currentPage / progress.totalPages) * 30);
-        } else if (progress.stage === 'parsing') {
-          overallProgress = 90;
+        if (progress.stage === 'uploading') {
+          overallProgress = 20;
+        } else if (progress.stage === 'processing') {
+          overallProgress = 70;
         } else if (progress.stage === 'complete') {
           overallProgress = 100;
         }
@@ -124,8 +122,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           const emptyDraft: FeinLoanDraft = {
             metadata: {
               sourceFileName: file.name,
-              pagesTotal: result.pagesProcessed || 0,
-              pagesProcessed: result.pagesProcessed || 0,
+              pagesTotal: 1,
+              pagesProcessed: 1,
               ocrProvider: 'failed',
               processedAt: new Date().toISOString(),
               warnings: result.warnings

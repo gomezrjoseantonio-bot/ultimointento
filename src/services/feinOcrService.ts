@@ -1,31 +1,14 @@
-// FEIN OCR Service - Rewritten for "texto-primero, OCR-después" pattern
-// Implements client-side PDF text extraction with page-by-page OCR for scanned pages
-// Following problem statement requirements to avoid ResponseSizeTooLarge errors
+// FEIN OCR Service - Serverless DocAI only implementation
+// Eliminates PDF.js workers and client-side processing
+// Uses only /.netlify/functions/ocr-fein for all document processing
 
-import * as pdfjsLib from 'pdfjs-dist';
 import { FeinLoanDraft } from '../types/fein';
-import { FeinTextParser } from './fein/parseFeinText';
-
-// Set up PDF.js worker - Use local static file to avoid CSP issues
-// No dynamic imports - worker loaded directly from static asset
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-}
-
-interface PageProcessingResult {
-  pageNumber: number;
-  text: string;
-  hasNativeText: boolean;
-  needsOCR: boolean;
-  ocrResult?: string;
-  error?: string;
-}
 
 interface ProgressCallback {
   (progress: {
     currentPage: number;
     totalPages: number;
-    stage: 'extracting' | 'ocr' | 'parsing' | 'complete';
+    stage: 'uploading' | 'processing' | 'complete';
     message: string;
   }): void;
 }
@@ -36,39 +19,18 @@ export interface FEINProcessingResult {
   confidence?: number;
   errors: string[];
   warnings: string[];
-  pagesProcessed: number;
-  ocrPagesUsed: number;
   fieldsExtracted: string[];
   fieldsMissing: string[];
-  pendingFields?: string[]; // New field for UX "Pendiente" pattern
-  telemetry?: FEINTelemetryData; // New telemetry data
+  pendingFields?: string[];
+  providerUsed?: string;
   data?: any; // For compatibility with existing code
-}
-
-// New telemetry interface for audit and performance tracking
-export interface FEINTelemetryData {
-  docId: string;
-  pages: number[];
-  processingTimeMs: number;
-  fileSizeKB: number;
-  ocrUsed: boolean[];
-  workerLoadTimeMs?: number;
-  errors: string[];
-  pageProcessingTimes: Record<number, number>;
-  textToOcrRatio: number; // Percentage of pages that used text vs OCR
-  confidence: number;
-  pendingFieldReasons: Record<string, string>; // Why each field is pending
 }
 
 export class FEINOCRService {
   private static instance: FEINOCRService;
   
-  // Constants following problem statement requirements
-  private readonly MIN_TEXT_RATIO = 200; // Minimum characters per page to skip OCR
-  private readonly MAX_CONCURRENT_OCR = 2; // Limit concurrent OCR requests
-  private readonly MAX_IMAGE_WIDTH = 1600; // Max image width for OCR
-  private readonly MAX_PDF_SIZE = 20 * 1024 * 1024; // 20MB max PDF size
-  private readonly WORKER_LOAD_TIMEOUT_MS = 200; // Worker should load in < 200ms
+  // Constants for file validation
+  private readonly MAX_PDF_SIZE = 8 * 1024 * 1024; // 8MB max PDF size (serverless limit)
   
   static getInstance(): FEINOCRService {
     if (!FEINOCRService.instance) {
@@ -78,75 +40,7 @@ export class FEINOCRService {
   }
 
   /**
-   * Check if PDF.js worker loads correctly and measure performance
-   * Logs worker_ok event if loading exceeds 200ms threshold
-   */
-  private async checkWorkerPerformance(): Promise<{ workerOk: boolean; loadTimeMs: number }> {
-    const startTime = performance.now();
-    
-    try {
-      // Create a minimal PDF to test worker loading
-      const testArrayBuffer = new ArrayBuffer(8);
-      const loadingTask = pdfjsLib.getDocument({ data: testArrayBuffer });
-      
-      // Set timeout for worker loading test
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Worker loading timeout')), this.WORKER_LOAD_TIMEOUT_MS)
-      );
-      
-      try {
-        await Promise.race([loadingTask.promise, timeoutPromise]);
-        const loadTimeMs = performance.now() - startTime;
-        
-        // Log event if worker loading exceeds threshold
-        if (loadTimeMs >= this.WORKER_LOAD_TIMEOUT_MS) {
-          console.warn(`[FEIN-WORKER] Worker loading slow: ${loadTimeMs.toFixed(2)}ms (threshold: ${this.WORKER_LOAD_TIMEOUT_MS}ms)`);
-        } else {
-          console.log(`[FEIN-WORKER] Worker loaded successfully in ${loadTimeMs.toFixed(2)}ms`);
-        }
-        
-        return { workerOk: true, loadTimeMs };
-      } catch (error) {
-        const loadTimeMs = performance.now() - startTime;
-        console.warn('[FEIN-WORKER] PDF.js worker loading issue:', error);
-        
-        // Log worker loading failure event
-        console.error(`[FEIN-WORKER] Worker failed to load in ${loadTimeMs.toFixed(2)}ms`);
-        
-        return { workerOk: false, loadTimeMs };
-      }
-    } catch (error) {
-      const loadTimeMs = performance.now() - startTime;
-      console.error('[FEIN-WORKER] PDF.js worker check failed:', error);
-      return { workerOk: false, loadTimeMs };
-    }
-  }
-
-  /**
-   * Log structured telemetry data per problem statement requirements
-   * Format: {docId, pages:[...], ms, sizeKB, ocrUsed:[true/false], errors[]}
-   */
-  private logTelemetry(telemetry: FEINTelemetryData): void {
-    console.log('[FEIN-TELEMETRY]', JSON.stringify({
-      docId: telemetry.docId,
-      pages: telemetry.pages,
-      ms: telemetry.processingTimeMs,
-      sizeKB: telemetry.fileSizeKB,
-      ocrUsed: telemetry.ocrUsed,
-      errors: telemetry.errors,
-      worker_ok: (telemetry.workerLoadTimeMs || 0) < this.WORKER_LOAD_TIMEOUT_MS,
-      worker_load_ms: telemetry.workerLoadTimeMs,
-      pages_ocr: telemetry.ocrUsed.filter(used => used).length,
-      pages_text: telemetry.ocrUsed.filter(used => !used).length,
-      textToOcrRatio: telemetry.textToOcrRatio,
-      confidence: telemetry.confidence,
-      pendingFieldsCount: Object.keys(telemetry.pendingFieldReasons).length,
-      pendingFieldReasons: telemetry.pendingFieldReasons
-    }));
-  }
-
-  /**
-   * Main method: Process FEIN PDF using "texto-primero, OCR-después" pattern
+   * Main method: Process FEIN PDF using serverless DocAI only
    * @param file - PDF file
    * @param onProgress - Progress callback for UI updates
    * @returns Promise with loan draft and processing results
@@ -156,273 +50,129 @@ export class FEINOCRService {
     onProgress?: ProgressCallback
   ): Promise<FEINProcessingResult> {
     const startTime = performance.now();
-    const docId = `fein_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     
-    console.log('[FEIN] Processing document:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`, `docId: ${docId}`);
+    console.log('[FEIN] Processing document:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     
-    // Initialize telemetry
-    const telemetry: FEINTelemetryData = {
-      docId,
-      pages: [],
-      processingTimeMs: 0,
-      fileSizeKB: Math.round(file.size / 1024),
-      ocrUsed: [],
-      errors: [],
-      pageProcessingTimes: {},
-      textToOcrRatio: 0,
-      confidence: 0,
-      pendingFieldReasons: {}
-    };
-
     try {
-      // Check worker performance first
-      const workerCheck = await this.checkWorkerPerformance();
-      telemetry.workerLoadTimeMs = workerCheck.loadTimeMs;
-      
-      if (!workerCheck.workerOk) {
-        telemetry.errors.push(`Worker loading failed in ${workerCheck.loadTimeMs}ms`);
-        console.warn('[FEIN] PDF.js worker loading issue detected');
-      }
-
       // Validate file
       const validation = this.validateFile(file);
       if (!validation.isValid) {
-        telemetry.errors.push(validation.error!);
-        telemetry.processingTimeMs = performance.now() - startTime;
-        this.logTelemetry(telemetry);
-        
         return {
           success: false,
           errors: [validation.error!],
           warnings: [],
-          pagesProcessed: 0,
-          ocrPagesUsed: 0,
           fieldsExtracted: [],
           fieldsMissing: ['all'], // All fields missing if validation failed
-          pendingFields: ['all'],
-          telemetry
+          pendingFields: ['all']
         };
       }
 
       onProgress?.({
         currentPage: 0,
         totalPages: 0,
-        stage: 'extracting',
-        message: 'Analizando documento PDF...'
+        stage: 'uploading',
+        message: 'Subiendo documento para análisis...'
       });
 
-      // Load PDF with PDF.js
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const totalPages = pdf.numPages;
-      
-      telemetry.pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-      console.log(`[FEIN] PDF loaded: ${totalPages} pages`);
-
-      // Process each page: extract text first, OCR if needed
-      const pageResults: PageProcessingResult[] = [];
-      let ocrPagesUsed = 0;
-
-      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-        const pageStartTime = performance.now();
-        
-        onProgress?.({
-          currentPage: pageNum,
-          totalPages,
-          stage: 'extracting',
-          message: `Extrayendo texto de página ${pageNum}/${totalPages}...`
-        });
-
-        try {
-          const pageResult = await this.processPage(pdf, pageNum);
-          pageResults.push(pageResult);
-
-          if (pageResult.needsOCR) {
-            ocrPagesUsed++;
-            telemetry.ocrUsed[pageNum - 1] = true;
-            
-            onProgress?.({
-              currentPage: pageNum,
-              totalPages,
-              stage: 'ocr',
-              message: `Aplicando OCR a página ${pageNum} (imagen escaneada)...`
-            });
-
-            // Perform OCR on this page
-            await this.performPageOCR(pdf, pageNum, pageResult);
-          } else {
-            telemetry.ocrUsed[pageNum - 1] = false;
-          }
-
-          // Track page processing time
-          const pageProcessingTime = performance.now() - pageStartTime;
-          telemetry.pageProcessingTimes[pageNum] = Math.round(pageProcessingTime);
-
-        } catch (error) {
-          console.warn(`[FEIN] Error processing page ${pageNum}:`, error);
-          pageResults.push({
-            pageNumber: pageNum,
-            text: '',
-            hasNativeText: false,
-            needsOCR: false,
-            error: `Error procesando página ${pageNum}`
-          });
-        }
-
-        // Add small delay to prevent UI blocking
-        if (pageNum % 3 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
+      // Call serverless function with PDF blob
+      const response = await fetch('/.netlify/functions/ocr-fein', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/pdf'
+        },
+        body: file
+      });
 
       onProgress?.({
-        currentPage: totalPages,
-        totalPages,
-        stage: 'parsing',
-        message: 'Analizando información del préstamo...'
+        currentPage: 1,
+        totalPages: 1,
+        stage: 'processing',
+        message: 'Procesando documento con DocAI...'
       });
 
-      // Aggregate all text and parse
-      const aggregatedText = this.aggregatePageText(pageResults);
-      
-      if (!aggregatedText || aggregatedText.length < 100) {
-        telemetry.errors.push('Insufficient text extracted from document');
-        telemetry.processingTimeMs = Math.round(performance.now() - startTime);
-        this.logTelemetry(telemetry);
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Error procesando documento FEIN';
         
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          } else if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        } catch {
+          errorMessage = errorText.slice(0, 200) || 'Error de comunicación con el servidor';
+        }
+
         return {
           success: false,
-          errors: ['No se pudo extraer suficiente texto del documento FEIN. Verifica que el archivo sea legible.'],
+          errors: [errorMessage],
           warnings: [],
-          pagesProcessed: totalPages,
-          ocrPagesUsed,
           fieldsExtracted: [],
-          fieldsMissing: ['all'], // All fields missing if no text extracted
-          pendingFields: ['all'],
-          telemetry
+          fieldsMissing: ['all'],
+          pendingFields: ['all']
         };
       }
 
-      // Parse FEIN data from aggregated text
-      const parseResult = FeinTextParser.parseText(
-        aggregatedText,
-        file.name,
-        totalPages,
-        ocrPagesUsed > 0 ? 'mixed' : 'native'
-      );
+      // Parse response from DocAI
+      const json = await response.json();
+      
+      // Log DocAI response for validation
+      console.info('[FEIN] DocAI response', json);
 
       onProgress?.({
-        currentPage: totalPages,
-        totalPages,
+        currentPage: 1,
+        totalPages: 1,
         stage: 'complete',
         message: 'Procesamiento completado'
       });
 
-      if (!parseResult.success || !parseResult.loanDraft) {
-        telemetry.errors.push('Text parsing failed');
-        telemetry.processingTimeMs = Math.round(performance.now() - startTime);
-        this.logTelemetry(telemetry);
-        
+      // Handle DocAI response
+      if (!json.success) {
         return {
           success: false,
-          errors: parseResult.errors,
-          warnings: parseResult.warnings,
-          pagesProcessed: totalPages,
-          ocrPagesUsed,
+          errors: [json.error || 'Error procesando documento con DocAI'],
+          warnings: [],
           fieldsExtracted: [],
-          fieldsMissing: ['all'], // All fields missing if parsing failed
+          fieldsMissing: ['all'],
           pendingFields: ['all'],
-          telemetry
+          providerUsed: json.providerUsed
         };
       }
 
-      // Check if we have minimum required fields (updated to use Pendiente pattern)
-      const hasMinimumData = this.validateMinimumFields(parseResult.loanDraft);
+      // Map DocAI fields to loan draft structure
+      const loanDraft = this.mapFieldsToLoanDraft(json.fields, file.name);
       
       // Determine extracted and missing fields
-      const fieldsExtracted: string[] = [];
-      const fieldsMissing: string[] = [];
+      const { fieldsExtracted, fieldsMissing } = this.analyzeFields(json.fields);
       
-      const draft = parseResult.loanDraft;
-      if (draft.prestamo.banco) fieldsExtracted.push('banco');
-      else {
-        fieldsMissing.push('banco');
-        telemetry.pendingFieldReasons['banco'] = 'Entidad bancaria no detectada en el texto';
-      }
-      
-      if (draft.prestamo.tipo) fieldsExtracted.push('tipo');
-      else {
-        fieldsMissing.push('tipo');
-        telemetry.pendingFieldReasons['tipo'] = 'Tipo de interés no encontrado o ambiguo';
-      }
-      
-      if (draft.prestamo.capitalInicial) fieldsExtracted.push('capitalInicial');
-      else {
-        fieldsMissing.push('capitalInicial');
-        telemetry.pendingFieldReasons['capitalInicial'] = 'Capital inicial no detectado o formato inválido';
-      }
-      
-      if (draft.prestamo.plazoMeses) fieldsExtracted.push('plazoMeses');
-      else {
-        fieldsMissing.push('plazoMeses');
-        telemetry.pendingFieldReasons['plazoMeses'] = 'Plazo del préstamo no encontrado';
-      }
-
-      // Add additional field checks for comprehensive tracking
-      if (draft.prestamo.tinFijo || draft.prestamo.diferencial) fieldsExtracted.push('tin');
-      else {
-        fieldsMissing.push('tin');
-        telemetry.pendingFieldReasons['tin'] = 'TIN/TAE no detectado o formato inválido';
-      }
-
-      if (draft.prestamo.ibanCargoParcial) fieldsExtracted.push('cuentaCargo');
-      else {
-        fieldsMissing.push('cuentaCargo');
-        telemetry.pendingFieldReasons['cuentaCargo'] = 'IBAN de cuenta de cargo no detectado';
-      }
-
-      // Calculate telemetry metrics
-      telemetry.processingTimeMs = Math.round(performance.now() - startTime);
-      telemetry.textToOcrRatio = totalPages > 0 ? Math.round(((totalPages - ocrPagesUsed) / totalPages) * 100) : 0;
-      telemetry.confidence = parseResult.confidence || 0;
-
-      // Log telemetry for audit
-      this.logTelemetry(telemetry);
+      const processingTimeMs = Math.round(performance.now() - startTime);
+      console.log(`[FEIN] Processing completed in ${processingTimeMs}ms`);
       
       return {
         success: true,
-        loanDraft: parseResult.loanDraft,
-        confidence: parseResult.confidence,
-        errors: hasMinimumData.errors,
-        warnings: [...parseResult.warnings, ...hasMinimumData.warnings],
-        pagesProcessed: totalPages,
-        ocrPagesUsed,
+        loanDraft,
+        confidence: json.confidenceGlobal,
+        errors: [],
+        warnings: json.pending.length > 0 ? [`${json.pending.length} campos marcados como pendientes`] : [],
         fieldsExtracted,
         fieldsMissing,
-        pendingFields: hasMinimumData.pendingFields,
-        telemetry,
-        data: parseResult.loanDraft // For compatibility
+        pendingFields: json.pending,
+        providerUsed: json.providerUsed,
+        data: loanDraft // For compatibility
       };
 
     } catch (error) {
       console.error('[FEIN] Error processing FEIN document:', error);
       
-      // Update telemetry with error information
-      telemetry.errors.push(`Processing error: ${error}`);
-      telemetry.processingTimeMs = Math.round(performance.now() - startTime);
-      this.logTelemetry(telemetry);
-      
       return {
         success: false,
-        errors: ['No hemos podido procesar algunas páginas. Reinténtalo o crea el préstamo manualmente.'],
+        errors: ['Error de conexión. Verifica tu conexión a internet e inténtalo de nuevo.'],
         warnings: [],
-        pagesProcessed: 0,
-        ocrPagesUsed: 0,
         fieldsExtracted: [],
-        fieldsMissing: ['all'], // All fields missing on error
-        pendingFields: ['all'],
-        telemetry
+        fieldsMissing: ['all'],
+        pendingFields: ['all']
       };
     }
   }
@@ -449,153 +199,123 @@ export class FEINOCRService {
   }
 
   /**
-   * Process a single page: extract text and determine if OCR is needed
+   * Map DocAI normalized fields to FeinLoanDraft structure
    */
-  private async processPage(
-    pdf: pdfjsLib.PDFDocumentProxy, 
-    pageNumber: number
-  ): Promise<PageProcessingResult> {
-    const page = await pdf.getPage(pageNumber);
-    
-    // Extract text content
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => item.str)
-      .join(' ')
-      .trim();
-
-    // Determine if OCR is needed based on text ratio
-    const hasNativeText = pageText.length >= this.MIN_TEXT_RATIO;
-    const needsOCR = !hasNativeText;
-
+  private mapFieldsToLoanDraft(fields: any, sourceFileName: string): FeinLoanDraft {
     return {
-      pageNumber,
-      text: pageText,
-      hasNativeText,
-      needsOCR
+      metadata: {
+        sourceFileName,
+        pagesTotal: 1, // Not relevant for serverless processing
+        pagesProcessed: 1,
+        ocrProvider: 'docai',
+        processedAt: new Date().toISOString(),
+        warnings: []
+      },
+      prestamo: {
+        tipo: this.extractTipoFromFields(fields),
+        periodicidadCuota: 'MENSUAL', // Default for FEIN
+        revisionMeses: this.extractRevisionMeses(fields.plazoMeses),
+        indiceReferencia: fields.indice ? 'EURIBOR' : null,
+        valorIndiceActual: null,
+        diferencial: fields.diferencial ? parseFloat(fields.diferencial.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
+        tinFijo: fields.tin ? parseFloat(fields.tin.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
+        comisionAperturaPct: this.extractComisionUndefined(fields.comisiones, 'apertura'),
+        comisionMantenimientoMes: this.extractComisionUndefined(fields.comisiones, 'mantenimiento'),
+        amortizacionAnticipadaPct: this.extractComisionUndefined(fields.comisiones, 'amortizacion'),
+        fechaFirmaPrevista: fields.fechaOferta || null,
+        banco: this.extractBanco(fields),
+        capitalInicial: this.extractAmount(fields.capital_inicial),
+        plazoMeses: this.extractNumber(fields.plazoMeses) ?? undefined,
+        ibanCargoParcial: fields.cuentaCargo || null
+      },
+      bonificaciones: this.extractBonificaciones(fields.vinculaciones)
     };
   }
 
   /**
-   * Perform OCR on a scanned page
+   * Analyze fields to determine extracted vs missing
    */
-  private async performPageOCR(
-    pdf: pdfjsLib.PDFDocumentProxy,
-    pageNumber: number,
-    pageResult: PageProcessingResult
-  ): Promise<void> {
-    try {
-      const page = await pdf.getPage(pageNumber);
-      
-      // Render page to canvas
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d')!;
-      
-      // Limit canvas size for performance
-      const scale = Math.min(this.MAX_IMAGE_WIDTH / viewport.width, 2.0);
-      const scaledViewport = page.getViewport({ scale });
-      
-      canvas.width = scaledViewport.width;
-      canvas.height = scaledViewport.height;
-
-      // Render page
-      await page.render({
-        canvasContext: context,
-        viewport: scaledViewport,
-        canvas: canvas
-      }).promise;
-
-      // Convert to image and compress
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-      const imageBase64 = imageDataUrl.split(',')[1];
-
-      // Call OCR endpoint
-      const response = await fetch('/.netlify/functions/fein-ocr-page', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          pageImage: imageBase64,
-          pageNumber
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`OCR request failed: ${response.status}`);
-      }
-
-      const ocrResult = await response.json();
-      
-      if (ocrResult.success && ocrResult.text) {
-        pageResult.ocrResult = ocrResult.text;
-        pageResult.text = ocrResult.text; // Replace with OCR text
-        console.log(`[FEIN] OCR successful for page ${pageNumber}: ${ocrResult.text.length} chars`);
-      } else {
-        throw new Error(ocrResult.error || 'OCR failed');
-      }
-
-    } catch (error) {
-      console.warn(`[FEIN] OCR failed for page ${pageNumber}:`, error);
-      pageResult.error = `OCR falló para página ${pageNumber}`;
-    }
+  private analyzeFields(fields: any): { fieldsExtracted: string[]; fieldsMissing: string[] } {
+    const fieldsExtracted: string[] = [];
+    const fieldsMissing: string[] = [];
+    
+    // Check critical fields
+    if (fields.capital_inicial) fieldsExtracted.push('capitalInicial');
+    else fieldsMissing.push('capitalInicial');
+    
+    if (fields.plazoMeses) fieldsExtracted.push('plazoMeses');
+    else fieldsMissing.push('plazoMeses');
+    
+    if (fields.tin || fields.tae) fieldsExtracted.push('tin');
+    else fieldsMissing.push('tin');
+    
+    if (fields.cuota) fieldsExtracted.push('cuota');
+    else fieldsMissing.push('cuota');
+    
+    if (fields.indice) fieldsExtracted.push('indice');
+    else fieldsMissing.push('indice');
+    
+    if (fields.diferencial) fieldsExtracted.push('diferencial');
+    else fieldsMissing.push('diferencial');
+    
+    if (fields.cuentaCargo) fieldsExtracted.push('cuentaCargo');
+    else fieldsMissing.push('cuentaCargo');
+    
+    return { fieldsExtracted, fieldsMissing };
   }
 
-  /**
-   * Aggregate text from all pages
-   */
-  private aggregatePageText(pageResults: PageProcessingResult[]): string {
-    return pageResults
-      .map(result => result.text)
-      .filter(text => text && text.length > 10) // Filter out empty/minimal text
-      .join('\n\n')
-      .trim();
+  // Helper methods for field extraction
+  private extractTipoFromFields(fields: any): 'FIJO' | 'VARIABLE' | 'MIXTO' | null {
+    if (fields.tin && fields.diferencial) return 'VARIABLE';
+    if (fields.tin && !fields.diferencial) return 'FIJO';
+    return null;
   }
 
-  /**
-   * Validate minimum required fields for loan creation
-   * Updated to use "Pendiente" UX pattern - no hard errors, only warnings
-   */
-  private validateMinimumFields(draft: FeinLoanDraft): { errors: string[]; warnings: string[]; pendingFields: string[] } {
-    const errors: string[] = [];
-    const warnings: string[] = [];
-    const pendingFields: string[] = [];
+  private extractRevisionMeses(plazoValue: any): 6 | 12 | null {
+    const plazo = this.extractNumber(plazoValue);
+    if (!plazo) return null;
+    // Default to 12 months for variable rates
+    return 12;
+  }
 
-    // Track missing critical fields as "Pendiente" instead of errors
-    if (!draft.prestamo.banco) {
-      warnings.push('Entidad bancaria marcada como Pendiente para completar manualmente');
-      pendingFields.push('banco');
-    }
+  private extractNumber(value: any): number | null {
+    if (!value) return null;
+    const num = typeof value === 'string' ? parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) : value;
+    return isNaN(num) ? null : num;
+  }
 
-    if (!draft.prestamo.capitalInicial) {
-      warnings.push('Capital inicial marcado como Pendiente para completar manualmente');
-      pendingFields.push('capitalInicial');
-    }
+  private extractAmount(value: any): number | undefined {
+    if (!value) return undefined;
+    const cleanValue = value.replace(/[^\d.,]/g, '').replace(',', '.');
+    const num = parseFloat(cleanValue);
+    return isNaN(num) ? undefined : num;
+  }
 
-    if (!draft.prestamo.tipo) {
-      warnings.push('Tipo de interés marcado como Pendiente para completar manualmente');
-      pendingFields.push('tipo');
-    }
+  private extractComision(comisiones: any, tipo: string): number | null {
+    if (!comisiones || typeof comisiones !== 'object') return null;
+    const value = comisiones[tipo];
+    return this.extractNumber(value);
+  }
 
-    if (!draft.prestamo.plazoMeses) {
-      warnings.push('Plazo del préstamo marcado como Pendiente para completar manualmente');
-      pendingFields.push('plazoMeses');
-    }
+  private extractComisionUndefined(comisiones: any, tipo: string): number | undefined {
+    if (!comisiones || typeof comisiones !== 'object') return undefined;
+    const value = comisiones[tipo];
+    const num = this.extractNumber(value);
+    return num ?? undefined;
+  }
 
-    // Additional fields that are nice to have but not critical
-    if (!draft.prestamo.tinFijo && !draft.prestamo.diferencial) {
-      warnings.push('TIN/TAE marcado como Pendiente para completar manualmente');
-      pendingFields.push('tin');
-    }
+  private extractBanco(fields: any): string | null {
+    // Try to extract bank name from various possible fields
+    return fields.banco || fields.entidad || null;
+  }
 
-    if (!draft.prestamo.ibanCargoParcial) {
-      warnings.push('Cuenta de cargo marcada como Pendiente para completar manualmente');
-      pendingFields.push('cuentaCargo');
-    }
-
-    // No hard errors - always allow creating draft with pending fields
-    return { errors, warnings, pendingFields };
+  private extractBonificaciones(vinculaciones: any): any[] {
+    if (!Array.isArray(vinculaciones)) return [];
+    return vinculaciones.map(v => ({
+      tipo: v,
+      aplicada: false,
+      descuentoPct: null
+    }));
   }
 
   // Legacy methods for backward compatibility (deprecated)
@@ -606,7 +326,7 @@ export class FEINOCRService {
     return {
       success: result.success,
       jobId: 'legacy-' + Date.now(),
-      pagesTotal: result.pagesProcessed,
+      pagesTotal: 1,
       totalChunks: 1,
       error: result.errors.length > 0 ? result.errors[0] : undefined
     };
