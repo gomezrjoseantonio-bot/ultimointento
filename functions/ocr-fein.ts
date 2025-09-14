@@ -283,7 +283,7 @@ const extractFileFromRequest = (event: HandlerEvent): { content: string; mimeTyp
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
 };
 
 // Main handler
@@ -334,16 +334,21 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         };
       }
 
-      // Return job status
+      // Return job status with consistent shape
       const response: any = {
         success: true,
         status: job.status
       };
 
       if (job.status === 'completed' && job.result) {
-        response.result = job.result;
+        response.result = {
+          providerUsed: job.result.providerUsed || 'docai',
+          fields: job.result.fields || {},
+          pending: job.result.pending || [],
+          confidenceGlobal: job.result.confidenceGlobal || 0
+        };
       } else if (job.status === 'failed' && job.error) {
-        response.error = job.error;
+        response.message = job.error;
       }
 
       return {

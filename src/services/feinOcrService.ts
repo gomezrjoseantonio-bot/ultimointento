@@ -83,13 +83,6 @@ export class FEINOCRService {
         body: file
       });
 
-      onProgress?.({
-        currentPage: 1,
-        totalPages: 1,
-        stage: 'processing',
-        message: 'Procesando documento con DocAI...'
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = 'Error procesando documento FEIN';
@@ -115,52 +108,69 @@ export class FEINOCRService {
         };
       }
 
-      // Parse response from DocAI
+      // Parse response
       const json = await response.json();
       
-      // Log DocAI response for validation
-      console.info('[FEIN] DocAI response', json);
+      // Handle 200 (sync) response
+      if (response.status === 200) {
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] mode', 'sync', null);
+        }
+        
+        console.info('[FEIN] DocAI response', json);
 
-      onProgress?.({
-        currentPage: 1,
-        totalPages: 1,
-        stage: 'complete',
-        message: 'Procesamiento completado'
-      });
+        onProgress?.({
+          currentPage: 1,
+          totalPages: 1,
+          stage: 'complete',
+          message: 'Procesamiento completado'
+        });
 
-      // Handle DocAI response
-      if (!json.success) {
-        return {
-          success: false,
-          errors: [json.error || 'Error procesando documento con DocAI'],
-          warnings: [],
-          fieldsExtracted: [],
-          fieldsMissing: ['all'],
-          pendingFields: ['all'],
-          providerUsed: json.providerUsed
-        };
+        // Assert success and return sync result
+        if (!json.success) {
+          return {
+            success: false,
+            errors: [json.error || 'Error procesando documento con DocAI'],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all'],
+            providerUsed: json.providerUsed
+          };
+        }
+
+        return this.processCompletedResult(json, file.name, startTime);
       }
 
-      // Map DocAI fields to loan draft structure
-      const loanDraft = this.mapFieldsToLoanDraft(json.fields, file.name);
-      
-      // Determine extracted and missing fields
-      const { fieldsExtracted, fieldsMissing } = this.analyzeFields(json.fields);
-      
-      const processingTimeMs = Math.round(performance.now() - startTime);
-      console.log(`[FEIN] Processing completed in ${processingTimeMs}ms`);
-      
+      // Handle 202 (background) response
+      if (response.status === 202) {
+        const { jobId } = json;
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] mode', 'background', jobId);
+        }
+        
+        onProgress?.({
+          currentPage: 1,
+          totalPages: 1,
+          stage: 'processing',
+          message: 'Procesando FEIN en segundo plano...'
+        });
+
+        // Start polling
+        return await this.pollForResult(jobId, onProgress, file.name, startTime);
+      }
+
+      // Unexpected status code
       return {
-        success: true,
-        loanDraft,
-        confidence: json.confidenceGlobal,
-        errors: [],
-        warnings: json.pending.length > 0 ? [`${json.pending.length} campos marcados como pendientes`] : [],
-        fieldsExtracted,
-        fieldsMissing,
-        pendingFields: json.pending,
-        providerUsed: json.providerUsed,
-        data: loanDraft // For compatibility
+        success: false,
+        errors: [`Respuesta inesperada del servidor: ${response.status}`],
+        warnings: [],
+        fieldsExtracted: [],
+        fieldsMissing: ['all'],
+        pendingFields: ['all']
       };
 
     } catch (error) {
@@ -202,6 +212,38 @@ export class FEINOCRService {
    * Map DocAI normalized fields to FeinLoanDraft structure
    */
   private mapFieldsToLoanDraft(fields: any, sourceFileName: string): FeinLoanDraft {
+    // Protection: if fields doesn't exist yet, return empty draft with pending fields
+    if (!fields || typeof fields !== 'object') {
+      return {
+        metadata: {
+          sourceFileName,
+          pagesTotal: 1,
+          pagesProcessed: 1,
+          ocrProvider: 'docai',
+          processedAt: new Date().toISOString(),
+          warnings: ['Campos aún no procesados']
+        },
+        prestamo: {
+          tipo: null,
+          periodicidadCuota: 'MENSUAL',
+          revisionMeses: null,
+          indiceReferencia: null,
+          valorIndiceActual: null,
+          diferencial: null,
+          tinFijo: null,
+          comisionAperturaPct: null,
+          comisionMantenimientoMes: null,
+          amortizacionAnticipadaPct: null,
+          fechaFirmaPrevista: null,
+          banco: null,
+          capitalInicial: undefined,
+          plazoMeses: undefined,
+          ibanCargoParcial: null
+        },
+        bonificaciones: []
+      };
+    }
+
     return {
       metadata: {
         sourceFileName,
@@ -214,21 +256,21 @@ export class FEINOCRService {
       prestamo: {
         tipo: this.extractTipoFromFields(fields),
         periodicidadCuota: 'MENSUAL', // Default for FEIN
-        revisionMeses: this.extractRevisionMeses(fields.plazoMeses),
-        indiceReferencia: fields.indice ? 'EURIBOR' : null,
+        revisionMeses: this.extractRevisionMeses(fields?.plazoMeses),
+        indiceReferencia: fields?.indice ? 'EURIBOR' : null,
         valorIndiceActual: null,
-        diferencial: fields.diferencial ? parseFloat(fields.diferencial.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
-        tinFijo: fields.tin ? parseFloat(fields.tin.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
-        comisionAperturaPct: this.extractComisionUndefined(fields.comisiones, 'apertura'),
-        comisionMantenimientoMes: this.extractComisionUndefined(fields.comisiones, 'mantenimiento'),
-        amortizacionAnticipadaPct: this.extractComisionUndefined(fields.comisiones, 'amortizacion'),
-        fechaFirmaPrevista: fields.fechaOferta || null,
+        diferencial: fields?.diferencial ? parseFloat(fields.diferencial.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
+        tinFijo: fields?.tin ? parseFloat(fields.tin.replace(/[^\d.,]/g, '').replace(',', '.')) : null,
+        comisionAperturaPct: this.extractComisionUndefined(fields?.comisiones, 'apertura'),
+        comisionMantenimientoMes: this.extractComisionUndefined(fields?.comisiones, 'mantenimiento'),
+        amortizacionAnticipadaPct: this.extractComisionUndefined(fields?.comisiones, 'amortizacion'),
+        fechaFirmaPrevista: fields?.fechaOferta || null,
         banco: this.extractBanco(fields),
-        capitalInicial: this.extractAmount(fields.capital_inicial),
-        plazoMeses: this.extractNumber(fields.plazoMeses) ?? undefined,
-        ibanCargoParcial: fields.cuentaCargo || null
+        capitalInicial: this.extractAmount(fields?.capital_inicial),
+        plazoMeses: this.extractNumber(fields?.plazoMeses) ?? undefined,
+        ibanCargoParcial: fields?.cuentaCargo || null
       },
-      bonificaciones: this.extractBonificaciones(fields.vinculaciones)
+      bonificaciones: this.extractBonificaciones(fields?.vinculaciones)
     };
   }
 
@@ -239,26 +281,34 @@ export class FEINOCRService {
     const fieldsExtracted: string[] = [];
     const fieldsMissing: string[] = [];
     
-    // Check critical fields
-    if (fields.capital_inicial) fieldsExtracted.push('capitalInicial');
+    // Protection: if fields doesn't exist yet, all fields are missing
+    if (!fields || typeof fields !== 'object') {
+      return {
+        fieldsExtracted: [],
+        fieldsMissing: ['capitalInicial', 'plazoMeses', 'tin', 'cuota', 'indice', 'diferencial', 'cuentaCargo']
+      };
+    }
+    
+    // Check critical fields with optional chaining
+    if (fields?.capital_inicial) fieldsExtracted.push('capitalInicial');
     else fieldsMissing.push('capitalInicial');
     
-    if (fields.plazoMeses) fieldsExtracted.push('plazoMeses');
+    if (fields?.plazoMeses) fieldsExtracted.push('plazoMeses');
     else fieldsMissing.push('plazoMeses');
     
-    if (fields.tin || fields.tae) fieldsExtracted.push('tin');
+    if (fields?.tin || fields?.tae) fieldsExtracted.push('tin');
     else fieldsMissing.push('tin');
     
-    if (fields.cuota) fieldsExtracted.push('cuota');
+    if (fields?.cuota) fieldsExtracted.push('cuota');
     else fieldsMissing.push('cuota');
     
-    if (fields.indice) fieldsExtracted.push('indice');
+    if (fields?.indice) fieldsExtracted.push('indice');
     else fieldsMissing.push('indice');
     
-    if (fields.diferencial) fieldsExtracted.push('diferencial');
+    if (fields?.diferencial) fieldsExtracted.push('diferencial');
     else fieldsMissing.push('diferencial');
     
-    if (fields.cuentaCargo) fieldsExtracted.push('cuentaCargo');
+    if (fields?.cuentaCargo) fieldsExtracted.push('cuentaCargo');
     else fieldsMissing.push('cuentaCargo');
     
     return { fieldsExtracted, fieldsMissing };
@@ -266,8 +316,9 @@ export class FEINOCRService {
 
   // Helper methods for field extraction
   private extractTipoFromFields(fields: any): 'FIJO' | 'VARIABLE' | 'MIXTO' | null {
-    if (fields.tin && fields.diferencial) return 'VARIABLE';
-    if (fields.tin && !fields.diferencial) return 'FIJO';
+    if (!fields) return null;
+    if (fields?.tin && fields?.diferencial) return 'VARIABLE';
+    if (fields?.tin && !fields?.diferencial) return 'FIJO';
     return null;
   }
 
@@ -306,7 +357,8 @@ export class FEINOCRService {
 
   private extractBanco(fields: any): string | null {
     // Try to extract bank name from various possible fields
-    return fields.banco || fields.entidad || null;
+    if (!fields) return null;
+    return fields?.banco || fields?.entidad || null;
   }
 
   private extractBonificaciones(vinculaciones: any): any[] {
@@ -316,6 +368,135 @@ export class FEINOCRService {
       aplicada: false,
       descuentoPct: null
     }));
+  }
+
+  /**
+   * Process completed result from sync or async response
+   */
+  private processCompletedResult(json: any, fileName: string, startTime: number): FEINProcessingResult {
+    // Map DocAI fields to loan draft structure
+    const loanDraft = this.mapFieldsToLoanDraft(json.fields, fileName);
+    
+    // Determine extracted and missing fields
+    const { fieldsExtracted, fieldsMissing } = this.analyzeFields(json.fields);
+    
+    const processingTimeMs = Math.round(performance.now() - startTime);
+    console.log(`[FEIN] Processing completed in ${processingTimeMs}ms`);
+    
+    return {
+      success: true,
+      loanDraft,
+      confidence: json.confidenceGlobal,
+      errors: [],
+      warnings: json.pending?.length > 0 ? [`${json.pending.length} campos marcados como pendientes`] : [],
+      fieldsExtracted,
+      fieldsMissing,
+      pendingFields: json.pending || [],
+      providerUsed: json.providerUsed,
+      data: loanDraft // For compatibility
+    };
+  }
+
+  /**
+   * Poll for background processing result
+   */
+  private async pollForResult(
+    jobId: string, 
+    onProgress?: ProgressCallback, 
+    fileName?: string, 
+    startTime?: number
+  ): Promise<FEINProcessingResult> {
+    const POLL_INTERVAL_MS = 2000; // 2 seconds
+    const MAX_POLL_TIME_MS = 60000; // 60 seconds
+    const MAX_ATTEMPTS = Math.floor(MAX_POLL_TIME_MS / POLL_INTERVAL_MS); // 30 attempts
+    
+    let attempts = 0;
+    
+    while (attempts < MAX_ATTEMPTS) {
+      try {
+        attempts++;
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] polling attempt', attempts);
+        }
+        
+        const response = await fetch(`/.netlify/functions/ocr-fein?jobId=${jobId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Polling failed: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Telemetry logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[FEIN] polling status', result.status);
+        }
+        
+        onProgress?.({
+          currentPage: 1,
+          totalPages: 1,
+          stage: 'processing',
+          message: `Procesando FEIN en segundo plano... (${attempts}/${MAX_ATTEMPTS})`
+        });
+        
+        if (result.success && result.status === 'completed' && result.result) {
+          // Processing completed successfully
+          onProgress?.({
+            currentPage: 1,
+            totalPages: 1,
+            stage: 'complete',
+            message: 'Procesamiento completado'
+          });
+          
+          return this.processCompletedResult(result.result, fileName || 'unknown.pdf', startTime || performance.now());
+        }
+        
+        if (result.status === 'failed') {
+          // Processing failed
+          return {
+            success: false,
+            errors: [result.message || 'Error procesando documento en segundo plano'],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all']
+          };
+        }
+        
+        // Still pending/processing, wait and retry
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+        
+      } catch (error) {
+        console.error(`[FEIN] Polling attempt ${attempts} failed:`, error);
+        
+        // On the last attempt, return error
+        if (attempts >= MAX_ATTEMPTS) {
+          return {
+            success: false,
+            errors: ['Error verificando el estado del procesamiento'],
+            warnings: [],
+            fieldsExtracted: [],
+            fieldsMissing: ['all'],
+            pendingFields: ['all']
+          };
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+    }
+    
+    // Timeout reached
+    return {
+      success: false,
+      errors: ['Tiempo de espera agotado. Intenta de nuevo'],
+      warnings: [],
+      fieldsExtracted: [],
+      fieldsMissing: ['all'],
+      pendingFields: ['all']
+    };
   }
 
   // Legacy methods for backward compatibility (deprecated)
