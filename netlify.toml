@@ -5,6 +5,8 @@
 [functions]
   directory = "functions"
   node_bundler = "esbuild"
+
+[functions."*"]
   timeout = 26
 
 [[redirects]]
@@ -17,7 +19,6 @@
   to = "/index.html"
   status = 200
 
-# (Opcional) headers de seguridad que ya tenías:
 [[headers]]
   for = "/*"
   [headers.values]
