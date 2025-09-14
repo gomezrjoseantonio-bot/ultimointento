@@ -6,6 +6,7 @@ import { PDFDocument } from 'pdf-lib';
 import { normalizeFeinFromDocAI } from '../src/services/ocr/normalize-docai';
 import { processWithDocAI } from '../src/services/documentaiClient';
 import { OCR_CONFIG } from '../src/config/ocr.config';
+import { getStore } from '@netlify/blobs';
 
 // Constants for chunking and processing
 const MAX_PAGES_TOTAL = 60; // Hard cap: >60 pages = 413 error
@@ -17,24 +18,21 @@ const BACKGROUND_THRESHOLD_KB = 8192; // Auto-background if >8MB
 
 // Interfaces for job management
 interface FeinBackgroundJob {
-  jobId: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress: { 
+    percent: number; 
+    pageCurrent?: number; 
+    pagesTotal?: number; 
+  };
   result?: {
-    success: boolean;
     providerUsed: string;
-    docId: string;
     fields: any;
-    confidenceGlobal: number;
     pending: string[];
+    confidenceGlobal: number;
   };
   error?: string;
-  startedAt: string;
-  completedAt?: string;
-  metadata?: {
-    totalPages: number;
-    chunks: number;
-    processingTimeMs?: number;
-  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Helper to generate document ID
@@ -43,20 +41,39 @@ const generateDocId = (): string => `fein_${Date.now()}_${Math.random().toString
 // Helper to generate job ID
 const generateJobId = (): string => `job_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-// Job storage functions (simplified for demo - use Netlify Blobs in production)
+// Netlify Blobs storage helpers
+const BUCKET = 'fein-jobs';
+const jobKey = (id: string) => `job:${id}`;
+
+const putJob = async (id: string, data: FeinBackgroundJob): Promise<void> => {
+  try {
+    const store = getStore(BUCKET);
+    await store.set(jobKey(id), JSON.stringify(data));
+    console.info('[FEIN] job', { jobId: id, status: data.status, percent: data.progress?.percent });
+  } catch (error) {
+    console.error('Error saving job to blobs:', error);
+    throw error;
+  }
+};
+
+const getJob = async (id: string): Promise<FeinBackgroundJob | null> => {
+  try {
+    const store = getStore(BUCKET);
+    const jobData = await store.get(jobKey(id));
+    return jobData ? JSON.parse(jobData) : null;
+  } catch (error) {
+    console.error('Error retrieving job from blobs:', error);
+    return null;
+  }
+};
+
+// Job storage functions (using Netlify Blobs)
 const setJobStatus = async (jobId: string, job: FeinBackgroundJob): Promise<void> => {
-  // In production, use Netlify Blobs:
-  // const { store } = await getStore({ name: 'fein-jobs', siteID: process.env.SITE_ID });
-  // await store.set(jobId, JSON.stringify(job));
-  console.info(`Job ${jobId} status:`, job.status);
+  await putJob(jobId, job);
 };
 
 const getJobStatus = async (jobId: string): Promise<FeinBackgroundJob | null> => {
-  // In production, retrieve from Netlify Blobs:
-  // const { store } = await getStore({ name: 'fein-jobs', siteID: process.env.SITE_ID });
-  // const jobData = await store.get(jobId);
-  // return jobData ? JSON.parse(jobData) : null;
-  return null; // For demo, always return null (not found)
+  return await getJob(jobId);
 };
 
 // Count PDF pages
@@ -432,18 +449,11 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       const response: any = {
         success: true,
         status: job.status,
-        progress: {
-          percent: job.status === 'pending' ? 30 : job.status === 'processing' ? 60 : 100
-        }
+        progress: job.progress
       };
 
       if (job.status === 'completed' && job.result) {
-        response.result = {
-          providerUsed: job.result.providerUsed || 'docai',
-          fields: job.result.fields || {},
-          pending: job.result.pending || [],
-          confidenceGlobal: job.result.confidenceGlobal || 0
-        };
+        response.result = job.result;
       } else if (job.status === 'failed' && job.error) {
         response.message = job.error;
       }
@@ -541,11 +551,15 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
       console.info('Using background mode', { totalPages, sizeKB: fileData.sizeKB, mode: 'background' });
       
       // Initialize job status
+      const now = new Date().toISOString();
       await setJobStatus(jobId, {
-        jobId,
         status: 'pending',
-        startedAt: new Date().toISOString(),
-        metadata: { totalPages, chunks: Math.ceil(totalPages / PAGES_PER_CHUNK) }
+        progress: { 
+          percent: 0, 
+          pagesTotal: totalPages 
+        },
+        createdAt: now,
+        updatedAt: now
       });
 
       // Call background function
@@ -615,11 +629,15 @@ export const handler: Handler = async (event: HandlerEvent, context: HandlerCont
         });
 
         // Initialize job status
+        const now = new Date().toISOString();
         await setJobStatus(jobId, {
-          jobId,
           status: 'pending',
-          startedAt: new Date().toISOString(),
-          metadata: { totalPages, chunks: Math.ceil(totalPages / PAGES_PER_CHUNK) }
+          progress: { 
+            percent: 0, 
+            pagesTotal: totalPages 
+          },
+          createdAt: now,
+          updatedAt: now
         });
 
         // Call background function
