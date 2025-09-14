@@ -3,7 +3,7 @@
 // Following exact requirements from problem statement
 
 export interface DetectionResult {
-  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros';
+  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'fein' | 'otros';
   confidence: number;
   shouldSkipOCR: boolean;
   reason: string;
@@ -30,13 +30,19 @@ export const detectDocumentType = async (
     return bankResult;
   }
 
-  // 2. RECIBO_SEPA detection (launch OCR)
+  // 2. FEIN detection (special processing) - high priority
+  const feinResult = await detectFEIN(file, fileName, mimeType);
+  if (feinResult.documentType === 'fein') {
+    return feinResult;
+  }
+
+  // 3. RECIBO_SEPA detection (launch OCR)
   const reciboResult = detectReciboSepa(fileName);
   if (reciboResult.documentType === 'recibo_sepa') {
     return reciboResult;
   }
 
-  // 3. FACTURA detection (launch OCR)
+  // 4. FACTURA detection (launch OCR)
   const facturaResult = detectFactura(fileName, mimeType);
   if (facturaResult.documentType === 'factura') {
     return facturaResult;
@@ -50,6 +56,84 @@ export const detectDocumentType = async (
     reason: 'No specific patterns detected - default to otros',
     triggers: ['unknown_type'],
     tipo: 'other'
+  };
+};
+
+/**
+ * Detect FEIN documents - should use specialized FEIN processing
+ */
+const detectFEIN = async (file: File, fileName: string, mimeType: string): Promise<DetectionResult> => {
+  // Only process PDFs for FEIN detection
+  if (mimeType !== 'application/pdf') {
+    return {
+      documentType: 'otros',
+      confidence: 0,
+      shouldSkipOCR: false,
+      reason: 'Not a PDF document',
+      triggers: []
+    };
+  }
+
+  // Check filename patterns
+  const feinFileKeywords = [
+    'fein', 'ficha europea', 'informacion normalizada', 
+    'hipoteca', 'prestamo', 'loan information'
+  ];
+  
+  const fileKeywordMatches = feinFileKeywords.filter(keyword => 
+    fileName.includes(keyword.replace(' ', ''))
+  );
+
+  // If filename suggests FEIN, do quick content check
+  if (fileKeywordMatches.length > 0) {
+    try {
+      const quickContentCheck = await performQuickFEINContentCheck(file);
+      if (quickContentCheck.isFEIN) {
+        return {
+          documentType: 'fein',
+          confidence: 0.9,
+          shouldSkipOCR: false, // FEIN needs specialized processing
+          reason: `FEIN detected: ${quickContentCheck.triggers.join(', ')}`,
+          triggers: [...fileKeywordMatches, ...quickContentCheck.triggers],
+          tipo: 'fein'
+        };
+      }
+    } catch (error) {
+      console.warn('FEIN content check failed:', error);
+    }
+  }
+
+  return {
+    documentType: 'otros',
+    confidence: 0,
+    shouldSkipOCR: false,
+    reason: 'Not a FEIN document',
+    triggers: []
+  };
+};
+
+/**
+ * Quick content check for FEIN documents using text extraction
+ */
+const performQuickFEINContentCheck = async (file: File): Promise<{ isFEIN: boolean; triggers: string[] }> => {
+  // This would typically use a PDF text extraction library
+  // For now, we'll return a placeholder implementation
+  // In production, this should extract first few pages and look for FEIN markers
+  
+  const triggers: string[] = [];
+  
+  // Simulated FEIN detection - in real implementation, extract text from PDF
+  // and look for key phrases like:
+  // - "Ficha Europea de Información Normalizada"
+  // - "FEIN"
+  // - Combined with financial terms: "TAE", "TIN", "Euríbor", "diferencial"
+  
+  // For now, we'll use filename as primary indicator
+  // This should be replaced with actual PDF text extraction
+  
+  return {
+    isFEIN: false, // Conservative approach - require stronger signals
+    triggers
   };
 };
 

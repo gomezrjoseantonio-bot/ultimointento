@@ -33,8 +33,8 @@ export interface InboxItem {
   status: 'received' | 'ocr_running' | 'ocr_ok' | 'ocr_failed' | 'ocr_timeout' | 'classified_ok' | 'needs_review' | 'archived' | 'deleted';
   
   // Document type detection
-  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros';
-  subtype?: 'suministro' | 'reforma' | 'recibo' | 'factura_generica';
+  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'fein' | 'otros';
+  subtype?: 'suministro' | 'reforma' | 'recibo' | 'factura_generica' | 'fein_completa' | 'fein_revision';
   
   // OCR data with confidence and job tracking
   ocr: {
@@ -64,8 +64,8 @@ export interface InboxItem {
   
   // Auto-destination and routing result
   destRef?: {                   // adonde se guardó de verdad
-    kind: 'gasto' | 'movimiento';
-    id: string;                 // id del gasto o movimiento creado
+    kind: 'gasto' | 'movimiento' | 'prestamo' | 'fein_review';
+    id: string;                 // id del gasto, movimiento, préstamo o item para revisión
     path: string;               // ej. "Inmuebles > Gastos > Suministros"
   } | null;
   
@@ -88,7 +88,8 @@ export interface InboxItem {
 export interface InboxLogEntry {
   timestamp: string;
   code: 'INBOX_RECEIVED' | 'OCR_QUEUED' | 'OCR_STARTED' | 'OCR_SUCCEEDED' | 'OCR_FAILED' | 'OCR_TIMEOUT' | 
-        'AUTO_DESTINATION_INFERRED' | 'CLASSIFICATION_OK' | 'CLASSIFICATION_NEEDS_REVIEW' | 'ARCHIVED_TO' | 'DELETE';
+        'AUTO_DESTINATION_INFERRED' | 'CLASSIFICATION_OK' | 'CLASSIFICATION_NEEDS_REVIEW' | 'ARCHIVED_TO' | 'DELETE' |
+        'FEIN_PARSE_START' | 'FEIN_PARSE_OK' | 'FEIN_PARSE_MISSING_FIELDS' | 'FEIN_CREATE_LOAN_OK' | 'FEIN_ERROR';
   message: string;
   meta?: Record<string, any>;
 }
@@ -135,12 +136,13 @@ export interface OCRExtractionResult {
 
 // Document Classification Result
 export interface ClassificationResult {
-  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros';
-  subtype: 'suministro' | 'reforma' | 'recibo' | 'factura_generica';
+  documentType: 'factura' | 'recibo_sepa' | 'extracto_banco' | 'fein' | 'otros';
+  subtype: 'suministro' | 'reforma' | 'recibo' | 'factura_generica' | 'fein_completa' | 'fein_revision';
   confidence: number;
   matchedKeywords: string[];
   reasoning: string;
   shouldSkipOCR?: boolean; // true for extracto_banco
+  metadata?: any; // Additional classification metadata (e.g., FEIN data)
 }
 
 // Property Detection Result with heuristics
@@ -176,12 +178,14 @@ export interface RoutingDestinationResult {
   success: boolean;
   requiresReview: boolean;
   destRef?: {
-    kind: 'gasto' | 'movimiento';
+    kind: 'gasto' | 'movimiento' | 'prestamo' | 'fein_review';
     id: string;
     path: string;
   };
   errorMessage?: string;
   reviewReason?: string;
+  message?: string;
+  warnings?: string[];
 }
 
 // Queue Processing Task with priority and retry logic

@@ -18,8 +18,10 @@ const StatusChip: React.FC<StatusChipProps> = ({ status, warnings = [], classNam
       case 'procesado':
       case 'importado':
       case 'completado':
+      case 'auto-guardado ok':
+      case 'classified_ok':
         return {
-          label: 'Procesado',
+          label: normalizedStatus.includes('auto-guardado') ? 'Auto-guardado OK (72h)' : 'Procesado',
           icon: CheckCircle,
           bgColor: 'bg-success-100',
           textColor: 'text-success-800',
@@ -30,8 +32,12 @@ const StatusChip: React.FC<StatusChipProps> = ({ status, warnings = [], classNam
       case 'warning':
       case 'incompleto':
       case 'procesado_ocr':
+      case 'needs_review':
+      case 'revisión':
+      case 'fein_revision':
         return {
-          label: warnings.length > 0 ? 'Warning' : 'Incompleto',
+          label: normalizedStatus.includes('fein') ? 'Revisión' : 
+                 warnings.length > 0 ? 'Warning' : 'Incompleto',
           icon: AlertTriangle,
           bgColor: 'bg-amber-100',
           textColor: 'text-amber-800',

@@ -11,6 +11,8 @@ interface InboxQueueProps {
   onDeleteDocument?: (documentId: number) => void;
   onAssignDocument?: (document: any) => void;
   onDownloadDocument?: (document: any) => void;
+  onViewFEINFields?: (document: any) => void;
+  onOpenInFinanciacion?: (loanId: string) => void;
   loading: boolean;
   selectedDocuments?: number[];
   onToggleDocumentSelection?: (docId: number) => void;
@@ -24,6 +26,8 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
   onDeleteDocument,
   onAssignDocument,
   onDownloadDocument,
+  onViewFEINFields,
+  onOpenInFinanciacion,
   loading,
   selectedDocuments = [],
   onToggleDocumentSelection,
@@ -51,8 +55,48 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     return <FileText className="w-4 h-4 text-neutral-500" />;
   };
 
-  // H3: Get document status with new states (Pendiente, Incompleto, Importado, Error, Duplicado)
+  // Get document status with FEIN support
   const getStatusWithWarnings = (doc: any) => {
+    // Handle modern inbox item structure
+    if (doc.status) {
+      let status = doc.status;
+      const warnings = [];
+      
+      // Map modern status to display status
+      switch (doc.status) {
+        case 'classified_ok':
+          if (doc.subtype === 'fein_completa') {
+            status = 'auto-guardado ok';
+          } else {
+            status = 'procesado';
+          }
+          break;
+        case 'needs_review':
+          if (doc.subtype === 'fein_revision') {
+            status = 'revisión';
+          } else {
+            status = 'incompleto';
+          }
+          break;
+        case 'ocr_failed':
+        case 'ocr_timeout':
+          status = 'error';
+          break;
+        case 'received':
+        case 'ocr_running':
+          status = 'pendiente';
+          break;
+      }
+      
+      // Add validation warnings
+      if (doc.validation?.criticalFieldsMissing?.length > 0) {
+        warnings.push(`Faltan: ${doc.validation.criticalFieldsMissing.join(', ')}`);
+      }
+      
+      return { status, warnings };
+    }
+    
+    // Legacy fallback
     const status = doc.metadata?.queueStatus || doc.metadata?.status || 'pendiente';
     const warnings = [];
     
@@ -89,8 +133,27 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     );
   };
 
-  // Extract amount from document (OCR or metadata)
+  // Extract amount from document (OCR, FEIN or metadata)
   const getDocumentAmount = (doc: any) => {
+    // FEIN documents - show capital inicial
+    if (doc.documentType === 'fein' || doc.subtype?.includes('fein')) {
+      const feinData = doc.ocr?.data?.metadata?.feinData;
+      if (feinData?.capitalInicial) {
+        return new Intl.NumberFormat('es-ES', {
+          style: 'currency',
+          currency: 'EUR'
+        }).format(feinData.capitalInicial);
+      }
+    }
+    
+    // Modern inbox structure
+    if (doc.summary?.total_amount) {
+      return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR'
+      }).format(doc.summary.total_amount);
+    }
+    
     try {
       if (doc.metadata?.ocr?.status === 'completed') {
         const aligned = alignDocumentAI(doc.metadata.ocr);
@@ -109,8 +172,21 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     return '-';
   };
 
-  // Extract supplier/bank from document
+  // Extract supplier/bank from document (including FEIN)
   const getSupplierOrBank = (doc: any) => {
+    // FEIN documents - show banco/entidad
+    if (doc.documentType === 'fein' || doc.subtype?.includes('fein')) {
+      const feinData = doc.ocr?.data?.metadata?.feinData;
+      if (feinData?.bancoEntidad) {
+        return feinData.bancoEntidad;
+      }
+    }
+    
+    // Modern inbox structure
+    if (doc.summary?.supplier_name) {
+      return doc.summary.supplier_name;
+    }
+    
     try {
       if (doc.metadata?.ocr?.status === 'completed') {
         const aligned = alignDocumentAI(doc.metadata.ocr);
@@ -242,7 +318,10 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                   </div>
                 </td>
                 <td className="py-3 px-4 text-sm text-neutral-600">
-                  {doc.metadata?.tipo || 'Otros'}
+                  {doc.documentType === 'fein' ? 'FEIN' : 
+                   doc.subtype === 'fein_completa' ? 'FEIN Completa' :
+                   doc.subtype === 'fein_revision' ? 'FEIN (Revisión)' :
+                   doc.metadata?.tipo || doc.documentType || 'Otros'}
                 </td>
                 <td className="py-3 px-4">
                   {(() => {
@@ -269,6 +348,8 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                     onAssign={onAssignDocument}
                     onDelete={onDeleteDocument}
                     onDownload={onDownloadDocument}
+                    onViewFEINFields={onViewFEINFields}
+                    onOpenInFinanciacion={onOpenInFinanciacion}
                   />
                 </td>
               </tr>

@@ -224,10 +224,12 @@ export function getClassificationExplanation(result: ClassificationResult): stri
     'suministro': 'Suministro',
     'recibo': 'Recibo',
     'reforma': 'Reforma',
-    'factura_generica': 'Factura Genérica'
+    'factura_generica': 'Factura Genérica',
+    'fein_completa': 'FEIN Completa',
+    'fein_revision': 'FEIN para Revisión'
   };
   
-  const typeName = subtypeNames[result.subtype];
+  const typeName = subtypeNames[result.subtype] || result.subtype;
   const confidence = Math.round(result.confidence * 100);
   
   if (result.matchedKeywords.length > 0) {

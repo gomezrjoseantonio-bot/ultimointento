@@ -21,9 +21,12 @@ export class FEINOCRService {
    * @returns Structured FEIN data with validation
    */
   async processFEINDocument(file: File): Promise<FEINProcessingResult> {
+    console.log('[FEIN] Starting FEIN processing:', file.name);
+    
     try {
       // Validate file is PDF
       if (file.type !== 'application/pdf') {
+        console.log('[FEIN] Invalid file type:', file.type);
         return {
           success: false,
           errors: ['Solo se permiten archivos PDF para documentos FEIN'],
@@ -37,6 +40,7 @@ export class FEINOCRService {
       const ocrResult = await unifiedOcrService.processDocument(file);
       
       if (!ocrResult.success || !ocrResult.data?.raw_text) {
+        console.log('[FEIN] OCR processing failed:', ocrResult);
         return {
           success: false,
           errors: ['No se pudo procesar el documento FEIN. Verifique que sea un PDF legible.'],
@@ -46,9 +50,26 @@ export class FEINOCRService {
         };
       }
 
+      console.log('[FEIN] OCR successful, extracting FEIN data...');
+
+      // Check if this is actually a FEIN document
+      const isFEINDocument = this.validateFEINDocument(ocrResult.data.raw_text);
+      if (!isFEINDocument.isValid) {
+        console.log('[FEIN] Document validation failed:', isFEINDocument.reason);
+        return {
+          success: false,
+          errors: [isFEINDocument.reason || 'El documento no parece ser una FEIN válida'],
+          warnings: [],
+          fieldsExtracted: [],
+          fieldsMissing: []
+        };
+      }
+
       // Extract FEIN-specific data from OCR text
       const feinData = this.extractFEINData(ocrResult.data.raw_text);
-      const validation = this.validateFEINData(feinData);
+      const validation = this.validateExtractedFEINData(feinData);
+      
+      console.log(`[FEIN] Extraction complete. Fields extracted: ${this.getExtractedFields(feinData).join(', ')}`);
       
       return {
         success: true,
@@ -61,7 +82,7 @@ export class FEINOCRService {
       };
 
     } catch (error) {
-      console.error('Error processing FEIN document:', error);
+      console.error('[FEIN] Error processing FEIN document:', error);
       return {
         success: false,
         errors: ['Error interno procesando el documento FEIN'],
@@ -88,22 +109,26 @@ export class FEINOCRService {
       tae: this.extractTAE(text),
       plazoAnos: this.extractPlazoAnos(text),
       plazoMeses: this.extractPlazoMeses(text),
-      tipo: this.extractTipoInteres(text),
+      tipo: this.extractTipoInteres(text, rawText), // Pass original text for better pattern matching
       
       // Variable/Mixed specific
       indice: this.extractIndice(text),
       diferencial: this.extractDiferencial(text),
       tramoFijoAnos: this.extractTramoFijo(text),
+      periodicidadRevision: this.extractPeriodicidadRevision(text),
       
       // Account and dates
       cuentaCargoIban: this.extractIBAN(text),
+      ibanMascarado: this.isIBANMasked(text),
       fechaPrimerPago: this.extractFechaPrimerPago(text),
+      fechaEmisionFEIN: this.extractFechaEmisionFEIN(text),
       
       // Bonifications and commissions
-      bonificaciones: this.extractBonificaciones(text),
+      bonificaciones: this.extractBonificaciones(text, rawText),
       comisionApertura: this.extractComisionApertura(text),
       comisionAmortizacionParcial: this.extractComisionAmortizacion(text),
       comisionCancelacionTotal: this.extractComisionCancelacion(text),
+      comisionSubrogacion: this.extractComisionSubrogacion(text),
       
       rawText
     };
@@ -140,16 +165,22 @@ export class FEINOCRService {
   }
 
   private extractCapital(text: string): number | undefined {
-    // Look for capital patterns: "importe", "capital", "prestado", etc.
+    // Enhanced patterns for Spanish capital detection
     const capitalPatterns = [
       /(?:capital|importe|prestado|financiado)[:\s]*([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*€?/i,
-      /([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*€?\s*(?:capital|importe|prestado)/i
+      /([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*€?\s*(?:capital|importe|prestado|del\s+préstamo)/i,
+      /importe\s+del\s+préstamo[:\s]*([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*€?/i,
+      /capital\s+inicial[:\s]*([0-9]{1,3}(?:\.[0-9]{3})*(?:,[0-9]{2})?)\s*€?/i
     ];
 
     for (const pattern of capitalPatterns) {
       const match = this.extractMatch(text, pattern);
       if (match) {
-        return this.parseSpanishNumber(match);
+        const amount = this.parseSpanishNumber(match);
+        // Validate reasonable range for mortgage capital
+        if (amount >= 1000 && amount <= 10000000) {
+          return amount;
+        }
       }
     }
     return undefined;
@@ -218,10 +249,31 @@ export class FEINOCRService {
     return undefined;
   }
 
-  private extractTipoInteres(text: string): 'FIJO' | 'VARIABLE' | 'MIXTO' | undefined {
-    if (text.includes('mixto')) return 'MIXTO';
+  private extractTipoInteres(text: string, originalText?: string): 'FIJO' | 'VARIABLE' | 'MIXTO' | undefined {
+    // Check for mixed indicators first (more specific)
+    if (text.includes('mixto') || 
+        (text.includes('periodo fijo') && text.includes('posteriormente variable'))) {
+      return 'MIXTO';
+    }
+    
+    // Heuristic: if appears "Tipo fijo/TIN" and NO "Euríbor", is Fixed
+    const hasTipoFijo = text.includes('tipo fijo') || text.includes('tin');
+    const hasEuribor = text.includes('euribor') || text.includes('euríbor');
+    const hasDiferencial = text.includes('diferencial');
+    
+    if (hasTipoFijo && !hasEuribor) {
+      return 'FIJO';
+    }
+    
+    // If appears "Euríbor" and "diferencial", is Variable
+    if (hasEuribor && hasDiferencial) {
+      return 'VARIABLE';
+    }
+    
+    // Simple keyword matching as fallback
     if (text.includes('variable')) return 'VARIABLE';
     if (text.includes('fijo')) return 'FIJO';
+    
     return undefined;
   }
 
@@ -262,9 +314,24 @@ export class FEINOCRService {
   }
 
   private extractIBAN(text: string): string | undefined {
-    const ibanPattern = /ES[0-9]{2}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}\s*[0-9]{4}/i;
-    const match = this.extractMatch(text, ibanPattern, 0); // Get full match, not group
-    return match ? match.replace(/\s/g, '') : undefined;
+    // Enhanced IBAN patterns including masked ones
+    const ibanPatterns = [
+      /ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      /iban[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i,
+      /cuenta[:\s]*ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i
+    ];
+    
+    for (const pattern of ibanPatterns) {
+      const match = this.extractMatch(text, pattern, 0); // Get full match, not group
+      if (match) {
+        // Extract just the IBAN part and clean spaces
+        const iban = match.replace(/.*?(ES[0-9*]{22}).*/, '$1').replace(/\s/g, '');
+        if (iban.startsWith('ES') && iban.length === 24) {
+          return iban;
+        }
+      }
+    }
+    return undefined;
   }
 
   private extractFechaPrimerPago(text: string): string | undefined {
@@ -282,30 +349,136 @@ export class FEINOCRService {
     return undefined;
   }
 
-  private extractBonificaciones(text: string): FEINBonificacion[] {
-    const bonificaciones: FEINBonificacion[] = [];
-    
-    // Common bonification patterns
+  private extractPeriodicidadRevision(text: string): number | undefined {
     const patterns = [
-      { type: 'SEGURO_HOGAR', keywords: ['seguro hogar', 'seguro vivienda'] },
-      { type: 'SEGURO_VIDA', keywords: ['seguro vida'] },
-      { type: 'RECIBOS', keywords: ['domiciliación', 'recibos'] },
-      { type: 'TARJETA', keywords: ['tarjeta', 'card'] },
-      { type: 'PLAN_PENSIONES', keywords: ['plan pensiones', 'pensión'] },
-      { type: 'INGRESOS_RECURRENTES', keywords: ['nómina', 'ingresos recurrentes'] }
+      /revisión[:\s]*cada\s*([0-9]+)\s*meses?/i,
+      /periodicidad[:\s]*(?:de\s*)?revisión[:\s]*([0-9]+)\s*meses?/i,
+      /revisión[:\s]*([0-9]+)\s*meses?/i,
+      /([0-9]+)\s*meses?\s*(?:de\s*)?revisión/i
     ];
 
-    patterns.forEach(({ type, keywords }) => {
+    for (const pattern of patterns) {
+      const match = this.extractMatch(text, pattern);
+      if (match) {
+        const months = parseInt(match);
+        // Only accept common review periods
+        if (months === 6 || months === 12) {
+          return months;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private isIBANMasked(text: string): boolean {
+    // Check if IBAN contains asterisks/masking
+    const ibanPattern = /ES[0-9*]{2}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}\s*[0-9*]{4}/i;
+    const match = text.match(ibanPattern);
+    return match ? match[0].includes('*') : false;
+  }
+
+  private extractFechaEmisionFEIN(text: string): string | undefined {
+    const patterns = [
+      /fecha\s+(?:de\s+)?emisión[:\s]*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i,
+      /emitida?\s+(?:el\s+)?([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i,
+      /fecha\s+fein[:\s]*([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = this.extractMatch(text, pattern);
+      if (match) {
+        return this.parseSpanishDate(match);
+      }
+    }
+    return undefined;
+  }
+
+  private extractComisionSubrogacion(text: string): number | undefined {
+    const patterns = [
+      /comisión\s+(?:de\s+)?subrogación[:\s]*([0-9]+[.,][0-9]+)\s*%?/i,
+      /subrogación[:\s]*([0-9]+[.,][0-9]+)\s*%?\s*comisión/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = this.extractMatch(text, pattern);
+      if (match) {
+        return this.parsePercentage(match);
+      }
+    }
+    return undefined;
+  }
+
+  private extractBonificaciones(text: string, originalText?: string): FEINBonificacion[] {
+    const bonificaciones: FEINBonificacion[] = [];
+    const fullText = originalText || text;
+    
+    // Enhanced bonification patterns with structured format
+    const patterns = [
+      { 
+        type: 'SEGURO_HOGAR', 
+        keywords: ['seguro hogar', 'seguro vivienda', 'seguro del hogar'],
+        conditions: /seguro\s+hogar.*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'SEGURO_VIDA', 
+        keywords: ['seguro vida', 'seguro de vida'],
+        conditions: /seguro\s+vida.*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'RECIBOS', 
+        keywords: ['domiciliación', 'recibos', 'domiciliaciones'],
+        conditions: /(?:domiciliación|recibos).*?≥?\s*([0-9]+).*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'TARJETA', 
+        keywords: ['tarjeta', 'card', 'tarjetas'],
+        conditions: /tarjeta.*?≥?\s*([0-9]+)\s*(?:usos?|operaciones?).*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'PLAN_PENSIONES', 
+        keywords: ['plan pensiones', 'pensión', 'plan de pensiones'],
+        conditions: /plan\s+pensiones.*?(\d+[.,]\d+)\s*%?/i
+      },
+      { 
+        type: 'NOMINA', 
+        keywords: ['nómina', 'nomina', 'ingresos recurrentes'],
+        conditions: /nómina.*?≥?\s*([0-9.,]+)\s*€?.*?(\d+[.,]\d+)\s*%?/i
+      }
+    ];
+
+    patterns.forEach(({ type, keywords, conditions }) => {
       keywords.forEach(keyword => {
         if (text.includes(keyword)) {
-          // Try to find discount percentage
-          const discountPattern = new RegExp(`${keyword}[^0-9]*([0-9]+[.,][0-9]+)\\s*%?`, 'i');
-          const discountMatch = this.extractMatch(text, discountPattern);
+          // Try to extract detailed conditions and discount
+          const conditionMatch = fullText.match(conditions);
+          let descuento: number | undefined;
+          let condicion: string | undefined;
+          
+          if (conditionMatch) {
+            if (type === 'NOMINA') {
+              condicion = `Ingresos ≥ ${conditionMatch[1]} €`;
+              descuento = conditionMatch[2] ? this.parsePercentage(conditionMatch[2]) : undefined;
+            } else if (type === 'TARJETA') {
+              condicion = `≥ ${conditionMatch[1]} usos/mes`;
+              descuento = conditionMatch[2] ? this.parsePercentage(conditionMatch[2]) : undefined;
+            } else if (type === 'RECIBOS') {
+              condicion = `≥ ${conditionMatch[1]} recibos últimos 6 meses`;
+              descuento = conditionMatch[2] ? this.parsePercentage(conditionMatch[2]) : undefined;
+            } else {
+              descuento = this.parsePercentage(conditionMatch[1]);
+            }
+          } else {
+            // Fallback: try to find any percentage near the keyword
+            const discountPattern = new RegExp(`${keyword}[^0-9]*([0-9]+[.,][0-9]+)\\s*%?`, 'i');
+            const discountMatch = this.extractMatch(text, discountPattern);
+            descuento = discountMatch ? this.parsePercentage(discountMatch) : undefined;
+          }
           
           bonificaciones.push({
             tipo: type as any,
             descripcion: keyword,
-            descuento: discountMatch ? this.parsePercentage(discountMatch) : undefined
+            descuento,
+            condicion
           });
         }
       });
@@ -385,16 +558,47 @@ export class FEINOCRService {
     return str;
   }
 
-  private validateFEINData(data: FEINData): { errors: string[], warnings: string[], missingMandatoryFields: string[] } {
+  /**
+   * Validate if the document is actually a FEIN
+   */
+  private validateFEINDocument(rawText: string): { isValid: boolean; reason?: string } {
+    const text = rawText.toLowerCase();
+    
+    // Must contain FEIN identifier
+    const hasFEINMarker = text.includes('ficha europea de información normalizada') || 
+                         text.includes('fein');
+    
+    if (!hasFEINMarker) {
+      return { 
+        isValid: false, 
+        reason: 'El documento no contiene los marcadores de FEIN requeridos' 
+      };
+    }
+
+    // Must contain at least one financial term
+    const financialTerms = ['tae', 'tin', 'euríbor', 'euribor', 'diferencial', 'plazo', 'comisiones', 'vinculaciones', 'bonificaciones'];
+    const hasFinancialTerm = financialTerms.some(term => text.includes(term));
+    
+    if (!hasFinancialTerm) {
+      return { 
+        isValid: false, 
+        reason: 'El documento no contiene términos financieros esperados en una FEIN' 
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  private validateExtractedFEINData(data: FEINData): { errors: string[], warnings: string[], missingMandatoryFields: string[] } {
     const errors: string[] = [];
     const warnings: string[] = [];
     const missingMandatoryFields: string[] = [];
 
     // Mandatory fields validation
-    if (!data.capitalInicial) missingMandatoryFields.push('Capital inicial');
-    if (!data.tin && !data.tae) missingMandatoryFields.push('TIN o TAE');
-    if (!data.plazoAnos && !data.plazoMeses) missingMandatoryFields.push('Plazo');
-    if (!data.tipo) missingMandatoryFields.push('Tipo de interés');
+    if (!data.capitalInicial) missingMandatoryFields.push('capitalInicial');
+    if (!data.tin && !data.tae) missingMandatoryFields.push('tin o tae');
+    if (!data.plazoAnos && !data.plazoMeses) missingMandatoryFields.push('plazo');
+    if (!data.tipo) missingMandatoryFields.push('tipo');
 
     // Business logic validation
     if (data.capitalInicial && data.capitalInicial < 1000) {
@@ -407,6 +611,20 @@ export class FEINOCRService {
 
     if (data.plazoAnos && data.plazoAnos > 50) {
       warnings.push('Plazo muy largo para un préstamo');
+    }
+
+    // Variable loan validation
+    if (data.tipo === 'VARIABLE' && !data.indice) {
+      warnings.push('Préstamo variable sin índice de referencia identificado');
+    }
+
+    if (data.tipo === 'VARIABLE' && !data.diferencial) {
+      warnings.push('Préstamo variable sin diferencial identificado');
+    }
+
+    // Mixed loan validation
+    if (data.tipo === 'MIXTO' && !data.tramoFijoAnos) {
+      warnings.push('Préstamo mixto sin período fijo identificado');
     }
 
     return { errors, warnings, missingMandatoryFields };
