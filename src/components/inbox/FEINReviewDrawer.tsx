@@ -64,19 +64,20 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      {/* ATLAS light backdrop - no dark overlays */}
+      <div className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} onClick={onClose} />
       
-      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
+      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          {/* Header - ATLAS styling */}
+          <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--hz-neutral-300)', backgroundColor: 'var(--bg)' }}>
             <div className="flex items-center gap-3">
-              <FileText className="h-6 w-6 text-atlas-navy-1" />
+              <FileText className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
               <div>
-                <h2 className="text-xl font-semibold" style={{ color: 'var(--hz-text)' }}>
+                <h2 className="atlas-h2">
                   {readonly ? 'Resumen FEIN → Borrador de préstamo' : 'Revisión FEIN'}
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="atlas-caption">
                   Campos extraídos del documento FEIN
                 </p>
               </div>
@@ -84,6 +85,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              style={{ color: 'var(--text-gray)' }}
             >
               <X className="h-5 w-5" />
             </button>
@@ -91,27 +93,29 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Status Badge */}
-            <div className="flex items-center gap-3 p-4 rounded-lg border" 
-                 style={{ 
-                   backgroundColor: feinResult.fieldsMissing.length === 0 ? 'var(--ok)' : 'var(--warn)',
-                   borderColor: feinResult.fieldsMissing.length === 0 ? 'var(--ok)' : 'var(--warn)',
-                   opacity: 0.1
-                 }}>
+            {/* Status Badge - ATLAS chips */}
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${
+              feinResult.fieldsMissing.length === 0 ? 'atlas-chip-success' : 'atlas-chip-warning'
+            }`} style={{ 
+              backgroundColor: feinResult.fieldsMissing.length === 0 
+                ? 'rgba(40, 167, 69, 0.1)' 
+                : 'rgba(255, 193, 7, 0.1)',
+              borderColor: feinResult.fieldsMissing.length === 0 ? 'var(--ok)' : 'var(--warn)'
+            }}>
               {feinResult.fieldsMissing.length === 0 ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5" style={{ color: 'var(--ok)' }} />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--warn)' }} />
               )}
               <div>
-                <div className="font-medium">
+                <div className="font-medium atlas-body">
                   {feinResult.fieldsMissing.length === 0 
                     ? 'FEIN completa - Lista para crear préstamo'
                     : 'FEIN incompleta - Requiere revisión'
                   }
                 </div>
                 {feinResult.fieldsMissing.length > 0 && (
-                  <div className="text-sm text-gray-600">
+                  <div className="atlas-caption">
                     Faltan: {feinResult.fieldsMissing.join(', ')}
                   </div>
                 )}
@@ -120,14 +124,14 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
             {/* Financial Data */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--hz-text)' }}>
+              <h3 className="atlas-h2">
                 Condiciones Financieras
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Capital Inicial */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isCriticalFieldMissing('capitalInicial') ? 'text-red-600' : 'text-gray-700'}`}>
+                  <label className={`block atlas-caption mb-2 ${isCriticalFieldMissing('capitalInicial') ? 'text-error' : ''}`} style={{ color: isCriticalFieldMissing('capitalInicial') ? 'var(--error)' : 'var(--text-gray)' }}>
                     Capital Inicial *
                   </label>
                   {isEditing ? (
@@ -135,11 +139,15 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                       type="number"
                       value={editableData.capitalInicial || ''}
                       onChange={(e) => updateField('capitalInicial', parseFloat(e.target.value) || undefined)}
-                      className={`w-full px-3 py-2 border rounded-md ${isCriticalFieldMissing('capitalInicial') ? 'border-red-300' : 'border-gray-300'}`}
-                      placeholder="Ej: 200000"
+                      className={`w-full px-3 py-2 border rounded-md tabular-nums ${isCriticalFieldMissing('capitalInicial') ? 'border-error' : ''}`}
+                      style={{ 
+                        borderColor: isCriticalFieldMissing('capitalInicial') ? 'var(--error)' : 'var(--hz-neutral-300)',
+                        fontFamily: 'var(--font-sans)'
+                      }}
+                      placeholder="Ej: 200.000"
                     />
                   ) : (
-                    <div className="text-lg font-medium">
+                    <div className="atlas-kpi">
                       {formatCurrency(editableData.capitalInicial)}
                     </div>
                   )}
@@ -147,7 +155,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
                 {/* Plazo */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isCriticalFieldMissing('plazo') ? 'text-red-600' : 'text-gray-700'}`}>
+                  <label className={`block atlas-caption mb-2 ${isCriticalFieldMissing('plazo') ? 'text-error' : ''}`} style={{ color: isCriticalFieldMissing('plazo') ? 'var(--error)' : 'var(--text-gray)' }}>
                     Plazo *
                   </label>
                   {isEditing ? (
@@ -156,19 +164,27 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         type="number"
                         value={editableData.plazoAnos || ''}
                         onChange={(e) => updateField('plazoAnos', parseInt(e.target.value) || undefined)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                        className="flex-1 px-3 py-2 border rounded-md tabular-nums"
+                        style={{ 
+                          borderColor: 'var(--hz-neutral-300)',
+                          fontFamily: 'var(--font-sans)'
+                        }}
                         placeholder="Años"
                       />
                       <input
                         type="number"
                         value={editableData.plazoMeses || ''}
                         onChange={(e) => updateField('plazoMeses', parseInt(e.target.value) || undefined)}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                        className="flex-1 px-3 py-2 border rounded-md tabular-nums"
+                        style={{ 
+                          borderColor: 'var(--hz-neutral-300)',
+                          fontFamily: 'var(--font-sans)'
+                        }}
                         placeholder="Meses"
                       />
                     </div>
                   ) : (
-                    <div className="text-lg font-medium">
+                    <div className="atlas-kpi">
                       {editableData.plazoAnos ? `${editableData.plazoAnos} años` : ''}
                       {editableData.plazoAnos && editableData.plazoMeses ? ' + ' : ''}
                       {editableData.plazoMeses ? `${editableData.plazoMeses} meses` : ''}
@@ -337,12 +353,12 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="p-6 border-t bg-white" style={{ borderColor: 'var(--hz-neutral-300)' }}>
             <div className="flex gap-3 justify-end">
               {loanId ? (
                 <button
                   onClick={() => onOpenInFinanciacion(loanId)}
-                  className="px-4 py-2 bg-atlas-navy-1 text-white rounded-md hover:bg-atlas-navy-2 transition-colors"
+                  className="atlas-btn-primary"
                 >
                   Abrir en Financiación
                 </button>
@@ -350,13 +366,13 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    className="atlas-btn-secondary"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-atlas-navy-1 text-white rounded-md hover:bg-atlas-navy-2 transition-colors"
+                    className="atlas-btn-primary"
                   >
                     Crear borrador
                   </button>
@@ -364,7 +380,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  className="atlas-btn-secondary"
                 >
                   Editar campos
                 </button>

@@ -43,21 +43,21 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      {/* ATLAS light backdrop - no dark overlays */}
+      <div className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} onClick={onClose} />
       
       {/* Drawer */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
+      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between border-b p-4" style={{ backgroundColor: 'var(--bg)' }}>
+          <div className="flex items-center justify-between border-b p-4" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--hz-neutral-300)' }}>
             <div className="flex items-center gap-3">
               <FileText className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
               <div>
-                <h2 className="text-xl font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
+                <h2 className="atlas-h2">
                   Extracción FEIN
                 </h2>
-                <p className="text-sm" style={{ color: 'var(--text-gray)' }}>
+                <p className="atlas-caption">
                   Datos extraídos del documento {feinData.docMeta.sourceFile}
                 </p>
               </div>
@@ -74,53 +74,53 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             
             {/* Document Metadata */}
-            <div className="rounded-lg border p-4" style={{ backgroundColor: 'var(--bg)' }}>
-              <h3 className="font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--atlas-navy-1)' }}>
-                <FileText className="h-4 w-4" />
+            <div className="atlas-card">
+              <h3 className="atlas-body font-medium mb-3 flex items-center gap-2">
+                <FileText className="h-4 w-4" style={{ color: 'var(--atlas-blue)' }} />
                 Información del Documento
               </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 atlas-caption">
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Archivo:</span>
-                  <p>{feinData.docMeta.sourceFile}</p>
+                  <p className="atlas-body">{feinData.docMeta.sourceFile}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Páginas:</span>
-                  <p>{feinData.docMeta.pages}</p>
+                  <p className="atlas-body tabular-nums">{feinData.docMeta.pages}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Procesado:</span>
-                  <p>{formatDate(feinData.docMeta.parsedAt)}</p>
+                  <p className="atlas-body">{formatDate(feinData.docMeta.parsedAt)}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Versión Parser:</span>
-                  <p>{feinData.docMeta.parserVersion}</p>
+                  <p className="atlas-body">{feinData.docMeta.parserVersion}</p>
                 </div>
               </div>
             </div>
 
             {/* Basic Loan Info */}
-            <div className="rounded-lg border p-4">
-              <h3 className="font-medium mb-3 flex items-center gap-2" style={{ color: 'var(--atlas-navy-1)' }}>
-                <CreditCard className="h-4 w-4" />
+            <div className="atlas-card">
+              <h3 className="atlas-body font-medium mb-3 flex items-center gap-2">
+                <CreditCard className="h-4 w-4" style={{ color: 'var(--atlas-blue)' }} />
                 Información Básica del Préstamo
               </h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 atlas-caption">
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Alias:</span>
-                  <p>{feinData.prestamo.alias}</p>
+                  <p className="atlas-body">{feinData.prestamo.alias}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Tipo:</span>
-                  <p className="font-medium text-blue-600">{feinData.prestamo.tipo}</p>
+                  <p className="atlas-body font-medium" style={{ color: 'var(--atlas-blue)' }}>{feinData.prestamo.tipo}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Capital:</span>
-                  <p className="font-medium text-green-600">{formatCurrency(feinData.prestamo.capitalInicial)}</p>
+                  <p className="atlas-kpi" style={{ color: 'var(--ok)' }}>{formatCurrency(feinData.prestamo.capitalInicial)}</p>
                 </div>
                 <div>
                   <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Plazo:</span>
-                  <p>{feinData.prestamo.plazoMeses} meses ({Math.round(feinData.prestamo.plazoMeses / 12)} años)</p>
+                  <p className="atlas-body tabular-nums">{feinData.prestamo.plazoMeses} meses ({Math.round(feinData.prestamo.plazoMeses / 12)} años)</p>
                 </div>
               </div>
             </div>
@@ -268,11 +268,10 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="border-t p-4 flex justify-end" style={{ backgroundColor: 'var(--bg)' }}>
+          <div className="border-t p-4 flex justify-end bg-white" style={{ borderColor: 'var(--hz-neutral-300)' }}>
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-md border transition-colors hover:bg-gray-50"
-              style={{ borderColor: 'var(--atlas-blue)', color: 'var(--atlas-blue)' }}
+              className="atlas-btn-secondary"
             >
               Cerrar
             </button>

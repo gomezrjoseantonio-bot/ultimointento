@@ -11,6 +11,7 @@ module.exports = {
         'atlas-blue': '#042C5E',     // Horizon primary - ONLY allowed blue
         'atlas-navy-1': '#303A4C',   // Neutral dark text
         'atlas-navy-2': '#142C50',   // Dark backgrounds/sidebar
+        'atlas-teal': '#1DA0BA',     // PULSE accent - chips, gestión tags
         'bg': '#F8F9FA',             // Light background
         'text-gray': '#6C757D',      // Secondary text
         
@@ -18,9 +19,6 @@ module.exports = {
         'ok': '#28A745',             // Success green
         'warn': '#FFC107',           // Warning yellow  
         'error': '#DC3545',          // Error red
-        
-        // PROHIBITED - Pulse colors NOT allowed in Horizon
-        // 'atlas-teal': '#1DA0BA',     // PULSE ONLY - NOT for Horizon
         
         // Legacy brand colors (backward compatibility)
         'brand-navy': '#042C5E',     // Maps to atlas-blue
