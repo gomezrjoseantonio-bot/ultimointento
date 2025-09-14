@@ -97,7 +97,7 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
         </div>
         <button 
           onClick={handleOpenRadar}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark"
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light "
         >
           <ExternalLink className="w-3 h-3" />
           Ver en Radar

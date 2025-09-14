@@ -78,7 +78,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
         {/* Background overlay */}
         <div 
           className="fixed inset-0 transition-opacity" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          style={{ backgroundColor: 'rgba(156, 163, 175, 0.1)' }}
           onClick={handleCancel}
         />
 

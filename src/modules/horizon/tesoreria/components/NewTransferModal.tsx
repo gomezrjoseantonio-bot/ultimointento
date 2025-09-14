@@ -288,7 +288,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={creating}
-            className="px-4 py-2 text-sm font-medium text-white bg-hz-primary rounded-lg hover:bg-hz-primary-dark disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-hz-primary rounded-lg hover:bg-hz-primary- light disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {creating && (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>

@@ -97,7 +97,7 @@ const CompactAlertsSection: React.FC<CompactAlertsSectionProps> = React.memo(({ 
         return (
           <button 
             onClick={() => handleAction(alert.cta)}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light transition-colors"
           >
             <ArrowRightLeft className="w-3 h-3" />
             Simular transferencia
@@ -107,7 +107,7 @@ const CompactAlertsSection: React.FC<CompactAlertsSectionProps> = React.memo(({ 
         return (
           <button 
             onClick={() => handleAction(alert.cta)}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light transition-colors"
           >
             <FileText className="w-3 h-3" />
             Revisar bonif.
@@ -117,7 +117,7 @@ const CompactAlertsSection: React.FC<CompactAlertsSectionProps> = React.memo(({ 
         return (
           <button 
             onClick={() => handleAction(alert.cta)}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light transition-colors"
           >
             <Inbox className="w-3 h-3" />
             Abrir en Inbox

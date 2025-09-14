@@ -253,7 +253,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           <div className="flex space-x-3">
             <button
               onClick={() => loadData()}
-              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-dark transition-colors"
+              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-700 transition-colors"
             >
               Reintentar
             </button>

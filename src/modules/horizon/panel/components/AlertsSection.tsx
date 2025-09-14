@@ -202,14 +202,14 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
                 <div className="flex gap-2 mt-4">
                   <button 
                     onClick={() => handleSimulateTransfer(alert.id, alert.account)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-primary text-white rounded-md hover:bg-hz-primary- light transition-colors"
                   >
                     <ArrowRightLeft className="w-3 h-3" />
                     Simular transferencia
                   </button>
                   <button 
                     onClick={() => handleRegisterTransfer(alert.id, alert.account)}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-success text-white rounded-md hover:bg-opacity-90 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-hz-success text-white rounded-md hover:bg-hz-success-600 transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                     Registrar transferencia

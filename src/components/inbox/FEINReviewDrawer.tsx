@@ -64,7 +64,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* ATLAS light backdrop - no dark overlays */}
+      {/* ATLAS light backdrop-blur-sm overlays */}
       <div className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} onClick={onClose} />
       
       <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
@@ -152,7 +152,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                       className={`w-full px-3 py-2 border rounded-md tabular-nums ${isCriticalFieldMissing('capitalInicial') ? 'border-error' : ''}`}
                       style={{ 
                         borderColor: isCriticalFieldMissing('capitalInicial') ? 'var(--error)' : 'var(--hz-neutral-300)',
-                        fontFamily: 'var(--font-sans)'
+                        fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
                       }}
                       placeholder="Ej: 200.000"
                     />
@@ -177,7 +177,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         className="flex-1 px-3 py-2 border rounded-md tabular-nums"
                         style={{ 
                           borderColor: 'var(--hz-neutral-300)',
-                          fontFamily: 'var(--font-sans)'
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
                         }}
                         placeholder="Años"
                       />
@@ -188,7 +188,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         className="flex-1 px-3 py-2 border rounded-md tabular-nums"
                         style={{ 
                           borderColor: 'var(--hz-neutral-300)',
-                          fontFamily: 'var(--font-sans)'
+                          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
                         }}
                         placeholder="Meses"
                       />

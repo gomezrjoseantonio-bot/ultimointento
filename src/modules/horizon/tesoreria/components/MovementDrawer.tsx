@@ -296,7 +296,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 bg-hz-primary text-white px-4 py-2 rounded-lg hover:bg-hz-primary-dark transition-colors"
+                  className="flex-1 bg-hz-primary text-white px-4 py-2 rounded-lg hover:bg-hz-primary- light transition-colors"
                 >
                   Guardar cambios
                 </button>

@@ -151,7 +151,7 @@ export const AtlasInput = forwardRef<HTMLInputElement, AtlasInputProps>(
             error ? 'border-error' : 'border-gray-300'
           } ${className}`}
           style={{
-            fontFamily: 'var(--font-sans)',
+            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
             borderColor: error ? 'var(--error)' : 'var(--hz-neutral-300)',
             backgroundColor: 'white',
             color: 'var(--atlas-navy-1)',

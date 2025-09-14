@@ -446,7 +446,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
             
             <button
               onClick={currentStep === 4 ? () => setCurrentStep(5) : nextStep}
-              className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary-dark focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
+              className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary- light focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
             >
               {currentStep === 4 ? 'Revisar' : 'Siguiente'}
             </button>

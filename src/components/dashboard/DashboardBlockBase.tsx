@@ -87,7 +87,7 @@ const DashboardBlockBase: React.FC<{
       {onNavigate && (
         <button
           onClick={onNavigate}
-          className="mt-4 text-sm text-brand-navy hover:text-brand-navy-dark font-medium flex items-center group"
+          className="mt-4 text-sm text-brand-navy hover:text-brand-navy- light font-medium flex items-center group"
         >
           Ver detalles
           <svg 

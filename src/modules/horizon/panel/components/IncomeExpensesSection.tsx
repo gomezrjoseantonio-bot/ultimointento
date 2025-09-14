@@ -86,7 +86,7 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
               <span className="text-sm text-hz-neutral-600">Gastos: {formatCurrency(totalExpenses)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-hz-primary-dark rounded"></div>
+              <div className="w-3 h-3 bg-hz-primary- light rounded"></div>
               <span className={`text-sm font-medium ${netAmount >= 0 ? 'text-hz-success' : 'text-hz-error'}`}>
                 Neto: {netAmount >= 0 ? '+' : ''}{formatCurrency(netAmount)}
               </span>
@@ -95,7 +95,7 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
         </div>
         <button 
           onClick={handleViewInRadar}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
           Ver en Radar

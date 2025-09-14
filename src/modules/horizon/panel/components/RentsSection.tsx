@@ -124,7 +124,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
           <p>Sin contratos configurados</p>
           <button 
             onClick={handleConfigureContracts}
-            className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+            className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
           >
             Configurar contratos
           </button>
@@ -139,7 +139,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
         <h2 className="text-lg font-semibold text-hz-neutral-900">Rentas</h2>
         <button 
           onClick={handleViewContracts}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
           Ver contratos

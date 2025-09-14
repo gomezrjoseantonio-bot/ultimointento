@@ -43,7 +43,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* ATLAS light backdrop - no dark overlays */}
+      {/* ATLAS light backdrop-blur-sm overlays */}
       <div className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} onClick={onClose} />
       
       {/* Drawer */}

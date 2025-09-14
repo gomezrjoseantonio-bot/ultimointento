@@ -59,7 +59,7 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
         <h2 className="text-sm font-semibold text-hz-neutral-900">Rentas del mes</h2>
         <button 
           onClick={handleOpenContracts}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-dark"
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light "
         >
           <ExternalLink className="w-3 h-3" />
           Abrir Contratos
