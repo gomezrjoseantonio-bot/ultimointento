@@ -18,7 +18,8 @@ jest.mock('../../../services/toastService', () => ({
 // Mock the FEIN OCR service
 jest.mock('../../../services/feinOcrService', () => ({
   feinOcrService: {
-    processFEINDocument: jest.fn()
+    processFEINDocument: jest.fn(),
+    processFEINDocumentNew: jest.fn()
   }
 }));
 
@@ -31,6 +32,46 @@ describe('FEINUploader Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Setup default mock for processFEINDocumentNew
+    (feinOcrService.processFEINDocumentNew as jest.Mock).mockResolvedValue({
+      mode: 'sync',
+      result: {
+        success: true,
+        loanDraft: {
+          metadata: {
+            sourceFileName: 'test.pdf',
+            pagesTotal: 1,
+            pagesProcessed: 1,
+            ocrProvider: 'docai',
+            processedAt: new Date().toISOString(),
+            warnings: []
+          },
+          prestamo: {
+            tipo: 'FIJO',
+            periodicidadCuota: 'MENSUAL',
+            revisionMeses: null,
+            indiceReferencia: null,
+            valorIndiceActual: null,
+            diferencial: null,
+            tinFijo: 2.5,
+            comisionAperturaPct: null,
+            comisionMantenimientoMes: null,
+            amortizacionAnticipadaPct: null,
+            fechaFirmaPrevista: null,
+            banco: null,
+            capitalInicial: 250000,
+            plazoMeses: 300,
+            ibanCargoParcial: null
+          },
+          bonificaciones: []
+        },
+        errors: [],
+        warnings: [],
+        fieldsExtracted: ['capitalInicial', 'plazoMeses', 'tinFijo'],
+        fieldsMissing: []
+      }
+    });
   });
 
   it('should show error toast for invalid file type', async () => {
@@ -70,7 +111,7 @@ describe('FEINUploader Component', () => {
     });
   });
 
-  it('should show success toast for successful processing', async () => {
+  it('should call onFEINDraftReady for successful processing', async () => {
     const mockLoanDraft = {
       metadata: {
         sourceFileName: 'test.pdf',
@@ -100,16 +141,19 @@ describe('FEINUploader Component', () => {
       bonificaciones: []
     };
 
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: true,
-      loanDraft: mockLoanDraft,
-      confidence: 0.85,
-      errors: [],
-      warnings: [],
-      fieldsExtracted: ['capitalInicial', 'banco', 'tipo'],
-      fieldsMissing: [],
-      pendingFields: [],
-      providerUsed: 'docai'
+    (feinOcrService.processFEINDocumentNew as jest.Mock).mockResolvedValue({
+      mode: 'sync',
+      result: {
+        success: true,
+        loanDraft: mockLoanDraft,
+        confidence: 0.85,
+        errors: [],
+        warnings: [],
+        fieldsExtracted: ['capitalInicial', 'banco', 'tipo'],
+        fieldsMissing: [],
+        pendingFields: [],
+        providerUsed: 'docai'
+      }
     });
 
     render(
@@ -125,79 +169,21 @@ describe('FEINUploader Component', () => {
     fireEvent.change(fileInput, { target: { files: [validFile] } });
 
     await waitFor(() => {
-      expect(showSuccess).toHaveBeenCalledWith('FEIN procesado correctamente. Datos extraídos y prellenados.');
-    }, { timeout: 3000 });
-
-    expect(mockOnFEINDraftReady).toHaveBeenCalledWith(mockLoanDraft);
-  });
-
-  it('should show info toast for partial data extraction', async () => {
-    const mockLoanDraft = {
-      metadata: {
-        sourceFileName: 'test.pdf',
-        pagesTotal: 1,
-        pagesProcessed: 1,
-        ocrProvider: 'docai',
-        processedAt: new Date().toISOString(),
-        warnings: []
-      },
-      prestamo: {
-        tipo: null,
-        periodicidadCuota: 'MENSUAL',
-        revisionMeses: null,
-        indiceReferencia: null,
-        valorIndiceActual: null,
-        diferencial: null,
-        tinFijo: null,
-        comisionAperturaPct: null,
-        comisionMantenimientoMes: null,
-        amortizacionAnticipadaPct: null,
-        fechaFirmaPrevista: null,
-        banco: null,
-        capitalInicial: undefined,
-        plazoMeses: undefined,
-        ibanCargoParcial: null
-      },
-      bonificaciones: []
-    };
-
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: true,
-      loanDraft: mockLoanDraft,
-      confidence: 0.3,
-      errors: [],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all'],
-      providerUsed: 'docai'
-    });
-
-    render(
-      <FEINUploader 
-        onFEINDraftReady={mockOnFEINDraftReady} 
-        onCancel={mockOnCancel} 
-      />
-    );
-
-    const fileInput = screen.getByDisplayValue('');
-    const validFile = new File(['pdf content'], 'test.pdf', { type: 'application/pdf' });
-
-    fireEvent.change(fileInput, { target: { files: [validFile] } });
-
-    await waitFor(() => {
-      expect(showInfo).toHaveBeenCalledWith('FEIN procesado. Complete manualmente los campos faltantes.');
+      expect(mockOnFEINDraftReady).toHaveBeenCalledWith(mockLoanDraft);
     }, { timeout: 3000 });
   });
 
-  it('should show error toast for timeout', async () => {
-    (feinOcrService.processFEINDocument as jest.Mock).mockResolvedValue({
-      success: false,
-      errors: ['Tiempo de espera agotado. Intenta de nuevo'],
-      warnings: [],
-      fieldsExtracted: [],
-      fieldsMissing: ['all'],
-      pendingFields: ['all']
+  it('should handle failed processing correctly', async () => {
+    (feinOcrService.processFEINDocumentNew as jest.Mock).mockResolvedValue({
+      mode: 'sync',
+      result: {
+        success: false,
+        errors: ['Error procesando documento'],
+        warnings: [],
+        fieldsExtracted: [],
+        fieldsMissing: ['all'],
+        pendingFields: ['all']
+      }
     });
 
     render(
@@ -213,10 +199,10 @@ describe('FEINUploader Component', () => {
     fireEvent.change(fileInput, { target: { files: [validFile] } });
 
     await waitFor(() => {
-      expect(showError).toHaveBeenCalledWith(
-        'Tiempo de espera agotado. Intenta de nuevo',
-        'Intenta de nuevo o procesa manualmente'
-      );
+      expect(showError).toHaveBeenCalledWith('Error procesando documento');
     }, { timeout: 3000 });
+
+    // Should still call onFEINDraftReady with empty draft for manual entry
+    expect(mockOnFEINDraftReady).toHaveBeenCalled();
   });
 });

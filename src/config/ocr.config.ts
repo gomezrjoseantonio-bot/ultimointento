@@ -18,7 +18,7 @@ export const OCR_CONFIG = {
   maxConcurrentChunks: 3,       // Concurrency limit for chunk processing
   
   // PDF size limits
-  maxPdfSizeBytes: 20 * 1024 * 1024,  // 20MB maximum PDF size
+  maxPdfSizeBytes: 8 * 1024 * 1024,   // 8MB maximum PDF size (serverless limit)
   estimatedKbPerPage: 100,             // Rough estimate for page counting
 } as const;
 
