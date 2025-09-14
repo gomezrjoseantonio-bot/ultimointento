@@ -5,7 +5,12 @@
 [functions]
   directory = "functions"
   node_bundler = "esbuild"
-  timeout = 26
+
+  [functions.timeout]
+  external_node_modules = [
+    "google-auth-library",
+    "jszip"
+  ]
 
 [[redirects]]
   from = "/robots.txt"
