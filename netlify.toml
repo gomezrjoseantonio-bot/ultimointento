@@ -17,7 +17,6 @@
   to = "/index.html"
   status = 200
 
-# (Opcional) headers de seguridad que ya tenías:
 [[headers]]
   for = "/*"
   [headers.values]
