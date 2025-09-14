@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Plus, Settings, Trash2, Copy, Star, StarOff } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro } from '../../../../utils/formatUtils';
@@ -75,8 +76,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   };
 
   const handleDeleteScenario = async (scenario: Scenario) => {
-    if (window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
       const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
       setScenarios(updatedScenarios);
       

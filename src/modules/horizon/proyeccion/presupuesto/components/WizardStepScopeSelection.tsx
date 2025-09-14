@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Building, User, CheckCircle, ChevronRight } from 'lucide-react';
 
 interface ScopeSelectionData {

@@ -85,8 +85,7 @@ const GastosPanel: React.FC = () => {
 
     // Business logic validation: Some categories should typically be property-related
     if (formData.categoria_AEAT === 'suministros' && formData.destino === 'personal') {
-      const shouldProceed = window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(
+      const shouldProceed = window.confirm(
         '⚠️ Los suministros suelen estar asociados a inmuebles. ¿Estás seguro de que es un gasto personal?'
       );
       if (!shouldProceed) return;

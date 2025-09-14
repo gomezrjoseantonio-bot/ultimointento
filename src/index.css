@@ -468,12 +468,12 @@ table td,
   
   /* Accent buttons (for secondary positive actions) - HORIZON only uses atlas-blue */
   .btn-accent-horizon {
-    @apply btn-base bg-hz-success text-white hover:bg-hz-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* DEPRECATED - Pulse button style not allowed in Horizon */
   .btn-accent-pulse {
-    @apply btn-base bg-hz-success text-white hover:bg-hz-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   /* Danger buttons */

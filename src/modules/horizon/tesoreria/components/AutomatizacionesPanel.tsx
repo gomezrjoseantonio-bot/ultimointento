@@ -108,8 +108,8 @@ const AutomatizacionesPanel: React.FC = () => {
   };
 
   const deleteRule = async (ruleId: number) => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Estás seguro de que quieres eliminar esta regla?')) return;
+    // TODO: Replace with ATLAS confirmation modal
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta regla?')) return;
     
     const updatedRules = rules.filter(r => r.id !== ruleId);
     setRules(updatedRules);

@@ -188,8 +188,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   };
 
   const handleDeleteExpense = async (expenseId: number) => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
       return;
     }
 

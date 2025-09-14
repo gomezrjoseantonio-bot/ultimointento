@@ -1,4 +1,5 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 import FEINUploader from '../components/financiacion/FEINUploader';
 import { FeinLoanDraft } from '../types/fein';
 

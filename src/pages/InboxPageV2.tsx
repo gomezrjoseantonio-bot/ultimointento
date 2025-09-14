@@ -373,8 +373,7 @@ const InboxPageV2: React.FC = () => {
   };
 
   const handleDelete = (doc: InboxDocument) => {
-    if (window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(`¿Eliminar ${doc.filename}?`)) {
+    if (window.confirm(`¿Eliminar ${doc.filename}?`)) {
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       if (selectedDocument?.id === doc.id) {
         setSelectedDocument(null);

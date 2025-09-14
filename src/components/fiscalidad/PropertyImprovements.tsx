@@ -121,8 +121,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
   };
 
   const handleDelete = async (improvementId: number) => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Está seguro de que desea eliminar esta mejora?')) {
+    if (!window.confirm('¿Está seguro de que desea eliminar esta mejora?')) {
       return;
     }
 

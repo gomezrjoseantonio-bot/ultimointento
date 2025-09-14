@@ -996,8 +996,8 @@ const InboxPage: React.FC = () => {
   };
 
   const handleDiscardDocuments = async (docs: any[]) => {
-    if (window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(`¿Eliminar ${docs.length} documento(s)?`)) {
+    // TODO: Replace with ATLAS confirmation modal
+    if (window.confirm(`¿Eliminar ${docs.length} documento(s)?`)) {
       for (const doc of docs) {
         await handleDeleteDocument(doc.id);
       }

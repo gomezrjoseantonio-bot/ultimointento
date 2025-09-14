@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Plus, Trash2, ChevronRight, Calculator } from 'lucide-react';
 import { BudgetLine, FiscalCategory, PaymentFrequency } from '../../../../../services/db';
 import { calculateMonthlyAmounts } from '../services/budgetService';

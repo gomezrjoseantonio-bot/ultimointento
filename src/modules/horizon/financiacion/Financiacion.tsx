@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import PageLayout from '../../../components/common/PageLayout';
 import PrestamosCreation from './components/PrestamosCreation';
 import PrestamosList from './components/PrestamosList';

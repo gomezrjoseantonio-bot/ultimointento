@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Save, Download } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
 import { createPresupuesto, createPresupuestoLinea } from '../services/presupuestoService';
@@ -44,8 +45,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       // Validate account assignments
       const linesWithoutAccount = wizardData.lines.filter(line => !line.accountId);
       if (linesWithoutAccount.length > 0) {
-        const shouldContinue = window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(
+        const shouldContinue = window.confirm(
           `Hay ${linesWithoutAccount.length} líneas sin cuenta asignada. ¿Deseas continuar?`
         );
         if (!shouldContinue) return;

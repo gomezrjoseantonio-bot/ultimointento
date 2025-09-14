@@ -88,8 +88,8 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteProvider = async (id: number, name: string) => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(`¿Eliminar proveedor "${name}"?`)) return;
+    // TODO: Replace with ATLAS confirmation modal
+    if (!window.confirm(`¿Eliminar proveedor "${name}"?`)) return;
 
     try {
       await deleteProvider(id);

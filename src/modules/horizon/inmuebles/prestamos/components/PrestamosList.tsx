@@ -1,6 +1,7 @@
 // Préstamos List View Component
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Calculator, Home } from 'lucide-react';
 import { formatEuro, formatDate, formatPercentage } from '../../../../../utils/formatUtils';
 import { Prestamo } from '../../../../../types/prestamos';
@@ -42,8 +43,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
   };
 
   const handleDeletePrestamo = async (prestamoId: string, prestamoNombre: string) => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
+    if (!window.confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
       return;
     }
 

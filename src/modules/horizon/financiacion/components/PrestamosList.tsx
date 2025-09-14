@@ -182,8 +182,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   };
 
   const handleDeletePrestamo = async (prestamoId: string) => {
-    if (window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Está seguro de que desea eliminar este préstamo?')) {
+    if (window.confirm('¿Está seguro de que desea eliminar este préstamo?')) {
       try {
         await prestamosService.deletePrestamo(prestamoId);
         // Reload loans

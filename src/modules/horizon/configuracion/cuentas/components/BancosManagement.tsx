@@ -179,8 +179,8 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   };
 
   const handleCleanupDemoData = async () => {
-    if (!window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Estás seguro de que quieres eliminar todos los movimientos y cuentas de demostración? Esta acción no se puede deshacer.')) {
+    // TODO: Replace with ATLAS confirmation modal
+    if (!window.confirm('¿Estás seguro de que quieres eliminar todos los movimientos y cuentas de demostración? Esta acción no se puede deshacer.')) {
       return;
     }
 

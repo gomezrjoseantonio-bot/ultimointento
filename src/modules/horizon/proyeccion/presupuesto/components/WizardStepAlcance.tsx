@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Building, Calendar, Check, ChevronRight } from 'lucide-react';
 import { Property, initDB } from '../../../../../services/db';
 

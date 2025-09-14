@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Download, TrendingUp, Edit } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro, formatPercentage } from '../../../../utils/formatUtils';

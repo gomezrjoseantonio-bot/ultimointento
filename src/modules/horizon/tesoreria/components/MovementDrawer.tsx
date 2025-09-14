@@ -88,8 +88,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 
   // Handle delete
   const handleDelete = () => {
-    if (window.// TODO: Replace with ATLAS confirmation modal
-    // confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
       // TODO: Implement delete
       console.log('Delete movement:', movement.id);
       onClose();
