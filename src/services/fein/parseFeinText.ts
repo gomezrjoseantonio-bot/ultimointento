@@ -14,6 +14,19 @@ export interface FeinParseResult {
 export class FeinTextParser {
   
   /**
+   * Helper function to get all matches from a regex (compatible with older TypeScript)
+   */
+  private static getAllMatches(text: string, pattern: RegExp): RegExpExecArray[] {
+    const matches: RegExpExecArray[] = [];
+    let match;
+    pattern.lastIndex = 0; // Reset regex
+    while ((match = pattern.exec(text)) !== null) {
+      matches.push(match);
+    }
+    return matches;
+  }
+  
+  /**
    * Parse aggregated FEIN text and extract loan fields
    */
   static parseText(
@@ -220,8 +233,10 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
-      for (const match of matches) {
+      // Use exec instead of matchAll for compatibility
+      let match;
+      pattern.lastIndex = 0; // Reset regex
+      while ((match = pattern.exec(text)) !== null) {
         const amount = this.parseSpanishAmount(match[1]);
         // Validate reasonable mortgage range
         if (amount >= 10000 && amount <= 5000000) {
@@ -265,7 +280,8 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      // Use helper for compatibility
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const rate = this.parseSpanishPercentage(match[1]);
         if (rate >= 0 && rate <= 20) return rate;
@@ -295,7 +311,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const diff = this.parseSpanishPercentage(match[1]);
         if (diff >= 0 && diff <= 10) return diff;
@@ -316,7 +332,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const rate = this.parseSpanishPercentage(match[1]);
         if (rate >= 0 && rate <= 15) return rate;
@@ -345,7 +361,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const commission = this.parseSpanishPercentage(match[1]);
         if (commission >= 0 && commission <= 5) return commission;
@@ -370,7 +386,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const amount = this.parseSpanishAmount(match[1]);
         if (amount >= 0 && amount <= 100) return amount;
@@ -395,7 +411,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const commission = this.parseSpanishPercentage(match[1]);
         if (commission >= 0 && commission <= 5) return commission;
@@ -421,7 +437,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         if (match[1] && match[1].length === 4) {
           return match[1];
@@ -443,7 +459,7 @@ export class FeinTextParser {
     ];
 
     for (const pattern of patterns) {
-      const matches = [...text.matchAll(pattern)];
+      const matches = this.getAllMatches(text, pattern);
       for (const match of matches) {
         const dateStr = match[1];
         if (this.isValidDate(dateStr)) {
