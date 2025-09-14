@@ -232,16 +232,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1 transform rotate-180" />;
   };
 
-  // Mock account data
-  const mockAccounts = [
-    { id: 'acc1', iban: 'ES91 2100 0418 4502 0005 1332', entidad: 'CaixaBank' },
-    { id: 'acc2', iban: 'ES79 0049 0001 5025 1610 1005', entidad: 'Santander' },
-    { id: 'acc3', iban: 'ES15 0081 0346 1100 0123 4567', entidad: 'Sabadell' }
-  ];
-
-  const getAccountInfo = (cuentaId: string) => {
-    return mockAccounts.find(acc => acc.id === cuentaId);
-  };
+  // Account data will be loaded from the accounts service when needed
+  // For now, all accounts show as unconfigured
 
   if (loading) {
     return (
@@ -482,7 +474,6 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                 {filteredPrestamos.map((prestamo) => {
                   const effectiveTIN = calculateEffectiveTIN(prestamo);
                   const monthlyPayment = estimateMonthlyPayment(prestamo);
-                  const account = getAccountInfo(prestamo.cuentaCargoId);
                   const isPersonal = prestamo.inmuebleId === 'standalone';
 
                   return (
@@ -534,14 +525,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                         {formatNumber(monthlyPayment)} €
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-text-gray">
-                        {account ? (
-                          <div>
-                            <div className="font-medium">{account.entidad}</div>
-                            <div className="text-xs">...{account.iban.slice(-4)}</div>
-                          </div>
-                        ) : (
-                          <span className="text-error-500">Sin cuenta</span>
-                        )}
+                        <div className="text-error-500">Sin cuenta configurada</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
