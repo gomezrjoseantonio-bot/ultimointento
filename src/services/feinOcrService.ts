@@ -230,12 +230,17 @@ export class FEINOCRService {
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      // Read file as ArrayBuffer and send as raw binary data
+      const arrayBuffer = await file.arrayBuffer();
 
       const response = await fetch('/.netlify/functions/ocr-fein', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': file.name,
+          'X-File-Type': 'application/pdf'
+        },
+        body: arrayBuffer
       });
 
       if (!response.ok) {

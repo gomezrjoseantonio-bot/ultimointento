@@ -34,27 +34,42 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
     e.stopPropagation();
     setDragActive(false);
     
+    // Prevent drop if already processing
+    if (isProcessing || showProgressModal) {
+      return;
+    }
+    
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent input if already processing
+    if (isProcessing || showProgressModal) {
+      return;
+    }
+    
     if (e.target.files && e.target.files[0]) {
       handleFileSelection(e.target.files[0]);
     }
   };
 
   const handleFileSelection = async (file: File) => {
+    // Prevent duplicate uploads
+    if (isProcessing || showProgressModal) {
+      return;
+    }
+
     // Validate file type
     if (file.type !== 'application/pdf') {
       showError('Solo se permiten archivos PDF para documentos FEIN');
       return;
     }
 
-    // Validate file size (max 20MB as per FEIN requirements)
-    if (file.size > 20 * 1024 * 1024) {
-      showError('El archivo es demasiado grande. Máximo 20MB permitido.');
+    // Validate file size (max 8MB as per server limit)
+    if (file.size > 8 * 1024 * 1024) {
+      showError('El archivo es demasiado grande. Máximo 8MB permitido.');
       return;
     }
 
@@ -306,9 +321,11 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           {/* Upload Area - Horizon colors */}
           <div
             className={`border-2 border-dashed rounded-atlas p-12 text-center transition-colors ${
-              dragActive 
-                ? 'bg-primary-50' 
-                : 'hover:border-gray-400'
+              isProcessing || showProgressModal
+                ? 'opacity-50 cursor-not-allowed'
+                : dragActive 
+                  ? 'bg-primary-50' 
+                  : 'hover:border-gray-400'
             }`}
             style={{ 
               borderColor: dragActive ? 'var(--atlas-blue)' : 'var(--text-gray)',
@@ -333,12 +350,13 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             </p>
             
             <p className="text-sm mb-6" style={{ color: 'var(--text-gray)' }}>
-              Solo archivos PDF • Máximo 20MB
+              Solo archivos PDF • Máximo 8MB
             </p>
             
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90"
+              disabled={isProcessing || showProgressModal}
+              className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--atlas-blue)' }}
             >
               Seleccionar archivo FEIN
@@ -349,6 +367,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               type="file"
               accept=".pdf"
               onChange={handleFileInput}
+              disabled={isProcessing || showProgressModal}
               className="hidden"
             />
           </div>
