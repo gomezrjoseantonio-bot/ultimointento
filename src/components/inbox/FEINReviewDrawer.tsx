@@ -93,30 +93,40 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Status Badge - ATLAS chips */}
+            {/* Status Badge - Updated for "Pendiente" UX pattern */}
             <div className={`flex items-center gap-3 p-4 rounded-lg border ${
-              feinResult.fieldsMissing.length === 0 ? 'atlas-chip-success' : 'atlas-chip-warning'
+              feinResult.fieldsMissing.length === 0 ? 'atlas-chip-success' : 'atlas-chip-info'
             }`} style={{ 
               backgroundColor: feinResult.fieldsMissing.length === 0 
                 ? 'rgba(40, 167, 69, 0.1)' 
-                : 'rgba(255, 193, 7, 0.1)',
-              borderColor: feinResult.fieldsMissing.length === 0 ? 'var(--ok)' : 'var(--warn)'
+                : 'rgba(0, 123, 255, 0.1)',
+              borderColor: feinResult.fieldsMissing.length === 0 ? 'var(--ok)' : 'var(--atlas-blue)'
             }}>
               {feinResult.fieldsMissing.length === 0 ? (
                 <CheckCircle className="h-5 w-5" style={{ color: 'var(--ok)' }} />
               ) : (
-                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--warn)' }} />
+                <AlertTriangle className="h-5 w-5" style={{ color: 'var(--atlas-blue)' }} />
               )}
               <div>
                 <div className="font-medium atlas-body">
                   {feinResult.fieldsMissing.length === 0 
-                    ? 'FEIN completa - Lista para crear préstamo'
-                    : 'FEIN incompleta - Requiere revisión'
+                    ? 'FEIN procesada completamente'
+                    : 'Datos extraídos del FEIN'
                   }
                 </div>
-                {feinResult.fieldsMissing.length > 0 && (
+                {feinResult.fieldsMissing.length > 0 && feinResult.pendingFields && (
                   <div className="atlas-caption">
-                    Faltan: {feinResult.fieldsMissing.join(', ')}
+                    Faltan: {feinResult.pendingFields.map(field => {
+                      const fieldNames: Record<string, string> = {
+                        banco: 'Entidad',
+                        capitalInicial: 'Capital inicial',
+                        plazoMeses: 'Plazo',
+                        tipo: 'Tipo de interés',
+                        tin: 'TIN/TAE',
+                        cuentaCargo: 'Cuenta de cargo'
+                      };
+                      return fieldNames[field] || field;
+                    }).join(', ')}… Puedes completarlos ahora.
                   </div>
                 )}
               </div>
@@ -374,7 +384,10 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                     onClick={handleSave}
                     className="atlas-btn-primary"
                   >
-                    Crear borrador
+                    {feinResult.fieldsMissing.length > 0 
+                      ? 'Crear borrador igualmente' 
+                      : 'Crear borrador'
+                    }
                   </button>
                 </>
               ) : (

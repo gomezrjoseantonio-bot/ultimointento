@@ -24,7 +24,7 @@ export class FEINLoanCreationService {
   }
 
   /**
-   * Create loan draft from FEIN data
+   * Create loan draft from FEIN data - Updated for "Pendiente" UX pattern
    */
   async createLoanFromFEIN(
     feinData: FEINData,
@@ -34,15 +34,18 @@ export class FEINLoanCreationService {
       inmuebleId?: string;
       cuentaCargoId: string;
     },
-    attachmentUrl?: string
+    attachmentUrl?: string,
+    pendingFields?: string[] // New parameter for pending fields
   ): Promise<FEINLoanCreationResult> {
-    console.log('[FEIN Loan Creation] Starting loan creation from FEIN data');
+    console.log('[FEIN Loan Creation] Starting loan creation from FEIN data with pending fields:', pendingFields);
     
     try {
-      // Validate critical fields are present
+      // Validate critical fields - now less strict, allows pending fields
       const validation = this.validateCriticalFields(feinData);
-      if (!validation.isValid) {
-        console.log('[FEIN Loan Creation] Critical fields missing:', validation.missingFields);
+      const hasPendingFields = pendingFields && pendingFields.length > 0;
+      
+      if (!validation.isValid && !hasPendingFields) {
+        console.log('[FEIN Loan Creation] Critical fields missing and no pending fields specified:', validation.missingFields);
         return {
           success: false,
           errors: ['Faltan campos críticos para crear el préstamo'],
@@ -86,16 +89,20 @@ export class FEINLoanCreationService {
 
   /**
    * Validate that critical fields are present for loan creation
+   * Updated for "Pendiente" UX pattern - more permissive
    */
   private validateCriticalFields(feinData: FEINData): { isValid: boolean; missingFields: string[] } {
     const missingFields: string[] = [];
     
+    // Only truly critical fields that cannot be empty
+    // Most fields can now be pending/empty and filled later
     if (!feinData.capitalInicial) missingFields.push('capital');
-    if (!feinData.plazoAnos && !feinData.plazoMeses) missingFields.push('plazo');
-    if (!feinData.tipo) missingFields.push('tipo_hipoteca');
+    
+    // Allow loans without plazo or tipo if they are marked as pending
+    // These can be filled in manually later
     
     return {
-      isValid: missingFields.length === 0,
+      isValid: missingFields.length === 0, // Only fail if no capital at all
       missingFields
     };
   }
