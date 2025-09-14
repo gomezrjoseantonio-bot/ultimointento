@@ -1,0 +1,567 @@
+// DocAI FEIN Normalization Module
+// Normalizes Google Document AI entities to Spanish format with confidence tracking
+
+interface DocAIEntity {
+  type: string;
+  mentionText: string;
+  normalizedValue?: any;
+  confidence: number;
+}
+
+interface NormalizeFeinInput {
+  entities: DocAIEntity[];
+  text?: string;
+}
+
+interface NormalizedFeinFields {
+  capital_inicial?: string;      // "250.000,00 €"
+  plazoMeses?: number;           // 300
+  tin?: string;                  // "3,25 %"
+  tae?: string;                  // "3,41 %"
+  cuota?: string;                // "1.263,45 €"
+  sistemaAmortizacion?: string;  // "Francés"
+  indice?: string;               // "Euríbor 12M"
+  diferencial?: string;          // "+1,50 %"
+  vinculaciones?: string[];      // ["Nómina", "Seguro hogar", …]
+  comisiones?: Record<string,string>; // { apertura: "0,50 %", … }
+  gastos?: Record<string,string>;     // { tasación: "400,00 €", … }
+  fechaOferta?: string;          // "01/02/2024"
+  validez?: string;              // "15/02/2024"
+  cuentaCargo?: string;          // "ES12…"
+}
+
+interface FieldConfidence {
+  confidence: number;
+  source?: string;
+}
+
+interface NormalizeFeinResult {
+  fields: NormalizedFeinFields;
+  byField: Record<string, FieldConfidence>;
+  confidenceGlobal: number;
+  pending: string[];
+}
+
+/**
+ * Normalizes FEIN data from Google Document AI to Spanish format
+ */
+export function normalizeFeinFromDocAI(input: NormalizeFeinInput): NormalizeFeinResult {
+  const fields: NormalizedFeinFields = {};
+  const byField: Record<string, FieldConfidence> = {};
+  const pending: string[] = [];
+
+  // Map DocAI entities to normalized fields
+  mapEntities(input.entities, fields, byField);
+
+  // Calculate global confidence based on critical fields
+  const confidenceGlobal = calculateGlobalConfidence(byField);
+
+  // Identify pending fields (confidence < 0.60 or missing)
+  identifyPendingFields(fields, byField, pending);
+
+  // Validate relationships
+  validateFieldRelationships(fields);
+
+  return {
+    fields,
+    byField,
+    confidenceGlobal,
+    pending
+  };
+}
+
+/**
+ * Map DocAI entities to normalized fields
+ */
+function mapEntities(entities: DocAIEntity[], fields: NormalizedFeinFields, byField: Record<string, FieldConfidence>): void {
+  for (const entity of entities) {
+    const type = entity.type.toLowerCase();
+    const confidence = entity.confidence;
+    const text = entity.mentionText;
+    const normalizedValue = entity.normalizedValue;
+
+    // Loan amount / principal → capital_inicial
+    if (type.includes('loan_amount') || type.includes('principal') || type.includes('amount')) {
+      const amount = extractMoneyValue(normalizedValue, text);
+      if (amount !== null) {
+        fields.capital_inicial = formatEuroAmount(amount);
+        byField.capital_inicial = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Term months or years → plazoMeses
+    else if (type.includes('term_months') || type.includes('term')) {
+      const months = extractTermInMonths(normalizedValue, text);
+      if (months !== null) {
+        fields.plazoMeses = months;
+        byField.plazoMeses = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Interest rate → tin
+    else if (type.includes('interest_rate') || type.includes('tin')) {
+      const rate = extractPercentageValue(normalizedValue, text);
+      if (rate !== null) {
+        fields.tin = formatPercentage(rate);
+        byField.tin = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // APR → tae
+    else if (type.includes('apr') || type.includes('tae')) {
+      const rate = extractPercentageValue(normalizedValue, text);
+      if (rate !== null) {
+        fields.tae = formatPercentage(rate);
+        byField.tae = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Monthly payment → cuota
+    else if (type.includes('monthly_payment') || type.includes('payment') || type.includes('cuota')) {
+      const amount = extractMoneyValue(normalizedValue, text);
+      if (amount !== null) {
+        fields.cuota = formatEuroAmount(amount);
+        byField.cuota = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Amortization type → sistemaAmortizacion
+    else if (type.includes('amortization_type') || type.includes('amortization')) {
+      const system = normalizeAmortizationSystem(text);
+      if (system) {
+        fields.sistemaAmortizacion = system;
+        byField.sistemaAmortizacion = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Index → indice
+    else if (type.includes('index') || type.includes('reference')) {
+      const index = normalizeIndex(text);
+      if (index) {
+        fields.indice = index;
+        byField.indice = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Margin/spread → diferencial
+    else if (type.includes('margin') || type.includes('spread') || type.includes('diferencial')) {
+      const rate = extractPercentageValue(normalizedValue, text);
+      if (rate !== null) {
+        fields.diferencial = formatDifferential(rate);
+        byField.diferencial = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Fees → comisiones
+    else if (type.includes('fees') || type.includes('commission')) {
+      if (!fields.comisiones) fields.comisiones = {};
+      const feeType = extractFeeType(type, text);
+      const feeValue = extractPercentageValue(normalizedValue, text);
+      if (feeType && feeValue !== null) {
+        fields.comisiones[feeType] = formatPercentage(feeValue);
+        byField[`comisiones_${feeType}`] = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Charges/expenses → gastos
+    else if (type.includes('charges') || type.includes('expenses') || type.includes('gasto')) {
+      if (!fields.gastos) fields.gastos = {};
+      const expenseType = extractExpenseType(type, text);
+      const expenseValue = extractMoneyValue(normalizedValue, text);
+      if (expenseType && expenseValue !== null) {
+        fields.gastos[expenseType] = formatEuroAmount(expenseValue);
+        byField[`gastos_${expenseType}`] = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Offer date → fechaOferta
+    else if (type.includes('offer_date') || type.includes('date_offer')) {
+      const date = extractDateValue(normalizedValue, text);
+      if (date) {
+        fields.fechaOferta = formatSpanishDate(date);
+        byField.fechaOferta = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Valid until → validez
+    else if (type.includes('valid_until') || type.includes('expiry') || type.includes('validez')) {
+      const date = extractDateValue(normalizedValue, text);
+      if (date) {
+        fields.validez = formatSpanishDate(date);
+        byField.validez = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // IBAN/account → cuentaCargo
+    else if (type.includes('iban') || type.includes('account_number')) {
+      const iban = normalizeIban(text);
+      if (iban) {
+        fields.cuentaCargo = iban;
+        byField.cuentaCargo = { confidence, source: 'docai:' + type };
+      }
+    }
+
+    // Bonifications/discounts → vinculaciones
+    else if (type.includes('bonifications') || type.includes('discounts') || type.includes('benefits')) {
+      if (!fields.vinculaciones) fields.vinculaciones = [];
+      const benefit = extractBenefit(text);
+      if (benefit && !fields.vinculaciones.includes(benefit)) {
+        fields.vinculaciones.push(benefit);
+        byField[`vinculaciones_${fields.vinculaciones.length}`] = { confidence, source: 'docai:' + type };
+      }
+    }
+  }
+}
+
+/**
+ * Extract money value from DocAI normalized value or text
+ */
+function extractMoneyValue(normalizedValue: any, text: string): number | null {
+  // Try normalized value first
+  if (normalizedValue?.moneyValue) {
+    const units = parseFloat(normalizedValue.moneyValue.units || '0');
+    const nanos = parseFloat(normalizedValue.moneyValue.nanos || '0') / 1000000000;
+    return units + nanos;
+  }
+
+  // Fallback to text parsing
+  const match = text.match(/(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)/);
+  if (match) {
+    return parseSpanishNumber(match[1]);
+  }
+
+  return null;
+}
+
+/**
+ * Extract percentage value from DocAI normalized value or text
+ */
+function extractPercentageValue(normalizedValue: any, text: string): number | null {
+  // Try normalized value first - this usually comes as decimal number like "3.25"
+  if (normalizedValue?.text) {
+    const value = parseFloat(normalizedValue.text);
+    if (!isNaN(value)) {
+      return value;
+    }
+  }
+
+  // Fallback to text parsing (Spanish format)
+  const match = text.match(/(\d{1,2}[.,]\d{1,2})\s*%/);
+  if (match) {
+    return parseSpanishNumber(match[1]);
+  }
+
+  return null;
+}
+
+/**
+ * Extract term in months from DocAI data
+ */
+function extractTermInMonths(normalizedValue: any, text: string): number | null {
+  // Check for years first and convert
+  const yearMatch = text.match(/(\d+)\s*a[ñn]os?/i);
+  if (yearMatch) {
+    return parseInt(yearMatch[1]) * 12;
+  }
+
+  // Check for months
+  const monthMatch = text.match(/(\d+)\s*meses?/i);
+  if (monthMatch) {
+    return parseInt(monthMatch[1]);
+  }
+
+  // Try normalized value
+  if (normalizedValue?.text) {
+    const numMatch = normalizedValue.text.match(/(\d+)/);
+    if (numMatch) {
+      const num = parseInt(numMatch[1]);
+      // Heuristic: if > 50, probably months; if <= 50, probably years
+      return num > 50 ? num : num * 12;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract date value from DocAI data
+ */
+function extractDateValue(normalizedValue: any, text: string): Date | null {
+  // Try normalized date value
+  if (normalizedValue?.dateValue) {
+    const { year, month, day } = normalizedValue.dateValue;
+    if (year && month && day) {
+      return new Date(year, month - 1, day);
+    }
+  }
+
+  // Fallback to text parsing (various formats)
+  const datePatterns = [
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})/,  // DD/MM/YYYY
+    /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
+    /(\d{1,2})-(\d{1,2})-(\d{4})/    // DD-MM-YYYY
+  ];
+
+  for (const pattern of datePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      if (pattern.source.startsWith('(\\d{4})')) {
+        // YYYY-MM-DD format
+        return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+      } else {
+        // DD/MM/YYYY or DD-MM-YYYY format
+        return new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parse Spanish number format (1.234,56 → 1234.56)
+ */
+function parseSpanishNumber(text: string): number {
+  const normalized = text.replace(/\./g, '').replace(',', '.');
+  return parseFloat(normalized) || 0;
+}
+
+/**
+ * Format amount in Spanish Euro format
+ */
+function formatEuroAmount(amount: number): string {
+  const formatted = new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+  // Replace non-breaking space with regular space
+  return formatted.replace(/\u00A0/g, ' ');
+}
+
+/**
+ * Format percentage in Spanish format
+ */
+function formatPercentage(rate: number): string {
+  // Format as percentage but don't multiply by 100 since the input is already a percentage value
+  const formatted = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(rate);
+  return formatted + ' %';
+}
+
+/**
+ * Format differential with + sign
+ */
+function formatDifferential(rate: number): string {
+  const formatted = formatPercentage(rate);
+  return rate >= 0 ? `+${formatted}` : formatted;
+}
+
+/**
+ * Format date in Spanish format (DD/MM/YYYY)
+ */
+function formatSpanishDate(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear().toString();
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Normalize amortization system
+ */
+function normalizeAmortizationSystem(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (lower.includes('francés') || lower.includes('frances') || lower.includes('french')) {
+    return 'Francés';
+  }
+  if (lower.includes('alemán') || lower.includes('aleman') || lower.includes('german')) {
+    return 'Alemán';
+  }
+  if (lower.includes('americano') || lower.includes('american')) {
+    return 'Americano';
+  }
+  return null;
+}
+
+/**
+ * Normalize index reference
+ */
+function normalizeIndex(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (lower.includes('euribor') || lower.includes('euríbor')) {
+    if (lower.includes('12') || lower.includes('anual')) {
+      return 'Euríbor 12M';
+    }
+    if (lower.includes('6') || lower.includes('semestral')) {
+      return 'Euríbor 6M';
+    }
+    return 'Euríbor 12M'; // Default
+  }
+  if (lower.includes('irph')) {
+    return 'IRPH';
+  }
+  return null;
+}
+
+/**
+ * Extract fee type from entity type and text
+ */
+function extractFeeType(type: string, text: string): string | null {
+  const lower = text.toLowerCase();
+  const lowerType = type.toLowerCase();
+  if (lower.includes('apertura') || lowerType.includes('opening') || lowerType.includes('apertura')) {
+    return 'apertura';
+  }
+  if (lower.includes('mantenimiento') || lowerType.includes('maintenance') || lowerType.includes('mantenimiento')) {
+    return 'mantenimiento';
+  }
+  if (lower.includes('amortización') || lower.includes('amortizacion') || lowerType.includes('prepayment')) {
+    return 'amortizacion_anticipada';
+  }
+  if (lower.includes('subrogación') || lower.includes('subrogacion') || lowerType.includes('subrogation')) {
+    return 'subrogacion';
+  }
+  return 'otros';
+}
+
+/**
+ * Extract expense type from entity type and text
+ */
+function extractExpenseType(type: string, text: string): string | null {
+  const lower = text.toLowerCase();
+  if (lower.includes('tasación') || lower.includes('tasacion') || type.includes('appraisal') || type.includes('tasacion')) {
+    return 'tasacion';
+  }
+  if (lower.includes('notaría') || lower.includes('notaria') || type.includes('notary')) {
+    return 'notaria';
+  }
+  if (lower.includes('registro') || type.includes('registry')) {
+    return 'registro';
+  }
+  if (lower.includes('gestoría') || lower.includes('gestoria') || type.includes('management')) {
+    return 'gestoria';
+  }
+  return 'otros';
+}
+
+/**
+ * Normalize IBAN format
+ */
+function normalizeIban(text: string): string | null {
+  const iban = text.replace(/\s/g, '').toUpperCase();
+  // Handle full IBAN
+  if (iban.match(/^ES\d{22}$/)) {
+    return iban;
+  }
+  // Handle partial IBAN with asterisks
+  if (iban.includes('*') && iban.length >= 4) {
+    return iban;
+  }
+  // Handle cases like 'ES12004912341234' from normalizedValue
+  if (iban.match(/^ES\d{20}$/)) {
+    return iban;
+  }
+  return null;
+}
+
+/**
+ * Extract benefit/bonification from text
+ */
+function extractBenefit(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (lower.includes('nómina') || lower.includes('nomina')) {
+    return 'Nómina';
+  }
+  if (lower.includes('recibo') || lower.includes('domiciliación')) {
+    return 'Recibos';
+  }
+  if (lower.includes('tarjeta')) {
+    return 'Tarjeta';
+  }
+  if (lower.includes('seguro') && lower.includes('hogar')) {
+    return 'Seguro hogar';
+  }
+  if (lower.includes('seguro') && lower.includes('vida')) {
+    return 'Seguro vida';
+  }
+  if (lower.includes('plan') && lower.includes('pensiones')) {
+    return 'Plan pensiones';
+  }
+  if (lower.includes('alarma')) {
+    return 'Alarma';
+  }
+  return null;
+}
+
+/**
+ * Calculate global confidence based on critical fields
+ */
+function calculateGlobalConfidence(byField: Record<string, FieldConfidence>): number {
+  const criticalFields = ['capital_inicial', 'plazoMeses', 'tin', 'tae', 'cuota'];
+  const weights = { capital_inicial: 0.3, plazoMeses: 0.2, tin: 0.25, tae: 0.15, cuota: 0.1 };
+  
+  let weightedSum = 0;
+  let totalWeight = 0;
+
+  for (const field of criticalFields) {
+    if (byField[field]) {
+      const weight = weights[field as keyof typeof weights] || 0.1;
+      weightedSum += byField[field].confidence * weight;
+      totalWeight += weight;
+    }
+  }
+
+  return totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) / 100 : 0;
+}
+
+/**
+ * Identify fields with low confidence or missing
+ */
+function identifyPendingFields(
+  fields: NormalizedFeinFields, 
+  byField: Record<string, FieldConfidence>, 
+  pending: string[]
+): void {
+  const criticalFields = {
+    capital_inicial: 'Importe',
+    plazoMeses: 'Plazo',
+    tin: 'TIN',
+    tae: 'TAE',
+    cuota: 'Cuota',
+    sistemaAmortizacion: 'Sistema amortización',
+    indice: 'Índice referencia',
+    diferencial: 'Diferencial'
+  };
+
+  for (const [fieldKey, displayName] of Object.entries(criticalFields)) {
+    const fieldValue = fields[fieldKey as keyof NormalizedFeinFields];
+    const fieldConfidence = byField[fieldKey];
+    
+    if (!fieldValue || !fieldConfidence || fieldConfidence.confidence < 0.60) {
+      pending.push(displayName);
+    }
+  }
+}
+
+/**
+ * Validate relationships between fields
+ */
+function validateFieldRelationships(fields: NormalizedFeinFields): void {
+  // Validate TAE >= TIN
+  if (fields.tae && fields.tin) {
+    const taeValue = parseSpanishNumber(fields.tae.replace(' %', ''));
+    const tinValue = parseSpanishNumber(fields.tin.replace(' %', ''));
+    
+    if (taeValue < tinValue) {
+      console.warn('TAE validation warning: TAE should be >= TIN', { tae: taeValue, tin: tinValue });
+    }
+  }
+
+  // Validate plazo coherence (already handled in extractTermInMonths)
+  
+  // Other validations could be added here
+}
