@@ -138,7 +138,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
 
           {/* Porcentaje de construcción calculado automáticamente */}
           {data.fiscalidad?.valor_catastral_total && data.fiscalidad?.valor_catastral_construccion && (
-            <div className="mt-6 bg-hz-primary bg-opacity-5 border border-hz-primary border-opacity-20 rounded-lg p-4">
+            <div className="mt-6 bg-hz-primary border border-hz-primary border-opacity-20 rounded-lg p-4">
               <div className="flex items-center mb-2">
                 <Calculator className="w-4 h-4 text-hz-primary mr-2" size={24}  />
                 <span className="text-sm font-medium text-hz-primary">Cálculo automático</span>
@@ -256,7 +256,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Base de amortización anual
                 </label>
-                <div className="bg-hz-primary bg-opacity-5 border border-hz-primary border-opacity-20 rounded-md p-3">
+                <div className="bg-hz-primary border border-hz-primary border-opacity-20 rounded-md p-3">
                   <span className="text-sm font-medium text-hz-primary">
                     {formatCurrency(data.fiscalidad.valor_catastral_construccion)}
                   </span>

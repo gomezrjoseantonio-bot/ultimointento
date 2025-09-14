@@ -75,7 +75,7 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
   const getDeviationBadge = (category: ExpenseCategory) => {
     if (category.deviation === 'none' || !category.budget) {
       return (
-        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-neutral-500 bg-opacity-10 text-hz-neutral-500">
+        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-neutral-500 text-hz-neutral-500">
           Sin presup.
         </div>
       );
@@ -83,7 +83,7 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
 
     if (category.deviation === 'within') {
       return (
-        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-success bg-opacity-10 text-hz-success">
+        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-success text-hz-success">
           ✓
         </div>
       );
@@ -91,7 +91,7 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
 
     // Over budget
     return (
-      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-error bg-opacity-10 text-hz-error">
+      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-hz-error text-hz-error">
         <TrendingUp className="w-2 h-2" />
         +{Math.abs(category.deviationPercent).toFixed(1)}%
       </div>

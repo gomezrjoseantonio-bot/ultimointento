@@ -386,7 +386,7 @@ const MovimientosPanel: React.FC = () => {
 
       {/* Manual Entry Modal */}
       {showManualEntry && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -492,7 +492,7 @@ const MovimientosPanel: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Confirmar Eliminación</h3>

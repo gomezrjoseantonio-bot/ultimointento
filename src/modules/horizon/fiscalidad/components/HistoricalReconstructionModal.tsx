@@ -109,7 +109,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
     `todas las propiedades (${properties.length} inmuebles)`;
 
   return (
-    <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">

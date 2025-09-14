@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     <>
       {/* Mobile sidebar - Light overlay only per ATLAS */}
       <div
-        className={`fixed inset-0 z-40 bg-white bg-opacity-75 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-40 bg-white transition-opacity md:hidden ${
           sidebarOpen ? 'ease-out duration-300 opacity-100' : 'ease-in duration-200 opacity-0 pointer-events-none'
         }`}
         onClick={() => setSidebarOpen(false)}
