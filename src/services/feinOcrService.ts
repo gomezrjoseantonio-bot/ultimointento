@@ -6,8 +6,11 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { FeinLoanDraft } from '../types/fein';
 import { FeinTextParser } from './fein/parseFeinText';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker - Use local static file to avoid CSP issues
+// No dynamic imports - worker loaded directly from static asset
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+}
 
 interface PageProcessingResult {
   pageNumber: number;
@@ -37,7 +40,24 @@ export interface FEINProcessingResult {
   ocrPagesUsed: number;
   fieldsExtracted: string[];
   fieldsMissing: string[];
+  pendingFields?: string[]; // New field for UX "Pendiente" pattern
+  telemetry?: FEINTelemetryData; // New telemetry data
   data?: any; // For compatibility with existing code
+}
+
+// New telemetry interface for audit and performance tracking
+export interface FEINTelemetryData {
+  docId: string;
+  pages: number[];
+  processingTimeMs: number;
+  fileSizeKB: number;
+  ocrUsed: boolean[];
+  workerLoadTimeMs?: number;
+  errors: string[];
+  pageProcessingTimes: Record<number, number>;
+  textToOcrRatio: number; // Percentage of pages that used text vs OCR
+  confidence: number;
+  pendingFieldReasons: Record<string, string>; // Why each field is pending
 }
 
 export class FEINOCRService {
@@ -48,12 +68,81 @@ export class FEINOCRService {
   private readonly MAX_CONCURRENT_OCR = 2; // Limit concurrent OCR requests
   private readonly MAX_IMAGE_WIDTH = 1600; // Max image width for OCR
   private readonly MAX_PDF_SIZE = 20 * 1024 * 1024; // 20MB max PDF size
+  private readonly WORKER_LOAD_TIMEOUT_MS = 200; // Worker should load in < 200ms
   
   static getInstance(): FEINOCRService {
     if (!FEINOCRService.instance) {
       FEINOCRService.instance = new FEINOCRService();
     }
     return FEINOCRService.instance;
+  }
+
+  /**
+   * Check if PDF.js worker loads correctly and measure performance
+   * Logs worker_ok event if loading exceeds 200ms threshold
+   */
+  private async checkWorkerPerformance(): Promise<{ workerOk: boolean; loadTimeMs: number }> {
+    const startTime = performance.now();
+    
+    try {
+      // Create a minimal PDF to test worker loading
+      const testArrayBuffer = new ArrayBuffer(8);
+      const loadingTask = pdfjsLib.getDocument({ data: testArrayBuffer });
+      
+      // Set timeout for worker loading test
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Worker loading timeout')), this.WORKER_LOAD_TIMEOUT_MS)
+      );
+      
+      try {
+        await Promise.race([loadingTask.promise, timeoutPromise]);
+        const loadTimeMs = performance.now() - startTime;
+        
+        // Log event if worker loading exceeds threshold
+        if (loadTimeMs >= this.WORKER_LOAD_TIMEOUT_MS) {
+          console.warn(`[FEIN-WORKER] Worker loading slow: ${loadTimeMs.toFixed(2)}ms (threshold: ${this.WORKER_LOAD_TIMEOUT_MS}ms)`);
+        } else {
+          console.log(`[FEIN-WORKER] Worker loaded successfully in ${loadTimeMs.toFixed(2)}ms`);
+        }
+        
+        return { workerOk: true, loadTimeMs };
+      } catch (error) {
+        const loadTimeMs = performance.now() - startTime;
+        console.warn('[FEIN-WORKER] PDF.js worker loading issue:', error);
+        
+        // Log worker loading failure event
+        console.error(`[FEIN-WORKER] Worker failed to load in ${loadTimeMs.toFixed(2)}ms`);
+        
+        return { workerOk: false, loadTimeMs };
+      }
+    } catch (error) {
+      const loadTimeMs = performance.now() - startTime;
+      console.error('[FEIN-WORKER] PDF.js worker check failed:', error);
+      return { workerOk: false, loadTimeMs };
+    }
+  }
+
+  /**
+   * Log structured telemetry data per problem statement requirements
+   * Format: {docId, pages:[...], ms, sizeKB, ocrUsed:[true/false], errors[]}
+   */
+  private logTelemetry(telemetry: FEINTelemetryData): void {
+    console.log('[FEIN-TELEMETRY]', JSON.stringify({
+      docId: telemetry.docId,
+      pages: telemetry.pages,
+      ms: telemetry.processingTimeMs,
+      sizeKB: telemetry.fileSizeKB,
+      ocrUsed: telemetry.ocrUsed,
+      errors: telemetry.errors,
+      worker_ok: (telemetry.workerLoadTimeMs || 0) < this.WORKER_LOAD_TIMEOUT_MS,
+      worker_load_ms: telemetry.workerLoadTimeMs,
+      pages_ocr: telemetry.ocrUsed.filter(used => used).length,
+      pages_text: telemetry.ocrUsed.filter(used => !used).length,
+      textToOcrRatio: telemetry.textToOcrRatio,
+      confidence: telemetry.confidence,
+      pendingFieldsCount: Object.keys(telemetry.pendingFieldReasons).length,
+      pendingFieldReasons: telemetry.pendingFieldReasons
+    }));
   }
 
   /**
@@ -66,12 +155,42 @@ export class FEINOCRService {
     file: File, 
     onProgress?: ProgressCallback
   ): Promise<FEINProcessingResult> {
-    console.log('[FEIN] Starting text-first, OCR-after processing:', file.name);
+    const startTime = performance.now();
+    const docId = `fein_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     
+    console.log('[FEIN] Processing document:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`, `docId: ${docId}`);
+    
+    // Initialize telemetry
+    const telemetry: FEINTelemetryData = {
+      docId,
+      pages: [],
+      processingTimeMs: 0,
+      fileSizeKB: Math.round(file.size / 1024),
+      ocrUsed: [],
+      errors: [],
+      pageProcessingTimes: {},
+      textToOcrRatio: 0,
+      confidence: 0,
+      pendingFieldReasons: {}
+    };
+
     try {
+      // Check worker performance first
+      const workerCheck = await this.checkWorkerPerformance();
+      telemetry.workerLoadTimeMs = workerCheck.loadTimeMs;
+      
+      if (!workerCheck.workerOk) {
+        telemetry.errors.push(`Worker loading failed in ${workerCheck.loadTimeMs}ms`);
+        console.warn('[FEIN] PDF.js worker loading issue detected');
+      }
+
       // Validate file
       const validation = this.validateFile(file);
       if (!validation.isValid) {
+        telemetry.errors.push(validation.error!);
+        telemetry.processingTimeMs = performance.now() - startTime;
+        this.logTelemetry(telemetry);
+        
         return {
           success: false,
           errors: [validation.error!],
@@ -79,7 +198,9 @@ export class FEINOCRService {
           pagesProcessed: 0,
           ocrPagesUsed: 0,
           fieldsExtracted: [],
-          fieldsMissing: ['all'] // All fields missing if file is invalid
+          fieldsMissing: ['all'], // All fields missing if validation failed
+          pendingFields: ['all'],
+          telemetry
         };
       }
 
@@ -94,6 +215,8 @@ export class FEINOCRService {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const totalPages = pdf.numPages;
+      
+      telemetry.pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
       console.log(`[FEIN] PDF loaded: ${totalPages} pages`);
 
@@ -102,6 +225,8 @@ export class FEINOCRService {
       let ocrPagesUsed = 0;
 
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        const pageStartTime = performance.now();
+        
         onProgress?.({
           currentPage: pageNum,
           totalPages,
@@ -115,6 +240,7 @@ export class FEINOCRService {
 
           if (pageResult.needsOCR) {
             ocrPagesUsed++;
+            telemetry.ocrUsed[pageNum - 1] = true;
             
             onProgress?.({
               currentPage: pageNum,
@@ -125,7 +251,13 @@ export class FEINOCRService {
 
             // Perform OCR on this page
             await this.performPageOCR(pdf, pageNum, pageResult);
+          } else {
+            telemetry.ocrUsed[pageNum - 1] = false;
           }
+
+          // Track page processing time
+          const pageProcessingTime = performance.now() - pageStartTime;
+          telemetry.pageProcessingTimes[pageNum] = Math.round(pageProcessingTime);
 
         } catch (error) {
           console.warn(`[FEIN] Error processing page ${pageNum}:`, error);
@@ -155,14 +287,20 @@ export class FEINOCRService {
       const aggregatedText = this.aggregatePageText(pageResults);
       
       if (!aggregatedText || aggregatedText.length < 100) {
+        telemetry.errors.push('Insufficient text extracted from document');
+        telemetry.processingTimeMs = Math.round(performance.now() - startTime);
+        this.logTelemetry(telemetry);
+        
         return {
           success: false,
-          errors: ['No se pudo extraer suficiente texto del documento FEIN'],
+          errors: ['No se pudo extraer suficiente texto del documento FEIN. Verifica que el archivo sea legible.'],
           warnings: [],
           pagesProcessed: totalPages,
           ocrPagesUsed,
           fieldsExtracted: [],
-          fieldsMissing: ['all'] // All fields missing if no text extracted
+          fieldsMissing: ['all'], // All fields missing if no text extracted
+          pendingFields: ['all'],
+          telemetry
         };
       }
 
@@ -182,6 +320,10 @@ export class FEINOCRService {
       });
 
       if (!parseResult.success || !parseResult.loanDraft) {
+        telemetry.errors.push('Text parsing failed');
+        telemetry.processingTimeMs = Math.round(performance.now() - startTime);
+        this.logTelemetry(telemetry);
+        
         return {
           success: false,
           errors: parseResult.errors,
@@ -189,11 +331,13 @@ export class FEINOCRService {
           pagesProcessed: totalPages,
           ocrPagesUsed,
           fieldsExtracted: [],
-          fieldsMissing: ['all'] // All fields missing if parsing failed
+          fieldsMissing: ['all'], // All fields missing if parsing failed
+          pendingFields: ['all'],
+          telemetry
         };
       }
 
-      // Check if we have minimum required fields
+      // Check if we have minimum required fields (updated to use Pendiente pattern)
       const hasMinimumData = this.validateMinimumFields(parseResult.loanDraft);
       
       // Determine extracted and missing fields
@@ -202,16 +346,49 @@ export class FEINOCRService {
       
       const draft = parseResult.loanDraft;
       if (draft.prestamo.banco) fieldsExtracted.push('banco');
-      else fieldsMissing.push('banco');
+      else {
+        fieldsMissing.push('banco');
+        telemetry.pendingFieldReasons['banco'] = 'Entidad bancaria no detectada en el texto';
+      }
       
       if (draft.prestamo.tipo) fieldsExtracted.push('tipo');
-      else fieldsMissing.push('tipo');
+      else {
+        fieldsMissing.push('tipo');
+        telemetry.pendingFieldReasons['tipo'] = 'Tipo de interés no encontrado o ambiguo';
+      }
       
       if (draft.prestamo.capitalInicial) fieldsExtracted.push('capitalInicial');
-      else fieldsMissing.push('capitalInicial');
+      else {
+        fieldsMissing.push('capitalInicial');
+        telemetry.pendingFieldReasons['capitalInicial'] = 'Capital inicial no detectado o formato inválido';
+      }
       
       if (draft.prestamo.plazoMeses) fieldsExtracted.push('plazoMeses');
-      else fieldsMissing.push('plazoMeses');
+      else {
+        fieldsMissing.push('plazoMeses');
+        telemetry.pendingFieldReasons['plazoMeses'] = 'Plazo del préstamo no encontrado';
+      }
+
+      // Add additional field checks for comprehensive tracking
+      if (draft.prestamo.tinFijo || draft.prestamo.diferencial) fieldsExtracted.push('tin');
+      else {
+        fieldsMissing.push('tin');
+        telemetry.pendingFieldReasons['tin'] = 'TIN/TAE no detectado o formato inválido';
+      }
+
+      if (draft.prestamo.ibanCargoParcial) fieldsExtracted.push('cuentaCargo');
+      else {
+        fieldsMissing.push('cuentaCargo');
+        telemetry.pendingFieldReasons['cuentaCargo'] = 'IBAN de cuenta de cargo no detectado';
+      }
+
+      // Calculate telemetry metrics
+      telemetry.processingTimeMs = Math.round(performance.now() - startTime);
+      telemetry.textToOcrRatio = totalPages > 0 ? Math.round(((totalPages - ocrPagesUsed) / totalPages) * 100) : 0;
+      telemetry.confidence = parseResult.confidence || 0;
+
+      // Log telemetry for audit
+      this.logTelemetry(telemetry);
       
       return {
         success: true,
@@ -223,19 +400,29 @@ export class FEINOCRService {
         ocrPagesUsed,
         fieldsExtracted,
         fieldsMissing,
+        pendingFields: hasMinimumData.pendingFields,
+        telemetry,
         data: parseResult.loanDraft // For compatibility
       };
 
     } catch (error) {
       console.error('[FEIN] Error processing FEIN document:', error);
+      
+      // Update telemetry with error information
+      telemetry.errors.push(`Processing error: ${error}`);
+      telemetry.processingTimeMs = Math.round(performance.now() - startTime);
+      this.logTelemetry(telemetry);
+      
       return {
         success: false,
-        errors: ['Error interno procesando el documento FEIN'],
+        errors: ['No hemos podido procesar algunas páginas. Reinténtalo o crea el préstamo manualmente.'],
         warnings: [],
         pagesProcessed: 0,
         ocrPagesUsed: 0,
         fieldsExtracted: [],
-        fieldsMissing: ['all'] // All fields missing on error
+        fieldsMissing: ['all'], // All fields missing on error
+        pendingFields: ['all'],
+        telemetry
       };
     }
   }
@@ -368,38 +555,47 @@ export class FEINOCRService {
 
   /**
    * Validate minimum required fields for loan creation
+   * Updated to use "Pendiente" UX pattern - no hard errors, only warnings
    */
-  private validateMinimumFields(draft: FeinLoanDraft): { errors: string[]; warnings: string[] } {
+  private validateMinimumFields(draft: FeinLoanDraft): { errors: string[]; warnings: string[]; pendingFields: string[] } {
     const errors: string[] = [];
     const warnings: string[] = [];
+    const pendingFields: string[] = [];
 
-    // Critical fields
+    // Track missing critical fields as "Pendiente" instead of errors
     if (!draft.prestamo.banco) {
-      warnings.push('No se pudo identificar la entidad bancaria');
+      warnings.push('Entidad bancaria marcada como Pendiente para completar manualmente');
+      pendingFields.push('banco');
     }
 
     if (!draft.prestamo.capitalInicial) {
-      errors.push('No se pudo extraer el capital del préstamo');
+      warnings.push('Capital inicial marcado como Pendiente para completar manualmente');
+      pendingFields.push('capitalInicial');
     }
 
     if (!draft.prestamo.tipo) {
-      warnings.push('No se pudo determinar el tipo de interés');
+      warnings.push('Tipo de interés marcado como Pendiente para completar manualmente');
+      pendingFields.push('tipo');
     }
 
     if (!draft.prestamo.plazoMeses) {
-      warnings.push('No se pudo extraer el plazo del préstamo');
+      warnings.push('Plazo del préstamo marcado como Pendiente para completar manualmente');
+      pendingFields.push('plazoMeses');
     }
 
-    // Validate minimum data for loan creation
-    const hasMinimumForCreation = draft.prestamo.capitalInicial && 
-                                 draft.prestamo.plazoMeses && 
-                                 draft.prestamo.tipo;
-
-    if (!hasMinimumForCreation) {
-      errors.push('Datos insuficientes para crear el préstamo automáticamente');
+    // Additional fields that are nice to have but not critical
+    if (!draft.prestamo.tinFijo && !draft.prestamo.diferencial) {
+      warnings.push('TIN/TAE marcado como Pendiente para completar manualmente');
+      pendingFields.push('tin');
     }
 
-    return { errors, warnings };
+    if (!draft.prestamo.ibanCargoParcial) {
+      warnings.push('Cuenta de cargo marcada como Pendiente para completar manualmente');
+      pendingFields.push('cuentaCargo');
+    }
+
+    // No hard errors - always allow creating draft with pending fields
+    return { errors, warnings, pendingFields };
   }
 
   // Legacy methods for backward compatibility (deprecated)

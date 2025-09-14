@@ -117,6 +117,7 @@ export interface FEINProcessingResult {
   confidence?: number;               // Overall confidence score (0-1)
   fieldsExtracted: string[];         // List of successfully extracted fields
   fieldsMissing: string[];           // List of missing critical fields
+  pendingFields?: string[];          // List of fields marked as "Pendiente" for UX
   uuid?: string;                     // UUID for file tracking
   persistedFiles?: {                 // File persistence references
     rawPdf: string;                  // /fein/raw/{uuid}.pdf
