@@ -4,14 +4,14 @@
 import { handler } from '../../../functions/ocr-fein';
 
 // Mock the normalize-docai module
-jest.mock('../../../functions/normalize-docai', () => ({
+jest.mock('../../../src/services/ocr/normalize-docai', () => ({
   normalizeFeinFromDocAI: jest.fn().mockReturnValue({
     fields: {
       capital_inicial: '250.000,00 €',
       plazoMeses: 300,
       tin: '3,25 %',
       tae: '3,41 %',
-      cuota: '1.263,45 €',
+      cuota: '1263,45 €',
       sistemaAmortizacion: 'Francés',
       indice: 'Euríbor 12M',
       diferencial: '+1,50 %'
@@ -284,7 +284,7 @@ describe('ocr-fein E2E Tests', () => {
           plazoMeses: 300,
           tin: '3,25 %',
           tae: '3,41 %',
-          cuota: '1.263,45 €',
+          cuota: '1263,45 €',
           sistemaAmortizacion: 'Francés',
           indice: 'Euríbor 12M',
           diferencial: '+1,50 %'
@@ -340,7 +340,7 @@ describe('ocr-fein E2E Tests', () => {
       expect(result.statusCode).toBe(502);
       const body = JSON.parse(result.body);
       expect(body.success).toBe(false);
-      expect(body.error).toContain('Invalid document format');
+      expect(body.error).toContain('Error procesando documento con OCR');
     });
 
     it('should handle empty DocAI results', async () => {
