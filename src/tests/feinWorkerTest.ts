@@ -1,53 +1,50 @@
-// Test script to validate PDF.js worker loading and CSP compliance
+// Test script to validate serverless DocAI FEIN processing
 // This tests the core functionality without requiring actual FEIN files
 
 import { feinOcrService } from '../services/feinOcrService';
 
-export const testWorkerLoading = async (): Promise<boolean> => {
-  console.log('[FEIN-TEST] Starting PDF.js worker loading test...');
+export const testDocAIProcessing = async (): Promise<boolean> => {
+  console.log('[FEIN-TEST] Starting DocAI serverless processing test...');
   
   try {
-    // Create a minimal test PDF buffer to test worker loading
+    // Create a minimal test PDF buffer to test processing
     const testPdfBuffer = new ArrayBuffer(1024);
     const testFile = new File([testPdfBuffer], 'test.pdf', { type: 'application/pdf' });
     
-    console.log('[FEIN-TEST] Testing worker performance...');
+    console.log('[FEIN-TEST] Testing serverless processing...');
     
-    // This will internally test the worker loading in checkWorkerPerformance()
+    // This will test the serverless DocAI endpoint
     const result = await feinOcrService.processFEINDocument(testFile);
     
-    console.log('[FEIN-TEST] Worker test result:', {
+    console.log('[FEIN-TEST] DocAI processing result:', {
       success: result.success,
-      telemetry: result.telemetry ? {
-        workerLoadTimeMs: result.telemetry.workerLoadTimeMs,
-        errors: result.telemetry.errors
-      } : null
+      providerUsed: result.providerUsed,
+      confidence: result.confidence,
+      errors: result.errors
     });
     
-    // Check if worker-related errors occurred
-    const hasWorkerErrors = result.telemetry?.errors.some(error => 
-      error.toLowerCase().includes('worker') || 
-      error.toLowerCase().includes('csp') ||
-      error.toLowerCase().includes('refused to load')
-    ) || false;
+    // For a test file, we expect a failure (since it's not a real FEIN document)
+    // But we want to make sure it fails gracefully
+    const hasGracefulFailure = !result.success && result.errors.length > 0 && 
+      !result.errors.some(error => 
+        error.toLowerCase().includes('worker') || 
+        error.toLowerCase().includes('pdf.js') ||
+        error.toLowerCase().includes('csp')
+      );
     
-    if (hasWorkerErrors) {
-      console.error('[FEIN-TEST] ❌ Worker loading issues detected:', result.telemetry?.errors);
-      return false;
+    if (hasGracefulFailure) {
+      console.log('[FEIN-TEST] ✅ Serverless processing test passed - graceful failure without worker errors');
+      return true;
+    } else if (result.success) {
+      console.log('[FEIN-TEST] ✅ Serverless processing test passed - successful processing');
+      return true;
     }
     
-    const workerLoadTime = result.telemetry?.workerLoadTimeMs || 0;
-    if (workerLoadTime > 200) {
-      console.warn(`[FEIN-TEST] ⚠️  Worker loading slow: ${workerLoadTime}ms (threshold: 200ms)`);
-    } else {
-      console.log(`[FEIN-TEST] ✅ Worker loaded in acceptable time: ${workerLoadTime}ms`);
-    }
-    
-    console.log('[FEIN-TEST] ✅ PDF.js worker loading test passed');
-    return true;
+    console.error('[FEIN-TEST] ❌ Unexpected processing behavior');
+    return false;
     
   } catch (error) {
-    console.error('[FEIN-TEST] ❌ Worker test failed:', error);
+    console.error('[FEIN-TEST] ❌ Serverless processing test failed:', error);
     return false;
   }
 };
@@ -60,25 +57,17 @@ export const testUXFallbackPattern = (): boolean => {
     success: true,
     fieldsExtracted: ['banco', 'tipo'],
     fieldsMissing: ['capitalInicial', 'plazoMeses', 'tin'],
-    pendingFields: ['capitalInicial', 'plazoMeses', 'tin'],
-    telemetry: {
-      pendingFieldReasons: {
-        capitalInicial: 'Capital inicial no detectado o formato inválido',
-        plazoMeses: 'Plazo del préstamo no encontrado',
-        tin: 'TIN/TAE no detectado o formato inválido'
-      }
-    }
+    pendingFields: ['capitalInicial', 'plazoMeses', 'tin']
   };
   
   // Test that we have proper pending field handling
   const hasPendingFields = mockFeinResult.pendingFields && mockFeinResult.pendingFields.length > 0;
-  const hasReasons = mockFeinResult.telemetry?.pendingFieldReasons && 
-    Object.keys(mockFeinResult.telemetry.pendingFieldReasons).length > 0;
+  const hasExtractedFields = mockFeinResult.fieldsExtracted && mockFeinResult.fieldsExtracted.length > 0;
   
-  if (hasPendingFields && hasReasons) {
+  if (hasPendingFields && hasExtractedFields) {
     console.log('[FEIN-TEST] ✅ UX fallback pattern properly configured');
+    console.log('[FEIN-TEST] Extracted fields:', mockFeinResult.fieldsExtracted);
     console.log('[FEIN-TEST] Pending fields:', mockFeinResult.pendingFields);
-    console.log('[FEIN-TEST] Field reasons:', mockFeinResult.telemetry.pendingFieldReasons);
     return true;
   }
   
@@ -88,15 +77,15 @@ export const testUXFallbackPattern = (): boolean => {
 
 // Export test runner
 export const runFeinTests = async (): Promise<void> => {
-  console.log('[FEIN-TEST] 🧪 Running FEIN OCR tests...');
+  console.log('[FEIN-TEST] 🧪 Running FEIN DocAI tests...');
   
-  const workerTest = await testWorkerLoading();
+  const processingTest = await testDocAIProcessing();
   const uxTest = testUXFallbackPattern();
   
-  const allPassed = workerTest && uxTest;
+  const allPassed = processingTest && uxTest;
   
   console.log('[FEIN-TEST] 📊 Test Results Summary:');
-  console.log(`[FEIN-TEST] Worker Loading: ${workerTest ? '✅ PASS' : '❌ FAIL'}`);
+  console.log(`[FEIN-TEST] DocAI Processing: ${processingTest ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`[FEIN-TEST] UX Fallback: ${uxTest ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`[FEIN-TEST] Overall: ${allPassed ? '✅ ALL TESTS PASS' : '❌ SOME TESTS FAILED'}`);
 };
