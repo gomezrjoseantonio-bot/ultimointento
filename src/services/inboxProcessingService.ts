@@ -469,8 +469,8 @@ class InboxProcessingService {
         item.subtype = 'fein_completa';
         item.summary = {
           destino: 'Financiación › Préstamos (auto-creado)',
-          supplier_name: feinResult.rawData?.bancoEntidad || feinResult.data?.prestamo?.cuentaCargo?.banco,
-          total_amount: feinResult.rawData?.capitalInicial || feinResult.data?.prestamo?.capitalInicial
+          supplier_name: feinResult.loanDraft?.prestamo?.banco || feinResult.data?.prestamo?.banco,
+          total_amount: feinResult.loanDraft?.prestamo?.capitalInicial || feinResult.data?.prestamo?.capitalInicial
         };
         
         // Set 72h expiration
@@ -497,8 +497,8 @@ class InboxProcessingService {
         item.subtype = 'fein_revision';
         item.summary = {
           destino: 'Inbox › Revisión FEIN',
-          supplier_name: feinResult.rawData?.bancoEntidad || feinResult.data?.prestamo?.cuentaCargo?.banco,
-          total_amount: feinResult.rawData?.capitalInicial || feinResult.data?.prestamo?.capitalInicial
+          supplier_name: feinResult.loanDraft?.prestamo?.banco || feinResult.data?.prestamo?.banco,
+          total_amount: feinResult.loanDraft?.prestamo?.capitalInicial || feinResult.data?.prestamo?.capitalInicial
         };
         
         item.logs.push({
@@ -526,12 +526,12 @@ class InboxProcessingService {
           status: 'succeeded',
           timestamp: new Date().toISOString(),
           data: {
-            raw_text: feinResult.rawData?.rawText || '',
-            supplier_name: feinResult.rawData?.bancoEntidad || feinResult.data?.prestamo?.cuentaCargo?.banco,
-            total_amount: feinResult.rawData?.capitalInicial || feinResult.data?.prestamo?.capitalInicial,
+            raw_text: '',
+            supplier_name: feinResult.loanDraft?.prestamo?.banco || feinResult.data?.prestamo?.banco,
+            total_amount: feinResult.loanDraft?.prestamo?.capitalInicial || feinResult.data?.prestamo?.capitalInicial,
             metadata: {
               feinData: feinResult.data,
-              rawFeinData: feinResult.rawData,
+              loanDraft: feinResult.loanDraft,
               processingResult: feinResult
             }
           } as any,

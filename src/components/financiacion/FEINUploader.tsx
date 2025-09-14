@@ -1,96 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
-import { FEINProcessingResult, FeinLoanDraft } from '../../types/fein';
+import { FeinLoanDraft } from '../../types/fein';
 import { feinOcrService } from '../../services/feinOcrService';
 
 interface FEINUploaderProps {
-  onFEINProcessed: (result: FEINProcessingResult) => void;
-  onFEINDraftReady?: (draft: FeinLoanDraft) => void; // New callback for chunked processing
+  onFEINDraftReady: (draft: FeinLoanDraft) => void; // Main callback for new implementation
   onCancel: () => void;
 }
 
-const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraftReady, onCancel }) => {
+const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [processingStage, setProcessingStage] = useState('');
-  const [currentJob, setCurrentJob] = useState<{
-    jobId: string;
-    pagesTotal: number;
-    totalChunks: number;
-  } | null>(null);
-
-  // Poll job status when processing
-  useEffect(() => {
-    if (!currentJob) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        const statusResult = await feinOcrService.checkFEINJobStatus(currentJob.jobId);
-        
-        if (!statusResult.success) {
-          console.error('Error checking job status:', statusResult.error);
-          return;
-        }
-
-        const job = statusResult.job!;
-        
-        // Update progress
-        const progressPercent = job.progress.pagesTotal > 0 
-          ? Math.round((job.progress.pagesProcessed / job.progress.pagesTotal) * 100)
-          : 0;
-        
-        setUploadProgress(progressPercent);
-        
-        // Update stage description
-        if (job.status === 'processing' && job.progress.currentChunk !== undefined) {
-          setProcessingStage(`Leyendo páginas ${job.progress.pagesProcessed + 1} de ${job.progress.pagesTotal}`);
-        }
-
-        // Handle completion
-        if (job.status === 'completed' && job.result) {
-          clearInterval(pollInterval);
-          setUploadProgress(100);
-          setProcessingStage('Listo');
-          
-          // Small delay to show completion
-          setTimeout(() => {
-            setIsProcessing(false);
-            setCurrentJob(null);
-            
-            // Use new callback for FeinLoanDraft if available
-            if (onFEINDraftReady) {
-              onFEINDraftReady(job.result!);
-            } else {
-              // Fallback to legacy callback (convert to old format)
-              const legacyResult: FEINProcessingResult = {
-                success: true,
-                errors: job.result!.metadata.warnings || [],
-                warnings: [],
-                fieldsExtracted: Object.keys(job.result!.prestamo).filter(key => 
-                  job.result!.prestamo[key as keyof typeof job.result.prestamo] != null
-                ),
-                fieldsMissing: []
-              };
-              onFEINProcessed(legacyResult);
-            }
-          }, 1000);
-          
-        } else if (job.status === 'failed') {
-          clearInterval(pollInterval);
-          setIsProcessing(false);
-          setCurrentJob(null);
-          alert(`Error procesando FEIN: ${job.error || 'Error desconocido'}`);
-        }
-
-      } catch (error) {
-        console.error('Error polling job status:', error);
-      }
-    }, 1500); // Poll every 1.5 seconds
-
-    return () => clearInterval(pollInterval);
-  }, [currentJob, onFEINProcessed, onFEINDraftReady]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -135,24 +60,91 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraf
       setIsProcessing(true);
       setUploadProgress(0);
       setProcessingStage('Preparando documento...');
+      setCurrentPage(0);
+      setTotalPages(0);
 
-      // Start chunked processing
-      const result = await feinOcrService.processFEINDocumentChunked(file);
-      
-      if (!result.success) {
-        setIsProcessing(false);
-        alert(result.error || 'Error iniciando procesamiento FEIN');
-        return;
-      }
-
-      // Set up job tracking
-      setCurrentJob({
-        jobId: result.jobId!,
-        pagesTotal: result.pagesTotal!,
-        totalChunks: result.totalChunks!
+      // Process with new implementation
+      const result = await feinOcrService.processFEINDocument(file, (progress) => {
+        // Update progress based on stage
+        setCurrentPage(progress.currentPage);
+        setTotalPages(progress.totalPages);
+        setProcessingStage(progress.message);
+        
+        // Calculate overall progress
+        let overallProgress = 0;
+        if (progress.stage === 'extracting') {
+          overallProgress = Math.round((progress.currentPage / progress.totalPages) * 60);
+        } else if (progress.stage === 'ocr') {
+          overallProgress = 60 + Math.round((progress.currentPage / progress.totalPages) * 30);
+        } else if (progress.stage === 'parsing') {
+          overallProgress = 90;
+        } else if (progress.stage === 'complete') {
+          overallProgress = 100;
+        }
+        
+        setUploadProgress(Math.min(overallProgress, 100));
       });
       
-      setProcessingStage(`Iniciando procesamiento de ${result.pagesTotal} páginas...`);
+      setUploadProgress(100);
+      setProcessingStage('Procesamiento completado');
+      
+      // Small delay to show completion
+      setTimeout(() => {
+        setIsProcessing(false);
+        
+        if (result.success && result.loanDraft) {
+          // Show success message if we have some data extracted
+          const hasData = result.loanDraft.prestamo.capitalInicial || 
+                          result.loanDraft.prestamo.banco || 
+                          result.loanDraft.prestamo.tipo;
+          
+          if (hasData) {
+            console.log('[FEIN] Successfully extracted data:', result.loanDraft);
+            onFEINDraftReady(result.loanDraft);
+          } else {
+            alert('No se pudo extraer suficiente información del FEIN. Puedes completar manualmente los campos del préstamo.');
+            // Still pass the draft with whatever was extracted
+            onFEINDraftReady(result.loanDraft);
+          }
+        } else {
+          // Show error but allow manual creation
+          const errorMsg = result.errors.length > 0 
+            ? result.errors.join('. ') 
+            : 'No se pudo procesar el documento FEIN';
+          
+          alert(`${errorMsg}. Puedes crear el préstamo manualmente.`);
+          
+          // Create empty draft for manual entry
+          const emptyDraft: FeinLoanDraft = {
+            metadata: {
+              sourceFileName: file.name,
+              pagesTotal: result.pagesProcessed || 0,
+              pagesProcessed: result.pagesProcessed || 0,
+              ocrProvider: 'failed',
+              processedAt: new Date().toISOString(),
+              warnings: result.warnings
+            },
+            prestamo: {
+              tipo: null,
+              periodicidadCuota: 'MENSUAL',
+              revisionMeses: null,
+              indiceReferencia: null,
+              valorIndiceActual: null,
+              diferencial: null,
+              tinFijo: null,
+              comisionAperturaPct: null,
+              comisionMantenimientoMes: null,
+              amortizacionAnticipadaPct: null,
+              fechaFirmaPrevista: null,
+              banco: null,
+              ibanCargoParcial: null
+            },
+            bonificaciones: []
+          };
+          
+          onFEINDraftReady(emptyDraft);
+        }
+      }, 1000);
 
     } catch (error) {
       console.error('Error processing FEIN:', error);
@@ -193,13 +185,12 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraf
               {uploadProgress}% completado
             </p>
 
-            {/* Additional info for chunked processing */}
-            {currentJob && (
+            {/* Page-specific info */}
+            {totalPages > 0 && (
               <div className="text-xs space-y-1" style={{ color: 'var(--text-gray)' }}>
-                <p>Total páginas: {currentJob.pagesTotal}</p>
-                <p>Bloques a procesar: {currentJob.totalChunks}</p>
+                <p>Página {currentPage} de {totalPages}</p>
                 {uploadProgress === 100 && (
-                  <p className="text-green-600 font-medium">✓ Ensamblando resultado final...</p>
+                  <p className="text-green-600 font-medium">✓ Análisis completado</p>
                 )}
               </div>
             )}
@@ -313,6 +304,22 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraf
             </div>
           </div>
 
+          {/* Improved Information Panel */}
+          <div className="mt-4 border rounded-atlas p-4" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--success)' }}>
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 mt-0.5" style={{ color: 'var(--success)' }} />
+              <div>
+                <h4 className="font-medium mb-1" style={{ color: 'var(--atlas-navy-1)' }}>
+                  Proceso mejorado
+                </h4>
+                <p className="text-sm" style={{ color: 'var(--text-gray)' }}>
+                  Extraemos primero el texto nativo del PDF. Solo aplicamos OCR a páginas escaneadas, 
+                  procesando página por página para evitar errores de tamaño.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Warning Panel - Horizon colors */}
           <div className="mt-4 border rounded-atlas p-4" style={{ backgroundColor: 'var(--bg)', borderColor: 'var(--warn)' }}>
             <div className="flex items-start gap-3">
@@ -322,8 +329,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINProcessed, onFEINDraf
                   Importante
                 </h4>
                 <p className="text-sm" style={{ color: 'var(--text-gray)' }}>
-                  Si el documento no se puede leer correctamente, le permitiremos crear el préstamo manualmente 
-                  con los datos básicos precargados.
+                  Si no se puede extraer toda la información, se abrirá el formulario de préstamo 
+                  con los datos detectados pre-rellenados para que puedas completar manualmente.
                 </p>
               </div>
             </div>

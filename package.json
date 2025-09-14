@@ -24,6 +24,7 @@
     "jspdf-autotable": "^5.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.542.0",
+    "pdfjs-dist": "^5.4.149",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-chartjs-2": "^5.2.0",

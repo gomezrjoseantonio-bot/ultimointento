@@ -3,19 +3,19 @@ import PageLayout from '../../../components/common/PageLayout';
 import PrestamosCreation from './components/PrestamosCreation';
 import PrestamosList from './components/PrestamosList';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
-import FEINValidation from '../../../components/financiacion/FEINValidation';
-import { FEINProcessingResult } from '../../../types/fein';
+import { FeinLoanDraft } from '../../../types/fein';
 import { PrestamoFinanciacion } from '../../../types/financiacion';
+import { FeinToPrestamoMapper } from '../../../services/fein/feinToPrestamoMapper';
 
-type View = 'list' | 'create' | 'edit' | 'fein-upload' | 'fein-validation';
+type View = 'list' | 'create' | 'edit' | 'fein-upload';
 
 const Financiacion: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('list');
   const [selectedPrestamoId, setSelectedPrestamoId] = useState<string>('');
-  const [feinResult, setFeinResult] = useState<FEINProcessingResult | null>(null);
-  const [feinLoanData, setFeinLoanData] = useState<Partial<PrestamoFinanciacion> | null>(null);
+  const [feinInitialData, setFeinInitialData] = useState<Partial<PrestamoFinanciacion> | null>(null);
 
   const handleCreateNew = () => {
+    setFeinInitialData(null); // Clear any FEIN data
     setCurrentView('create');
   };
 
@@ -25,30 +25,44 @@ const Financiacion: React.FC = () => {
 
   const handleEdit = (prestamoId: string) => {
     setSelectedPrestamoId(prestamoId);
+    setFeinInitialData(null); // Clear FEIN data for edits
     setCurrentView('edit');
   };
 
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedPrestamoId('');
-    setFeinResult(null);
-    setFeinLoanData(null);
+    setFeinInitialData(null);
   };
 
-  const handleFEINProcessed = (result: FEINProcessingResult) => {
-    setFeinResult(result);
-    if (result.success && result.data) {
-      setCurrentView('fein-validation');
-    } else {
-      // If FEIN processing failed, show error and option to create manually
-      alert('No se pudo procesar el documento FEIN. Puede crear el préstamo manualmente.');
-      setCurrentView('create');
+  const handleFEINDraftReady = (draft: FeinLoanDraft) => {
+    console.log('[Financiacion] FEIN draft ready:', draft);
+    
+    // Map FEIN draft to PrestamoFinanciacion format
+    const mappedData = FeinToPrestamoMapper.mapToPrestamoFinanciacion(draft);
+    const mappingInfo = FeinToPrestamoMapper.generateMappingInfo(draft);
+    
+    console.log('[Financiacion] Mapped FEIN data:', mappedData);
+    console.log('[Financiacion] Mapping info:', mappingInfo);
+    
+    // Store mapped data
+    setFeinInitialData(mappedData);
+    
+    // Show mapping summary if there are important warnings
+    if (mappingInfo.warnings.length > 0 || mappingInfo.missingFields.length > 0) {
+      const warningMsg = [
+        mappingInfo.missingFields.length > 0 ? 
+          `Campos pendientes: ${mappingInfo.missingFields.join(', ')}` : '',
+        ...mappingInfo.warnings.slice(0, 2) // Limit to 2 warnings
+      ].filter(Boolean).join('. ');
+      
+      if (warningMsg) {
+        alert(`Datos extraídos del FEIN. ${warningMsg}.`);
+      }
     }
-  };
-
-  const handleFEINValidated = (loanData: Partial<PrestamoFinanciacion>) => {
-    setFeinLoanData(loanData);
-    setCurrentView('create'); // Go to creation with pre-filled data
+    
+    // Go directly to creation form with pre-filled data
+    setCurrentView('create');
   };
 
   const renderContent = () => {
@@ -57,7 +71,7 @@ const Financiacion: React.FC = () => {
         return (
           <PrestamosCreation
             prestamoId={selectedPrestamoId}
-            initialData={feinLoanData || undefined} // Pass FEIN data if available
+            initialData={feinInitialData || undefined} // Pass mapped FEIN data if available
             onSuccess={handleBackToList}
             onCancel={handleBackToList}
           />
@@ -73,18 +87,10 @@ const Financiacion: React.FC = () => {
       case 'fein-upload':
         return (
           <FEINUploader
-            onFEINProcessed={handleFEINProcessed}
+            onFEINDraftReady={handleFEINDraftReady}
             onCancel={handleBackToList}
           />
         );
-      case 'fein-validation':
-        return feinResult ? (
-          <FEINValidation
-            feinResult={feinResult}
-            onContinue={handleFEINValidated}
-            onBack={() => setCurrentView('fein-upload')}
-          />
-        ) : null;
       case 'list':
       default:
         return (
@@ -95,7 +101,7 @@ const Financiacion: React.FC = () => {
     }
   };
 
-  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload' || currentView === 'fein-validation') {
+  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload') {
     // Don't wrap creation/edit/FEIN views in PageLayout since they have their own navigation
     return <div className="min-h-screen bg-bg">{renderContent()}</div>;
   }
