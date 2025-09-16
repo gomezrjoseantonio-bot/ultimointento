@@ -84,7 +84,7 @@ export class AccountsQATestSuite {
       
       this.addResult('IBAN Validation', 'pass', 'All IBAN validation tests passed', start);
     } catch (error) {
-      this.addResult('IBAN Validation', 'fail', `IBAN validation failed: ${error.message}`, start);
+      this.addResult('IBAN Validation', 'fail', `IBAN validation failed: ${(error as Error).message}`, start);
     }
   }
 
@@ -113,7 +113,7 @@ export class AccountsQATestSuite {
       
       this.addResult('Bank Inference', 'pass', 'Bank inference tests passed', start);
     } catch (error) {
-      this.addResult('Bank Inference', 'fail', `Bank inference failed: ${error.message}`, start);
+      this.addResult('Bank Inference', 'fail', `Bank inference failed: ${(error as Error).message}`, start);
     }
   }
 
@@ -158,7 +158,7 @@ export class AccountsQATestSuite {
       
       this.addResult('Account Service', 'pass', 'Account service tests passed', start);
     } catch (error) {
-      this.addResult('Account Service', 'fail', `Account service failed: ${error.message}`, start);
+      this.addResult('Account Service', 'fail', `Account service failed: ${(error as Error).message}`, start);
     }
   }
 
@@ -180,7 +180,7 @@ export class AccountsQATestSuite {
       
       this.addResult('Utility Functions', 'pass', 'Utility function tests passed', start);
     } catch (error) {
-      this.addResult('Utility Functions', 'fail', `Utility functions failed: ${error.message}`, start);
+      this.addResult('Utility Functions', 'fail', `Utility functions failed: ${(error as Error).message}`, start);
     }
   }
 

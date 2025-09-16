@@ -136,13 +136,13 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
   };
 
   const getAccountBalance = (accountId: string | number) => {
-    const account = accounts.find(a => a.id.toString() === accountId.toString());
+    const account = accounts.find(a => a.id?.toString() === accountId.toString());
     return account?.balance || 0;
   };
 
   const getAvailableToAccounts = () => {
     return accounts.filter(account => 
-      account.id.toString() !== formData.fromAccountId
+      account.id?.toString() !== formData.fromAccountId
     );
   };
 
