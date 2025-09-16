@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import PageHeader from '../../../../components/common/PageHeader';
-import BancosManagement, { BancosManagementRef } from './components/BancosManagement';
+import AtlasBancosManagement, { AtlasBancosManagementRef } from './components/AtlasBancosManagement';
 
 /**
  * Cuentas - ATLAS Design System
@@ -11,7 +11,7 @@ import BancosManagement, { BancosManagementRef } from './components/BancosManage
  * - Canonical route: /cuenta/cuentas
  */
 const Cuentas: React.FC = () => {
-  const bancosRef = useRef<BancosManagementRef>(null);
+  const bancosRef = useRef<AtlasBancosManagementRef>(null);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
@@ -33,7 +33,7 @@ const Cuentas: React.FC = () => {
 
       {/* Content - Direct bank management, no tabs */}
       <div className="py-8">
-        <BancosManagement ref={bancosRef} />
+        <AtlasBancosManagement ref={bancosRef} />
       </div>
     </div>
   );

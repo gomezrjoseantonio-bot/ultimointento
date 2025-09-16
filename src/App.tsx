@@ -51,7 +51,6 @@ const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyecci
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
-const CuentasContainer = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasNewContainer'));
 const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 

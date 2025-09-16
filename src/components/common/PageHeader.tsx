@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, ChevronRight } from 'lucide-react';
+
+interface BreadcrumbItem {
+  name: string;
+  href: string;
+}
 
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  breadcrumb?: BreadcrumbItem[];
   showInfoIcon?: boolean;
   primaryAction?: {
     label: string;
@@ -20,6 +26,7 @@ interface PageHeaderProps {
 const PageHeader: React.FC<PageHeaderProps> = ({ 
   title, 
   subtitle, 
+  breadcrumb,
   showInfoIcon = false,
   primaryAction,
   secondaryActions = []
@@ -28,6 +35,31 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
+      {/* Breadcrumb */}
+      {breadcrumb && breadcrumb.length > 0 && (
+        <nav className="flex mb-2" aria-label="Breadcrumb">
+          <ol className="flex items-center space-x-2">
+            {breadcrumb.map((item, index) => (
+              <li key={index} className="flex items-center">
+                {index > 0 && (
+                  <ChevronRight className="h-4 w-4 text-gray-400 mx-2" />
+                )}
+                <a
+                  href={item.href}
+                  className={`text-sm ${
+                    index === breadcrumb.length - 1
+                      ? 'text-gray-500'
+                      : 'text-atlas-blue hover:text-atlas-blue-dark'
+                  }`}
+                >
+                  {item.name}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
+      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h1 

@@ -5,6 +5,9 @@
  * from being saved as new bank accounts.
  */
 
+// Export to make this a module
+export {};
+
 // Mock the demo pattern detection function from BancosManagement
 const hasDemoPatterns = (data: {
   alias: string;

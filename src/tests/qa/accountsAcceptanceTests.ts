@@ -1,8 +1,8 @@
 /**
- * QA Acceptance Tests for Mi Cuenta → Cuentas
+ * QA Acceptance Tests for Cuenta → Configuración → Cuentas Bancarias
  * 
  * This file contains manual test scripts for the acceptance criteria defined in the requirements.
- * Run these tests manually in the browser console after navigating to /mi-cuenta/cuentas
+ * Run these tests manually in the browser console after navigating to /cuenta/cuentas
  */
 
 console.log('🧪 ATLAS Accounts QA Tests');

@@ -22,14 +22,14 @@ export function formatIban(iban: string): string {
 }
 
 /**
- * Mask IBAN for display purposes
+ * Mask IBAN for display purposes - ATLAS format
  * @param iban - Raw IBAN string
- * @returns Masked IBAN: "ES91 0049 **** **** **** 7892"
+ * @returns Masked IBAN: "ES91 **** **** **** 2715" (show first 8 and last 4)
  */
 export function maskIban(iban: string): string {
   if (!iban) return '';
   const clean = iban.replace(/\s/g, '').toUpperCase();
-  if (clean.length < 8) return iban;
+  if (clean.length < 12) return formatIban(iban); // If too short, just format
   
   const prefix = clean.substring(0, 8); // ES91 0049
   const suffix = clean.substring(clean.length - 4); // last 4 digits

@@ -70,7 +70,7 @@ const AccountOption: React.FC<AccountOptionProps> = ({
     }
     
     const color = account.banco?.brand?.color || generateHashColor(account.iban);
-    const initial = getAvatarInitial(account.alias);
+    const initial = getAvatarInitial(account.alias || 'Sin alias');
     
     return (
       <div 
