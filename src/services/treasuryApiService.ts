@@ -667,6 +667,10 @@ export class TreasuryImportAPI {
           importBatch: importBatchId,
           csvRowIndex: parsedMovement.originalRow,
           
+          // V1.1: New required fields
+          ambito: 'PERSONAL',
+          statusConciliacion: 'sin_match',
+          
           createdAt: now,
           updatedAt: now
         };

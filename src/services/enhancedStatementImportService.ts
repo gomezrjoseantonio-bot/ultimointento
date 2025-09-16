@@ -273,6 +273,9 @@ export class EnhancedStatementImportService {
             type: movement.amount > 0 ? 'Ingreso' : 'Gasto',
             origin: 'CSV',
             movementState: movement.unifiedStatus === 'confirmado' ? 'Confirmado' : 'Previsto',
+            // V1.1: New required fields
+            ambito: 'PERSONAL',
+            statusConciliacion: 'sin_match',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };

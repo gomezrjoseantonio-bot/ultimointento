@@ -249,6 +249,9 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
         currency: 'EUR',
         importBatch: batchId,
         csvRowIndex: row.originalIndex,
+        // V1.1: New required fields
+        ambito: 'PERSONAL',
+        statusConciliacion: 'sin_match',
         createdAt: now,
         updatedAt: now
       };
