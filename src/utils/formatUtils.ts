@@ -49,6 +49,20 @@ export const formatDate = (date: string | Date): string => {
   return result === 'Fecha inválida' ? '—' : result;
 };
 
+export const maskIBAN = (iban: string | null | undefined): string => {
+  if (!iban) return 'Sin IBAN';
+  
+  const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+  if (cleanIban.length < 8) return cleanIban;
+  
+  // Show first 4 chars (country + check) and last 4 chars, mask the rest
+  const start = cleanIban.slice(0, 4);
+  const end = cleanIban.slice(-4);
+  const middle = '•'.repeat(Math.max(0, cleanIban.length - 8));
+  
+  return `${start}${middle}${end}`;
+};
+
 export const formatDateInput = (dateString: string): string => {
   // Convert from ISO format (yyyy-mm-dd) to Spanish format (dd/mm/yyyy)
   if (!dateString) return '';

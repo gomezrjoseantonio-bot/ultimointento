@@ -34,13 +34,6 @@ const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/A
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
-const TesRadar = React.lazy(() => import('./modules/horizon/tesoreria/radar/Radar'));
-const TesIngresos = React.lazy(() => import('./modules/horizon/tesoreria/ingresos/Ingresos'));
-const TesGastos = React.lazy(() => import('./modules/horizon/tesoreria/gastos/Gastos'));
-const TesCAPEX = React.lazy(() => import('./modules/horizon/tesoreria/capex/CAPEX'));
-const TesMovimientos = React.lazy(() => import('./modules/horizon/tesoreria/movimientos/Movimientos'));
-const Automatizaciones = React.lazy(() => import('./modules/horizon/tesoreria/automatizaciones/Automatizaciones'));
-const TesAlertas = React.lazy(() => import('./modules/horizon/tesoreria/alertas/Alertas'));
 const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen/Resumen'));
 const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
 const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
@@ -247,39 +240,9 @@ function App() {
                   <Tesoreria />
                 </React.Suspense>
               } />
-              <Route path="radar" element={
+              <Route path="cuenta/:id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesRadar />
-                </React.Suspense>
-              } />
-              <Route path="ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesIngresos />
-                </React.Suspense>
-              } />
-              <Route path="gastos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesGastos />
-                </React.Suspense>
-              } />
-              <Route path="capex" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesCAPEX />
-                </React.Suspense>
-              } />
-              <Route path="movimientos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesMovimientos />
-                </React.Suspense>
-              } />
-              <Route path="automatizaciones" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Automatizaciones />
-                </React.Suspense>
-              } />
-              <Route path="alertas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesAlertas />
+                  <Tesoreria />
                 </React.Suspense>
               } />
             </Route>

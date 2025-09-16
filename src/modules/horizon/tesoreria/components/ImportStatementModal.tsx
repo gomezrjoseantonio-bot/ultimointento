@@ -6,15 +6,15 @@ import { ImportResult } from '../../../../types/unifiedTreasury';
 import toast from 'react-hot-toast';
 
 interface ImportStatementModalProps {
-  isOpen: boolean;
   onClose: () => void;
-  onImportComplete: (result: ImportResult) => void;
+  onImportComplete: (result?: ImportResult) => void;
+  preselectedAccountId?: number;
 }
 
 const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
-  isOpen,
   onClose,
-  onImportComplete
+  onImportComplete,
+  preselectedAccountId
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
@@ -40,16 +40,22 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
         const allAccounts = await db.getAll('accounts');
         const activeAccounts = allAccounts.filter(acc => acc.isActive && !acc.deleted_at);
         setAccounts(activeAccounts);
+        
+        // Set preselected account if provided
+        if (preselectedAccountId) {
+          const preselected = activeAccounts.find(acc => acc.id === preselectedAccountId);
+          if (preselected) {
+            setSelectedAccount(preselected.id!.toString());
+          }
+        }
       } catch (error) {
         console.error('Error loading accounts:', error);
         setAccounts([]);
       }
     };
     
-    if (isOpen) {
-      loadAccounts();
-    }
-  }, [isOpen]);
+    loadAccounts();
+  }, [preselectedAccountId]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -155,8 +161,6 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     resetModal();
     onClose();
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
