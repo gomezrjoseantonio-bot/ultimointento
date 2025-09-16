@@ -5,6 +5,8 @@ import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { emitTreasuryEvent } from '../../../../services/treasuryEventsService';
 import { showSuccess, showError, showCommonError } from '../../../../services/toastService';
+import { cuentasService } from '../../../../services/cuentasService';
+import AccountOption from '../../../../components/common/AccountOption';
 
 const MovimientosPanel: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -29,6 +31,15 @@ const MovimientosPanel: React.FC = () => {
   // Load accounts and movements on component mount
   useEffect(() => {
     loadData();
+    
+    // Subscribe to account updates to refresh data when accounts change
+    const unsubscribe = cuentasService.on((event) => {
+      if (event === 'accounts:updated') {
+        loadData();
+      }
+    });
+    
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -39,24 +50,24 @@ const MovimientosPanel: React.FC = () => {
   
   const loadData = async () => {
     try {
+      // Load accounts using the new cuentasService
+      const cuentas = await cuentasService.list();
+      const activeAccounts = cuentas.filter(acc => acc.activa);
+      setAccounts(activeAccounts);
+      
       const db = await initDB();
       
-      // Load Horizon accounts
-      const allAccounts = await db.getAll('accounts');
-      const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
-      setAccounts(horizonAccounts);
-      
-      // Load movements for Horizon accounts
+      // Load movements for active accounts
       const allMovements = await db.getAll('movements');
-      let horizonMovements = allMovements.filter(mov => 
-        horizonAccounts.some(acc => acc.id === mov.accountId)
+      let filteredMovements = allMovements.filter(mov => 
+        activeAccounts.some(acc => acc.id === mov.accountId)
       );
       
       // FIX: Filter out demo movements from the movements panel
       const { isDemoMovement } = await import('../../../../services/demoDataCleanupService');
-      horizonMovements = horizonMovements.filter(mov => !isDemoMovement(mov));
+      filteredMovements = filteredMovements.filter(mov => !isDemoMovement(mov));
       
-      setMovements(horizonMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setMovements(filteredMovements.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       
     } catch (error) {
       console.error('Error loading treasury data:', error);
@@ -313,15 +324,25 @@ const MovimientosPanel: React.FC = () => {
             <select
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todas las cuentas</option>
               {accounts.map(account => (
                 <option key={account.id} value={account.id?.toString()}>
-                  {account.name} - {account.iban?.slice(-4)}
+                  {account.alias} - {account.banco?.name || 'Banco'} - {account.iban}
                 </option>
               ))}
             </select>
+            
+            {/* Show selected account preview using AccountOption */}
+            {selectedAccount !== 'all' && accounts.find(acc => acc.id?.toString() === selectedAccount) && (
+              <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                <AccountOption 
+                  account={accounts.find(acc => acc.id?.toString() === selectedAccount)!} 
+                  size="sm" 
+                />
+              </div>
+            )}
           </div>
 
           <div>

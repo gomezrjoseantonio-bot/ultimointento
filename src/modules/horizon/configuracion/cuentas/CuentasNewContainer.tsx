@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Banknote } from 'lucide-react';
+import { Banknote, BarChart3 } from 'lucide-react';
 import PageHeader from '../../../../components/common/PageHeader';
 import CuentasManagement, { CuentasManagementRef } from './components/CuentasManagement';
+import AccountAnalytics from './components/AccountAnalytics';
 
 /**
  * Mi Cuenta → Cuentas - ATLAS Design System
@@ -9,7 +10,7 @@ import CuentasManagement, { CuentasManagementRef } from './components/CuentasMan
  * Enhanced account management container with complete model, validations and propagation
  */
 const CuentasContainer: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'cuentas'>('cuentas');
+  const [activeTab, setActiveTab] = useState<'cuentas' | 'analytics'>('cuentas');
   const cuentasRef = React.useRef<CuentasManagementRef>(null);
 
   const tabs = [
@@ -17,6 +18,11 @@ const CuentasContainer: React.FC = () => {
       id: 'cuentas' as const,
       name: 'Cuentas Bancarias',
       icon: Banknote,
+    },
+    {
+      id: 'analytics' as const,
+      name: 'Analítica',
+      icon: BarChart3,
     }
   ];
 
@@ -25,12 +31,12 @@ const CuentasContainer: React.FC = () => {
       <PageHeader
         title="Mi Cuenta"
         subtitle="Gestión de cuentas bancarias con validaciones y propagación completa"
-        primaryAction={{
+        primaryAction={activeTab === 'cuentas' ? {
           label: "Nueva cuenta",
           onClick: () => {
             cuentasRef.current?.triggerNewAccount();
           }
-        }}
+        } : undefined}
       />
 
       {/* Subtabs Navigation */}
@@ -65,6 +71,7 @@ const CuentasContainer: React.FC = () => {
       {/* Tab Content */}
       <div className="py-8">
         {activeTab === 'cuentas' && <CuentasManagement ref={cuentasRef} />}
+        {activeTab === 'analytics' && <AccountAnalytics className="mx-6" />}
       </div>
     </div>
   );
