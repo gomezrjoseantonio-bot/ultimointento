@@ -57,6 +57,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmationAlias, setConfirmationAlias] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<AccountFormData>({
@@ -66,6 +68,47 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Upload logo file to storage (mock implementation)
+  const uploadLogoFile = async (file: File): Promise<string> => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Solo se permiten archivos de imagen');
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      throw new Error('El archivo no puede superar 2MB');
+    }
+
+    // In a real implementation, this would upload to a file storage service
+    // For now, we'll create a data URL for local storage
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        resolve(dataUrl);
+      };
+      reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle file input change
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData({ ...formData, logoFile: file });
+    
+    // Clear any previous errors
+    const newErrors = { ...formErrors };
+    delete newErrors.logoFile;
+    setFormErrors(newErrors);
+  };
+
+  // Generate preview URL for uploaded logo
+  const getLogoPreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file);
+  };
 
   // Expose ref methods
   useImperativeHandle(ref, () => ({
@@ -87,6 +130,24 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
     return unsubscribe;
   }, []);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (showModal) {
+          handleCloseModal();
+        } else if (deleteConfirmation) {
+          setDeleteConfirmation(null);
+        } else if (activeDropdown) {
+          setActiveDropdown(null);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, deleteConfirmation, activeDropdown]);
 
   const loadAccounts = async () => {
     try {
@@ -152,6 +213,15 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
       errors.alias = 'El alias no puede superar 40 caracteres';
     }
 
+    // Logo file validation
+    if (formData.logoFile) {
+      if (!formData.logoFile.type.startsWith('image/')) {
+        errors.logoFile = 'Solo se permiten archivos de imagen';
+      } else if (formData.logoFile.size > 2 * 1024 * 1024) {
+        errors.logoFile = 'El archivo no puede superar 2MB';
+      }
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -165,10 +235,25 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
     setSaving(true);
     try {
+      let logoUser: string | undefined = undefined;
+
+      // Handle logo file upload
+      if (formData.logoFile) {
+        try {
+          setUploadingLogo(true);
+          logoUser = await uploadLogoFile(formData.logoFile);
+        } catch (error) {
+          console.error('Error uploading logo:', error);
+          toast.error(error instanceof Error ? error.message : 'Error al subir el logo. Se guardará la cuenta sin logo personalizado.');
+        } finally {
+          setUploadingLogo(false);
+        }
+      }
+
       const accountData: CreateAccountData | UpdateAccountData = {
         alias: formData.alias.trim() || undefined, // Optional alias
         iban: formData.iban,
-        // TODO: Handle logoFile upload and set logoUser
+        logoUser, // User uploaded logo URL
       };
 
       if (editingAccount) {
@@ -303,59 +388,86 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   };
 
   const renderRowActions = (account: Account) => {
+    const isDropdownOpen = activeDropdown === account.id;
+
     return (
-      <div className="relative group">
-        <button className="p-2 hover:bg-gray-100 rounded-full">
+      <div className="relative">
+        <button 
+          onClick={() => setActiveDropdown(isDropdownOpen ? null : account.id!)}
+          className="p-2 hover:bg-gray-100 rounded-full"
+        >
           <MoreHorizontal className="w-4 h-4 text-gray-500" />
         </button>
         
-        {/* Dropdown menu - would need proper implementation */}
-        <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-10">
-          <div className="py-1">
-            <button
-              onClick={() => handleEditAccount(account)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-            >
-              <Edit2 className="w-4 h-4" />
-              Editar
-            </button>
-            
-            {!account.isDefault && (
+        {/* Backdrop to close dropdown */}
+        {isDropdownOpen && (
+          <div 
+            className="fixed inset-0 z-10" 
+            onClick={() => setActiveDropdown(null)}
+          />
+        )}
+        
+        {/* Dropdown menu */}
+        {isDropdownOpen && (
+          <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+            <div className="py-1">
               <button
-                onClick={() => handleSetDefault(account)}
+                onClick={() => {
+                  handleEditAccount(account);
+                  setActiveDropdown(null);
+                }}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
               >
-                <Star className="w-4 h-4" />
-                Marcar como predeterminada
+                <Edit2 className="w-4 h-4" />
+                Editar
               </button>
-            )}
-            
-            <button
-              onClick={() => handleToggleActive(account)}
-              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-            >
-              {account.activa ? (
-                <>
-                  <EyeOff className="w-4 h-4" />
-                  Inactivar
-                </>
-              ) : (
-                <>
-                  <Eye className="w-4 h-4" />
-                  Reactivar
-                </>
+              
+              {!account.isDefault && (
+                <button
+                  onClick={() => {
+                    handleSetDefault(account);
+                    setActiveDropdown(null);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <Star className="w-4 h-4" />
+                  Marcar como predeterminada
+                </button>
               )}
-            </button>
-            
-            <button
-              onClick={() => handleDeleteAccount(account)}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Eliminar definitivamente
-            </button>
+              
+              <button
+                onClick={() => {
+                  handleToggleActive(account);
+                  setActiveDropdown(null);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+              >
+                {account.activa ? (
+                  <>
+                    <EyeOff className="w-4 h-4" />
+                    Inactivar
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" />
+                    Reactivar
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={() => {
+                  handleDeleteAccount(account);
+                  setActiveDropdown(null);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Eliminar definitivamente
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -505,12 +617,32 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setFormData({ ...formData, logoFile: e.target.files?.[0] || null })}
+                    onChange={handleLogoFileChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
                   />
+                  {formErrors.logoFile && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.logoFile}</p>
+                  )}
                   <p className="mt-1 text-xs text-gray-500">
-                    Se detectará automáticamente el logo del banco. Puedes subir uno personalizado.
+                    Se detectará automáticamente el logo del banco. Puedes subir uno personalizado (máx. 2MB).
                   </p>
+                  {formData.logoFile && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <img 
+                        src={getLogoPreviewUrl(formData.logoFile)} 
+                        alt="Vista previa del logo" 
+                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                      />
+                      <div className="text-xs">
+                        <p className="text-green-600 font-medium">
+                          {formData.logoFile.name}
+                        </p>
+                        <p className="text-gray-500">
+                          {(formData.logoFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -525,10 +657,10 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploadingLogo}
                   className="px-4 py-2 text-sm font-medium text-white bg-atlas-blue border border-transparent rounded-md hover:bg-atlas-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
                 >
-                  {saving ? 'Guardando...' : editingAccount ? 'Actualizar' : 'Crear cuenta'}
+                  {uploadingLogo ? 'Subiendo logo...' : saving ? 'Guardando...' : editingAccount ? 'Actualizar' : 'Crear cuenta'}
                 </button>
               </div>
             </form>
