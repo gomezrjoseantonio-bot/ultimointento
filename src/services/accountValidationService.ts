@@ -97,7 +97,7 @@ export function filterAccountsForUI(accounts: Account[], options: {
 export function getAccountDisplayName(account: Account): string {
   if (!account) return 'Unknown Account';
   
-  const name = account.name || account.bank;
+  const name = account.name || account.bank || 'Account';
   const lastFour = account.iban ? account.iban.slice(-4) : '';
   
   return lastFour ? `${name} (*${lastFour})` : name;

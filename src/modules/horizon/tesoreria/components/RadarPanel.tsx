@@ -182,9 +182,9 @@ const RadarPanel: React.FC = () => {
   }, [loadTreasuryData]);
 
   const getAccountProjectedBalance = (account: Account): number => {
-    if (!projection) return account.balance;
+    if (!projection) return account.balance || 0;
     const balance = projection.accountBalances.get(account.id!);
-    return balance?.projected || account.balance;
+    return balance?.projected || account.balance || 0;
   };
 
   const getAccountStatus = (account: Account): 'healthy' | 'warning' | 'critical' => {
@@ -361,7 +361,7 @@ const RadarPanel: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-primary-800">
-                        {formatEuro(account.balance)}
+                        {formatEuro(account.balance || 0)}
                       </div>
                       <div className="text-sm text-gray-600">Saldo hoy</div>
                     </div>
@@ -371,7 +371,7 @@ const RadarPanel: React.FC = () => {
                     <div>
                       <div className="text-sm font-medium text-gray-700">
                         Proyección 30d: <span className={`font-bold ${
-                          projectedBalance >= account.balance ? 'text-success-600' : 'text-error-600'
+                          projectedBalance >= (account.balance || 0) ? 'text-success-600' : 'text-error-600'
                         }`}>{formatEuro(projectedBalance)}</span>
                       </div>
                       <div className="text-xs text-gray-500">
@@ -385,7 +385,7 @@ const RadarPanel: React.FC = () => {
                   </div>
                   
                   <MiniBalanceChart
-                    current={account.balance}
+                    current={account.balance || 0}
                     projected7d={projectedBalance}
                     projected30d={projectedBalance}
                   />

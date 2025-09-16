@@ -282,7 +282,7 @@ export async function matchAccountByIBAN(
 export function getAccountUsageDisplay(account: Account): string {
   // This would ideally come from account.usage field
   // For now, infer from account name/type
-  const name = (account.name || account.bank).toLowerCase();
+  const name = (account.name || account.bank || 'account').toLowerCase();
   
   if (name.includes('personal') || name.includes('particular')) {
     return 'Personal';

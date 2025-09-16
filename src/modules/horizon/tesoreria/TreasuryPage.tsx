@@ -58,12 +58,12 @@ const TreasuryPage: React.FC = () => {
       
       const formattedAccounts: Account[] = horizonAccounts.map(acc => ({
         id: acc.id!,
-        name: acc.name || `Cuenta ${acc.bank}`, // alias
-        bank: acc.bank,
+        name: acc.name || `Cuenta ${acc.bank || 'Banco'}`, // alias
+        bank: acc.bank || 'Banco',
         iban: acc.iban,
-        balance: acc.balance,
+        balance: acc.balance || 0,
         logo_url: acc.logo_url,
-        currency: acc.currency,
+        currency: acc.currency || 'EUR',
         status: 'verde' // TODO: Calculate health status based on movements/balance
       }));
       
