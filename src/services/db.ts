@@ -572,7 +572,7 @@ export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
 
 export interface Account {
   id?: number; // Keep as number for legacy compatibility
-  alias: string;                          // nombre corto que verá el usuario ("Cuenta principal")
+  alias?: string;                         // ATLAS: nombre corto opcional que verá el usuario ("Cuenta principal")
   iban: string;                           // normalizado: sin espacios, mayúsculas (p.ej., ES9100491500051234567892)
   ibanMasked?: string;                    // display: "ES91 0049 **** **** **** 7892" (calculated)
   banco?: {
@@ -580,6 +580,7 @@ export interface Account {
     name?: string;                        // nombre de banco si lo inferimos por code
     brand?: { logoUrl?: string; color?: string; } // logo/color corporativo si disponible
   };
+  logoUser?: string;                      // ATLAS: logo subido por usuario (prioridad 1)
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA'; // default: CORRIENTE
   moneda?: 'EUR';                         // default: EUR (solo EUR por ahora)
   titular?: { nombre?: string; nif?: string; }; // opcional (no obligatorio en alta)

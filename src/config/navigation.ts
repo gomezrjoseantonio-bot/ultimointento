@@ -34,16 +34,6 @@ export const navigationConfig: NavigationItem[] = [
     ]
   },
   {
-    name: 'Mi Cuenta',
-    href: '/mi-cuenta',
-    icon: Settings,
-    module: 'horizon',
-    section: 'horizon',
-    subTabs: [
-      { name: 'Cuentas', href: '/mi-cuenta/cuentas', icon: Banknote, module: 'horizon' },
-    ]
-  },
-  {
     name: 'Inmuebles',
     href: '/inmuebles',
     icon: Building,
