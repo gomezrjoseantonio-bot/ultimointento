@@ -95,6 +95,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
     try {
       setIsLoading(true);
       const createdAccount = await onCreateAccount({
+        alias: newAccount.name, // Map name to alias
         name: newAccount.name,
         bank: newAccount.bank,
         iban: newAccount.iban,
@@ -102,7 +103,8 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
         balance: newAccount.openingBalance,
         openingBalance: newAccount.openingBalance,
         currency: 'EUR',
-        isActive: true
+        isActive: true,
+        activa: true // Add required field
       });
       
       setSelectedAccountId(createdAccount.id!);

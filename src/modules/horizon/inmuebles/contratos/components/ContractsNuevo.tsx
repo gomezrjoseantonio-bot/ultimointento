@@ -8,6 +8,8 @@ import {
   calculateHabitualEndDate
 } from '../../../../../services/contractServiceNew';
 import { parseEuroInput } from '../../../../../utils/formatUtils';
+import { cuentasService } from '../../../../../services/cuentasService';
+import AccountOption from '../../../../../components/common/AccountOption';
 import toast from 'react-hot-toast';
 
 interface ContractsNuevoProps {
@@ -115,9 +117,9 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
       const propertiesData = await db.getAll('properties');
       setProperties(propertiesData);
       
-      // Load bank accounts
-      const accountsData = await db.getAll('accounts');
-      const activeAccounts = accountsData.filter(account => account.isActive);
+      // Load bank accounts using new cuentasService
+      const accountsData = await cuentasService.list();
+      const activeAccounts = accountsData.filter(account => account.activa);
       setAccounts(activeAccounts);
       
       if (propertiesData.length > 0 && !editingContract) {
@@ -615,19 +617,44 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Cuenta de cobro *
               </label>
-              <select
-                value={formData.cuentaCobroId}
-                onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobroId: parseInt(e.target.value) }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                required
-              >
-                <option value="">Seleccionar cuenta</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    {account.bank} - {account.iban?.slice(-4)}
-                  </option>
-                ))}
-              </select>
+              {accounts.length === 0 ? (
+                <div className="w-full p-3 bg-gray-50 border border-gray-300 rounded-md">
+                  <p className="text-sm text-gray-500 mb-2">No hay cuentas disponibles.</p>
+                  <button
+                    type="button"
+                    onClick={() => window.open('/mi-cuenta/cuentas', '_blank')}
+                    className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
+                  >
+                    Ir a Mi Cuenta → Cuentas
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={formData.cuentaCobroId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobroId: parseInt(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                    required
+                  >
+                    <option value="">Seleccionar cuenta</option>
+                    {accounts.map(account => (
+                      <option key={account.id} value={account.id}>
+                        {account.alias} - {account.banco?.name || 'Banco'} - {account.iban}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* Show selected account using AccountOption */}
+                  {formData.cuentaCobroId && accounts.find(acc => acc.id === formData.cuentaCobroId) && (
+                    <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+                      <AccountOption 
+                        account={accounts.find(acc => acc.id === formData.cuentaCobroId)!} 
+                        size="sm" 
+                      />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

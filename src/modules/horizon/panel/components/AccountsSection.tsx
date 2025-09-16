@@ -56,14 +56,14 @@ const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
         // Convert to AccountData format with real data
         const accountsWithData: AccountData[] = horizonAccounts.map(acc => ({
           id: acc.id!.toString(),
-          name: acc.name || `Cuenta ${acc.bank}`,
-          bank: acc.bank,
+          name: acc.name || `Cuenta ${acc.bank || 'Banco'}`,
+          bank: acc.bank || 'Banco',
           iban: acc.iban,
           usage: (acc.usage_scope || 'mixto') as 'personal' | 'inmuebles' | 'mixto',
-          currentBalance: acc.balance,
-          projectedBalance: acc.balance, // Simplified - no projection logic for now
+          currentBalance: acc.balance || 0,
+          projectedBalance: acc.balance || 0, // Simplified - no projection logic for now
           threshold: acc.minimumBalance || 1000,
-          sparklineData: generateSparklineData(acc.balance, acc.balance, acc.minimumBalance || 1000, filters.dateRange)
+          sparklineData: generateSparklineData(acc.balance || 0, acc.balance || 0, acc.minimumBalance || 1000, filters.dateRange)
         }));
         
         setAccounts(accountsWithData);

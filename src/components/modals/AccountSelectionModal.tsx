@@ -221,7 +221,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                                 const target = e.target as HTMLImageElement;
                                 const fallback = document.createElement('div');
                                 fallback.className = 'w-full h-full flex items-center justify-center text-white font-medium text-xs';
-                                fallback.textContent = (account.name || account.bank)
+                                fallback.textContent = (account.name || account.bank || 'A')
                                   .split(' ')
                                   .map(word => word.charAt(0).toUpperCase())
                                   .slice(0, 2)
@@ -231,7 +231,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                             />
                           ) : (
                             <span className="text-white font-medium text-xs">
-                              {(account.name || account.bank)
+                              {(account.name || account.bank || 'A')
                                 .split(' ')
                                 .map(word => word.charAt(0).toUpperCase())
                                 .slice(0, 2)

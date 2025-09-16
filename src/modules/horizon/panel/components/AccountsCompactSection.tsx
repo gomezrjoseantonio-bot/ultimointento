@@ -37,8 +37,8 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo
         
         // Convert to Account format with real data
         const accountsWithData: Account[] = horizonAccounts.map(acc => {
-          const currentBalance = acc.balance;
-          const projectedBalance = acc.balance; // Simplified - no projection logic for now
+          const currentBalance = acc.balance || 0;
+          const projectedBalance = acc.balance || 0; // Simplified - no projection logic for now
           const threshold = acc.minimumBalance || 1000;
           
           // Enhanced IBAN masking for better UX

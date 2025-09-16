@@ -1,6 +1,9 @@
 import React from 'react';
 import { Home, User, Calendar, Clock } from 'lucide-react';
 import { PrestamoFinanciacion, ValidationError } from '../../../../../types/financiacion';
+import { cuentasService } from '../../../../../services/cuentasService';
+import { Account } from '../../../../../services/db';
+import AccountOption from '../../../../../components/common/AccountOption';
 
 interface IdentificacionBlockProps {
   formData: Partial<PrestamoFinanciacion>;
@@ -14,16 +17,37 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
   updateFormData, 
   errors 
 }) => {
+  const [accounts, setAccounts] = React.useState<Account[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
   const getFieldError = (fieldName: string) => errors.find(e => e.field === fieldName)?.message;
 
-  // Mock account data (in real implementation, this would come from a service)
-  const mockAccounts = [
-    { id: 'acc1', iban: 'ES91 2100 0418 4502 0005 1332', entidad: 'CaixaBank', logo: '/logos/caixabank.png' },
-    { id: 'acc2', iban: 'ES79 0049 0001 5025 1610 1005', entidad: 'Santander', logo: '/logos/santander.png' },
-    { id: 'acc3', iban: 'ES15 0081 0346 1100 0123 4567', entidad: 'Sabadell', logo: '/logos/sabadell.png' }
-  ];
+  // Load accounts on component mount
+  React.useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const accountsList = await cuentasService.list();
+        setAccounts(accountsList.filter(acc => acc.activa)); // Only show active accounts
+      } catch (error) {
+        console.error('[PRESTAMOS] Failed to load accounts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const selectedAccount = mockAccounts.find(acc => acc.id === formData.cuentaCargoId);
+    loadAccounts();
+
+    // Subscribe to account updates
+    const unsubscribe = cuentasService.on((event) => {
+      if (event === 'accounts:updated') {
+        loadAccounts();
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const selectedAccount = accounts.find(acc => acc.id?.toString() === formData.cuentaCargoId);
 
   return (
     <div className="space-y-6">
@@ -96,39 +120,54 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
         <label htmlFor="cuentaCargoId" className="block text-sm font-medium text-atlas-navy-1 mb-2">
           Cuenta de cargo *
         </label>
-        <select
-          id="cuentaCargoId"
-          value={formData.cuentaCargoId || ''}
-          onChange={(e) => updateFormData({ cuentaCargoId: e.target.value })}
-          className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue ${
-            getFieldError('cuentaCargoId') 
-              ? 'border-error-300 focus:border-error-500' 
-              : 'border-gray-300 focus:border-atlas-blue'
-          }`}
-        >
-          <option value="">Seleccionar cuenta</option>
-          {mockAccounts.map(account => (
-            <option key={account.id} value={account.id}>
-              {account.iban} - {account.entidad}
-            </option>
-          ))}
-        </select>
+        
+        {loading ? (
+          <div className="w-full rounded-atlas border border-gray-300 p-3 bg-gray-50 text-center text-sm text-text-gray">
+            Cargando cuentas...
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="w-full rounded-atlas border border-gray-300 p-3 bg-gray-50">
+            <p className="text-sm text-text-gray mb-2">
+              No hay cuentas disponibles. 
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                // Open Mi Cuenta → Cuentas in a new tab to maintain form state
+                window.open('/mi-cuenta/cuentas', '_blank');
+              }}
+              className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
+            >
+              Ir a Mi Cuenta → Cuentas
+            </button>
+          </div>
+        ) : (
+          <select
+            id="cuentaCargoId"
+            value={formData.cuentaCargoId || ''}
+            onChange={(e) => updateFormData({ cuentaCargoId: e.target.value })}
+            className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue ${
+              getFieldError('cuentaCargoId') 
+                ? 'border-error-300 focus:border-error-500' 
+                : 'border-gray-300 focus:border-atlas-blue'
+            }`}
+          >
+            <option value="">Seleccionar cuenta</option>
+            {accounts.map(account => (
+              <option key={account.id} value={account.id?.toString()}>
+                {account.alias} - {account.banco?.name || 'Banco'} - {account.iban}
+              </option>
+            ))}
+          </select>
+        )}
         {getFieldError('cuentaCargoId') && (
           <p className="mt-1 text-sm text-error-600">{getFieldError('cuentaCargoId')}</p>
         )}
         
-        {/* Show selected account details */}
+        {/* Show selected account details using AccountOption */}
         {selectedAccount && (
           <div className="mt-3 p-3 bg-gray-50 rounded-atlas border border-gray-200">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-atlas-blue rounded-full flex items-center justify-center text-white text-xs font-bold mr-3">
-                {selectedAccount.entidad.charAt(0)}
-              </div>
-              <div>
-                <div className="font-medium text-atlas-navy-1">{selectedAccount.entidad}</div>
-                <div className="text-sm text-text-gray">{selectedAccount.iban}</div>
-              </div>
-            </div>
+            <AccountOption account={selectedAccount} size="md" />
           </div>
         )}
       </div>

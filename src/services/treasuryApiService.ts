@@ -93,6 +93,7 @@ export class TreasuryAccountsAPI {
     const now = new Date().toISOString();
     
     const newAccount: Account = {
+      alias: accountData.alias || 'Nueva Cuenta', // Required field in new interface
       name: accountData.alias, // Using name field as alias
       bank: accountData.bank,
       iban: accountData.iban.replace(/\s/g, '').toUpperCase(),
@@ -103,6 +104,7 @@ export class TreasuryAccountsAPI {
       includeInConsolidated: accountData.includeInConsolidated ?? true,
       currency: 'EUR',
       isActive: true,
+      activa: true, // Required field in new interface
       usage_scope: accountData.usage_scope || 'mixto', // Default to 'mixto'
       logo_url: accountData.logo_url,
       createdAt: now,

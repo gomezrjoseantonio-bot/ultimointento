@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowRightLeft, Calendar } from 'lucide-react';
 import { Transfer } from '../../../../types/unifiedTreasury';
 import { formatEuro } from '../../../../services/aeatClassificationService';
+import { cuentasService } from '../../../../services/cuentasService';
+import { Account } from '../../../../services/db';
+import AccountOption from '../../../../components/common/AccountOption';
 
 interface NewTransferModalProps {
   isOpen: boolean;
@@ -16,6 +19,8 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
   onTransferCreated,
   preselectedFromAccount
 }) => {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     fromAccountId: preselectedFromAccount || '',
     toAccountId: '',
@@ -26,12 +31,33 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
 
-  // Mock accounts for selection
-  const accounts = [
-    { id: 1, name: 'Cuenta Principal', bank: 'BBVA', iban: '***7891', balance: 15420.50 },
-    { id: 2, name: 'Gastos Inmuebles', bank: 'Santander', iban: '***7892', balance: -420.30 },
-    { id: 3, name: 'Cuenta Personal', bank: 'ING', iban: '***7893', balance: 5200.00 }
-  ];
+  // Load accounts on component mount
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const accountsList = await cuentasService.list();
+        setAccounts(accountsList.filter(acc => acc.activa)); // Only show active accounts
+      } catch (error) {
+        console.error('[TRANSFER] Failed to load accounts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccounts();
+
+    // Subscribe to account updates
+    const unsubscribe = cuentasService.on((event) => {
+      if (event === 'accounts:updated') {
+        loadAccounts();
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const selectedFromAccount = accounts.find(acc => acc.id?.toString() === formData.fromAccountId);
+  const selectedToAccount = accounts.find(acc => acc.id?.toString() === formData.toAccountId);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -110,13 +136,13 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
   };
 
   const getAccountBalance = (accountId: string | number) => {
-    const account = accounts.find(a => a.id.toString() === accountId.toString());
+    const account = accounts.find(a => a.id?.toString() === accountId.toString());
     return account?.balance || 0;
   };
 
   const getAvailableToAccounts = () => {
     return accounts.filter(account => 
-      account.id.toString() !== formData.fromAccountId
+      account.id?.toString() !== formData.fromAccountId
     );
   };
 
@@ -146,22 +172,46 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
             <label className="block text-sm font-medium text-gray-700">
               Cuenta de origen
             </label>
-            <select
-              value={formData.fromAccountId}
-              onChange={(e) => setFormData(prev => ({ ...prev, fromAccountId: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
-                errors.fromAccountId ? 'border-error-500' : 'border-gray-300'
-              }`}
-            >
-              <option value="">Seleccionar cuenta de origen...</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} - {account.bank} {account.iban} ({formatEuro(account.balance)})
-                </option>
-              ))}
-            </select>
+            {loading ? (
+              <div className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg text-center text-sm text-gray-500">
+                Cargando cuentas...
+              </div>
+            ) : accounts.length === 0 ? (
+              <div className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                <p className="text-sm text-gray-500 mb-2">No hay cuentas disponibles.</p>
+                <button
+                  type="button"
+                  onClick={() => window.open('/mi-cuenta/cuentas', '_blank')}
+                  className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
+                >
+                  Ir a Mi Cuenta → Cuentas
+                </button>
+              </div>
+            ) : (
+              <select
+                value={formData.fromAccountId}
+                onChange={(e) => setFormData(prev => ({ ...prev, fromAccountId: e.target.value }))}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
+                  errors.fromAccountId ? 'border-error-500' : 'border-gray-300'
+                }`}
+              >
+                <option value="">Seleccionar cuenta de origen...</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id?.toString()}>
+                    {account.alias} - {account.banco?.name || 'Banco'} - {account.iban}
+                  </option>
+                ))}
+              </select>
+            )}
             {errors.fromAccountId && (
               <p className="text-sm text-error-600">{errors.fromAccountId}</p>
+            )}
+            
+            {/* Show selected from account using AccountOption */}
+            {selectedFromAccount && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <AccountOption account={selectedFromAccount} size="sm" />
+              </div>
             )}
           </div>
 
@@ -187,13 +237,20 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
             >
               <option value="">Seleccionar cuenta de destino...</option>
               {getAvailableToAccounts().map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name} - {account.bank} {account.iban} ({formatEuro(account.balance)})
+                <option key={account.id} value={account.id?.toString()}>
+                  {account.alias} - {account.banco?.name || 'Banco'} - {account.iban}
                 </option>
               ))}
             </select>
             {errors.toAccountId && (
               <p className="text-sm text-error-600">{errors.toAccountId}</p>
+            )}
+            
+            {/* Show selected to account using AccountOption */}
+            {selectedToAccount && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <AccountOption account={selectedToAccount} size="sm" />
+              </div>
             )}
           </div>
 
