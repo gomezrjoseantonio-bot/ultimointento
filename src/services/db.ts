@@ -571,25 +571,38 @@ export type AccountDestination = 'horizon' | 'pulse';
 export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
 
 export interface Account {
-  id?: number;
-  name?: string; // Optional alias - Bank name and IBAN are the required identifiers
-  bank: string;
-  iban: string; // Now required instead of optional
-  destination: AccountDestination;
-  balance: number;
-  openingBalance: number;
-  openingBalanceDate?: string; // New field for treasury_accounts requirement
-  includeInConsolidated?: boolean; // New field for treasury_accounts requirement
-  currency: string;
-  isActive: boolean;
-  deleted_at?: string; // FIX PACK v2.0: NULL = not deleted, timestamp = deleted
-  minimumBalance?: number; // H9: For treasury alerts
-  isAtRisk?: boolean; // H9: Treasury events - risk flag when projected balance < minimum
-  // H-HOTFIX: Usage scope for reconciliation prioritization
-  usage_scope?: AccountUsageScope; // Default: 'mixto'
-  logo_url?: string; // Logo image URL (JPG/PNG, max 512KB)
+  id?: number; // Keep as number for legacy compatibility
+  alias: string;                          // nombre corto que verá el usuario ("Cuenta principal")
+  iban: string;                           // normalizado: sin espacios, mayúsculas (p.ej., ES9100491500051234567892)
+  ibanMasked?: string;                    // display: "ES91 0049 **** **** **** 7892" (calculated)
+  banco?: {
+    code?: string;                        // código entidad (4 dígitos IBAN ES, posiciones 5–8)
+    name?: string;                        // nombre de banco si lo inferimos por code
+    brand?: { logoUrl?: string; color?: string; } // logo/color corporativo si disponible
+  };
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA'; // default: CORRIENTE
+  moneda?: 'EUR';                         // default: EUR (solo EUR por ahora)
+  titular?: { nombre?: string; nif?: string; }; // opcional (no obligatorio en alta)
+  activa: boolean;                        // true por defecto
+  isDefault?: boolean;                    // solo una por usuario
   createdAt: string;
   updatedAt: string;
+
+  // Legacy fields for backward compatibility
+  name?: string; // Maps to alias
+  bank?: string; // Maps to banco.name
+  destination?: AccountDestination;
+  balance?: number;
+  openingBalance?: number;
+  openingBalanceDate?: string;
+  includeInConsolidated?: boolean;
+  currency?: string; // Maps to moneda
+  isActive?: boolean; // Maps to activa
+  deleted_at?: string;
+  minimumBalance?: number;
+  isAtRisk?: boolean;
+  usage_scope?: AccountUsageScope;
+  logo_url?: string; // Maps to banco.brand.logoUrl
 }
 
 // H8: Movement types - enhanced to match treasury_transactions requirements

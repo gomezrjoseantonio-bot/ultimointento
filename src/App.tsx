@@ -51,6 +51,7 @@ const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyecci
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
+const CuentasContainer = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasNewContainer'));
 const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
@@ -531,6 +532,16 @@ function App() {
               <Route path="seguridad" element={<AccountPage />} />
               <Route path="plan" element={<AccountPage />} />
               <Route path="privacidad" element={<AccountPage />} />
+            </Route>
+
+            {/* Mi Cuenta Routes - Account Management */}
+            <Route path="mi-cuenta">
+              <Route index element={<Navigate to="/mi-cuenta/cuentas" replace />} />
+              <Route path="cuentas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CuentasContainer />
+                </React.Suspense>
+              } />
             </Route>
             
             {/* Development only routes */}

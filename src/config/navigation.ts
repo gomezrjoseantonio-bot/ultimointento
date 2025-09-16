@@ -28,10 +28,19 @@ export const navigationConfig: NavigationItem[] = [
     section: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/personal/resumen', icon: Home, module: 'horizon' },
-      { name: 'Cuentas', href: '/personal/cuentas', icon: Banknote, module: 'horizon' },
       { name: 'Movimientos', href: '/personal/movimientos', icon: CreditCard, module: 'horizon' },
       { name: 'Presupuesto', href: '/personal/presupuesto', icon: TrendingUp, module: 'horizon' },
       { name: 'Reglas', href: '/personal/reglas', icon: Settings, module: 'horizon' },
+    ]
+  },
+  {
+    name: 'Mi Cuenta',
+    href: '/mi-cuenta',
+    icon: Settings,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Cuentas', href: '/mi-cuenta/cuentas', icon: Banknote, module: 'horizon' },
     ]
   },
   {

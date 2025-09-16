@@ -1,0 +1,52 @@
+{
+  "0049": {
+    "name": "Banco Santander",
+    "logoUrl": "/assets/banks/0049.svg",
+    "color": "#EC0000"
+  },
+  "0081": {
+    "name": "Banco Sabadell",
+    "logoUrl": "/assets/banks/0081.svg",
+    "color": "#0078AE"
+  },
+  "0182": {
+    "name": "BBVA",
+    "logoUrl": "/assets/banks/0182.svg",
+    "color": "#004481"
+  },
+  "2100": {
+    "name": "CaixaBank",
+    "logoUrl": "/assets/banks/2100.svg",
+    "color": "#4C87B8"
+  },
+  "0128": {
+    "name": "Bankinter",
+    "logoUrl": "/assets/banks/0128.svg",
+    "color": "#FF6600"
+  },
+  "0061": {
+    "name": "Banco Popular",
+    "logoUrl": "/assets/banks/0061.svg",
+    "color": "#004481"
+  },
+  "0019": {
+    "name": "Deutsche Bank",
+    "logoUrl": "/assets/banks/0019.svg",
+    "color": "#001489"
+  },
+  "0030": {
+    "name": "Banco Español de Crédito",
+    "logoUrl": "/assets/banks/0030.svg",
+    "color": "#58B02C"
+  },
+  "0073": {
+    "name": "Open Bank",
+    "logoUrl": "/assets/banks/0073.svg",
+    "color": "#1FCC3F"
+  },
+  "0238": {
+    "name": "Banco Pastor",
+    "logoUrl": "/assets/banks/0238.svg",
+    "color": "#990000"
+  }
+}
