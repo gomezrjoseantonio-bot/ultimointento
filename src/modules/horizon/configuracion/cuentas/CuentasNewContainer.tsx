@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Banknote, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { Banknote } from 'lucide-react';
 import PageHeader from '../../../../components/common/PageHeader';
 import CuentasManagement, { CuentasManagementRef } from './components/CuentasManagement';
 
@@ -10,7 +10,7 @@ import CuentasManagement, { CuentasManagementRef } from './components/CuentasMan
  */
 const CuentasContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cuentas'>('cuentas');
-  const cuentasRef = useRef<CuentasManagementRef>(null);
+  const cuentasRef = React.useRef<CuentasManagementRef>(null);
 
   const tabs = [
     {

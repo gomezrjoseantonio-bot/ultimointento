@@ -1,5 +1,4 @@
 import React from 'react';
-import { Banknote } from 'lucide-react';
 import { Account } from '../../services/db';
 import { maskIban, generateHashColor, getAvatarInitial } from '../../utils/accountHelpers';
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useImperativeHandle } from 'react';
-import { Banknote, Info, Edit2, Trash2, X, AlertTriangle, Search, Plus } from 'lucide-react';
+import React, { useState, useEffect, useImperativeHandle } from 'react';
+import { Banknote, Edit2, Trash2, X, AlertTriangle, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cuentasService, CreateAccountData, UpdateAccountData } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
-import { formatIban, maskIban, validateIbanEs, normalizeIban, inferBank, loadBanksCatalog, generateHashColor, getAvatarInitial } from '../../../../../utils/accountHelpers';
+import { formatIban, maskIban, validateIbanEs, inferBank, loadBanksCatalog, generateHashColor, getAvatarInitial } from '../../../../../utils/accountHelpers';
 
 interface AccountFormData {
   alias: string;
