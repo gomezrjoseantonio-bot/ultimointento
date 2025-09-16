@@ -202,6 +202,12 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                   >
                     Privacidad & Datos
                   </button>
+                  <button
+                    onClick={() => { navigate('/cuenta/cuentas'); setAccountMenuOpen(false); }}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
+                  >
+                    Cuentas Bancarias
+                  </button>
                 </div>
               </div>
             )}
