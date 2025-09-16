@@ -174,7 +174,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             No hay cuentas configuradas para mostrar estadísticas de uso.
           </p>
           <button
-            onClick={() => window.open('/mi-cuenta/cuentas', '_blank')}
+            onClick={() => window.open('/cuenta/cuentas', '_blank')}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-atlas-blue hover:bg-atlas-blue-dark"
           >
             Configurar Cuentas

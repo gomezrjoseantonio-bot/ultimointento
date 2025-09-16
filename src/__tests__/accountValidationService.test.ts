@@ -27,6 +27,7 @@ describe('Account Validation Service', () => {
       openingBalance: 1000,
       currency: 'EUR',
       isActive: true,
+      activa: true,
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01'
     },
@@ -40,6 +41,7 @@ describe('Account Validation Service', () => {
       openingBalance: 500,
       currency: 'EUR',
       isActive: true,
+      activa: true,
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01'
     },
@@ -53,6 +55,7 @@ describe('Account Validation Service', () => {
       openingBalance: 0,
       currency: 'EUR',
       isActive: false,
+      activa: false,
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01'
     },
@@ -66,6 +69,7 @@ describe('Account Validation Service', () => {
       openingBalance: 0,
       currency: 'EUR',
       isActive: true,
+      activa: true,
       deleted_at: '2024-01-15',
       createdAt: '2024-01-01',
       updatedAt: '2024-01-01'

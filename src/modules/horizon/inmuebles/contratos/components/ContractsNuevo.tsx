@@ -622,10 +622,10 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   <p className="text-sm text-gray-500 mb-2">No hay cuentas disponibles.</p>
                   <button
                     type="button"
-                    onClick={() => window.open('/mi-cuenta/cuentas', '_blank')}
+                    onClick={() => window.open('/cuenta/cuentas', '_blank')}
                     className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
                   >
-                    Ir a Mi Cuenta → Cuentas
+                    Ir a Cuenta → Configuración → Cuentas Bancarias
                   </button>
                 </div>
               ) : (

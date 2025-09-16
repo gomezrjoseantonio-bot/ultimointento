@@ -201,7 +201,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
 
   // Filter accounts based on search term
   const filteredAccounts = accounts.filter(account => 
-    account.alias.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (account.alias || 'Sin alias').toLowerCase().includes(searchTerm.toLowerCase()) ||
     account.iban.toLowerCase().includes(searchTerm.toLowerCase()) ||
     account.banco?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -226,7 +226,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     }
     
     const color = account.banco?.brand?.color || generateHashColor(account.iban);
-    const initial = getAvatarInitial(account.alias);
+    const initial = getAvatarInitial(account.alias || 'Sin alias');
     
     return (
       <div 
@@ -290,7 +290,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-medium text-atlas-navy-1">
-                        {account.alias}
+                        {account.alias || 'Sin alias'}
                       </h3>
                       {account.isDefault && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-atlas-blue text-white">

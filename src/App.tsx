@@ -51,7 +51,6 @@ const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyecci
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
-const CuentasContainer = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasNewContainer'));
 const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
@@ -497,17 +496,12 @@ function App() {
             <Route path="configuracion">
               <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
               {/* ATLAS: Redirect old tesoreria cuentas to new location */}
-              <Route path="bancos-cuentas" element={<Navigate to="/configuracion/cuentas" replace />} />
+              <Route path="bancos-cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
+              <Route path="cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
               {/* Horizon configuration - available only for Horizon */}
               <Route path="usuarios-roles" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <UsuariosRoles />
-                </React.Suspense>
-              } />
-              {/* ATLAS: New Cuentas section with Bancos and Reglas subtabs */}
-              <Route path="cuentas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Cuentas />
                 </React.Suspense>
               } />
               {/* Shared configuration - available for both modules */}
@@ -532,16 +526,18 @@ function App() {
               <Route path="seguridad" element={<AccountPage />} />
               <Route path="plan" element={<AccountPage />} />
               <Route path="privacidad" element={<AccountPage />} />
-            </Route>
-
-            {/* Mi Cuenta Routes - Account Management */}
-            <Route path="mi-cuenta">
-              <Route index element={<Navigate to="/mi-cuenta/cuentas" replace />} />
+              {/* ATLAS: New Cuentas section under Cuenta ▸ Configuración ▸ Cuentas Bancarias */}
               <Route path="cuentas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <CuentasContainer />
+                  <Cuentas />
                 </React.Suspense>
               } />
+            </Route>
+
+            {/* Mi Cuenta Routes - Redirect to new location */}
+            <Route path="mi-cuenta">
+              <Route index element={<Navigate to="/cuenta/cuentas" replace />} />
+              <Route path="cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
             </Route>
             
             {/* Development only routes */}

@@ -3,6 +3,8 @@
  * after the fix for the issue reported by the user
  */
 
+export {};
+
 describe('Treasury UI Mock Movements Fix', () => {
   test('should not have generateMockMovements function', () => {
     // Read the UnifiedTreasury.tsx file content

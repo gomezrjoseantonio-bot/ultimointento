@@ -133,12 +133,12 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
             <button
               type="button"
               onClick={() => {
-                // Open Mi Cuenta → Cuentas in a new tab to maintain form state
-                window.open('/mi-cuenta/cuentas', '_blank');
+                // Open Cuenta → Configuración → Cuentas Bancarias in a new tab to maintain form state
+                window.open('/cuenta/cuentas', '_blank');
               }}
               className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
             >
-              Ir a Mi Cuenta → Cuentas
+              Ir a Cuenta → Configuración → Cuentas Bancarias
             </button>
           </div>
         ) : (

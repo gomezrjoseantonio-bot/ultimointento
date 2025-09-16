@@ -280,7 +280,7 @@ export const MANUAL_TEST_SCENARIOS = [
     title: 'Account Creation with Valid IBAN',
     description: 'Test creating an account with a valid Spanish IBAN',
     steps: [
-      'Navigate to /mi-cuenta/cuentas',
+      'Navigate to /cuenta/cuentas',
       'Click "Nueva cuenta"',
       'Enter alias: "Test Account BBVA"',
       'Enter IBAN: "ES91 0182 1234 5678 9012 3456"',
@@ -299,7 +299,7 @@ export const MANUAL_TEST_SCENARIOS = [
     title: 'Invalid IBAN Validation',
     description: 'Test IBAN validation with invalid checksum',
     steps: [
-      'Navigate to /mi-cuenta/cuentas',
+      'Navigate to /cuenta/cuentas',
       'Click "Nueva cuenta"',
       'Enter alias: "Test Invalid"',
       'Enter IBAN: "ES91 0182 1234 5678 9012 3457" (invalid mod-97)',

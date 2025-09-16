@@ -22,14 +22,14 @@ export function formatIban(iban: string): string {
 }
 
 /**
- * Mask IBAN for display purposes
+ * Mask IBAN for display purposes - ATLAS format
  * @param iban - Raw IBAN string
- * @returns Masked IBAN: "ES91 0049 **** **** **** 7892"
+ * @returns Masked IBAN: "ES91 **** **** **** 2715" (show first 8 and last 4)
  */
 export function maskIban(iban: string): string {
   if (!iban) return '';
   const clean = iban.replace(/\s/g, '').toUpperCase();
-  if (clean.length < 8) return iban;
+  if (clean.length < 12) return formatIban(iban); // If too short, just format
   
   const prefix = clean.substring(0, 8); // ES91 0049
   const suffix = clean.substring(clean.length - 4); // last 4 digits
@@ -80,6 +80,77 @@ export function validateIbanEs(iban: string): { ok: boolean; message?: string } 
   }
   
   return { ok: true };
+}
+
+/**
+ * Detect bank information by IBAN (enhanced version of inferBank)
+ * @param normalizedIban - Normalized IBAN string
+ * @returns Bank information with code, name, and brand details
+ */
+export function detectBankByIBAN(normalizedIban: string): { code?: string; name?: string; brand?: { logoUrl?: string; color?: string } } | null {
+  if (!normalizedIban || !normalizedIban.startsWith('ES') || normalizedIban.length < 8) {
+    return null;
+  }
+
+  const bankCode = normalizedIban.substring(4, 8); // Extract positions 5-8
+  
+  // Spanish bank codes catalog (basic implementation)
+  const spanishBanks: Record<string, { name: string; brand?: { logoUrl?: string; color?: string } }> = {
+    '0049': { 
+      name: 'Banco Santander', 
+      brand: { 
+        logoUrl: '/assets/banks/santander-logo.png',
+        color: '#EC0000'
+      } 
+    },
+    '0182': { 
+      name: 'BBVA', 
+      brand: { 
+        logoUrl: '/assets/banks/bbva-logo.png',
+        color: '#004481'
+      } 
+    },
+    '0081': { 
+      name: 'Banco de Sabadell', 
+      brand: { 
+        logoUrl: '/assets/banks/sabadell-logo.png',
+        color: '#0066CC'
+      } 
+    },
+    '2100': { 
+      name: 'CaixaBank', 
+      brand: { 
+        logoUrl: '/assets/banks/caixabank-logo.png',
+        color: '#0063B2'
+      } 
+    },
+    '0128': { 
+      name: 'Bankinter', 
+      brand: { 
+        logoUrl: '/assets/banks/bankinter-logo.png',
+        color: '#FF6600'
+      } 
+    },
+    '0030': { 
+      name: 'Banco Español de Crédito (Banesto)', 
+      brand: { 
+        logoUrl: '/assets/banks/banesto-logo.png',
+        color: '#00A000'
+      } 
+    }
+  };
+
+  const bankInfo = spanishBanks[bankCode];
+  
+  if (bankInfo) {
+    return {
+      code: bankCode,
+      name: bankInfo.name,
+      brand: bankInfo.brand
+    };
+  }
+  
+  return { code: bankCode, name: `Banco ${bankCode}` };
 }
 
 /**
