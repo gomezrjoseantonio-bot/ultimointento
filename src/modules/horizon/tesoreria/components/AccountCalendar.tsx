@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Calendar, Search, ToggleLeft, ToggleRight, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatEuro } from '../../../../utils/formatUtils';
 import MovementDrawer from './MovementDrawer';
+import { Movement as DBMovement } from '../../../../services/db';
 
 interface Account {
   id: number;
@@ -13,24 +14,8 @@ interface Account {
   currency: string;
 }
 
-interface Movement {
-  id: number;
-  accountId: number;
-  date: string; // YYYY-MM-DD
-  description: string;
-  counterparty?: string;
-  amount: number;
-  currency: string;
-  source?: string;
-  reference?: string;
-  status?: 'previsto' | 'confirmado' | 'no_planificado';
-  category?: string;
-  scope?: 'personal' | 'inmueble';
-  inmuebleId?: number;
-  planned?: boolean;
-  confirmed?: boolean;
-  type?: 'Gasto' | 'Ingreso' | 'Transferencia';
-}
+// Use the database Movement interface  
+type Movement = DBMovement;
 
 interface CalendarDay {
   date: Date;
@@ -108,7 +93,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
       // Apply filters
       if (localExcludePersonal) {
         dayMovements = dayMovements.filter(movement => 
-          movement.scope !== 'personal' && 
+          movement.ambito !== 'PERSONAL' && 
           !movement.description?.toLowerCase().includes('personal')
         );
       }
@@ -118,7 +103,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
         dayMovements = dayMovements.filter(movement => 
           movement.description?.toLowerCase().includes(searchLower) ||
           movement.counterparty?.toLowerCase().includes(searchLower) ||
-          movement.category?.toLowerCase().includes(searchLower)
+          movement.categoria?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -163,13 +148,13 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
       return `${baseStyle} bg-hz-warning text-white relative`;
     }
     
-    // Confirmed (both planned and unplanned become blue when confirmed)
-    if (movement.confirmed || movement.status === 'confirmado') {
+    // Confirmed/reconciled movements (blue)
+    if (movement.statusConciliacion === 'match_manual' || movement.statusConciliacion === 'match_automatico') {
       return `${baseStyle} bg-hz-primary text-white`;
     }
     
-    // Planned/forecast
-    if (movement.planned || movement.status === 'previsto') {
+    // Planned/forecast movements from budget (green/red based on amount)
+    if (movement.unifiedStatus === 'previsto') {
       if (movement.amount >= 0) {
         // Income - green
         return `${baseStyle} bg-hz-success text-white`;
@@ -185,20 +170,20 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
 
   // Check if movement is overdue
   const isMovementOverdue = (movement: Movement) => {
-    if (movement.confirmed || movement.status === 'confirmado') return false;
+    if (movement.statusConciliacion === 'match_manual' || movement.statusConciliacion === 'match_automatico') return false;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const movementDate = new Date(movement.date);
     movementDate.setHours(0, 0, 0, 0);
     
-    return movementDate < today && (movement.planned || movement.status === 'previsto');
+    return movementDate < today && movement.unifiedStatus === 'previsto';
   };
 
   // Get movement display content
   const getMovementDisplay = (movement: Movement) => {
     const isOverdue = isMovementOverdue(movement);
-    const label = movement.category || movement.counterparty || movement.description?.slice(0, 15) || 'Sin descripción';
+    const label = movement.categoria || movement.counterparty || movement.description?.slice(0, 15) || 'Sin descripción';
     
     return (
       <div className="flex items-center gap-1 min-w-0">
