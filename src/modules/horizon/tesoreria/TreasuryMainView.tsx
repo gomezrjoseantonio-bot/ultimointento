@@ -61,10 +61,70 @@ const TreasuryMainView: React.FC = () => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
+  // Sync accounts from localStorage (cuentasService) to IndexedDB (treasuryApiService)
+  const syncAccountsFromLocalStorage = useCallback(async () => {
+    try {
+      const db = await initDB();
+      
+      // Get accounts from localStorage (created via configuration)
+      const storedAccounts = localStorage.getItem('atlas_accounts');
+      if (!storedAccounts) return;
+      
+      const atlasAccounts = JSON.parse(storedAccounts);
+      if (!Array.isArray(atlasAccounts)) return;
+      
+      // Get existing accounts from IndexedDB
+      const existingAccounts = await db.getAll('accounts');
+      const existingIbans = new Set(existingAccounts.map(acc => acc.iban));
+      
+      // Add missing accounts to IndexedDB
+      for (const atlasAccount of atlasAccounts) {
+        if (!atlasAccount.iban || existingIbans.has(atlasAccount.iban)) continue;
+        
+        // Transform atlas account to treasury account format
+        const treasuryAccount = {
+          alias: atlasAccount.alias,
+          name: atlasAccount.alias,
+          iban: atlasAccount.iban,
+          banco: atlasAccount.banco,
+          bank: atlasAccount.banco?.name || 'Banco',
+          destination: 'horizon', // Set the required destination field
+          activa: atlasAccount.activa ?? true,
+          isActive: atlasAccount.activa ?? true,
+          logoUser: atlasAccount.logoUser,
+          logo_url: atlasAccount.logoUser || atlasAccount.banco?.brand?.logoUrl,
+          tipo: atlasAccount.tipo || 'CORRIENTE',
+          moneda: atlasAccount.moneda || 'EUR',
+          currency: 'EUR',
+          titular: atlasAccount.titular,
+          isDefault: atlasAccount.isDefault || false,
+          balance: 0, // Start with 0 balance
+          openingBalance: 0,
+          openingBalanceDate: atlasAccount.createdAt || new Date().toISOString(),
+          includeInConsolidated: true,
+          usage_scope: 'mixto',
+          createdAt: atlasAccount.createdAt || new Date().toISOString(),
+          updatedAt: atlasAccount.updatedAt || new Date().toISOString()
+        };
+        
+        await db.add('accounts', treasuryAccount);
+        console.info('[TREASURY] Synced account from localStorage:', { 
+          alias: treasuryAccount.alias || 'Sin alias',
+          iban: treasuryAccount.iban.slice(-4)
+        });
+      }
+    } catch (error) {
+      console.error('[TREASURY] Error syncing accounts from localStorage:', error);
+    }
+  }, []);
+
   // Load accounts and calculate totals
   const loadTreasuryData = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // First sync accounts from localStorage to IndexedDB
+      await syncAccountsFromLocalStorage();
       
       // Load accounts from configuration
       const allAccounts = await treasuryAPI.accounts.getAccounts(true); // Include inactive
@@ -141,7 +201,7 @@ const TreasuryMainView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPeriod, showInactive]);
+  }, [currentPeriod, showInactive, syncAccountsFromLocalStorage]);
 
   useEffect(() => {
     loadTreasuryData();

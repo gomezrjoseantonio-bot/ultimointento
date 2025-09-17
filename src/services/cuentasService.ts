@@ -3,7 +3,7 @@
  * Stable service for account management with strong validations
  */
 
-import { Account } from '../services/db';
+import { Account, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
 
 export interface CreateAccountData {
@@ -53,6 +53,66 @@ class CuentasService {
       localStorage.setItem('atlas_accounts', JSON.stringify(this.accounts));
     } catch (error) {
       console.error('[ACCOUNTS] Failed to save accounts:', error);
+    }
+  }
+
+  /**
+   * Sync account to IndexedDB (treasury storage)
+   */
+  private async syncAccountToIndexedDB(account: Account): Promise<void> {
+    try {
+      const db = await initDB();
+      
+      // Check if account already exists in IndexedDB
+      const existingAccounts = await db.getAll('accounts');
+      const existingAccount = existingAccounts.find(acc => acc.iban === account.iban);
+      
+      // Transform atlas account to treasury account format
+      const treasuryAccount = {
+        id: existingAccount?.id, // Keep existing ID if updating
+        alias: account.alias,
+        name: account.alias,
+        iban: account.iban,
+        banco: account.banco,
+        bank: account.banco?.name || 'Banco',
+        destination: 'horizon', // Set the required destination field
+        activa: account.activa ?? true,
+        isActive: account.activa ?? true,
+        logoUser: account.logoUser,
+        logo_url: account.logoUser || account.banco?.brand?.logoUrl,
+        tipo: account.tipo || 'CORRIENTE',
+        moneda: account.moneda || 'EUR',
+        currency: 'EUR',
+        titular: account.titular,
+        isDefault: account.isDefault || false,
+        balance: existingAccount?.balance || 0, // Preserve existing balance
+        openingBalance: existingAccount?.openingBalance || 0,
+        openingBalanceDate: existingAccount?.openingBalanceDate || account.createdAt,
+        includeInConsolidated: true,
+        usage_scope: 'mixto',
+        deleted_at: account.deleted_at, // Preserve deletion status
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt
+      };
+      
+      if (existingAccount) {
+        // Update existing account
+        await db.put('accounts', treasuryAccount);
+      } else {
+        // Create new account
+        delete treasuryAccount.id; // Let IndexedDB assign new ID
+        await db.add('accounts', treasuryAccount);
+      }
+      
+      console.info('[ACCOUNTS] Synced to IndexedDB:', { 
+        alias: account.alias || 'Sin alias',
+        iban: account.iban.slice(-4),
+        action: existingAccount ? 'updated' : 'created',
+        deleted: !!account.deleted_at
+      });
+    } catch (error) {
+      console.error('[ACCOUNTS] Failed to sync to IndexedDB:', error);
+      // Don't throw error to avoid breaking the main flow
     }
   }
 
@@ -146,6 +206,9 @@ class CuentasService {
     this.accounts.push(newAccount);
     this.saveAccounts();
 
+    // Sync to IndexedDB (treasury storage)
+    await this.syncAccountToIndexedDB(newAccount);
+
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {
       console.info('[ACCOUNTS] create', { 
@@ -205,6 +268,9 @@ class CuentasService {
     account.updatedAt = new Date().toISOString();
     this.saveAccounts();
 
+    // Sync to IndexedDB (treasury storage)
+    await this.syncAccountToIndexedDB(account);
+
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {
       console.info('[ACCOUNTS] update', { 
@@ -237,6 +303,9 @@ class CuentasService {
 
     this.saveAccounts();
 
+    // Sync to IndexedDB (treasury storage)
+    await this.syncAccountToIndexedDB(account);
+
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {
       console.info('[ACCOUNTS] deactivate', { id });
@@ -259,6 +328,9 @@ class CuentasService {
     account.updatedAt = new Date().toISOString();
 
     this.saveAccounts();
+
+    // Sync to IndexedDB (treasury storage)
+    await this.syncAccountToIndexedDB(account);
 
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {
@@ -354,6 +426,9 @@ class CuentasService {
     account.updatedAt = new Date().toISOString();
 
     this.saveAccounts();
+
+    // Sync to IndexedDB (treasury storage) - this will preserve the deleted_at status
+    await this.syncAccountToIndexedDB(account);
 
     // Audit log (without full IBAN for security)
     const auditLog = {
