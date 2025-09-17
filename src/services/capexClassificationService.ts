@@ -271,7 +271,7 @@ export const createCAPEXFromDocument = async (
 
   const capex: Omit<CAPEX, 'id'> = {
     inmueble_id: document.metadata.entityId,
-    proveedor: proveedor || 'Proveedor no identificado',
+    contraparte: proveedor || 'Proveedor no identificado',
     fecha_emision: financialData.issueDate || new Date().toISOString().split('T')[0],
     total: financialData.amount,
     tipo: classification,

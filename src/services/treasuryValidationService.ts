@@ -19,7 +19,7 @@ export const validateIngreso = (ingreso: Partial<Ingreso>): ValidationResult => 
   const warnings: string[] = [];
 
   // Required fields validation
-  if (!ingreso.proveedor_contraparte?.trim()) {
+  if (!ingreso.contraparte?.trim()) {
     errors.push('El proveedor/contraparte es obligatorio');
   }
 
@@ -101,7 +101,7 @@ export const validateGasto = (gasto: Partial<Gasto>): ValidationResult => {
   const warnings: string[] = [];
 
   // Required fields validation
-  if (!gasto.proveedor_nombre?.trim()) {
+  if (!gasto.contraparte_nombre?.trim()) {
     errors.push('El nombre del proveedor es obligatorio');
   }
 
@@ -194,7 +194,7 @@ export const validateCAPEX = (capex: Partial<CAPEX>): ValidationResult => {
     errors.push('El inmueble es obligatorio');
   }
 
-  if (!capex.proveedor?.trim()) {
+  if (!capex.contraparte?.trim()) {
     errors.push('El proveedor es obligatorio');
   }
 

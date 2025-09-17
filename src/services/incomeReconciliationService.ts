@@ -200,9 +200,9 @@ export const findIncomeReconciliationMatches = async (): Promise<Array<{
         }
 
         // Description matching (if available)
-        if (movement.description && ingreso.proveedor_contraparte) {
+        if (movement.description && ingreso.contraparte) {
           const descLower = movement.description.toLowerCase();
-          const providerLower = ingreso.proveedor_contraparte.toLowerCase();
+          const providerLower = ingreso.contraparte.toLowerCase();
           
           if (descLower.includes(providerLower) || providerLower.includes(descLower)) {
             confidence += 20;

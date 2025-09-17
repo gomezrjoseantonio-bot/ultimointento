@@ -45,7 +45,7 @@ export const generateIncomeFromContract = async (contract: Contract): Promise<nu
         const ingreso: Omit<Ingreso, 'id'> = {
           origen: 'contrato_id',
           origen_id: contract.id!,
-          proveedor_contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
+          contraparte: `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`,
           fecha_emision: currentDate.toISOString().split('T')[0],
           fecha_prevista_cobro: currentDate.toISOString().split('T')[0],
           importe: contract.rentaMensual || contract.monthlyRent || 0,
@@ -90,7 +90,7 @@ export const generateIncomeFromPayroll = async (
     const ingreso: Omit<Ingreso, 'id'> = {
       origen: 'nomina_id',
       origen_id: payrollDocumentId,
-      proveedor_contraparte: employerName,
+      contraparte: employerName,
       fecha_emision: payDate,
       fecha_prevista_cobro: payDate,
       importe: netAmount, // Net amount is what actually gets paid
@@ -196,7 +196,7 @@ const createIngresoFromDocument = async (document: Document): Promise<number> =>
   const ingreso: Omit<Ingreso, 'id'> = {
     origen: 'doc_id',
     origen_id: document.id!,
-    proveedor_contraparte: metadata.proveedor || 'Proveedor no identificado',
+    contraparte: metadata.proveedor || 'Proveedor no identificado',
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: financialData?.dueDate || financialData?.issueDate || new Date().toISOString().split('T')[0],
     importe: financialData?.amount || 0,
@@ -229,8 +229,8 @@ const createGastoFromDocument = async (document: Document): Promise<number> => {
   }
 
   const gasto: Omit<Gasto, 'id'> = {
-    proveedor_nombre: metadata.proveedor || 'Proveedor no identificado',
-    proveedor_nif: undefined, // Could be extracted from OCR in the future
+    contraparte_nombre: metadata.proveedor || 'Proveedor no identificado',
+    contraparte_nif: undefined, // Could be extracted from OCR in the future
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     fecha_pago_prevista: financialData?.dueDate || financialData?.predictedPaymentDate || new Date().toISOString().split('T')[0],
     total: financialData?.amount || 0,
@@ -270,7 +270,7 @@ const createCAPEXFromDocument = async (document: Document): Promise<number> => {
 
   const capex: Omit<CAPEX, 'id'> = {
     inmueble_id: metadata.entityId,
-    proveedor: metadata.proveedor || 'Proveedor no identificado',
+    contraparte: metadata.proveedor || 'Proveedor no identificado',
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     total: financialData?.amount || 0,
     tipo,

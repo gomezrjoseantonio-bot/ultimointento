@@ -176,9 +176,9 @@ function calculateMatchScore(movement: Movement, budgetLine: PresupuestoLinea, c
   matchCriteria.push(`date_${dateDistance.toFixed(1)}days`);
   
   // Provider/counterparty matching - 20 points
-  if (config.useProviderMatching && movement.counterparty && budgetLine.providerName) {
-    const providerMatch = movement.counterparty.toLowerCase().includes(budgetLine.providerName.toLowerCase()) ||
-                         budgetLine.providerName.toLowerCase().includes(movement.counterparty.toLowerCase());
+  if (config.useProviderMatching && movement.counterparty && budgetLine.counterpartyName) {
+    const providerMatch = movement.counterparty.toLowerCase().includes(budgetLine.counterpartyName.toLowerCase()) ||
+                         budgetLine.counterpartyName.toLowerCase().includes(movement.counterparty.toLowerCase());
     if (providerMatch) {
       score += 20;
       matchCriteria.push('provider_match');

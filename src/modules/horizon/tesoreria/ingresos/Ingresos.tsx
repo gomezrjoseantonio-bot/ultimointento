@@ -75,7 +75,17 @@ const Ingresos: React.FC = () => {
     try {
       const db = await initDB();
       const newIngreso: Ingreso = {
-        ...formData,
+        origen: formData.origen,
+        origen_id: formData.origen_id,
+        contraparte: formData.proveedor_contraparte, // Map proveedor_contraparte to contraparte
+        fecha_emision: formData.fecha_emision,
+        fecha_prevista_cobro: formData.fecha_prevista_cobro,
+        importe: formData.importe,
+        moneda: formData.moneda,
+        destino: formData.destino,
+        destino_id: formData.destino_id,
+        estado: formData.estado,
+        from_doc: formData.from_doc,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

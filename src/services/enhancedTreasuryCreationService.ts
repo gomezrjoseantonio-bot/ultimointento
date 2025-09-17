@@ -259,7 +259,7 @@ async function createIngresoFromOCR(
   const ingreso: Omit<Ingreso, 'id'> = {
     origen: 'doc_id',
     origen_id: parseInt(documentId) || 0,
-    proveedor_contraparte: fields.arrendatario_nombre || fields.proveedor_nombre || 'Proveedor no identificado',
+    contraparte: fields.arrendatario_nombre || fields.proveedor_nombre || 'Proveedor no identificado',
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
     importe: fields.total_amount!,
@@ -294,8 +294,8 @@ async function createGastoFromOCR(
   const db = await initDB();
   
   const gasto: Omit<Gasto, 'id'> = {
-    proveedor_nombre: fields.proveedor_nombre || 'Proveedor no identificado',
-    proveedor_nif: '', // Not available from OCR
+    contraparte_nombre: fields.proveedor_nombre || 'Proveedor no identificado',
+    contraparte_nif: '', // Not available from OCR
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
     fecha_pago_prevista: fields.due_date || fields.invoice_date || new Date().toISOString().split('T')[0],
     total: fields.total_amount!,
@@ -333,7 +333,7 @@ async function createCAPEXFromOCR(
   
   const capex: Omit<CAPEX, 'id'> = {
     inmueble_id: fields.property_id || 1, // Default to property 1 if not specified
-    proveedor: fields.proveedor_nombre || 'Proveedor no identificado',
+    contraparte: fields.proveedor_nombre || 'Proveedor no identificado',
     fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
     total: fields.total_amount!,
     tipo: 'mejora', // Default CAPEX type
