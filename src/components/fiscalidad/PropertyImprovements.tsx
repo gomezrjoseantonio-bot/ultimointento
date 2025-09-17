@@ -364,7 +364,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                     {improvement.daysInYear || '-'}
                   </td>
                   <td className="px-3 py-2 text-center text-neutral-600">
-                    {improvement.providerNIF || '-'}
+                    {improvement.counterpartyNIF || '-'}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <button
