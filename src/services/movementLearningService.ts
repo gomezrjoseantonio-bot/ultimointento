@@ -37,8 +37,8 @@ function normalizeText(text: string): string {
  */
 function removeVolatileTokens(text: string): string {
   return text
-    .replace(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g, '') // Dates
-    .replace(/\d+[,\.]\d{2}/g, '') // Amounts with decimals
+    .replace(/\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}/g, '') // Dates
+    .replace(/\d+[,.]\d{2}/g, '') // Amounts with decimals
     .replace(/\b\d{4,}\b/g, '') // Long numbers (references)
     .replace(/\bref\w*\s*\d+/g, '') // Reference numbers
     .replace(/\b[a-z0-9]{8,}\b/g, '') // Long alphanumeric codes
@@ -180,13 +180,13 @@ export async function createLearningRule(
       };
       
       const ruleId = await db.add('movementLearningRules', newRule);
-      newRule.id = ruleId;
+      newRule.id = ruleId as number;
       
       // Log the action
       const learningLog: LearningLog = {
         action: 'CREATE_RULE',
         movimientoId: movement.id,
-        ruleId,
+        ruleId: ruleId as number,
         learnKey,
         categoria,
         ambito,
@@ -248,7 +248,7 @@ export async function createOrUpdateRule(params: {
       };
       
       const ruleId = await db.add('movementLearningRules', newRule);
-      newRule.id = ruleId;
+      newRule.id = ruleId as number;
       
       console.log(`📚 Created learning rule: ${learnKey}`);
       return newRule;
@@ -265,7 +265,7 @@ export async function createOrUpdateRule(params: {
 export async function applyRuleToGrays(params: {
   learnKey: string;
   periodo: string; // YYYY or YYYY-MM
-  cuentaId: string;
+  cuentaId: number;
   limit?: number;
 }): Promise<{ updated: number; total: number }> {
   try {
@@ -412,7 +412,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
     });
 
     // Update applied counts asynchronously
-    for (const learnKey of appliedRules) {
+    for (const learnKey of Array.from(appliedRules)) {
       const rule = rulesMap.get(learnKey);
       if (rule && rule.id) {
         rule.appliedCount += 1;
@@ -504,7 +504,7 @@ export async function performManualReconciliation(
     // Backfill: apply to similar movements in same period and account
     const movementDate = new Date(movement.date);
     const periodo = movementDate.getFullYear().toString(); // Use year as period
-    const cuentaId = movement.accountId || '';
+    const cuentaId = movement.accountId || 999;
     
     let appliedToSimilar = 0;
     try {
