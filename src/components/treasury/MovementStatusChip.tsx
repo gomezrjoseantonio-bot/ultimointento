@@ -6,11 +6,12 @@
  * - Green: Income (ingresos)
  * - Gray: Unplanned (no planificado)  
  * - Blue: Confirmed/realized (confirmado/conciliado)
+ * - Auto badge: For movements classified by learning rules
  * - NO TEXT LABELS - only colors as specified
  */
 
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Bot } from 'lucide-react';
 
 // Define the status type locally to avoid import issues
 type UnifiedMovementStatus = 
@@ -20,16 +21,22 @@ type UnifiedMovementStatus =
   | 'no_planificado'
   | 'conciliado';
 
+type ConciliationStatus = 'sin_match' | 'match_automatico' | 'match_manual';
+
 interface StatusChipProps {
   status: UnifiedMovementStatus;
   className?: string;
   movementType?: 'Ingreso' | 'Gasto' | 'Transferencia' | 'Ajuste'; // To determine red vs green for previsto
+  conciliationStatus?: ConciliationStatus; // For learning engine status
+  showAutoFlag?: boolean; // Whether to show the auto classification flag
 }
 
 export const MovementStatusChip: React.FC<StatusChipProps> = ({ 
   status, 
   className = '', 
-  movementType = 'Gasto' 
+  movementType = 'Gasto',
+  conciliationStatus,
+  showAutoFlag = true
 }) => {
   const getStatusConfig = (status: UnifiedMovementStatus) => {
     switch (status) {
@@ -85,16 +92,30 @@ export const MovementStatusChip: React.FC<StatusChipProps> = ({
 
   const config = getStatusConfig(status);
 
+  // Show auto badge for match_automatico (learning rule applied)
+  const shouldShowAutoFlag = showAutoFlag && conciliationStatus === 'match_automatico';
+
   return (
-    <span 
-      className={`
-        inline-flex items-center justify-center rounded-full 
-        ${config.bgColor} ${config.size} ${className}
-      `}
-      title={status} // Keep status as tooltip for accessibility
-    >
-      {config.icon}
-    </span>
+    <div className="flex items-center gap-1">
+      <span 
+        className={`
+          inline-flex items-center justify-center rounded-full 
+          ${config.bgColor} ${config.size} ${className}
+        `}
+        title={status} // Keep status as tooltip for accessibility
+      >
+        {config.icon}
+      </span>
+      
+      {shouldShowAutoFlag && (
+        <span 
+          className="inline-flex items-center justify-center w-4 h-4 bg-blue-100 text-blue-600 rounded text-xs font-medium"
+          title="Clasificado automáticamente por regla de aprendizaje"
+        >
+          <Bot className="w-2.5 h-2.5" />
+        </span>
+      )}
+    </div>
   );
 };
 

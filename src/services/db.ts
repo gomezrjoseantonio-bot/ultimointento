@@ -838,9 +838,24 @@ export interface MovementLearningRule {
   categoria: string;
   ambito: 'PERSONAL' | 'INMUEBLE';
   inmuebleId?: string;
+  source: 'IMPLICIT'; // Reserved for future 'EXPLICIT'
   createdAt: string;
+  updatedAt: string;
   appliedCount: number; // How many times this rule has been applied
   lastAppliedAt?: string;
+}
+
+// V1.1: Learning log for audit trail (without PII)
+export interface LearningLog {
+  id?: number;
+  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
+  movimientoId?: number;
+  ruleId?: number;
+  learnKey: string;
+  categoria: string;
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  ts: string; // ISO timestamp
 }
 
 // H9: Treasury Recommendations
@@ -1230,6 +1245,7 @@ interface AtlasHorizonDB {
   matchingConfiguration: MatchingConfiguration; // ATLAS HORIZON: Matching rules configuration
   reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
+  learningLogs: LearningLog; // V1.1: Learning audit log without PII
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1507,6 +1523,17 @@ export const initDB = async () => {
           learningRulesStore.createIndex('ambito', 'ambito', { unique: false });
           learningRulesStore.createIndex('createdAt', 'createdAt', { unique: false });
           learningRulesStore.createIndex('appliedCount', 'appliedCount', { unique: false });
+        }
+
+        // V1.1: Learning logs store for audit trail (no PII)
+        if (!db.objectStoreNames.contains('learningLogs')) {
+          const learningLogsStore = db.createObjectStore('learningLogs', { keyPath: 'id', autoIncrement: true });
+          learningLogsStore.createIndex('action', 'action', { unique: false });
+          learningLogsStore.createIndex('learnKey', 'learnKey', { unique: false });
+          learningLogsStore.createIndex('categoria', 'categoria', { unique: false });
+          learningLogsStore.createIndex('ts', 'ts', { unique: false });
+          learningLogsStore.createIndex('movimientoId', 'movimientoId', { unique: false });
+          learningLogsStore.createIndex('ruleId', 'ruleId', { unique: false });
         }
 
         // General key-value store for application configuration
