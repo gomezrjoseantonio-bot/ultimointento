@@ -73,6 +73,7 @@
   },
   "devDependencies": {
     "@netlify/functions": "^4.2.5",
-    "@types/jszip": "^3.4.0"
+    "@types/jszip": "^3.4.0",
+    "fake-indexeddb": "^6.2.2"
   }
 }
