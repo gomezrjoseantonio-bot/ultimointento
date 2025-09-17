@@ -127,6 +127,9 @@ const MovimientosPanel: React.FC = () => {
         source: 'manual' as any,
         tags: [],
         isAutoTagged: false,
+        // V1.1: New required fields
+        ambito: 'PERSONAL',
+        statusConciliacion: 'sin_match',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

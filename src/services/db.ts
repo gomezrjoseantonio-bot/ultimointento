@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 14; // ATLAS HORIZON: Added RentaMensual for contract treasury integration
+const DB_VERSION = 15; // V1.1: Added reconciliation audit logs and learning rules
 
 export interface Property {
   id?: number;
@@ -698,6 +698,13 @@ export interface Movement {
   lastModifiedBy?: string; // User who made the change
   changeReason?: 'user_ok' | 'inline_edit_amount' | 'inline_edit_date' | 'bulk_ok' | 'manual_edit';
   
+  // V1.1: Treasury extension fields for auto-reclassification and learning
+  categoria?: string; // Category assigned automatically or manually
+  ambito: 'PERSONAL' | 'INMUEBLE'; // Scope for reconciliation (default PERSONAL)
+  inmuebleId?: string; // Required if ambito='INMUEBLE'
+  statusConciliacion: 'sin_match' | 'match_automatico' | 'match_manual'; // Reconciliation status
+  learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -806,6 +813,34 @@ export interface TreasuryEvent {
   // Metadata
   createdAt: string;
   updatedAt: string;
+}
+
+// V1.1: Reconciliation audit log for security and auditing
+export interface ReconciliationAuditLog {
+  id?: number;
+  action: 'manual_reconcile' | 'auto_reclassify' | 'budget_trigger' | 'learn_rule_created' | 'learn_rule_applied';
+  movimientoId: number;
+  categoria?: string;
+  ambito?: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  learnKey?: string;
+  timestamp: string;
+  userId?: string; // Optional user identifier
+}
+
+// V1.1: Learning rules for automatic movement classification
+export interface MovementLearningRule {
+  id?: number;
+  learnKey: string; // Unique key for this rule pattern
+  counterpartyPattern: string; // Normalized counterparty
+  descriptionPattern: string; // Description pattern 
+  amountSign: 'positive' | 'negative'; // Income or expense
+  categoria: string;
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  createdAt: string;
+  appliedCount: number; // How many times this rule has been applied
+  lastAppliedAt?: string;
 }
 
 // H9: Treasury Recommendations
@@ -1193,6 +1228,8 @@ interface AtlasHorizonDB {
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   importLogs: ImportLog; // ATLAS HORIZON: Import logging for banking movements pipeline
   matchingConfiguration: MatchingConfiguration; // ATLAS HORIZON: Matching rules configuration
+  reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
+  movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1451,6 +1488,25 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('matchingConfiguration')) {
           const matchingConfigStore = db.createObjectStore('matchingConfiguration', { keyPath: 'id', autoIncrement: true });
           matchingConfigStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // V1.1: Reconciliation audit logs store
+        if (!db.objectStoreNames.contains('reconciliationAuditLogs')) {
+          const auditLogsStore = db.createObjectStore('reconciliationAuditLogs', { keyPath: 'id', autoIncrement: true });
+          auditLogsStore.createIndex('action', 'action', { unique: false });
+          auditLogsStore.createIndex('movimientoId', 'movimientoId', { unique: false });
+          auditLogsStore.createIndex('timestamp', 'timestamp', { unique: false });
+          auditLogsStore.createIndex('categoria', 'categoria', { unique: false });
+        }
+
+        // V1.1: Movement learning rules store
+        if (!db.objectStoreNames.contains('movementLearningRules')) {
+          const learningRulesStore = db.createObjectStore('movementLearningRules', { keyPath: 'id', autoIncrement: true });
+          learningRulesStore.createIndex('learnKey', 'learnKey', { unique: true });
+          learningRulesStore.createIndex('categoria', 'categoria', { unique: false });
+          learningRulesStore.createIndex('ambito', 'ambito', { unique: false });
+          learningRulesStore.createIndex('createdAt', 'createdAt', { unique: false });
+          learningRulesStore.createIndex('appliedCount', 'appliedCount', { unique: false });
         }
 
         // General key-value store for application configuration

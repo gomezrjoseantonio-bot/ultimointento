@@ -14,6 +14,8 @@ import { initDB, Movement } from './db';
 import { FLAGS } from '../config/flags';
 import { safeMatch } from '../utils/safe';
 import toast from 'react-hot-toast';
+import { applyLearningRulesToNewMovements } from './movementLearningService';
+import { reclassifyMovementsOnBudgetUpdate } from './budgetReclassificationService';
 
 // Logging prefix as specified in requirements
 const LOG_PREFIX = '[TESO-IMPORT]';
@@ -166,6 +168,7 @@ async function parseFileToRows(file: File): Promise<ParsedRow[]> {
 
 /**
  * Create movements with bulk insert and duplicate detection
+ * V1.1: Enhanced with learning rules application
  */
 async function createMovements(rows: ParsedRow[], usuario: string): Promise<ImportResult> {
   const db = await initDB();
@@ -181,6 +184,9 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
     errors: 0,
     createdIds: [] as number[]
   };
+  
+  // Collect valid movements first
+  const movementsToCreate: Movement[] = [];
   
   for (const row of rows) {
     try {
@@ -206,7 +212,6 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
       }
 
       // Reject demo movements (unless demo mode is explicitly enabled)
-      // Enhanced demo detection
       const { isDemoMovement } = await import('./demoDataCleanupService');
       if (!FLAGS.DEMO_MODE && (
           isDemoMovement({ 
@@ -249,19 +254,44 @@ async function createMovements(rows: ParsedRow[], usuario: string): Promise<Impo
         currency: 'EUR',
         importBatch: batchId,
         csvRowIndex: row.originalIndex,
+        // V1.1: New required fields - will be updated by learning rules
+        ambito: 'PERSONAL',
+        statusConciliacion: 'sin_match',
         createdAt: now,
         updatedAt: now
       };
       
-      const createdMovement = await db.add('movements', movement);
-      results.inserted++;
-      results.createdIds.push(typeof createdMovement === 'number' ? createdMovement : Date.now() + results.inserted);
+      movementsToCreate.push(movement);
       
     } catch (error) {
-      console.error(`${LOG_PREFIX} Error creating movement:`, error);
+      console.error(`${LOG_PREFIX} Error preparing movement:`, error);
       results.errors++;
     }
   }
+  
+  // V1.1: Apply learning rules to movements before inserting
+  let processedMovements: Movement[];
+  try {
+    processedMovements = await applyLearningRulesToNewMovements(movementsToCreate);
+    console.log(`${LOG_PREFIX} Applied learning rules to ${processedMovements.length} movements`);
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error applying learning rules:`, error);
+    processedMovements = movementsToCreate; // Fallback to original movements
+  }
+  
+  // Bulk insert processed movements
+  for (const movement of processedMovements) {
+    try {
+      const createdMovement = await db.add('movements', movement);
+      results.inserted++;
+      results.createdIds.push(typeof createdMovement === 'number' ? createdMovement : Date.now() + results.inserted);
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error inserting movement:`, error);
+      results.errors++;
+    }
+  }
+  
+  console.log(`${LOG_PREFIX} Import completed: ${results.inserted} inserted, ${results.duplicates} duplicates, ${results.errors} errors`);
   
   return {
     success: true,

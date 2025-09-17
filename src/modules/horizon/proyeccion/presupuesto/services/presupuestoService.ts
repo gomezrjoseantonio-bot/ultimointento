@@ -1,4 +1,5 @@
 import { initDB, Presupuesto, PresupuestoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, UUID } from '../../../../../services/db';
+import { emitBudgetUpdatedEvent } from '../../../../../services/budgetReclassificationService';
 
 // UUID helper (simple implementation)
 export const generateUUID = (): UUID => {
@@ -54,6 +55,14 @@ export const updatePresupuesto = async (id: UUID, updates: Partial<Presupuesto>)
   };
   
   await db.put('presupuestos', updatedPresupuesto);
+  
+  // V1.1: Trigger budget reclassification for movements
+  try {
+    await emitBudgetUpdatedEvent(id, presupuesto.year);
+  } catch (error) {
+    console.error('Error triggering budget reclassification:', error);
+    // Don't fail the budget update if reclassification fails
+  }
 };
 
 // Delete presupuesto and its lines
@@ -91,6 +100,18 @@ export const createPresupuestoLinea = async (linea: Omit<PresupuestoLinea, 'id'>
   };
   
   await db.add('presupuestoLineas', nuevaLinea);
+  
+  // V1.1: Trigger budget reclassification when new budget lines are added
+  try {
+    const presupuesto = await db.get('presupuestos', linea.presupuestoId);
+    if (presupuesto) {
+      await emitBudgetUpdatedEvent(linea.presupuestoId, presupuesto.year);
+    }
+  } catch (error) {
+    console.error('Error triggering budget reclassification after line creation:', error);
+    // Don't fail the line creation if reclassification fails
+  }
+  
   return id;
 };
 
@@ -106,6 +127,17 @@ export const updatePresupuestoLinea = async (id: UUID, updates: Partial<Presupue
   };
   
   await db.put('presupuestoLineas', updatedLinea);
+  
+  // V1.1: Trigger budget reclassification when budget lines change
+  try {
+    const presupuesto = await db.get('presupuestos', linea.presupuestoId);
+    if (presupuesto) {
+      await emitBudgetUpdatedEvent(linea.presupuestoId, presupuesto.year);
+    }
+  } catch (error) {
+    console.error('Error triggering budget reclassification after line update:', error);
+    // Don't fail the line update if reclassification fails
+  }
 };
 
 // Delete presupuesto line

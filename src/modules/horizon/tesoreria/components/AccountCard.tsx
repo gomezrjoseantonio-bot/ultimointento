@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { formatEuro } from '../../../../utils/formatUtils';
 import AccountCalendar from './AccountCalendar';
+import { Movement as DBMovement } from '../../../../services/db';
 
 interface Account {
   id: number;
@@ -14,24 +15,8 @@ interface Account {
   status?: 'verde' | 'ambar' | 'rojo'; // Health indicator
 }
 
-interface Movement {
-  id: number;
-  accountId: number;
-  date: string;
-  description: string;
-  counterparty?: string;
-  amount: number;
-  currency: string;
-  source?: string;
-  reference?: string;
-  status?: 'previsto' | 'confirmado' | 'no_planificado';
-  category?: string;
-  scope?: 'personal' | 'inmueble';
-  inmuebleId?: number;
-  planned?: boolean;
-  confirmed?: boolean;
-  type?: 'Gasto' | 'Ingreso' | 'Transferencia';
-}
+// Use the database Movement interface
+type Movement = DBMovement;
 
 interface AccountCardProps {
   account: Account;

@@ -183,6 +183,9 @@ export const createTreasuryMovementFromBankExtract = async (
         category: {
           tipo: transaction.amount > 0 ? 'Ingresos' : 'Gastos'
         },
+        // V1.1: New required fields
+        ambito: 'PERSONAL',
+        statusConciliacion: 'sin_match',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

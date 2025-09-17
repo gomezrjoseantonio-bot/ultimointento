@@ -1,32 +1,32 @@
-import React, { useState } from 'react';
-import { X, Check, Edit3, Trash2, FileText, Building, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Check, Edit3, Trash2, FileText, Building, User, Target, Sparkles } from 'lucide-react';
 import { formatEuro } from '../../../../utils/formatUtils';
 import { MovementStatusChip } from '../../../../components/treasury/MovementStatusChip';
-
-interface Movement {
-  id: number;
-  accountId: number;
-  date: string;
-  description: string;
-  counterparty?: string;
-  amount: number;
-  currency: string;
-  source?: string;
-  reference?: string;
-  status?: 'previsto' | 'confirmado' | 'no_planificado';
-  category?: string;
-  scope?: 'personal' | 'inmueble';
-  inmuebleId?: number;
-  planned?: boolean;
-  confirmed?: boolean;
-  type?: 'Gasto' | 'Ingreso' | 'Transferencia';
-}
+import { Movement, initDB, Property } from '../../../../services/db';
+import { performManualReconciliation } from '../../../../services/movementLearningService';
+import toast from 'react-hot-toast';
 
 interface MovementDrawerProps {
   movement: Movement;
   onClose: () => void;
   onUpdate: (movement: Movement) => void;
 }
+
+// Categories for reconciliation
+const CATEGORIES = [
+  'Alquiler',
+  'Suministros', 
+  'IBI',
+  'Comunidad',
+  'Seguros',
+  'Intereses',
+  'Reparación y Conservación',
+  'Mejora',
+  'Mobiliario',
+  'Gastos Personales',
+  'Ingresos Varios',
+  'Otros'
+];
 
 const MovementDrawer: React.FC<MovementDrawerProps> = ({
   movement,
@@ -35,52 +35,111 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedMovement, setEditedMovement] = useState<Movement>(movement);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconciliationData, setReconciliationData] = useState({
+    categoria: movement.categoria || '',
+    ambito: movement.ambito || 'PERSONAL',
+    inmuebleId: movement.inmuebleId || ''
+  });
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Get movement status badge - now using color-only chips per requirements
+  // Load properties for inmueble selection
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const db = await initDB();
+        const allProperties = await db.getAll('properties');
+        setProperties(allProperties.filter(p => p.state === 'activo'));
+      } catch (error) {
+        console.error('Error loading properties:', error);
+      }
+    };
+    loadProperties();
+  }, []);
+
+  // Get movement status badge with v1.1 statusConciliacion
   const getStatusBadge = (movement: Movement) => {
-    // Map old status fields to new unified status
-    let unifiedStatus: 'previsto' | 'confirmado' | 'no_planificado' = 'no_planificado';
-    
-    if (movement.confirmed || movement.status === 'confirmado') {
-      unifiedStatus = 'confirmado';
-    } else if (movement.planned || movement.status === 'previsto') {
-      unifiedStatus = 'previsto';
-    }
-    
-    // Determine movement type from amount for color coding
+    // Use new statusConciliacion field
+    const status = movement.statusConciliacion || 'sin_match';
     const movementType = movement.amount >= 0 ? 'Ingreso' : 'Gasto';
     
     return (
-      <MovementStatusChip 
-        status={unifiedStatus}
-        movementType={movementType}
-        className="ml-2"
-      />
+      <div className="flex items-center gap-2">
+        <MovementStatusChip 
+          status={status === 'sin_match' ? 'no_planificado' : 'confirmado'}
+          movementType={movementType}
+          className="ml-2"
+        />
+        {/* V1.1: Auto chip for auto-categorized movements */}
+        {movement.categoria && status === 'sin_match' && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+            <Sparkles className="w-3 h-3" />
+            auto
+          </span>
+        )}
+      </div>
     );
+  };
+
+  // Handle manual reconciliation
+  const handleManualReconciliation = async () => {
+    if (!reconciliationData.categoria || !reconciliationData.ambito) {
+      toast.error('Por favor, selecciona categoría y ámbito');
+      return;
+    }
+
+    if (reconciliationData.ambito === 'INMUEBLE' && !reconciliationData.inmuebleId) {
+      toast.error('Por favor, selecciona un inmueble');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await performManualReconciliation(
+        movement.id!,
+        reconciliationData.categoria,
+        reconciliationData.ambito,
+        reconciliationData.inmuebleId || undefined
+      );
+
+      // Update the movement
+      const updatedMovement: Movement = {
+        ...movement,
+        categoria: reconciliationData.categoria,
+        ambito: reconciliationData.ambito,
+        inmuebleId: reconciliationData.inmuebleId || undefined,
+        statusConciliacion: 'match_manual',
+        updatedAt: new Date().toISOString()
+      };
+
+      onUpdate(updatedMovement);
+      setIsReconciling(false);
+      
+      toast.success(
+        `Movimiento conciliado manualmente. ${result.appliedToSimilar > 0 ? 
+          `Se aplicó la regla a ${result.appliedToSimilar} movimientos similares.` : ''}`
+      );
+    } catch (error) {
+      console.error('Error in manual reconciliation:', error);
+      toast.error('Error al realizar la conciliación manual');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Get movement type icon
   const getMovementIcon = (movement: Movement) => {
-    if (movement.scope === 'personal') {
+    if (movement.ambito === 'PERSONAL') {
       return <User className="h-4 w-4 text-hz-neutral-700" />;
     }
-    if (movement.scope === 'inmueble') {
+    if (movement.ambito === 'INMUEBLE') {
       return <Building className="h-4 w-4 text-hz-neutral-700" />;
     }
     return <FileText className="h-4 w-4 text-hz-neutral-700" />;
   };
 
-  // Handle confirm/unconfirm
-  const handleConfirmToggle = () => {
-    const updatedMovement: Movement = {
-      ...movement,
-      confirmed: !movement.confirmed,
-      status: movement.confirmed ? 'previsto' : 'confirmado'
-    };
-    onUpdate(updatedMovement);
-  };
-
-  // Handle save edit
+  // Handle save edit  
   const handleSaveEdit = () => {
     onUpdate(editedMovement);
     setIsEditing(false);
@@ -205,62 +264,139 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
               </div>
             )}
 
-            {/* Category */}
+            {/* V1.1: Category (updated) */}
             <div>
               <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
                 Categoría
               </label>
-              {isEditing ? (
-                <select
-                  value={editedMovement.category || ''}
-                  onChange={(e) => setEditedMovement({
-                    ...editedMovement,
-                    category: e.target.value
-                  })}
-                  className="w-full px-3 py-2 border border-hz-neutral-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-                >
-                  <option value="">Sin categoría</option>
-                  <option value="Alimentación">Alimentación</option>
-                  <option value="Transporte">Transporte</option>
-                  <option value="Vivienda">Vivienda</option>
-                  <option value="Salud">Salud</option>
-                  <option value="Entretenimiento">Entretenimiento</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Inversión">Inversión</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              ) : (
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
-                  {movement.category || 'Sin categoría'}
-                </p>
-              )}
+              <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
+                {movement.categoria || 'Sin categoría'}
+              </p>
             </div>
 
-            {/* Scope */}
+            {/* V1.1: Scope (ambito) */}
             <div>
               <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
                 Ámbito
               </label>
-              {isEditing ? (
-                <select
-                  value={editedMovement.scope || ''}
-                  onChange={(e) => setEditedMovement({
-                    ...editedMovement,
-                    scope: e.target.value as 'personal' | 'inmueble'
-                  })}
-                  className="w-full px-3 py-2 border border-hz-neutral-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-                >
-                  <option value="">Sin especificar</option>
-                  <option value="personal">Personal</option>
-                  <option value="inmueble">Inmueble</option>
-                </select>
-              ) : (
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
-                  {movement.scope === 'personal' ? 'Personal' : 
-                   movement.scope === 'inmueble' ? 'Inmueble' : 'Sin especificar'}
+              <div className="flex items-center gap-2">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg flex-1">
+                  {movement.ambito === 'PERSONAL' ? 'Personal' : 'Inmueble'}
                 </p>
-              )}
+                {movement.ambito === 'INMUEBLE' && movement.inmuebleId && (
+                  <Building className="w-4 h-4 text-hz-neutral-500" />
+                )}
+              </div>
             </div>
+
+            {/* V1.1: Reconciliation status */}
+            <div>
+              <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
+                Estado de Conciliación
+              </label>
+              <div className="flex items-center gap-2">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg flex-1">
+                  {movement.statusConciliacion === 'sin_match' ? 'Sin conciliar' :
+                   movement.statusConciliacion === 'match_automatico' ? 'Conciliado automáticamente' :
+                   movement.statusConciliacion === 'match_manual' ? 'Conciliado manualmente' : 'Sin conciliar'}
+                </p>
+                {movement.statusConciliacion === 'match_automatico' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                    <Sparkles className="w-3 h-3" />
+                    auto
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* V1.1: Reconciliation modal */}
+            {isReconciling && (
+              <div className="border border-blue-200 bg-blue-50 p-4 rounded-lg space-y-4">
+                <h4 className="font-medium text-blue-900 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Conciliación Manual
+                </h4>
+                
+                {/* Category selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Categoría *
+                  </label>
+                  <select
+                    value={reconciliationData.categoria}
+                    onChange={(e) => setReconciliationData(prev => ({ ...prev, categoria: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Seleccionar categoría</option>
+                    {CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Scope selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ámbito *
+                  </label>
+                  <select
+                    value={reconciliationData.ambito}
+                    onChange={(e) => setReconciliationData(prev => ({ 
+                      ...prev, 
+                      ambito: e.target.value as 'PERSONAL' | 'INMUEBLE',
+                      inmuebleId: e.target.value === 'PERSONAL' ? '' : prev.inmuebleId
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="PERSONAL">Personal</option>
+                    <option value="INMUEBLE">Inmueble</option>
+                  </select>
+                </div>
+
+                {/* Property selection (if INMUEBLE) */}
+                {reconciliationData.ambito === 'INMUEBLE' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Inmueble *
+                    </label>
+                    <select
+                      value={reconciliationData.inmuebleId}
+                      onChange={(e) => setReconciliationData(prev => ({ ...prev, inmuebleId: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">Seleccionar inmueble</option>
+                      {properties.map(property => (
+                        <option key={property.id} value={property.id?.toString() || ''}>
+                          {property.alias}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleManualReconciliation}
+                    disabled={isProcessing || !reconciliationData.categoria || !reconciliationData.ambito || 
+                             (reconciliationData.ambito === 'INMUEBLE' && !reconciliationData.inmuebleId)}
+                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isProcessing ? 'Procesando...' : 'Conciliar'}
+                  </button>
+                  <button
+                    onClick={() => setIsReconciling(false)}
+                    disabled={isProcessing}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Reference */}
             {movement.reference && (
@@ -311,18 +447,23 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
               </div>
             ) : (
               <>
-                {/* Confirm/Unconfirm */}
-                <button
-                  onClick={handleConfirmToggle}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    movement.confirmed 
-                      ? 'bg-hz-neutral-100 text-hz-neutral-700 hover:bg-hz-neutral-200' 
-                      : 'bg-hz-success text-white hover:bg-hz-success-dark'
-                  }`}
-                >
-                  <Check className="h-4 w-4" />
-                  {movement.confirmed ? 'Desconfirmar' : 'Confirmar'}
-                </button>
+                {/* V1.1: Manual Reconciliation button (only for sin_match) */}
+                {movement.statusConciliacion === 'sin_match' && (
+                  <button
+                    onClick={() => {
+                      setReconciliationData({
+                        categoria: movement.categoria || '',
+                        ambito: movement.ambito || 'PERSONAL',
+                        inmuebleId: movement.inmuebleId || ''
+                      });
+                      setIsReconciling(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Target className="h-4 w-4" />
+                    Conciliar
+                  </button>
+                )}
 
                 {/* Edit */}
                 <button
