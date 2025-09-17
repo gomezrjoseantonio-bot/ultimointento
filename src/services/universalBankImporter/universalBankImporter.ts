@@ -41,6 +41,7 @@ export interface NormalizedMovement {
   balance?: number;
   reference?: string;
   originalRow: number;
+  rowIndex: number; // Added for ledger validation compatibility
   confidence: number;
   deduplicationHash: string;
 }
@@ -648,6 +649,7 @@ export class UniversalBankImporter {
       balance,
       reference: values.reference,
       originalRow: rowIndex,
+      rowIndex, // Added for ledger validation compatibility
       confidence: Math.min(dateResult.confidence, signResult.confidence),
       deduplicationHash: hash
     };

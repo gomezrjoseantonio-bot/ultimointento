@@ -36,7 +36,7 @@ export class StableHashDeduplicationService {
   /**
    * Generate stable hash for movement deduplication
    */
-  generateMovementHash(movement: MovementForDeduplication): string {
+  generateMovementHash(movement: MovementForDeduplication): Promise<string> {
     const components = this.extractHashComponents(movement);
     const hashInput = [
       components.accountId,

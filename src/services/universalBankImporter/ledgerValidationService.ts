@@ -258,7 +258,7 @@ export class LedgerValidationService {
       dateGroups.get(dateKey)!.push(movement);
     }
 
-    for (const [date, dayMovements] of dateGroups) {
+    for (const [date, dayMovements] of Array.from(dateGroups.entries())) {
       if (dayMovements.length > 10) {
         issues.push(`High activity on ${date}: ${dayMovements.length} movements`);
         suggestions.push('Review for potential duplicates or batch processing');

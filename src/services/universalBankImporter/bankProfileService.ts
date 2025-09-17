@@ -277,18 +277,12 @@ export class BankProfileService {
    */
   private async updateProfileUsage(profileId: string): Promise<void> {
     try {
-      await this.updateProfile(profileId, {
-        metadata: {
-          usageCount: 0, // Will be incremented in the update logic
-          lastUsed: new Date().toISOString()
-        }
-      });
-      
-      // Increment usage count manually
       const profiles = await this.getAllProfiles();
       const profile = profiles.find(p => p.id === profileId);
       if (profile) {
         profile.metadata.usageCount++;
+        profile.metadata.lastUsed = new Date().toISOString();
+        profile.metadata.updatedAt = new Date().toISOString();
         await this.saveAllProfiles(profiles);
       }
     } catch (error) {
