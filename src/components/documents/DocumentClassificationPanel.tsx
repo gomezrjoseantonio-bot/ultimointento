@@ -84,9 +84,9 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
     const newFinancialData = { ...formData.financialData, [field]: value };
     
     // Recalculate AEAT suggestion when amount changes
-    if (field === 'amount' && value && formData.proveedor) {
+    if (field === 'amount' && value && formData.counterpartyName) {
       const suggestion = suggestAEATClassification(
-        formData.proveedor,
+        formData.counterpartyName,
         value,
         formData.title
       );
@@ -329,22 +329,22 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
         </div>
       )}
 
-      {/* Provider */}
+      {/* Counterparty */}
       <div className="space-y-2">
-        <label htmlFor="provider-input" className="block text-sm font-medium text-gray-700">
-          Proveedor
+        <label htmlFor="counterparty-input" className="block text-sm font-medium text-gray-700">
+          Contraparte
         </label>
         <input
-          id="provider-input"
+          id="counterparty-input"
           type="text"
-          value={formData.proveedor || ''}
-          onChange={(e) => handleFieldChange('proveedor', e.target.value)}
-          aria-describedby="provider-help"
+          value={formData.counterpartyName || formData.proveedor || ''} // Backward compatibility
+          onChange={(e) => handleFieldChange('counterpartyName', e.target.value)}
+          aria-describedby="counterparty-help"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
-          placeholder="Nombre del proveedor"
+          placeholder="Nombre de la contraparte"
         />
-        <div id="provider-help" className="text-xs text-gray-500">
-          Ingrese el nombre del proveedor o empresa que emitió el documento
+        <div id="counterparty-help" className="text-xs text-gray-500">
+          Ingrese el nombre de la contraparte o empresa que emitió el documento
         </div>
       </div>
 

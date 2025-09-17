@@ -103,7 +103,7 @@ export interface PropertyImprovement {
   amount: number; // importe de la mejora
   date?: string; // fecha opcional
   daysInYear?: number; // días de amortización del año (si la mejora es del propio año)
-  providerNIF?: string; // NIF proveedor (opcional)
+  counterpartyNIF?: string; // NIF contraparte (opcional)
   description: string; // descripción de la mejora
   // Metadata
   createdAt: string;
@@ -167,7 +167,7 @@ export interface Document {
     ocr?: OCRResult;
     ocrHistory?: OCRHistoryEntry[];
     // H8: Extended metadata for inbox documents
-    proveedor?: string;
+    contraparte?: string;
     tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros';
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';
@@ -445,8 +445,8 @@ export type DestinoGasto = 'personal' | 'inmueble';
 export interface ExpenseH5 {
   id?: number;
   date: string;
-  provider: string;
-  providerNIF?: string;
+  counterparty: string;
+  counterpartyNIF?: string;
   concept: string;
   amount: number;
   currency: string;
@@ -517,8 +517,8 @@ export interface ReformLineItem {
   reformId: number;
   source: 'documento' | 'manual';
   documentId?: number;
-  provider: string;
-  providerNIF?: string;
+  counterparty: string;
+  counterpartyNIF?: string;
   concept: string;
   amount: number;
   taxIncluded: boolean;
@@ -885,7 +885,7 @@ export interface Ingreso {
   id?: number;
   origen: IngresoOrigen;
   origen_id?: number; // ID del contrato, nómina o documento
-  proveedor_contraparte: string;
+  contraparte: string;
   fecha_emision: string;
   fecha_prevista_cobro: string;
   importe: number;
@@ -905,8 +905,8 @@ export type GastoDestino = 'personal' | 'inmueble_id';
 
 export interface Gasto {
   id?: number;
-  proveedor_nombre: string;
-  proveedor_nif?: string;
+  contraparte_nombre: string;
+  contraparte_nif?: string;
   fecha_emision: string;
   fecha_pago_prevista: string;
   total: number;
@@ -929,7 +929,7 @@ export type CAPEXEstado = 'completo' | 'incompleto' | 'pagado' | 'amortizando';
 export interface CAPEX {
   id?: number;
   inmueble_id: number;
-  proveedor: string;
+  contraparte: string;
   fecha_emision: string;
   total: number;
   tipo: CAPEXTipo;
@@ -1121,7 +1121,7 @@ export interface PresupuestoLinea {
   category: string;                    // Categoría principal: "Rentas de alquiler", "Nómina", "IBI", "Suministros", etc.
   subcategory?: string;                // Subcategoría: "Luz", "Agua", "Gas", "Telco" para Suministros
   label: string;                       // Texto libre: "Renta Piso Tenderina", "IBI piso X"
-  providerName?: string;               // Proveedor: "Endesa", opcional
+  counterpartyName?: string;           // Contraparte: "Endesa", opcional
   accountId?: UUID;                    // Cuenta de cargo/abono (obligatorio antes de guardar)
   sourceRef?: UUID;                    // ID de Contrato, Préstamo, etc. (opcional)
   // Importes mensuales - Array de 12 posiciones para ENE...DIC
@@ -1131,8 +1131,8 @@ export interface PresupuestoLinea {
   tipo?: TipoLinea;                    // DEPRECATED: usar type
   categoria?: CategoriaGasto | CategoriaIngreso; // DEPRECATED: usar category
   tipoConcepto?: string;               // DEPRECATED: usar label
-  proveedor?: string;                  // DEPRECATED: usar providerName
-  proveedorNif?: string;               // DEPRECATED
+  proveedor?: string;                  // DEPRECATED: usar counterpartyName
+  proveedorNif?: string;               // DEPRECATED: usar counterpartyNif
   cuentaId?: UUID;                     // DEPRECATED: usar accountId
   frecuencia?: FrecuenciaPago;         // DEPRECATED
   dayOfMonth?: number;                 // DEPRECATED
