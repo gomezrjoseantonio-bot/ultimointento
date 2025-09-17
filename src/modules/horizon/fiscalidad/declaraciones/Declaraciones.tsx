@@ -268,7 +268,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         ['Fecha Emisión', 'Proveedor', 'Concepto', 'Casilla AEAT', 'Base (€)', 'IVA (€)', 'Total (€)', 'Estado'],
         ...propertyData.gastosDetalle.map((gasto: any) => [
           gasto.fecha_emision,
-          gasto.proveedor_nombre,
+          gasto.contraparte_nombre,
           gasto.concepto || '',
           gasto.categoria_AEAT,
           formatEsNumber(gasto.base || 0),

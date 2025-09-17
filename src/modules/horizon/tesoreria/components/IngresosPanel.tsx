@@ -74,7 +74,17 @@ const IngresosPanel: React.FC = () => {
     try {
       const db = await initDB();
       const newIngreso: Ingreso = {
-        ...formData,
+        origen: formData.origen,
+        origen_id: formData.origen_id,
+        contraparte: formData.proveedor_contraparte, // Map proveedor_contraparte to contraparte
+        fecha_emision: formData.fecha_emision,
+        fecha_prevista_cobro: formData.fecha_prevista_cobro,
+        importe: formData.importe,
+        moneda: formData.moneda,
+        destino: formData.destino,
+        destino_id: formData.destino_id,
+        estado: formData.estado,
+        from_doc: formData.from_doc,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -136,7 +146,7 @@ const IngresosPanel: React.FC = () => {
   const filteredIngresos = ingresos.filter(ingreso => {
     const matchesStatus = statusFilter === 'all' || ingreso.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      ingreso.proveedor_contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ingreso.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(ingreso.destino, ingreso.destino_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       ingreso.origen.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -276,7 +286,7 @@ const IngresosPanel: React.FC = () => {
               {filteredIngresos.map((ingreso) => (
                 <tr key={ingreso.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{ingreso.proveedor_contraparte}</div>
+                    <div className="text-sm font-medium text-gray-900">{ingreso.contraparte}</div>
                     <div className="text-sm text-gray-500">
                       Emisión: {new Date(ingreso.fecha_emision).toLocaleDateString('es-ES')}
                     </div>

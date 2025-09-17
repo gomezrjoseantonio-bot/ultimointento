@@ -74,7 +74,7 @@ const generateInmueblesSeed = async (
       category: 'Rentas de alquiler',
       subcategory: undefined,
       label: `Alquiler - ${property.alias} - ${contract.tenant?.name || 'Inquilino'}`,
-      providerName: contract.tenant?.name,
+      counterpartyName: contract.tenant?.name,
       accountId: undefined, // To be filled manually
       sourceRef: contract.id?.toString(),
       amountByMonth: monthlyAmounts,
@@ -172,7 +172,7 @@ const generateInmueblesSeed = async (
         category: expense.category,
         subcategory: expense.subcategory,
         label: `${expense.description} - ${property.alias}`,
-        providerName: undefined,
+        counterpartyName: undefined,
         accountId: undefined, // To be filled manually
         sourceRef: undefined,
         amountByMonth: monthlyAmounts,
@@ -210,7 +210,7 @@ const generatePersonalSeed = async (
     category: 'Nómina',
     subcategory: undefined,
     label: 'Nómina principal',
-    providerName: undefined,
+    counterpartyName: undefined,
     accountId: undefined, // To be filled manually
     sourceRef: undefined,
     amountByMonth: payrollMonthlyAmounts,
@@ -272,7 +272,7 @@ const generatePersonalSeed = async (
       category: expense.category,
       subcategory: expense.subcategory,
       label: expense.description,
-      providerName: undefined,
+      counterpartyName: undefined,
       accountId: undefined, // To be filled manually
       sourceRef: undefined,
       amountByMonth: monthlyAmounts,

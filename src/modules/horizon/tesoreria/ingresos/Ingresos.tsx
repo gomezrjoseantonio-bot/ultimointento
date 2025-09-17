@@ -128,7 +128,7 @@ const Ingresos: React.FC = () => {
   const filteredIngresos = ingresos.filter(ingreso => {
     const matchesStatus = statusFilter === 'all' || ingreso.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      ingreso.proveedor_contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ingreso.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(ingreso.destino, ingreso.destino_id).toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesStatus && matchesSearch;
@@ -214,7 +214,7 @@ const Ingresos: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-gray-400" />
                       <span className="text-sm font-medium text-gray-900">
-                        {ingreso.proveedor_contraparte}
+                        {ingreso.contraparte}
                       </span>
                     </div>
                   </td>

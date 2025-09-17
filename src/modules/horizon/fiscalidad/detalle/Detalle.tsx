@@ -210,7 +210,7 @@ const Detalle: React.FC = () => {
   const renderIngresosSection = () => {
     const filteredIngresos = ingresos.filter(ingreso => {
       const matchesSearch = !filters.searchTerm || 
-        ingreso.proveedor_contraparte.toLowerCase().includes(filters.searchTerm.toLowerCase());
+        ingreso.contraparte.toLowerCase().includes(filters.searchTerm.toLowerCase());
       const matchesStatus = filters.status === 'all' || ingreso.estado === filters.status;
       const matchesDateFrom = !filters.dateFrom || ingreso.fecha_emision >= filters.dateFrom;
       const matchesDateTo = !filters.dateTo || ingreso.fecha_emision <= filters.dateTo;
@@ -311,7 +311,7 @@ const Detalle: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {contract?.tenant?.name || ingreso.proveedor_contraparte}
+                            {contract?.tenant?.name || ingreso.contraparte}
                           </div>
                           <div className="text-sm text-gray-500">
                             Contrato #{contract?.id || 'No encontrado'}
@@ -449,9 +449,9 @@ const Detalle: React.FC = () => {
                                 {formatDate(gasto.fecha_emision)}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-900">
-                                <div className="font-medium">{gasto.proveedor_nombre}</div>
-                                {gasto.proveedor_nif && (
-                                  <div className="text-xs text-gray-500">{gasto.proveedor_nif}</div>
+                                <div className="font-medium">{gasto.contraparte_nombre}</div>
+                                {gasto.contraparte_nif && (
+                                  <div className="text-xs text-gray-500">{gasto.contraparte_nif}</div>
                                 )}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-900">

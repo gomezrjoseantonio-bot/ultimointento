@@ -57,7 +57,13 @@ const CapexComponent: React.FC = () => {
     try {
       const db = await initDB();
       const newCapex: CAPEX = {
-        ...formData,
+        inmueble_id: formData.inmueble_id,
+        contraparte: formData.proveedor, // Map proveedor to contraparte
+        fecha_emision: formData.fecha_emision,
+        total: formData.total,
+        tipo: formData.tipo,
+        anos_amortizacion: formData.anos_amortizacion,
+        estado: formData.estado,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -120,7 +126,7 @@ const CapexComponent: React.FC = () => {
   const filteredCapex = capexRecords.filter(capex => {
     const matchesStatus = statusFilter === 'all' || capex.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      capex.proveedor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      capex.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(capex.inmueble_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       capex.tipo.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -230,7 +236,7 @@ const CapexComponent: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-900">
-                        {capex.proveedor}
+                        {capex.contraparte}
                       </span>
                     </div>
                   </td>

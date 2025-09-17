@@ -94,7 +94,17 @@ const GastosPanel: React.FC = () => {
     try {
       const db = await initDB();
       const newGasto: Gasto = {
-        ...formData,
+        contraparte_nombre: formData.proveedor_nombre, // Map proveedor_nombre to contraparte_nombre
+        contraparte_nif: formData.proveedor_nif, // Map proveedor_nif to contraparte_nif
+        fecha_emision: formData.fecha_emision,
+        fecha_pago_prevista: formData.fecha_pago_prevista,
+        total: formData.total,
+        base: formData.base,
+        iva: formData.iva,
+        categoria_AEAT: formData.categoria_AEAT,
+        destino: formData.destino,
+        destino_id: formData.destino_id,
+        estado: formData.estado,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -169,7 +179,7 @@ const GastosPanel: React.FC = () => {
   const filteredGastos = gastos.filter(gasto => {
     const matchesStatus = statusFilter === 'all' || gasto.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      gasto.proveedor_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gasto.contraparte_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(gasto.destino, gasto.destino_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       gasto.categoria_AEAT.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -313,9 +323,9 @@ const GastosPanel: React.FC = () => {
               {filteredGastos.map((gasto) => (
                 <tr key={gasto.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{gasto.proveedor_nombre}</div>
-                    {gasto.proveedor_nif && (
-                      <div className="text-sm text-gray-500">{gasto.proveedor_nif}</div>
+                    <div className="text-sm font-medium text-gray-900">{gasto.contraparte_nombre}</div>
+                    {gasto.contraparte_nif && (
+                      <div className="text-sm text-gray-500">{gasto.contraparte_nif}</div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

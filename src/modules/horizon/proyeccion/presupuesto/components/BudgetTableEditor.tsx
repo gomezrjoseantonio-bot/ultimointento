@@ -79,8 +79,8 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       value = line.category || '';
     } else if (field === 'subcategory') {
       value = line.subcategory || '';
-    } else if (field === 'providerName') {
-      value = line.providerName || '';
+    } else if (field === 'counterpartyName') {
+      value = line.counterpartyName || '';
     } else if (field === 'amount' && month !== undefined) {
       value = (line.amountByMonth[month] || 0).toString();
     }
@@ -103,8 +103,8 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
         updates.category = editValue;
       } else if (editingCell.field === 'subcategory') {
         updates.subcategory = editValue;
-      } else if (editingCell.field === 'providerName') {
-        updates.providerName = editValue;
+      } else if (editingCell.field === 'counterpartyName') {
+        updates.counterpartyName = editValue;
       } else if (editingCell.field === 'amount' && editingCell.month !== undefined) {
         const newAmounts = [...line.amountByMonth];
         newAmounts[editingCell.month] = parseFloat(editValue) || 0;
@@ -274,7 +274,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                     {renderEditableCell(line.label, line.id, 'label')}
                   </td>
                   <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.providerName || '', line.id, 'providerName')}
+                    {renderEditableCell(line.counterpartyName || '', line.id, 'counterpartyName')}
                   </td>
                   {line.amountByMonth.map((amount, monthIndex) => (
                     <td key={monthIndex} className="px-2 py-2 text-sm text-right">

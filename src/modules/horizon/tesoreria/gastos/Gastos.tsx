@@ -75,7 +75,17 @@ const Gastos: React.FC = () => {
     try {
       const db = await initDB();
       const newGasto: Gasto = {
-        ...formData,
+        contraparte_nombre: formData.proveedor_nombre, // Map proveedor_nombre to contraparte_nombre
+        contraparte_nif: formData.proveedor_nif, // Map proveedor_nif to contraparte_nif
+        fecha_emision: formData.fecha_emision,
+        fecha_pago_prevista: formData.fecha_pago_prevista,
+        total: formData.total,
+        base: formData.base,
+        iva: formData.iva,
+        categoria_AEAT: formData.categoria_AEAT,
+        destino: formData.destino,
+        destino_id: formData.destino_id,
+        estado: formData.estado,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -139,7 +149,7 @@ const Gastos: React.FC = () => {
   const filteredGastos = gastos.filter(gasto => {
     const matchesStatus = statusFilter === 'all' || gasto.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      gasto.proveedor_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      gasto.contraparte_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(gasto.destino, gasto.destino_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       gasto.categoria_AEAT.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -236,11 +246,11 @@ const Gastos: React.FC = () => {
                       <User className="w-4 h-4 text-gray-400" />
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {gasto.proveedor_nombre}
+                          {gasto.contraparte_nombre}
                         </div>
-                        {gasto.proveedor_nif && (
+                        {gasto.contraparte_nif && (
                           <div className="text-xs text-gray-500">
-                            {gasto.proveedor_nif}
+                            {gasto.contraparte_nif}
                           </div>
                         )}
                       </div>

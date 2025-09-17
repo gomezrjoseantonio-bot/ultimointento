@@ -56,7 +56,13 @@ const CAPEXPanel: React.FC = () => {
     try {
       const db = await initDB();
       const newCapex: CAPEX = {
-        ...formData,
+        inmueble_id: formData.inmueble_id,
+        contraparte: formData.proveedor, // Map proveedor to contraparte
+        fecha_emision: formData.fecha_emision,
+        total: formData.total,
+        tipo: formData.tipo,
+        anos_amortizacion: formData.anos_amortizacion,
+        estado: formData.estado,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -117,7 +123,7 @@ const CAPEXPanel: React.FC = () => {
   const filteredCapex = capexRecords.filter(capex => {
     const matchesStatus = statusFilter === 'all' || capex.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      capex.proveedor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      capex.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(capex.inmueble_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
       capex.tipo.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -266,7 +272,7 @@ const CAPEXPanel: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {capex.proveedor}
+                    {capex.contraparte}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoColor(capex.tipo)}`}>

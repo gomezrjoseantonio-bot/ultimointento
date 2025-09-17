@@ -168,6 +168,8 @@ export interface Document {
     ocrHistory?: OCRHistoryEntry[];
     // H8: Extended metadata for inbox documents
     contraparte?: string;
+    counterpartyName?: string; // New counterparty field for enhanced classification
+    proveedor?: string; // Backward compatibility
     tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros';
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';

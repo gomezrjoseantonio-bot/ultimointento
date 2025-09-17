@@ -107,7 +107,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     const property = properties.find(p => p.id === propertyId);
     
     const matchesSearch = 
-      expense.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      expense.counterparty.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.concept.toLowerCase().includes(searchTerm.toLowerCase()) ||
       property?.alias.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -451,9 +451,9 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
-                        <div className="font-medium">{expense.provider}</div>
-                        {expense.providerNIF && (
-                          <div className="text-gray-500 text-xs">{expense.providerNIF}</div>
+                        <div className="font-medium">{expense.counterparty}</div>
+                        {expense.counterpartyNIF && (
+                          <div className="text-gray-500 text-xs">{expense.counterpartyNIF}</div>
                         )}
                       </div>
                     </td>
