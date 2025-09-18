@@ -59,7 +59,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     deleteMovements?: boolean;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [confirmationAlias, setConfirmationAlias] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,7 +338,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     }
 
     // Validate movements selection for hard delete
-    if (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements) {
+    if ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements) {
       toast.error('Selecciona una acción: re-asignar o borrar movimientos.');
       return;
     }
@@ -708,9 +707,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
             </div>
 
             {/* Hard delete modal */}
-              <div>
-                {/* Check for loans that would block deletion */}
-                {deleteConfirmation.references?.includes('préstamos') ? (
+            <div>
+              {/* Check for loans that would block deletion */}
+              {deleteConfirmation.references?.includes('préstamos') ? (
                   <div>
                     <p className="text-sm text-gray-700 mb-4">
                       Esta cuenta está en uso por {deleteConfirmation.counts?.['préstamos'] || 0} préstamos. Cambia la cuenta de cargo antes de eliminar.
@@ -769,7 +768,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       </button>
                       <button
                         onClick={confirmDelete}
-                        disabled={deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)}
+                        disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
                         className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
@@ -777,7 +776,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           </div>
         </div>

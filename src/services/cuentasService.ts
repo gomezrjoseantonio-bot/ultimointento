@@ -6,7 +6,6 @@
 
 import { Account, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
-import { TreasuryAccountsAPI } from './treasuryApiService';
 
 // Logging prefix for Treasury operations
 const LOG_PREFIX = '[TESO-ACCOUNTS]';
