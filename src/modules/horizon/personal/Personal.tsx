@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Banknote, User, PiggyBank, DollarSign } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
+import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { PersonalModuleConfig } from '../../../types/personal';
 
@@ -156,31 +157,7 @@ const Personal: React.FC = () => {
 
   const renderAutonomoSection = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Gestión de Autónomo</h3>
-        <p className="text-gray-500 mb-4">
-          Gestiona tus ingresos facturados, gastos deducibles y cuota de autónomos.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Ingresos del mes</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Gastos deducibles</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Resultado neto</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <button className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark transition-colors">
-            Gestionar Autónomo
-          </button>
-        </div>
-      </div>
+      <AutonomoManager />
     </div>
   );
 

@@ -68,8 +68,10 @@ export interface Autonomo {
   ingresosFacturados: IngresosAutonomo[];
   gastosDeducibles: GastoDeducible[];
   cuotaAutonomos: number; // Monthly fee
-  cuentaOperaciones: number; // ID of the bank account
-  frecuenciaCobroPago: FrecuenciaCobroPago;
+  cuentaCobro: number; // ID of the bank account for collecting income
+  cuentaPago: number; // ID of the bank account for paying expenses
+  reglaCobroDia: ReglaDia; // Rules for collection day
+  reglaPagoDia: ReglaDia; // Rules for payment day
   activo: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
@@ -82,7 +84,8 @@ export interface IngresosAutonomo {
   conIva: boolean;
   tipoIva?: number; // If conIva is true
   fecha: string;
-  mes: number; // 1-12
+  numeroFactura?: string;
+  cliente?: string;
 }
 
 export interface GastoDeducible {
@@ -91,15 +94,12 @@ export interface GastoDeducible {
   importe: number;
   categoria: string;
   fecha: string;
-  mes: number; // 1-12
+  proveedor?: string;
+  numeroFactura?: string;
+  porcentajeDeducible: number; // 0-100, percentage that is deductible
 }
 
-export interface FrecuenciaCobroPago {
-  tipo: 'mensual' | 'trimestral' | 'semestral' | 'anual';
-  reglasDia: ReglaDia;
-}
-
-// Investment & Pension Plans Types
+// Calculation Results Types
 export interface PlanPensionInversion {
   id?: number;
   personalDataId: number;
@@ -153,6 +153,14 @@ export interface DistribucionMensualResult {
   variables: number;
   bonus: number;
   netoTotal: number;
+}
+
+export interface CalculoAutonomoResult {
+  resultadoNetoMensual: number;
+  ingresosBrutos: number;
+  gastos: number;
+  cuotaAutonomos: number;
+  resultadoAnual: number;
 }
 
 export interface CalculoAutonomoResult {
