@@ -321,22 +321,22 @@ function App() {
                   <Personal />
                 </React.Suspense>
               } />
-              <Route path="cuentas" element={
+              <Route path="nomina" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
                 </React.Suspense>
               } />
-              <Route path="movimientos" element={
+              <Route path="autonomo" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
                 </React.Suspense>
               } />
-              <Route path="presupuesto" element={
+              <Route path="pensiones-inversiones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
                 </React.Suspense>
               } />
-              <Route path="reglas" element={
+              <Route path="otros-ingresos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
                 </React.Suspense>

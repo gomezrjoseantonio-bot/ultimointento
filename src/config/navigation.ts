@@ -28,9 +28,10 @@ export const navigationConfig: NavigationItem[] = [
     section: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/personal/resumen', icon: Home, module: 'horizon' },
-      { name: 'Movimientos', href: '/personal/movimientos', icon: CreditCard, module: 'horizon' },
-      { name: 'Presupuesto', href: '/personal/presupuesto', icon: TrendingUp, module: 'horizon' },
-      { name: 'Reglas', href: '/personal/reglas', icon: Settings, module: 'horizon' },
+      { name: 'Nómina', href: '/personal/nomina', icon: Banknote, module: 'horizon' },
+      { name: 'Autónomo', href: '/personal/autonomo', icon: Users, module: 'horizon' },
+      { name: 'Pensiones e Inversiones', href: '/personal/pensiones-inversiones', icon: TrendingUp, module: 'horizon' },
+      { name: 'Otros Ingresos', href: '/personal/otros-ingresos', icon: DollarSign, module: 'horizon' },
     ]
   },
   {
