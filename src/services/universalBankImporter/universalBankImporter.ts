@@ -181,7 +181,7 @@ export class UniversalBankImporter {
         }
       }
 
-      // Step 9: Prepare final result
+      // Step 9: Prepare final result and telemetry
       const endTime = performance.now();
       const statistics: ImportStatistics = {
         fileFormat: formatResult.format,
@@ -196,6 +196,23 @@ export class UniversalBankImporter {
         dateFormat: transformResult.dateFormat,
         overallConfidence: schemaResult.overallConfidence
       };
+
+      // Telemetry logging as required by problem statement
+      const telemetryLog = {
+        bankGuess: this.guessBankFromData(parseResult) || 'Unknown',
+        rowsTotal: parseResult.data.length,
+        rowsImported: deduplicationResult.movements.length,
+        rowsSkipped: parseResult.data.length - deduplicationResult.movements.length,
+        mapped: {
+          date: this.hasColumnRole(finalMapping, 'date'),
+          amount: this.hasColumnRole(finalMapping, 'amount'),
+          concept: this.hasColumnRole(finalMapping, 'description'),
+          balance: this.hasColumnRole(finalMapping, 'balance')
+        },
+        locale: transformResult.locale.decimalSep === ',' ? 'EU' : 'EN'
+      };
+      
+      console.info('[TESO-IMPORT] Import completed:', telemetryLog);
 
       return {
         success: true,
@@ -850,6 +867,36 @@ export class UniversalBankImporter {
 
   // Additional helper methods would be implemented here...
   // (profileToColumnMapping, transformToMovements, performDeduplication, etc.)
+
+  /**
+   * Guess bank from parsed data - for telemetry
+   */
+  private guessBankFromData(parseResult: any): string | null {
+    const headers = parseResult.headers || [];
+    const firstRow = parseResult.data?.[0] || [];
+    
+    // Check headers and first row for bank indicators
+    const allText = [...headers, ...firstRow].join(' ').toLowerCase();
+    
+    if (allText.includes('santander')) return 'Santander';
+    if (allText.includes('sabadell')) return 'Sabadell';
+    if (allText.includes('unicaja')) return 'Unicaja';
+    if (allText.includes('bbva')) return 'BBVA';
+    if (allText.includes('caixabank') || allText.includes('lacaixa')) return 'CaixaBank';
+    if (allText.includes('banco popular')) return 'Banco Popular';
+    if (allText.includes('bankinter')) return 'Bankinter';
+    if (allText.includes('ing')) return 'ING';
+    if (allText.includes('openbank')) return 'Openbank';
+    
+    return null;
+  }
+
+  /**
+   * Check if mapping has specific column role
+   */
+  private hasColumnRole(mapping: { [columnIndex: number]: ColumnRole }, role: ColumnRole): boolean {
+    return Object.values(mapping).includes(role);
+  }
 }
 
 export const universalBankImporter = new UniversalBankImporter();

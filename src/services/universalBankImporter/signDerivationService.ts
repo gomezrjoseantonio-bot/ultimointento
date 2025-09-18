@@ -192,57 +192,78 @@ export class SignDerivationService {
   }
 
   /**
-   * Parse number with locale awareness
+   * Parse number with locale awareness - Enhanced per problem statement
+   * Handles: 1.234,56 (EU), 1,234.56 (EN), -38,69, +25,00, (38,69)
    */
   private parseNumber(str: string, locale: NumberLocale): { value: number; confidence: number } {
     try {
       // Clean the string
       let cleaned = str.toString().trim();
       
-      // Handle currency symbols
-      cleaned = cleaned.replace(/[€$£¥]/g, '');
+      // Problem statement requirement: Handle all negative patterns
+      let isNegative = false;
       
-      // Handle parentheses as negative indicator (accounting format)
-      const isNegativeParens = cleaned.includes('(') && cleaned.includes(')');
-      cleaned = cleaned.replace(/[()]/g, '');
-      
-      // Detect explicit signs
-      const hasMinusSign = cleaned.includes('-');
-      const hasPlusSign = cleaned.includes('+');
-      
-      // Remove signs for parsing
-      cleaned = cleaned.replace(/[+-]/g, '');
-      
-      if (!cleaned || !/\d/.test(cleaned)) {
-        return { value: 0, confidence: 0 };
+      // Pattern 1: Standard minus (-38,69)
+      if (cleaned.startsWith('-')) {
+        isNegative = true;
+        cleaned = cleaned.substring(1);
       }
-
-      // Parse according to locale
-      let value = 0;
-      let confidence = 0.7;
-
+      
+      // Pattern 2: Plus sign (+25,00) - remove but keep positive
+      if (cleaned.startsWith('+')) {
+        cleaned = cleaned.substring(1);
+      }
+      
+      // Pattern 3: Parentheses for negative ((38,69))
+      if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+        isNegative = true;
+        cleaned = cleaned.substring(1, cleaned.length - 1);
+      }
+      
+      // Pattern 4: Handle text indicators for sign
+      const lowerCleaned = cleaned.toLowerCase();
+      if (lowerCleaned.includes('cargo') || lowerCleaned.includes('debe') || lowerCleaned.includes('debit')) {
+        isNegative = true;
+        // Remove text, keep only numbers
+        cleaned = cleaned.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
+      } else if (lowerCleaned.includes('abono') || lowerCleaned.includes('haber') || lowerCleaned.includes('credit')) {
+        isNegative = false;
+        // Remove text, keep only numbers
+        cleaned = cleaned.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
+      }
+      
+      // Now parse based on locale
+      let result = 0;
+      
       if (locale.decimalSep === ',') {
-        // Spanish format: 1.234,56
+        // EU format: 1.234,56
         const lastComma = cleaned.lastIndexOf(',');
         if (lastComma > -1) {
           const beforeComma = cleaned.substring(0, lastComma);
           const afterComma = cleaned.substring(lastComma + 1);
           
-          // Validate decimal part
+          // Validate decimal part (1-2 digits)
           if (!/^\d{1,2}$/.test(afterComma)) {
-            confidence *= 0.7;
+            return { value: 0, confidence: 0 };
           }
           
+          // Remove thousands separators (dots and spaces)
           const cleanInteger = beforeComma.replace(/[.\s]/g, '');
-          value = parseFloat(`${cleanInteger}.${afterComma}`);
-          confidence += 0.2; // Bonus for decimal precision
+          if (!/^\d+$/.test(cleanInteger)) {
+            return { value: 0, confidence: 0 };
+          }
+          
+          result = parseFloat(`${cleanInteger}.${afterComma}`);
         } else {
-          // No decimal part
-          const cleanInteger = cleaned.replace(/[.\s]/g, '');
-          value = parseFloat(cleanInteger);
+          // No decimal part, remove thousands separators
+          const cleanNumber = cleaned.replace(/[.\s]/g, '');
+          if (!/^\d+$/.test(cleanNumber)) {
+            return { value: 0, confidence: 0 };
+          }
+          result = parseFloat(cleanNumber);
         }
       } else {
-        // Anglo format: 1,234.56
+        // EN format: 1,234.56
         const lastDot = cleaned.lastIndexOf('.');
         if (lastDot > -1) {
           const beforeDot = cleaned.substring(0, lastDot);
@@ -250,32 +271,34 @@ export class SignDerivationService {
           
           // Validate decimal part
           if (!/^\d{1,2}$/.test(afterDot)) {
-            confidence *= 0.7;
+            return { value: 0, confidence: 0 };
           }
           
+          // Remove thousands separators (commas and spaces)
           const cleanInteger = beforeDot.replace(/[,\s]/g, '');
-          value = parseFloat(`${cleanInteger}.${afterDot}`);
-          confidence += 0.2; // Bonus for decimal precision
+          if (!/^\d+$/.test(cleanInteger)) {
+            return { value: 0, confidence: 0 };
+          }
+          
+          result = parseFloat(`${cleanInteger}.${afterDot}`);
         } else {
-          // No decimal part
-          const cleanInteger = cleaned.replace(/[,\s]/g, '');
-          value = parseFloat(cleanInteger);
+          // No decimal part, remove thousands separators
+          const cleanNumber = cleaned.replace(/[,\s]/g, '');
+          if (!/^\d+$/.test(cleanNumber)) {
+            return { value: 0, confidence: 0 };
+          }
+          result = parseFloat(cleanNumber);
         }
       }
-
-      if (isNaN(value)) {
-        return { value: 0, confidence: 0 };
-      }
-
-      // Apply sign
-      if (isNegativeParens || hasMinusSign) {
-        value = -Math.abs(value);
-      } else if (hasPlusSign) {
-        value = Math.abs(value);
-      }
-      // Otherwise keep sign as detected
-
-      return { value, confidence: Math.min(confidence, 0.95) };
+      
+      // Apply sign and round to 2 decimals as required by problem statement
+      const finalValue = isNegative ? -result : result;
+      const roundedValue = Math.round(finalValue * 100) / 100;
+      
+      return {
+        value: roundedValue,
+        confidence: isNaN(roundedValue) ? 0 : 0.9
+      };
       
     } catch (error) {
       return { value: 0, confidence: 0 };
