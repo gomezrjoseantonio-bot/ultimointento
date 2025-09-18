@@ -138,67 +138,73 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     return days;
   }, [monthYear, movements, account.balance, localExcludePersonal, localSearchText]);
 
-  // Get movement pill style based on status and type
+  // Get movement pill style based on status and type - Treasury v1.2 Enhanced
   const getMovementStyle = (movement: Movement) => {
     const baseStyle = 'text-xs px-2 py-1 rounded-md mb-1 cursor-pointer hover:opacity-80 transition-opacity';
-    const isOverdue = isMovementOverdue(movement);
     
-    // Overdue indicator (planned but not confirmed and past due)
-    if (isOverdue) {
-      return `${baseStyle} bg-hz-warning text-white relative`;
+    // Problem statement color scheme:
+    // - Azul si conciliado (match)
+    // - Gris si no planificado (sin match)  
+    // - Verde ingreso / Rojo gasto (if no state applies)
+    
+    // Check movement state/status first
+    if (movement.state === 'reconciled') {
+      // Conciliado - Blue
+      return `${baseStyle} bg-blue-500 text-white`;
     }
     
-    // Confirmed/reconciled movements (blue)
-    if (movement.statusConciliacion === 'match_manual' || movement.statusConciliacion === 'match_automatico') {
-      return `${baseStyle} bg-hz-primary text-white`;
+    if (movement.state === 'pending' || !movement.state) {
+      // No planificado - Gray
+      return `${baseStyle} bg-gray-400 text-white`;
     }
     
-    // Planned/forecast movements from budget (green/red based on amount)
-    if (movement.unifiedStatus === 'previsto') {
-      if (movement.amount >= 0) {
-        // Income - green
-        return `${baseStyle} bg-hz-success text-white`;
-      } else {
-        // Expense/outgoing transfer - red
-        return `${baseStyle} bg-hz-error text-white`;
-      }
+    if (movement.state === 'ignored') {
+      // Ignorado - Red
+      return `${baseStyle} bg-red-400 text-white`;
     }
     
-    // Not planned - gray
-    return `${baseStyle} bg-hz-neutral-500 text-white`;
+    // Fallback to amount-based colors
+    if (movement.amount >= 0) {
+      // Ingreso - Green
+      return `${baseStyle} bg-green-500 text-white`;
+    } else {
+      // Gasto - Red
+      return `${baseStyle} bg-red-500 text-white`;
+    }
   };
 
-  // Check if movement is overdue
-  const isMovementOverdue = (movement: Movement) => {
-    if (movement.statusConciliacion === 'match_manual' || movement.statusConciliacion === 'match_automatico') return false;
+  // Get movement dot color for calendar days
+  const getMovementDotColor = (movement: Movement): string => {
+    // Problem statement color scheme for dots
+    if (movement.state === 'reconciled') {
+      return 'bg-blue-500'; // Azul si conciliado
+    }
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const movementDate = new Date(movement.date);
-    movementDate.setHours(0, 0, 0, 0);
+    if (movement.state === 'pending' || !movement.state) {
+      return 'bg-gray-400'; // Gris si no planificado
+    }
     
-    return movementDate < today && movement.unifiedStatus === 'previsto';
+    if (movement.state === 'ignored') {
+      return 'bg-red-400'; // Rojo si ignorado
+    }
+    
+    // Fallback to amount-based colors
+    return movement.amount >= 0 ? 'bg-green-500' : 'bg-red-500';
   };
 
-  // Get movement display content
-  const getMovementDisplay = (movement: Movement) => {
-    const isOverdue = isMovementOverdue(movement);
-    const label = movement.categoria || movement.counterparty || movement.description?.slice(0, 15) || 'Sin descripción';
-    
-    return (
-      <div className="flex items-center gap-1 min-w-0">
-        {isOverdue && (
-          <AlertTriangle className="h-3 w-3 text-hz-warning flex-shrink-0" />
-        )}
-        <span className="font-medium">{formatEuro(movement.amount)}</span>
-        <span className="truncate text-xs opacity-90">• {label}</span>
-      </div>
-    );
+  // Calculate daily net amount with proper sign and color
+  const getDayNetAmount = (dayMovements: Movement[]) => {
+    const total = dayMovements.reduce((sum, movement) => sum + movement.amount, 0);
+    return {
+      amount: total,
+      color: total > 0 ? 'text-green-600' : total < 0 ? 'text-red-600' : 'text-gray-500',
+      sign: total > 0 ? '+' : total < 0 ? '' : '' // negative already has minus
+    };
   };
 
-  // Get balance color for day
-  const getBalanceColor = (balance: number) => {
-    return balance >= 0 ? 'text-hz-neutral-700' : 'text-hz-error';
+  // Check if day is outside current month (should be grayed out)
+  const isDayOutsideMonth = (day: CalendarDay): boolean => {
+    return !day.isCurrentMonth;
   };
 
   // Handle movement click
@@ -227,132 +233,168 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
 
   return (
     <div className="p-6">
-      {/* Calendar Controls - Single line as specified */}
+      {/* Calendar Controls */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           {/* Month/Year Selector with Navigation */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateMonth('prev')}
-              className="p-1 hover:bg-hz-neutral-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded"
               title="Mes anterior"
             >
-              <ChevronLeft className="h-4 w-4 text-hz-neutral-700" />
+              <ChevronLeft className="h-4 w-4 text-gray-700" />
             </button>
             
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-hz-neutral-500" />
-              <span className="font-medium text-hz-neutral-900 min-w-[140px] text-center">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <span className="font-medium text-gray-900 min-w-[140px] text-center">
                 {getMonthName(monthYear)}
               </span>
             </div>
             
             <button
               onClick={() => navigateMonth('next')}
-              className="p-1 hover:bg-hz-neutral-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded"
               title="Mes siguiente"
             >
-              <ChevronRight className="h-4 w-4 text-hz-neutral-700" />
+              <ChevronRight className="h-4 w-4 text-gray-700" />
             </button>
           </div>
 
           {/* Current Balance */}
-          <div className="text-sm">
-            <span className="text-hz-neutral-700">Saldo hoy: </span>
-            <span className={`font-semibold ${getBalanceColor(account.balance)}`}>
+          <div className="text-sm text-gray-600">
+            Saldo actual: <span className={`font-medium ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {formatEuro(account.balance)}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Exclude Personal Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-hz-neutral-700">Excluir personal</label>
-            <button
-              onClick={() => setLocalExcludePersonal(!localExcludePersonal)}
-              className={`p-1 rounded transition-colors ${
-                localExcludePersonal ? 'text-hz-primary' : 'text-hz-neutral-500'
-              }`}
-            >
-              {localExcludePersonal ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
-            </button>
-          </div>
-
-          {/* Search Text */}
+        {/* Search and Filters */}
+        <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-hz-neutral-500" />
+            <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar..."
               value={localSearchText}
               onChange={(e) => setLocalSearchText(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-hz-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-hz-primary focus:border-transparent w-48"
+              className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             />
           </div>
+          
+          <button
+            onClick={() => setLocalExcludePersonal(!localExcludePersonal)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+            title={localExcludePersonal ? 'Mostrar movimientos personales' : 'Ocultar movimientos personales'}
+          >
+            {localExcludePersonal ? (
+              <ToggleRight className="h-4 w-4 text-blue-600" />
+            ) : (
+              <ToggleLeft className="h-4 w-4" />
+            )}
+            <span>Excluir personal</span>
+          </button>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div>
+      {/* Calendar */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {/* Calendar Header */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
           {dayNames.map((day) => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-hz-neutral-700">
+            <div key={day} className="p-2 text-center text-sm font-medium text-gray-700">
               {day}
             </div>
           ))}
         </div>
 
-        {/* Calendar Body */}
+        {/* Calendar Body - Enhanced for Treasury v1.2 */}
         <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day, index) => (
-            <div
-              key={index}
-              className={`min-h-[120px] p-2 border border-hz-neutral-300 rounded ${
-                day.isCurrentMonth 
-                  ? 'bg-hz-card-bg' 
-                  : 'bg-hz-neutral-100 text-hz-neutral-500'
-              } cursor-pointer hover:bg-hz-neutral-100 transition-colors`}
-              onDoubleClick={() => handleDayDoubleClick(day)}
-              title={day.isCurrentMonth ? `Doble click para crear movimiento el ${day.dateStr}` : ''}
-            >
-              {/* Date and Balance */}
-              <div className="flex justify-between items-start mb-2">
-                <span className={`text-sm font-medium ${
-                  day.isCurrentMonth ? 'text-hz-neutral-900' : 'text-hz-neutral-500'
-                } ${day.endOfDayBalance < 0 && day.isCurrentMonth ? 'bg-hz-error text-white px-1 rounded' : ''}`}>
-                  {day.date.getDate()}
-                </span>
-                {day.isCurrentMonth && (
-                  <div className={`text-xs px-1 py-0.5 bg-hz-neutral-100 rounded ${getBalanceColor(day.endOfDayBalance)}`}>
-                    {formatEuro(day.endOfDayBalance)}
-                  </div>
-                )}
-              </div>
-
-              {/* Movement Pills - Max 4 visible, rest collapsed */}
-              {day.isCurrentMonth && day.movements.length > 0 && (
-                <div className="space-y-1">
-                  {day.movements.slice(0, 4).map((movement) => (
-                    <div
-                      key={movement.id}
-                      className={getMovementStyle(movement)}
-                      onClick={() => handleMovementClick(movement)}
-                      title={`${movement.description} - ${formatEuro(movement.amount)}\nClick para detalles`}
-                    >
-                      {getMovementDisplay(movement)}
-                    </div>
-                  ))}
-                  {day.movements.length > 4 && (
-                    <div className="text-xs text-hz-neutral-500 text-center">
-                      +{day.movements.length - 4} más
+          {calendarDays.map((day, index) => {
+            const dayNet = getDayNetAmount(day.movements);
+            const isOutsideMonth = isDayOutsideMonth(day);
+            
+            return (
+              <div
+                key={index}
+                className={`min-h-[120px] p-2 border rounded transition-colors ${
+                  isOutsideMonth
+                    ? 'border-gray-200 bg-gray-50 text-gray-400' // Days outside month - grayed out
+                    : 'border-gray-300 bg-white cursor-pointer hover:bg-gray-50'
+                }`}
+                onDoubleClick={() => !isOutsideMonth && handleDayDoubleClick(day)}
+                title={!isOutsideMonth ? `Doble click para crear movimiento el ${day.dateStr}` : ''}
+              >
+                {/* Date and Daily Net */}
+                <div className="flex justify-between items-start mb-2">
+                  <span className={`text-sm font-medium ${
+                    isOutsideMonth ? 'text-gray-400' : 'text-gray-900'
+                  }`}>
+                    {day.date.getDate()}
+                  </span>
+                  
+                  {/* Daily net amount in corner - problem statement requirement */}
+                  {!isOutsideMonth && day.movements.length > 0 && (
+                    <div className={`text-xs font-medium ${dayNet.color}`}>
+                      {dayNet.sign}{Math.abs(dayNet.amount).toFixed(0)}€
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {/* Movement dots and preview - Only for current month */}
+                {!isOutsideMonth && day.movements.length > 0 && (
+                  <div className="space-y-1">
+                    {/* Movement dots - problem statement requirement */}
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {day.movements.slice(0, 8).map((movement, idx) => (
+                        <div
+                          key={movement.id || idx}
+                          className={`w-2 h-2 rounded-full ${getMovementDotColor(movement)}`}
+                          title={`${movement.description} - ${formatEuro(movement.amount)}`}
+                        />
+                      ))}
+                      {day.movements.length > 8 && (
+                        <div className="text-xs text-gray-500">+{day.movements.length - 8}</div>
+                      )}
+                    </div>
+
+                    {/* Movement preview - top 2 movements */}
+                    {day.movements.slice(0, 2).map((movement) => (
+                      <div
+                        key={movement.id}
+                        className={getMovementStyle(movement)}
+                        onClick={() => handleMovementClick(movement)}
+                        title={`${movement.description} - ${formatEuro(movement.amount)}\nClick para detalles`}
+                      >
+                        <div className="flex items-center justify-between min-w-0">
+                          <span className="font-medium text-xs">
+                            {formatEuro(movement.amount)}
+                          </span>
+                          <span className="truncate text-xs opacity-90 ml-1">
+                            {(movement.counterparty || movement.description || '').slice(0, 8)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Show "more" indicator */}
+                    {day.movements.length > 2 && (
+                      <button
+                        onClick={() => {
+                          // Open day movements modal - to be implemented
+                          console.log('Show all movements for day:', day.dateStr);
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800 w-full text-center py-1"
+                      >
+                        Ver {day.movements.length - 2} más
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

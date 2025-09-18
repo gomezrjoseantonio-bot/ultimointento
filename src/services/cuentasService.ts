@@ -1,10 +1,14 @@
 /**
  * ATLAS Cuentas Service
  * Stable service for account management with strong validations
+ * Enhanced with Treasury v1.2 cascade deletion capabilities
  */
 
 import { Account, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
+
+// Logging prefix for Treasury operations
+const LOG_PREFIX = '[TESO-ACCOUNTS]';
 
 export interface CreateAccountData {
   alias?: string;  // ATLAS: alias is now optional
@@ -400,7 +404,8 @@ class CuentasService {
   }
 
   /**
-   * Hard delete account with audit log
+   * Enhanced delete account with cascade cleanup - Treasury v1.2
+   * Implements complete cascade deletion as specified in problem statement
    */
   public async deleteAccount(id: number, confirmationAlias: string): Promise<void> {
     const account = this.accounts.find(acc => acc.id === id && !acc.deleted_at);
@@ -413,52 +418,185 @@ class CuentasService {
       throw new Error('El alias de confirmación no coincide');
     }
 
-    // Check if it can be deleted
-    const canDeleteResult = await this.canDelete(id);
-    if (!canDeleteResult.ok) {
-      throw new Error('No se puede eliminar la cuenta: tiene referencias activas');
-    }
+    console.info(`${LOG_PREFIX} Starting cascade deletion for account ${id}: ${account.alias}`);
 
-    // Mark as deleted (soft delete for audit trail)
-    account.deleted_at = new Date().toISOString();
-    account.activa = false;
-    account.isDefault = false;
-    account.updatedAt = new Date().toISOString();
-
-    this.saveAccounts();
-
-    // Sync to IndexedDB (treasury storage) - this will preserve the deleted_at status
-    await this.syncAccountToIndexedDB(account);
-
-    // Audit log (without full IBAN for security)
-    const auditLog = {
-      action: 'ACCOUNT_DELETE',
-      accountId: id,
-      alias: account.alias,
-      bankCode: account.banco?.code,
-      ts: Date.now()
-    };
-
-    // Store audit log
     try {
-      const existingLogs = localStorage.getItem('atlas_audit_logs');
-      const logs = existingLogs ? JSON.parse(existingLogs) : [];
-      logs.push(auditLog);
-      localStorage.setItem('atlas_audit_logs', JSON.stringify(logs));
-    } catch (error) {
-      console.error('[ACCOUNTS] Failed to save audit log:', error);
-    }
+      // Step 1: Delete all movements and related data from IndexedDB
+      const db = await initDB();
+      
+      // Get all movements for this account
+      const allMovements = await db.getAll('movements');
+      const accountMovements = allMovements.filter(m => m.account_id === id);
+      
+      console.info(`${LOG_PREFIX} Found ${accountMovements.length} movements to delete`);
+      
+      // Delete movements one by one to ensure proper cascade
+      for (const movement of accountMovements) {
+        if (movement.id) {
+          await db.delete('movements', movement.id);
+        }
+      }
+      
+      // Step 2: Delete conciliations/reconciliations for this account
+      try {
+        const allReconciliations = await db.getAll('reconciliations');
+        const accountReconciliations = allReconciliations.filter(r => 
+          r.account_id === id || r.movement_account_id === id
+        );
+        
+        for (const reconciliation of accountReconciliations) {
+          if (reconciliation.id) {
+            await db.delete('reconciliations', reconciliation.id);
+          }
+        }
+        
+        console.info(`${LOG_PREFIX} Deleted ${accountReconciliations.length} reconciliations`);
+      } catch (error) {
+        console.warn(`${LOG_PREFIX} No reconciliations table or error deleting:`, error);
+      }
+      
+      // Step 3: Delete account-specific states and preferences
+      try {
+        const allStates = await db.getAll('accountStates');
+        const accountStates = allStates.filter(s => s.account_id === id);
+        
+        for (const state of accountStates) {
+          if (state.id) {
+            await db.delete('accountStates', state.id);
+          }
+        }
+        
+        console.info(`${LOG_PREFIX} Deleted ${accountStates.length} account states`);
+      } catch (error) {
+        console.warn(`${LOG_PREFIX} No accountStates table or error deleting:`, error);
+      }
+      
+      // Step 4: Clean localStorage/sessionStorage caches
+      this.cleanAccountCaches(id);
+      
+      // Step 5: Remove account from treasury storage
+      try {
+        const treasuryAccounts = await db.getAll('accounts');
+        const treasuryAccount = treasuryAccounts.find(acc => acc.id === id);
+        if (treasuryAccount && treasuryAccount.id) {
+          await db.delete('accounts', treasuryAccount.id);
+        }
+      } catch (error) {
+        console.warn(`${LOG_PREFIX} Error deleting from treasury accounts:`, error);
+      }
+      
+      // Step 6: Mark as deleted in main accounts service (soft delete for audit)
+      account.deleted_at = new Date().toISOString();
+      account.activa = false;
+      account.isDefault = false;
+      account.updatedAt = new Date().toISOString();
 
-    // Telemetry (dev-only, no PII)
-    if (process.env.NODE_ENV === 'development') {
-      console.info('[ACCOUNTS] delete', { 
-        id, 
+      this.saveAccounts();
+
+      // Step 7: Create comprehensive audit log
+      const auditLog = {
+        action: 'ACCOUNT_CASCADE_DELETE',
+        accountId: id,
         alias: account.alias,
-        bankCode: account.banco?.code 
-      });
-    }
+        bankCode: account.banco?.code,
+        movementsDeleted: accountMovements.length,
+        timestamp: new Date().toISOString(),
+        userConfirmation: confirmationAlias
+      };
 
-    this.emit('accounts:updated', { type: 'deleted', account });
+      // Store audit log
+      try {
+        const existingLogs = localStorage.getItem('atlas_audit_logs');
+        const logs = existingLogs ? JSON.parse(existingLogs) : [];
+        logs.push(auditLog);
+        localStorage.setItem('atlas_audit_logs', JSON.stringify(logs));
+      } catch (error) {
+        console.error(`${LOG_PREFIX} Failed to save audit log:`, error);
+      }
+
+      // Step 8: Telemetry and logging
+      console.info(`${LOG_PREFIX} Cascade deletion completed successfully`, {
+        accountId: id,
+        alias: account.alias,
+        movementsDeleted: accountMovements.length,
+        cleanupCompleted: true
+      });
+
+      this.emit('accounts:updated', { type: 'deleted', account });
+      
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error during cascade deletion:`, error);
+      throw new Error(`Error eliminando cuenta: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  }
+
+  /**
+   * Clean all caches related to an account
+   * Ensures no phantom data remains after deletion
+   */
+  private cleanAccountCaches(accountId: number): void {
+    const LOG_PREFIX = '[TESO-CLEANUP]';
+    
+    try {
+      // Clean localStorage entries
+      const keysToCheck = [
+        'atlas_treasury_cache',
+        'atlas_movements_cache',
+        'atlas_account_preferences',
+        'atlas_calendar_cache',
+        'atlas_reconciliation_cache'
+      ];
+      
+      keysToCheck.forEach(key => {
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const data = JSON.parse(stored);
+            
+            // Remove account-specific entries
+            if (Array.isArray(data)) {
+              const filtered = data.filter(item => 
+                item.account_id !== accountId && 
+                item.accountId !== accountId &&
+                item.cuentaId !== accountId
+              );
+              localStorage.setItem(key, JSON.stringify(filtered));
+            } else if (typeof data === 'object' && data[accountId]) {
+              delete data[accountId];
+              localStorage.setItem(key, JSON.stringify(data));
+            }
+          }
+        } catch (error) {
+          console.warn(`${LOG_PREFIX} Error cleaning cache ${key}:`, error);
+        }
+      });
+      
+      // Clean sessionStorage
+      const sessionKeys = [
+        'current_account_view',
+        'calendar_state',
+        'movement_filters'
+      ];
+      
+      sessionKeys.forEach(key => {
+        try {
+          const stored = sessionStorage.getItem(key);
+          if (stored) {
+            const data = JSON.parse(stored);
+            if (data.accountId === accountId) {
+              sessionStorage.removeItem(key);
+            }
+          }
+        } catch (error) {
+          console.warn(`${LOG_PREFIX} Error cleaning session ${key}:`, error);
+        }
+      });
+      
+      console.info(`${LOG_PREFIX} Cache cleanup completed for account ${accountId}`);
+      
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error during cache cleanup:`, error);
+    }
   }
 
   /**

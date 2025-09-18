@@ -186,7 +186,7 @@ export class LocaleDetector {
   /**
    * Get default Spanish locale
    */
-  private getDefaultSpanishLocale(): NumberLocale {
+  getDefaultSpanishLocale(): NumberLocale {
     return {
       decimalSep: ',',
       thousandSep: '.',
@@ -207,28 +207,74 @@ export class LocaleDetector {
   }
 
   /**
-   * Parse number with specific locale
+   * Parse number with specific locale - Enhanced for Treasury v1.2
+   * Supports all Spanish bank formats: -38,69, 38,69-, (38,69), "Cargo/Abono", "Debe/Haber"
    */
   private parseWithLocale(cleanStr: string, locale: NumberLocale): number {
-    let normalized = cleanStr;
+    let normalized = cleanStr.trim();
 
-    // Handle negative signs
-    const isNegative = normalized.includes('-') || normalized.includes('(');
-    normalized = normalized.replace(/[-()]/g, '');
+    // Detect all negative patterns from problem statement
+    let isNegative = false;
+    
+    // Pattern 1: Standard minus sign (-38,69)
+    if (normalized.startsWith('-')) {
+      isNegative = true;
+      normalized = normalized.substring(1);
+    }
+    
+    // Pattern 2: Trailing minus (38,69-)
+    if (normalized.endsWith('-')) {
+      isNegative = true;
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    
+    // Pattern 3: Parentheses for negative ((38,69))
+    if (normalized.startsWith('(') && normalized.endsWith(')')) {
+      isNegative = true;
+      normalized = normalized.substring(1, normalized.length - 1);
+    }
+
+    // Pattern 4: "Cargo/Abono" and "Debe/Haber" handling  
+    // This should be handled at column level, but detect text indicators
+    const lowerNormalized = normalized.toLowerCase();
+    if (lowerNormalized.includes('cargo') || lowerNormalized.includes('debe') || lowerNormalized.includes('debit')) {
+      isNegative = true;
+      // Remove the text part, keep only numbers
+      normalized = normalized.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
+    } else if (lowerNormalized.includes('abono') || lowerNormalized.includes('haber') || lowerNormalized.includes('credit')) {
+      isNegative = false;
+      // Remove the text part, keep only numbers
+      normalized = normalized.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
+    }
+
+    // Clean remaining separators and whitespace
+    normalized = normalized.trim();
 
     if (locale.decimalSep === ',') {
-      // Spanish format: 1.234,56
+      // Spanish format: 1.234,56 or 1 234,56
       const lastComma = normalized.lastIndexOf(',');
       if (lastComma > -1) {
         const beforeComma = normalized.substring(0, lastComma);
         const afterComma = normalized.substring(lastComma + 1);
         
-        // Remove thousands separators from integer part
+        // Validate decimal part (should be 1-2 digits)
+        if (!/^\d{1,2}$/.test(afterComma)) {
+          throw new Error(`Invalid decimal part: ${afterComma}`);
+        }
+        
+        // Remove thousands separators from integer part (dots and spaces)
         const cleanInteger = beforeComma.replace(/[.\s]/g, '');
+        if (!/^\d+$/.test(cleanInteger)) {
+          throw new Error(`Invalid integer part: ${cleanInteger}`);
+        }
+        
         normalized = `${cleanInteger}.${afterComma}`;
       } else {
         // No decimal part, just remove thousands separators
         normalized = normalized.replace(/[.\s]/g, '');
+        if (!/^\d+$/.test(normalized)) {
+          throw new Error(`Invalid number format: ${normalized}`);
+        }
       }
     } else {
       // Anglo format: 1,234.56
@@ -237,12 +283,24 @@ export class LocaleDetector {
         const beforeDot = normalized.substring(0, lastDot);
         const afterDot = normalized.substring(lastDot + 1);
         
+        // Validate decimal part
+        if (!/^\d{1,2}$/.test(afterDot)) {
+          throw new Error(`Invalid decimal part: ${afterDot}`);
+        }
+        
         // Remove thousands separators from integer part
         const cleanInteger = beforeDot.replace(/[,\s]/g, '');
+        if (!/^\d+$/.test(cleanInteger)) {
+          throw new Error(`Invalid integer part: ${cleanInteger}`);
+        }
+        
         normalized = `${cleanInteger}.${afterDot}`;
       } else {
         // No decimal part, just remove thousands separators
         normalized = normalized.replace(/[,\s]/g, '');
+        if (!/^\d+$/.test(normalized)) {
+          throw new Error(`Invalid number format: ${normalized}`);
+        }
       }
     }
 
