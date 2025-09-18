@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import PageLayout from '../../components/common/PageLayout';
+import PersonalDataForm from '../../components/personal/PersonalDataForm';
 import { useTheme } from '../../contexts/ThemeContext';
 import { User, Shield, CreditCard, Database } from 'lucide-react';
 
@@ -56,12 +57,7 @@ const AccountPage: React.FC = () => {
 
       {/* Tab Content */}
       {activeTab === 'perfil' && (
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-4">Perfil de Usuario</h2>
-          <p className="text-neutral-600">
-            En construcción. Próximo hito: configuración de perfil de usuario.
-          </p>
-        </div>
+        <PersonalDataForm />
       )}
 
       {activeTab === 'seguridad' && (

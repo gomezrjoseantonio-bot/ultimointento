@@ -1,5 +1,5 @@
 import React, { forwardRef, ReactNode } from 'react';
-import { AlertTriangle, Info, CheckCircle, XCircle, X } from 'lucide-react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 
 // ATLAS Button Components - Exact specifications
 interface AtlasButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
