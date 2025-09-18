@@ -34,12 +34,12 @@ export interface SchemaDetectionResult {
 
 export class ColumnRoleDetector {
   
-  // Column header patterns (normalized to lowercase)
+  // Column header patterns (normalized to lowercase) - Enhanced per problem statement
   private static readonly HEADER_PATTERNS = {
     date: [
       'fecha', 'fecha operacion', 'fecha operación', 'f operacion', 'f operación',
       'fecha mov', 'fecha movimiento', 'date', 'operation date', 'fecha de operacion',
-      'fec.', 'booking date', 'valor', 'postdate' // Problem statement patterns
+      'fec.', 'fec', 'booking date', 'valor', 'post date', 'postdate' // Problem statement patterns
     ],
     valueDate: [
       'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor'
@@ -62,12 +62,12 @@ export class ColumnRoleDetector {
       'ingreso', 'entrada', 'abono en cuenta'
     ],
     amount: [
-      'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto', 'valor',
+      'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto', 'valor importe',
       'euros', 'eur', 'movimiento', 'amount', 'saldo movimiento', 'import' // Problem statement patterns
     ],
     balance: [
-      'saldo', 'saldo disponible', 'saldo tras', 'saldo después', 'balance',
-      'saldo final', 'saldo resultante', 'saldo actual', 'saldo posterior'
+      'saldo', 'balance', 'current balance', 'saldo disponible', 'saldo tras', 
+      'saldo después', 'saldo final', 'saldo resultante', 'saldo actual', 'saldo posterior' // Problem statement patterns
     ],
     reference: [
       'referencia', 'ref', 'numero operacion', 'número operación', 'reference',
@@ -224,44 +224,87 @@ export class ColumnRoleDetector {
   }
 
   /**
-   * Detect if column contains dates
+   * Detect if column contains dates - Enhanced per problem statement
+   * Rejects amounts that look like dates and validates date ranges
    */
   private detectDateColumn(samples: string[]): { role: ColumnRole; confidence: number; reason: string } {
     let parsedDates = 0;
+    let rejectedAsAmounts = 0;
     
     for (const sample of samples.slice(0, 10)) { // Check first 10 samples
-      const result = dateFormatDetector.parseDate(sample);
+      const trimmed = sample.toString().trim();
+      
+      // Problem statement rule: Reject if contains letters (except separators)
+      if (/[a-zA-Z]/.test(trimmed)) {
+        continue;
+      }
+      
+      // Problem statement rule: Reject if it's a number with decimal separators (that's an amount)
+      if (/^\d+[.,]\d{2}$/.test(trimmed) || /^\d+[.,]\d{3}[.,]\d{2}$/.test(trimmed)) {
+        rejectedAsAmounts++;
+        continue;
+      }
+      
+      // Try to parse as date
+      const result = dateFormatDetector.parseDate(trimmed);
       if (result && result.confidence > 0.6) {
-        parsedDates++;
+        // Additional validation: day/month must be in valid range
+        const date = result.date;
+        const day = date.getDate();
+        const month = date.getMonth() + 1;
+        
+        if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+          parsedDates++;
+        }
       }
     }
 
-    const confidence = parsedDates / Math.min(samples.length, 10);
+    const totalSamples = Math.min(samples.length, 10);
+    const confidence = parsedDates / totalSamples;
+    
+    // Problem statement rule: If more than 80% of values look like amounts, this is NOT a date column
+    if (rejectedAsAmounts / totalSamples > 0.8) {
+      return { 
+        role: 'unknown', 
+        confidence: 0.1, 
+        reason: 'Too many amount-like values, not a date column' 
+      };
+    }
     
     if (confidence >= 0.6) {
       return {
         role: 'date',
         confidence: Math.min(confidence, 0.95),
-        reason: `${parsedDates}/${Math.min(samples.length, 10)} samples parsed as dates`
+        reason: `${parsedDates}/${totalSamples} samples validated as dates`
       };
     }
 
-    return { role: 'unknown', confidence: confidence * 0.5, reason: 'Few date matches' };
+    return { role: 'unknown', confidence: confidence * 0.5, reason: 'Few valid date matches' };
   }
 
   /**
-   * Detect if column contains numbers (amounts, balances)
+   * Detect if column contains numbers (amounts, balances) - Enhanced per problem statement
+   * Rejects date-like patterns and validates number formats
    */
   private detectNumberColumn(samples: string[]): { role: ColumnRole; confidence: number; reason: string } {
     const locale = localeDetector.detectLocaleNumber(samples);
     let parsedNumbers = 0;
     let hasNegatives = 0;
     let hasBalanceProgression = false;
+    let rejectedAsDates = 0;
 
     const parsedValues: number[] = [];
 
     for (const sample of samples.slice(0, 15)) {
-      const result = localeDetector.parseImporte(sample, locale);
+      const trimmed = sample.toString().trim();
+      
+      // Problem statement rule: Reject if value matches date patterns
+      if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/.test(trimmed)) {
+        rejectedAsDates++;
+        continue;
+      }
+      
+      const result = localeDetector.parseImporte(trimmed, locale);
       if (result.confidence > 0.5) {
         parsedNumbers++;
         parsedValues.push(result.value);
@@ -271,7 +314,17 @@ export class ColumnRoleDetector {
       }
     }
 
-    const numberConfidence = parsedNumbers / Math.min(samples.length, 15);
+    const totalSamples = Math.min(samples.length, 15);
+    const numberConfidence = parsedNumbers / totalSamples;
+    
+    // Problem statement rule: If more than 80% look like dates, this is NOT an amount column
+    if (rejectedAsDates / totalSamples > 0.8) {
+      return { 
+        role: 'unknown', 
+        confidence: 0.1, 
+        reason: 'Too many date-like values, not an amount column' 
+      };
+    }
     
     if (numberConfidence < 0.6) {
       return { role: 'unknown', confidence: numberConfidence * 0.3, reason: 'Not enough numeric values' };

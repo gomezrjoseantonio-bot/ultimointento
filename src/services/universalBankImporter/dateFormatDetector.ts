@@ -20,6 +20,8 @@ export interface DateParseResult {
 export class DateFormatDetector {
   
   private static readonly DATE_FORMATS: DateFormat[] = [
+    // Problem statement required formats: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd, yyyy/mm/dd
+    
     // Spanish DD/MM/YYYY variants (most common in Spanish banks)
     {
       pattern: 'DD/MM/YYYY',
@@ -33,6 +35,26 @@ export class DateFormatDetector {
       parseFunc: (match) => new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])),
       confidence: 0.9
     },
+    {
+      pattern: 'DD.MM.YYYY',
+      regex: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/,
+      parseFunc: (match) => new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])),
+      confidence: 0.9
+    },
+    // ISO formats required by problem statement
+    {
+      pattern: 'YYYY-MM-DD',
+      regex: /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
+      parseFunc: (match) => new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3])),
+      confidence: 0.95
+    },
+    {
+      pattern: 'YYYY/MM/DD',
+      regex: /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/,
+      parseFunc: (match) => new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3])),
+      confidence: 0.9
+    },
+    // 2-digit year variants
     {
       pattern: 'DD/MM/YY',
       regex: /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/,
@@ -53,14 +75,7 @@ export class DateFormatDetector {
       },
       confidence: 0.8
     },
-    {
-      pattern: 'DD.MM.YYYY',
-      regex: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/,
-      parseFunc: (match) => new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])),
-      confidence: 0.9
-    },
-    
-    // ISO and international formats
+    // ISO formats required by problem statement
     {
       pattern: 'YYYY-MM-DD',
       regex: /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
@@ -189,17 +204,28 @@ export class DateFormatDetector {
   }
 
   /**
-   * Check if string looks like a date
+   * Check if string looks like a date - Enhanced per problem statement
+   * Rejects strings with letters and number patterns that are clearly amounts
    */
   private isDateLike(value: any): boolean {
     if (typeof value !== 'string') return false;
     
     const str = value.trim();
-    // Match common date patterns: digits and separators
-    return /^[\d\/\-\s.]+$/.test(str) && 
+    
+    // Problem statement rule: Reject if contains letters
+    if (/[a-zA-Z]/.test(str)) return false;
+    
+    // Problem statement rule: Reject if it's clearly a number with decimal separators
+    if (/^-?\d+[.,]\d{2}$/.test(str)) return false; // Amount format like 123,45 or 123.45
+    if (/^-?\d{1,3}[.,]\d{3}[.,]\d{2}$/.test(str)) return false; // Amount with thousands: 1.234,56
+    if (/^\(?\d+[.,]\d{2}\)?$/.test(str)) return false; // Amount in parentheses: (123,45)
+    
+    // Must contain date separators and have appropriate length
+    return /^[\d\/\-\.]+$/.test(str) && 
            str.length >= 6 && 
            str.length <= 10 &&
-           /\d/.test(str);
+           /[\d]/.test(str) &&
+           /[\/\-\.]/.test(str); // Must have at least one date separator
   }
 
   /**
