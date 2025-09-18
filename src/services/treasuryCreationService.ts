@@ -11,6 +11,14 @@ import toast from 'react-hot-toast';
  * - OCR Documents → Expenses/CAPEX/Income routing
  */
 
+// Utility function to get counterparty from document metadata with backward compatibility
+const getCounterpartyFromMetadata = (metadata: any): string => {
+  return metadata.counterpartyName || 
+         metadata.contraparte || 
+         metadata.proveedor || 
+         'Contraparte no identificada';
+};
+
 // Contract to Income Generation
 export const generateIncomeFromContract = async (contract: Contract): Promise<number[]> => {
   const db = await initDB();
@@ -147,7 +155,7 @@ export const routeOCRDocumentToTreasury = async (document: Document): Promise<{
         document.filename.toLowerCase().includes('cobro') ||
         document.filename.toLowerCase().includes('receipt') ||
         document.filename.toLowerCase().includes('recibo') ||
-        metadata.proveedor?.toLowerCase().includes('inquilino')
+        getCounterpartyFromMetadata(metadata).toLowerCase().includes('inquilino')
       );
 
     if (isIncomeDocument) {
@@ -196,7 +204,7 @@ const createIngresoFromDocument = async (document: Document): Promise<number> =>
   const ingreso: Omit<Ingreso, 'id'> = {
     origen: 'doc_id',
     origen_id: document.id!,
-    contraparte: metadata.proveedor || 'Proveedor no identificado',
+    contraparte: getCounterpartyFromMetadata(metadata),
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: financialData?.dueDate || financialData?.issueDate || new Date().toISOString().split('T')[0],
     importe: financialData?.amount || 0,
@@ -229,7 +237,7 @@ const createGastoFromDocument = async (document: Document): Promise<number> => {
   }
 
   const gasto: Omit<Gasto, 'id'> = {
-    contraparte_nombre: metadata.proveedor || 'Proveedor no identificado',
+    contraparte_nombre: getCounterpartyFromMetadata(metadata),
     contraparte_nif: undefined, // Could be extracted from OCR in the future
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     fecha_pago_prevista: financialData?.dueDate || financialData?.predictedPaymentDate || new Date().toISOString().split('T')[0],
@@ -270,7 +278,7 @@ const createCAPEXFromDocument = async (document: Document): Promise<number> => {
 
   const capex: Omit<CAPEX, 'id'> = {
     inmueble_id: metadata.entityId,
-    contraparte: metadata.proveedor || 'Proveedor no identificado',
+    contraparte: getCounterpartyFromMetadata(metadata),
     fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
     total: financialData?.amount || 0,
     tipo,

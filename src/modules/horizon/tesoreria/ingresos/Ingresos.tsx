@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 interface IngresoFormData {
   origen: IngresoOrigen;
   origen_id: number;
-  proveedor_contraparte: string;
+  contraparte: string;
   fecha_emision: string;
   fecha_prevista_cobro: string;
   importe: number;
@@ -30,7 +30,7 @@ const Ingresos: React.FC = () => {
   const [formData, setFormData] = useState<IngresoFormData>({
     origen: 'contrato_id',
     origen_id: 0,
-    proveedor_contraparte: '',
+    contraparte: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: new Date().toISOString().split('T')[0],
     importe: 0,
@@ -67,7 +67,7 @@ const Ingresos: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.proveedor_contraparte || formData.importe <= 0) {
+    if (!formData.contraparte || formData.importe <= 0) {
       toast.error('Por favor, completa todos los campos requeridos');
       return;
     }
@@ -77,7 +77,7 @@ const Ingresos: React.FC = () => {
       const newIngreso: Ingreso = {
         origen: formData.origen,
         origen_id: formData.origen_id,
-        contraparte: formData.proveedor_contraparte, // Map proveedor_contraparte to contraparte
+        contraparte: formData.contraparte, // Map contraparte to contraparte
         fecha_emision: formData.fecha_emision,
         fecha_prevista_cobro: formData.fecha_prevista_cobro,
         importe: formData.importe,
@@ -94,7 +94,7 @@ const Ingresos: React.FC = () => {
       
       // Create toast message following the requirement
       const date = new Date(formData.fecha_prevista_cobro).toLocaleDateString('es-ES', { month: 'long' });
-      toast.success(`✓ Guardado en Tesorería > Ingresos: ${formatEuro(formData.importe)} — ${formData.proveedor_contraparte} / ${date}`);
+      toast.success(`✓ Guardado en Tesorería > Ingresos: ${formatEuro(formData.importe)} — ${formData.contraparte} / ${date}`);
       
       setShowForm(false);
       resetForm();
@@ -109,7 +109,7 @@ const Ingresos: React.FC = () => {
     setFormData({
       origen: 'contrato_id',
       origen_id: 0,
-      proveedor_contraparte: '',
+      contraparte: '',
       fecha_emision: new Date().toISOString().split('T')[0],
       fecha_prevista_cobro: new Date().toISOString().split('T')[0],
       importe: 0,
@@ -202,7 +202,7 @@ const Ingresos: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Cobro</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor/Contraparte</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contraparte</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -282,12 +282,12 @@ const Ingresos: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Proveedor/Contraparte *
+                      Contraparte *
                     </label>
                     <input
                       type="text"
-                      value={formData.proveedor_contraparte}
-                      onChange={(e) => setFormData(prev => ({ ...prev, proveedor_contraparte: e.target.value }))}
+                      value={formData.contraparte}
+                      onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     />

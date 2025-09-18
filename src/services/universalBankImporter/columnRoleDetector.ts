@@ -50,7 +50,7 @@ export class ColumnRoleDetector {
     ],
     counterparty: [
       'contraparte', 'beneficiario', 'ordenante', 'entidad', 'empresa',
-      'contrapartida', 'tercero', 'counterparty', 'payee', 'payer'
+      'contrapartida', 'tercero', 'counterparty', 'payee', 'payer', 'proveedor'
     ],
     debit: [
       'cargo', 'cargos', 'debito', 'débito', 'debe', 'debit', 'paid out',

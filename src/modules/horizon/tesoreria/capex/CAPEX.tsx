@@ -15,7 +15,7 @@ const CapexComponent: React.FC = () => {
 
   const [formData, setFormData] = useState({
     inmueble_id: 0,
-    proveedor: '',
+    contraparte: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     total: 0,
     tipo: 'mejora' as CAPEXTipo,
@@ -49,7 +49,7 @@ const CapexComponent: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.proveedor || formData.total <= 0 || formData.inmueble_id === 0 || !formData.fecha_emision) {
+    if (!formData.contraparte || formData.total <= 0 || formData.inmueble_id === 0 || !formData.fecha_emision) {
       toast.error('Por favor, completa todos los campos requeridos');
       return;
     }
@@ -58,7 +58,7 @@ const CapexComponent: React.FC = () => {
       const db = await initDB();
       const newCapex: CAPEX = {
         inmueble_id: formData.inmueble_id,
-        contraparte: formData.proveedor, // Map proveedor to contraparte
+        contraparte: formData.contraparte, // Map proveedor to contraparte
         fecha_emision: formData.fecha_emision,
         total: formData.total,
         tipo: formData.tipo,
@@ -87,7 +87,7 @@ const CapexComponent: React.FC = () => {
   const resetForm = () => {
     setFormData({
       inmueble_id: 0,
-      proveedor: '',
+      contraparte: '',
       fecha_emision: new Date().toISOString().split('T')[0],
       total: 0,
       tipo: 'mejora',
@@ -186,7 +186,7 @@ const CapexComponent: React.FC = () => {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por proveedor, tipo o inmueble..."
+                placeholder="Buscar por contraparte, tipo o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -206,7 +206,7 @@ const CapexComponent: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contraparte</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Amortización</th>
@@ -356,12 +356,12 @@ const CapexComponent: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Proveedor *
+                      Contraparte *
                     </label>
                     <input
                       type="text"
-                      value={formData.proveedor}
-                      onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
+                      value={formData.contraparte}
+                      onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Nombre del proveedor o contratista"
                       required
