@@ -11,8 +11,9 @@ export type UnifiedMovementStatus =
   | 'no_planificado'; // Gray chip - unplanned transaction
 
 // Enhanced Account for unified view
-export interface UnifiedAccount extends Omit<Account, 'isActive' | 'deleted_at'> {
-  // Account status for filtering
+export interface UnifiedAccount extends Omit<Account, 'isActive' | 'deleted_at' | 'status'> {
+  // Account status for filtering - translated from AccountStatus enum
+  // Maps: ACTIVE -> 'activa', INACTIVE -> 'desactivada', DELETED -> 'eliminada' 
   status: 'activa' | 'desactivada' | 'eliminada';
   
   // Current balance and next event
