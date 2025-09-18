@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Calendar, Search, Filter, Plus, Download, Upload } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { initDB, Account, Movement } from '../../../services/db';
-import { formatEuro } from '../../../utils/formatUtils';
-import { enhancedBankStatementImportService } from '../../../services/enhancedBankStatementImportService';
-import BankStatementPreviewModal from '../../../components/treasury/BankStatementPreviewModal';
+import { initDB, Account, Movement } from '../../../../services/db';
+import { formatEuro } from '../../../../utils/formatUtils';
+import { enhancedBankStatementImportService } from '../../../../services/enhancedBankStatementImportService';
+import BankStatementPreviewModal from '../../../../components/treasury/BankStatementPreviewModal';
 import AccountCalendar from '../components/AccountCalendar';
 import MonthlyCalendar from '../components/MonthlyCalendar';
 import ImportModal from './ImportModal';
@@ -65,7 +65,12 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
     const uploadedAt = searchParams.get('uploaded_at');
     
     if (source) {
-      setSourceFilter(source);
+      // Map legacy source names to new ones
+      const sourceMap: { [key: string]: string } = {
+        'extracto': 'import',
+        'ocr': 'inbox'
+      };
+      setSourceFilter(sourceMap[source] || source);
     }
     
     if (uploadedAt === 'today') {
@@ -116,7 +121,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
     const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     
     const monthMovements = movements.filter(m => {
-      const movementDate = new Date(m.value_date);
+      const movementDate = new Date(m.date);
       return movementDate >= monthStart && movementDate <= monthEnd;
     });
     
@@ -136,11 +141,11 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
   // Filter movements based on search and source
   const filteredMovements = useMemo(() => {
     return movements.filter(movement => {
-      // Source filter
+      // Source filter - using proper MovementSource values
       if (sourceFilter !== 'all') {
-        if (sourceFilter === 'extracto' && movement.source !== 'extracto') return false;
+        if (sourceFilter === 'import' && movement.source !== 'import') return false;
         if (sourceFilter === 'manual' && movement.source !== 'manual') return false;
-        if (sourceFilter === 'ocr' && movement.source !== 'ocr') return false;
+        if (sourceFilter === 'inbox' && movement.source !== 'inbox') return false;
       }
       
       // Text search
@@ -302,8 +307,8 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gray-50 p-3 rounded-lg">
               <p className="text-sm text-gray-500">Saldo actual</p>
-              <p className={`text-lg font-semibold ${selectedAccount.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatEuro(selectedAccount.balance)}
+              <p className={`text-lg font-semibold ${(selectedAccount.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatEuro(selectedAccount.balance || 0)}
               </p>
             </div>
             <div className="bg-green-50 p-3 rounded-lg">
@@ -353,9 +358,9 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
               className="border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
             >
               <option value="all">Todos los orígenes</option>
-              <option value="extracto">Extracto</option>
+              <option value="import">Extracto bancario</option>
               <option value="manual">Manual</option>
-              <option value="ocr">OCR</option>
+              <option value="inbox">Inbox/OCR</option>
             </select>
 
             {/* View mode toggle */}
@@ -400,7 +405,15 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
       <div className="flex-1 overflow-hidden">
         {viewMode === 'calendar' && selectedAccount ? (
           <AccountCalendar
-            account={selectedAccount}
+            account={{
+              id: selectedAccount.id!,
+              name: selectedAccount.alias || 'Sin nombre',
+              bank: selectedAccount.banco?.name || 'Banco no identificado',
+              iban: selectedAccount.iban,
+              balance: selectedAccount.balance || 0,
+              logo_url: selectedAccount.logoUser,
+              currency: selectedAccount.moneda || 'EUR'
+            }}
             movements={filteredMovements}
             excludePersonal={false}
             searchText={searchText}
@@ -451,7 +464,6 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
         isOpen={showNewMovementModal}
         onClose={() => setShowNewMovementModal(false)}
         accounts={accounts}
-        selectedAccountId={selectedAccountId}
         onMovementCreated={loadData}
       />
 

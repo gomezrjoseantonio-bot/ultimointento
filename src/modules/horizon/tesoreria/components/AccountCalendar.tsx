@@ -207,21 +207,6 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     return !day.isCurrentMonth;
   };
 
-  // Navigate month
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const [year, month] = monthYear.split('-').map(Number);
-    const newDate = new Date(year, month - 1);
-    
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
-    }
-    
-    const newMonthYear = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`;
-    onMonthYearChange(newMonthYear);
-  };
-
   // Handle movement click
   const handleMovementClick = (movement: Movement) => {
     setSelectedMovement(movement);
@@ -319,61 +304,6 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
         <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
           {dayNames.map((day) => (
             <div key={day} className="p-2 text-center text-sm font-medium text-gray-700">
-              {day}
-            </div>
-          ))}
-        </div>
-              onClick={() => navigateMonth('next')}
-              className="p-1 hover:bg-hz-neutral-100 rounded"
-              title="Mes siguiente"
-            >
-              <ChevronRight className="h-4 w-4 text-hz-neutral-700" />
-            </button>
-          </div>
-
-          {/* Current Balance */}
-          <div className="text-sm">
-            <span className="text-hz-neutral-700">Saldo hoy: </span>
-            <span className={`font-semibold ${getBalanceColor(account.balance)}`}>
-              {formatEuro(account.balance)}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {/* Exclude Personal Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-hz-neutral-700">Excluir personal</label>
-            <button
-              onClick={() => setLocalExcludePersonal(!localExcludePersonal)}
-              className={`p-1 rounded transition-colors ${
-                localExcludePersonal ? 'text-hz-primary' : 'text-hz-neutral-500'
-              }`}
-            >
-              {localExcludePersonal ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
-            </button>
-          </div>
-
-          {/* Search Text */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-hz-neutral-500" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              value={localSearchText}
-              onChange={(e) => setLocalSearchText(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-hz-neutral-300 rounded-lg text-sm focus:ring-2 focus:ring-hz-primary focus:border-transparent w-48"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Calendar Grid */}
-      <div>
-        {/* Calendar Header */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {dayNames.map((day) => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-hz-neutral-700">
               {day}
             </div>
           ))}

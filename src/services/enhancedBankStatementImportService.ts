@@ -225,7 +225,10 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
     const headerRowIndex = findHeaderRow(rawData);
     const dataRows = rawData.slice(headerRowIndex + 1);
     
-    console.info(`${LOG_PREFIX} Processing ${dataRows.length} data rows`);
+    // Detect bank for telemetry
+    const detectedBank = detectBankFromFile(file.name, rawData);
+    
+    console.info(`${LOG_PREFIX} Processing ${dataRows.length} data rows from ${detectedBank || 'unknown bank'}`);
 
     // Parse all movements
     const movements: ParsedMovement[] = [];
@@ -245,11 +248,12 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
 
     // Deduplication
     const movementsForDedup = movements.map(m => ({
-      account_id: destinationAccountId,
-      value_date: m.date,
+      accountId: destinationAccountId,
+      date: m.date,
       amount: m.amount,
       description: m.description,
-      iban: m.iban || ''
+      reference: m.reference,
+      counterparty: m.counterparty
     }));
 
     const deduplicationResult = await stableHashDeduplicationService.deduplicateMovements(movementsForDedup);
@@ -262,13 +266,14 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
     // Get existing movement hashes for this account (simplified - in real implementation would be more efficient)
     const existingMovements = await db.getAll('movements');
     for (const existing of existingMovements) {
-      if (existing.account_id === destinationAccountId) {
+      if (existing.accountId === destinationAccountId) {
         const hash = await stableHashDeduplicationService.generateMovementHash({
-          account_id: existing.account_id!,
-          value_date: existing.value_date,
+          accountId: existing.accountId!,
+          date: existing.date,
           amount: existing.amount,
           description: existing.description,
-          iban: existing.iban || ''
+          reference: existing.reference,
+          counterparty: existing.counterparty
         });
         existingHashes.add(hash);
       }
@@ -295,16 +300,20 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
 
     for (const movementData of newMovements) {
       const movement: Partial<Movement> = {
-        account_id: destinationAccountId,
-        value_date: movementData.value_date,
+        accountId: destinationAccountId,
+        date: movementData.date,
         description: movementData.description,
         amount: movementData.amount,
-        type: movementData.amount >= 0 ? 'IN' : 'OUT',
-        state: 'CONFIRMED',
-        source: 'extracto',
-        created_at: new Date().toISOString(),
-        usuario,
-        batch_id: batchId
+        status: 'pendiente', // Using proper MovementStatus
+        unifiedStatus: 'no_planificado', // Using proper UnifiedMovementStatus  
+        source: 'import', // Using proper MovementSource
+        category: {
+          tipo: 'Extracto bancario',
+          subtipo: 'Importado'
+        },
+        counterparty: movementData.counterparty || movementData.description,
+        reference: movementData.reference,
+        state: 'pending' // Using proper TransactionState
       };
 
       try {
@@ -319,7 +328,21 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
     const endTime = performance.now();
     const processingTimeMs = endTime - startTime;
 
-    console.info(`${LOG_PREFIX} Import completed: ${createdIds.length} created, ${deduplicationResult.duplicateCount + dbDuplicates} duplicates, ${errors.length} errors in ${processingTimeMs.toFixed(2)}ms`);
+    console.info(`${LOG_PREFIX} Enhanced import completed successfully`, {
+      accountId: destinationAccountId,
+      fileName: file.name,
+      fileSize: file.size,
+      totalRowsParsed: movements.length,
+      movementsCreated: createdIds.length,
+      duplicatesFound: totalDuplicates,
+      errorsEncountered: errors.length,
+      processingTimeMs: processingTimeMs.toFixed(2),
+      autoMappingUsed: !columnMapping,
+      bankDetected: detectedBank || 'unknown',
+      // No PII - only aggregated stats
+      avgAmountMagnitude: movements.length > 0 ? 
+        movements.reduce((sum, m) => sum + Math.abs(m.amount), 0) / movements.length : 0
+    });
 
     // Show UI toast
     const totalDuplicates = deduplicationResult.duplicateCount + dbDuplicates;
