@@ -23,7 +23,7 @@ export interface Nomina {
   salarioBrutoAnual: number;
   distribucion: {
     tipo: 'doce' | 'catorce' | 'personalizado';
-    meses?: number; // For personalizado
+    meses: number; // Always present, default based on tipo
   };
   variables: Variable[];
   bonus: Bonus[];

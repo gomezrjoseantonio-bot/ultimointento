@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Banknote, User, PiggyBank, DollarSign } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
+import NominaManager from '../../../components/personal/nomina/NominaManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { PersonalModuleConfig } from '../../../types/personal';
 
@@ -149,27 +150,7 @@ const Personal: React.FC = () => {
 
   const renderNominaSection = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración de Nómina</h3>
-        <p className="text-gray-500 mb-4">
-          Configura tu nómina con salario bruto anual, distribución, variables y bonus.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Salario Bruto Anual</p>
-            <p className="text-xl font-semibold text-gray-900">No configurado</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Neto Mensual Estimado</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <button className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark transition-colors">
-            Configurar Nómina
-          </button>
-        </div>
-      </div>
+      <NominaManager />
     </div>
   );
 
