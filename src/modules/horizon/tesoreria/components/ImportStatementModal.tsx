@@ -128,6 +128,17 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       );
       
       if (result.success) {
+        const totalRows = result.imported + result.duplicates + result.errors;
+        const errorRate = totalRows > 0 ? result.errors / totalRows : 0;
+        
+        // PROBLEM STATEMENT: Discrete toast for massive parsing errors (>20% invalid rows)
+        if (errorRate > 0.2) {
+          toast.error(
+            'No se han podido interpretar algunas filas. Revisa el archivo o usa el asistente de mapeo.',
+            { duration: 6000 } // Longer duration for important message
+          );
+        }
+        
         toast.success(`Importados: ${result.imported} | Duplicados: ${result.duplicates} | Errores: ${result.errors}`);
         onImportComplete({
           totalLines: result.imported + result.duplicates + result.errors,

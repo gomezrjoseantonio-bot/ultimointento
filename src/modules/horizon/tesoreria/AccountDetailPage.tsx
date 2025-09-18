@@ -326,20 +326,20 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
               <div className="flex items-center gap-4 text-sm">
                 <div className="text-center">
                   <div className="text-hz-neutral-600">Ingresos</div>
-                  <div className="font-medium text-green-600">
+                  <div className="font-medium text-hz-success">
                     {formatEuro(periodTotals.totalIncome)}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-hz-neutral-600">Gastos</div>
-                  <div className="font-medium text-red-600">
+                  <div className="font-medium text-hz-error">
                     {formatEuro(periodTotals.totalExpenses)}
                   </div>
                 </div>
                 <div className="text-center">
                   <div className="text-hz-neutral-600">Neto</div>
                   <div className={`font-medium ${
-                    periodTotals.netAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                    periodTotals.netAmount >= 0 ? 'text-hz-success' : 'text-hz-error'
                   }`}>
                     {formatEuro(periodTotals.netAmount)}
                   </div>
@@ -398,23 +398,23 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
                     {/* Counters */}
                     <div className="text-xs text-hz-neutral-600">
                       {day.incomeCount > 0 && (
-                        <span className="text-green-600">+{day.incomeCount}</span>
+                        <span className="text-hz-success">+{day.incomeCount}</span>
                       )}
                       {day.incomeCount > 0 && day.expenseCount > 0 && ' / '}
                       {day.expenseCount > 0 && (
-                        <span className="text-red-600">-{day.expenseCount}</span>
+                        <span className="text-hz-error">-{day.expenseCount}</span>
                       )}
                     </div>
                     
                     {/* Amounts */}
                     <div className="text-xs">
                       {day.incomeAmount > 0 && (
-                        <div className="text-green-600 font-medium">
+                        <div className="text-hz-success font-medium">
                           +{formatEuro(day.incomeAmount)}
                         </div>
                       )}
                       {day.expenseAmount > 0 && (
-                        <div className="text-red-600 font-medium">
+                        <div className="text-hz-error font-medium">
                           -{formatEuro(day.expenseAmount)}
                         </div>
                       )}
@@ -426,9 +426,10 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
                         <div
                           key={i}
                           className={`w-2 h-2 rounded-full ${
-                            movement.status === 'conciliado' ? 'bg-blue-500' :
-                            movement.amount > 0 ? 'bg-green-500' :
-                            movement.amount < 0 ? 'bg-red-500' : 'bg-gray-400'
+                            movement.status === 'conciliado' ? 'bg-hz-info' :        // Blue for reconciled
+                            movement.amount > 0 ? 'bg-hz-success' :                  // Green for income
+                            movement.amount < 0 ? 'bg-hz-error' :                    // Red for expense  
+                            'bg-hz-neutral-500'                                      // Gray for others
                           }`}
                           title={movement.description}
                         />
