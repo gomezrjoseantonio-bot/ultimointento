@@ -440,7 +440,7 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
             {/* Counterparty */}
             <div>
               <label className="block text-sm font-medium text-hz-text mb-1">
-                Contrapartida
+                Contraparte
               </label>
               <input
                 type="text"

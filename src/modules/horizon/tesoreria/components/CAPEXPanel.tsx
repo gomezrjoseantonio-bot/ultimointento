@@ -14,7 +14,7 @@ const CAPEXPanel: React.FC = () => {
 
   const [formData, setFormData] = useState({
     inmueble_id: 0,
-    proveedor: '',
+    contraparte: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     total: 0,
     tipo: 'mejora' as CAPEXTipo,
@@ -48,7 +48,7 @@ const CAPEXPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.proveedor || formData.total <= 0 || !formData.inmueble_id) {
+    if (!formData.contraparte || formData.total <= 0 || !formData.inmueble_id) {
       toast.error('Por favor, completa todos los campos requeridos');
       return;
     }
@@ -57,7 +57,7 @@ const CAPEXPanel: React.FC = () => {
       const db = await initDB();
       const newCapex: CAPEX = {
         inmueble_id: formData.inmueble_id,
-        contraparte: formData.proveedor, // Map proveedor to contraparte
+        contraparte: formData.contraparte, // Map proveedor to contraparte
         fecha_emision: formData.fecha_emision,
         total: formData.total,
         tipo: formData.tipo,
@@ -70,7 +70,7 @@ const CAPEXPanel: React.FC = () => {
       await db.add('capex', newCapex);
       
       const propertyName = properties.find(p => p.id === formData.inmueble_id)?.alias || 'Inmueble';
-      toast.success(`✓ Guardado en Tesorería > CAPEX: ${formatEuro(formData.total)} — ${formData.proveedor} / ${propertyName}`);
+      toast.success(`✓ Guardado en Tesorería > CAPEX: ${formatEuro(formData.total)} — ${formData.contraparte} / ${propertyName}`);
       
       setShowForm(false);
       resetForm();
@@ -84,7 +84,7 @@ const CAPEXPanel: React.FC = () => {
   const resetForm = () => {
     setFormData({
       inmueble_id: 0,
-      proveedor: '',
+      contraparte: '',
       fecha_emision: new Date().toISOString().split('T')[0],
       total: 0,
       tipo: 'mejora',
@@ -183,7 +183,7 @@ const CAPEXPanel: React.FC = () => {
           <Search className="w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar por proveedor, inmueble o tipo..."
+            placeholder="Buscar por contraparte, inmueble o tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -373,7 +373,7 @@ const CAPEXPanel: React.FC = () => {
                   <input
                     type="text"
                     required
-                    value={formData.proveedor}
+                    value={formData.contraparte}
                     onChange={(e) => setFormData({...formData, proveedor: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />

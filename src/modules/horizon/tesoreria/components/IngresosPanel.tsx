@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 interface IngresoFormData {
   origen: IngresoOrigen;
   origen_id: number;
-  proveedor_contraparte: string;
+  contraparte: string;
   fecha_emision: string;
   fecha_prevista_cobro: string;
   importe: number;
@@ -29,7 +29,7 @@ const IngresosPanel: React.FC = () => {
   const [formData, setFormData] = useState<IngresoFormData>({
     origen: 'contrato_id',
     origen_id: 0,
-    proveedor_contraparte: '',
+    contraparte: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_prevista_cobro: new Date().toISOString().split('T')[0],
     importe: 0,
@@ -66,7 +66,7 @@ const IngresosPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.proveedor_contraparte || formData.importe <= 0 || !formData.fecha_emision) {
+    if (!formData.contraparte || formData.importe <= 0 || !formData.fecha_emision) {
       toast.error('Por favor, completa todos los campos requeridos');
       return;
     }
@@ -76,7 +76,7 @@ const IngresosPanel: React.FC = () => {
       const newIngreso: Ingreso = {
         origen: formData.origen,
         origen_id: formData.origen_id,
-        contraparte: formData.proveedor_contraparte, // Map proveedor_contraparte to contraparte
+        contraparte: formData.contraparte,
         fecha_emision: formData.fecha_emision,
         fecha_prevista_cobro: formData.fecha_prevista_cobro,
         importe: formData.importe,
@@ -93,7 +93,7 @@ const IngresosPanel: React.FC = () => {
       
       const destinoName = formData.destino === 'personal' ? 'Personal' : 
         properties.find(p => p.id === formData.destino_id)?.alias || 'Inmueble';
-      toast.success(`✓ Guardado en Tesorería > Ingresos: ${formatEuro(formData.importe)} — ${formData.proveedor_contraparte} / ${destinoName}`);
+      toast.success(`✓ Guardado en Tesorería > Ingresos: ${formatEuro(formData.importe)} — ${formData.contraparte} / ${destinoName}`);
       
       setShowForm(false);
       resetForm();
@@ -108,7 +108,7 @@ const IngresosPanel: React.FC = () => {
     setFormData({
       origen: 'contrato_id',
       origen_id: 0,
-      proveedor_contraparte: '',
+      contraparte: '',
       fecha_emision: new Date().toISOString().split('T')[0],
       fecha_prevista_cobro: new Date().toISOString().split('T')[0],
       importe: 0,
@@ -373,8 +373,8 @@ const IngresosPanel: React.FC = () => {
                   <input
                     type="text"
                     required
-                    value={formData.proveedor_contraparte}
-                    onChange={(e) => setFormData({...formData, proveedor_contraparte: e.target.value})}
+                    value={formData.contraparte}
+                    onChange={(e) => setFormData({...formData, contraparte: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
