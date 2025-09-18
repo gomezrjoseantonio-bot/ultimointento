@@ -2,7 +2,7 @@ import { openDB, IDBPDatabase } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 15; // V1.1: Added reconciliation audit logs and learning rules
+const DB_VERSION = 16; // V1.2: Added Personal V1 module data stores
 
 export interface Property {
   id?: number;
@@ -1544,6 +1544,58 @@ export const initDB = async () => {
           learningLogsStore.createIndex('ts', 'ts', { unique: false });
           learningLogsStore.createIndex('movimientoId', 'movimientoId', { unique: false });
           learningLogsStore.createIndex('ruleId', 'ruleId', { unique: false });
+        }
+
+        // V1.2: Personal V1 module data stores
+        if (!db.objectStoreNames.contains('personalData')) {
+          const personalDataStore = db.createObjectStore('personalData', { keyPath: 'id', autoIncrement: true });
+          personalDataStore.createIndex('dni', 'dni', { unique: true });
+          personalDataStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('personalModuleConfig')) {
+          const configStore = db.createObjectStore('personalModuleConfig', { keyPath: 'personalDataId' });
+          configStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('nominas')) {
+          const nominasStore = db.createObjectStore('nominas', { keyPath: 'id', autoIncrement: true });
+          nominasStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          nominasStore.createIndex('activa', 'activa', { unique: false });
+          nominasStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('autonomos')) {
+          const autonomosStore = db.createObjectStore('autonomos', { keyPath: 'id', autoIncrement: true });
+          autonomosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          autonomosStore.createIndex('activo', 'activo', { unique: false });
+          autonomosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('planesPensionInversion')) {
+          const planesStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
+          planesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          planesStore.createIndex('tipo', 'tipo', { unique: false });
+          planesStore.createIndex('titularidad', 'titularidad', { unique: false });
+          planesStore.createIndex('esHistorico', 'esHistorico', { unique: false });
+          planesStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('otrosIngresos')) {
+          const otrosIngresosStore = db.createObjectStore('otrosIngresos', { keyPath: 'id', autoIncrement: true });
+          otrosIngresosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          otrosIngresosStore.createIndex('tipo', 'tipo', { unique: false });
+          otrosIngresosStore.createIndex('activo', 'activo', { unique: false });
+          otrosIngresosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('movimientosPersonales')) {
+          const movimientosPersonalesStore = db.createObjectStore('movimientosPersonales', { keyPath: 'id' });
+          movimientosPersonalesStore.createIndex('tipo', 'tipo', { unique: false });
+          movimientosPersonalesStore.createIndex('origenId', 'origenId', { unique: false });
+          movimientosPersonalesStore.createIndex('fecha', 'fecha', { unique: false });
+          movimientosPersonalesStore.createIndex('cuenta', 'cuenta', { unique: false });
+          movimientosPersonalesStore.createIndex('esRecurrente', 'esRecurrente', { unique: false });
         }
 
         // General key-value store for application configuration
