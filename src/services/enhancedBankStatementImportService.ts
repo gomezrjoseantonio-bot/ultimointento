@@ -328,6 +328,9 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
     const endTime = performance.now();
     const processingTimeMs = endTime - startTime;
 
+    // Calculate total duplicates for reporting
+    const totalDuplicates = deduplicationResult.duplicateCount + dbDuplicates;
+
     console.info(`${LOG_PREFIX} Enhanced import completed successfully`, {
       accountId: destinationAccountId,
       fileName: file.name,
@@ -345,7 +348,6 @@ export async function importBankStatementEnhanced(options: EnhancedImportOptions
     });
 
     // Show UI toast
-    const totalDuplicates = deduplicationResult.duplicateCount + dbDuplicates;
     if (createdIds.length > 0 || totalDuplicates > 0) {
       toast.success(`Importados: ${createdIds.length} · Duplicados: ${totalDuplicates} · Errores: ${errors.length}`);
     }
