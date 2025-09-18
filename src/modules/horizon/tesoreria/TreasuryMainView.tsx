@@ -344,21 +344,9 @@ const TreasuryMainView: React.FC = () => {
                   {/* Inactive banner */}
                   {isInactive && (
                     <div className="mb-3 -mx-6 -mt-6 px-6 py-2 bg-gray-100 border-b border-gray-300">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">
-                          Cuenta inactiva: reactívate para operar
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // TODO: Add reactivation logic
-                            console.log('Reactivate account', account.id);
-                          }}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          Reactivar
-                        </button>
-                      </div>
+                      <span className="text-sm text-gray-600">
+                        Cuenta inactiva
+                      </span>
                     </div>
                   )}
                   

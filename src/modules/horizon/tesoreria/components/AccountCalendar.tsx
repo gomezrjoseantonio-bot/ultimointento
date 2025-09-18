@@ -175,30 +175,43 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
 
   // Get movement dot color for calendar days
   const getMovementDotColor = (movement: Movement): string => {
-    // Problem statement color scheme for dots
+    // Problem statement color scheme for dots:
+    // ingreso: verde, gasto: rojo, conciliado: azul, sin match: gris
+    
     if (movement.state === 'reconciled') {
-      return 'bg-blue-500'; // Azul si conciliado
+      return 'bg-blue-500'; // conciliado: azul
     }
     
-    if (movement.state === 'pending' || !movement.state) {
-      return 'bg-gray-400'; // Gris si no planificado
+    if (movement.state === 'pending' || movement.state === 'ignored' || !movement.state) {
+      return 'bg-gray-400'; // sin match: gris
     }
     
-    if (movement.state === 'ignored') {
-      return 'bg-red-400'; // Rojo si ignorado
-    }
-    
-    // Fallback to amount-based colors
+    // Based on amount: ingreso = verde, gasto = rojo
     return movement.amount >= 0 ? 'bg-green-500' : 'bg-red-500';
   };
 
   // Calculate daily net amount with proper sign and color
   const getDayNetAmount = (dayMovements: Movement[]) => {
     const total = dayMovements.reduce((sum, movement) => sum + movement.amount, 0);
+    
+    // Count positive and negative movements for +N / −N display
+    const positiveCount = dayMovements.filter(m => m.amount > 0).length;
+    const negativeCount = dayMovements.filter(m => m.amount < 0).length;
+    
+    let countDisplay = '';
+    if (positiveCount > 0 && negativeCount > 0) {
+      countDisplay = `+${positiveCount} / −${negativeCount}`;
+    } else if (positiveCount > 0) {
+      countDisplay = `+${positiveCount}`;
+    } else if (negativeCount > 0) {
+      countDisplay = `−${negativeCount}`;
+    }
+    
     return {
       amount: total,
       color: total > 0 ? 'text-green-600' : total < 0 ? 'text-red-600' : 'text-gray-500',
-      sign: total > 0 ? '+' : total < 0 ? '' : '' // negative already has minus
+      sign: total > 0 ? '+' : total < 0 ? '' : '', // negative already has minus
+      countDisplay
     };
   };
 
@@ -320,7 +333,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
                 key={index}
                 className={`min-h-[120px] p-2 border rounded transition-colors ${
                   isOutsideMonth
-                    ? 'border-gray-200 bg-gray-50 text-gray-400' // Days outside month - grayed out
+                    ? 'border-gray-200 bg-gray-50 text-gray-400 opacity-40' // 40% opacity as per problem statement
                     : 'border-gray-300 bg-white cursor-pointer hover:bg-gray-50'
                 }`}
                 onDoubleClick={() => !isOutsideMonth && handleDayDoubleClick(day)}
@@ -334,10 +347,17 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
                     {day.date.getDate()}
                   </span>
                   
-                  {/* Daily net amount in corner - problem statement requirement */}
+                  {/* Daily net amount and count in corner - problem statement requirement */}
                   {!isOutsideMonth && day.movements.length > 0 && (
-                    <div className={`text-xs font-medium ${dayNet.color}`}>
-                      {dayNet.sign}{Math.abs(dayNet.amount).toFixed(0)}€
+                    <div className="text-right">
+                      <div className={`text-xs font-medium ${dayNet.color}`}>
+                        {dayNet.sign}{Math.abs(dayNet.amount).toFixed(0)}€
+                      </div>
+                      {dayNet.countDisplay && (
+                        <div className="text-xs text-gray-500">
+                          {dayNet.countDisplay}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

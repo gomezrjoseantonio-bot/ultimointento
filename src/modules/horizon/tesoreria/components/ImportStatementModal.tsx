@@ -119,6 +119,13 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       return;
     }
     
+    // Check if selected account is active (problem statement requirement)
+    const selectedAccountData = accounts.find(acc => acc.id?.toString() === selectedAccount);
+    if (!selectedAccountData || !selectedAccountData.isActive || selectedAccountData.status === 'INACTIVE') {
+      toast.error('Activa la cuenta para importar extractos.');
+      return;
+    }
+    
     setImporting(true);
     
     try {
