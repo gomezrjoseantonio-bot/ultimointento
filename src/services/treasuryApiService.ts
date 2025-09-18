@@ -56,16 +56,16 @@ export class TreasuryAccountsAPI {
     // DELETED accounts are never returned (hard deleted from storage)
     // Legacy support: also filter out accounts with deleted_at set
     const visibleAccounts = allAccounts.filter(acc => {
-      // Never show truly deleted accounts
-      if (acc.status === 'DELETED' || acc.deleted_at) return false;
+      // Never show truly deleted accounts - enhanced defensive filtering
+      if (acc.status === 'DELETED' || acc.deleted_at || acc.activa === false) return false;
       
       if (includeInactive) {
         // Return both ACTIVE and INACTIVE when requested
         return acc.status === 'ACTIVE' || acc.status === 'INACTIVE' || 
-               (!acc.status && acc.activa) || (!acc.status && !acc.activa); // Legacy fallback
+               (!acc.status && acc.activa !== false); // Enhanced legacy fallback
       } else {
         // Only return ACTIVE accounts by default
-        return acc.status === 'ACTIVE' || (!acc.status && acc.activa); // Legacy fallback
+        return acc.status === 'ACTIVE' || (!acc.status && acc.activa !== false); // Enhanced legacy fallback
       }
     });
     
