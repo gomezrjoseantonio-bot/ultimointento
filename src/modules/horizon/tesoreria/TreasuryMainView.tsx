@@ -78,9 +78,29 @@ const TreasuryMainView: React.FC = () => {
       const existingAccounts = await db.getAll('accounts');
       const existingIbans = new Set(existingAccounts.map(acc => acc.iban));
       
+      // Create map of deleted accounts from localStorage for cleanup
+      const deletedAccountIbans = new Set(
+        atlasAccounts
+          .filter(acc => acc.deleted_at || acc.activa === false)
+          .map(acc => acc.iban)
+      );
+      
+      // Clean up deleted accounts from IndexedDB
+      for (const existingAccount of existingAccounts) {
+        if (deletedAccountIbans.has(existingAccount.iban) && existingAccount.id) {
+          await db.delete('accounts', existingAccount.id);
+          console.info('[TREASURY] Cleaned up deleted account from IndexedDB:', {
+            alias: existingAccount.alias || 'Sin alias',
+            iban: existingAccount.iban.slice(-4)
+          });
+        }
+      }
+      
       // Add missing accounts to IndexedDB
       for (const atlasAccount of atlasAccounts) {
-        if (!atlasAccount.iban || existingIbans.has(atlasAccount.iban)) continue;
+        // Skip accounts that don't have IBAN, already exist, or are marked as deleted
+        if (!atlasAccount.iban || existingIbans.has(atlasAccount.iban) || 
+            atlasAccount.deleted_at || atlasAccount.activa === false) continue;
         
         // Transform atlas account to treasury account format
         const treasuryAccount = {
