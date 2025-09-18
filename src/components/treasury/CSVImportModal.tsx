@@ -104,7 +104,8 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
         openingBalance: newAccount.openingBalance,
         currency: 'EUR',
         isActive: true,
-        activa: true // Add required field
+        activa: true, // Add required field
+        status: 'ACTIVE' // Add required status field
       });
       
       setSelectedAccountId(createdAccount.id!);

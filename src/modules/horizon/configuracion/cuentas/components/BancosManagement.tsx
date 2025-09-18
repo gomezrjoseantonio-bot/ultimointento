@@ -324,20 +324,23 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
     try {
       setDeleting(true);
       
-      // Use the new cascading delete method
-      const result = await TreasuryAccountsAPI.cascadeDeleteAccount(deleteConfirmation.id);
+      // Use the new enhanced delete method with hard mode
+      const result = await TreasuryAccountsAPI.deleteAccount(deleteConfirmation.id, 'hard', {
+        confirmCascade: true
+      });
       
       // Remove logo from storage if exists
       if (deleteConfirmation.logo_url) {
         removeLogoFromStorage(deleteConfirmation.id);
       }
 
-      const { deletedItems } = result;
-      const summary = [];
-      if (deletedItems.movements > 0) summary.push(`${deletedItems.movements} movimientos`);
-      if (deletedItems.rules > 0) summary.push(`${deletedItems.rules} reglas`);
+      const { summary } = result;
+      const summaryParts = [];
+      if (summary?.removedItems?.movements > 0) summaryParts.push(`${summary.removedItems.movements} movimientos`);
+      if (summary?.removedItems?.reconciliations > 0) summaryParts.push(`${summary.removedItems.reconciliations} conciliaciones`);
+      if (summary?.reassignedItems?.movements > 0) summaryParts.push(`${summary.reassignedItems.movements} movimientos reasignados`);
       
-      const summaryText = summary.length > 0 ? ` (${summary.join(', ')})` : '';
+      const summaryText = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
       toast.success(`Cuenta y datos asociados eliminados${summaryText}`);
       
       await loadAccounts();

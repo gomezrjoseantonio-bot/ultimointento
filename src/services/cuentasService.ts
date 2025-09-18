@@ -6,6 +6,7 @@
 
 import { Account, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
+import { TreasuryAccountsAPI } from './treasuryApiService';
 
 // Logging prefix for Treasury operations
 const LOG_PREFIX = '[TESO-ACCOUNTS]';
@@ -201,6 +202,7 @@ class CuentasService {
       tipo: data.tipo || 'CORRIENTE',
       moneda: 'EUR',
       titular: data.titular,
+      status: 'ACTIVE', // New required field
       activa: true,
       isDefault: false,
       createdAt: new Date().toISOString(),
@@ -288,7 +290,7 @@ class CuentasService {
   }
 
   /**
-   * Deactivate account (soft delete)
+   * Deactivate account (soft delete) - Enhanced with status system
    */
   public async deactivate(id: number): Promise<void> {
     const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
@@ -297,7 +299,15 @@ class CuentasService {
     }
 
     const account = this.accounts[accountIndex];
+    
+    // Update to new status system
+    account.status = 'INACTIVE';
+    account.deactivatedAt = new Date().toISOString();
+    
+    // Keep legacy fields in sync for backward compatibility
     account.activa = false;
+    account.isActive = false;
+    
     account.updatedAt = new Date().toISOString();
     
     // If it was the default account, unmark it
@@ -319,7 +329,7 @@ class CuentasService {
   }
 
   /**
-   * Reactivate account (opposite of deactivate)
+   * Reactivate account (opposite of deactivate) - Enhanced with status system
    */
   public async reactivate(id: number): Promise<void> {
     const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
@@ -328,7 +338,15 @@ class CuentasService {
     }
 
     const account = this.accounts[accountIndex];
+    
+    // Update to new status system
+    account.status = 'ACTIVE';
+    account.deactivatedAt = undefined; // Clear deactivation timestamp
+    
+    // Keep legacy fields in sync for backward compatibility
     account.activa = true;
+    account.isActive = true;
+    
     account.updatedAt = new Date().toISOString();
 
     this.saveAccounts();
@@ -342,6 +360,110 @@ class CuentasService {
     }
 
     this.emit('accounts:updated', { type: 'reactivated', account });
+  }
+
+  /**
+   * Hard delete account with enhanced cascade cleanup and reassignment options
+   * Implements the requirements from problem statement
+   */
+  public async hardDelete(id: number, options: {
+    confirmationAlias: string;
+    reassignToAccountId?: number;
+    confirmCascade?: boolean;
+  }): Promise<{ success: boolean; summary?: any }> {
+    const account = this.accounts.find(acc => acc.id === id && !acc.deleted_at);
+    if (!account) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    // Verify confirmation alias matches
+    if (account.alias !== options.confirmationAlias) {
+      throw new Error('El alias de confirmación no coincide');
+    }
+
+    console.info(`${LOG_PREFIX} Starting hard deletion for account ${id}: ${account.alias}`);
+
+    try {
+      // Use the enhanced Treasury API for hard delete with cascade cleanup
+      const result = await TreasuryAccountsAPI.deleteAccount(id, 'hard', {
+        reassignToAccountId: options.reassignToAccountId,
+        confirmCascade: options.confirmCascade
+      });
+
+      // Remove from local accounts array
+      const accountIndex = this.accounts.findIndex(acc => acc.id === id);
+      if (accountIndex !== -1) {
+        this.accounts.splice(accountIndex, 1);
+        this.saveAccounts();
+      }
+
+      // Emit event for UI updates
+      this.emit('accounts:updated', { type: 'hard_deleted', account, summary: result.summary });
+
+      console.info(`${LOG_PREFIX} Hard deletion completed successfully`, result.summary);
+      
+      return result;
+
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error during hard delete:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migrate existing accounts to new status system
+   * Converts legacy activa/deleted_at fields to status enum
+   */
+  public async migrateAccountStatuses(): Promise<{ migrated: number; skipped: number }> {
+    let migrated = 0;
+    let skipped = 0;
+
+    console.info(`${LOG_PREFIX} Starting account status migration`);
+
+    for (const account of this.accounts) {
+      // Skip accounts that already have the new status field
+      if (account.status) {
+        skipped++;
+        continue;
+      }
+
+      // Determine status based on legacy fields
+      if (account.deleted_at) {
+        // These should be marked as DELETED - but since they're still in storage, 
+        // they were probably soft-deleted, so mark as INACTIVE
+        account.status = 'INACTIVE';
+        account.deactivatedAt = account.deleted_at;
+        account.activa = false;
+        account.isActive = false;
+      } else if (account.activa === false || account.isActive === false) {
+        account.status = 'INACTIVE';
+        account.deactivatedAt = account.updatedAt; // Best guess for deactivation time
+        account.activa = false;
+        account.isActive = false;
+      } else {
+        account.status = 'ACTIVE';
+        account.activa = true;
+        account.isActive = true;
+      }
+
+      account.updatedAt = new Date().toISOString();
+      migrated++;
+    }
+
+    if (migrated > 0) {
+      this.saveAccounts();
+      
+      // Sync all accounts to IndexedDB
+      for (const account of this.accounts) {
+        await this.syncAccountToIndexedDB(account);
+      }
+    }
+
+    console.info(`${LOG_PREFIX} Migration completed: ${migrated} migrated, ${skipped} skipped`);
+    
+    this.emit('accounts:updated', { type: 'bulk_migrated', count: migrated });
+    
+    return { migrated, skipped };
   }
 
   /**

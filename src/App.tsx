@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
+import { initializeAccountMigration } from './services/accountMigrationService';
 import MainLayout from './layouts/MainLayout';
 
 // Core pages - keep minimal imports for critical path  
@@ -83,6 +84,9 @@ const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
+    // Initialize account migration first
+    initializeAccountMigration().catch(console.error);
+    
     bankProfilesService.loadProfiles().catch(console.error);
     
     // Performance monitoring setup

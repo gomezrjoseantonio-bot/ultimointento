@@ -572,6 +572,9 @@ export type AccountDestination = 'horizon' | 'pulse';
 // H-HOTFIX: Account usage scope for reconciliation preferences
 export type AccountUsageScope = 'personal' | 'inmuebles' | 'mixto';
 
+// Account status enum for enhanced filtering and hard-delete support
+export type AccountStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+
 export interface Account {
   id?: number; // Keep as number for legacy compatibility
   alias?: string;                         // ATLAS: nombre corto opcional que verá el usuario ("Cuenta principal")
@@ -586,7 +589,12 @@ export interface Account {
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA'; // default: CORRIENTE
   moneda?: 'EUR';                         // default: EUR (solo EUR por ahora)
   titular?: { nombre?: string; nif?: string; }; // opcional (no obligatorio en alta)
-  activa: boolean;                        // true por defecto
+  
+  // Enhanced status management for hard/soft delete
+  status: AccountStatus;                  // ACTIVE | INACTIVE | DELETED - replaces activa field
+  deactivatedAt?: string;                 // ISO timestamp when account was deactivated
+  
+  activa: boolean;                        // LEGACY: true por defecto - kept for backward compatibility
   isDefault?: boolean;                    // solo una por usuario
   createdAt: string;
   updatedAt: string;

@@ -45,21 +45,31 @@ export function parseEuropeanNumber(value: string | number): number {
  */
 export class TreasuryAccountsAPI {
   /**
-   * GET /api/treasury/accounts?include_inactive=true|false
-   * FIX PACK v2.0: Support filtering by active/inactive state
+   * GET /api/treasury/accounts?includeInactive=true|false
+   * Enhanced filtering with new status system: ACTIVE | INACTIVE (never DELETED)
    */
-  static async getAccounts(include_inactive: boolean = false): Promise<Account[]> {
+  static async getAccounts(includeInactive: boolean = false): Promise<Account[]> {
     const db = await initDB();
     const allAccounts = await db.getAll('accounts');
     
-    // Never show deleted accounts (deleted_at is not null)
-    const nonDeletedAccounts = allAccounts.filter(acc => !acc.deleted_at);
+    // Filter based on new status system
+    // DELETED accounts are never returned (hard deleted from storage)
+    // Legacy support: also filter out accounts with deleted_at set
+    const visibleAccounts = allAccounts.filter(acc => {
+      // Never show truly deleted accounts
+      if (acc.status === 'DELETED' || acc.deleted_at) return false;
+      
+      if (includeInactive) {
+        // Return both ACTIVE and INACTIVE when requested
+        return acc.status === 'ACTIVE' || acc.status === 'INACTIVE' || 
+               (!acc.status && acc.activa) || (!acc.status && !acc.activa); // Legacy fallback
+      } else {
+        // Only return ACTIVE accounts by default
+        return acc.status === 'ACTIVE' || (!acc.status && acc.activa); // Legacy fallback
+      }
+    });
     
-    if (include_inactive) {
-      return nonDeletedAccounts; // Return both active and inactive
-    } else {
-      return nonDeletedAccounts.filter(acc => acc.isActive); // Only active
-    }
+    return visibleAccounts;
   }
 
   /**
@@ -103,6 +113,7 @@ export class TreasuryAccountsAPI {
       openingBalanceDate: accountData.openingBalanceDate || now,
       includeInConsolidated: accountData.includeInConsolidated ?? true,
       currency: 'EUR',
+      status: 'ACTIVE', // Required status field
       isActive: true,
       activa: true, // Required field in new interface
       usage_scope: accountData.usage_scope || 'mixto', // Default to 'mixto'
@@ -164,10 +175,13 @@ export class TreasuryAccountsAPI {
   }
 
   /**
-   * DELETE /api/treasury/accounts/:id
-   * FIX PACK v2.0: Deactivates an account (is_active = false, deleted_at = NULL)
+   * DELETE /api/treasury/accounts/:id?mode=soft|hard
+   * Enhanced delete with hard/soft mode support
    */
-  static async deactivateAccount(id: number): Promise<Account> {
+  static async deleteAccount(id: number, mode: 'soft' | 'hard' = 'soft', options?: {
+    reassignToAccountId?: number;
+    confirmCascade?: boolean;
+  }): Promise<{ success: boolean; summary?: any }> {
     const db = await initDB();
     
     // Get existing account
@@ -176,44 +190,211 @@ export class TreasuryAccountsAPI {
       throw new Error('Cuenta no encontrada');
     }
 
-    if (!existingAccount.isActive) {
+    if (mode === 'soft') {
+      return await this.softDeleteAccount(id);
+    } else {
+      return await this.hardDeleteAccount(id, options);
+    }
+  }
+
+  /**
+   * Soft delete: Set status to INACTIVE, preserve all data
+   */
+  private static async softDeleteAccount(id: number): Promise<{ success: boolean; summary: any }> {
+    const db = await initDB();
+    const existingAccount = await db.get('accounts', id);
+    
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    if (existingAccount.status === 'INACTIVE' || (!existingAccount.status && !existingAccount.activa)) {
       throw new Error('La cuenta ya está desactivada');
     }
 
     // Check if account has movements to warn user
     const allMovements = await db.getAll('movements');
-    const accountMovements = allMovements.filter(m => m.accountId === id);
+    const accountMovements = allMovements.filter(m => m.accountId === id || m.account_id === id);
     
-    if (accountMovements.length > 0) {
-      console.warn(`Account ${id} has ${accountMovements.length} movements. Deactivating but preserving data.`);
-    }
-
-    const deactivatedAccount: Account = {
+    const softDeletedAccount: Account = {
       ...existingAccount,
-      isActive: false,
-      deleted_at: undefined, // Ensure deleted_at remains null for deactivation
+      status: 'INACTIVE',
+      deactivatedAt: new Date().toISOString(),
+      activa: false, // Keep legacy field in sync
+      isActive: false, // Keep legacy field in sync
+      deleted_at: undefined, // Soft delete doesn't use deleted_at
       updatedAt: new Date().toISOString()
     };
 
-    await db.put('accounts', deactivatedAccount);
+    await db.put('accounts', softDeletedAccount);
     
     // Emit domain event for account deactivation
     try {
       await emitTreasuryEvent({
         type: 'ACCOUNT_CHANGED',
-        payload: { account: deactivatedAccount, previousAccount: existingAccount }
+        payload: { account: softDeletedAccount, previousAccount: existingAccount }
       });
     } catch (error) {
       console.error('Error emitting account deactivation event:', error);
-      // Don't fail the operation if event emission fails
     }
 
-    return deactivatedAccount;
+    return {
+      success: true,
+      summary: {
+        action: 'soft_delete',
+        accountId: id,
+        movementsPreserved: accountMovements.length,
+        message: 'Cuenta desactivada. Puedes reactivarla cuando quieras; no aparecerá en cálculos ni importaciones.'
+      }
+    };
   }
 
   /**
-   * PATCH /api/treasury/accounts/:id { is_active }
-   * FIX PACK v2.0: Activates a previously deactivated account
+   * Hard delete: Permanently remove account and handle cascade cleanup
+   */
+  private static async hardDeleteAccount(id: number, options?: {
+    reassignToAccountId?: number;
+    confirmCascade?: boolean;
+  }): Promise<{ success: boolean; summary: any }> {
+    const db = await initDB();
+    const existingAccount = await db.get('accounts', id);
+    
+    if (!existingAccount) {
+      throw new Error('Cuenta no encontrada');
+    }
+
+    // Check for blocking conditions
+    const blockingReferences = await this.checkBlockingReferences(id);
+    if (blockingReferences.hasBlocking && !options?.confirmCascade) {
+      throw new Error(`No se puede eliminar definitivamente. ${blockingReferences.message}`);
+    }
+
+    const summary = {
+      action: 'hard_delete',
+      accountId: id,
+      removedItems: {} as Record<string, number>,
+      reassignedItems: {} as Record<string, number>,
+      blockedBy: [] as string[]
+    };
+
+    try {
+      // 1. Handle movements
+      const allMovements = await db.getAll('movements');
+      const accountMovements = allMovements.filter(m => m.accountId === id || m.account_id === id);
+      
+      if (accountMovements.length > 0) {
+        if (options?.reassignToAccountId) {
+          // Reassign movements to target account
+          const targetAccount = await db.get('accounts', options.reassignToAccountId);
+          if (!targetAccount || targetAccount.status === 'DELETED') {
+            throw new Error('Cuenta destino no válida para reasignación');
+          }
+
+          for (const movement of accountMovements) {
+            const updatedMovement = {
+              ...movement,
+              accountId: options.reassignToAccountId,
+              account_id: options.reassignToAccountId,
+              updatedAt: new Date().toISOString()
+            };
+            await db.put('movements', updatedMovement);
+          }
+          
+          summary.reassignedItems['movements'] = accountMovements.length;
+        } else {
+          // Delete movements
+          for (const movement of accountMovements) {
+            if (movement.id) {
+              await db.delete('movements', movement.id);
+            }
+          }
+          summary.removedItems['movements'] = accountMovements.length;
+        }
+      }
+
+      // 2. Handle reconciliations
+      try {
+        const allReconciliations = await db.getAll('reconciliations');
+        const accountReconciliations = allReconciliations.filter(r => 
+          r.account_id === id || r.movement_account_id === id
+        );
+        
+        for (const reconciliation of accountReconciliations) {
+          if (reconciliation.id) {
+            await db.delete('reconciliations', reconciliation.id);
+          }
+        }
+        summary.removedItems['reconciliations'] = accountReconciliations.length;
+      } catch (error) {
+        console.warn('No reconciliations table or error deleting:', error);
+      }
+
+      // 3. Delete the account itself
+      await db.delete('accounts', id);
+
+      // 4. Emit domain event for hard delete
+      try {
+        await emitTreasuryEvent({
+          type: 'ACCOUNT_DELETED',
+          payload: { accountId: id, account: existingAccount }
+        });
+      } catch (error) {
+        console.error('Error emitting account deletion event:', error);
+      }
+
+      return { success: true, summary };
+
+    } catch (error) {
+      console.error('Error during hard delete:', error);
+      throw new Error(`Error eliminando cuenta: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Check for references that would block hard delete
+   */
+  private static async checkBlockingReferences(accountId: number): Promise<{
+    hasBlocking: boolean;
+    message: string;
+    references: string[];
+  }> {
+    const references: string[] = [];
+    
+    try {
+      // Check for active contracts using this account
+      const db = await initDB();
+      
+      // Check contracts (if contracts table exists)
+      try {
+        const allContracts = await db.getAll('contracts');
+        const activeContracts = allContracts.filter(c => 
+          c.cuentaCobroId === accountId && c.estadoContrato === 'activo'
+        );
+        if (activeContracts.length > 0) {
+          references.push(`${activeContracts.length} contratos activos`);
+        }
+      } catch (error) {
+        // Contracts table may not exist
+      }
+
+      // Add other blocking reference checks here as needed
+      
+    } catch (error) {
+      console.warn('Error checking blocking references:', error);
+    }
+
+    return {
+      hasBlocking: references.length > 0,
+      message: references.length > 0 ? 
+        `Cuenta referenciada por: ${references.join(', ')}. Reasigna estas referencias o confirma eliminación en cascada.` : 
+        '',
+      references
+    };
+  }
+
+  /**
+   * PATCH /api/treasury/accounts/:id/activate
+   * Reactivate a previously deactivated account
    */
   static async activateAccount(id: number): Promise<Account> {
     const db = await initDB();
@@ -224,17 +405,22 @@ export class TreasuryAccountsAPI {
       throw new Error('Cuenta no encontrada');
     }
 
-    if (existingAccount.deleted_at) {
-      throw new Error('No se puede activar una cuenta eliminada');
+    // Check if account is deleted (can't reactivate deleted accounts)
+    if (existingAccount.status === 'DELETED' || existingAccount.deleted_at) {
+      throw new Error('No se puede activar una cuenta eliminada definitivamente');
     }
 
-    if (existingAccount.isActive) {
+    // Check if already active
+    if (existingAccount.status === 'ACTIVE' || (!existingAccount.status && existingAccount.activa)) {
       throw new Error('La cuenta ya está activa');
     }
 
     const activatedAccount: Account = {
       ...existingAccount,
-      isActive: true,
+      status: 'ACTIVE',
+      deactivatedAt: undefined, // Clear deactivation timestamp
+      activa: true, // Keep legacy field in sync
+      isActive: true, // Keep legacy field in sync
       updatedAt: new Date().toISOString()
     };
 
@@ -252,131 +438,6 @@ export class TreasuryAccountsAPI {
     }
 
     return activatedAccount;
-  }
-
-  /**
-   * DELETE /api/treasury/accounts/:id (hard delete)
-   * FIX PACK v2.0: Attempts hard delete, returns 409 if account has movements
-   */
-  static async deleteAccount(id: number): Promise<{ success: boolean; requiresWizard?: boolean; refs_summary?: any }> {
-    const db = await initDB();
-    
-    // Get existing account
-    const existingAccount = await db.get('accounts', id);
-    if (!existingAccount) {
-      throw new Error('Cuenta no encontrada');
-    }
-
-    // Check for movements
-    const allMovements = await db.getAll('movements');
-    const accountMovements = allMovements.filter(m => m.accountId === id);
-    
-    if (accountMovements.length > 0) {
-      // Return conflict status - requires wizard
-      return {
-        success: false,
-        requiresWizard: true,
-        refs_summary: {
-          movements: accountMovements.length,
-          // TODO: Add other reference types like automatization rules
-        }
-      };
-    }
-
-    // Safe to hard delete - no movements
-    await db.delete('accounts', id);
-    
-    // Emit domain event for account deletion
-    try {
-      await emitTreasuryEvent({
-        type: 'ACCOUNT_DELETED',
-        payload: { accountId: id, account: existingAccount }
-      });
-    } catch (error) {
-      console.error('Error emitting account deletion event:', error);
-      // Don't fail the operation if event emission fails
-    }
-
-    return { success: true };
-  }
-
-  /**
-   * DELETE /api/treasury/accounts/:id/cascade
-   * ATLAS REQUIREMENT: Complete cascading delete for accounts
-   * Deletes account and ALL related data (movements, rules, alerts, etc.)
-   */
-  static async cascadeDeleteAccount(id: number): Promise<{ success: boolean; deletedItems: any }> {
-    const db = await initDB();
-    
-    // Get existing account
-    const existingAccount = await db.get('accounts', id);
-    if (!existingAccount) {
-      throw new Error('Cuenta no encontrada');
-    }
-
-    const deletedItems = {
-      movements: 0,
-      rules: 0,
-      // Future: alerts, documents, etc.
-    };
-
-    try {
-      // 1. Delete all movements associated with this account
-      const allMovements = await db.getAll('movements');
-      const accountMovements = allMovements.filter(m => m.accountId === id);
-      
-      for (const movement of accountMovements) {
-        await db.delete('movements', movement.id!);
-        deletedItems.movements++;
-      }
-
-      // 2. Delete classification rules that reference this account
-      const savedRules = localStorage.getItem('classificationRules');
-      if (savedRules) {
-        const rules = JSON.parse(savedRules);
-        const filteredRules = rules.filter((rule: any) => {
-          // Remove rules that have conditions referencing this account
-          const hasAccountCondition = rule.conditions?.some((cond: any) => 
-            cond.field === 'account_id' && cond.value === id
-          );
-          if (hasAccountCondition) {
-            deletedItems.rules++;
-            return false;
-          }
-          return true;
-        });
-        localStorage.setItem('classificationRules', JSON.stringify(filteredRules));
-      }
-
-      // 3. Future: Delete related alerts, documents, OCR metadata, etc.
-      // TODO: Implement when these features are available
-      // - Delete alerts referencing this account
-      // - Delete documents linked to this account
-      // - Delete OCR metadata for this account
-      // - Delete any automation rules specific to this account
-
-      // 4. Delete the account itself
-      await db.delete('accounts', id);
-
-      // Emit domain event for cascading deletion
-      try {
-        await emitTreasuryEvent({
-          type: 'ACCOUNT_DELETED',
-          payload: { 
-            accountId: id, 
-            account: existingAccount
-          }
-        });
-      } catch (error) {
-        console.error('Error emitting cascade deletion event:', error);
-        // Don't fail the operation if event emission fails
-      }
-
-      return { success: true, deletedItems };
-    } catch (error) {
-      console.error('Error during cascade deletion:', error);
-      throw new Error('Error al eliminar la cuenta y datos asociados');
-    }
   }
 
   /**

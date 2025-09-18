@@ -27,7 +27,8 @@ interface AccountCardData {
   balance: number;
   logo_url?: string;
   orderIndex?: number;
-  isActive: boolean;
+  isActive: boolean; // Legacy compatibility
+  status?: 'ACTIVE' | 'INACTIVE' | 'DELETED'; // New status system
   // Period aggregates
   monthlyIncome: number;
   monthlyExpenses: number;
@@ -126,8 +127,8 @@ const TreasuryMainView: React.FC = () => {
       // First sync accounts from localStorage to IndexedDB
       await syncAccountsFromLocalStorage();
       
-      // Load accounts from configuration
-      const allAccounts = await treasuryAPI.accounts.getAccounts(true); // Include inactive
+      // Load accounts from configuration using new filtering
+      const allAccounts = await treasuryAPI.accounts.getAccounts(true); // Include inactive for filtering
       
       // Filter only horizon accounts
       const horizonAccounts = allAccounts.filter(acc => acc.destination === 'horizon');
@@ -166,7 +167,8 @@ const TreasuryMainView: React.FC = () => {
           balance: acc.balance || 0,
           logo_url: acc.logo_url,
           orderIndex: (acc as any).orderIndex || 0, // TODO: Add orderIndex to Account interface
-          isActive: acc.isActive || false,
+          isActive: acc.status === 'ACTIVE' || (!acc.status && (acc.isActive || acc.activa)), // Enhanced status check
+          status: acc.status,
           monthlyIncome,
           monthlyExpenses
         };
@@ -326,13 +328,41 @@ const TreasuryMainView: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="bg-white rounded-lg border border-hz-neutral-300 p-6 cursor-pointer hover:border-hz-primary hover:shadow-md transition-all"
-                onClick={() => handleAccountClick(account.id)}
-              >
-                <div className="flex items-start gap-3 mb-4">
+            {displayAccounts.map((account) => {
+              const isInactive = !account.isActive || account.status === 'INACTIVE';
+              
+              return (
+                <div
+                  key={account.id}
+                  className={`rounded-lg border p-6 cursor-pointer transition-all ${
+                    isInactive 
+                      ? 'bg-gray-50 border-gray-300 border-dashed opacity-75 hover:border-gray-400' 
+                      : 'bg-white border-hz-neutral-300 hover:border-hz-primary hover:shadow-md'
+                  }`}
+                  onClick={() => handleAccountClick(account.id)}
+                >
+                  {/* Inactive banner */}
+                  {isInactive && (
+                    <div className="mb-3 -mx-6 -mt-6 px-6 py-2 bg-gray-100 border-b border-gray-300">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">
+                          Cuenta inactiva: reactívate para operar
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Add reactivation logic
+                            console.log('Reactivate account', account.id);
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Reactivar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-start gap-3 mb-4">
                   {/* Bank Logo */}
                   <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
                     {account.logo_url ? (
@@ -359,13 +389,13 @@ const TreasuryMainView: React.FC = () => {
                   
                   {/* Account Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-hz-neutral-900 truncate">
+                    <div className={`font-medium truncate ${isInactive ? 'text-gray-500' : 'text-hz-neutral-900'}`}>
                       {account.alias}
                     </div>
-                    <div className="text-sm text-hz-neutral-600">
+                    <div className={`text-sm ${isInactive ? 'text-gray-400' : 'text-hz-neutral-600'}`}>
                       {account.bank}
                     </div>
-                    <div className="text-sm text-hz-neutral-500 font-mono">
+                    <div className={`text-sm font-mono ${isInactive ? 'text-gray-400' : 'text-hz-neutral-500'}`}>
                       {maskIBAN(account.iban)}
                     </div>
                   </div>
@@ -373,29 +403,32 @@ const TreasuryMainView: React.FC = () => {
 
                 {/* Balance */}
                 <div className="mb-4">
-                  <div className="text-sm text-hz-neutral-600">Saldo actual</div>
-                  <div className="text-xl font-semibold text-hz-neutral-900">
+                  <div className={`text-sm ${isInactive ? 'text-gray-400' : 'text-hz-neutral-600'}`}>Saldo actual</div>
+                  <div className={`text-xl font-semibold ${isInactive ? 'text-gray-500' : 'text-hz-neutral-900'}`}>
                     {formatEuro(account.balance)}
                   </div>
                 </div>
 
-                {/* Period Summary */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-hz-neutral-600">Entradas</div>
-                    <div className="font-medium text-green-600">
-                      {formatEuro(account.monthlyIncome)}
+                {/* Period Summary - Hidden for inactive accounts */}
+                {!isInactive && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-hz-neutral-600">Entradas</div>
+                      <div className="font-medium text-green-600">
+                        {formatEuro(account.monthlyIncome)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-hz-neutral-600">Salidas</div>
+                      <div className="font-medium text-red-600">
+                        {formatEuro(account.monthlyExpenses)}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-hz-neutral-600">Salidas</div>
-                    <div className="font-medium text-red-600">
-                      {formatEuro(account.monthlyExpenses)}
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
