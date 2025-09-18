@@ -582,6 +582,23 @@ export class UniversalBankImporter {
       }
     }
     
+    // Problem statement requirement: Calculate running balance when no balance column exists
+    const hasBalanceColumn = Object.values(mapping).includes('balance');
+    if (!hasBalanceColumn && movements.length > 0) {
+      // Calculate running balance starting from 0 (never invent initial balance)
+      let runningBalance = 0;
+      
+      // Sort movements by date to calculate balance chronologically
+      const sortedMovements = [...movements].sort((a, b) => a.date.getTime() - b.date.getTime());
+      
+      for (const movement of sortedMovements) {
+        runningBalance += movement.amount;
+        movement.balance = Math.round(runningBalance * 100) / 100; // Round to 2 decimals
+      }
+      
+      warnings.push('Balance calculado automáticamente (sin columna saldo en el archivo)');
+    }
+    
     return {
       success: true,
       errors,
