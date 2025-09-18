@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Link, Plus, X, Edit2, Trash2 } from 'lucide-react';
+import { Search, Link, Plus, X, Edit2, Trash2, ArrowLeft } from 'lucide-react';
 import { initDB, Account, Movement } from '../../../../services/db';
 import { findReconciliationMatches, reconcileTreasuryRecord } from '../../../../services/treasuryCreationService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -292,6 +292,15 @@ const MovimientosPanel: React.FC = () => {
       {/* Actions Bar */}
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex gap-2">
+          {/* Back to Treasury button as required by problem statement */}
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Tesorería
+          </button>
+          
           <button
             onClick={() => setShowManualEntry(true)}
             className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"

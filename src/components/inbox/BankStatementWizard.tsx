@@ -65,6 +65,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
     cuenta: ''
   });
   const [selectedAccount, setSelectedAccount] = useState('');
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [headerRowIndex, setHeaderRowIndex] = useState(0);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -207,8 +208,21 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
   useEffect(() => {
     if (isOpen && file) {
       parseFile();
+      loadAccounts(); // Load accounts when dialog opens
     }
   }, [isOpen, file, parseFile]);
+
+  // Load available accounts
+  const loadAccounts = async () => {
+    try {
+      const { initDB } = await import('../../services/db');
+      const db = await initDB();
+      const allAccounts = await db.getAll('accounts');
+      setAccounts(allAccounts);
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+    }
+  };
 
   const generatePreview = useCallback(() => {
     if (!parsedData || !columnMapping) return;
@@ -279,6 +293,13 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
 
   const processImport = async () => {
     if (!parsedData || !selectedAccount) return;
+
+    // Problem statement requirement: Block import on INACTIVE accounts
+    const account = accounts.find(acc => acc.id?.toString() === selectedAccount);
+    if (account?.status === 'INACTIVE') {
+      setError('No se puede importar en una cuenta inactiva. Activa la cuenta primero.');
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -512,6 +533,19 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 )}
               </div>
 
+              {/* Auto-mapping failure banner as required by problem statement */}
+              {!selectedTemplate && parsedData && (
+                <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-warning-800">
+                    <AlertCircle className="w-4 h-4" />
+                    <span className="font-medium">No se pudieron mapear las columnas automáticamente</span>
+                  </div>
+                  <p className="text-sm text-warning-700 mt-1">
+                    Selecciona una plantilla de banco o configura el mapeo manual de las columnas.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <h3 className="font-medium text-neutral-900 mb-4">Seleccionar plantilla de banco</h3>
                 
@@ -732,15 +766,36 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
             <div className="space-y-6">
               <div>
                 <h3 className="font-medium text-neutral-900 mb-4">Seleccionar cuenta de destino</h3>
+                
+                {/* Check for inactive account - Problem statement requirement */}
+                {selectedAccount && accounts.find(acc => acc.id?.toString() === selectedAccount)?.status === 'INACTIVE' && (
+                  <div className="mb-4 p-4 bg-error-50 border border-error-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-error-800">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="font-medium">Activa la cuenta para importar extractos.</span>
+                    </div>
+                    <p className="text-sm text-error-600 mt-1">
+                      Esta cuenta está inactiva y no puede recibir nuevos movimientos.
+                    </p>
+                  </div>
+                )}
+                
                 <select
                   value={selectedAccount}
                   onChange={(e) => setSelectedAccount(e.target.value)}
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
                 >
                   <option value="">Seleccionar cuenta...</option>
-                  <option value="santander-corriente">Santander · 1234</option>
-                  <option value="bbva-empresas">BBVA · 5678</option>
-                  <option value="caixabank-ahorro">CaixaBank · 9012</option>
+                  {accounts.filter(acc => acc.activa !== false).map((account) => (
+                    <option 
+                      key={account.id} 
+                      value={account.id?.toString()}
+                      disabled={account.status === 'INACTIVE'}
+                    >
+                      {account.alias || account.name} · {account.banco?.name || account.bank} · {account.iban}
+                      {account.status === 'INACTIVE' ? ' (INACTIVA)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -808,7 +863,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
             ) : (
               <button
                 onClick={processImport}
-                disabled={!selectedAccount || isProcessing}
+                disabled={!selectedAccount || isProcessing || accounts.find(acc => acc.id?.toString() === selectedAccount)?.status === 'INACTIVE'}
                 className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
