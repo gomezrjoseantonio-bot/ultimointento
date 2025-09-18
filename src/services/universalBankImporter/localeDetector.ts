@@ -40,15 +40,30 @@ export class LocaleDetector {
   }
 
   /**
-   * Parse amount using detected locale
+   * Parse amount using detected locale - Enhanced per problem statement
+   * Rejects date-like patterns and handles all EU/EN formats
    */
   parseImporte(amountStr: string, locale: NumberLocale): ParsedAmount {
     const cleaned = this.cleanNumberString(amountStr);
     
+    // Problem statement rule: Reject if matches date patterns
+    if (this.looksLikeDate(cleaned)) {
+      return {
+        value: 0,
+        confidence: 0,
+        originalText: amountStr,
+        locale
+      };
+    }
+    
     try {
       const value = this.parseWithLocale(cleaned, locale);
+      
+      // Return result with rounded to 2 decimals as required
+      const roundedValue = Math.round(value * 100) / 100;
+      
       return {
-        value,
+        value: roundedValue,
         confidence: this.calculateParseConfidence(cleaned, locale),
         originalText: amountStr,
         locale
@@ -61,6 +76,20 @@ export class LocaleDetector {
         locale
       };
     }
+  }
+
+  /**
+   * Check if string looks like a date - Problem statement requirement
+   * Reject amounts that have date patterns
+   */
+  private looksLikeDate(str: string): boolean {
+    const trimmed = str.trim();
+    
+    // Pattern: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy, yyyy-mm-dd, yyyy/mm/dd
+    if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/.test(trimmed)) return true;
+    if (/^\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}$/.test(trimmed)) return true;
+    
+    return false;
   }
 
   /**
