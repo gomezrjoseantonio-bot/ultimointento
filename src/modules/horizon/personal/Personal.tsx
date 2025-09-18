@@ -4,6 +4,8 @@ import { Home, Banknote, User, PiggyBank, DollarSign } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
 import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
+import PlanesManager from '../../../components/personal/planes/PlanesManager';
+import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { PersonalModuleConfig } from '../../../types/personal';
 
@@ -163,53 +165,13 @@ const Personal: React.FC = () => {
 
   const renderPensionesInversionesSection = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Planes de Pensiones e Inversiones</h3>
-        <p className="text-gray-500 mb-4">
-          Registra y monitoriza tus inversiones, planes de pensiones y evolución del patrimonio.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Valor Total Inversiones</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Plusvalías/Pérdidas</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <button className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark transition-colors">
-            Añadir Inversión
-          </button>
-        </div>
-      </div>
+      <PlanesManager />
     </div>
   );
 
   const renderOtrosIngresosSection = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Otros Ingresos</h3>
-        <p className="text-gray-500 mb-4">
-          Registra dividendos, fondos indexados, intereses y otros ingresos diversos.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Ingresos del mes</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">Ingresos anuales</p>
-            <p className="text-xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-        </div>
-        <div className="mt-4">
-          <button className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark transition-colors">
-            Añadir Ingreso
-          </button>
-        </div>
-      </div>
+      <OtrosIngresosManager />
     </div>
   );
 
