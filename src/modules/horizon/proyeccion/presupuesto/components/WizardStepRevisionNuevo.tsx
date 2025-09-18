@@ -99,7 +99,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
         line.category,
         line.subcategory || '',
         line.label,
-        line.providerName || '',
+        line.counterpartyName || '',
         line.accountId || '',
         ...line.amountByMonth.map(amount => (amount || 0).toFixed(2)),
         totalAnual.toFixed(2)

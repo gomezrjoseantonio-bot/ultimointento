@@ -75,7 +75,17 @@ const Ingresos: React.FC = () => {
     try {
       const db = await initDB();
       const newIngreso: Ingreso = {
-        ...formData,
+        origen: formData.origen,
+        origen_id: formData.origen_id,
+        contraparte: formData.proveedor_contraparte, // Map proveedor_contraparte to contraparte
+        fecha_emision: formData.fecha_emision,
+        fecha_prevista_cobro: formData.fecha_prevista_cobro,
+        importe: formData.importe,
+        moneda: formData.moneda,
+        destino: formData.destino,
+        destino_id: formData.destino_id,
+        estado: formData.estado,
+        from_doc: formData.from_doc,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -128,7 +138,7 @@ const Ingresos: React.FC = () => {
   const filteredIngresos = ingresos.filter(ingreso => {
     const matchesStatus = statusFilter === 'all' || ingreso.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      ingreso.proveedor_contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ingreso.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getPropertyName(ingreso.destino, ingreso.destino_id).toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesStatus && matchesSearch;
@@ -214,7 +224,7 @@ const Ingresos: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4 text-gray-400" />
                       <span className="text-sm font-medium text-gray-900">
-                        {ingreso.proveedor_contraparte}
+                        {ingreso.contraparte}
                       </span>
                     </div>
                   </td>

@@ -116,7 +116,7 @@ async function findBudgetMatch(movement: Movement, presupuestoLineas: Presupuest
     if (amountDiff <= tolerance) {
       // Check if description/counterparty might match
       const normalized = normalizeString(`${movement.description} ${movement.counterparty}`);
-      const lineaNormalized = normalizeString(`${linea.label} ${linea.providerName || ''}`);
+      const lineaNormalized = normalizeString(`${linea.label} ${linea.counterpartyName || ''}`);
       
       // Basic keyword matching
       const lineaWords = lineaNormalized.split(' ').filter(w => w.length > 3);

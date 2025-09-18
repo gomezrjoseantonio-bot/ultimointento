@@ -22,8 +22,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<Partial<ExpenseH5>>({
     date: new Date().toISOString().split('T')[0],
-    provider: '',
-    providerNIF: '',
+    counterparty: '',
+    counterpartyNIF: '',
     concept: '',
     amount: 0,
     fiscalType: 'reparacion-conservacion',
@@ -48,8 +48,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
       // Reset form for new expense
       setFormData({
         date: new Date().toISOString().split('T')[0],
-        provider: '',
-        providerNIF: '',
+        counterparty: '',
+        counterpartyNIF: '',
         concept: '',
         amount: 0,
         fiscalType: 'reparacion-conservacion',
@@ -88,7 +88,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.provider || !formData.concept || !formData.amount || !formData.propertyId) {
+    if (!formData.counterparty || !formData.concept || !formData.amount || !formData.propertyId) {
       toast.error('Por favor, completa todos los campos obligatorios');
       return;
     }
@@ -99,7 +99,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
         ...formData,
         ...(expense?.id && { id: expense.id }), // Only include id if editing existing expense
         date: formData.date!,
-        provider: formData.provider!,
+        counterparty: formData.counterparty!,
         concept: formData.concept!,
         amount: formData.amount!,
         currency: formData.currency || 'EUR',
@@ -168,8 +168,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.provider}
-                onChange={(e) => setFormData(prev => ({ ...prev, provider: e.target.value }))}
+                value={formData.counterparty}
+                onChange={(e) => setFormData(prev => ({ ...prev, counterparty: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder="Nombre del proveedor"
                 required
@@ -182,8 +182,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               </label>
               <input
                 type="text"
-                value={formData.providerNIF || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, providerNIF: e.target.value }))}
+                value={formData.counterpartyNIF || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, counterpartyNIF: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder="12345678Z"
               />

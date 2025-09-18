@@ -143,8 +143,8 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
 
   // Create expense entry
   const gasto: Omit<Gasto, 'id'> = {
-    proveedor_nombre: provider,
-    proveedor_nif: undefined,
+    contraparte_nombre: provider,
+    contraparte_nif: undefined,
     fecha_emision: issueDate,
     fecha_pago_prevista: dueDate,
     total: totalAmount,
@@ -360,7 +360,7 @@ async function processTaxOrOtherDocumentation(document: Document): Promise<Docum
       const category = getTaxCategory(filename);
       
       const gasto: Omit<Gasto, 'id'> = {
-        proveedor_nombre: metadata.proveedor || 'Administración Pública',
+        contraparte_nombre: metadata.proveedor || 'Administración Pública',
         fecha_emision: metadata.financialData?.issueDate || new Date().toISOString().split('T')[0],
         fecha_pago_prevista: metadata.financialData?.dueDate || new Date().toISOString().split('T')[0],
         total: amount,
