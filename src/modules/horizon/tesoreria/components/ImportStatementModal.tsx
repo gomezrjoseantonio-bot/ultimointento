@@ -81,11 +81,12 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv'
+      'text/csv',
+      'application/x-ofx' // OFX format support as per problem statement
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Solo se permiten archivos Excel (.xls, .xlsx) y CSV');
+      toast.error('Solo se permiten archivos Excel (.xls, .xlsx), CSV y OFX');
       return;
     }
     
