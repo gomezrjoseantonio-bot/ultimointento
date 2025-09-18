@@ -6,7 +6,6 @@
 
 import { Account, initDB } from '../services/db';
 import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accountHelpers';
-import { TreasuryAccountsAPI } from './treasuryApiService';
 
 // Logging prefix for Treasury operations
 const LOG_PREFIX = '[TESO-ACCOUNTS]';
@@ -363,12 +362,11 @@ class CuentasService {
   }
 
   /**
-   * Hard delete account with enhanced cascade cleanup and reassignment options
-   * Implements the requirements from problem statement
+   * Hard delete account with enhanced cascade cleanup
+   * Implements the requirements from problem statement: real hard delete with checkbox for movements
    */
   public async hardDelete(id: number, options: {
-    confirmationAlias: string;
-    reassignToAccountId?: number;
+    deleteMovements?: boolean;
     confirmCascade?: boolean;
   }): Promise<{ success: boolean; summary?: any }> {
     const account = this.accounts.find(acc => acc.id === id && !acc.deleted_at);
@@ -376,21 +374,51 @@ class CuentasService {
       throw new Error('Cuenta no encontrada');
     }
 
-    // Verify confirmation alias matches
-    if (account.alias !== options.confirmationAlias) {
-      throw new Error('El alias de confirmación no coincide');
-    }
-
     console.info(`${LOG_PREFIX} Starting hard deletion for account ${id}: ${account.alias}`);
 
     try {
-      // Use the enhanced Treasury API for hard delete with cascade cleanup
-      const result = await TreasuryAccountsAPI.deleteAccount(id, 'hard', {
-        reassignToAccountId: options.reassignToAccountId,
-        confirmCascade: options.confirmCascade
-      });
+      // Get movements count for summary
+      const allMovements = JSON.parse(localStorage.getItem('atlas_movimientos') || '[]');
+      const accountMovements = allMovements.filter((m: any) => m.cuentaId === id && !m.deleted_at);
+      const movementsCount = accountMovements.length;
 
-      // Remove from local accounts array
+      const summary = {
+        action: 'hard_delete',
+        accountId: id,
+        removedItems: {} as Record<string, number>
+      };
+
+      // Step 1: Handle movements according to checkbox
+      if (options.deleteMovements && movementsCount > 0) {
+        // Delete movements from localStorage
+        const filteredMovements = allMovements.filter((m: any) => m.cuentaId !== id || m.deleted_at);
+        localStorage.setItem('atlas_movimientos', JSON.stringify(filteredMovements));
+        summary.removedItems.movements = movementsCount;
+
+        // Also delete from IndexedDB treasury storage
+        const db = await initDB();
+        const allTreasuryMovements = await db.getAll('movements');
+        const treasuryAccountMovements = allTreasuryMovements.filter(m => m.account_id === id);
+        
+        for (const movement of treasuryAccountMovements) {
+          if (movement.id) {
+            await db.delete('movements', movement.id);
+          }
+        }
+      }
+
+      // Step 2: Delete account from IndexedDB treasury storage
+      const db = await initDB();
+      try {
+        await db.delete('accounts', id);
+      } catch (error) {
+        console.warn(`${LOG_PREFIX} Account not found in treasury DB or error deleting:`, error);
+      }
+
+      // Step 3: Clean caches and aggregated data
+      this.cleanAccountCaches(id);
+
+      // Step 4: Remove from local accounts array
       const accountIndex = this.accounts.findIndex(acc => acc.id === id);
       if (accountIndex !== -1) {
         this.accounts.splice(accountIndex, 1);
@@ -398,11 +426,11 @@ class CuentasService {
       }
 
       // Emit event for UI updates
-      this.emit('accounts:updated', { type: 'hard_deleted', account, summary: result.summary });
+      this.emit('accounts:updated', { type: 'hard_deleted', account, summary });
 
-      console.info(`${LOG_PREFIX} Hard deletion completed successfully`, result.summary);
+      console.info(`${LOG_PREFIX} Hard deletion completed successfully`, summary);
       
-      return result;
+      return { success: true, summary };
 
     } catch (error) {
       console.error(`${LOG_PREFIX} Error during hard delete:`, error);
@@ -481,14 +509,16 @@ class CuentasService {
     const counts: Record<string, number> = {};
 
     try {
-      // Check prestamos (loans) - would normally query actual database
+      // Check prestamos (loans) - loans with this account as "cuenta de cargo" block deletion
       const prestamosData = localStorage.getItem('atlas_prestamos');
       if (prestamosData) {
         const prestamos = JSON.parse(prestamosData);
-        const prestamosCount = prestamos.filter((p: any) => p.cuentaId === id && !p.deleted_at).length;
+        const prestamosCount = prestamos.filter((p: any) => 
+          (p.cuentaId === id || p.cuentaCargo === account.iban) && !p.deleted_at
+        ).length;
         if (prestamosCount > 0) {
-          references.push('Préstamos');
-          counts['Préstamos'] = prestamosCount;
+          references.push('préstamos');
+          counts['préstamos'] = prestamosCount;
         }
       }
 

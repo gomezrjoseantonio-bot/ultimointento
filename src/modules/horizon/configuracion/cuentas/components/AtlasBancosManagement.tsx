@@ -51,15 +51,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   const [saving, setSaving] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ 
     account: Account; 
-    mode: 'soft' | 'hard';
     canDelete: boolean; 
     references?: string[]; 
     counts?: Record<string, number>;
     reassignToAccountId?: number;
     movementsCount?: number;
+    deleteMovements?: boolean;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [confirmationAlias, setConfirmationAlias] = useState('');
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -307,46 +306,22 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     }
   };
 
-  const handleSoftDelete = async (account: Account) => {
-    try {
-      const canDeleteResult = await cuentasService.canDelete(account.id!);
-      
-      // Check if account has movements for informational purposes
-      const allMovements = JSON.parse(localStorage.getItem('atlas_movimientos') || '[]');
-      const movementsCount = allMovements.filter((m: any) => m.cuentaId === account.id && !m.deleted_at).length;
-      
-      setDeleteConfirmation({
-        account,
-        mode: 'soft',
-        canDelete: true, // Soft delete is always allowed
-        references: canDeleteResult.references,
-        counts: canDeleteResult.counts,
-        movementsCount
-      });
-      setConfirmationAlias('');
-    } catch (error) {
-      console.error('Error preparing soft delete:', error);
-      toast.error('Error al preparar desactivación');
-    }
-  };
-
   const handleHardDelete = async (account: Account) => {
     try {
       const canDeleteResult = await cuentasService.canDelete(account.id!);
       
-      // Get movements count for reassignment UI
+      // Get movements count for deletion UI
       const allMovements = JSON.parse(localStorage.getItem('atlas_movimientos') || '[]');
       const movementsCount = allMovements.filter((m: any) => m.cuentaId === account.id && !m.deleted_at).length;
       
       setDeleteConfirmation({
         account,
-        mode: 'hard',
         canDelete: canDeleteResult.ok,
         references: canDeleteResult.references,
         counts: canDeleteResult.counts,
-        movementsCount
+        movementsCount,
+        deleteMovements: false
       });
-      setConfirmationAlias('');
     } catch (error) {
       console.error('Error checking hard delete permissions:', error);
       toast.error('Error al verificar permisos de eliminación');
@@ -356,41 +331,22 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   const confirmDelete = async () => {
     if (!deleteConfirmation) return;
 
-    if (deleteConfirmation.mode === 'soft') {
-      // Soft delete (deactivate)
-      try {
-        setDeleting(true);
-        await cuentasService.deactivate(deleteConfirmation.account.id!);
-        toast.success('Cuenta desactivada. Puedes reactivarla cuando quieras; no aparecerá en cálculos ni importaciones.');
-        await loadAccounts();
-        setDeleteConfirmation(null);
-      } catch (error) {
-        console.error('Error deactivating account:', error);
-        toast.error('Error al desactivar la cuenta');
-      } finally {
-        setDeleting(false);
-      }
+    // Check for loans blocking deletion
+    if (deleteConfirmation.references?.includes('préstamos')) {
+      toast.error('Esta cuenta está en uso por préstamos. Cambia la cuenta de cargo antes de eliminar.');
       return;
     }
 
-    // Hard delete validation
-    if (!deleteConfirmation.canDelete) {
-      toast.error('No se puede eliminar definitivamente esta cuenta debido a referencias activas');
-      return;
-    }
-
-    // Validate confirmation alias for hard delete
-    const expectedAlias = deleteConfirmation.account.alias || 'Sin alias';
-    if (confirmationAlias !== expectedAlias) {
-      toast.error('El alias de confirmación no coincide');
+    // Validate movements selection for hard delete
+    if ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements) {
+      toast.error('Selecciona una acción: re-asignar o borrar movimientos.');
       return;
     }
 
     setDeleting(true);
     try {
       const result = await cuentasService.hardDelete(deleteConfirmation.account.id!, {
-        confirmationAlias: confirmationAlias,
-        reassignToAccountId: deleteConfirmation.reassignToAccountId,
+        deleteMovements: deleteConfirmation.deleteMovements || false,
         confirmCascade: true
       });
 
@@ -398,9 +354,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         const summaryParts = [];
         if (result.summary?.removedItems?.movements) {
           summaryParts.push(`${result.summary.removedItems.movements} movimientos eliminados`);
-        }
-        if (result.summary?.reassignedItems?.movements) {
-          summaryParts.push(`${result.summary.reassignedItems.movements} movimientos reasignados`);
         }
         
         const summaryText = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
@@ -517,37 +470,21 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                 ) : (
                   <>
                     <Eye className="w-4 h-4" />
-                    Reactivar
+                    Activar
                   </>
                 )}
               </button>
               
-              {/* Only show delete options for active accounts */}
-              {(account.status === 'ACTIVE' || (!account.status && account.activa)) && (
-                <>
-                  <button
-                    onClick={() => {
-                      handleSoftDelete(account);
-                      setActiveDropdown(null);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
-                  >
-                    <EyeOff className="w-4 h-4" />
-                    Desactivar permanentemente
-                  </button>
-                  
-                  <button
-                    onClick={() => {
-                      handleHardDelete(account);
-                      setActiveDropdown(null);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Eliminar definitivamente
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => {
+                  handleHardDelete(account);
+                  setActiveDropdown(null);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Eliminar definitivamente…
+              </button>
             </div>
           </div>
         )}
@@ -763,77 +700,19 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
             <div className="flex items-center mb-4">
-              <AlertTriangle className={`w-6 h-6 mr-3 ${deleteConfirmation.mode === 'soft' ? 'text-amber-500' : 'text-red-500'}`} />
+              <AlertTriangle className="w-6 h-6 mr-3 text-red-500" />
               <h2 className="text-lg font-semibold text-atlas-navy-1">
-                {deleteConfirmation.mode === 'soft' ? 'Desactivar cuenta permanentemente' : 'Eliminar cuenta definitivamente'}
+                Eliminar cuenta definitivamente
               </h2>
             </div>
 
-            {deleteConfirmation.mode === 'soft' ? (
-              // Soft delete modal
-              <div>
-                <p className="text-sm text-gray-700 mb-4">
-                  La cuenta será desactivada permanentemente. No aparecerá en cálculos ni importaciones, pero todos los datos se conservarán.
-                </p>
-                
-                {deleteConfirmation.movementsCount && deleteConfirmation.movementsCount > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
-                    <p className="text-sm text-amber-800">
-                      <strong>Información:</strong> Esta cuenta tiene {deleteConfirmation.movementsCount} movimientos asociados que se conservarán.
-                    </p>
-                  </div>
-                )}
-
-                {deleteConfirmation.references && deleteConfirmation.references.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                    <p className="text-sm text-blue-800 mb-2">
-                      <strong>Referencias encontradas:</strong>
-                    </p>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      {deleteConfirmation.references.map((ref, index) => (
-                        <li key={index} className="flex items-center">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                          {ref} ({deleteConfirmation.counts?.[ref] || 0})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={() => setDeleteConfirmation(null)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={confirmDelete}
-                    disabled={deleting}
-                    className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700 disabled:opacity-50"
-                  >
-                    {deleting ? 'Desactivando...' : 'Desactivar cuenta'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              // Hard delete modal
-              <div>
-                {!deleteConfirmation.canDelete ? (
+            {/* Hard delete modal */}
+            <div>
+              {/* Check for loans that would block deletion */}
+              {deleteConfirmation.references?.includes('préstamos') ? (
                   <div>
                     <p className="text-sm text-gray-700 mb-4">
-                      No se puede eliminar definitivamente porque tiene referencias activas:
-                    </p>
-                    <ul className="text-sm text-gray-600 mb-4 space-y-1">
-                      {deleteConfirmation.references?.map((ref, index) => (
-                        <li key={index} className="flex items-center">
-                          <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                          {ref} ({deleteConfirmation.counts?.[ref] || 0})
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Resuelve estas referencias primero o usa "Desactivar permanentemente" en su lugar.
+                      Esta cuenta está en uso por {deleteConfirmation.counts?.['préstamos'] || 0} préstamos. Cambia la cuenta de cargo antes de eliminar.
                     </p>
                     <div className="flex justify-end space-x-3">
                       <button
@@ -848,53 +727,38 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   <div>
                     <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
                       <p className="text-sm text-red-800">
-                        <strong>⚠️ Acción irreversible:</strong> Esta cuenta y todos sus datos relacionados serán eliminados permanentemente de la base de datos.
+                        <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>
                     </div>
 
                     {deleteConfirmation.movementsCount && deleteConfirmation.movementsCount > 0 && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                        <p className="text-sm text-yellow-800 mb-2">
-                          <strong>Movimientos encontrados:</strong> {deleteConfirmation.movementsCount} movimientos serán eliminados.
-                        </p>
-                        <div className="mt-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Reasignar movimientos a (opcional):
-                          </label>
-                          <select
-                            value={deleteConfirmation.reassignToAccountId || ''}
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            id="deleteMovements"
+                            checked={deleteConfirmation.deleteMovements || false}
                             onChange={(e) => setDeleteConfirmation({
                               ...deleteConfirmation,
-                              reassignToAccountId: e.target.value ? parseInt(e.target.value) : undefined
+                              deleteMovements: e.target.checked
                             })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                          >
-                            <option value="">Eliminar movimientos</option>
-                            {accounts
-                              .filter(acc => acc.id !== deleteConfirmation.account.id && 
-                                           (acc.status === 'ACTIVE' || (!acc.status && acc.activa)))
-                              .map(acc => (
-                                <option key={acc.id} value={acc.id}>
-                                  {acc.alias || 'Sin alias'} - {maskIban(acc.iban)}
-                                </option>
-                              ))
-                            }
-                          </select>
+                            className="mt-0.5 mr-3 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor="deleteMovements" className="text-sm text-gray-700">
+                            <strong>También borrar sus {deleteConfirmation.movementsCount} movimientos (irreversible)</strong>
+                          </label>
                         </div>
+                        
+                        {!deleteConfirmation.deleteMovements && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-sm text-yellow-800">
+                              Selecciona una acción: re-asignar o borrar movimientos.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                     
-                    <p className="text-sm text-gray-700 mb-4">
-                      Para confirmar, escribe el alias de la cuenta:{' '}
-                      <strong>{deleteConfirmation.account.alias || 'Sin alias'}</strong>
-                    </p>
-                    <input
-                      type="text"
-                      value={confirmationAlias}
-                      onChange={(e) => setConfirmationAlias(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent mb-4"
-                      placeholder="Escribe el alias aquí"
-                    />
                     <div className="flex justify-end space-x-3">
                       <button
                         onClick={() => setDeleteConfirmation(null)}
@@ -904,7 +768,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       </button>
                       <button
                         onClick={confirmDelete}
-                        disabled={deleting || confirmationAlias !== (deleteConfirmation.account.alias || 'Sin alias')}
+                        disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
                         className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
@@ -912,8 +776,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

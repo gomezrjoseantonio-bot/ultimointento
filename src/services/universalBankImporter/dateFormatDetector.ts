@@ -53,6 +53,12 @@ export class DateFormatDetector {
       },
       confidence: 0.8
     },
+    {
+      pattern: 'DD.MM.YYYY',
+      regex: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/,
+      parseFunc: (match) => new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1])),
+      confidence: 0.9
+    },
     
     // ISO and international formats
     {

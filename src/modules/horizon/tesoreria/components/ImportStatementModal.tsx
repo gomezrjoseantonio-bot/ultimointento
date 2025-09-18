@@ -81,11 +81,12 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     const allowedTypes = [
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv'
+      'text/csv',
+      'application/x-ofx' // OFX format support as per problem statement
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Solo se permiten archivos Excel (.xls, .xlsx) y CSV');
+      toast.error('Solo se permiten archivos Excel (.xls, .xlsx), CSV y OFX');
       return;
     }
     
@@ -116,6 +117,13 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const handleImport = async () => {
     if (!selectedFile || !selectedAccount) {
       toast.error('Por favor selecciona un archivo y una cuenta de destino');
+      return;
+    }
+    
+    // Check if selected account is active (problem statement requirement)
+    const selectedAccountData = accounts.find(acc => acc.id?.toString() === selectedAccount);
+    if (!selectedAccountData || !selectedAccountData.isActive || selectedAccountData.status === 'INACTIVE') {
+      toast.error('Activa la cuenta para importar extractos.');
       return;
     }
     

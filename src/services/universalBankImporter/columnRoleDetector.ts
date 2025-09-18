@@ -38,7 +38,8 @@ export class ColumnRoleDetector {
   private static readonly HEADER_PATTERNS = {
     date: [
       'fecha', 'fecha operacion', 'fecha operación', 'f operacion', 'f operación',
-      'fecha mov', 'fecha movimiento', 'date', 'operation date', 'fecha de operacion'
+      'fecha mov', 'fecha movimiento', 'date', 'operation date', 'fecha de operacion',
+      'fec.', 'booking date', 'valor', 'postdate' // Problem statement patterns
     ],
     valueDate: [
       'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor'
@@ -46,7 +47,7 @@ export class ColumnRoleDetector {
     description: [
       'concepto', 'descripcion', 'descripción', 'detalle', 'descripcion ampliada',
       'detalle operacion', 'detalle operación', 'description', 'observaciones',
-      'motivo', 'concepto operacion', 'concepto operación'
+      'motivo', 'concepto operacion', 'concepto operación', 'details', 'concept' // Problem statement patterns
     ],
     counterparty: [
       'contraparte', 'beneficiario', 'ordenante', 'entidad', 'empresa',
@@ -62,7 +63,7 @@ export class ColumnRoleDetector {
     ],
     amount: [
       'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto', 'valor',
-      'euros', 'eur', 'movimiento', 'amount', 'saldo movimiento'
+      'euros', 'eur', 'movimiento', 'amount', 'saldo movimiento', 'import' // Problem statement patterns
     ],
     balance: [
       'saldo', 'saldo disponible', 'saldo tras', 'saldo después', 'balance',
