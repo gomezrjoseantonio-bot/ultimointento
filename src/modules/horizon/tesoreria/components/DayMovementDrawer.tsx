@@ -43,15 +43,15 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   // Get movement status color classes
   const getMovementStatusClass = (movement: Movement) => {
     // According to requirements:
-    // - Income (amount > 0) → green
-    // - Expense (amount < 0) → red  
-    // - sin_match → gray
-    // - match_manual or match_automatico → blue (conciliated)
+    // - Income (amount > 0) → green (success)
+    // - Expense (amount < 0) → red (error)  
+    // - sin_match → gray (muted)
+    // - match_manual or match_automatico → blue (info/conciliated)
     
     if (movement.status === 'conciliado' || movement.unifiedStatus === 'conciliado') {
       return {
         bg: 'bg-blue-50',
-        text: 'text-blue-800',
+        text: 'text-hz-info',
         border: 'border-blue-200'
       };
     }
@@ -59,7 +59,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     if (movement.amount > 0) {
       return {
         bg: 'bg-green-50',
-        text: 'text-green-800', 
+        text: 'text-hz-success', 
         border: 'border-green-200'
       };
     }
@@ -67,7 +67,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     if (movement.amount < 0) {
       return {
         bg: 'bg-red-50',
-        text: 'text-red-800',
+        text: 'text-hz-error',
         border: 'border-red-200'
       };
     }
@@ -75,7 +75,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     // sin_match or unknown state
     return {
       bg: 'bg-gray-50',
-      text: 'text-gray-800',
+      text: 'text-hz-neutral-500',
       border: 'border-gray-200'
     };
   };
@@ -181,7 +181,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end md:items-center justify-center">
-      <div className="bg-white w-full md:w-2xl md:max-w-2xl h-screen md:h-auto md:max-h-[90vh] md:rounded-lg shadow-xl overflow-hidden">
+      <div className="bg-white w-full md:w-2xl md:max-w-2xl h-screen md:h-auto md:max-h-[80vh] md:rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-hz-neutral-300">
           <div>
@@ -201,7 +201,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         </div>
 
         {/* Movement List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-h-[calc(80vh-100px)]">
           {day.movements.length === 0 ? (
             <div className="p-6 text-center text-hz-neutral-500">
               No hay movimientos en este día
@@ -271,7 +271,9 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                         </div>
                         
                         <div className="text-right ml-4">
-                          <div className={`text-lg font-semibold ${statusClass.text}`}>
+                          <div className={`text-lg font-semibold ${
+                            movement.amount >= 0 ? 'text-hz-success' : 'text-hz-error'
+                          }`}>
                             {formatEuro(movement.amount)}
                           </div>
                           {movement.reference && (

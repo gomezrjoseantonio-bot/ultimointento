@@ -17,9 +17,16 @@ export interface SignDerivationResult {
 }
 
 export interface ColumnValues {
-  debit?: string | number;
-  credit?: string | number;
+  debit?: string | number;      // Débito / Debe / Cargo
+  credit?: string | number;     // Crédito / Haber / Abono
   amount?: string | number;
+  // Additional Spanish column names support
+  debe?: string | number;       // Alternative for debit
+  haber?: string | number;      // Alternative for credit  
+  cargo?: string | number;      // Alternative for debit
+  abono?: string | number;      // Alternative for credit
+  debito?: string | number;     // Alternative for debit
+  credito?: string | number;    // Alternative for credit
 }
 
 export class SignDerivationService {
@@ -34,8 +41,16 @@ export class SignDerivationService {
   ): SignDerivationResult {
     
     // Method 1: Separate debit/credit columns (most reliable)
-    if (values.debit !== undefined || values.credit !== undefined) {
-      return this.deriveFromDebitCredit(values, locale);
+    // Check for any debit-type column (debit, debe, cargo, débito)
+    const debitValue = values.debit || values.debe || values.cargo || values.debito;
+    // Check for any credit-type column (credit, haber, abono, crédito)
+    const creditValue = values.credit || values.haber || values.abono || values.credito;
+    
+    if (debitValue !== undefined || creditValue !== undefined) {
+      return this.deriveFromDebitCredit({
+        debit: debitValue,
+        credit: creditValue
+      }, locale);
     }
     
     // Method 2: Single signed amount column

@@ -747,6 +747,17 @@ export class TreasuryImportAPI {
       console.warn('[TREASURY-IMPORT] Telemetry service unavailable:', error);
     }
 
+    // PROBLEM STATEMENT: Discrete toast for massive parsing errors (>20% invalid rows)
+    const totalRows = results.inserted + results.failed + results.duplicates;
+    if (totalRows > 0) {
+      const errorRate = results.failed / totalRows;
+      if (errorRate > 0.2) { // >20% failed
+        // Note: This would normally be handled in the UI component that calls this function
+        // The toast should be shown there, not in the service layer
+        console.warn(`[TREASURY-IMPORT] High error rate detected: ${(errorRate * 100).toFixed(1)}% of rows failed to parse`);
+      }
+    }
+
     return {
       ...results,
       batchId: importBatchId
