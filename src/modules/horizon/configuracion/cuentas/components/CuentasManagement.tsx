@@ -230,7 +230,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     
     return (
       <div 
-        className="w-full h-full flex items-center justify-center text-white font-bold text-sm"
+        className="w-full h-full flex items-center justify-center font-bold text-sm"
         style={{ backgroundColor: color }}
       >
         {initial}
@@ -250,7 +250,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium text-atlas-navy-1">
             Cuentas bancarias ({filteredAccounts.length})
@@ -273,12 +273,12 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
       {/* Accounts List */}
       <div className="divide-y divide-gray-200">
         {filteredAccounts.length === 0 ? (
-          <div className="px-6 py-8 text-center text-text-gray">
+          <div className="text-center text-text-gray">
             {searchTerm ? 'No se encontraron cuentas que coincidan con la búsqueda.' : 'No hay cuentas configuradas. Añade tu primera cuenta bancaria.'}
           </div>
         ) : (
           filteredAccounts.map((account) => (
-            <div key={account.id} className="px-6 py-4 hover:bg-gray-50">
+            <div key={account.id} className="hover:bg-gray-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   {/* Logo */}
@@ -293,12 +293,12 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                         {account.alias || 'Sin alias'}
                       </h3>
                       {account.isDefault && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-atlas-blue text-white">
+                        <span className="inline-flex items-center rounded-full text-xs font-medium bg-atlas-blue">
                           Por defecto
                         </span>
                       )}
                       {!account.activa && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        <span className="inline-flex items-center rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                           Inactiva
                         </span>
                       )}
@@ -319,7 +319,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   {!account.isDefault && account.activa && (
                     <button
                       onClick={() => handleSetDefault(account)}
-                      className="text-sm text-atlas-blue hover:text-atlas-blue-dark"
+                      className="btn-ghost-horizon text-sm"
                     >
                       Marcar por defecto
                     </button>
@@ -423,7 +423,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   {previewBankInfo && (
                     <div className="mt-3 p-3 bg-gray-50 rounded-atlas border border-gray-200">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-white text-xs font-bold mr-3">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold mr-3">
                           {previewBankInfo.name ? (
                             <div style={{ backgroundColor: previewBankInfo.color || generateHashColor(formData.iban) }}>
                               {getAvatarInitial(previewBankInfo.name)}
@@ -500,19 +500,19 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                 </div>
               </div>
 
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="w-full inline-flex justify-center rounded-atlas border border-transparent shadow-sm px-4 py-2 bg-atlas-blue text-base font-medium text-white hover:bg-atlas-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  className="btn-primary-horizon w-full sm:w-auto"
                 >
                   {saving ? 'Guardando...' : 'Guardar'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Cancelar
                 </button>
@@ -549,19 +549,19 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
                   onClick={() => handleDeactivate(deleteConfirmation)}
                   disabled={deleting}
-                  className="w-full inline-flex justify-center rounded-atlas border border-transparent shadow-sm px-4 py-2 bg-error-600 text-base font-medium text-white hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  className="w-full inline-flex justify-center rounded-atlas border border-transparent shadow-sm bg-error-600 text-base font-medium  hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
                 >
                   {deleting ? 'Desactivando...' : 'Desactivar'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmation(null)}
-                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:w-auto sm:text-sm"
                 >
                   Cancelar
                 </button>
