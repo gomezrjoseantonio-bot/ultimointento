@@ -180,7 +180,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-gray-200 bg-opacity-75 flex items-end md:items-center justify-center">
       <div className="bg-white w-full md:w-2xl md:max-w-2xl h-screen md:h-auto md:max-h-[80vh] md:rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-hz-neutral-300">
