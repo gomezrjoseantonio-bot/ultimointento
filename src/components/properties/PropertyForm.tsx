@@ -57,7 +57,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
           type="text"
           value={formData.alias}
           onChange={(e) => setFormData(prev => ({ ...prev, alias: e.target.value }))}
-          className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+          className="btn-secondary-horizon w-full "
           required
         />
       </div>
@@ -70,7 +70,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
           type="text"
           value={formData.address}
           onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-          className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+          className="btn-secondary-horizon w-full "
           required
         />
       </div>
@@ -84,7 +84,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
             type="number"
             value={formData.squareMeters}
             onChange={(e) => setFormData(prev => ({ ...prev, squareMeters: parseInt(e.target.value) || 0 }))}
-            className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+            className="btn-secondary-horizon w-full "
             min="1"
             required
           />
@@ -104,7 +104,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
                 price: parseFloat(e.target.value) || 0 
               }
             }))}
-            className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+            className="btn-secondary-horizon w-full "
             min="0"
             step="0.01"
             required
@@ -116,14 +116,13 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-gray-700 border border-neutral-300 rounded-lg hover:bg-neutral-50"
-          disabled={isSubmitting}
+          className="px-4 py-2 text-gray-700 border border-neutral-300 disabled={isSubmitting}
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+          className="btn-primary-horizon px-4 py-2 disabled:opacity-50"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Adding...' : 'Add Property'}

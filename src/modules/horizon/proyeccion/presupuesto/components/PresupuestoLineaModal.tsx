@@ -152,7 +152,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -169,7 +169,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
 
         <div className="p-6">
           {errors.length > 0 && (
-            <div className="mb-6 p-4 bg-error-50 border border-error-200 rounded-lg">
+            <div className="mb-6 p-4 bg-error-50 border border-error-200">
               <h3 className="text-sm font-medium text-error-800 mb-2">Errores de validación:</h3>
               <ul className="text-sm text-error-700 list-disc list-inside">
                 {errors.map((error, index) => (
@@ -190,7 +190,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <select
                   value={formData.tipo}
                   onChange={(e) => updateField('tipo', e.target.value as TipoLinea)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                 >
                   <option value="Ingreso">Ingreso</option>
                   <option value="Gasto">Gasto</option>
@@ -205,7 +205,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <select
                   value={formData.inmuebleId || ''}
                   onChange={(e) => updateField('inmuebleId', e.target.value || undefined)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                 >
                   <option value="">Global</option>
                   {properties.map(property => (
@@ -224,7 +224,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <select
                   value={formData.categoria || ''}
                   onChange={(e) => updateField('categoria', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                 >
                   <option value="">Seleccionar categoría</option>
                   {formData.tipo === 'Gasto' 
@@ -247,7 +247,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   <select
                     value={formData.tipoConcepto}
                     onChange={(e) => updateField('tipoConcepto', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                   >
                     <option value="">Seleccionar suministro</option>
                     {suministrosSubtipos.map(subtipo => (
@@ -259,7 +259,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="text"
                     value={formData.tipoConcepto}
                     onChange={(e) => updateField('tipoConcepto', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                     placeholder="Ej: Seguro hogar, Renta habitación 1"
                   />
                 )}
@@ -276,7 +276,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       type="text"
                       value={formData.proveedor}
                       onChange={(e) => updateField('proveedor', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      className="w-full border border-gray-300 px-3 py-2"
                       placeholder="Nombre del proveedor"
                     />
                   </div>
@@ -289,7 +289,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       type="text"
                       value={formData.proveedorNif}
                       onChange={(e) => updateField('proveedorNif', e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      className="w-full border border-gray-300 px-3 py-2"
                       placeholder="NIF del proveedor"
                     />
                   </div>
@@ -304,7 +304,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <select
                   value={formData.cuentaId}
                   onChange={(e) => updateField('cuentaId', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                 >
                   <option value="">Pendiente de asignar</option>
                   <option value="cuenta-1">Cuenta Principal</option>
@@ -328,7 +328,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <select
                   value={formData.frecuencia}
                   onChange={(e) => updateField('frecuencia', e.target.value as FrecuenciaPago)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                 >
                   {frecuencias.map(freq => (
                     <option key={freq} value={freq}>{freq}</option>
@@ -346,7 +346,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="date"
                     value={formData.fechaUnica}
                     onChange={(e) => updateField('fechaUnica', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -362,7 +362,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     max="28"
                     value={formData.dayOfMonth || ''}
                     onChange={(e) => updateField('dayOfMonth', parseInt(e.target.value) || undefined)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                     placeholder="1-28"
                   />
                   <p className="text-xs text-gray-600 mt-1">
@@ -382,7 +382,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   step="0.01"
                   value={formData.importeUnitario}
                   onChange={(e) => updateField('importeUnitario', parseFloat(e.target.value) || 0)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                   placeholder="0.00"
                 />
               </div>
@@ -410,7 +410,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="date"
                     value={formData.desde}
                     onChange={(e) => updateField('desde', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -423,7 +423,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="date"
                     value={formData.hasta}
                     onChange={(e) => updateField('hasta', e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    className="w-full border border-gray-300 px-3 py-2"
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -438,7 +438,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                 <textarea
                   value={formData.notas}
                   onChange={(e) => updateField('notas', e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  className="w-full border border-gray-300 px-3 py-2"
                   rows={3}
                   placeholder="Notas adicionales..."
                 />
@@ -460,7 +460,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
             </div>
 
             {showPreview && (
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4">
                 {generatePreview().length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {generatePreview().map((evento, index) => (
@@ -488,13 +488,12 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-          >
+            className="px-4 py-2 text-gray-700 bg-gray-100 >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="btn-primary-horizon px-4 py-2
           >
             {linea ? 'Actualizar' : 'Crear'}
           </button>

@@ -101,7 +101,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       {/* Ver */}
       <button
         onClick={handleView}
-        className="p-1.5 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors"
+        className="p-1.5 text-neutral-600 hover:text-neutral-800"
         title="Ver documento"
       >
         <Eye className="w-4 h-4" />
@@ -111,10 +111,10 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       {!isCompleteFEIN && (
         <button
           onClick={handleAssign}
-          className={`p-1.5 rounded-lg transition-colors ${
+          className={`p-1.5 ${
             isAssigned 
-              ? 'text-primary-600 hover:text-primary-800 hover:bg-primary-50' 
-              : 'text-warning-600 hover:text-orange-800 hover:bg-orange-50'
+              ? 'text-primary-600 hover:text-primary-800 
+              : 'text-warning-600 hover:text-orange-800
           }`}
           title={`${assignButtonText} a inmueble o personal`}
         >
@@ -128,7 +128,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           {/* Ver campos FEIN */}
           <button
             onClick={handleViewFEINFields}
-            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+            className="btn-primary-horizon p-1.5 text-blue-600 hover:text-blue-800 hover:"
             title="Ver campos extraídos de la FEIN"
           >
             <FileText className="w-4 h-4" />
@@ -138,7 +138,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           {hasLoanId && (
             <button
               onClick={handleOpenInFinanciacion}
-              className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+              className="btn-accent-horizon p-1.5 text-green-600 hover:text-green-800 hover:"
               title="Abrir préstamo en Financiación"
             >
               <ExternalLink className="w-4 h-4" />
@@ -150,7 +150,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       {/* Descargar */}
       <button
         onClick={handleDownload}
-        className="p-1.5 text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors"
+        className="p-1.5 text-neutral-600 hover:text-neutral-800"
         title="Descargar documento"
       >
         <Download className="w-4 h-4" />
@@ -160,23 +160,23 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       {!showDeleteConfirm ? (
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="p-1.5 text-error-600 hover:text-error-800 hover:bg-error-50 rounded-lg transition-colors"
+          className="p-1.5 text-error-600 hover:text-error-800"
           title="Eliminar documento"
         >
           <Trash2 className="w-4 h-4" />
         </button>
       ) : (
-        <div className="flex items-center gap-1 bg-error-50 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-error-50 p-1">
           <AlertTriangle className="w-3 h-3 text-error-600" />
           <button
             onClick={handleDeleteConfirm}
-            className="px-2 py-1 text-xs bg-error-600 text-white rounded hover:bg-error-700 transition-colors"
+            className="px-2 py-1 text-xs bg-error-600 rounded"
           >
             Confirmar
           </button>
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="px-2 py-1 text-xs text-error-600 hover:bg-error-100 rounded transition-colors"
+            className="px-2 py-1 text-xs text-error-600 rounded"
           >
             Cancelar
           </button>

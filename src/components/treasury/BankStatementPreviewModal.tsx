@@ -338,7 +338,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -352,7 +352,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600"
           >
             <X className="h-6 w-6" />
           </button>
@@ -361,19 +361,19 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
         {/* Summary */}
         <div className="p-6 bg-gray-50 border-b border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="bg-white p-4 border">
               <p className="text-sm text-gray-500">Archivo</p>
               <p className="font-medium">{data.fileName}</p>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="bg-white p-4 border">
               <p className="text-sm text-gray-500">Filas a procesar</p>
               <p className="font-medium">{data.totalRows}</p>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="bg-white p-4 border">
               <p className="text-sm text-gray-500">Banco detectado</p>
               <p className="font-medium">{data.detectedBank || 'Sin detectar'}</p>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="bg-white p-4 border">
               <p className="text-sm text-gray-500">Mapeo automático</p>
               <div className="flex items-center space-x-2">
                 {schemaDetection?.needsManualMapping ? (
@@ -400,7 +400,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <button
                   onClick={() => generatePreview(manualMapping!)}
                   disabled={!canConfirm() || isProcessing}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary-horizon px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Generar vista previa
                 </button>
@@ -439,7 +439,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                             }
                           })()}
                           onChange={(e) => handleManualMappingChange(field.key, parseInt(e.target.value))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          className="btn-secondary-horizon w-full "
                         >
                           <option value="">Sin mapear</option>
                           {data.headers?.map((header, index) => (
@@ -464,19 +464,19 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <div className="space-y-4">
                   {/* Preview stats */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="btn-accent-horizon p-4 border border-green-200">
                       <p className="text-sm text-green-600">Bien mapeados</p>
                       <p className="text-2xl font-bold text-green-700">
                         {previewResult.wellMappedRows}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <div className="bg-yellow-50 p-4 border border-yellow-200">
                       <p className="text-sm text-yellow-600">Duplicados estimados</p>
                       <p className="text-2xl font-bold text-yellow-700">
                         {previewResult.estimatedDuplicates}
                       </p>
                     </div>
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
                       <p className="text-sm text-blue-600">No planificados</p>
                       <p className="text-2xl font-bold text-blue-700">
                         {previewResult.previewMovements.filter(m => m.status !== 'valid').length}
@@ -485,7 +485,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                   </div>
 
                   {/* Preview table */}
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="border border-gray-200 overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
@@ -558,14 +558,13 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
             <div className="flex space-x-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={!canConfirm() || isProcessing}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary-horizon px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Procesando...' : 'Importar extracto'}
               </button>

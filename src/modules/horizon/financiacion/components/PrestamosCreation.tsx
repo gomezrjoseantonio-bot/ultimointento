@@ -323,7 +323,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
           <p className="text-atlas-navy-1">Cargando datos del préstamo...</p>
         </div>
       </div>
@@ -338,7 +338,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
           <div className="flex items-center space-x-4">
             <button
               onClick={onCancel}
-              className="p-2 text-text-gray hover:text-atlas-navy-1 transition-colors"
+              className="p-2 text-text-gray hover:text-atlas-navy-1"
               aria-label="Volver"
             >
               <X className="h-5 w-5" />
@@ -356,7 +356,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
 
         {/* General errors */}
         {errors.some(e => e.field === 'general') && (
-          <div className="mt-4 p-3 bg-error-50 border border-error-200 rounded-atlas">
+          <div className="mt-4 p-3 bg-error-50 border border-error-200">
             <div className="flex">
               <AlertCircle className="h-5 w-5 text-error-500 flex-shrink-0" />
               <div className="ml-3">
@@ -372,10 +372,10 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
       {/* Content */}
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         {blocks.map((block) => (
-          <div key={block.id} className="bg-white rounded-atlas border border-gray-200 overflow-hidden">
+          <div key={block.id} className="bg-white border border-gray-200 overflow-hidden">
             {/* Block Header */}
             <div 
-              className="px-6 py-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+              className="px-6 py-4 border-b border-gray-200 cursor-pointer"
               onClick={() => toggleBlock(block.id as keyof typeof visibleBlocks)}
             >
               <div className="flex items-center justify-between">
@@ -415,11 +415,11 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
           <button
             onClick={handleSave}
             disabled={loading}
-            className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-atlas text-white bg-atlas-blue hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary-horizon inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium bg-atlas-blue hover: focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                 Guardando...
               </>
             ) : (

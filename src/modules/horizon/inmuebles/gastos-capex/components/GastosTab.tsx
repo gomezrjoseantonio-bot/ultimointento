@@ -164,7 +164,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     const Icon = iconMap[estado];
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusMap[estado] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${statusMap[estado] || 'bg-gray-100 text-gray-800'}`}>
         <Icon className="h-3 w-3 mr-1" />
         {statusLabels[estado] || estado}
       </span>
@@ -228,7 +228,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy"></div>
+        <div className="animate-spin h-8 w-8 border-b-2 border-brand-navy"></div>
       </div>
     );
   }
@@ -236,7 +236,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   // Show message when no properties exist
   if (properties.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+      <div className="bg-white border border-gray-200 p-12 text-center">
         <div className="space-y-4">
           <div className="text-gray-400">
             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -253,7 +253,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
           </div>
           <button
             onClick={() => navigate('/inmuebles/cartera')}
-            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-brand-navy"
           >
             <PlusIcon className="h-5 w-5 mr-2" />
             Ir a Cartera para crear inmueble
@@ -267,37 +267,37 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     <div className="space-y-6">
       {/* KPIs Panel */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Total Gastos</div>
           <div className="text-2xl font-bold text-gray-900">
             {formatEuro(filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">% Conciliado</div>
           <div className="text-2xl font-bold text-success-600">
             {filteredExpenses.length ? Math.round((filteredExpenses.filter(e => e.estado_conciliacion === 'conciliado').length / filteredExpenses.length) * 100) : 0}%
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Suministros</div>
           <div className="text-2xl font-bold text-primary-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto?.startsWith('suministro_') || e.tipo_gasto === 'internet').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Reparación/Conservación</div>
           <div className="text-2xl font-bold text-warning-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'reparacion_conservacion').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Mejora</div>
           <div className="text-2xl font-bold text-info-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mejora').reduce((sum, exp) => sum + exp.amount, 0))}
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="text-sm font-medium text-gray-500">Mobiliario</div>
           <div className="text-2xl font-bold text-indigo-600">
             {formatEuro(filteredExpenses.filter(e => e.tipo_gasto === 'mobiliario').reduce((sum, exp) => sum + exp.amount, 0))}
@@ -306,7 +306,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Search */}
           <div className="lg:col-span-2">
@@ -317,7 +317,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                 placeholder="Buscar proveedor, concepto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="pl-10 w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               />
             </div>
           </div>
@@ -327,7 +327,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             <select
               value={filters.tipo_gasto}
               onChange={(e) => setFilters(prev => ({ ...prev, tipo_gasto: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Todos los tipos</option>
               {TIPO_GASTO_OPTIONS.map(type => (
@@ -343,7 +343,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             <select
               value={filters.origen}
               onChange={(e) => setFilters(prev => ({ ...prev, origen: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Todos los orígenes</option>
               <option value="manual">Manual</option>
@@ -356,7 +356,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             <select
               value={filters.estado_conciliacion}
               onChange={(e) => setFilters(prev => ({ ...prev, estado_conciliacion: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Conciliación</option>
               <option value="pendiente">Pendiente</option>
@@ -369,7 +369,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             <select
               value={filters.propertyId}
               onChange={(e) => setFilters(prev => ({ ...prev, propertyId: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="">Inmueble/Personal</option>
               <option value="personal">Personal</option>
@@ -396,7 +396,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                   endDate: ''
                 });
               }}
-              className="w-full px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              className="w-full px-3 py-2 text-sm text-gray-600 bg-gray-100"
             >
               Limpiar filtros
             </button>
@@ -405,7 +405,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
       </div>
 
       {/* Expenses Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         {filteredExpenses.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 text-lg mb-2">No hay gastos registrados</div>
@@ -414,7 +414,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
             </p>
             <button 
               onClick={handleAddExpense}
-              className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-brand-navy"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               Añadir primer gasto
@@ -469,7 +469,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                      <span className="btn-primary-horizon inline-flex items-center px-2.5 py-0.5 text-xs font-medium text-primary-800">
                         {getTipoGastoLabel(expense.tipo_gasto)}
                       </span>
                     </td>

@@ -33,7 +33,7 @@ export const showSuccess = (message: string, options: ToastOptions = {}): string
     duration: options.duration || 3000,
     position: options.position || 'top-right',
     style: {
-      background: '#F0FDF4', // green-50
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.success}`,
       borderRadius: '8px',
@@ -42,7 +42,7 @@ export const showSuccess = (message: string, options: ToastOptions = {}): string
     },
     iconTheme: {
       primary: ATLAS_COLORS.success,
-      secondary: '#F0FDF4'
+      secondary: 'var(--bg)' // Use ATLAS background token
     }
   };
 
@@ -57,7 +57,7 @@ export const showSuccess = (message: string, options: ToastOptions = {}): string
               options.actionHandler!();
               toast.dismiss(t.id);
             }}
-            className="ml-3 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            className="btn-accent-horizon ml-3 px-2 py-1 text-xs rounded"
           >
             {options.actionLabel}
           </button>
@@ -82,7 +82,7 @@ export const showError = (message: string, suggestedAction?: string, options: To
     duration: options.duration || 5000, // Longer duration for errors
     position: options.position || 'top-right',
     style: {
-      background: '#FEF2F2', // red-50
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.error}`,
       borderRadius: '8px',
@@ -92,7 +92,7 @@ export const showError = (message: string, suggestedAction?: string, options: To
     },
     iconTheme: {
       primary: ATLAS_COLORS.error,
-      secondary: '#FEF2F2'
+      secondary: 'var(--bg)' // Use ATLAS background token
     }
   });
 };
@@ -106,7 +106,7 @@ export const showInfo = (message: string, options: ToastOptions = {}): string =>
     position: options.position || 'top-right',
     icon: 'ℹ️',
     style: {
-      background: '#EFF6FF', // blue-50
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.turquoise}`,
       borderRadius: '8px',
@@ -125,7 +125,7 @@ export const showWarning = (message: string, options: ToastOptions = {}): string
     position: options.position || 'top-right',
     icon: '⚠️',
     style: {
-      background: '#FFFBEB', // amber-50
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.warning}`,
       borderRadius: '8px',
@@ -142,7 +142,7 @@ export const showLoading = (message: string, options: ToastOptions = {}): string
   return toast.loading(message, {
     position: options.position || 'top-right',
     style: {
-      background: '#F8FAFC', // slate-50
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.turquoise}`,
       borderRadius: '8px',
@@ -167,7 +167,7 @@ export const showPromise = (
   return toast.promise(promise, messages, {
     position: options.position || 'top-right',
     style: {
-      background: '#F8FAFC',
+      background: 'var(--bg)', // Use ATLAS background token
       color: ATLAS_COLORS.navy,
       border: `1px solid ${ATLAS_COLORS.turquoise}`,
       borderRadius: '8px',
@@ -176,13 +176,13 @@ export const showPromise = (
     },
     success: {
       style: {
-        background: '#F0FDF4',
+        background: 'var(--bg)', // Use ATLAS background token
         border: `1px solid ${ATLAS_COLORS.success}`
       }
     },
     error: {
       style: {
-        background: '#FEF2F2',
+        background: 'var(--bg)', // Use ATLAS background token
         border: `1px solid ${ATLAS_COLORS.error}`
       }
     }

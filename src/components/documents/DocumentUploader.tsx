@@ -338,7 +338,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
   if (duplicates.length > 0) {
     return (
-      <div className="border border-orange-200 rounded-lg p-6 bg-orange-50">
+      <div className="border border-orange-200 p-6 bg-orange-50">
         <div className="flex items-center gap-2 mb-4">
           <AlertTriangle className="w-5 h-5 text-orange-500" />
           <h3 className="font-semibold text-orange-900">Documentos duplicados detectados</h3>
@@ -350,7 +350,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         
         <div className="space-y-4">
           {duplicates.map((dup, index) => (
-            <div key={index} className="border border-orange-200 rounded-lg p-4 bg-white">
+            <div key={index} className="border border-orange-200 p-4 bg-white">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-medium text-neutral-900">{dup.file.name}</span>
                 <span className="text-sm text-neutral-500">
@@ -361,10 +361,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={() => handleDuplicateAction(index, 'replace')}
-                  className={`p-2 text-sm rounded-lg border transition-colors ${
+                  className={`p-2 text-sm border ${
                     dup.action === 'replace' 
                       ? 'border-primary-500 bg-primary-50 text-primary-700' 
-                      : 'border-neutral-200 hover:bg-neutral-50'
+                      : 'border-neutral-200
                   }`}
                 >
                   <strong>Reemplazar</strong><br />
@@ -373,10 +373,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 
                 <button
                   onClick={() => handleDuplicateAction(index, 'keep-both')}
-                  className={`p-2 text-sm rounded-lg border transition-colors ${
+                  className={`p-2 text-sm border ${
                     dup.action === 'keep-both' 
                       ? 'border-success-500 bg-success-50 text-success-700' 
-                      : 'border-neutral-200 hover:bg-neutral-50'
+                      : 'border-neutral-200
                   }`}
                 >
                   <strong>Conservar ambos</strong><br />
@@ -385,10 +385,10 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                 
                 <button
                   onClick={() => handleDuplicateAction(index, 'skip')}
-                  className={`p-2 text-sm rounded-lg border transition-colors ${
+                  className={`p-2 text-sm border ${
                     dup.action === 'skip' 
                       ? 'border-neutral-500 bg-neutral-50 text-neutral-700' 
-                      : 'border-neutral-200 hover:bg-neutral-50'
+                      : 'border-neutral-200
                   }`}
                 >
                   <strong>Omitir</strong><br />
@@ -403,14 +403,14 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           <button
             onClick={processDuplicates}
             disabled={duplicates.some(d => !d.action)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary-horizon px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckCircle className="w-4 h-4 inline mr-2" />
             Procesar Documentos
           </button>
           <button
             onClick={cancelDuplicateHandling}
-            className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors"
+            className="px-4 py-2 bg-neutral-200 text-neutral-700"
           >
             <X className="w-4 h-4 inline mr-2" />
             Cancelar
@@ -422,7 +422,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
   return (
     <div 
-      className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-neutral-400 transition-colors"
+      className="border-2 border-dashed border-neutral-300 p-6 text-center hover:border-neutral-400"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -434,7 +434,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         Tipos soportados: PDF, JPG, PNG, ZIP, CSV, XLS, XLSX (varios archivos a la vez)
       </p>
       <button 
-        className="px-6 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50 transition-colors"
+        className="px-6 py-2 bg-neutral-600 disabled:opacity-50"
         onClick={() => fileInputRef.current?.click()}
         disabled={isProcessing}
       >

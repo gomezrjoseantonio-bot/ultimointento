@@ -112,7 +112,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
             type="text"
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             placeholder="Ej: Compra ordenador portátil"
             required
           />
@@ -128,7 +128,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               step="0.01"
               value={formData.importe}
               onChange={(e) => setFormData(prev => ({ ...prev, importe: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="500.00"
               required
             />
@@ -142,7 +142,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               type="date"
               value={formData.fecha}
               onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               required
             />
           </div>
@@ -155,7 +155,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
           <select
             value={formData.categoria}
             onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             required
           >
             {categorias.map(categoria => (
@@ -175,7 +175,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               type="text"
               value={formData.proveedor}
               onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Nombre del proveedor"
             />
           </div>
@@ -188,14 +188,14 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               type="text"
               value={formData.numeroFactura}
               onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="F-2024-001"
             />
           </div>
         </div>
 
         {/* Porcentaje Deducible */}
-        <div className="border border-neutral-200 rounded-lg p-4">
+        <div className="border border-neutral-200 p-4">
           <label className="block text-sm font-medium text-neutral-700 mb-2">
             Porcentaje Deducible (%)
           </label>
@@ -241,7 +241,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
         </div>
 
         {/* Common percentages helper */}
-        <div className="bg-neutral-50 rounded-lg p-3">
+        <div className="bg-neutral-50 p-3">
           <p className="text-xs text-neutral-600 mb-2">
             <strong>Porcentajes comunes:</strong>
           </p>
@@ -251,10 +251,10 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
                 key={percentage}
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, porcentajeDeducible: percentage }))}
-                className={`px-2 py-1 text-xs rounded border transition-colors ${
+                className={`px-2 py-1 text-xs rounded border ${
                   formData.porcentajeDeducible === percentage
-                    ? 'bg-brand-navy text-white border-brand-navy'
-                    : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-100'
+                    ? 'bg-brand-navy border-brand-navy'
+                    : 'bg-white text-neutral-700 border-neutral-300
                 }`}
               >
                 {percentage}%
@@ -267,14 +267,13 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
-          >
+            className="px-4 py-2 text-neutral-700 border border-neutral-300 >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+            className="btn-danger px-4 py-2 disabled:opacity-50"
           >
             {loading ? 'Añadiendo...' : 'Añadir Gasto'}
           </button>

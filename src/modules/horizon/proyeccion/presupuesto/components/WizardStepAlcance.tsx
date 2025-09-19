@@ -90,7 +90,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
       </div>
     );
   }
@@ -106,7 +106,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
 
       {/* Date Range Selection */}
       {isMidYear && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-8">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <div className="flex items-center mb-4">
             <Calendar className="h-5 w-5 text-primary-600 mr-2" />
             <h3 className="font-semibold text-primary-900">Período del presupuesto</h3>
@@ -152,7 +152,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(Number(e.target.value))}
-                className="block w-48 px-3 py-2 border border-primary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                className="btn-secondary-horizon block w-48 px-3 py-2 "
               >
                 {monthNames.slice(currentMonth - 1).map((month, index) => (
                   <option key={index} value={currentMonth + index}>
@@ -166,7 +166,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
       )}
 
       {/* Property Selection */}
-      <div className="bg-white border border-gray-200 rounded-lg">
+      <div className="bg-white border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -208,7 +208,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
                 <div className="ml-4 flex-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="bg-gray-100 p-2 rounded-lg">
+                      <div className="bg-gray-100 p-2">
                         <Building className="h-5 w-5 text-gray-600" />
                       </div>
                       
@@ -238,9 +238,9 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
             <div className="text-gray-500 mb-4">
               No hay inmuebles activos en la cartera.
             </div>
-            <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4">
+            <div className="bg-warning-50 border border-yellow-200 p-4">
               <div className="flex items-center mb-2">
-                <div className="bg-warning-100 p-1 rounded-full mr-2">
+                <div className="bg-warning-100 p-1 mr-2">
                   <span className="text-warning-600 text-xs">⚠️</span>
                 </div>
                 <p className="text-sm font-medium text-yellow-800">Modo de prueba</p>
@@ -258,10 +258,10 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
         <button
           onClick={handleContinue}
           disabled={selectedPropertyIds.length === 0 && properties.length > 0}
-          className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${
+          className={`flex items-center px-6 py-3 font-medium ${
             selectedPropertyIds.length === 0 && properties.length > 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-primary-600 text-white hover:bg-primary-700'
+              : 'bg-primary-600
           }`}
         >
           Continuar

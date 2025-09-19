@@ -279,8 +279,8 @@ const Resumen: React.FC = () => {
     return (
       <PageLayout title="Resumen Fiscal" subtitle="Resumen fiscal anual de inversiones.">
         <div className="animate-pulse space-y-6">
-          <div className="h-32 bg-gray-200 rounded-lg"></div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+          <div className="h-32 bg-gray-200"></div>
+          <div className="h-64 bg-gray-200"></div>
         </div>
       </PageLayout>
     );
@@ -290,7 +290,7 @@ const Resumen: React.FC = () => {
     <PageLayout title="Resumen Fiscal" subtitle="Resumen fiscal anual por inmueble (IRPF - Capital inmobiliario).">
       <div className="space-y-6">
         {/* Controls */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-64">
               <label className="block text-sm font-medium text-gray-700 mb-2">Inmueble</label>
@@ -300,7 +300,7 @@ const Resumen: React.FC = () => {
                   const value = e.target.value;
                   setSelectedPropertyId(value === 'todos' ? 'todos' : value ? parseInt(value) : null);
                 }}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
+                className="btn-secondary-horizon w-full "
               >
                 <option value="">Seleccionar inmueble</option>
                 <option value="todos">Todos</option>
@@ -317,7 +317,7 @@ const Resumen: React.FC = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
+                className="btn-secondary-horizon "
               >
                 {getYearRange().map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -330,7 +330,7 @@ const Resumen: React.FC = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | 'Vivo' | 'Prescrito')}
-                className="border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50"
+                className="btn-secondary-horizon "
               >
                 <option value="all">Vivo | Histórico</option>
                 <option value="Vivo">Solo Vivo</option>
@@ -341,8 +341,7 @@ const Resumen: React.FC = () => {
             {fiscalSummary && selectedPropertyId !== 'todos' && (
               <button
                 onClick={handleExport}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-[#1a4059]"
-              >
+                className="flex items-center gap-2 px-4 py-2 bg-brand-navy >
                 <Download className="w-4 h-4" />
                 Export
               </button>
@@ -357,7 +356,7 @@ const Resumen: React.FC = () => {
             {allPropertiesData.length > 0 && (
               <>
                 {/* KPIs Section */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="bg-white border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">KPIs Globales — Ejercicio: {selectedYear}</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                     {(() => {
@@ -432,7 +431,7 @@ const Resumen: React.FC = () => {
                 </div>
 
                 {/* Macro Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white border border-gray-200 overflow-hidden">
                   <div className="p-6 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900">Tabla Macro por Inmueble — Ejercicio: {selectedYear}</h3>
                   </div>
@@ -501,7 +500,7 @@ const Resumen: React.FC = () => {
           // Single property view
           <>
             {/* Single Property KPIs */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
                 KPIs — {properties.find(p => p.id === selectedPropertyId)?.alias} | Ejercicio: {selectedYear}
               </h3>
@@ -542,7 +541,7 @@ const Resumen: React.FC = () => {
             </div>
 
             {/* Single Property Table */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white border border-gray-200 overflow-hidden">
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Tabla Macro — {properties.find(p => p.id === selectedPropertyId)?.alias} | Ejercicio: {selectedYear}
@@ -587,7 +586,7 @@ const Resumen: React.FC = () => {
             </div>
 
             {/* AEAT Details Table (for single property) */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white border border-gray-200 overflow-hidden">
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Detalle AEAT — {properties.find(p => p.id === selectedPropertyId)?.alias} | Ejercicio: {selectedYear}
@@ -617,7 +616,7 @@ const Resumen: React.FC = () => {
                           {formatEuro(item.amount)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium ${
                             item.status === 'Vivo' 
                               ? 'bg-success-100 text-success-800'
                               : 'bg-warning-100 text-orange-800'
@@ -654,7 +653,7 @@ const Resumen: React.FC = () => {
           </>
         ) : (
           // Empty state
-          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+          <div className="bg-white border border-gray-200 p-12 text-center">
             <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Selecciona un inmueble</h3>
             <p className="text-gray-500">Elige un inmueble y ejercicio fiscal para ver el resumen.</p>

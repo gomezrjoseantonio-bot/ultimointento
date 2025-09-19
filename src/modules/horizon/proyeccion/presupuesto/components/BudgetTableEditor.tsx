@@ -187,7 +187,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     return (
       <div
         onClick={() => handleCellClick(lineId, field, month)}
-        className={`px-2 py-1 cursor-pointer hover:bg-gray-50 min-h-[2rem] flex items-center ${className || ''}`}
+        className={`px-2 py-1 cursor-pointer min-h-[2rem] flex items-center ${className || ''}`}
       >
         {field === 'amount' ? formatEuro(Number(value)) : value || '—'}
       </div>
@@ -202,7 +202,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     <div className="mb-8">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
       
-      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+      <div className="overflow-x-auto border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -256,7 +256,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                 <tr key={line.id} className="hover:bg-gray-50">
                   <td className="px-2 py-2">
                     {scope === 'CONSOLIDADO' && (
-                      <span className={`inline-block w-3 h-3 rounded-full ${
+                      <span className={`inline-block w-3 h-3 ${
                         line.scope === 'PERSONAL' ? 'bg-primary-500' : 'bg-success-500'
                       }`} title={line.scope} />
                     )}
@@ -346,7 +346,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       {renderTableSection('Costes', expenseLines, monthlyExpenseTotals)}
       
       {/* Net Totals */}
-      <div className="bg-primary-50 border border-primary-200 rounded-lg p-6">
+      <div className="btn-secondary-horizon btn-primary-horizon ">
         <h3 className="text-lg font-semibold text-primary-900 mb-4">Resumen Neto</h3>
         
         <div className="overflow-x-auto">

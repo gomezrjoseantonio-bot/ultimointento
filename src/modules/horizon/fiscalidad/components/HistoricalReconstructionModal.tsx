@@ -110,7 +110,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <Database className="w-6 h-6 text-primary-600" />
@@ -121,7 +121,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
@@ -129,7 +129,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
         <div className="p-6 space-y-6">
           {/* Scope Info */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="btn-secondary-horizon btn-primary-horizon ">
             <div className="flex items-start space-x-3">
               <Database className="w-5 h-5 text-primary-600 mt-0.5" />
               <div>
@@ -150,7 +150,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
           {/* Historical Stats (if single property) */}
           {stats && (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 p-4">
                 <div className="text-sm text-gray-600">Datos más antiguos</div>
                 <div className="space-y-1">
                   <div className="text-sm">
@@ -169,7 +169,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 p-4">
                 <div className="text-sm text-gray-600">Años históricos</div>
                 <div className="text-2xl font-bold text-gray-900">{stats.totalHistoricalYears}</div>
                 <div className="text-xs text-gray-500">ejercicios disponibles</div>
@@ -184,9 +184,9 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
                 <span className="text-sm font-medium text-gray-700">{progress.phase}</span>
                 <span className="text-sm text-gray-500">{progress.percentage}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-gray-200 h-3">
                 <div 
-                  className="bg-primary-600 h-3 rounded-full transition-all duration-300"
+                  className="btn-primary-horizon h-3 transition-all duration-300"
                   style={{ width: `${progress.percentage}%` }}
                 />
               </div>
@@ -260,7 +260,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
           {/* Warning */}
           {!result && (
-            <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4">
+            <div className="bg-warning-50 border border-yellow-200 p-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-warning-600 mt-0.5" />
                 <div className="text-sm">
@@ -279,7 +279,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
             <button
               onClick={onClose}
               disabled={isProcessing}
-              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {result ? 'Cerrar' : 'Cancelar'}
             </button>
@@ -288,7 +288,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               <button
                 onClick={handleStartReconstruction}
                 disabled={isProcessing}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary-horizon flex-1 flex items-center justify-center space-x-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>
@@ -307,7 +307,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
             {result && result.success && (
               <button
                 onClick={handleComplete}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700 transition-colors"
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-success-600"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Finalizar</span>

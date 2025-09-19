@@ -52,7 +52,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
   if (loading) {
     const content = (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
+        <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
       </div>
     );
     
@@ -67,7 +67,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
   if (!projection || !assumptions) {
     const content = (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
+      <div className="text-center py-12 bg-gray-50">
         <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           No hay datos para mostrar
@@ -96,7 +96,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
           >
             <Settings className="h-4 w-4" />
             <span>Ajustar supuestos</span>
@@ -106,9 +106,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Cashflow neto anual actual */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA] rounded-lg">
+              <div className="p-2 bg-[#F8F9FA]">
                 <TrendingUp className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -121,9 +121,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
 
           {/* Patrimonio neto estimado a 20 años */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA] rounded-lg">
+              <div className="p-2 bg-[#F8F9FA]">
                 <PiggyBank className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -136,9 +136,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
 
           {/* DSCR actual */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA] rounded-lg">
+              <div className="p-2 bg-[#F8F9FA]">
                 <Target className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -152,7 +152,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         </div>
 
         {/* Main Chart */}
-        <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Proyección a 20 años
           </h3>
@@ -160,7 +160,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         </div>
 
         {/* Assumptions Summary */}
-        <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             Supuestos base
           </h3>
@@ -200,7 +200,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
         {/* Top Impacts */}
         {projection.upcomingImpacts.length > 0 && (
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Top impactos próximos 90 días
             </h3>
@@ -208,7 +208,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
               {projection.upcomingImpacts.map((impact, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-[#F8F9FA] text-primary-700 border border-[#D7DEE7]"
+                  className="inline-flex items-center px-3 py-1 text-sm bg-[#F8F9FA] text-primary-700 border border-[#D7DEE7]"
                 >
                   {impact.description}
                 </div>

@@ -96,7 +96,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <BarChart3 className="h-6 w-6 text-primary-600" />
@@ -111,7 +111,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2"
           >
             <XCircle className="h-5 w-5" />
           </button>
@@ -120,7 +120,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
         <div className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Session Summary */}
-            <div className="bg-primary-50 rounded-lg p-4">
+            <div className="btn-primary-horizon p-4">
               <h4 className="font-medium text-primary-900 mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Session Summary
@@ -155,14 +155,14 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
             </div>
 
             {/* Manual Tests */}
-            <div className="bg-success-50 rounded-lg p-4">
+            <div className="bg-success-50 p-4">
               <h4 className="font-medium text-success-900 mb-3 flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Manual Tests
               </h4>
               <button
                 onClick={runManualTests}
-                className="w-full px-4 py-2 bg-success-600 text-white rounded-md hover:bg-success-700 transition-colors text-sm"
+                className="w-full px-4 py-2 bg-success-600 text-sm"
               >
                 Run QA Checklist
               </button>
@@ -190,7 +190,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
                 {testResults.map((result, index) => (
                   <div
                     key={index}
-                    className={`p-3 border rounded-lg ${getStatusColor(result.status)}`}
+                    className={`p-3 border ${getStatusColor(result.status)}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -215,7 +215,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
           </div>
 
           {/* QA Checklist Reference */}
-          <div className="mt-6 bg-gray-50 rounded-lg p-4">
+          <div className="mt-6 bg-gray-50 p-4">
             <h4 className="font-medium text-gray-900 mb-3">QA Checklist Reference</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>

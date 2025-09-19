@@ -74,25 +74,25 @@ const CobrosPendientes: React.FC = () => {
       subtitle="Gestión de cobros y conciliación"
     >
       <div className="space-y-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Cobros Pendientes</h3>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
                 {pendingRents.length} rentas pendientes
               </span>
-              <button className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
+              <button className="btn-primary-horizon px-4 py-2">
                 Nuevo Cobro
               </button>
             </div>
           </div>
           
           {loading ? (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <div className="bg-gray-50 p-8 text-center">
               <p className="text-gray-500">Cargando cobros pendientes...</p>
             </div>
           ) : pendingRents.length === 0 ? (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <div className="bg-gray-50 p-8 text-center">
               <p className="text-gray-500">No hay cobros pendientes</p>
               <p className="text-sm text-gray-400 mt-1">Todas las rentas están al día</p>
             </div>
@@ -105,7 +105,7 @@ const CobrosPendientes: React.FC = () => {
                 return (
                   <div
                     key={rent.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    className="border border-gray-200 p-4"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -115,7 +115,7 @@ const CobrosPendientes: React.FC = () => {
                             <h4 className="text-sm font-medium text-gray-900">
                               {property?.alias || property?.address || 'Propiedad no encontrada'}
                             </h4>
-                            <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(rent.estado)}`}>
+                            <span className={`px-2 py-1 text-xs ${getStatusColor(rent.estado)}`}>
                               {rent.estado.charAt(0).toUpperCase() + rent.estado.slice(1)}
                             </span>
                           </div>
@@ -134,10 +134,10 @@ const CobrosPendientes: React.FC = () => {
                       </div>
                       
                       <div className="flex space-x-2">
-                        <button className="px-3 py-1 text-xs bg-primary-100 text-primary-700 rounded hover:bg-primary-200 transition-colors">
+                        <button className="btn-primary-horizon px-3 py-1 text-xs text-primary-700 rounded">
                           Conciliar
                         </button>
-                        <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                        <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded">
                           Ver Detalles
                         </button>
                       </div>

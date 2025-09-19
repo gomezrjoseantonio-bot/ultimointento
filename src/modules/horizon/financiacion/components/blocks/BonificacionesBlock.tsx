@@ -243,7 +243,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
   return (
     <div className="space-y-6">
       {/* Maximum Bonification Configuration */}
-      <div className="bg-info-50 border border-info-200 rounded-atlas p-4">
+      <div className="bg-info-50 border border-info-200 p-4">
         <h4 className="font-medium text-atlas-blue mb-3">
           Configuración de Límites
         </h4>
@@ -257,7 +257,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 type="text"
                 value={formatPercentage(maxBonificacion)}
                 onChange={(e) => setMaxBonificacion(parseNumber(e.target.value))}
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">p.p.</span>
@@ -287,10 +287,10 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 type="button"
                 onClick={() => !isAdded && addStandardBonification(template)}
                 disabled={isAdded}
-                className={`p-4 rounded-atlas border-2 text-left transition-all ${
+                className={`p-4 border-2 text-left transition-all ${
                   isAdded
                     ? 'border-ok-200 bg-ok-50 text-ok-700 cursor-default'
-                    : 'border-gray-200 hover:border-atlas-blue hover:bg-primary-50 text-atlas-navy-1 cursor-pointer'
+                    : 'border-gray-200 hover:border-atlas-blue text-atlas-navy-1 cursor-pointer'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -313,14 +313,14 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
         <button
           type="button"
           onClick={() => setShowCustomBonification(!showCustomBonification)}
-          className="inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 rounded-atlas text-atlas-navy-1 hover:border-atlas-blue hover:text-atlas-blue transition-colors"
+          className="inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 text-atlas-navy-1 hover:border-atlas-blue hover:text-atlas-blue"
         >
           <Plus className="h-4 w-4 mr-2" />
           Añadir bonificación personalizada
         </button>
 
         {showCustomBonification && (
-          <div className="mt-4 p-4 border border-gray-200 rounded-atlas bg-gray-50">
+          <div className="mt-4 p-4 border border-gray-200 bg-gray-50">
             <h5 className="font-medium text-atlas-navy-1 mb-3">Nueva Bonificación Personalizada</h5>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
@@ -332,7 +332,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   value={customBonification.nombre}
                   onChange={(e) => setCustomBonification(prev => ({ ...prev, nombre: e.target.value }))}
                   placeholder="Ej: Vinculación especial"
-                  className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                  className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
                 />
               </div>
               <div>
@@ -345,7 +345,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                     value={customBonification.descuentoTIN ? formatPercentage(customBonification.descuentoTIN) : ''}
                     onChange={(e) => setCustomBonification(prev => ({ ...prev, descuentoTIN: parseNumber(e.target.value) }))}
                     placeholder="0,50"
-                    className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
+                    className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">p.p.</span>
@@ -362,7 +362,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 value={customBonification.condicionParametrizable}
                 onChange={(e) => setCustomBonification(prev => ({ ...prev, condicionParametrizable: e.target.value }))}
                 placeholder="Descripción de la condición para aplicar la bonificación"
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
               />
             </div>
             <div className="flex justify-end space-x-2">
@@ -372,7 +372,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   setShowCustomBonification(false);
                   setCustomBonification({ nombre: '', descuentoTIN: 0, condicionParametrizable: '' });
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-atlas text-atlas-navy-1 hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 text-atlas-navy-1"
               >
                 Cancelar
               </button>
@@ -380,7 +380,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 type="button"
                 onClick={addCustomBonification}
                 disabled={!customBonification.nombre || customBonification.descuentoTIN <= 0}
-                className="px-4 py-2 bg-atlas-blue text-white rounded-atlas hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-primary-horizon px-4 py-2 bg-atlas-blue hover: disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Añadir Bonificación
               </button>
@@ -400,7 +400,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
             {(formData.bonificaciones || []).map((bonificacion) => (
               <div 
                 key={bonificacion.id} 
-                className="border border-gray-200 rounded-lg p-4 hover:border-atlas-blue transition-colors"
+                className="border border-gray-200 p-4 hover:border-atlas-blue"
               >
                 {/* Header with checkbox */}
                 <div className="flex items-start space-x-3 mb-3">
@@ -417,7 +417,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   </label>
                   
                   {/* Impact chip */}
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-atlas-blue text-white">
+                  <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-atlas-blue">
                     −{formatPercentage(bonificacion.descuentoTIN)} p.p.
                   </span>
                 </div>
@@ -434,7 +434,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
                 {/* Grace period selector - only show if selected */}
                 {bonificacion.seleccionado && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="btn-secondary-horizon btn-primary-horizon ">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Aplicar como promo durante:
                     </label>
@@ -467,7 +467,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   <button
                     type="button"
                     onClick={() => removeBonification(bonificacion.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    className="text-gray-400 hover:text-red-500"
                     title="Eliminar bonificación"
                   >
                     <X className="h-4 w-4" />
@@ -478,7 +478,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
           </div>
 
           {/* Note about promotional periods */}
-          <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <div className="mt-4 p-3 bg-gray-50 border border-gray-200">
             <p className="text-sm text-gray-600">
               <strong>Nota:</strong> Las bonificaciones promocionales se aplicarán automáticamente durante 
               el período seleccionado. Tras el período promocional, será necesario verificar el cumplimiento 
@@ -490,7 +490,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
       {/* Bonifications Summary */}
       {(formData.bonificaciones || []).length > 0 && (
-        <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 rounded-atlas p-4">
+        <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 p-4">
           <h4 className="font-medium text-atlas-blue mb-3 flex items-center">
             <Calculator className="h-4 w-4 mr-2" />
             Resumen de Bonificaciones
@@ -519,7 +519,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
           {/* Next change information */}
           {calculoLive?.proximoCambio && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-3 ">
               <h5 className="font-medium text-blue-700 mb-1">Próximo cambio</h5>
               <p className="text-sm text-blue-600">
                 <strong>{new Date(calculoLive.proximoCambio.fecha).toLocaleDateString('es-ES')}</strong>
@@ -531,7 +531,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
           {/* Cap warning */}
           {totalBonificaciones > 1.0 && (
-            <div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-lg">
+            <div className="mt-3 p-3 bg-warning-50 border border-warning-200">
               <div className="flex items-start">
                 <AlertTriangle className="h-4 w-4 text-warning-600 flex-shrink-0 mt-0.5" />
                 <div className="ml-2 text-sm">
@@ -575,7 +575,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
       {/* Empty state */}
       {(formData.bonificaciones || []).length === 0 && (
-        <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-atlas">
+        <div className="text-center py-8 border-2 border-dashed border-gray-200">
           <CreditCard className="h-8 w-8 text-text-gray mx-auto mb-2" />
           <p className="text-text-gray">No hay bonificaciones aplicadas</p>
           <p className="text-sm text-text-gray mt-1">

@@ -67,12 +67,12 @@ export default function DiagnosticDashboard() {
       {/* Toggle Button */}
       <button
         onClick={() => setIsVisible(!isVisible)}
-        className="mb-2 px-3 py-2 bg-neutral-800 text-white rounded-lg shadow-lg hover:bg-neutral-700 transition-colors flex items-center gap-2"
+        className="mb-2 px-3 py-2 bg-neutral-800 shadow-lg flex items-center gap-2"
       >
         <Activity className="w-4 h-4" />
         <span className="text-xs font-medium">Diagnóstico</span>
         {events.length > 0 && (
-          <span className="bg-primary-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+          <span className="btn-primary-horizon text-xs px-1.5 py-0.5">
             {events.length}
           </span>
         )}
@@ -80,7 +80,7 @@ export default function DiagnosticDashboard() {
 
       {/* Events Panel */}
       {isVisible && (
-        <div className="w-96 max-h-96 bg-white rounded-lg shadow-xl border border-neutral-200 overflow-hidden">
+        <div className="w-96 max-h-96 bg-white shadow-xl border border-neutral-200 overflow-hidden">
           <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200">
             <h3 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
               <Activity className="w-4 h-4" />

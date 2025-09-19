@@ -37,24 +37,24 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
 
     const colors = {
       warning: {
-        bg: '#FFFBEB',
-        border: '#F59E0B',
-        icon: '#F59E0B',
-        confirmBg: '#F59E0B',
+        bg: 'var(--bg)',
+        border: 'var(--warn)',
+        icon: 'var(--warn)',
+        confirmBg: 'var(--warn)',
         confirmText: '#FFFFFF'
       },
       danger: {
-        bg: '#FEF2F2',
-        border: '#DC2626',
-        icon: '#DC2626',
-        confirmBg: '#DC2626',
+        bg: 'var(--bg)',
+        border: 'var(--error)',
+        icon: 'var(--error)',
+        confirmBg: 'var(--error)',
         confirmText: '#FFFFFF'
       },
       info: {
-        bg: '#EFF6FF',
-        border: '#042C5E',
-        icon: '#042C5E',
-        confirmBg: '#042C5E',
+        bg: 'var(--bg)',
+        border: 'var(--atlas-blue)',
+        icon: 'var(--atlas-blue)',
+        confirmBg: 'var(--atlas-blue)',
         confirmText: '#FFFFFF'
       }
     };

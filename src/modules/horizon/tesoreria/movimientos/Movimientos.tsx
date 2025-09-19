@@ -239,7 +239,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
       </div>
     );
   }
@@ -272,7 +272,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
             <select
               value={selectedAccountId || ''}
               onChange={(e) => handleAccountChange(e.target.value ? parseInt(e.target.value) : null)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="btn-secondary-horizon "
             >
               <option value="">Todas las cuentas</option>
               {accounts.map(account => (
@@ -287,15 +287,13 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowNewMovementModal(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
+              className="btn-primary-horizon flex items-center space-x-2 px-4 py-2 >
               <Plus className="h-4 w-4" />
               <span>Nuevo movimiento</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
+              className="btn-accent-horizon flex items-center space-x-2 px-4 py-2 >
               <Upload className="h-4 w-4" />
               <span>Importar extracto</span>
             </button>
@@ -305,25 +303,25 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
         {/* Monthly totals for selected account */}
         {selectedAccount && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="bg-gray-50 p-3">
               <p className="text-sm text-gray-500">Saldo actual</p>
               <p className={`text-lg font-semibold ${(selectedAccount.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatEuro(selectedAccount.balance || 0)}
               </p>
             </div>
-            <div className="bg-green-50 p-3 rounded-lg">
+            <div className="btn-accent-horizon p-3">
               <p className="text-sm text-green-600">Ingresos del mes</p>
               <p className="text-lg font-semibold text-green-700">
                 {formatEuro(monthlyTotals.ingresos)}
               </p>
             </div>
-            <div className="bg-red-50 p-3 rounded-lg">
+            <div className="btn-danger p-3">
               <p className="text-sm text-red-600">Gastos del mes</p>
               <p className="text-lg font-semibold text-red-700">
                 {formatEuro(monthlyTotals.gastos)}
               </p>
             </div>
-            <div className={`p-3 rounded-lg ${monthlyTotals.neto >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`p-3 ${monthlyTotals.neto >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
               <p className={`text-sm ${monthlyTotals.neto >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 Neto del mes
               </p>
@@ -347,7 +345,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
                 placeholder="Buscar movimientos..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                className="btn-secondary-horizon pl-10 pr-4 py-2 "
               />
             </div>
 
@@ -355,7 +353,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="btn-secondary-horizon "
             >
               <option value="all">Todos los orígenes</option>
               <option value="import">Extracto bancario</option>
@@ -364,7 +362,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
             </select>
 
             {/* View mode toggle */}
-            <div className="flex items-center border border-gray-300 rounded-lg">
+            <div className="flex items-center border border-gray-300">
               <button
                 onClick={() => setViewMode('calendar')}
                 className={`px-3 py-2 text-sm ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'}`}
@@ -432,7 +430,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
         ) : (
           <div className="p-6">
             {/* List view - simplified for now */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="bg-white shadow-sm border border-gray-200">
               <div className="p-4">
                 <h3 className="text-lg font-medium text-gray-900">Lista de movimientos</h3>
                 <p className="text-sm text-gray-500 mt-1">

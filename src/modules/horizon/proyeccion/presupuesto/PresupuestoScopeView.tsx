@@ -130,7 +130,7 @@ const PresupuestoScopeView: React.FC = () => {
         subtitle="Gestión de presupuestos con ámbitos PERSONAL e INMUEBLES"
       >
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
         </div>
       </PageLayout>
     );
@@ -143,7 +143,7 @@ const PresupuestoScopeView: React.FC = () => {
         title="Presupuesto Anual" 
         subtitle="Gestión de presupuestos con ámbitos PERSONAL e INMUEBLES"
       >
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <div className="text-center py-12 bg-gray-50">
           <Calculator className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No hay presupuestos para {currentYear}
@@ -153,7 +153,7 @@ const PresupuestoScopeView: React.FC = () => {
           </p>
           <button
             onClick={handleCreateBudget}
-            className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
           >
             <Plus className="h-5 w-5" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -182,7 +182,7 @@ const PresupuestoScopeView: React.FC = () => {
             onExport={handleExport}
           />
         ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <div className="text-center py-12 bg-gray-50">
             <Calculator className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Presupuestos sin líneas
@@ -192,7 +192,7 @@ const PresupuestoScopeView: React.FC = () => {
             </p>
             <button
               onClick={handleCreateBudget}
-              className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+              className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
             >
               <Plus className="h-5 w-5" />
               <span>Recrear Presupuesto {currentYear}</span>

@@ -171,7 +171,7 @@ const ProfileSeederPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="bg-warning-50 border border-yellow-200 rounded-lg p-4">
+      <div className="bg-warning-50 border border-yellow-200 p-4">
         <div className="flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-warning-600" />
           <h1 className="text-xl font-semibold text-yellow-900">
@@ -185,12 +185,12 @@ const ProfileSeederPage: React.FC = () => {
       </div>
 
       {/* File Upload Section */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h2 className="text-lg font-medium text-neutral-900 mb-4">
           Subir Archivos Reales
         </h2>
         
-        <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
+        <div className="border-2 border-dashed border-neutral-300 p-6 text-center">
           <Upload className="w-8 h-8 text-neutral-400 mx-auto mb-3" />
           <div className="space-y-2">
             <p className="text-neutral-600">
@@ -218,7 +218,7 @@ const ProfileSeederPage: React.FC = () => {
               {files.map((file, index) => (
                 <div 
                   key={index}
-                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+                  className="flex items-center justify-between p-3 bg-neutral-50"
                 >
                   <div className="flex items-center gap-3">
                     <FileText className="w-4 h-4 text-neutral-400" />
@@ -231,7 +231,7 @@ const ProfileSeederPage: React.FC = () => {
                     <button
                       onClick={() => processFile(file)}
                       disabled={processingFile === file}
-                      className="px-3 py-1 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                      className="btn-primary-horizon px-3 py-1 text-xs disabled:opacity-50"
                     >
                       {processingFile === file ? 'Procesando...' : 'Procesar'}
                     </button>
@@ -251,13 +251,13 @@ const ProfileSeederPage: React.FC = () => {
 
       {/* Preview and Mapping Section */}
       {showMapping && previewData && currentProfile && (
-        <div className="bg-white rounded-lg border border-neutral-200 p-6">
+        <div className="bg-white border border-neutral-200 p-6">
           <h2 className="text-lg font-medium text-neutral-900 mb-4">
             Mapear Campos - {currentProfile.fileName}
           </h2>
 
           {previewData.sheetName && (
-            <div className="mb-4 p-3 bg-primary-50 rounded-lg">
+            <div className="btn-primary-horizon mb-4 p-3">
               <p className="text-sm text-primary-700">
                 Hoja detectada: <strong>{previewData.sheetName}</strong>
               </p>
@@ -270,7 +270,7 @@ const ProfileSeederPage: React.FC = () => {
               <h3 className="text-sm font-medium text-neutral-700 mb-3">
                 Vista previa (primeras 5 filas)
               </h3>
-              <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+              <div className="overflow-x-auto border border-neutral-200">
                 <table className="min-w-full text-xs">
                   <thead className="bg-neutral-50">
                     <tr>
@@ -314,7 +314,7 @@ const ProfileSeederPage: React.FC = () => {
                       ...currentProfile,
                       bankKey: e.target.value
                     })}
-                    className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                    className="w-full border border-neutral-300 px-3 py-2 text-sm"
                     placeholder="Ej: ING, BBVA, Santander..."
                   />
                 </div>
@@ -331,7 +331,7 @@ const ProfileSeederPage: React.FC = () => {
                     <select
                       value={currentProfile.mappedFields[field]}
                       onChange={(e) => updateMapping(field, e.target.value)}
-                      className="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-neutral-300 px-3 py-2 text-sm"
                     >
                       <option value="">-- Seleccionar columna --</option>
                       {previewData.headers.map((header, index) => (
@@ -347,15 +347,13 @@ const ProfileSeederPage: React.FC = () => {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={addToRegistry}
-                  className="flex items-center gap-2 px-4 py-2 bg-success-600 text-white rounded-lg hover:bg-success-700"
-                >
+                  className="flex items-center gap-2 px-4 py-2 bg-success-600 >
                   <Plus className="w-4 h-4" />
                   Añadir al registro
                 </button>
                 <button
                   onClick={() => setShowMapping(false)}
-                  className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50"
-                >
+                  className="px-4 py-2 border border-neutral-300 >
                   Cancelar
                 </button>
               </div>
@@ -365,7 +363,7 @@ const ProfileSeederPage: React.FC = () => {
       )}
 
       {/* Registry Section */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-neutral-900">
             Registro de Perfiles ({capturedProfiles.length})
@@ -373,7 +371,7 @@ const ProfileSeederPage: React.FC = () => {
           <button
             onClick={exportBankProfiles}
             disabled={capturedProfiles.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+            className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             Exportar bank-profiles.json
@@ -391,7 +389,7 @@ const ProfileSeederPage: React.FC = () => {
             {capturedProfiles.map((profile, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg"
+                className="flex items-center justify-between p-4 border border-neutral-200"
               >
                 <div>
                   <h3 className="font-medium text-neutral-900">{profile.bankKey}</h3>
@@ -415,7 +413,7 @@ const ProfileSeederPage: React.FC = () => {
       </div>
 
       {/* Instructions */}
-      <div className="bg-neutral-50 rounded-lg p-6">
+      <div className="bg-neutral-50 p-6">
         <h3 className="font-medium text-neutral-900 mb-3">Instrucciones de uso</h3>
         <ol className="text-sm text-neutral-700 space-y-2 list-decimal list-inside">
           <li>Sube archivos reales de diferentes bancos (CSV, XLS, XLSX)</li>

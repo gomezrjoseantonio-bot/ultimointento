@@ -72,7 +72,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       </div>
 
       {/* Important notes */}
-      <div className="bg-warning-50 border border-yellow-200 rounded-lg p-6 mb-8">
+      <div className="bg-warning-50 border border-yellow-200 p-6 mb-8">
         <h4 className="font-semibold text-yellow-900 mb-2">Importante</h4>
         <div className="text-sm text-yellow-800 space-y-1">
           <p>• <strong>Cuentas obligatorias:</strong> Todas las líneas necesitan una cuenta de cargo/abono antes de guardar</p>
@@ -86,7 +86,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="btn-primary-horizon flex items-center px-6 py-3 font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

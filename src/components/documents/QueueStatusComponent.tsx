@@ -59,7 +59,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
   };
 
   const getStatusBadge = (status: QueueJob['status']) => {
-    const baseClasses = "inline-flex px-2 py-1 text-xs font-medium rounded-full";
+    const baseClasses = "inline-flex px-2 py-1 text-xs font-medium";
     
     switch (status) {
       case 'PENDING':
@@ -83,7 +83,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
   }
 
   return (
-    <div className={`bg-white border rounded-lg shadow-sm ${className}`}>
+    <div className={`bg-white border shadow-sm ${className}`}>
       {/* Header */}
       <div 
         className="flex items-center justify-between p-3 cursor-pointer"
@@ -114,7 +114,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
         
         <div className="flex items-center space-x-2">
           {activeJobs.length > 0 && (
-            <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
+            <span className="btn-primary-horizon inline-flex px-2 py-1 text-xs font-medium text-primary-800">
               {activeJobs.length} activos
             </span>
           )}
@@ -147,7 +147,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
                     {job.status === 'ERROR' && (
                       <button
                         onClick={() => handleRetry(job.id)}
-                        className="text-xs px-2 py-1 bg-error-100 text-error-700 rounded hover:bg-red-200 transition-colors"
+                        className="btn-danger text-xs px-2 py-1 bg-error-100 text-error-700 rounded hover:"
                       >
                         Reintentar
                       </button>

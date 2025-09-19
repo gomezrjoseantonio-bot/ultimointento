@@ -162,8 +162,8 @@ const IngresosPanel: React.FC = () => {
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-32 bg-gray-200 rounded-lg"></div>
-        <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-gray-200"></div>
+        <div className="h-64 bg-gray-200"></div>
       </div>
     );
   }
@@ -175,7 +175,7 @@ const IngresosPanel: React.FC = () => {
         <div className="flex gap-2">
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600"
           >
             <Plus className="w-4 h-4" />
             Nuevo Ingreso
@@ -191,7 +191,7 @@ const IngresosPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-48 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="previsto">Previsto</option>
@@ -208,14 +208,14 @@ const IngresosPanel: React.FC = () => {
             placeholder="Buscar por contraparte, inmueble o origen..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Total Ingresos</h3>
             <DollarSign className="w-5 h-5 text-gray-400" />
@@ -225,7 +225,7 @@ const IngresosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Previstos</h3>
             <Calendar className="w-5 h-5 text-gray-400" />
@@ -235,7 +235,7 @@ const IngresosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Cobrados</h3>
             <FileText className="w-5 h-5 text-gray-400" />
@@ -245,7 +245,7 @@ const IngresosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Incompletos</h3>
             <User className="w-5 h-5 text-gray-400" />
@@ -257,7 +257,7 @@ const IngresosPanel: React.FC = () => {
       </div>
 
       {/* Ingresos Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -292,7 +292,7 @@ const IngresosPanel: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getOrigenColor(ingreso.origen)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getOrigenColor(ingreso.origen)}`}>
                       {ingreso.origen === 'contrato_id' ? 'Contrato' :
                        ingreso.origen === 'nomina_id' ? 'Nómina' : 'Documento'}
                     </span>
@@ -312,19 +312,19 @@ const IngresosPanel: React.FC = () => {
                     {new Date(ingreso.fecha_prevista_cobro).toLocaleDateString('es-ES')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(ingreso.estado)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(ingreso.estado)}`}>
                       {ingreso.estado}
                     </span>
                     {ingreso.movement_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
+                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs text-primary-800">
                           Conciliado
                         </span>
                       </div>
                     )}
                     {ingreso.from_doc && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-warning-100 text-yellow-800 rounded-full">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-warning-100 text-yellow-800">
                           <FileText className="w-3 h-3 mr-1" />
                           OCR
                         </span>
@@ -353,7 +353,7 @@ const IngresosPanel: React.FC = () => {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nuevo Ingreso</h3>
               <button
@@ -375,7 +375,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.contraparte}
                     onChange={(e) => setFormData({...formData, contraparte: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -387,7 +387,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.origen}
                     onChange={(e) => setFormData({...formData, origen: e.target.value as IngresoOrigen})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     {origenTypes.map(origen => (
                       <option key={origen.value} value={origen.value}>
@@ -408,7 +408,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -421,7 +421,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.fecha_prevista_cobro}
                     onChange={(e) => setFormData({...formData, fecha_prevista_cobro: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -437,7 +437,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.importe}
                     onChange={(e) => setFormData({...formData, importe: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -449,7 +449,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.moneda}
                     onChange={(e) => setFormData({...formData, moneda: e.target.value as 'EUR' | 'USD' | 'GBP'})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
@@ -467,7 +467,7 @@ const IngresosPanel: React.FC = () => {
                     required
                     value={formData.destino}
                     onChange={(e) => setFormData({...formData, destino: e.target.value as IngresoDestino})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="personal">Personal</option>
                     <option value="inmueble_id">Inmueble</option>
@@ -483,7 +483,7 @@ const IngresosPanel: React.FC = () => {
                       required
                       value={formData.destino_id}
                       onChange={(e) => setFormData({...formData, destino_id: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value={0}>Seleccionar inmueble</option>
                       {properties.map(property => (
@@ -500,13 +500,13 @@ const IngresosPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-gray-700 bg-gray-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 bg-gray-600"
                 >
                   Guardar Ingreso
                 </button>

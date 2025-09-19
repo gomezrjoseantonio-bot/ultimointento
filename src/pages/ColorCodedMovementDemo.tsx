@@ -13,7 +13,7 @@ const ColorCodedMovementDemo: React.FC = () => {
           Color-Coded Movement Display Demo
         </h1>
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">✅ Requirements Implementation</h2>
           
           <div className="grid md:grid-cols-2 gap-6">
@@ -51,13 +51,13 @@ const ColorCodedMovementDemo: React.FC = () => {
                 <div className="font-mono bg-gray-100 p-2 rounded">
                   <span className="text-red-600 line-through">Before: Santander - Cuenta Corriente (**1234)</span>
                 </div>
-                <div className="font-mono bg-green-100 p-2 rounded">
+                <div className="btn-accent-horizon font-mono p-2 rounded">
                   <span className="text-green-700">✅ After: Santander · 1234</span>
                 </div>
-                <div className="font-mono bg-green-100 p-2 rounded">
+                <div className="btn-accent-horizon font-mono p-2 rounded">
                   <span className="text-green-700">✅ After: BBVA · 5678</span>
                 </div>
-                <div className="font-mono bg-green-100 p-2 rounded">
+                <div className="btn-accent-horizon font-mono p-2 rounded">
                   <span className="text-green-700">✅ After: CaixaBank · 9012</span>
                 </div>
               </div>
@@ -66,26 +66,26 @@ const ColorCodedMovementDemo: React.FC = () => {
         </div>
 
         {/* Movement Categories */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white shadow-md p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Movement Categories (Conceptos)</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <h3 className="font-medium text-gray-900 mb-3">Supported Concepts</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="btn-primary-horizon w-3 h-3"></span>
                   <span><strong>Luz</strong> (Light/Electricity)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="btn-primary-horizon w-3 h-3"></span>
                   <span><strong>Agua</strong> (Water)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="btn-primary-horizon w-3 h-3"></span>
                   <span><strong>Telco</strong> (Telecommunications)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                  <span className="btn-primary-horizon w-3 h-3"></span>
                   <span><strong>Alquiler</strong> (Rent)</span>
                 </div>
               </div>
@@ -105,7 +105,7 @@ const ColorCodedMovementDemo: React.FC = () => {
         </div>
 
         {/* Sample Movement Table */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4">Sample Movement Display</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -119,8 +119,7 @@ const ColorCodedMovementDemo: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="p-3">15/09/2025</td>
+                <tr className="border-b <td className="p-3">15/09/2025</td>
                   <td className="p-3">Luz</td>
                   <td className="p-3 text-right text-red-600 font-medium">-85.50 €</td>
                   <td className="p-3">Santander · 1234</td>
@@ -128,8 +127,7 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="confirmado" movementType="Gasto" />
                   </td>
                 </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="p-3">14/09/2025</td>
+                <tr className="border-b <td className="p-3">14/09/2025</td>
                   <td className="p-3">Agua</td>
                   <td className="p-3 text-right text-red-600 font-medium">-45.20 €</td>
                   <td className="p-3">BBVA · 5678</td>
@@ -137,8 +135,7 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="previsto" movementType="Gasto" />
                   </td>
                 </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="p-3">13/09/2025</td>
+                <tr className="border-b <td className="p-3">13/09/2025</td>
                   <td className="p-3">Alquiler</td>
                   <td className="p-3 text-right text-green-600 font-medium">+1,200.00 €</td>
                   <td className="p-3">CaixaBank · 9012</td>
@@ -146,8 +143,7 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="previsto" movementType="Ingreso" />
                   </td>
                 </tr>
-                <tr className="border-b hover:bg-gray-50">
-                  <td className="p-3">12/09/2025</td>
+                <tr className="border-b <td className="p-3">12/09/2025</td>
                   <td className="p-3">Telco</td>
                   <td className="p-3 text-right text-red-600 font-medium">-55.99 €</td>
                   <td className="p-3">Santander · 1234</td>

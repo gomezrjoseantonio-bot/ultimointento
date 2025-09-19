@@ -201,8 +201,8 @@ const GastosPanel: React.FC = () => {
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-32 bg-gray-200 rounded-lg"></div>
-        <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-gray-200"></div>
+        <div className="h-64 bg-gray-200"></div>
       </div>
     );
   }
@@ -214,7 +214,7 @@ const GastosPanel: React.FC = () => {
         <div className="flex gap-2">
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600"
           >
             <Plus className="w-4 h-4" />
             Nuevo Gasto
@@ -230,7 +230,7 @@ const GastosPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-48 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="completo">Completo</option>
@@ -247,14 +247,14 @@ const GastosPanel: React.FC = () => {
             placeholder="Buscar por proveedor, inmueble o categoría..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Total Gastos</h3>
             <CreditCard className="w-5 h-5 text-gray-400" />
@@ -264,7 +264,7 @@ const GastosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Completos</h3>
             <FileText className="w-5 h-5 text-gray-400" />
@@ -274,7 +274,7 @@ const GastosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Pagados</h3>
             <Calendar className="w-5 h-5 text-gray-400" />
@@ -284,7 +284,7 @@ const GastosPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Incompletos</h3>
             <User className="w-5 h-5 text-gray-400" />
@@ -296,7 +296,7 @@ const GastosPanel: React.FC = () => {
       </div>
 
       {/* Gastos Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -331,7 +331,7 @@ const GastosPanel: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(gasto.categoria_AEAT)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getCategoryColor(gasto.categoria_AEAT)}`}>
                       {gasto.categoria_AEAT}
                     </span>
                   </td>
@@ -352,12 +352,12 @@ const GastosPanel: React.FC = () => {
                     {new Date(gasto.fecha_emision).toLocaleDateString('es-ES')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(gasto.estado)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(gasto.estado)}`}>
                       {gasto.estado}
                     </span>
                     {gasto.movement_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
+                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs text-primary-800">
                           Conciliado
                         </span>
                       </div>
@@ -385,7 +385,7 @@ const GastosPanel: React.FC = () => {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nuevo Gasto</h3>
               <button
@@ -407,7 +407,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.proveedor_nombre}
                     onChange={(e) => setFormData({...formData, proveedor_nombre: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -419,7 +419,7 @@ const GastosPanel: React.FC = () => {
                     type="text"
                     value={formData.proveedor_nif}
                     onChange={(e) => setFormData({...formData, proveedor_nif: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -434,7 +434,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -447,7 +447,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.fecha_pago_prevista}
                     onChange={(e) => setFormData({...formData, fecha_pago_prevista: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -463,7 +463,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -476,7 +476,7 @@ const GastosPanel: React.FC = () => {
                     step="0.01"
                     value={formData.base}
                     onChange={(e) => setFormData({...formData, base: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -489,7 +489,7 @@ const GastosPanel: React.FC = () => {
                     step="0.01"
                     value={formData.iva}
                     onChange={(e) => setFormData({...formData, iva: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -502,7 +502,7 @@ const GastosPanel: React.FC = () => {
                   required
                   value={formData.categoria_AEAT}
                   onChange={(e) => setFormData({...formData, categoria_AEAT: e.target.value as AEATFiscalType})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {aeatCategories.map(category => (
                     <option key={category.value} value={category.value}>
@@ -521,7 +521,7 @@ const GastosPanel: React.FC = () => {
                     required
                     value={formData.destino}
                     onChange={(e) => handleDestinoChange(e.target.value as GastoDestino)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="personal">Personal</option>
                     <option value="inmueble_id">Inmueble</option>
@@ -537,7 +537,7 @@ const GastosPanel: React.FC = () => {
                       required
                       value={formData.destino_id}
                       onChange={(e) => setFormData({...formData, destino_id: parseInt(e.target.value)})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value={0}>Seleccionar inmueble</option>
                       {properties.map(property => (
@@ -554,13 +554,13 @@ const GastosPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-gray-700 bg-gray-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 bg-gray-600"
                 >
                   Guardar Gasto
                 </button>

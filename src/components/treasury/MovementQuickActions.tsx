@@ -48,7 +48,7 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
       return (
         <button
           onClick={() => onConfirm(movement)}
-          className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="btn-primary-horizon flex items-center justify-center w-8 h-8"
           title="Marcar como confirmado"
         >
           <Check className="w-4 h-4" />
@@ -60,7 +60,7 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
       return (
         <button
           onClick={() => onEdit(movement)}
-          className="flex items-center justify-center w-8 h-8 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          className="flex items-center justify-center w-8 h-8 bg-gray-600"
           title="Editar movimiento"
         >
           <Edit2 className="w-4 h-4" />
@@ -108,7 +108,7 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
       <div className="relative">
         <button
           onClick={() => setShowMenu(!showMenu)}
-          className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600"
           title="Más acciones"
         >
           <MoreVertical className="w-4 h-4" />
@@ -123,7 +123,7 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
             />
             
             {/* Actions menu */}
-            <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+            <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 shadow-lg z-20">
               <div className="py-1">
                 {secondaryActions.map((action, index) => (
                   <button
@@ -131,9 +131,9 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
                     onClick={() => handleAction(action.action)}
                     disabled={!action.enabled}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors
+                      w-full flex items-center gap-3 px-3 py-2 text-sm text-left
                       ${action.enabled 
-                        ? 'text-gray-700 hover:bg-gray-50' 
+                        ? 'text-gray-700 
                         : 'text-gray-400 cursor-not-allowed'
                       }
                     `}

@@ -133,7 +133,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           {activeTab !== 'CONSOLIDADO' && onAddLine && (
             <button
               onClick={handleAddLineForScope}
-              className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="btn-primary-horizon inline-flex items-center px-4 py-2"
             >
               <Plus className="h-4 w-4 mr-2" />
               Añadir Línea
@@ -144,7 +144,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           {onExport && (
             <button
               onClick={() => onExport(activeTab)}
-              className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-gray-600"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
@@ -161,7 +161,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
-                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -170,7 +170,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
                 {getTabIcon(tab)}
                 <span>{getTabTitle(tab)}</span>
                 {tab === 'CONSOLIDADO' && (
-                  <span className="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full">
+                  <span className="btn-primary-horizon text-primary-800 text-xs px-2 py-1">
                     Auto
                   </span>
                 )}
@@ -182,7 +182,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
 
       {/* Special notice for consolidated view */}
       {activeTab === 'CONSOLIDADO' && (
-        <div className="bg-info-50 border border-info-200 rounded-lg p-4">
+        <div className="bg-info-50 border border-info-200 p-4">
           <div className="flex items-start space-x-3">
             <TrendingUp className="h-5 w-5 text-info-600 mt-0.5" />
             <div>
@@ -190,8 +190,8 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
               <p className="text-sm text-info-800 mt-1">
                 Esta vista muestra la suma automática de los presupuestos PERSONAL e INMUEBLES. 
                 Las líneas se distinguen por colores: 
-                <span className="inline-block w-3 h-3 bg-primary-500 rounded-full mx-1"></span>Personal 
-                <span className="inline-block w-3 h-3 bg-success-500 rounded-full mx-1"></span>Inmuebles
+                <span className="btn-primary-horizon inline-block w-3 h-3 mx-1"></span>Personal 
+                <span className="inline-block w-3 h-3 bg-success-500 mx-1"></span>Inmuebles
               </p>
               <p className="text-sm text-info-700 mt-2">
                 <strong>Nota:</strong> Para editar líneas, cambia a las pestañas específicas de cada ámbito.
@@ -212,9 +212,9 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="bg-success-100 p-3 rounded-lg">
+            <div className="bg-success-100 p-3">
               <TrendingUp className="h-6 w-6 text-success-600" />
             </div>
             <div className="ml-4">
@@ -235,9 +235,9 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="bg-error-100 p-3 rounded-lg">
+            <div className="bg-error-100 p-3">
               <TrendingUp className="h-6 w-6 text-error-600 transform rotate-180" />
             </div>
             <div className="ml-4">
@@ -258,9 +258,9 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="bg-primary-100 p-3 rounded-lg">
+            <div className="btn-primary-horizon p-3">
               <TrendingUp className="h-6 w-6 text-primary-600" />
             </div>
             <div className="ml-4">

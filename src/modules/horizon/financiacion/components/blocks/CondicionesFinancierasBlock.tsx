@@ -53,7 +53,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               min="0"
               max="999999.99"
               step="0.01"
-              className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
+              className={`w-full border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
                   ? 'border-error-300 focus:border-error-500' 
                   : 'border-gray-300 focus:border-atlas-blue'
@@ -81,7 +81,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               onChange={(e) => updateFormData({ plazoTotal: parseInt(e.target.value) || 0 })}
               placeholder="25"
               min="1"
-              className={`flex-1 rounded-atlas border shadow-sm focus:ring-atlas-blue ${
+              className={`flex-1 border shadow-sm focus:ring-atlas-blue ${
                 getFieldError('plazoTotal') 
                   ? 'border-error-300 focus:border-error-500' 
                   : 'border-gray-300 focus:border-atlas-blue'
@@ -141,7 +141,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               onChange={(e) => updateFormData({ carenciaMeses: parseInt(e.target.value) || undefined })}
               placeholder="6"
               min="1"
-              className="w-32 rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              className="w-32 border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
             />
           </div>
         )}
@@ -181,7 +181,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
 
       {/* Fixed Rate Details */}
       {formData.tipo === 'FIJO' && (
-        <div className="bg-primary-50 p-4 rounded-atlas border border-primary-200">
+        <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
           <h4 className="font-medium text-atlas-blue mb-3">Configuración Tipo Fijo</h4>
           <div>
             <label htmlFor="tinFijo" className="block text-sm font-medium text-atlas-navy-1 mb-2">
@@ -194,7 +194,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.tinFijo ? formatPercentage(formData.tinFijo) : ''}
                 onChange={(e) => updateFormData({ tinFijo: parseNumber(e.target.value) })}
                 placeholder="3,45"
-                className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
+                className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                   getFieldError('tinFijo') 
                     ? 'border-error-300 focus:border-error-500' 
                     : 'border-gray-300 focus:border-atlas-blue'
@@ -213,7 +213,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
 
       {/* Variable Rate Details */}
       {formData.tipo === 'VARIABLE' && (
-        <div className="bg-warning-50 p-4 rounded-atlas border border-warning-200">
+        <div className="bg-warning-50 p-4 border border-warning-200">
           <h4 className="font-medium text-warn mb-3">Configuración Tipo Variable</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -224,7 +224,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 id="indice"
                 value={formData.indice || 'EURIBOR'}
                 onChange={(e) => updateFormData({ indice: e.target.value as 'EURIBOR' | 'OTRO' })}
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
               >
                 <option value="EURIBOR">EURIBOR</option>
                 <option value="OTRO">Otro índice</option>
@@ -242,7 +242,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
                   onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
                   placeholder="4,20"
-                  className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
+                  className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                     getFieldError('valorIndice') 
                       ? 'border-error-300 focus:border-error-500' 
                       : 'border-gray-300 focus:border-atlas-blue'
@@ -268,7 +268,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
                   onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
                   placeholder="0,85"
-                  className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
+                  className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                     getFieldError('diferencial') 
                       ? 'border-error-300 focus:border-error-500' 
                       : 'border-gray-300 focus:border-atlas-blue'
@@ -292,7 +292,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <button
                 type="button"
                 onClick={() => updateFormData({ revision: 6 })}
-                className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                className={`px-4 py-2 border-2 transition-all ${
                   formData.revision === 6
                     ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
                     : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
@@ -303,7 +303,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <button
                 type="button"
                 onClick={() => updateFormData({ revision: 12 })}
-                className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                className={`px-4 py-2 border-2 transition-all ${
                   formData.revision === 12
                     ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
                     : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
@@ -318,7 +318,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
 
       {/* Mixed Rate Details */}
       {formData.tipo === 'MIXTO' && (
-        <div className="bg-info-50 p-4 rounded-atlas border border-info-200">
+        <div className="bg-info-50 p-4 border border-info-200">
           <h4 className="font-medium text-atlas-blue mb-3">Configuración Tipo Mixto</h4>
           
           {/* Fixed portion */}
@@ -336,7 +336,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   onChange={(e) => updateFormData({ tramoFijoAnos: parseInt(e.target.value) || undefined })}
                   placeholder="5"
                   min="1"
-                  className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue ${
+                  className={`w-full border shadow-sm focus:ring-atlas-blue ${
                     getFieldError('tramoFijoAnos') 
                       ? 'border-error-300 focus:border-error-500' 
                       : 'border-gray-300 focus:border-atlas-blue'
@@ -358,7 +358,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     value={formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : ''}
                     onChange={(e) => updateFormData({ tinTramoFijo: parseNumber(e.target.value) })}
                     placeholder="2,95"
-                    className={`w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 ${
+                    className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                       getFieldError('tinTramoFijo') 
                         ? 'border-error-300 focus:border-error-500' 
                         : 'border-gray-300 focus:border-atlas-blue'
@@ -387,7 +387,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   id="indiceMixto"
                   value={formData.indice || 'EURIBOR'}
                   onChange={(e) => updateFormData({ indice: e.target.value as 'EURIBOR' | 'OTRO' })}
-                  className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                  className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
                 >
                   <option value="EURIBOR">EURIBOR</option>
                   <option value="OTRO">Otro índice</option>
@@ -405,7 +405,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
                     onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
                     placeholder="4,20"
-                    className="w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
@@ -424,7 +424,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
                     onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
                     placeholder="0,85"
-                    className="w-full rounded-atlas border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
@@ -441,7 +441,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 <button
                   type="button"
                   onClick={() => updateFormData({ revision: 6 })}
-                  className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                  className={`px-4 py-2 border-2 transition-all ${
                     formData.revision === 6
                       ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
                       : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
@@ -452,7 +452,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 <button
                   type="button"
                   onClick={() => updateFormData({ revision: 12 })}
-                  className={`px-4 py-2 rounded-atlas border-2 transition-all ${
+                  className={`px-4 py-2 border-2 transition-all ${
                     formData.revision === 12
                       ? 'border-atlas-blue bg-primary-50 text-atlas-blue'
                       : 'border-gray-200 hover:border-gray-300 text-atlas-navy-1'
@@ -481,7 +481,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionApertura ? formatPercentage(formData.comisionApertura) : ''}
                 onChange={(e) => updateFormData({ comisionApertura: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>
@@ -500,7 +500,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : ''}
                 onChange={(e) => updateFormData({ comisionMantenimiento: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">€</span>
@@ -519,7 +519,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : ''}
                 onChange={(e) => updateFormData({ comisionAmortizacionAnticipada: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>
@@ -531,7 +531,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
 
       {/* Live Calculation Display */}
       {calculoLive && (
-        <div className="bg-ok-50 border border-ok-200 rounded-atlas p-4">
+        <div className="bg-ok-50 border border-ok-200 p-4">
           <h4 className="font-medium text-ok-700 mb-3 flex items-center">
             <Calculator className="h-4 w-4 mr-2" />
             Cálculo en vivo

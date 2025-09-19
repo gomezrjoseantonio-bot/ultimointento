@@ -474,7 +474,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div>
@@ -492,7 +492,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg"
+            className="p-2"
           >
             <X className="w-5 h-5" />
           </button>
@@ -501,7 +501,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           {error && (
-            <div className="mb-4 p-4 bg-error-50 border border-error-200 rounded-lg">
+            <div className="mb-4 p-4 bg-error-50 border border-error-200">
               <div className="flex items-center gap-2 text-error-800">
                 <AlertCircle className="w-4 h-4" />
                 <span className="font-medium">Error</span>
@@ -513,7 +513,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
           {/* Step 1: File Loading */}
           {step === 1 && (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <div className="btn-secondary-horizon animate-spin h-12 w-12 "></div>
               <p className="text-neutral-600">Procesando archivo...</p>
             </div>
           )}
@@ -521,7 +521,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
           {/* Step 2: Bank Detection */}
           {step === 2 && (
             <div className="space-y-6">
-              <div className="bg-primary-50 p-4 rounded-lg">
+              <div className="btn-primary-horizon p-4">
                 <h3 className="font-medium text-primary-900 mb-2">Archivo detectado</h3>
                 <p className="text-sm text-primary-700">
                   {file?.name} ({parsedData?.headers.length} columnas, {parsedData?.rows.length} filas)
@@ -535,7 +535,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
 
               {/* Auto-mapping failure banner as required by problem statement */}
               {!selectedTemplate && parsedData && (
-                <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
+                <div className="bg-warning-50 border border-warning-200 p-4">
                   <div className="flex items-center gap-2 text-warning-800">
                     <AlertCircle className="w-4 h-4" />
                     <span className="font-medium">No se pudieron mapear las columnas automáticamente</span>
@@ -550,7 +550,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 <h3 className="font-medium text-neutral-900 mb-4">Seleccionar plantilla de banco</h3>
                 
                 {selectedTemplate && (
-                  <div className="mb-4 p-4 bg-success-50 border border-success-200 rounded-lg">
+                  <div className="mb-4 p-4 bg-success-50 border border-success-200">
                     <div className="flex items-center gap-2 text-success-800">
                       <Check className="w-4 h-4" />
                       <span className="font-medium">Plantilla encontrada: {selectedTemplate.bankName}</span>
@@ -566,7 +566,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <button
                       key={template.id}
                       onClick={() => handleTemplateSelect(template)}
-                      className={`p-4 border rounded-lg text-left transition-colors ${
+                      className={`p-4 border text-left ${
                         selectedTemplate?.id === template.id
                           ? 'border-primary-500 bg-primary-50'
                           : 'border-neutral-200 hover:border-neutral-300'
@@ -581,7 +581,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                   
                   <button
                     onClick={handleManualMapping}
-                    className={`p-4 border rounded-lg text-left transition-colors ${
+                    className={`p-4 border text-left ${
                       !selectedTemplate
                         ? 'border-primary-500 bg-primary-50'
                         : 'border-neutral-200 hover:border-neutral-300'
@@ -611,7 +611,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.fecha}
                       onChange={(e) => setColumnMapping({...columnMapping, fecha: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -627,7 +627,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.concepto}
                       onChange={(e) => setColumnMapping({...columnMapping, concepto: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -643,7 +643,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.importe}
                       onChange={(e) => setColumnMapping({...columnMapping, importe: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -659,7 +659,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.abono}
                       onChange={(e) => setColumnMapping({...columnMapping, abono: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -675,7 +675,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.cargo}
                       onChange={(e) => setColumnMapping({...columnMapping, cargo: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -691,7 +691,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                     <select
                       value={columnMapping.saldo}
                       onChange={(e) => setColumnMapping({...columnMapping, saldo: e.target.value})}
-                      className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                      className="btn-secondary-horizon w-full "
                     >
                       <option value="">Seleccionar columna...</option>
                       {parsedData?.headers.map((header, idx) => (
@@ -702,7 +702,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 </div>
 
                 {!validateMapping() && (
-                  <div className="mt-4 p-3 bg-warning-50 border border-yellow-200 rounded-lg">
+                  <div className="mt-4 p-3 bg-warning-50 border border-yellow-200">
                     <div className="flex items-center gap-2 text-yellow-800">
                       <AlertCircle className="w-4 h-4" />
                       <span className="text-sm font-medium">Mapeo incompleto</span>
@@ -718,7 +718,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
               {previewData.length > 0 && (
                 <div>
                   <h4 className="font-medium text-neutral-900 mb-3">Vista previa (10 primeras filas)</h4>
-                  <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+                  <div className="overflow-x-auto border border-neutral-200">
                     <table className="w-full text-sm">
                       <thead className="bg-neutral-50">
                         <tr>
@@ -769,7 +769,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 
                 {/* Check for inactive account - Problem statement requirement */}
                 {selectedAccount && accounts.find(acc => acc.id?.toString() === selectedAccount)?.status === 'INACTIVE' && (
-                  <div className="mb-4 p-4 bg-error-50 border border-error-200 rounded-lg">
+                  <div className="mb-4 p-4 bg-error-50 border border-error-200">
                     <div className="flex items-center gap-2 text-error-800">
                       <AlertCircle className="w-4 h-4" />
                       <span className="font-medium">Activa la cuenta para importar extractos.</span>
@@ -783,7 +783,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 <select
                   value={selectedAccount}
                   onChange={(e) => setSelectedAccount(e.target.value)}
-                  className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  className="btn-secondary-horizon w-full "
                 >
                   <option value="">Seleccionar cuenta...</option>
                   {accounts.filter(acc => acc.activa !== false).map((account) => (
@@ -799,7 +799,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                 </select>
               </div>
 
-              <div className="bg-neutral-50 p-4 rounded-lg">
+              <div className="bg-neutral-50 p-4">
                 <h4 className="font-medium text-neutral-900 mb-2">Resumen de importación</h4>
                 <div className="space-y-1 text-sm text-neutral-600">
                   <div>Archivo: {file?.name}</div>
@@ -812,7 +812,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
               </div>
 
               {!selectedAccount && (
-                <div className="p-3 bg-warning-50 border border-yellow-200 rounded-lg">
+                <div className="p-3 bg-warning-50 border border-yellow-200">
                   <div className="flex items-center gap-2 text-yellow-800">
                     <AlertCircle className="w-4 h-4" />
                     <span className="text-sm font-medium">Cuenta requerida</span>
@@ -855,7 +855,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                   (step === 2 && !selectedTemplate && !parsedData?.detectedBank) ||
                   (step === 3 && !validateMapping())
                 }
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+                className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
               >
                 Siguiente
                 <ArrowRight className="w-4 h-4" />
@@ -864,11 +864,11 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
               <button
                 onClick={processImport}
                 disabled={!selectedAccount || isProcessing || accounts.find(acc => acc.id?.toString() === selectedAccount)?.status === 'INACTIVE'}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+                className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"></div>
                     Importando...
                   </>
                 ) : (

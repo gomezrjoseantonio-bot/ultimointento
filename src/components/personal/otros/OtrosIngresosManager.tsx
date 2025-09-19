@@ -88,7 +88,7 @@ const OtrosIngresosManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
         <span className="ml-2 text-neutral-600">Cargando otros ingresos...</span>
       </div>
     );
@@ -106,7 +106,7 @@ const OtrosIngresosManager: React.FC = () => {
         </div>
         <button
           onClick={() => toast('Formulario de nuevos ingresos - En desarrollo', { icon: 'ℹ️' })}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Ingreso
@@ -115,7 +115,7 @@ const OtrosIngresosManager: React.FC = () => {
 
       {/* Summary Cards */}
       {summary.total.count > 0 && (
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 p-6">
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-emerald-600" />
@@ -130,21 +130,21 @@ const OtrosIngresosManager: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 border border-emerald-100">
+            <div className="bg-white p-4 border border-emerald-100">
               <p className="text-sm text-emerald-600 font-medium">Ingresos Mensuales</p>
               <p className="text-xl font-bold text-emerald-900">
                 {formatCurrency(summary.total.mensual)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-emerald-100">
+            <div className="bg-white p-4 border border-emerald-100">
               <p className="text-sm text-emerald-600 font-medium">Ingresos Anuales</p>
               <p className="text-xl font-bold text-emerald-900">
                 {formatCurrency(summary.total.anual)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-emerald-100">
+            <div className="bg-white p-4 border border-emerald-100">
               <p className="text-sm text-emerald-600 font-medium">Dividendos</p>
               <p className="text-lg font-bold text-emerald-900">
                 {formatCurrency(summary.dividendos.anual)}
@@ -152,7 +152,7 @@ const OtrosIngresosManager: React.FC = () => {
               <p className="text-xs text-emerald-600">{summary.dividendos.count} fuentes</p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-emerald-100">
+            <div className="bg-white p-4 border border-emerald-100">
               <p className="text-sm text-emerald-600 font-medium">Intereses</p>
               <p className="text-lg font-bold text-emerald-900">
                 {formatCurrency(summary.intereses.anual)}
@@ -164,7 +164,7 @@ const OtrosIngresosManager: React.FC = () => {
       )}
 
       {/* Income Sources List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Fuentes de Ingresos</h4>
         
         {ingresos.length === 0 ? (
@@ -177,8 +177,7 @@ const OtrosIngresosManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={() => toast('Formulario de nuevos ingresos - En desarrollo', { icon: 'ℹ️' })}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark"
-              >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
                 <Plus className="w-4 h-4 mr-2" />
                 Añadir Primer Ingreso
               </button>
@@ -191,12 +190,11 @@ const OtrosIngresosManager: React.FC = () => {
               const taxInfo = otrosIngresosService.getTaxImplications(ingreso);
               
               return (
-                <div key={ingreso.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
+                <div key={ingreso.id} className="border p-4 <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h5 className="font-medium text-gray-900">{ingreso.nombre}</h5>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800">
                           {getTipoLabel(ingreso.tipo)}
                         </span>
                         <div className={`flex items-center space-x-1 ${getTitularidadColor(ingreso.titularidad)}`}>
@@ -207,7 +205,7 @@ const OtrosIngresosManager: React.FC = () => {
                           </span>
                         </div>
                         {!ingreso.activo && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <span className="btn-danger inline-flex items-center px-2 py-1 text-xs font-medium text-red-800">
                             Inactivo
                           </span>
                         )}
@@ -276,7 +274,7 @@ const OtrosIngresosManager: React.FC = () => {
       </div>
 
       {/* Integration Info */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="btn-secondary-horizon btn-primary-horizon ">
         <p className="text-sm text-blue-700">
           <strong>Integración automática:</strong> Los ingresos recurrentes configurados se integrarán automáticamente 
           con el módulo de Tesorería para el seguimiento de flujos de caja y con Proyecciones para la planificación financiera.

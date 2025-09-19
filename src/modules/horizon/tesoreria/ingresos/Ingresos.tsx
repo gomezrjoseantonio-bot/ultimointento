@@ -148,8 +148,8 @@ const Ingresos: React.FC = () => {
     return (
       <PageLayout title="Ingresos" subtitle="Gestión de ingresos previstos y cobrados.">
         <div className="animate-pulse space-y-6">
-          <div className="h-32 bg-gray-200 rounded-lg"></div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+          <div className="h-32 bg-gray-200"></div>
+          <div className="h-64 bg-gray-200"></div>
         </div>
       </PageLayout>
     );
@@ -171,7 +171,7 @@ const Ingresos: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="previsto">Previsto</option>
@@ -186,7 +186,7 @@ const Ingresos: React.FC = () => {
                 placeholder="Buscar por proveedor o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -197,7 +197,7 @@ const Ingresos: React.FC = () => {
         </div>
 
         {/* Ingresos Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -238,7 +238,7 @@ const Ingresos: React.FC = () => {
                     <div className="text-xs text-gray-500">{ingreso.moneda}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(ingreso.estado)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(ingreso.estado)}`}>
                       {ingreso.estado}
                     </span>
                   </td>
@@ -267,7 +267,7 @@ const Ingresos: React.FC = () => {
         {/* Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-gray-200 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Nuevo Ingreso</h3>
@@ -288,7 +288,7 @@ const Ingresos: React.FC = () => {
                       type="text"
                       value={formData.contraparte}
                       onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     />
                   </div>
@@ -302,7 +302,7 @@ const Ingresos: React.FC = () => {
                         type="date"
                         value={formData.fecha_emision}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -315,7 +315,7 @@ const Ingresos: React.FC = () => {
                         type="date"
                         value={formData.fecha_prevista_cobro}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_prevista_cobro: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -332,7 +332,7 @@ const Ingresos: React.FC = () => {
                         min="0"
                         value={formData.importe}
                         onChange={(e) => setFormData(prev => ({ ...prev, importe: parseFloat(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -344,7 +344,7 @@ const Ingresos: React.FC = () => {
                       <select
                         value={formData.moneda}
                         onChange={(e) => setFormData(prev => ({ ...prev, moneda: e.target.value as 'EUR' | 'USD' | 'GBP' }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
@@ -360,7 +360,7 @@ const Ingresos: React.FC = () => {
                     <select
                       value={formData.destino}
                       onChange={(e) => setFormData(prev => ({ ...prev, destino: e.target.value as 'personal' | 'inmueble_id' }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="personal">Personal</option>
                       <option value="inmueble_id">Inmueble</option>
@@ -375,7 +375,7 @@ const Ingresos: React.FC = () => {
                       <select
                         value={formData.destino_id}
                         onChange={(e) => setFormData(prev => ({ ...prev, destino_id: parseInt(e.target.value) }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
                         <option value={0}>Seleccionar inmueble</option>
                         {properties.map(property => (
@@ -391,13 +391,12 @@ const Ingresos: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowForm(false)}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                    >
+                      className="px-4 py-2 text-gray-700 bg-gray-100 >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                      className="btn-primary-horizon px-4 py-2
                     >
                       Guardar Ingreso
                     </button>

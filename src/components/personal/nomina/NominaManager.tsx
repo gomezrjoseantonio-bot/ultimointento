@@ -119,7 +119,7 @@ const NominaManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
         <span className="ml-2 text-neutral-600">Cargando nóminas...</span>
       </div>
     );
@@ -137,7 +137,7 @@ const NominaManager: React.FC = () => {
         </div>
         <button
           onClick={handleCreateNomina}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Nómina
@@ -146,7 +146,7 @@ const NominaManager: React.FC = () => {
 
       {/* Active Nomina Summary */}
       {activaNomina && calculo && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+        <div className="btn-secondary-horizon bg-gradient-to-r from-blue-50 to-indigo-50 ">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-blue-600" />
@@ -161,28 +161,28 @@ const NominaManager: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 border border-blue-100">
+            <div className="btn-secondary-horizon bg-white p-4 ">
               <p className="text-sm text-blue-600 font-medium">Salario Bruto Anual</p>
               <p className="text-xl font-bold text-blue-900">
                 {formatCurrency(activaNomina.salarioBrutoAnual)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-blue-100">
+            <div className="btn-secondary-horizon bg-white p-4 ">
               <p className="text-sm text-blue-600 font-medium">Neto Mensual Promedio</p>
               <p className="text-xl font-bold text-blue-900">
                 {formatCurrency(calculo.netoMensual)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-blue-100">
+            <div className="btn-secondary-horizon bg-white p-4 ">
               <p className="text-sm text-blue-600 font-medium">Total Anual Neto</p>
               <p className="text-xl font-bold text-blue-900">
                 {formatCurrency(calculo.totalAnualNeto)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-blue-100">
+            <div className="btn-secondary-horizon bg-white p-4 ">
               <p className="text-sm text-blue-600 font-medium">Variables y Bonus</p>
               <p className="text-xl font-bold text-blue-900">
                 {activaNomina.variables.length + activaNomina.bonus.length}
@@ -209,7 +209,7 @@ const NominaManager: React.FC = () => {
 
       {/* Monthly Distribution Details */}
       {calculo && calculo.distribuccionMensual && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <TrendingUp className="w-5 h-5 text-gray-600" />
             <h4 className="text-lg font-medium text-gray-900">Distribución Mensual</h4>
@@ -253,7 +253,7 @@ const NominaManager: React.FC = () => {
       )}
 
       {/* All Nominas List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Todas las Nóminas</h4>
         
         {nominas.length === 0 ? (
@@ -266,8 +266,7 @@ const NominaManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={handleCreateNomina}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark"
-              >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Nómina
               </button>
@@ -278,10 +277,10 @@ const NominaManager: React.FC = () => {
             {nominas.map((nomina) => (
               <div
                 key={nomina.id}
-                className={`border rounded-lg p-4 ${
+                className={`border p-4 ${
                   nomina.activa 
                     ? 'border-blue-200 bg-blue-50' 
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                    : 'border-gray-200 bg-white
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -291,7 +290,7 @@ const NominaManager: React.FC = () => {
                         {nomina.nombre}
                       </h5>
                       {nomina.activa && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
                           Activa
                         </span>
                       )}
@@ -325,7 +324,7 @@ const NominaManager: React.FC = () => {
                     {!nomina.activa && (
                       <button
                         onClick={() => handleActivateNomina(nomina)}
-                        className="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50"
+                        className="btn-secondary-horizon btn-primary-horizon px-3 py-1 text-sm text-blue-600 "
                       >
                         Activar
                       </button>

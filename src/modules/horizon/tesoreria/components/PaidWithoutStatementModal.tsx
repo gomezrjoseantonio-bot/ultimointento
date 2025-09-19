@@ -80,14 +80,14 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-white shadow-xl max-w-md w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             {getActionLabel()} sin extracto
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-5 h-5" />
           </button>
@@ -95,7 +95,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Record Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 p-4">
             <div className="text-sm text-gray-600 mb-1">{getRecordTypeLabel()}</div>
             <div className="font-medium text-gray-900">{recordDescription}</div>
             <div className="text-lg font-bold text-primary-600">
@@ -115,7 +115,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Efectivo')}
-                className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
+                className={`flex items-center justify-center p-3 border-2 ${
                   paymentMethod === 'Efectivo'
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
@@ -127,7 +127,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Tarjeta')}
-                className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
+                className={`flex items-center justify-center p-3 border-2 ${
                   paymentMethod === 'Tarjeta'
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
@@ -139,7 +139,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPaymentMethod('Otros')}
-                className={`flex items-center justify-center p-3 rounded-lg border-2 transition-colors ${
+                className={`flex items-center justify-center p-3 border-2 ${
                   paymentMethod === 'Otros'
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 text-gray-700 hover:border-gray-300'
@@ -161,7 +161,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               id="paymentDate"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
               required
             />
           </div>
@@ -177,12 +177,12 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Detalles del pago, lugar, etc. (opcional)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           {/* Info Note */}
-          <div className="bg-warning-50 border border-yellow-200 rounded-lg p-3">
+          <div className="bg-warning-50 border border-yellow-200 p-3">
             <div className="flex items-start">
               <HelpCircle className="w-5 h-5 text-warning-600 mt-0.5 mr-2 flex-shrink-0" />
               <div className="text-sm text-yellow-800">
@@ -202,14 +202,14 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary-horizon flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Procesando...' : getActionLabel()}
             </button>

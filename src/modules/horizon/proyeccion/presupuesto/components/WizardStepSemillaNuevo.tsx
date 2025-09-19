@@ -102,9 +102,9 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
           const scopeData = seededData.find(d => d.scope === scope);
           
           return (
-            <div key={scope} className="bg-white border border-gray-200 rounded-lg p-6">
+            <div key={scope} className="bg-white border border-gray-200 p-6">
               <div className="flex items-center mb-4">
-                <div className={`p-3 rounded-lg ${
+                <div className={`p-3 ${
                   scope === 'PERSONAL' ? 'bg-primary-100' : 'bg-success-100'
                 }`}>
                   <span className={`text-lg font-bold ${
@@ -193,7 +193,7 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
       </div>
 
       {/* Information about next steps */}
-      <div className="bg-info-50 border border-info-200 rounded-lg p-6 mb-8">
+      <div className="bg-info-50 border border-info-200 p-6 mb-8">
         <h4 className="font-semibold text-info-900 mb-2">Próximos pasos</h4>
         <div className="text-sm text-info-800 space-y-1">
           <p>• En el siguiente paso podrás ajustar importes y configurar cuentas de cargo/abono</p>
@@ -209,7 +209,7 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="btn-primary-horizon flex items-center px-6 py-3 font-medium"
         >
           Continuar a configuración
           <ChevronRight className="h-4 w-4 ml-2" />

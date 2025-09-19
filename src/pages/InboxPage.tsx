@@ -709,8 +709,7 @@ const InboxPage: React.FC = () => {
               window.open(url, '_blank');
               toast.dismiss(t.id);
             }}
-            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-          >
+            className="btn-primary-horizon px-2 py-1 text-xs rounded >
             Ver en Movimientos
           </button>
         </div>
@@ -720,7 +719,7 @@ const InboxPage: React.FC = () => {
       }
     );
     
-    // The file doesn't get added to Inbox since it was processed directly
+    // The file doesn"t get added to Inbox since it was processed directly
   };
 
   const handleAssignDocument = async (docId: number, metadata: any) => {
@@ -1078,7 +1077,7 @@ const InboxPage: React.FC = () => {
           {/* Inbox info tooltip */}
           <div className="relative group">
             <Info className="w-5 h-5 text-neutral-400 hover:text-neutral-600 cursor-help" />
-            <div className="absolute left-0 top-6 w-80 p-3 bg-neutral-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+            <div className="absolute left-0 top-6 w-80 p-3 bg-neutral-800 text-sm opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
               Cola de entrada única para documentos con clasificación automática y archivado inteligente.
             </div>
           </div>
@@ -1089,10 +1088,10 @@ const InboxPage: React.FC = () => {
           </div>
           <button
             onClick={() => setShowBulkActions(!showBulkActions)}
-            className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+            className={`px-3 py-2 text-sm border ${
               showBulkActions 
                 ? 'bg-neutral-100 border-neutral-300 text-neutral-700' 
-                : 'border-neutral-200 hover:bg-neutral-50'
+                : 'border-neutral-200
             }`}
           >
             Selección múltiple
@@ -1102,7 +1101,7 @@ const InboxPage: React.FC = () => {
       
       {/* H3 requirement - Email log filter notice */}
       {emailLogFilter && (
-        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+        <div className="bg-neutral-50 border border-neutral-200 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-neutral-900">
@@ -1114,15 +1113,14 @@ const InboxPage: React.FC = () => {
                 setEmailLogFilter('');
                 window.history.replaceState({}, '', '/inbox');
               }}
-              className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1 rounded-lg hover:bg-neutral-100"
-            >
+              className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1 >
               Mostrar todos los documentos
             </button>
           </div>
         </div>
       )}
       
-      <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+      <div className="bg-white border border-neutral-200 overflow-hidden">
         <div className="p-4 border-b">
           <DocumentUploader 
             onUploadComplete={handleDocumentUpload} 
@@ -1136,7 +1134,7 @@ const InboxPage: React.FC = () => {
           <div className="w-full lg:w-80 lg:flex-shrink-0 border-r border-neutral-200">
             {/* Bulk Actions */}
             {showBulkActions && selectedDocuments.length > 0 && (
-              <div className="p-4 bg-primary-50 border-b border-primary-200">
+              <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-primary-900">
                     {selectedDocuments.length} seleccionado(s)
@@ -1151,15 +1149,13 @@ const InboxPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleBulkDelete}
-                    className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600 text-white rounded-lg hover:bg-error-700"
-                  >
+                    className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600 >
                     <Trash2 className="w-3 h-3" />
                     Eliminar
                   </button>
                   <button
                     onClick={handleBulkReassign}
-                    className="flex items-center gap-1 px-3 py-1 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-                  >
+                    className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-xs >
                     <FolderOpen className="w-3 h-3" />
                     Reasignar
                   </button>
@@ -1175,7 +1171,7 @@ const InboxPage: React.FC = () => {
                 <div>
                   <label className="block text-xs text-neutral-600 mb-1">Categoría</label>
                   <select
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                     value={inboxFilter}
                     onChange={(e) => setInboxFilter(e.target.value)}
                   >
@@ -1192,7 +1188,7 @@ const InboxPage: React.FC = () => {
                 <div>
                   <label className="block text-xs text-neutral-600 mb-1">Estado</label>
                   <select
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                     value={queueStatusFilter}
                     onChange={(e) => setQueueStatusFilter(e.target.value)}
                   >
@@ -1210,7 +1206,7 @@ const InboxPage: React.FC = () => {
                 <div>
                   <label className="block text-xs text-neutral-600 mb-1">Origen</label>
                   <select
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                     value={origenFilter}
                     onChange={(e) => setOrigenFilter(e.target.value)}
                   >
@@ -1231,7 +1227,7 @@ const InboxPage: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Buscar documentos..."
-                    className="w-full pl-10 pr-3 py-2 border border-neutral-200 rounded-lg focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -1244,7 +1240,7 @@ const InboxPage: React.FC = () => {
               <h4 className="text-sm font-medium text-neutral-700 mb-3">Ordenar</h4>
               <div className="flex gap-2">
                 <select
-                  className="flex-1 text-sm border border-neutral-200 rounded-lg px-2 py-1"
+                  className="flex-1 text-sm border border-neutral-200 px-2 py-1"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'date' | 'name')}
                 >
@@ -1253,9 +1249,8 @@ const InboxPage: React.FC = () => {
                 </select>
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="p-1 border border-neutral-200 rounded-lg hover:bg-neutral-50"
-                >
-                  {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                  className="p-1 border border-neutral-200 >
+                  {sortOrder === "asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -1352,7 +1347,7 @@ const InboxPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="h-96 flex flex-col items-center justify-center text-neutral-500 bg-white border border-neutral-200 m-6 rounded-lg">
+              <div className="h-96 flex flex-col items-center justify-center text-neutral-500 bg-white border border-neutral-200 m-6">
                 <div className="text-center">
                   <div className="w-12 h-12 mx-auto mb-4 text-neutral-400">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">

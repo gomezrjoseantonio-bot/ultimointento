@@ -140,7 +140,7 @@ const AutonomoManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
         <span className="ml-2 text-neutral-600">Cargando datos de autónomo...</span>
       </div>
     );
@@ -160,7 +160,7 @@ const AutonomoManager: React.FC = () => {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
+            className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
           >
             {years.map(year => (
               <option key={year} value={year}>{year}</option>
@@ -168,7 +168,7 @@ const AutonomoManager: React.FC = () => {
           </select>
           <button
             onClick={handleCreateAutonomo}
-            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nueva Configuración
@@ -178,7 +178,7 @@ const AutonomoManager: React.FC = () => {
 
       {/* Active Autonomo Summary */}
       {activoAutonomo && calculo && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200 p-6">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <Euro className="w-5 h-5 text-green-600" />
@@ -189,15 +189,13 @@ const AutonomoManager: React.FC = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowIngresoForm(true)}
-                className="inline-flex items-center px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
-              >
+                className="btn-accent-horizon inline-flex items-center px-3 py-1 text-sm >
                 <Plus className="w-4 h-4 mr-1" />
                 Ingreso
               </button>
               <button
                 onClick={() => setShowGastoForm(true)}
-                className="inline-flex items-center px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
-              >
+                className="btn-danger inline-flex items-center px-3 py-1 text-sm >
                 <Plus className="w-4 h-4 mr-1" />
                 Gasto
               </button>
@@ -205,28 +203,28 @@ const AutonomoManager: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 border border-green-100">
+            <div className="bg-white p-4 border border-green-100">
               <p className="text-sm text-green-600 font-medium">Ingresos Brutos</p>
               <p className="text-xl font-bold text-green-900">
                 {formatCurrency(calculo.ingresosBrutos)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-green-100">
+            <div className="bg-white p-4 border border-green-100">
               <p className="text-sm text-green-600 font-medium">Gastos Deducibles</p>
               <p className="text-xl font-bold text-green-900">
                 {formatCurrency(calculo.gastos)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-green-100">
+            <div className="bg-white p-4 border border-green-100">
               <p className="text-sm text-green-600 font-medium">Cuota Autónomos</p>
               <p className="text-xl font-bold text-green-900">
                 {formatCurrency(calculo.cuotaAutonomos)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-green-100">
+            <div className="bg-white p-4 border border-green-100">
               <p className="text-sm text-green-600 font-medium">Resultado Neto</p>
               <p className={`text-xl font-bold ${calculo.resultadoAnual >= 0 ? 'text-green-900' : 'text-red-900'}`}>
                 {formatCurrency(calculo.resultadoAnual)}
@@ -246,7 +244,7 @@ const AutonomoManager: React.FC = () => {
       {activoAutonomo && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Ingresos */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-medium text-gray-900 flex items-center">
                 <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
@@ -262,13 +260,13 @@ const AutonomoManager: React.FC = () => {
                 .filter(i => new Date(i.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((ingreso) => (
-                  <div key={ingreso.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div key={ingreso.id} className="btn-accent-horizon flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{ingreso.descripcion}</p>
                       <p className="text-sm text-gray-600">
                         {formatDate(ingreso.fecha)} • {formatCurrency(ingreso.importe)}
                         {ingreso.conIva && ingreso.tipoIva && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <span className="btn-primary-horizon ml-2 text-xs text-blue-800 px-2 py-1 rounded">
                             IVA {ingreso.tipoIva}%
                           </span>
                         )}
@@ -293,7 +291,7 @@ const AutonomoManager: React.FC = () => {
           </div>
 
           {/* Gastos */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-medium text-gray-900 flex items-center">
                 <TrendingDown className="w-5 h-5 text-red-600 mr-2" />
@@ -309,7 +307,7 @@ const AutonomoManager: React.FC = () => {
                 .filter(g => new Date(g.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((gasto) => (
-                  <div key={gasto.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <div key={gasto.id} className="btn-danger flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{gasto.descripcion}</p>
                       <p className="text-sm text-gray-600">
@@ -340,7 +338,7 @@ const AutonomoManager: React.FC = () => {
       )}
 
       {/* All Autonomos List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Todas las Configuraciones</h4>
         
         {autonomos.length === 0 ? (
@@ -353,8 +351,7 @@ const AutonomoManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={handleCreateAutonomo}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark"
-              >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Configuración
               </button>
@@ -365,10 +362,10 @@ const AutonomoManager: React.FC = () => {
             {autonomos.map((autonomo) => (
               <div
                 key={autonomo.id}
-                className={`border rounded-lg p-4 ${
+                className={`border p-4 ${
                   autonomo.activo 
                     ? 'border-green-200 bg-green-50' 
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                    : 'border-gray-200 bg-white
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -378,7 +375,7 @@ const AutonomoManager: React.FC = () => {
                         {autonomo.nombre}
                       </h5>
                       {autonomo.activo && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="btn-accent-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
                           Activo
                         </span>
                       )}
@@ -401,7 +398,7 @@ const AutonomoManager: React.FC = () => {
                     {!autonomo.activo && (
                       <button
                         onClick={() => handleActivateAutonomo(autonomo)}
-                        className="px-3 py-1 text-sm text-green-600 border border-green-600 rounded hover:bg-green-50"
+                        className="btn-accent-horizon px-3 py-1 text-sm text-green-600 border border-green-600 rounded hover: "
                       >
                         Activar
                       </button>

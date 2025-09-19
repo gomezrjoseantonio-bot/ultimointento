@@ -140,7 +140,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
 
   // Get movement pill style based on status and type - Treasury v1.2 Enhanced
   const getMovementStyle = (movement: Movement) => {
-    const baseStyle = 'text-xs px-2 py-1 rounded-md mb-1 cursor-pointer hover:opacity-80 transition-opacity';
+    const baseStyle = 'text-xs px-2 py-1 mb-1 cursor-pointer hover:opacity-80 transition-opacity';
     
     // Problem statement color scheme:
     // - Azul si conciliado (match)
@@ -150,26 +150,26 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     // Check movement state/status first
     if (movement.state === 'reconciled') {
       // Conciliado - Blue
-      return `${baseStyle} bg-blue-500 text-white`;
+      return `${baseStyle} bg-blue-500`;
     }
     
     if (movement.state === 'pending' || !movement.state) {
       // No planificado - Gray
-      return `${baseStyle} bg-gray-400 text-white`;
+      return `${baseStyle} bg-gray-400`;
     }
     
     if (movement.state === 'ignored') {
       // Ignorado - Red
-      return `${baseStyle} bg-red-400 text-white`;
+      return `${baseStyle} bg-red-400`;
     }
     
     // Fallback to amount-based colors
     if (movement.amount >= 0) {
       // Ingreso - Green
-      return `${baseStyle} bg-green-500 text-white`;
+      return `${baseStyle} bg-green-500`;
     } else {
       // Gasto - Red
-      return `${baseStyle} bg-red-500 text-white`;
+      return `${baseStyle} bg-red-500`;
     }
   };
 
@@ -253,7 +253,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateMonth('prev')}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 rounded"
               title="Mes anterior"
             >
               <ChevronLeft className="h-4 w-4 text-gray-700" />
@@ -268,7 +268,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             
             <button
               onClick={() => navigateMonth('next')}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 rounded"
               title="Mes siguiente"
             >
               <ChevronRight className="h-4 w-4 text-gray-700" />
@@ -292,7 +292,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
               placeholder="Buscar..."
               value={localSearchText}
               onChange={(e) => setLocalSearchText(e.target.value)}
-              className="pl-10 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm "
             />
           </div>
           
@@ -312,7 +312,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         {/* Calendar Header */}
         <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
           {dayNames.map((day) => (
@@ -331,10 +331,10 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             return (
               <div
                 key={index}
-                className={`min-h-[120px] p-2 border rounded transition-colors ${
+                className={`min-h-[120px] p-2 border rounded ${
                   isOutsideMonth
                     ? 'border-gray-200 bg-gray-50 text-gray-400 opacity-40' // 40% opacity as per problem statement
-                    : 'border-gray-300 bg-white cursor-pointer hover:bg-gray-50'
+                    : 'border-gray-300 bg-white cursor-pointer
                 }`}
                 onDoubleClick={() => !isOutsideMonth && handleDayDoubleClick(day)}
                 title={!isOutsideMonth ? `Doble click para crear movimiento el ${day.dateStr}` : ''}
@@ -370,7 +370,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
                       {day.movements.slice(0, 8).map((movement, idx) => (
                         <div
                           key={movement.id || idx}
-                          className={`w-2 h-2 rounded-full ${getMovementDotColor(movement)}`}
+                          className={`w-2 h-2 ${getMovementDotColor(movement)}`}
                           title={`${movement.description} - ${formatEuro(movement.amount)}`}
                         />
                       ))}

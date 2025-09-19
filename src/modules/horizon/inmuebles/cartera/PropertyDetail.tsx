@@ -99,7 +99,7 @@ const PropertyDetail: React.FC = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/inmuebles/cartera')}
-            className="p-2 text-neutral-600 hover:text-neutral-800 transition-colors"
+            className="p-2 text-neutral-600 hover:text-neutral-800"
           >
             <ArrowLeft className="h-5 w-5" size={24}  />
           </button>
@@ -110,7 +110,7 @@ const PropertyDetail: React.FC = () => {
         </div>
         <button
           onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
-          className="flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors"
+          className="flex items-center px-4 py-2 bg-brand-navy"
         >
           <Pencil className="h-5 w-5 mr-2" size={24}  />
           Editar
@@ -118,7 +118,7 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* Resumen */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Resumen</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -160,7 +160,7 @@ const PropertyDetail: React.FC = () => {
             <div>
               <dt className="text-sm font-medium text-neutral-500">Estado</dt>
               <dd className="mt-1">
-                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                <span className={`inline-flex px-2 py-1 text-xs font-medium ${
                   property.state === 'activo' 
                     ? 'bg-success-100 text-success-800'
                     : property.state === 'vendido'
@@ -188,7 +188,7 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* Costes de adquisición */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Costes de adquisición</h3>
         
         <div className="space-y-3">
@@ -272,7 +272,7 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* CAPEX (placeholder for H5) */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">CAPEX</h3>
         <div className="flex justify-between py-2">
           <span className="text-sm text-neutral-600">CAPEX (acumulado)</span>
@@ -282,7 +282,7 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* H5: Datos fiscales auxiliares */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Datos fiscales auxiliares</h3>
         <p className="text-sm text-neutral-600 mb-4">Capturar ahora, calcular en H9</p>
         
@@ -342,7 +342,7 @@ const PropertyDetail: React.FC = () => {
 
           {/* Inmueble accesorio */}
           {property.fiscalData?.isAccessory && (
-            <div className="bg-primary-50 border border-primary-200 rounded-md p-4">
+            <div className="btn-secondary-horizon btn-primary-horizon ">
               <div className="text-sm font-medium text-primary-900 mb-2">Inmueble accesorio</div>
               {property.fiscalData.mainPropertyId && (
                 <div className="text-xs text-primary-700">
@@ -361,7 +361,7 @@ const PropertyDetail: React.FC = () => {
           )}
 
           {/* Note about editing */}
-          <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-md">
+          <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200">
             <div className="text-xs text-neutral-600">
               Para editar estos datos fiscales auxiliares, utiliza el botón "Editar" en la parte superior de la página.
             </div>
@@ -370,13 +370,13 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* Atajos */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Atajos</h3>
         
         <div className="space-y-3">
           <button
             onClick={viewDocuments}
-            className="flex items-center w-full p-3 text-left border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
+            className="flex items-center w-full p-3 text-left border border-neutral-200"
           >
             <FileText className="h-5 w-5 text-brand-navy mr-3" size={24}  />
             <div>
@@ -387,7 +387,7 @@ const PropertyDetail: React.FC = () => {
 
           <button
             onClick={copyEmailAlias}
-            className="flex items-center w-full p-3 text-left border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
+            className="flex items-center w-full p-3 text-left border border-neutral-200"
           >
             <Clipboard className="h-5 w-5 text-brand-navy mr-3" size={24}  />
             <div>

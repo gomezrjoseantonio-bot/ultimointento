@@ -64,7 +64,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              className="p-2"
             >
               <X className="h-5 w-5" style={{ color: 'var(--text-gray)' }} />
             </button>
@@ -152,7 +152,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Fixed */}
               {feinData.prestamo.fijo && (
-                <div className="mb-3 p-3 bg-blue-50 rounded">
+                <div className="btn-primary-horizon mb-3 p-3 rounded">
                   <h4 className="font-medium text-blue-800">Tramo Fijo</h4>
                   <p>TIN: {formatPercentage(feinData.prestamo.fijo.tinFijoPrc)}</p>
                 </div>
@@ -160,7 +160,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Variable */}
               {feinData.prestamo.variable && (
-                <div className="mb-3 p-3 bg-green-50 rounded">
+                <div className="btn-accent-horizon mb-3 p-3 rounded">
                   <h4 className="font-medium text-green-800">Tramo Variable</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Índice: {feinData.prestamo.variable.indice}</div>
@@ -174,14 +174,14 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               {/* Mixed */}
               {feinData.prestamo.mixto && (
                 <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 rounded">
+                  <div className="btn-primary-horizon p-3 rounded">
                     <h4 className="font-medium text-blue-800">Período Fijo Initial</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Duración: {feinData.prestamo.mixto.tramoFijoAnios} años</div>
                       <div>TIN: {formatPercentage(feinData.prestamo.mixto.tinFijoTramoPrc)}</div>
                     </div>
                   </div>
-                  <div className="p-3 bg-green-50 rounded">
+                  <div className="btn-accent-horizon p-3 rounded">
                     <h4 className="font-medium text-green-800">Posterior Variable</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Índice: {feinData.prestamo.mixto.posteriorVariable.indice}</div>

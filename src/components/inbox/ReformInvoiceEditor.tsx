@@ -194,7 +194,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div>
@@ -207,7 +207,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg"
+            className="p-2"
           >
             <X className="w-5 h-5" />
           </button>
@@ -216,7 +216,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           {/* Document info */}
-          <div className="mb-6 p-4 bg-neutral-50 rounded-lg">
+          <div className="mb-6 p-4 bg-neutral-50">
             <h3 className="font-medium text-neutral-900 mb-2">Documento</h3>
             <div className="space-y-1 text-sm text-neutral-600">
               <div>Archivo: {document?.filename}</div>
@@ -259,7 +259,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           <div className="mb-6">
             <button
               onClick={autoDistribute}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-100 text-primary-700 rounded-lg hover:bg-blue-200"
+              className="btn-primary-horizon btn-primary-horizon flex items-center gap-2 px-4 py-2 text-primary-700 hover: "
             >
               <Calculator className="w-4 h-4" />
               Distribución automática
@@ -272,7 +272,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           {/* Categories */}
           <div className="space-y-6">
             {/* Mejora */}
-            <div className="border border-neutral-200 rounded-lg p-4">
+            <div className="border border-neutral-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h4 className="font-medium text-success-700">Mejora</h4>
@@ -309,7 +309,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('mejora', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
                   />
                 </div>
                 <div>
@@ -324,14 +324,14 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       mejora: { ...prev.mejora, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
                   />
                 </div>
               </div>
             </div>
 
             {/* Mobiliario */}
-            <div className="border border-neutral-200 rounded-lg p-4">
+            <div className="border border-neutral-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h4 className="font-medium text-purple-700">Mobiliario (10a)</h4>
@@ -368,7 +368,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('mobiliario', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                   />
                 </div>
                 <div>
@@ -383,14 +383,14 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       mobiliario: { ...prev.mobiliario, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
                   />
                 </div>
               </div>
             </div>
 
             {/* Reparación y Conservación */}
-            <div className="border border-neutral-200 rounded-lg p-4">
+            <div className="border border-neutral-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h4 className="font-medium text-orange-700">Reparación y Conservación</h4>
@@ -427,7 +427,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('reparacionConservacion', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
                   />
                 </div>
                 <div>
@@ -442,7 +442,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       reparacionConservacion: { ...prev.reparacionConservacion, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
                   />
                 </div>
               </div>
@@ -450,7 +450,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           </div>
 
           {/* Summary */}
-          <div className="mt-6 p-4 bg-neutral-50 rounded-lg">
+          <div className="mt-6 p-4 bg-neutral-50">
             <h4 className="font-medium text-neutral-900 mb-3">Resumen</h4>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
@@ -482,7 +482,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
 
           {/* Validation errors */}
           {errors.length > 0 && (
-            <div className="mt-4 p-4 bg-error-50 border border-error-200 rounded-lg">
+            <div className="mt-4 p-4 bg-error-50 border border-error-200">
               <div className="flex items-center gap-2 text-error-800 mb-2">
                 <AlertCircle className="w-4 h-4" />
                 <span className="font-medium">Errores de validación</span>
@@ -497,7 +497,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
 
           {/* Success indicator */}
           {errors.length === 0 && totalAmount > 0 && (
-            <div className="mt-4 p-3 bg-success-50 border border-success-200 rounded-lg">
+            <div className="mt-4 p-3 bg-success-50 border border-success-200">
               <div className="flex items-center gap-2 text-success-800">
                 <Check className="w-4 h-4" />
                 <span className="text-sm font-medium">Reparto válido - Listo para publicar</span>
@@ -515,7 +515,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
               onChange={(e) => setSplitData(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Información adicional sobre el reparto..."
               rows={3}
-              className="w-full border border-neutral-200 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+              className="btn-secondary-horizon w-full "
             />
           </div>
         </div>
@@ -537,7 +537,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
             <button
               onClick={handleSave}
               disabled={errors.length > 0}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+              className="btn-primary-horizon px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
             >
               Guardar reparto
             </button>

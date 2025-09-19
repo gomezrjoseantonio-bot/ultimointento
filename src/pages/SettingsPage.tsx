@@ -122,7 +122,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Provider Directory Section */}
-      <div className="bg-white shadow rounded-lg">
+      <div className="bg-white shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex justify-between items-center">
             <div>
@@ -133,7 +133,7 @@ const SettingsPage: React.FC = () => {
             </div>
             <button
               onClick={handleAddProvider}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="btn-primary-horizon flex items-center gap-2 px-4 py-2"
             >
               <Plus className="w-4 h-4" />
               Añadir Proveedor
@@ -144,7 +144,7 @@ const SettingsPage: React.FC = () => {
         <div className="p-6">
           {loading ? (
             <div className="text-center py-8">
-              <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin mx-auto mb-2"></div>
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-600 animate-spin mx-auto mb-2"></div>
               <p className="text-gray-600">Cargando proveedores...</p>
             </div>
           ) : providers.length === 0 ? (
@@ -164,8 +164,7 @@ const SettingsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {providers.map((provider) => (
-                    <tr key={provider.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
+                    <tr key={provider.id} className="border-b border-gray-100 <td className="py-3 px-4">
                         <span className="font-medium text-gray-900">{provider.canonicalName}</span>
                       </td>
                       <td className="py-3 px-4">
@@ -192,13 +191,13 @@ const SettingsPage: React.FC = () => {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEditProvider(provider)}
-                            className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                            className="btn-primary-horizon p-2 text-gray-600 hover:text-primary-600 hover: rounded"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteProvider(provider.id!, provider.canonicalName)}
-                            className="p-2 text-gray-600 hover:text-error-600 hover:bg-error-50 rounded transition-colors"
+                            className="p-2 text-gray-600 hover:text-error-600 rounded"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -216,14 +215,14 @@ const SettingsPage: React.FC = () => {
       {/* Add/Edit Provider Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md">
+          <div className="bg-white w-full max-w-md">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-medium">
                 {editingProvider ? 'Editar Proveedor' : 'Añadir Proveedor'}
               </h3>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -239,7 +238,7 @@ const SettingsPage: React.FC = () => {
                   value={formData.canonicalName}
                   onChange={(e) => setFormData({...formData, canonicalName: e.target.value})}
                   placeholder="ej. ENDESA"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  className="btn-secondary-horizon w-full "
                 />
               </div>
               
@@ -252,7 +251,7 @@ const SettingsPage: React.FC = () => {
                   value={formData.nif}
                   onChange={(e) => setFormData({...formData, nif: e.target.value})}
                   placeholder="ej. A81948077"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  className="btn-secondary-horizon w-full "
                 />
               </div>
               
@@ -265,7 +264,7 @@ const SettingsPage: React.FC = () => {
                   onChange={(e) => setFormData({...formData, aliases: e.target.value})}
                   placeholder="ej. Endesa Energía XXI, Endesa S.A., ENDESA ENERGIA"
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-200"
+                  className="btn-secondary-horizon w-full "
                 />
               </div>
             </div>
@@ -273,14 +272,14 @@ const SettingsPage: React.FC = () => {
             <div className="p-4 border-t flex gap-3">
               <button
                 onClick={handleSaveProvider}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="btn-primary-horizon flex items-center gap-2 px-4 py-2"
               >
                 <Save className="w-4 h-4" />
                 {editingProvider ? 'Actualizar' : 'Guardar'}
               </button>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300"
               >
                 Cancelar
               </button>
@@ -290,7 +289,7 @@ const SettingsPage: React.FC = () => {
       )}
 
       {/* OCR Configuration Section */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white shadow p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Configuración OCR</h2>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -300,7 +299,7 @@ const SettingsPage: React.FC = () => {
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
             </label>
           </div>
           
@@ -313,7 +312,7 @@ const SettingsPage: React.FC = () => {
               max="1" 
               step="0.05" 
               defaultValue="0.8"
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>50%</span>
@@ -325,7 +324,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* H3: Auto-save Configuration Section */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="bg-white shadow p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Auto-guardado (H3+H8)</h2>
         <div className="space-y-6">
           {/* Main toggle */}
@@ -346,7 +345,7 @@ const SettingsPage: React.FC = () => {
                 checked={autoSaveConfig.enabled}
                 onChange={handleToggleAutoSave}
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
             </label>
           </div>
 
@@ -357,7 +356,7 @@ const SettingsPage: React.FC = () => {
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Facturas</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 px-3 py-2 text-sm"
                   value={autoSaveConfig.destinations.facturas}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, facturas: e.target.value }
@@ -370,7 +369,7 @@ const SettingsPage: React.FC = () => {
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Extractos bancarios</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 px-3 py-2 text-sm"
                   value={autoSaveConfig.destinations.extractos}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, extractos: e.target.value }
@@ -382,7 +381,7 @@ const SettingsPage: React.FC = () => {
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Contratos</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 px-3 py-2 text-sm"
                   value={autoSaveConfig.destinations.contratos}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, contratos: e.target.value }
@@ -394,7 +393,7 @@ const SettingsPage: React.FC = () => {
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Otros documentos</label>
                 <select 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 px-3 py-2 text-sm"
                   value={autoSaveConfig.destinations.otros}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, otros: e.target.value }
@@ -408,7 +407,7 @@ const SettingsPage: React.FC = () => {
 
           {/* Clear criteria for auto-save OFF mode */}
           {!autoSaveConfig.enabled && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="bg-amber-50 border border-amber-200 p-4">
               <p className="font-medium text-amber-900 mb-2">Criterios CLARO (modo auto-guardado OFF)</p>
               <div className="space-y-3 text-sm">
                 <div>
@@ -450,7 +449,7 @@ const SettingsPage: React.FC = () => {
                       factura: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.factura * 100)}%
@@ -470,7 +469,7 @@ const SettingsPage: React.FC = () => {
                       extracto: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.extracto * 100)}%
@@ -490,7 +489,7 @@ const SettingsPage: React.FC = () => {
                       contrato: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.contrato * 100)}%
