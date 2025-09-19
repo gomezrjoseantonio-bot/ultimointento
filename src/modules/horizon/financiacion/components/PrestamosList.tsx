@@ -16,6 +16,7 @@ import {
 import { prestamosService } from '../../../../services/prestamosService';
 import { Prestamo } from '../../../../types/prestamos';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
@@ -182,7 +183,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   };
 
   const handleDeletePrestamo = async (prestamoId: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este préstamo?')) {
+    const prestamo = prestamos.find(p => p.id === prestamoId);
+    const confirmed = await confirmDelete(prestamo?.nombre || 'este préstamo');
+    if (confirmed) {
       try {
         await prestamosService.deletePrestamo(prestamoId);
         // Reload loans

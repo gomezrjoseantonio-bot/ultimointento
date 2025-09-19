@@ -40,6 +40,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmAction } from '../../services/confirmationService';
 
 const DashboardConfig: React.FC = () => {
   const { currentModule } = useTheme();
@@ -98,9 +99,11 @@ const DashboardConfig: React.FC = () => {
   };
 
   const handleResetToDefault = async () => {
-    if (!window.confirm('¿Estás seguro de que quieres restaurar la configuración por defecto? Esto eliminará todas las personalizaciones.')) {
-      return;
-    }
+    const confirmed = await confirmAction(
+      'restaurar la configuración por defecto',
+      'Esto eliminará todas las personalizaciones.'
+    );
+    if (!confirmed) return;
 
     try {
       const defaultConfig = await dashboardService.resetToDefault();

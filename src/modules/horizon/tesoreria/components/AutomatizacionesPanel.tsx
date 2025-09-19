@@ -3,6 +3,7 @@ import { Settings, AlertTriangle, Clock, ArrowRight, Plus, Edit2, Trash2, X, Tog
 import { initDB, Account } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 interface AutomationRule {
   id?: number;
@@ -108,8 +109,9 @@ const AutomatizacionesPanel: React.FC = () => {
   };
 
   const deleteRule = async (ruleId: number) => {
-    // TODO: Replace with ATLAS confirmation modal
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta regla?')) return;
+    const rule = rules.find(r => r.id === ruleId);
+    const confirmed = await confirmDelete(rule?.name || 'esta regla');
+    if (!confirmed) return;
     
     const updatedRules = rules.filter(r => r.id !== ruleId);
     setRules(updatedRules);

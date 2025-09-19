@@ -5,6 +5,7 @@ import { MovementStatusChip } from '../../../../components/treasury/MovementStat
 import { Movement, initDB, Property } from '../../../../services/db';
 import { performManualReconciliation } from '../../../../services/movementLearningService';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 interface MovementDrawerProps {
   movement: Movement;
@@ -146,8 +147,9 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   };
 
   // Handle delete
-  const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
+  const handleDelete = async () => {
+    const confirmed = await confirmDelete('este movimiento');
+    if (confirmed) {
       // TODO: Implement delete
       console.log('Delete movement:', movement.id);
       onClose();

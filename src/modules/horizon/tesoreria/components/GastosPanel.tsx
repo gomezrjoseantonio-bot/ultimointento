@@ -3,6 +3,7 @@ import { Plus, Search, X, CreditCard, Calendar, User, FileText } from 'lucide-re
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import toast from 'react-hot-toast';
+import { confirmAction } from '../../../../services/confirmationService';
 
 interface GastoFormData {
   proveedor_nombre: string;
@@ -85,8 +86,9 @@ const GastosPanel: React.FC = () => {
 
     // Business logic validation: Some categories should typically be property-related
     if (formData.categoria_AEAT === 'suministros' && formData.destino === 'personal') {
-      const shouldProceed = window.confirm(
-        '⚠️ Los suministros suelen estar asociados a inmuebles. ¿Estás seguro de que es un gasto personal?'
+      const shouldProceed = await confirmAction(
+        'registrar este gasto como personal',
+        'Los suministros suelen estar asociados a inmuebles.'
       );
       if (!shouldProceed) return;
     }

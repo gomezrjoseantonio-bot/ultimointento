@@ -10,6 +10,7 @@ import {
   type ProviderDirectoryEntry 
 } from '../services/providerDirectoryService';
 import { getAutoSaveConfig, setAutoSaveConfig, toggleAutoSave } from '../services/autoSaveService';
+import { confirmDelete } from '../services/confirmationService';
 
 const SettingsPage: React.FC = () => {
   const [providers, setProviders] = useState<ProviderDirectoryEntry[]>([]);
@@ -88,8 +89,8 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteProvider = async (id: number, name: string) => {
-    // TODO: Replace with ATLAS confirmation modal
-    if (!window.confirm(`¿Eliminar proveedor "${name}"?`)) return;
+    const confirmed = await confirmDelete(name);
+    if (!confirmed) return;
 
     try {
       await deleteProvider(id);
