@@ -582,7 +582,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
           <div className="bg-white p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-atlas-navy-1">
@@ -697,7 +697,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
       {/* Enhanced Delete Confirmation Modal */}
       {deleteConfirmation && (
-        <div className="fixed inset-0 bg-gray-200 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
           <div className="bg-white p-6 w-full max-w-lg">
             <div className="flex items-center mb-4">
               <AlertTriangle className="w-6 h-6 mr-3 text-red-500" />
