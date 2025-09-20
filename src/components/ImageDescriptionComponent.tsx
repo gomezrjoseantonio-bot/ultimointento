@@ -141,7 +141,6 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {!selectedImage ? (
         <div 
           className="border-2 border-dashed border-gray-300 p-8 text-center hover:border-gray-400 cursor-pointer"
-          >
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center space-y-4">
@@ -203,7 +202,6 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
         accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
-          >
       />
 
       {/* Options */}
@@ -299,7 +297,6 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <button
                 onClick={handleCopyDescription}
                 className="text-gray-400 hover:text-gray-600"
-                >
                 title="Copiar descripción"
               >
                 {copied ? (

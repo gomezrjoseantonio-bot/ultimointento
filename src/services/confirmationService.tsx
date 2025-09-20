@@ -66,7 +66,6 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
         <div className="flex items-start space-x-3">
           <IconComponent 
             className="h-5 w-5 mt-0.5 flex-shrink-0" 
-          >
             style={{ color: colorScheme.icon }}
           />
           <div className="flex-1">
@@ -96,7 +95,6 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
               resolve(true);
             }}
             className="px-3 py-1.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
-            >
             style={{
               backgroundColor: colorScheme.confirmBg,
               color: colorScheme.confirmText,
