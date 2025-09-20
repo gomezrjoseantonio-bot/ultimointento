@@ -429,7 +429,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                 <h3 className="text-sm font-medium text-gray-900">Distribución porcentual</h3>
                 <button
                   onClick={applyPercentageDistribution}
-                  className="px-3 py-1 bg-brand-navy text-sm rounded >
+                  className="px-3 py-1 bg-brand-navy text-sm rounded"
                   Aplicar
                 </button>
               </div>
@@ -616,13 +616,12 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 >
+            className="px-4 py-2 text-gray-700 border border-gray-300"
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-brand-navy
-          >
+            className="px-4 py-2 bg-brand-navy"
             Guardar
           </button>
         </div>

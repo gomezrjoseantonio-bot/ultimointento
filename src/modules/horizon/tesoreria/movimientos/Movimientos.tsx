@@ -287,13 +287,13 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowNewMovementModal(true)}
-              className="btn-primary-horizon flex items-center space-x-2 px-4 py-2 >
+              className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
               <Plus className="h-4 w-4" />
               <span>Nuevo movimiento</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="btn-accent-horizon flex items-center space-x-2 px-4 py-2 >
+              className="btn-accent-horizon flex items-center space-x-2 px-4 py-2"
               <Upload className="h-4 w-4" />
               <span>Importar extracto</span>
             </button>

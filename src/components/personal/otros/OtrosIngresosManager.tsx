@@ -177,7 +177,7 @@ const OtrosIngresosManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={() => toast('Formulario de nuevos ingresos - En desarrollo', { icon: 'ℹ️' })}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
                 <Plus className="w-4 h-4 mr-2" />
                 Añadir Primer Ingreso
               </button>

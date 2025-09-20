@@ -260,7 +260,8 @@ const Detalle: React.FC = () => {
               </div>
               <button
                 onClick={() => loadData()}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-gray-700 bg-white >
+                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-gray-700 bg-white"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualizar
               </button>
@@ -603,7 +604,7 @@ const Detalle: React.FC = () => {
                   className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium ${
                     isActive
                       ? 'bg-primary-100 text-primary-700 border-b-2 border-primary-500'
-                      : 'text-gray-600 hover:text-gray-900
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

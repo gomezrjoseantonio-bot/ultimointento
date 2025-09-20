@@ -588,8 +588,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-text-gray disabled={saving}
-                  >
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-text-gray disabled={saving}"
                     <Upload className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
                     {formData.logoUrl ? 'Cambiar logo' : 'Subir logo'}
                   </button>

@@ -391,13 +391,12 @@ const Ingresos: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowForm(false)}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 >
+                      className="px-4 py-2 text-gray-700 bg-gray-100"
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="btn-primary-horizon px-4 py-2
-                    >
+                      className="btn-primary-horizon px-4 py-2"
                       Guardar Ingreso
                     </button>
                   </div>

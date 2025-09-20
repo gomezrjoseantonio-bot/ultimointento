@@ -488,13 +488,12 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 >
+            className="px-4 py-2 text-gray-700 bg-gray-100"
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
-            className="btn-primary-horizon px-4 py-2
-          >
+            className="btn-primary-horizon px-4 py-2"
             {linea ? 'Actualizar' : 'Crear'}
           </button>
         </div>

@@ -327,7 +327,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                     Tipo
                   </th>
                   <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer onClick={() => handleSort("capitalVivo')}
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('capitalVivo')}
                   >
                     <div className="flex items-center justify-end">
                       Capital Vivo
@@ -335,7 +336,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer onClick={() => handleSort("tin')}
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('tin')}
                   >
                     <div className="flex items-center justify-end">
                       TIN Efectivo

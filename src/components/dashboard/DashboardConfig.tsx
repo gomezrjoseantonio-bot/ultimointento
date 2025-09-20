@@ -254,7 +254,8 @@ const DashboardConfig: React.FC = () => {
         <p className="text-error-600">Error al cargar la configuración del dashboard</p>
         <button 
           onClick={loadConfiguration}
-          className="btn-primary-horizon mt-4 px-4 py-2 >
+          className="btn-primary-horizon mt-4 px-4 py-2"
+        >
           Reintentar
         </button>
       </div>
@@ -429,7 +430,7 @@ const DashboardConfig: React.FC = () => {
                     border border-neutral-200 p-4 cursor-pointer
                     ${isActive 
                       ? 'bg-success-50 border-success-200' 
-                      : 'bg-white
+                      : 'bg-white'
                     }
                   `}
                   onClick={() => addBlock(blockId as DashboardBlockType)}
@@ -457,7 +458,7 @@ const DashboardConfig: React.FC = () => {
           </div>
 
           {/* Info box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg mt-6 p-4">
+          <div className="btn-secondary-horizon btn-primary-horizon ">
             <div className="flex items-start gap-3">
               <div className="text-primary-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />

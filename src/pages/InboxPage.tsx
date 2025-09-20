@@ -709,7 +709,7 @@ const InboxPage: React.FC = () => {
               window.open(url, '_blank');
               toast.dismiss(t.id);
             }}
-            className="btn-primary-horizon px-2 py-1 text-xs rounded >
+            className="btn-primary-horizon px-2 py-1 text-xs rounded"
             Ver en Movimientos
           </button>
         </div>
@@ -1113,7 +1113,7 @@ const InboxPage: React.FC = () => {
                 setEmailLogFilter('');
                 window.history.replaceState({}, '', '/inbox');
               }}
-              className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1 >
+              className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1"
               Mostrar todos los documentos
             </button>
           </div>
@@ -1149,13 +1149,13 @@ const InboxPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleBulkDelete}
-                    className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600 >
+                    className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600"
                     <Trash2 className="w-3 h-3" />
                     Eliminar
                   </button>
                   <button
                     onClick={handleBulkReassign}
-                    className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-xs >
+                    className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-xs"
                     <FolderOpen className="w-3 h-3" />
                     Reasignar
                   </button>
@@ -1249,7 +1249,7 @@ const InboxPage: React.FC = () => {
                 </select>
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="p-1 border border-neutral-200 >
+                  className="p-1 border border-neutral-200"
                   {sortOrder === "asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </button>
               </div>

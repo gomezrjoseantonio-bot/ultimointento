@@ -116,8 +116,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-gray-700 border border-neutral-300 disabled={isSubmitting}
-        >
+          className="px-4 py-2 text-gray-700 border border-neutral-300 disabled={isSubmitting}"
           Cancel
         </button>
         <button

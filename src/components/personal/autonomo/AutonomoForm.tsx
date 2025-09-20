@@ -301,7 +301,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 >
+            className="px-4 py-2 text-neutral-700 border border-neutral-300"
             Cancelar
           </button>
           <button

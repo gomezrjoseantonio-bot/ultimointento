@@ -717,14 +717,15 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     <div className="flex justify-end space-x-3">
                       <button
                         onClick={() => setDeleteConfirmation(null)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 >
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300"
+                      >
                         Cancelar
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <div className="bg-red-50 border border-red-200 p-3 mb-4">
+                    <div className="btn-danger border border-red-200 p-3 mb-4">
                       <p className="text-sm text-red-800">
                         <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>
@@ -761,13 +762,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     <div className="flex justify-end space-x-3">
                       <button
                         onClick={() => setDeleteConfirmation(null)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 >
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300"
+                      >
                         Cancelar
                       </button>
                       <button
                         onClick={confirmDelete}
                         disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
-                        className="btn-danger px-4 py-2 text-sm font-medium   border border-transparent disabled:opacity-50"
+                        className="btn-danger px-4 py-2 text-sm font-medium border border-transparent disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
                       </button>
