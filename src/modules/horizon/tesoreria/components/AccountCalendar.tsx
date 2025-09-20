@@ -254,6 +254,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             <button
               onClick={() => navigateMonth('prev')}
               className="p-1 rounded"
+              >
               title="Mes anterior"
             >
               <ChevronLeft className="h-4 w-4 text-gray-700" />
@@ -269,6 +270,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             <button
               onClick={() => navigateMonth('next')}
               className="p-1 rounded"
+              >
               title="Mes siguiente"
             >
               <ChevronRight className="h-4 w-4 text-gray-700" />
@@ -293,12 +295,14 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
               value={localSearchText}
               onChange={(e) => setLocalSearchText(e.target.value)}
               className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm "
+          >
             />
           </div>
           
           <button
             onClick={() => setLocalExcludePersonal(!localExcludePersonal)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+            >
             title={localExcludePersonal ? 'Mostrar movimientos personales' : 'Ocultar movimientos personales'}
           >
             {localExcludePersonal ? (
@@ -334,8 +338,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
                 className={`min-h-[120px] p-2 border rounded ${
                   isOutsideMonth
                     ? 'border-gray-200 bg-gray-50 text-gray-400 opacity-40' // 40% opacity as per problem statement
-                    : 'border-gray-300 bg-white cursor-pointer
-                }`}
+                    : 'border-gray-300 bg-white cursor-pointer'                }`}
                 onDoubleClick={() => !isOutsideMonth && handleDayDoubleClick(day)}
                 title={!isOutsideMonth ? `Doble click para crear movimiento el ${day.dateStr}` : ''}
               >

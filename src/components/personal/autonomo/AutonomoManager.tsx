@@ -189,13 +189,15 @@ const AutonomoManager: React.FC = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowIngresoForm(true)}
-                className="btn-accent-horizon inline-flex items-center px-3 py-1 text-sm >
+                className="btn-accent-horizon inline-flex items-center px-3 py-1 text-sm"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Ingreso
               </button>
               <button
                 onClick={() => setShowGastoForm(true)}
-                className="btn-danger inline-flex items-center px-3 py-1 text-sm >
+                className="btn-danger inline-flex items-center px-3 py-1 text-sm"
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Gasto
               </button>
@@ -351,7 +353,8 @@ const AutonomoManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={handleCreateAutonomo}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Configuración
               </button>
@@ -365,7 +368,7 @@ const AutonomoManager: React.FC = () => {
                 className={`border p-4 ${
                   autonomo.activo 
                     ? 'border-green-200 bg-green-50' 
-                    : 'border-gray-200 bg-white
+                    : 'border-gray-200 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between">

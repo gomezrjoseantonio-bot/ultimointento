@@ -248,6 +248,7 @@ const GastosPanel: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
           />
         </div>
       </div>
@@ -408,6 +409,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.proveedor_nombre}
                     onChange={(e) => setFormData({...formData, proveedor_nombre: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
 
@@ -420,6 +422,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.proveedor_nif}
                     onChange={(e) => setFormData({...formData, proveedor_nif: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
               </div>
@@ -435,6 +438,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
 
@@ -448,6 +452,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.fecha_pago_prevista}
                     onChange={(e) => setFormData({...formData, fecha_pago_prevista: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
               </div>
@@ -464,6 +469,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
 
@@ -477,6 +483,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.base}
                     onChange={(e) => setFormData({...formData, base: parseFloat(e.target.value) || 0})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
 
@@ -490,6 +497,7 @@ const GastosPanel: React.FC = () => {
                     value={formData.iva}
                     onChange={(e) => setFormData({...formData, iva: parseFloat(e.target.value) || 0})}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
                   />
                 </div>
               </div>

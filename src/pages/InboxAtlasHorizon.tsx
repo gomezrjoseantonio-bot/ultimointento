@@ -698,6 +698,7 @@ const InboxAtlasHorizon: React.FC = () => {
         accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
         onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
         className="hidden"
+          >
       />
 
       {/* Standardized Filter Bar */}
@@ -760,6 +761,7 @@ const InboxAtlasHorizon: React.FC = () => {
             emptyIcon={<FileText className="h-12 w-12 text-gray-400" />}
             onSort={undefined} // Could implement sorting later
             className="border-0"
+          >
           />
         </div>
 
@@ -780,6 +782,7 @@ const InboxAtlasHorizon: React.FC = () => {
                   fileContent={selectedDocument.fileContent}
                   fileUrl={selectedDocument.fileUrl}
                   className="border rounded-lg"
+          >
                 />
               </div>
 
@@ -923,6 +926,7 @@ const InboxAtlasHorizon: React.FC = () => {
                       </label>
                       <select 
                         className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
+          >
                         onChange={(e) => {
                           const categoria = e.target.value as 'Mejora' | 'Mobiliario' | 'Reparación y Conservación';
                           if (categoria) {
@@ -950,6 +954,7 @@ const InboxAtlasHorizon: React.FC = () => {
                       </label>
                       <select 
                         className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
+          >
                         onChange={(e) => {
                           const propertyId = e.target.value;
                           if (propertyId) {
@@ -984,6 +989,7 @@ const InboxAtlasHorizon: React.FC = () => {
                       </div>
                       <select 
                         className="w-full px-3 py-2 border border-hz-warning rounded-md focus:outline-none focus:ring-2 focus:ring-hz-warning/30"
+          >
                         onChange={(e) => {
                           const destino = e.target.value;
                           if (destino) {

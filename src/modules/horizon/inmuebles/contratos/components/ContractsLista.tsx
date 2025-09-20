@@ -159,6 +159,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
             />
           </div>
 
@@ -288,6 +289,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                           <button
                             onClick={() => onEditContract(contract)}
                             className="text-brand-navy hover:text-brand-navy/80 transition-colors"
+                            >
                             title="Editar"
                           >
                             <Edit2 className="h-4 w-4" />
@@ -295,6 +297,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                           
                           <button
                             className="text-neutral-600 hover:text-neutral-800 transition-colors"
+                            >
                             title="Adjuntos"
                           >
                             <FileText className="h-4 w-4" />
@@ -304,6 +307,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                             <button
                               onClick={() => handleTerminateContract(contract.id!)}
                               className="text-warning-600 hover:text-yellow-800 transition-colors"
+                              >
                               title="Terminar contrato"
                             >
                               <XCircle className="h-4 w-4" />
@@ -313,6 +317,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
                           <button
                             onClick={() => handleDeleteContract(contract.id!)}
                             className="text-error-600 hover:text-error-800 transition-colors"
+                            >
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />

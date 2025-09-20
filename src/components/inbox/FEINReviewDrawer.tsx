@@ -85,6 +85,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
               style={{ color: 'var(--text-gray)' }}
             >
               <X className="h-5 w-5" />
@@ -175,6 +176,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         value={editableData.plazoAnos || ''}
                         onChange={(e) => updateField('plazoAnos', parseInt(e.target.value) || undefined)}
                         className="flex-1 px-3 py-2 border rounded-md tabular-nums"
+                        >
                         style={{ 
                           borderColor: 'var(--hz-neutral-300)',
                           fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
@@ -186,6 +188,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         value={editableData.plazoMeses || ''}
                         onChange={(e) => updateField('plazoMeses', parseInt(e.target.value) || undefined)}
                         className="flex-1 px-3 py-2 border rounded-md tabular-nums"
+                        >
                         style={{ 
                           borderColor: 'var(--hz-neutral-300)',
                           fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
@@ -237,6 +240,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                       value={editableData.tin ? (editableData.tin * 100) : ''}
                       onChange={(e) => updateField('tin', parseFloat(e.target.value) / 100 || undefined)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      >
                       placeholder="Ej: 3.45"
                     />
                   ) : (

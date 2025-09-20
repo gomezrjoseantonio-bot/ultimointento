@@ -208,7 +208,7 @@ const Personal: React.FC = () => {
                   className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium ${
                     isActive
                       ? 'bg-gray-100 text-gray-900 border-b-2 border-gray-500'
-                      : 'text-gray-600 hover:text-gray-900
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

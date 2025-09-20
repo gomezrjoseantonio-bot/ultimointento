@@ -239,6 +239,7 @@ const SettingsPage: React.FC = () => {
                   onChange={(e) => setFormData({...formData, canonicalName: e.target.value})}
                   placeholder="ej. ENDESA"
                   className="btn-secondary-horizon w-full "
+          >
                 />
               </div>
               
@@ -252,6 +253,7 @@ const SettingsPage: React.FC = () => {
                   onChange={(e) => setFormData({...formData, nif: e.target.value})}
                   placeholder="ej. A81948077"
                   className="btn-secondary-horizon w-full "
+          >
                 />
               </div>
               
@@ -265,6 +267,7 @@ const SettingsPage: React.FC = () => {
                   placeholder="ej. Endesa Energía XXI, Endesa S.A., ENDESA ENERGIA"
                   rows={3}
                   className="btn-secondary-horizon w-full "
+          >
                 />
               </div>
             </div>
@@ -313,6 +316,7 @@ const SettingsPage: React.FC = () => {
               step="0.05" 
               defaultValue="0.8"
               className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
+          >
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>50%</span>
@@ -342,6 +346,7 @@ const SettingsPage: React.FC = () => {
               <input 
                 type="checkbox" 
                 className="sr-only peer" 
+          >
                 checked={autoSaveConfig.enabled}
                 onChange={handleToggleAutoSave}
               />
@@ -357,6 +362,7 @@ const SettingsPage: React.FC = () => {
                 <label className="block text-sm text-gray-600 mb-1">Facturas</label>
                 <select 
                   className="w-full border border-gray-300 px-3 py-2 text-sm"
+                  >
                   value={autoSaveConfig.destinations.facturas}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, facturas: e.target.value }
@@ -370,6 +376,7 @@ const SettingsPage: React.FC = () => {
                 <label className="block text-sm text-gray-600 mb-1">Extractos bancarios</label>
                 <select 
                   className="w-full border border-gray-300 px-3 py-2 text-sm"
+                  >
                   value={autoSaveConfig.destinations.extractos}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, extractos: e.target.value }
@@ -382,6 +389,7 @@ const SettingsPage: React.FC = () => {
                 <label className="block text-sm text-gray-600 mb-1">Contratos</label>
                 <select 
                   className="w-full border border-gray-300 px-3 py-2 text-sm"
+                  >
                   value={autoSaveConfig.destinations.contratos}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, contratos: e.target.value }
@@ -394,6 +402,7 @@ const SettingsPage: React.FC = () => {
                 <label className="block text-sm text-gray-600 mb-1">Otros documentos</label>
                 <select 
                   className="w-full border border-gray-300 px-3 py-2 text-sm"
+                  >
                   value={autoSaveConfig.destinations.otros}
                   onChange={(e) => handleUpdateAutoSaveConfig({
                     destinations: { ...autoSaveConfig.destinations, otros: e.target.value }
@@ -450,6 +459,7 @@ const SettingsPage: React.FC = () => {
                     }
                   })}
                   className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
+          >
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.factura * 100)}%
@@ -470,6 +480,7 @@ const SettingsPage: React.FC = () => {
                     }
                   })}
                   className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
+          >
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.extracto * 100)}%
@@ -490,6 +501,7 @@ const SettingsPage: React.FC = () => {
                     }
                   })}
                   className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
+          >
                 />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.contrato * 100)}%

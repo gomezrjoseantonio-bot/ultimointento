@@ -266,7 +266,8 @@ const NominaManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={handleCreateNomina}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Nómina
               </button>
@@ -280,8 +281,7 @@ const NominaManager: React.FC = () => {
                 className={`border p-4 ${
                   nomina.activa 
                     ? 'border-blue-200 bg-blue-50' 
-                    : 'border-gray-200 bg-white
-                }`}
+                    : 'border-gray-200 bg-white'                }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">

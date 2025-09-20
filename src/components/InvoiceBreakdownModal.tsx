@@ -365,6 +365,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                 value={breakdown.inmuebleId}
                 onChange={(e) => setBreakdown(prev => ({ ...prev, inmuebleId: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 {properties.map(property => (
@@ -387,8 +388,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                   className={`flex-1 px-3 py-2 text-sm font-medium-md ${
                     distributionMode === 'lines'
                       ? 'bg-brand-navy'
-                      : 'bg-white text-gray-700
-                  }`}
+                      : 'bg-white text-gray-700'                  }`}
                 >
                   Por líneas
                 </button>
@@ -398,8 +398,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                   className={`flex-1 px-3 py-2 text-sm font-medium-md ${
                     distributionMode === 'percentage'
                       ? 'bg-brand-navy'
-                      : 'bg-white text-gray-700
-                  }`}
+                      : 'bg-white text-gray-700'                  }`}
                 >
                   Por %
                 </button>
@@ -414,6 +413,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                   checked={breakdown.menorCuantiaActivated}
                   onChange={(e) => setBreakdown(prev => ({ ...prev, menorCuantiaActivated: e.target.checked }))}
                   className="rounded border-gray-300"
+          >
                 />
                 <span className="text-sm text-gray-700">
                   Menor cuantía → R&C (≤ 300€)
@@ -429,7 +429,8 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                 <h3 className="text-sm font-medium text-gray-900">Distribución porcentual</h3>
                 <button
                   onClick={applyPercentageDistribution}
-                  className="px-3 py-1 bg-brand-navy text-sm rounded >
+                  className="px-3 py-1 bg-brand-navy text-sm rounded"
+                  >
                   Aplicar
                 </button>
               </div>
@@ -443,6 +444,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.mejora}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mejora: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          >
                   />
                 </div>
                 <div>
@@ -454,6 +456,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.reparacionConservacion}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, reparacionConservacion: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          >
                   />
                 </div>
                 <div>
@@ -465,6 +468,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.mobiliario}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mobiliario: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          >
                   />
                 </div>
               </div>
@@ -506,6 +510,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                       value={breakdown.fechaFinObra || ''}
                       onChange={(e) => setBreakdown(prev => ({ ...prev, fechaFinObra: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 text-sm"
+                      >
                       required
                     />
                   </div>
@@ -566,6 +571,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                       value={breakdown.fechaAltaMobiliario || ''}
                       onChange={(e) => setBreakdown(prev => ({ ...prev, fechaAltaMobiliario: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 text-sm"
+                      >
                       required
                     />
                   </div>
@@ -616,13 +622,14 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
         <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 >
+            className="px-4 py-2 text-gray-700 border border-gray-300"
+            >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 bg-brand-navy
-          >
+            className="px-4 py-2 bg-brand-navy"
+            >
             Guardar
           </button>
         </div>
@@ -647,6 +654,7 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
           value={item.description}
           onChange={(e) => onUpdate({ description: e.target.value })}
           className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          >
           placeholder="Descripción del concepto"
         />
       </div>
@@ -660,6 +668,7 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
             value={item.baseAmount.toFixed(2)}
             onChange={(e) => onUpdate({ baseAmount: parseFloat(e.target.value) || 0 })}
             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          >
           />
         </div>
         <div>
@@ -690,8 +699,7 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
             className={`px-2 py-1 text-xs rounded ${
               item.category === category
                 ? 'bg-brand-navy'
-                : 'bg-gray-100 text-gray-600
-            }`}
+                : 'bg-gray-100 text-gray-600'            }`}
           >
             {category === 'mejora' ? 'M' : category === 'reparacion-conservacion' ? 'R&C' : 'Mob'}
           </button>

@@ -215,8 +215,7 @@ const PlanesManager: React.FC = () => {
               className={`flex-1 px-4 py-2 text-sm font-medium ${
                 activeFilter === tab.key
                   ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                  : 'text-gray-600 hover:text-gray-900
-              }`}
+                  : 'text-gray-600 hover:text-gray-900'              }`}
             >
               {tab.label} ({tab.count})
             </button>
@@ -245,7 +244,8 @@ const PlanesManager: React.FC = () => {
               <div className="mt-6">
                 <button
                   onClick={handleCreatePlan}
-                  className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
+                  className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+              >
                   <Plus className="w-4 h-4 mr-2" />
                   Crear Primer Plan
                 </button>
@@ -325,6 +325,7 @@ const PlanesManager: React.FC = () => {
                       <button
                         onClick={() => handleEditPlan(plan)}
                         className="p-2 text-gray-400 hover:text-blue-600"
+                        >
                         title="Editar plan"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -332,6 +333,7 @@ const PlanesManager: React.FC = () => {
                       <button
                         onClick={() => handleDeletePlan(plan.id!)}
                         className="p-2 text-gray-400 hover:text-red-600"
+                        >
                         title="Eliminar plan"
                       >
                         <Trash2 className="w-4 h-4" />

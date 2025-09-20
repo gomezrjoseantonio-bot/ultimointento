@@ -144,6 +144,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
               checked={mode === 'by_lines'}
               onChange={() => setMode('by_lines')}
               className="mr-2"
+          >
             />
             Por líneas de factura
           </label>
@@ -153,6 +154,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
               checked={mode === 'manual'}
               onChange={() => setMode('manual')}
               className="mr-2"
+          >
             />
             Reparto manual
           </label>
@@ -223,6 +225,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={percentages.mejora.toFixed(1)}
                       onChange={(e) => handlePercentageUpdate('mejora', parseFloat(e.target.value) || 0)}
                       className="w-16 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max="100"
                       step="0.1"
@@ -236,6 +239,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={breakdown.mejora.toFixed(2)}
                       onChange={(e) => handleManualUpdate('mejora', parseFloat(e.target.value) || 0)}
                       className="w-20 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max={totalAmount}
                       step="0.01"
@@ -260,6 +264,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={percentages.mobiliario.toFixed(1)}
                       onChange={(e) => handlePercentageUpdate('mobiliario', parseFloat(e.target.value) || 0)}
                       className="w-16 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max="100"
                       step="0.1"
@@ -273,6 +278,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={breakdown.mobiliario.toFixed(2)}
                       onChange={(e) => handleManualUpdate('mobiliario', parseFloat(e.target.value) || 0)}
                       className="w-20 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max={totalAmount}
                       step="0.01"
@@ -297,6 +303,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={percentages.reparacion_conservacion.toFixed(1)}
                       onChange={(e) => handlePercentageUpdate('reparacion_conservacion', parseFloat(e.target.value) || 0)}
                       className="w-16 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max="100"
                       step="0.1"
@@ -310,6 +317,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={breakdown.reparacion_conservacion.toFixed(2)}
                       onChange={(e) => handleManualUpdate('reparacion_conservacion', parseFloat(e.target.value) || 0)}
                       className="w-20 px-2 py-1 text-sm border rounded text-right"
+                      >
                       min="0"
                       max={totalAmount}
                       step="0.01"

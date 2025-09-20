@@ -266,7 +266,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
           <button
             onClick={handleDescribeImage}
             disabled={isProcessing}
-            className="btn-primary-horizon disabled:bg-blue-400 px-6 py-2 font-medium flex items-center space-x-2"
+            className="btn-primary-horizon btn-primary-horizon disabled: px-6 py-2 font-medium flex items-center space-x-2"
           >
             {isProcessing ? (
               <>

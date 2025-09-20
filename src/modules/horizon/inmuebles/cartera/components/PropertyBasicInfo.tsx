@@ -68,6 +68,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             value={formData.globalAlias}
             onChange={(e) => updateFormData('globalAlias', e.target.value)}
             className="btn-secondary-horizon w-full px-3 py-2 "
+            >
             placeholder="ej. Madrid-Centro-001"
           />
           <p className="mt-1 text-xs text-gray-500">

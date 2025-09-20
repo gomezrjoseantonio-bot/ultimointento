@@ -234,6 +234,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                                 value={editingMovement?.description || ''}
                                 onChange={(e) => setEditingMovement(prev => prev ? {...prev, description: e.target.value} : null)}
                                 className="w-full p-2 border border-hz-neutral-300 rounded text-sm"
+                                >
                                 placeholder="Descripción"
                               />
                               <input
@@ -241,6 +242,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                                 value={editingMovement?.counterparty || ''}
                                 onChange={(e) => setEditingMovement(prev => prev ? {...prev, counterparty: e.target.value} : null)}
                                 className="w-full p-2 border border-hz-neutral-300 rounded text-sm"
+                                >
                                 placeholder="Contraparte"
                               />
                               <input
@@ -248,6 +250,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                                 value={editingMovement?.category || ''}
                                 onChange={(e) => setEditingMovement(prev => prev ? {...prev, category: e.target.value} : null)}
                                 className="w-full p-2 border border-hz-neutral-300 rounded text-sm"
+                                >
                                 placeholder="Categoría"
                               />
                             </div>

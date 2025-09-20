@@ -158,6 +158,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.date}
                 onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -171,6 +172,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.counterparty}
                 onChange={(e) => setFormData(prev => ({ ...prev, counterparty: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="Nombre del proveedor"
                 required
               />
@@ -185,6 +187,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.counterpartyNIF || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, counterpartyNIF: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="12345678Z"
               />
             </div>
@@ -201,6 +204,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.concept}
                 onChange={(e) => setFormData(prev => ({ ...prev, concept: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="Descripción del gasto"
                 required
               />
@@ -215,6 +219,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={amountInput}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent text-right"
+                >
                 placeholder="1.234,56"
                 required
               />
@@ -231,6 +236,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.fiscalType}
                 onChange={(e) => setFormData(prev => ({ ...prev, fiscalType: e.target.value as AEATFiscalType }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 {AEAT_FISCAL_TYPES.map(type => (
@@ -268,6 +274,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.taxYear}
                 onChange={(e) => setFormData(prev => ({ ...prev, taxYear: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 min="2020"
                 max="2030"
               />
@@ -284,6 +291,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.propertyId}
                 onChange={(e) => setFormData(prev => ({ ...prev, propertyId: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 {properties.map(property => (
@@ -303,6 +311,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.unit}
                 onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="completo, habitacion-1, etc."
               />
             </div>
@@ -335,6 +344,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.prorationDetail}
                 onChange={(e) => setFormData(prev => ({ ...prev, prorationDetail: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="100, 50%, etc."
               />
             </div>
@@ -361,6 +371,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 checked={formData.taxIncluded}
                 onChange={(e) => setFormData(prev => ({ ...prev, taxIncluded: e.target.checked }))}
                 className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-gray-300 rounded"
+          >
               />
               <label htmlFor="taxIncluded" className="ml-2 text-sm text-gray-700">
                 Impuesto incluido

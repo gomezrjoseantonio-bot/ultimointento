@@ -77,6 +77,7 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
                 <td className="py-2 px-2 text-center">
                   <span 
                     className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                    >
                     style={{ 
                       backgroundColor: `${getDeviationColor(category.deviationStatus)}20`,
                       color: getDeviationColor(category.deviationStatus)

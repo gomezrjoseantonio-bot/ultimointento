@@ -226,21 +226,25 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
           title="Total préstamos"
           value={prestamos.length.toString()}
           className="bg-white"
+          >
         />
         <KpiCard
           title="Capital vivo total"
           value={formatEuro(prestamos.reduce((sum, p) => sum + p.principalVivo, 0))}
           className="bg-white"
+          >
         />
         <KpiCard
           title="Cuotas mensuales est."
           value={formatEuro(prestamos.reduce((sum, p) => sum + getEstimatedPayment(p), 0))}
           className="bg-white"
+          >
         />
         <KpiCard
           title="Préstamos variables"
           value={prestamos.filter(p => p.tipo === 'VARIABLE').length.toString()}
           className="bg-white"
+          >
         />
       </div>
 

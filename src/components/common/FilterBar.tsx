@@ -48,6 +48,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={searchPlaceholder}
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              >
               style={{ 
                 '--tw-ring-color': 'var(--hz-primary)',
                 '--tw-ring-opacity': '0.3'
@@ -66,6 +67,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               value={filter.value}
               onChange={(e) => filter.onChange(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              >
               style={{ 
                 '--tw-ring-color': 'var(--hz-primary)',
                 '--tw-ring-opacity': '0.3'
@@ -91,6 +93,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               value={dateRange.startDate}
               onChange={(e) => dateRange.onStartDateChange(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              >
               style={{ 
                 '--tw-ring-color': 'var(--hz-primary)',
                 '--tw-ring-opacity': '0.3'
@@ -102,6 +105,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
               value={dateRange.endDate}
               onChange={(e) => dateRange.onEndDateChange(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+              >
               style={{ 
                 '--tw-ring-color': 'var(--hz-primary)',
                 '--tw-ring-opacity': '0.3'

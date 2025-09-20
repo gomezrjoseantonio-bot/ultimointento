@@ -253,6 +253,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                             status={entry.movement.unifiedStatus as any} 
                             movementType={entry.movement.type}
                             className="flex-shrink-0"
+          >
                           />
                         )}
                         {entry.type === 'rent' && (
@@ -277,6 +278,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                             onLinkInvoice={() => onMovementAction(entry.movement!, 'link')}
                             onReclassify={() => onMovementAction(entry.movement!, 'reclassify')}
                             className="flex-row"
+          >
                           />
                         </div>
                       )}

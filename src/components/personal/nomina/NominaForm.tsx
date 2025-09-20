@@ -194,6 +194,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 value={formData.nombre}
                 onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="Ej: Nómina Principal"
                 required
               />
@@ -209,6 +210,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 value={formData.salarioBrutoAnual}
                 onChange={(e) => setFormData(prev => ({ ...prev, salarioBrutoAnual: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="50000.00"
                 required
               />
@@ -232,6 +234,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     distribucion: { tipo: 'doce', meses: 12 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm font-medium">12 meses</span>
               </label>
@@ -247,6 +250,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     distribucion: { tipo: 'catorce', meses: 14 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm font-medium">14 meses (pagas extra)</span>
               </label>
@@ -262,6 +266,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     distribucion: { tipo: 'personalizado', meses: formData.distribucion.meses || 12 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm font-medium">Personalizado</span>
               </label>
@@ -282,6 +287,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     distribucion: { ...prev.distribucion, meses: parseInt(e.target.value) }
                   }))}
                   className="w-32 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
                 />
               </div>
             )}
@@ -399,6 +405,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     reglaCobroDia: { tipo: 'fijo', dia: 25 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm">Día fijo del mes</span>
                 {formData.reglaCobroDia.tipo === 'fijo' && (
@@ -412,6 +419,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       reglaCobroDia: { ...prev.reglaCobroDia, dia: parseInt(e.target.value) }
                     }))}
                     className="w-16 border border-neutral-300 rounded text-sm"
+          >
                   />
                 )}
               </label>
@@ -426,6 +434,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     reglaCobroDia: { tipo: 'ultimo-habil' }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm">Último día hábil del mes</span>
               </label>
@@ -440,6 +449,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     reglaCobroDia: { tipo: 'n-esimo-habil', posicion: -2 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <span className="text-sm">N-ésimo día hábil desde fin de mes</span>
                 {formData.reglaCobroDia.tipo === 'n-esimo-habil' && (
@@ -469,6 +479,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 checked={formData.activa}
                 onChange={(e) => setFormData(prev => ({ ...prev, activa: e.target.checked }))}
                 className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
+          >
               />
               <span className="text-sm font-medium text-neutral-700">Nómina activa</span>
             </label>
@@ -624,6 +635,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
               placeholder="Ej: Productividad"
               required
             />
@@ -648,6 +660,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
                 value={formData.valor}
                 onChange={(e) => setFormData(prev => ({ ...prev, valor: e.target.value }))}
                 className="flex-1 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder={formData.tipo === 'porcentaje' ? '15' : '5000'}
                 required
               />
@@ -676,6 +689,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
                   value={dist.porcentaje}
                   onChange={(e) => updateDistribucion(dist.mes, parseFloat(e.target.value) || 0)}
                   className="w-full text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
+          >
                 />
               </div>
             ))}
@@ -789,6 +803,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
             placeholder="Ej: Bonus de objetivos Q2"
             required
           />
@@ -805,6 +820,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
               value={formData.importe}
               onChange={(e) => setFormData(prev => ({ ...prev, importe: e.target.value }))}
               className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
               placeholder="1500.00"
               required
             />

@@ -214,6 +214,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
               accept=".xls,.xlsx,.csv"
               onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          >
             />
             
             {selectedFile ? (
@@ -309,6 +310,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
           <button
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-hz-neutral-700 bg-hz-card-bg border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100"
+            >
             disabled={importing}
           >
             Cancelar

@@ -401,6 +401,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     if (nombre.trim()) expandNextSection('basic');
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="Ej: Hipoteca Vivienda Principal"
                   required
                 />
@@ -417,6 +418,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     if (e.target.value) expandNextSection('basic');
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   required
                 >
                   <option value="">Seleccionar inmueble</option>
@@ -448,6 +450,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="180.000,00"
                   required
                 />
@@ -470,6 +473,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="300"
                   min="1"
                   required
@@ -485,6 +489,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   value={fechaFirma}
                   onChange={(e) => setFechaFirma(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   required
                 />
               </div>
@@ -497,6 +502,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   value={cuentaCargoId}
                   onChange={(e) => setCuentaCargoId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   required
                 >
                   <option value="">Seleccionar cuenta</option>
@@ -576,6 +582,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                    >
                     placeholder="3,50"
                     required
                   />
@@ -617,6 +624,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="3,65"
                       required
                     />
@@ -638,6 +646,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="1,20"
                       required
                     />
@@ -657,6 +666,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         value={tramoFijoMeses}
                         onChange={(e) => setTramoFijoMeses(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                        >
                         placeholder="60"
                         min="1"
                         required
@@ -679,6 +689,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                        >
                         placeholder="3,20"
                         required
                       />
@@ -715,6 +726,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                        >
                         placeholder="3,65"
                         required
                       />
@@ -736,6 +748,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                           }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                        >
                         placeholder="1,50"
                         required
                       />
@@ -793,6 +806,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     value={mesesSoloIntereses}
                     onChange={(e) => setMesesSoloIntereses(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                    >
                     placeholder="0"
                     min="0"
                   />
@@ -810,6 +824,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     value={diferirPrimeraCuotaMeses}
                     onChange={(e) => setDiferirPrimeraCuotaMeses(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                    >
                     placeholder="0"
                     min="0"
                   />
@@ -832,6 +847,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       }
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                    >
                     placeholder="1"
                     min="1"
                     max="31"
@@ -851,6 +867,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     checked={prorratearPrimerPeriodo}
                     onChange={(e) => setProrratearPrimerPeriodo(e.target.checked)}
                     className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue"
+          >
                   />
                   <label htmlFor="prorratearPrimerPeriodo" className="text-sm text-gray-700">
                     Prorratear primer período por días reales
@@ -864,6 +881,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     checked={cobroMesVencido}
                     onChange={(e) => setCobroMesVencido(e.target.checked)}
                     className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue"
+          >
                   />
                   <label htmlFor="cobroMesVencido" className="text-sm text-gray-700">
                     Cobro a mes vencido (devengo mes t, cargo mes t+1)
@@ -914,6 +932,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="1,000"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -938,6 +957,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="0,500"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -962,6 +982,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                  >
                   placeholder="30,00"
                 />
               </div>
@@ -1010,6 +1031,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="0,60"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1046,6 +1068,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaFinMaximaBonificacion}
                       onChange={(e) => setFechaFinMaximaBonificacion(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="2026-12-31"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1066,6 +1089,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaFinPeriodo}
                       onChange={(e) => setFechaFinPeriodo(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="2025-12-31"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1082,6 +1106,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaEvaluacion}
                       onChange={(e) => setFechaEvaluacion(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="2025-12-01"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1098,6 +1123,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={offsetEvaluacionDias}
                       onChange={(e) => setOffsetEvaluacionDias(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
+                      >
                       placeholder="30"
                       min="0"
                     />

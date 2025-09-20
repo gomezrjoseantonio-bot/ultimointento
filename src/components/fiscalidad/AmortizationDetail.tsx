@@ -151,6 +151,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
           onChange={(e) => setDaysRented(parseInt(e.target.value) || 0)}
           onBlur={recalculate}
           className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
         />
         <p className="text-xs text-neutral-500 mt-1">
           De {calculation.daysAvailable} días disponibles en {exerciseYear}

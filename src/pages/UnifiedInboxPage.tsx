@@ -203,6 +203,7 @@ const UnifiedInboxPage: React.FC = () => {
   return (
     <div 
       className="h-screen flex flex-col bg-gray-50"
+          >
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
@@ -223,11 +224,13 @@ const UnifiedInboxPage: React.FC = () => {
                 accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx,.xls,.csv"
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 className="hidden"
+                >
                 id="file-upload"
               />
               <label
                 htmlFor="file-upload"
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white cursor-pointer"
+                >
                 style={{ backgroundColor: 'var(--horizon-primary)' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary)'}
@@ -260,6 +263,7 @@ const UnifiedInboxPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+                >
                 style={{ 
                   '--tw-ring-color': 'var(--horizon-primary)',
                   borderColor: '#d1d5db'
@@ -278,6 +282,7 @@ const UnifiedInboxPage: React.FC = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'todos' | DocumentStatus)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
+            >
             style={{ 
               '--tw-ring-color': 'var(--horizon-primary)',
               borderColor: '#d1d5db'
@@ -306,6 +311,7 @@ const UnifiedInboxPage: React.FC = () => {
               <div className="text-center py-12">
                 <div 
                   className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors"
+          >
                   onDragOver={handleDragOver}
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
@@ -522,6 +528,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           <button
             onClick={() => onSelect(document)}
             className="p-1 text-gray-400 hover:text-gray-600"
+            >
             title="Ver detalles"
           >
             <Eye className="h-4 w-4" />
@@ -531,6 +538,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <button
               onClick={() => onReprocessOCR(document.id)}
               className="p-1 text-gray-400 hover:text-gray-600"
+              >
               title="Reprocesar OCR"
             >
               <RotateCcw className="h-4 w-4" />
@@ -544,6 +552,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <button
               onClick={() => onAssignAccount(document)}
               className="p-1 text-primary-500 hover:text-primary-700"
+              >
               title="Asignar cuenta bancaria"
             >
               <CreditCard className="h-4 w-4" />

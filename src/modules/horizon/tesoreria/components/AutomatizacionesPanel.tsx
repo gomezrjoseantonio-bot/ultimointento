@@ -454,6 +454,7 @@ const AutomatizacionesPanel: React.FC = () => {
                   onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="ej. Alerta saldo mínimo cuenta principal"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                 />
               </div>
               
@@ -502,6 +503,7 @@ const AutomatizacionesPanel: React.FC = () => {
                     onChange={(e) => setNewRule(prev => ({ ...prev, threshold: parseFloat(e.target.value) }))}
                     placeholder="0.00"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                   />
                 </div>
               )}
@@ -519,6 +521,7 @@ const AutomatizacionesPanel: React.FC = () => {
                       onChange={(e) => setNewRule(prev => ({ ...prev, expectedAmount: parseFloat(e.target.value) }))}
                       placeholder="0.00"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                     />
                   </div>
                   <div>
@@ -530,6 +533,7 @@ const AutomatizacionesPanel: React.FC = () => {
                       value={newRule.expectedDate || ''}
                       onChange={(e) => setNewRule(prev => ({ ...prev, expectedDate: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                     />
                   </div>
                 </>
@@ -562,6 +566,7 @@ const AutomatizacionesPanel: React.FC = () => {
                   checked={newRule.isActive ?? true}
                   onChange={(e) => setNewRule(prev => ({ ...prev, isActive: e.target.checked }))}
                   className="rounded border-gray-300 text-brand-navy focus:ring-brand-navy"
+          >
                 />
                 <label htmlFor="isActive" className="text-sm text-gray-700">
                   Activar regla inmediatamente

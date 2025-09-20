@@ -142,6 +142,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               placeholder="6"
               min="1"
               className="w-32 border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+          >
             />
           </div>
         )}
@@ -406,6 +407,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
                     placeholder="4,20"
                     className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+          >
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
@@ -425,6 +427,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
                     placeholder="0,85"
                     className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
+          >
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
@@ -482,6 +485,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 onChange={(e) => updateFormData({ comisionApertura: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+          >
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>
@@ -501,6 +505,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 onChange={(e) => updateFormData({ comisionMantenimiento: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+          >
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">€</span>
@@ -520,6 +525,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 onChange={(e) => updateFormData({ comisionAmortizacionAnticipada: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
+          >
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>

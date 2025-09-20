@@ -426,6 +426,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
         <div className="flex items-center justify-end space-x-2">
           <button
             className="text-brand-navy hover:text-navy-800 p-1"
+            >
             title="Ver detalles"
           >
             <EyeIcon className="h-4 w-4" />
@@ -435,6 +436,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
               <button
                 onClick={onEdit}
                 className="text-brand-navy hover:text-navy-800 p-1"
+                >
                 title="Editar"
               >
                 <PencilIcon className="h-4 w-4" />
@@ -442,6 +444,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
               <button
                 onClick={onClose}
                 className="text-success-600 hover:text-success-800 p-1"
+                >
                 title="Cerrar reforma"
               >
                 <CheckCircleIcon className="h-4 w-4" />
@@ -451,6 +454,7 @@ const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, on
           <button
             onClick={onDelete}
             className="text-error-600 hover:text-error-800 p-1"
+            >
             title="Eliminar"
           >
             <TrashIcon className="h-4 w-4" />

@@ -216,6 +216,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
           src={account.banco.brand.logoUrl} 
           alt={`Logo ${account.banco.name}`}
           className="w-full h-full object-cover"
+          >
           onError={(e) => {
             // Fallback to avatar
             e.currentTarget.style.display = 'none';
@@ -231,6 +232,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     return (
       <div 
         className="w-full h-full flex items-center justify-center font-bold text-sm"
+        >
         style={{ backgroundColor: color }}
       >
         {initial}
@@ -265,6 +267,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-atlas-blue focus:border-atlas-blue"
+          >
             />
           </div>
         </div>
@@ -327,6 +330,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   <button
                     onClick={() => openEditModal(account)}
                     className="p-2 text-gray-500 hover:text-atlas-blue rounded-lg hover:bg-gray-100"
+                    >
                     title="Editar cuenta"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -335,6 +339,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                     <button
                       onClick={() => setDeleteConfirmation(account)}
                       className="p-2 text-gray-500 hover:text-error-600 rounded-lg hover:bg-gray-100"
+                      >
                       title="Desactivar cuenta"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -357,6 +362,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
 
             <div 
               className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+          >
               onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
@@ -478,6 +484,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             titular: { ...prev.titular, nombre: e.target.value }
                           }))}
                           className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
+          >
                         />
                       </div>
                       <div>
@@ -493,6 +500,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             titular: { ...prev.titular, nif: e.target.value }
                           }))}
                           className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
+          >
                         />
                       </div>
                     </div>

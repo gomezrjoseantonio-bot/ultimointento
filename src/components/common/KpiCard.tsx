@@ -50,6 +50,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
           <div className="mb-1">
             <p 
               className="text-2xl font-semibold"
+              >
               style={{ color: 'var(--hz-text)' }}
             >
               {value}
