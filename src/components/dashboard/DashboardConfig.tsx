@@ -284,7 +284,7 @@ const DashboardConfig: React.FC = () => {
         style={style}
         className={`
           bg-white border border-neutral-200 p-4 shadow-sm
-          ${isDragging ? "shadow-lg' : ''}
+          ${isDragging ? 'shadow-lg' : ''}
           ${!block.isActive ? 'opacity-50' : ''}
         `}
       >
@@ -457,7 +457,7 @@ const DashboardConfig: React.FC = () => {
           </div>
 
           {/* Info box */}
-          <div className="btn-secondary-horizon btn-primary-horizon mt-6 p-4 ">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg mt-6 p-4">
             <div className="flex items-start gap-3">
               <div className="text-primary-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />

@@ -273,13 +273,14 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             {zipEntries.map((entry, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer onClick={() => setSelectedZipEntry(entry)}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer"
+                onClick={() => setSelectedZipEntry(entry)}
               >
                 <div className="flex items-center">
                   {renderFileIcon()}
                   <span className="ml-2 text-sm">{entry.name}</span>
                 </div>
-                <button className="text-xs text-primary-600 hover:text-primary-800">
+                <button className="btn-ghost-horizon text-xs">
                   Ver
                 </button>
               </div>

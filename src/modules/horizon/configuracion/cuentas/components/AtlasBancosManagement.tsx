@@ -724,7 +724,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   </div>
                 ) : (
                   <div>
-                    <div className="btn-danger   border border-red-200 p-3 mb-4">
+                    <div className="bg-red-50 border border-red-200 p-3 mb-4">
                       <p className="text-sm text-red-800">
                         <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>

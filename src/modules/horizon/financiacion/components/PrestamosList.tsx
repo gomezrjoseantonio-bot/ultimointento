@@ -315,7 +315,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer onClick={() => handleSort("nombre')}
+                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('nombre')}
                   >
                     <div className="flex items-center">
                       Préstamo

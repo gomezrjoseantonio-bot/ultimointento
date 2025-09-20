@@ -434,8 +434,8 @@ const EmailEntrante: React.FC = () => {
                 onClick={toggleWhitelist}
                 className={`flex items-center gap-2 px-4 py-2 ${
                   whitelistEnabled 
-                    ? 'bg-success-100 text-success-800 
-                    : 'bg-neutral-100 text-neutral-600
+                    ? 'bg-success-100 text-success-800'
+                    : 'bg-neutral-100 text-neutral-600'
                 }`}
               >
                 {whitelistEnabled ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
