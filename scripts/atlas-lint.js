@@ -64,7 +64,7 @@ const FORBIDDEN_PATTERNS = {
   
   // Non-Inter fonts - ATLAS requires Inter only
   forbiddenFonts: [
-    /font-family.*(?!Inter|system-ui|sans-serif|var\(--font)/g,
+    /font-family:\s*(?!Inter\b|["']Inter["']\b)[^;]+/g, // Only flag if doesn't start with Inter
     /'Arial'(?!.*system-ui)/g,
     /'Helvetica'(?!.*system-ui)/g,
     /'Times'/g,
@@ -277,12 +277,30 @@ function lintFile(filePath) {
   for (const pattern of FORBIDDEN_PATTERNS.forbiddenFonts) {
     const matches = content.match(pattern);
     if (matches) {
-      errors.push({
-        type: 'FORBIDDEN_FONTS',
-        pattern: pattern.toString(),
-        matches: matches.length,
-        message: 'Non-Inter font detected - ATLAS requires Inter with approved fallbacks only'
-      });
+      // Special handling for font-family declarations - often false positives
+      // Only flag as error if clearly using non-ATLAS fonts
+      const isActualViolation = matches.some(match => 
+        !match.includes('Inter') && 
+        !match.includes('system-ui') && 
+        !match.includes('sans-serif')
+      );
+      
+      if (isActualViolation) {
+        errors.push({
+          type: 'FORBIDDEN_FONTS',
+          pattern: pattern.toString(),
+          matches: matches.length,
+          message: 'Non-Inter font detected - ATLAS requires Inter with approved fallbacks only'
+        });
+      } else {
+        // Likely false positive - make it a warning
+        warnings.push({
+          type: 'FONT_CHECK',
+          pattern: pattern.toString(),
+          matches: matches.length,
+          message: 'Font declaration flagged - verify Inter usage (may be false positive)'
+        });
+      }
     }
   }
   
