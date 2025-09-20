@@ -67,7 +67,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
       </div>
 
       {/* Optional Notice */}
-      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="btn-secondary-horizon btn-primary-horizon mb-6 ">
         <div className="flex items-center">
           <Info className="w-5 h-5 text-blue-600 mr-2" size={24}  />
           <div>
@@ -82,7 +82,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
       <div className="space-y-6">
         
         {/* Valores catastrales */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <BarChart3 className="w-5 h-5 text-hz-primary mr-2"  />
             <h3 className="text-lg font-medium text-gray-900">Valores catastrales</h3>
@@ -101,7 +101,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                   placeholder="Ej: 150000"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <span className="text-gray-500 text-sm">€</span>
@@ -124,7 +124,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                   placeholder="Ej: 135000"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <span className="text-gray-500 text-sm">€</span>
@@ -138,7 +138,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
 
           {/* Porcentaje de construcción calculado automáticamente */}
           {data.fiscalidad?.valor_catastral_total && data.fiscalidad?.valor_catastral_construccion && (
-            <div className="mt-6 bg-hz-primary border border-hz-primary border-opacity-20 rounded-lg p-4">
+            <div className="mt-6 bg-hz-primary border border-hz-primary border-opacity-20 p-4">
               <div className="flex items-center mb-2">
                 <Calculator className="w-4 h-4 text-hz-primary mr-2" size={24}  />
                 <span className="text-sm font-medium text-hz-primary">Cálculo automático</span>
@@ -183,7 +183,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                 min="0"
                 max="100"
                 step="0.0001"
-                className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
+                className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                 <span className="text-gray-500 text-sm">%</span>
@@ -196,7 +196,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         </div>
 
         {/* Tipo fiscal y amortización */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <Info className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Configuración fiscal</h3>
@@ -209,7 +209,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo fiscal
               </label>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+              <div className="bg-gray-50 border border-gray-200 p-3">
                 <span className="text-sm text-gray-700">Lucrativa onerosa</span>
                 <p className="text-xs text-gray-500 mt-1">
                   Fijo para el cálculo de alquileres (no editable)
@@ -225,7 +225,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               <select
                 value={data.fiscalidad?.metodo_amortizacion || 'REGLA_GENERAL_3'}
                 onChange={(e) => updateFiscalidad('metodo_amortizacion', e.target.value as MetodoAmortizacion)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                className="w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
               >
                 <option value="REGLA_GENERAL_3">Regla general 3%</option>
                 <option value="ESPECIAL">Caso especial</option>
@@ -240,7 +240,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 % Amortización anual (informativo)
               </label>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+              <div className="bg-gray-50 border border-gray-200 p-3">
                 <span className="text-sm text-gray-700">
                   {data.fiscalidad?.porcentaje_amortizacion_info?.toFixed(4) || '3.0000'}%
                 </span>
@@ -256,7 +256,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Base de amortización anual
                 </label>
-                <div className="bg-hz-primary border border-hz-primary border-opacity-20 rounded-md p-3">
+                <div className="bg-hz-primary border border-hz-primary border-opacity-20 p-3">
                   <span className="text-sm font-medium text-hz-primary">
                     {formatCurrency(data.fiscalidad.valor_catastral_construccion)}
                   </span>
@@ -270,7 +270,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         </div>
 
         {/* Notas adicionales */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Notas fiscales</h3>
           
           <div>
@@ -282,7 +282,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               onChange={(e) => updateFiscalidad('nota', e.target.value)}
               placeholder="Casos especiales, aclaraciones AEAT, etc."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+              className="w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
             />
             <p className="text-xs text-gray-500 mt-1">
               Campo opcional para casos especiales o aclaraciones puntuales
@@ -291,7 +291,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         </div>
 
         {/* Información de ayuda */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border border-yellow-200 p-4">
           <h4 className="text-sm font-medium text-yellow-800 mb-2">
             💡 Información importante
           </h4>
@@ -306,7 +306,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
 
         {/* Error Messages */}
         {allErrors.length > 0 && (
-          <div className="bg-error-50 border border-error-200 rounded-md p-4">
+          <div className="bg-error-50 border border-error-200 p-4">
             <h4 className="text-sm font-medium text-error-800 mb-2">
               Errores de validación:
             </h4>

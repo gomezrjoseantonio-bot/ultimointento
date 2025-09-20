@@ -83,7 +83,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded mb-4"></div>
           <div className="space-y-3">
@@ -100,7 +100,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Applied This Year */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Arrastres Aplicados {selectedYear}</p>
@@ -114,7 +114,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
         </div>
 
         {/* Total Pending */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Saldo Pendiente</p>
@@ -128,7 +128,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
         </div>
 
         {/* Expiring This Year */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Caduca en {selectedYear}</p>
@@ -142,7 +142,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
         </div>
 
         {/* Expiring Next Year */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Caduca en {selectedYear + 1}</p>
@@ -157,7 +157,7 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
       </div>
 
       {/* Detailed Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
@@ -238,19 +238,19 @@ const CarryForwardKPIPanel: React.FC<CarryForwardKPIPanelProps> = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {detail.expiresThisYear ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-error-100 text-error-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold bg-error-100 text-error-800">
                           Caduca {selectedYear}
                         </span>
                       ) : detail.expirationYear === selectedYear + 1 ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-warning-100 text-orange-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold bg-warning-100 text-orange-800">
                           Caduca {selectedYear + 1}
                         </span>
                       ) : detail.remainingAmount > 0 ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-primary-100 text-primary-800">
+                        <span className="btn-primary-horizon inline-flex px-2 py-1 text-xs font-semibold text-primary-800">
                           Disponible
                         </span>
                       ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800">
                           Agotado
                         </span>
                       )}

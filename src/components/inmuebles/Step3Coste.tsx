@@ -214,14 +214,14 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
       <div className="space-y-6">
         
         {/* Régimen de compra */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <FileText className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Régimen de compra *</h3>
           </div>
           
           <div className="space-y-3">
-            <label className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <label className="flex items-center p-3 border border-gray-200 cursor-pointer">
               <input
                 type="radio"
                 value="USADA_ITP"
@@ -235,7 +235,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
               </div>
             </label>
             
-            <label className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <label className="flex items-center p-3 border border-gray-200 cursor-pointer">
               <input
                 type="radio"
                 value="NUEVA_IVA_AJD"
@@ -252,7 +252,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         </div>
 
         {/* Precio de compra */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <Euro className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Precio de compra *</h3>
@@ -270,7 +270,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                 placeholder="Ej: 250000"
                 min="0"
                 step="0.01"
-                className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                 <span className="text-gray-500 text-sm">€</span>
@@ -283,7 +283,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         </div>
 
         {/* Gastos asociados */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <Calculator className="w-5 h-5 text-hz-primary mr-2" size={24}  />
             <h3 className="text-lg font-medium text-gray-900">Gastos asociados</h3>
@@ -302,7 +302,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -322,7 +322,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -342,7 +342,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -362,7 +362,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -382,7 +382,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -403,7 +403,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -415,14 +415,14 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
         {/* Impuestos - Enhanced with Euro amounts and automatic calculation */}
         {data.compra?.regimen && data.compra?.precio_compra && direccionCp && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="bg-white border border-gray-200 p-6 shadow-sm">
             <div className="flex items-center mb-4">
               <Calculator className="w-5 h-5 text-[#042C5E] mr-2" size={24}  />
               <h3 className="text-lg font-medium text-gray-900">Impuestos *</h3>
             </div>
             
             {/* Calculation Mode Toggle */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mb-4 p-3 bg-gray-50">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-700">
                   Usar cálculo automático
@@ -434,7 +434,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                     onChange={(e) => setTaxCalculationMode(e.target.checked ? 'auto' : 'manual')}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-hz-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-hz-primary"></div>
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-hz-primary/20 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-hz-primary"></div>
                 </label>
               </div>
               <p className="text-xs text-gray-600 mt-1">
@@ -447,7 +447,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
             {/* Base ITP Section (only for USADA_ITP) */}
             {data.compra.regimen === 'USADA_ITP' && (
-              <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+              <div className="mb-4 p-3 border border-gray-200">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Base imponible ITP</h4>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-4">
@@ -482,7 +482,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                           value={manualItpBase}
                           onChange={(e) => handleManualItpBaseChange(e.target.value)}
                           placeholder="Ej: 200.000,00"
-                          className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary text-sm"
+                          className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary text-sm"
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                           <span className="text-gray-500 text-xs">€</span>
@@ -502,12 +502,12 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       ITP *
                     </label>
                     {ccaaInfo && data.compra.impuestos?.itp_porcentaje_info && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                      <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
                         ITP ({formatPercentageChip(data.compra.impuestos.itp_porcentaje_info)})
                       </span>
                     )}
                     {!ccaaInfo?.isKnown && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
                         ITP (8%*)
                       </span>
                     )}
@@ -528,7 +528,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       }}
                       disabled={taxCalculationMode === 'auto' || !data.compra?.precio_compra}
                       placeholder={!data.compra?.precio_compra ? "Completa precio y CCAA" : "0,00"}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                      className={`w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
                         taxCalculationMode === 'auto' || !data.compra?.precio_compra ? 'bg-gray-50 text-gray-500' : ''
                       }`}
                       title={!data.compra?.precio_compra ? "Completa precio y CCAA" : ""}
@@ -556,7 +556,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       IVA *
                     </label>
                     {data.compra.impuestos?.iva_porcentaje_info && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                      <span className="btn-accent-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
                         IVA ({formatPercentageChip(data.compra.impuestos.iva_porcentaje_info)})
                       </span>
                     )}
@@ -576,7 +576,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         }
                       }}
                       disabled={taxCalculationMode === 'auto'}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                      className={`w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
                         taxCalculationMode === 'auto' ? 'bg-gray-50 text-gray-500' : ''
                       }`}
                     />
@@ -595,7 +595,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       AJD *
                     </label>
                     {data.compra.impuestos?.ajd_porcentaje_info && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800">
                         AJD ({formatPercentageChip(data.compra.impuestos.ajd_porcentaje_info)})
                       </span>
                     )}
@@ -615,7 +615,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         }
                       }}
                       disabled={taxCalculationMode === 'auto'}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
+                      className={`w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary ${
                         taxCalculationMode === 'auto' ? 'bg-gray-50 text-gray-500' : ''
                       }`}
                     />
@@ -632,7 +632,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
             
             {/* Special tax warnings */}
             {specialWarning && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mt-4">
+              <div className="bg-yellow-50 border border-yellow-200 p-3 mt-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -659,7 +659,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
         {/* Resumen de costes */}
         {data.compra?.precio_compra && (
-          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="bg-white border border-gray-200 p-6 shadow-sm">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen de costes</h3>
             
             <div className="space-y-3">
@@ -689,7 +689,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         )}
 
         {/* Fecha de compra */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Fecha de compra *</h3>
           
           <div>
@@ -700,7 +700,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
               type="date"
               value={data.compra?.fecha_compra || ''}
               onChange={(e) => updateCompra('fecha_compra', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
+              className="w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
             />
             <p className="text-xs text-gray-500 mt-1">
               Fecha de escrituración o contrato de compraventa
@@ -710,7 +710,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
 
         {/* Error Messages */}
         {allErrors.length > 0 && (
-          <div className="bg-error-50 border border-error-200 rounded-md p-4">
+          <div className="bg-error-50 border border-error-200 p-4">
             <h4 className="text-sm font-medium text-error-800 mb-2">
               Errores de validación:
             </h4>

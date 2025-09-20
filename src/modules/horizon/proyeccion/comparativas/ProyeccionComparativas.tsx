@@ -89,7 +89,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
   if (loading) {
     const content = (
       <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-700"></div>
+        <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
       </div>
     );
 
@@ -114,7 +114,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           <button
             onClick={handleExportPDF}
             disabled
-            className="flex items-center space-x-2 bg-gray-300 text-gray-500 px-4 py-2 rounded-xl cursor-not-allowed"
+            className="flex items-center space-x-2 bg-gray-300 text-gray-500 px-4 py-2 cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             <span>Exportar comparativa (PDF)</span>
@@ -122,7 +122,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* Empty State */}
-        <div className="bg-white rounded-xl border border-[#D7DEE7] p-12 shadow-sm text-center">
+        <div className="bg-white border border-[#D7DEE7] p-12 shadow-sm text-center">
           <TrendingUp className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-4">
             No hay escenarios para comparar
@@ -133,7 +133,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </p>
           <button
             onClick={() => window.location.href = '/proyeccion/simulaciones'}
-            className="bg-primary-700 text-white px-6 py-3 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="btn-primary-horizon px-6 py-3"
           >
             Ir a Simulaciones
           </button>
@@ -160,7 +160,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </div>
           <button
             onClick={handleExportPDF}
-            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2 rounded-xl hover:bg-[#1a365d] transition-colors"
+            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
           >
             <Download className="h-4 w-4" />
             <span>Exportar comparativa (PDF)</span>
@@ -170,7 +170,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Scenario Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {markedScenarios.map((scenario, index) => (
-            <div key={scenario.id} className="bg-white rounded-xl border border-[#D7DEE7] p-4 shadow-sm">
+            <div key={scenario.id} className="bg-white border border-[#D7DEE7] p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="font-semibold text-neutral-900">{scenario.name}</h3>
@@ -182,7 +182,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                 </div>
                 <button
                   onClick={() => handleEditScenario(scenario.id)}
-                  className="p-2 text-gray-500 hover:text-primary-700 hover:bg-[#F8F9FA] rounded-lg transition-colors"
+                  className="p-2 text-gray-500 hover:text-primary-700"
                   title="Editar escenario"
                 >
                   <Edit className="h-4 w-4" />
@@ -201,7 +201,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           {Array.from({ length: 3 - markedScenarios.length }).map((_, index) => (
             <div 
               key={`placeholder-${index}`}
-              className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-4 flex items-center justify-center"
+              className="bg-gray-50 border-2 border-dashed border-gray-300 p-4 flex items-center justify-center"
             >
               <div className="text-center text-gray-500">
                 <p className="text-sm">Escenario {markedScenarios.length + index + 1}</p>
@@ -214,11 +214,11 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cashflow Comparison Chart */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Flujo Neto
             </h3>
-            <div className="h-64 bg-[#F8F9FA] rounded-lg flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
+            <div className="h-64 bg-[#F8F9FA] flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500">Gráfico de flujo neto superpuesto</p>
@@ -228,11 +228,11 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </div>
 
           {/* Net Worth Comparison Chart */}
-          <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Patrimonio Neto
             </h3>
-            <div className="h-64 bg-[#F8F9FA] rounded-lg flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
+            <div className="h-64 bg-[#F8F9FA] flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500">Gráfico de patrimonio superpuesto</p>
@@ -243,7 +243,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* KPI Comparison Table */}
-        <div className="bg-white rounded-xl border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Tabla KPI Comparativa
           </h3>
@@ -330,7 +330,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* Additional Actions */}
-        <div className="bg-[#F8F9FA] rounded-xl p-4 border border-[#D7DEE7]">
+        <div className="bg-[#F8F9FA] p-4 border border-[#D7DEE7]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-700">

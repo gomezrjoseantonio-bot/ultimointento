@@ -5,6 +5,7 @@ import { MovementStatusChip } from '../../../../components/treasury/MovementStat
 import { Movement, initDB, Property } from '../../../../services/db';
 import { performManualReconciliation } from '../../../../services/movementLearningService';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 interface MovementDrawerProps {
   movement: Movement;
@@ -73,7 +74,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+          <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
             <Sparkles className="w-3 h-3" />
             auto
           </span>
@@ -146,8 +147,9 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   };
 
   // Handle delete
-  const handleDelete = () => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este movimiento?')) {
+  const handleDelete = async () => {
+    const confirmed = await confirmDelete('este movimiento');
+    if (confirmed) {
       // TODO: Implement delete
       console.log('Delete movement:', movement.id);
       onClose();
@@ -182,7 +184,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
             </h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-hz-neutral-100 rounded-lg transition-colors"
+              className="p-2"
             >
               <X className="h-5 w-5 text-hz-neutral-700" />
             </button>
@@ -231,10 +233,10 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     ...editedMovement,
                     description: e.target.value
                   })}
-                  className="w-full px-3 py-2 border border-hz-neutral-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent"
+                  className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
                 />
               ) : (
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                   {movement.description || 'Sin descripción'}
                 </p>
               )}
@@ -254,10 +256,10 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       ...editedMovement,
                       counterparty: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-hz-neutral-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent"
+                    className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
                   />
                 ) : (
-                  <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
+                  <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                     {movement.counterparty}
                   </p>
                 )}
@@ -269,7 +271,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
               <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
                 Categoría
               </label>
-              <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
+              <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                 {movement.categoria || 'Sin categoría'}
               </p>
             </div>
@@ -280,7 +282,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 Ámbito
               </label>
               <div className="flex items-center gap-2">
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg flex-1">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 flex-1">
                   {movement.ambito === 'PERSONAL' ? 'Personal' : 'Inmueble'}
                 </p>
                 {movement.ambito === 'INMUEBLE' && movement.inmuebleId && (
@@ -295,13 +297,13 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 Estado de Conciliación
               </label>
               <div className="flex items-center gap-2">
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg flex-1">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 flex-1">
                   {movement.statusConciliacion === 'sin_match' ? 'Sin conciliar' :
                    movement.statusConciliacion === 'match_automatico' ? 'Conciliado automáticamente' :
                    movement.statusConciliacion === 'match_manual' ? 'Conciliado manualmente' : 'Sin conciliar'}
                 </p>
                 {movement.statusConciliacion === 'match_automatico' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                  <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
                     <Sparkles className="w-3 h-3" />
                     auto
                   </span>
@@ -311,7 +313,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 
             {/* V1.1: Reconciliation modal */}
             {isReconciling && (
-              <div className="border border-blue-200 bg-blue-50 p-4 rounded-lg space-y-4">
+              <div className="btn-secondary-horizon btn-primary-horizon ">
                 <h4 className="font-medium text-blue-900 flex items-center gap-2">
                   <Target className="w-4 h-4" />
                   Conciliación Manual
@@ -325,7 +327,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                   <select
                     value={reconciliationData.categoria}
                     onChange={(e) => setReconciliationData(prev => ({ ...prev, categoria: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="btn-secondary-horizon w-full px-3 py-2 "
                     required
                   >
                     <option value="">Seleccionar categoría</option>
@@ -347,7 +349,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       ambito: e.target.value as 'PERSONAL' | 'INMUEBLE',
                       inmuebleId: e.target.value === 'PERSONAL' ? '' : prev.inmuebleId
                     }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="btn-secondary-horizon w-full px-3 py-2 "
                     required
                   >
                     <option value="PERSONAL">Personal</option>
@@ -364,7 +366,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     <select
                       value={reconciliationData.inmuebleId}
                       onChange={(e) => setReconciliationData(prev => ({ ...prev, inmuebleId: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="btn-secondary-horizon w-full px-3 py-2 "
                       required
                     >
                       <option value="">Seleccionar inmueble</option>
@@ -383,14 +385,14 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     onClick={handleManualReconciliation}
                     disabled={isProcessing || !reconciliationData.categoria || !reconciliationData.ambito || 
                              (reconciliationData.ambito === 'INMUEBLE' && !reconciliationData.inmuebleId)}
-                    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="btn-primary-horizon flex-1 px-4 py-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
                     {isProcessing ? 'Procesando...' : 'Conciliar'}
                   </button>
                   <button
                     onClick={() => setIsReconciling(false)}
                     disabled={isProcessing}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 border border-gray-300 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
@@ -404,7 +406,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
                   Referencia
                 </label>
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg text-sm font-mono">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 text-sm font-mono">
                   {movement.reference}
                 </p>
               </div>
@@ -416,7 +418,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 <label className="block text-sm font-medium text-hz-neutral-900 mb-1">
                   Origen
                 </label>
-                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2 rounded-lg">
+                <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                   {movement.source === 'import' ? 'Importado de extracto' : 
                    movement.source === 'manual' ? 'Introducido manualmente' : 
                    movement.source}
@@ -431,7 +433,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="flex-1 bg-hz-primary text-white px-4 py-2 rounded-lg hover:bg-hz-primary- light transition-colors"
+                  className="flex-1 bg-hz-primary px-4 py-2 light"
                 >
                   Guardar cambios
                 </button>
@@ -440,7 +442,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     setIsEditing(false);
                     setEditedMovement(movement);
                   }}
-                  className="px-4 py-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100 transition-colors"
+                  className="px-4 py-2 border border-hz-neutral-300"
                 >
                   Cancelar
                 </button>
@@ -458,7 +460,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       });
                       setIsReconciling(true);
                     }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="btn-primary-horizon w-full flex items-center justify-center gap-2 px-4 py-2"
                   >
                     <Target className="h-4 w-4" />
                     Conciliar
@@ -468,7 +470,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 {/* Edit */}
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-hz-neutral-300"
                 >
                   <Edit3 className="h-4 w-4" />
                   Editar
@@ -477,7 +479,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 {/* Delete */}
                 <button
                   onClick={handleDelete}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-hz-error text-white rounded-lg hover:bg-red-700 transition-colors"
+                  className="btn-danger w-full flex items-center justify-center gap-2 px-4 py-2 bg-hz-error hover:"
                 >
                   <Trash2 className="h-4 w-4" />
                   Eliminar

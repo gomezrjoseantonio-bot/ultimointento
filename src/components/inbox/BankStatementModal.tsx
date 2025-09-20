@@ -135,14 +135,14 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
   if (showUnrecognizedIBAN) {
     return (
       <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="bg-white shadow-xl max-w-md w-full mx-4">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
               Cuenta no reconocida
             </h2>
             <button
               onClick={() => setShowUnrecognizedIBAN(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600"
             >
               <X className="w-5 h-5" />
             </button>
@@ -167,14 +167,14 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleGoToSettings}
-                className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                className="btn-primary-horizon flex items-center gap-2 px-4 py-2"
               >
                 <Settings className="w-4 h-4" />
                 Ir a Configuración &gt; Cuentas
               </button>
               <button
                 onClick={() => setShowUnrecognizedIBAN(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300"
               >
                 Cancelar
               </button>
@@ -187,14 +187,14 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div className="bg-white shadow-xl max-w-md w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Importar Extracto Bancario
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600"
           >
             <X className="w-5 h-5" />
           </button>
@@ -202,7 +202,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
         <div className="p-6 space-y-4">
           {/* File info */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="btn-secondary-horizon btn-primary-horizon ">
             <div className="flex items-center gap-3">
               <Upload className="w-5 h-5 text-primary-600" />
               <div>
@@ -220,7 +220,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
               Seleccionar cuenta destino
             </label>
             <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
+              className="btn-secondary-horizon w-full "
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(Number(e.target.value) || null)}
             >
@@ -235,19 +235,19 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
           {/* Help text and no accounts warning */}
           {accounts.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="bg-amber-50 border border-amber-200 p-3">
               <p className="text-sm text-amber-700 mb-2">
                 ⚠️ No hay cuentas configuradas. Debes crear una cuenta antes de poder importar extractos.
               </p>
               <button
                 onClick={handleGoToSettings}
-                className="text-sm bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700 transition-colors"
+                className="text-sm bg-amber-600 px-3 py-1 rounded"
               >
                 Ir a Configuración &gt; Cuentas
               </button>
             </div>
           ) : (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="btn-secondary-horizon btn-primary-horizon ">
               <p className="text-sm text-blue-700">
                 💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
               </p>
@@ -259,13 +259,13 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             <button
               onClick={handleImport}
               disabled={!selectedAccountId || isLoading || accounts.length === 0}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary-horizon flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Importando...' : accounts.length === 0 ? 'Sin cuentas disponibles' : 'Importar Movimientos'}
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300"
             >
               Cancelar
             </button>

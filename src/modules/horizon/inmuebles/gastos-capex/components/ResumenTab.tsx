@@ -197,7 +197,7 @@ const ResumenTab: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy"></div>
+        <div className="animate-spin h-8 w-8 border-b-2 border-brand-navy"></div>
       </div>
     );
   }
@@ -216,7 +216,7 @@ const ResumenTab: React.FC = () => {
           <button
             onClick={exportToCSV}
             disabled={summaries.length === 0}
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-brand-navy hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium bg-brand-navy focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4 mr-2" />
             Exportar CSV
@@ -225,7 +225,7 @@ const ResumenTab: React.FC = () => {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            className="border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
           >
             {availableYears.map(year => (
               <option key={year} value={year}>
@@ -248,7 +248,7 @@ const ResumenTab: React.FC = () => {
       </div>
 
       {summaries.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="text-center py-12 bg-white border border-gray-200">
           <div className="text-gray-400 text-lg mb-2">No hay datos para {selectedYear}</div>
           <p className="text-gray-500">
             Los resúmenes aparecerán cuando registres gastos para este año.
@@ -285,7 +285,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white border border-gray-200 p-6">
       {/* Property Header */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900">{property.alias}</h3>
@@ -297,7 +297,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
         {categoryCards.map((card) => (
           <div
             key={card.label}
-            className={`p-4 rounded-lg border ${card.color}`}
+            className={`p-4 border ${card.color}`}
           >
             <div className="text-xs font-medium text-gray-600 mb-1">{card.label}</div>
             <div className="text-lg font-semibold text-gray-900">
@@ -308,7 +308,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
       </div>
 
       {/* AEAT Limits Section */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-4">
+      <div className="bg-gray-50 p-4 mb-4">
         <h4 className="font-medium text-gray-900 mb-3 flex items-center">
           <TrendingUpIcon className="h-5 w-5 mr-2 text-brand-navy" />
           Límite AEAT ({selectedYear})
@@ -342,7 +342,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
         </div>
 
         {limits.excess > 0 && (
-          <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
+          <div className="mt-3 p-3 bg-orange-50 border border-orange-200">
             <div className="flex items-center">
               <AlertTriangleIcon className="h-4 w-4 text-orange-500 mr-2" />
               <span className="text-xs text-orange-700">
@@ -367,7 +367,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
       </div>
 
       {/* Rental/Availability Days */}
-      <div className="bg-primary-50 rounded-lg p-4">
+      <div className="btn-primary-horizon p-4">
         <h4 className="font-medium text-gray-900 mb-3">
           Días arrendado / a disposición
         </h4>

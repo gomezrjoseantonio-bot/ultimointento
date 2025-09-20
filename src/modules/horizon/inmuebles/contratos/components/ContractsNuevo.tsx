@@ -272,7 +272,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               <select
                 value={formData.inmuebleId}
                 onChange={(e) => handlePropertyChange(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               >
                 <option value="">Seleccionar inmueble</option>
@@ -295,7 +295,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   unidadTipo: e.target.value as 'vivienda' | 'habitacion',
                   habitacionId: '' // Reset room when changing type
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               >
                 <option value="vivienda">Vivienda completa</option>
@@ -313,7 +313,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               <select
                 value={formData.habitacionId}
                 onChange={(e) => setFormData(prev => ({ ...prev, habitacionId: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               >
                 <option value="">Seleccionar habitación</option>
@@ -336,7 +336,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 ...prev, 
                 modalidad: e.target.value as 'habitual' | 'temporada' 
               }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               required
             >
               <option value="habitual">Vivienda habitual</option>
@@ -364,7 +364,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   inquilino: { ...prev.inquilino, nombre: e.target.value } 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -380,7 +380,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   inquilino: { ...prev.inquilino, apellidos: e.target.value } 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -396,7 +396,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   inquilino: { ...prev.inquilino, dni: e.target.value } 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -412,7 +412,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   inquilino: { ...prev.inquilino, telefono: e.target.value } 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -428,7 +428,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   inquilino: { ...prev.inquilino, email: e.target.value } 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -451,7 +451,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="date"
                 value={formData.fechaInicio}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -464,7 +464,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="date"
                 value={formData.fechaFin}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
               {formData.modalidad === 'habitual' && (
@@ -492,7 +492,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="text"
                 value={formData.rentaMensual}
                 onChange={(e) => setFormData(prev => ({ ...prev, rentaMensual: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder="650,00"
                 required
               />
@@ -505,7 +505,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               <select
                 value={formData.diaPago}
                 onChange={(e) => setFormData(prev => ({ ...prev, diaPago: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
@@ -524,7 +524,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="number"
                 value={formData.margenGraciaDias}
                 onChange={(e) => setFormData(prev => ({ ...prev, margenGraciaDias: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 min="0"
                 max="30"
               />
@@ -547,7 +547,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ...prev, 
                   indexacion: e.target.value as 'none' | 'ipc' | 'irav' | 'otros' 
                 }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               >
                 <option value="none">Sin indexación</option>
                 <option value="ipc">IPC</option>
@@ -568,7 +568,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                     ...prev, 
                     indexOtros: { ...prev.indexOtros, formula: e.target.value } 
                   }))}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                  className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                   placeholder="2,5%"
                 />
               </div>
@@ -592,7 +592,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="number"
                 value={formData.fianzaMeses}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaMeses: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 min="0"
                 step="1"
                 required
@@ -607,7 +607,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 type="text"
                 value={formData.fianzaImporte}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaImporte: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent bg-neutral-50"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent bg-neutral-50"
                 placeholder="Se calcula automáticamente"
                 readOnly
               />
@@ -623,7 +623,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   <button
                     type="button"
                     onClick={() => window.open('/cuenta/cuentas', '_blank')}
-                    className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
+                    className="text-sm btn-ghost-horizon underline"
                   >
                     Ir a Cuenta → Configuración → Cuentas Bancarias
                   </button>
@@ -633,7 +633,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   <select
                     value={formData.cuentaCobroId}
                     onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobroId: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                     required
                   >
                     <option value="">Seleccionar cuenta</option>
@@ -660,19 +660,19 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
         </div>
 
         {/* Submit Button */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4 mt-8 shadow-sm">
+        <div className="bg-white border-t border-gray-200 mt-8 shadow-sm">
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+              className="text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-brand-navy hover:bg-navy-800 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm font-medium btn-primary-horizon hover:bg-navy-800 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Guardando...' : (editingContract ? 'Actualizar contrato' : 'Crear contrato')}
             </button>

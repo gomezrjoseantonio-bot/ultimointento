@@ -206,7 +206,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     if (loading) {
       return (
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
           <span className="ml-2 text-sm text-gray-600">Cargando vista previa...</span>
         </div>
       );
@@ -214,11 +214,11 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
     if (error) {
       return (
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-center h-64 bg-gray-50">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
             <p className="text-sm text-gray-600">{error}</p>
-            <button className="mt-2 inline-flex items-center px-3 py-1 text-xs bg-primary-100 text-primary-700 rounded">
+            <button className="btn-primary-horizon mt-2 inline-flex items-center px-3 py-1 text-xs text-primary-700 rounded">
               <Download className="w-3 h-3 mr-1" />
               Descargar archivo
             </button>
@@ -229,7 +229,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
     if (!previewContent) {
       return (
-        <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
+        <div className="flex items-center justify-center h-64 bg-gray-50">
           <div className="text-center">
             {renderFileIcon()}
             <p className="text-sm text-gray-600 mt-2">No hay vista previa disponible</p>
@@ -243,7 +243,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     // Handle different file types
     if (extension === 'pdf') {
       return (
-        <div className="h-96 border rounded-lg overflow-hidden">
+        <div className="h-96 border overflow-hidden">
           <embed
             src={previewContent}
             type="application/pdf"
@@ -255,7 +255,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
       return (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border overflow-hidden">
           <img 
             src={previewContent} 
             alt={filename}
@@ -267,20 +267,20 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
     if (previewContent === 'zip') {
       return (
-        <div className="border rounded-lg p-4">
+        <div className="border p-4">
           <h4 className="font-medium text-gray-900 mb-3">Contenido del archivo ZIP:</h4>
           <div className="space-y-2">
             {zipEntries.map((entry, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer hover:bg-gray-100"
+                className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer"
                 onClick={() => setSelectedZipEntry(entry)}
               >
                 <div className="flex items-center">
                   {renderFileIcon()}
                   <span className="ml-2 text-sm">{entry.name}</span>
                 </div>
-                <button className="text-xs text-primary-600 hover:text-primary-800">
+                <button className="btn-ghost-horizon text-xs">
                   Ver
                 </button>
               </div>
@@ -303,7 +303,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     // For CSV/Excel and DOCX
     return (
       <div 
-        className="border rounded-lg overflow-hidden"
+        className="border overflow-hidden"
         dangerouslySetInnerHTML={{ __html: previewContent }}
       />
     );

@@ -189,7 +189,7 @@ const PresupuestoNuevo: React.FC = () => {
     return (
       <PageLayout title="Presupuesto" subtitle="Cargando...">
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
         </div>
       </PageLayout>
     );
@@ -199,7 +199,7 @@ const PresupuestoNuevo: React.FC = () => {
   if (!presupuestoActual) {
     return (
       <PageLayout title="Presupuesto" subtitle="Gestión de presupuestos anuales">
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <div className="text-center py-12 bg-gray-50">
           <Calculator className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No hay presupuestos para {currentYear}
@@ -209,7 +209,7 @@ const PresupuestoNuevo: React.FC = () => {
           </p>
           <button
             onClick={handleCreatePresupuesto}
-            className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
           >
             <Plus className="h-5 w-5" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -242,7 +242,7 @@ const PresupuestoNuevo: React.FC = () => {
         )}
 
         {/* Zona B: Tabla de Líneas */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -274,8 +274,7 @@ const PresupuestoNuevo: React.FC = () => {
                 
                 <button
                   onClick={handleCreateLinea}
-                  className="flex items-center space-x-1 bg-primary-600 text-white px-3 py-1 rounded text-sm hover:bg-primary-700"
-                >
+                  className="btn-primary-horizon flex items-center space-x-1 px-3 py-1 rounded text-sm >
                   <Plus className="h-4 w-4" />
                   <span>Añadir</span>
                 </button>

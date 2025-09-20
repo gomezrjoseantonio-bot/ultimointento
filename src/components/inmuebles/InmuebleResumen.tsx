@@ -66,7 +66,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
       <div className="space-y-6">
         
         {/* Identificación */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <StatusIcon status={completitud?.identificacion_status || 'PENDIENTE'} />
@@ -121,7 +121,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         </div>
 
         {/* Características físicas */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <StatusIcon status={completitud?.caracteristicas_status || 'PENDIENTE'} />
@@ -167,7 +167,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         </div>
 
         {/* Coste de adquisición */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <StatusIcon status={completitud?.compra_status || 'PENDIENTE'} />
@@ -201,7 +201,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
             </div>
             
             {data.compra?.precio_compra && (
-              <div className="bg-gray-50 rounded-lg p-4">
+              <div className="bg-gray-50 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">Precio compra:</span>
@@ -233,7 +233,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         </div>
 
         {/* Fiscalidad */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <StatusIcon status={completitud?.fiscalidad_status || 'PENDIENTE'} />
@@ -280,7 +280,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         </div>
 
         {/* Checklist de completitud */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <h4 className="text-sm font-medium text-blue-800 mb-3">
             📋 Estado de completitud
           </h4>
@@ -316,7 +316,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         <div className="flex items-center justify-between pt-6 border-t border-gray-200">
           <button
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
+            className="px-4 py-2 border border-gray-300 text-gray-700 focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
             disabled={isSaving}
           >
             Cancelar
@@ -325,11 +325,11 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
           <button
             onClick={onSave}
             disabled={isSaving}
-            className="px-6 py-2 bg-hz-primary text-white rounded-md hover:bg-hz-primary- light focus:ring-2 focus:ring-hz-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-6 py-2 bg-hz-primary light focus:ring-2 focus:ring-hz-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isSaving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                 Guardando...
               </>
             ) : (

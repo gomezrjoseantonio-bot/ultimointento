@@ -128,7 +128,7 @@ const PlanesManager: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
         <span className="ml-2 text-neutral-600">Cargando planes de pensión e inversiones...</span>
       </div>
     );
@@ -146,7 +146,7 @@ const PlanesManager: React.FC = () => {
         </div>
         <button
           onClick={handleCreatePlan}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Plan
@@ -155,7 +155,7 @@ const PlanesManager: React.FC = () => {
 
       {/* Portfolio Summary */}
       {portfolioSummary.planesTotales > 0 && (
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 p-6">
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <PiggyBank className="w-5 h-5 text-indigo-600" />
@@ -170,28 +170,28 @@ const PlanesManager: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+            <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Total Invertido</p>
               <p className="text-xl font-bold text-indigo-900">
                 {formatCurrency(portfolioSummary.totalInvertido)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+            <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Valor Actual</p>
               <p className="text-xl font-bold text-indigo-900">
                 {formatCurrency(portfolioSummary.valorActualTotal)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+            <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Plusvalías/Pérdidas</p>
               <p className={`text-xl font-bold ${portfolioSummary.plusvaliasMinusvalias >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatCurrency(portfolioSummary.plusvaliasMinusvalias)}
               </p>
             </div>
 
-            <div className="bg-white rounded-lg p-4 border border-indigo-100">
+            <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Rentabilidad</p>
               <p className={`text-xl font-bold ${portfolioSummary.rentabilidadPromedio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatPercentage(portfolioSummary.rentabilidadPromedio)}
@@ -202,7 +202,7 @@ const PlanesManager: React.FC = () => {
       )}
 
       {/* Filter Tabs */}
-      <div className="bg-white rounded-lg border border-gray-200 p-1">
+      <div className="bg-white border border-gray-200 p-1">
         <div className="flex space-x-1">
           {[
             { key: 'todos', label: 'Todos', count: planes.length },
@@ -212,10 +212,10 @@ const PlanesManager: React.FC = () => {
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key as any)}
-              className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-1 px-4 py-2 text-sm font-medium ${
                 activeFilter === tab.key
                   ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  : 'text-gray-600 hover:text-gray-900
               }`}
             >
               {tab.label} ({tab.count})
@@ -225,7 +225,7 @@ const PlanesManager: React.FC = () => {
       </div>
 
       {/* Plans List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Productos</h4>
         
         {filteredPlanes.length === 0 ? (
@@ -245,8 +245,7 @@ const PlanesManager: React.FC = () => {
               <div className="mt-6">
                 <button
                   onClick={handleCreatePlan}
-                  className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark"
-                >
+                  className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium >
                   <Plus className="w-4 h-4 mr-2" />
                   Crear Primer Plan
                 </button>
@@ -260,12 +259,11 @@ const PlanesManager: React.FC = () => {
               const taxInfo = planesInversionService.getTaxImplications(plan);
               
               return (
-                <div key={plan.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
+                <div key={plan.id} className="border p-4 <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h5 className="font-medium text-gray-900">{plan.nombre}</h5>
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800">
                           {getTipoLabel(plan.tipo)}
                         </span>
                         <div className={`flex items-center space-x-1 ${getTitularidadColor(plan.titularidad)}`}>
@@ -276,7 +274,7 @@ const PlanesManager: React.FC = () => {
                           </span>
                         </div>
                         {plan.esHistorico && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
                             Solo seguimiento
                           </span>
                         )}
@@ -314,7 +312,7 @@ const PlanesManager: React.FC = () => {
                           <p>
                             Aportación {plan.aportacionPeriodica.frecuencia}: {formatCurrency(plan.aportacionPeriodica.importe)}
                             {taxInfo.deducibleAnual > 0 && (
-                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              <span className="btn-accent-horizon ml-2 text-xs text-green-800 px-2 py-1 rounded">
                                 Deducible: {formatCurrency(taxInfo.deducibleAnual)}/año
                               </span>
                             )}

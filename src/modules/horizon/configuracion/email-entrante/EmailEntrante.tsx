@@ -306,7 +306,7 @@ const EmailEntrante: React.FC = () => {
     <PageLayout title="Email entrante" subtitle={subtitle}>
       <div className="space-y-8">
         {/* Issue 1: Email Aliases Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div className="bg-white shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -323,7 +323,7 @@ const EmailEntrante: React.FC = () => {
               {properties.length > 0 && (
                 <div className="flex items-center gap-2">
                   <select
-                    className="border border-neutral-200 rounded-lg px-3 py-2 text-sm"
+                    className="border border-neutral-200 px-3 py-2 text-sm"
                     onChange={(e) => e.target.value && generatePropertyAlias(e.target.value)}
                     value=""
                   >
@@ -343,10 +343,10 @@ const EmailEntrante: React.FC = () => {
           <div className="p-6">
             <div className="space-y-4">
               {filteredAliases.map((alias) => (
-                <div key={alias.id} className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+                <div key={alias.id} className="flex items-center justify-between p-4 border border-neutral-200">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      <div className={`px-2 py-1 text-xs font-medium ${
                         alias.type === 'global' ? 'bg-primary-100 text-primary-800' :
                         alias.type === 'property' ? 'bg-success-100 text-success-800' :
                         'bg-purple-100 text-purple-800'
@@ -375,7 +375,7 @@ const EmailEntrante: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => copyToClipboard(alias.email)}
-                      className="p-2 text-neutral-500 hover:text-brand-navy transition-colors"
+                      className="p-2 text-neutral-500 hover:text-brand-navy"
                       title="Copiar email"
                     >
                       <Copy className="w-4 h-4" />
@@ -383,7 +383,7 @@ const EmailEntrante: React.FC = () => {
                     
                     <button
                       onClick={() => regenerateAlias(alias.id)}
-                      className="p-2 text-neutral-500 hover:text-warning-600 transition-colors"
+                      className="p-2 text-neutral-500 hover:text-warning-600"
                       title="Regenerar alias"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -391,7 +391,7 @@ const EmailEntrante: React.FC = () => {
                     
                     <button
                       onClick={() => toggleAliasStatus(alias.id)}
-                      className={`p-2 transition-colors ${
+                      className={`p-2 ${
                         alias.isActive 
                           ? 'text-success-600 hover:text-success-700' 
                           : 'text-error-500 hover:text-error-600'
@@ -408,7 +408,7 @@ const EmailEntrante: React.FC = () => {
         </div>
 
         {/* Issue 2: Security & Whitelist Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div className="bg-white shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <div className="flex items-center gap-3">
               <Shield className="w-6 h-6 text-brand-navy" />
@@ -432,10 +432,10 @@ const EmailEntrante: React.FC = () => {
               </div>
               <button
                 onClick={toggleWhitelist}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2 ${
                   whitelistEnabled 
-                    ? 'bg-success-100 text-success-800 hover:bg-green-200' 
-                    : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                    ? 'bg-success-100 text-success-800'
+                    : 'bg-neutral-100 text-neutral-600'
                 }`}
               >
                 {whitelistEnabled ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
@@ -451,12 +451,12 @@ const EmailEntrante: React.FC = () => {
                   placeholder="ejemplo@dominio.com"
                   value={newWhitelistEmail}
                   onChange={(e) => setNewWhitelistEmail(e.target.value)}
-                  className="flex-1 border border-neutral-200 rounded-lg px-3 py-2 text-sm"
+                  className="flex-1 border border-neutral-200 px-3 py-2 text-sm"
                   onKeyPress={(e) => e.key === 'Enter' && addToWhitelist()}
                 />
                 <button
                   onClick={addToWhitelist}
-                  className="px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
+                  className="px-4 py-2 bg-brand-navy"
                 >
                   Añadir
                 </button>
@@ -467,11 +467,11 @@ const EmailEntrante: React.FC = () => {
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-neutral-700">Remitentes autorizados:</h4>
                   {whitelist.map((email, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-neutral-50">
                       <span className="text-sm text-neutral-700">{email}</span>
                       <button
                         onClick={() => removeFromWhitelist(email)}
-                        className="p-1 text-error-500 hover:text-error-700 transition-colors"
+                        className="p-1 text-error-500 hover:text-error-700"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -482,7 +482,7 @@ const EmailEntrante: React.FC = () => {
             </div>
 
             {/* Security limits info */}
-            <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <div className="btn-secondary-horizon btn-primary-horizon ">
               <h4 className="text-sm font-medium text-primary-900 mb-2">Límites de seguridad</h4>
               <ul className="text-xs text-primary-800 space-y-1">
                 <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENTS} adjuntos por email</li>
@@ -494,7 +494,7 @@ const EmailEntrante: React.FC = () => {
         </div>
 
         {/* Issue 7: Email Logs Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div className="bg-white shadow-sm border border-neutral-200">
           <div className="p-6 border-b border-neutral-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -509,7 +509,7 @@ const EmailEntrante: React.FC = () => {
 
               {/* Issue 3: Mock email testing */}
               <div className="flex items-center gap-2">
-                <label className="cursor-pointer px-4 py-2 bg-warning-100 text-orange-800 rounded-lg hover:bg-orange-200 transition-colors">
+                <label className="cursor-pointer px-4 py-2 bg-warning-100 text-orange-800">
                   <Upload className="w-4 h-4 inline mr-2" />
                   Probar con .eml/.zip
                   <input
@@ -533,14 +533,14 @@ const EmailEntrante: React.FC = () => {
                   placeholder="Buscar por remitente, asunto o alias..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-neutral-200 rounded-lg text-sm"
+                  className="w-full pl-10 pr-4 py-2 border border-neutral-200 text-sm"
                 />
               </div>
               
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-neutral-200 px-3 py-2 text-sm"
               >
                 <option value="all">Todos los estados</option>
                 <option value="procesado">Procesado</option>
@@ -553,11 +553,11 @@ const EmailEntrante: React.FC = () => {
           <div className="p-6">
             <div className="space-y-4">
               {filteredEmailLogs.map((log) => (
-                <div key={log.id} className="border border-neutral-200 rounded-lg p-4">
+                <div key={log.id} className="border border-neutral-200 p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        <div className={`px-2 py-1 text-xs font-medium ${
                           log.status === 'procesado' ? 'bg-success-100 text-success-800' :
                           log.status === 'sin-adjuntos' ? 'bg-warning-100 text-yellow-800' :
                           'bg-error-100 text-error-800'
@@ -567,7 +567,7 @@ const EmailEntrante: React.FC = () => {
                         </div>
                         
                         {log.isMock && (
-                          <div className="px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-orange-800">
+                          <div className="px-2 py-1 text-xs font-medium bg-warning-100 text-orange-800">
                             Test
                           </div>
                         )}
@@ -608,7 +608,7 @@ const EmailEntrante: React.FC = () => {
                     {log.status === 'procesado' && (
                       <button
                         onClick={() => handleViewInInbox(log.id)}
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-brand-navy hover:bg-brand-navy/10 rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-brand-navy"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Ver en Inbox
@@ -629,10 +629,10 @@ const EmailEntrante: React.FC = () => {
         </div>
 
         {/* Instructions Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
+        <div className="bg-white shadow-sm border border-neutral-200">
           <button
             onClick={() => setShowInstructions(!showInstructions)}
-            className="w-full p-6 text-left flex items-center justify-between hover:bg-neutral-50 transition-colors"
+            className="w-full p-6 text-left flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
               <Info className="w-6 h-6 text-brand-navy" />
@@ -681,7 +681,7 @@ const EmailEntrante: React.FC = () => {
                     </ol>
                   </div>
 
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="bg-amber-50 border border-amber-200 p-4">
                     <h4 className="font-medium text-amber-900 mb-2">⚠️ Importante</h4>
                     <ul className="text-amber-800 space-y-1">
                       <li>• Los alias incluyen un token único no adivinable por seguridad</li>

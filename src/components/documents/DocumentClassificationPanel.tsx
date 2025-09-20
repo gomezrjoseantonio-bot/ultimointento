@@ -196,14 +196,14 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
   const getStatusBadge = () => {
     if (formData.aeatClassification?.status === 'Vivo') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-success-100 text-success-700 rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-success-100 text-success-700">
           <CheckCircle className="w-3 h-3" />
           Vivo (deducible)
         </span>
       );
     } else if (formData.aeatClassification?.status === 'Prescrito') {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-warning-100 text-orange-700 rounded-full">
+        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-warning-100 text-orange-700">
           <AlertTriangle className="w-3 h-3" />
           Prescrito (histórico)
         </span>
@@ -243,7 +243,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onClick={handleSave}
           disabled={saving}
           aria-describedby="save-button-description"
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+          className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         >
           <Save className="w-4 h-4" aria-hidden="true" />
           {saving ? 'Guardando...' : 'Confirmar y guardar'}
@@ -263,10 +263,10 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             aria-checked={formData.destino === 'Personal'}
             onClick={() => handleFieldChange('destino', 'Personal')}
             onKeyDown={(e) => handleKeyDown(e, () => handleFieldChange('destino', 'Personal'))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+            className={`flex items-center gap-2 px-4 py-2 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Personal'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 hover:bg-gray-50'
+                : 'border-gray-200
             }`}
             aria-describedby="personal-description"
           >
@@ -283,10 +283,10 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             aria-checked={formData.destino === 'Inmueble'}
             onClick={() => handleFieldChange('destino', 'Inmueble')}
             onKeyDown={(e) => handleKeyDown(e, () => handleFieldChange('destino', 'Inmueble'))}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+            className={`flex items-center gap-2 px-4 py-2 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Inmueble'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200 hover:bg-gray-50'
+                : 'border-gray-200
             }`}
             aria-describedby="property-description"
           >
@@ -314,7 +314,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               handleFieldChange('entityType', propertyId ? 'property' : undefined);
             }}
             aria-describedby="property-help"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+            className="btn-secondary-horizon w-full "
           >
             <option value="">Seleccionar inmueble</option>
             {properties.map(property => (
@@ -340,7 +340,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           value={formData.counterpartyName || formData.proveedor || ''} // Backward compatibility
           onChange={(e) => handleFieldChange('counterpartyName', e.target.value)}
           aria-describedby="counterparty-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+          className="btn-secondary-horizon w-full "
           placeholder="Nombre de la contraparte"
         />
         <div id="counterparty-help" className="text-xs text-gray-500">
@@ -358,7 +358,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           value={formData.categoria || ''}
           onChange={(e) => handleFieldChange('categoria', e.target.value)}
           aria-describedby="category-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+          className="btn-secondary-horizon w-full "
         >
           <option value="">Seleccionar categoría</option>
           {getCategoriesForDestination().map(category => (
@@ -388,7 +388,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.amount || ''}
               onChange={(e) => handleFinancialDataChange('amount', parseFloat(e.target.value) || 0)}
               aria-describedby="total-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+              className="btn-secondary-horizon w-full "
               placeholder="0,00"
             />
             <div id="total-amount-help" className="sr-only">
@@ -406,7 +406,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.base || ''}
               onChange={(e) => handleFinancialDataChange('base', parseFloat(e.target.value) || 0)}
               aria-describedby="base-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+              className="btn-secondary-horizon w-full "
               placeholder="0,00"
             />
             <div id="base-amount-help" className="sr-only">
@@ -427,7 +427,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.iva || ''}
               onChange={(e) => handleFinancialDataChange('iva', parseFloat(e.target.value) || 0)}
               aria-describedby="vat-amount-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+              className="btn-secondary-horizon w-full "
               placeholder="0,00"
             />
             <div id="vat-amount-help" className="sr-only">
@@ -444,7 +444,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.issueDate || ''}
               onChange={(e) => handleFinancialDataChange('issueDate', e.target.value)}
               aria-describedby="issue-date-help"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+              className="btn-secondary-horizon w-full "
             />
             <div id="issue-date-help" className="sr-only">
               Seleccione la fecha de emisión del documento
@@ -455,7 +455,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
 
       {/* AEAT Classification for Inmueble */}
       {formData.destino === 'Inmueble' && formData.aeatClassification && (
-        <section className="space-y-4 p-4 bg-primary-50 rounded-lg" aria-labelledby="aeat-title">
+        <section className="btn-primary-horizon space-y-4 p-4" aria-labelledby="aeat-title">
           <div className="flex items-center justify-between">
             <h4 id="aeat-title" className="text-sm font-medium text-primary-900">
               Clasificación Fiscal AEAT
@@ -469,7 +469,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
                 Casilla AEAT
               </div>
               <div 
-                className="px-3 py-2 bg-white rounded-lg border text-sm font-medium"
+                className="px-3 py-2 bg-white border text-sm font-medium"
                 aria-labelledby="aeat-box-label"
                 role="textbox"
                 aria-readonly="true"
@@ -482,7 +482,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
                 Ejercicio de Devengo
               </div>
               <div 
-                className="px-3 py-2 bg-white rounded-lg border text-sm"
+                className="px-3 py-2 bg-white border text-sm"
                 aria-labelledby="exercise-year-label"
                 role="textbox"
                 aria-readonly="true"
@@ -512,7 +512,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onChange={(e) => handleFieldChange('notas', e.target.value)}
           rows={3}
           aria-describedby="notes-help"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:border-primary-300 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 focus:outline-none"
+          className="btn-secondary-horizon w-full "
           placeholder="Notas adicionales..."
         />
         <div id="notes-help" className="text-xs text-gray-500">

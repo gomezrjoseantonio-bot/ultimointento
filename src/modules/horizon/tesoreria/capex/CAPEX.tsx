@@ -150,8 +150,8 @@ const CapexComponent: React.FC = () => {
     return (
       <PageLayout title="CAPEX" subtitle="Gestión de inversiones en capital (reformas, mejoras, ampliaciones).">
         <div className="animate-pulse space-y-6">
-          <div className="h-32 bg-gray-200 rounded-lg"></div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+          <div className="h-32 bg-gray-200"></div>
+          <div className="h-64 bg-gray-200"></div>
         </div>
       </PageLayout>
     );
@@ -173,7 +173,7 @@ const CapexComponent: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="completo">Completo</option>
@@ -189,7 +189,7 @@ const CapexComponent: React.FC = () => {
                 placeholder="Buscar por contraparte, tipo o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
@@ -200,7 +200,7 @@ const CapexComponent: React.FC = () => {
         </div>
 
         {/* CAPEX Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -241,7 +241,7 @@ const CapexComponent: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoColor(capex.tipo)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getTipoColor(capex.tipo)}`}>
                       {capex.tipo}
                     </span>
                   </td>
@@ -259,7 +259,7 @@ const CapexComponent: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(capex.estado)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(capex.estado)}`}>
                       {capex.estado}
                     </span>
                     {capex.source_doc_id && (
@@ -287,7 +287,7 @@ const CapexComponent: React.FC = () => {
         {/* Summary Cards */}
         {filteredCapex.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-500">Total Invertido</h3>
                 <Calculator className="w-5 h-5 text-gray-400" />
@@ -297,7 +297,7 @@ const CapexComponent: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-500">Amortización Anual</h3>
                 <Calendar className="w-5 h-5 text-gray-400" />
@@ -307,7 +307,7 @@ const CapexComponent: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium text-gray-500">Registros Activos</h3>
                 <Building className="w-5 h-5 text-gray-400" />
@@ -322,7 +322,7 @@ const CapexComponent: React.FC = () => {
         {/* Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-gray-200 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white max-w-lg w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Nuevo CAPEX</h3>
@@ -342,7 +342,7 @@ const CapexComponent: React.FC = () => {
                     <select
                       value={formData.inmueble_id}
                       onChange={(e) => setFormData(prev => ({ ...prev, inmueble_id: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     >
                       <option value={0}>Seleccionar inmueble</option>
@@ -362,7 +362,7 @@ const CapexComponent: React.FC = () => {
                       type="text"
                       value={formData.contraparte}
                       onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="Nombre del proveedor o contratista"
                       required
                     />
@@ -376,7 +376,7 @@ const CapexComponent: React.FC = () => {
                       type="date"
                       value={formData.fecha_emision}
                       onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       required
                     />
                   </div>
@@ -391,7 +391,7 @@ const CapexComponent: React.FC = () => {
                       min="0"
                       value={formData.total}
                       onChange={(e) => setFormData(prev => ({ ...prev, total: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                       placeholder="0.00"
                       required
                     />
@@ -405,7 +405,7 @@ const CapexComponent: React.FC = () => {
                       <select
                         value={formData.tipo}
                         onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as CAPEXTipo }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       >
                         {capexTipos.map(tipo => (
@@ -426,7 +426,7 @@ const CapexComponent: React.FC = () => {
                         max="50"
                         value={formData.anos_amortizacion}
                         onChange={(e) => setFormData(prev => ({ ...prev, anos_amortizacion: parseInt(e.target.value) || 10 }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         required
                       />
                     </div>
@@ -439,7 +439,7 @@ const CapexComponent: React.FC = () => {
                     <select
                       value={formData.estado}
                       onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value as CAPEXEstado }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       {capexEstados.map(estado => (
                         <option key={estado.value} value={estado.value}>
@@ -451,7 +451,7 @@ const CapexComponent: React.FC = () => {
 
                   {/* Preview Calculation */}
                   {formData.total > 0 && formData.anos_amortizacion > 0 && (
-                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                    <div className="btn-secondary-horizon btn-primary-horizon ">
                       <div className="text-sm font-medium text-primary-900 mb-2">
                         Vista previa de amortización:
                       </div>
@@ -465,13 +465,12 @@ const CapexComponent: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowForm(false)}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                    >
+                      className="px-4 py-2 text-gray-700 bg-gray-100 >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                      className="btn-primary-horizon px-4 py-2
                     >
                       Guardar CAPEX
                     </button>

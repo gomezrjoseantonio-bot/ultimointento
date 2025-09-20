@@ -151,7 +151,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
 
   if (loading) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 ${className}`}>
+      <div className={`bg-white shadow-sm border border-gray-200 p-6 ${className}`}>
         <div className="animate-pulse">
           <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
@@ -166,7 +166,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
 
   if (accounts.length === 0) {
     return (
-      <div className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 ${className}`}>
+      <div className={`bg-white shadow-sm border border-gray-200 p-6 ${className}`}>
         <div className="text-center py-8">
           <PieChart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Sin datos de analítica</h3>
@@ -175,8 +175,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
           </p>
           <button
             onClick={() => window.open('/cuenta/cuentas', '_blank')}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-atlas-blue hover:bg-atlas-blue-dark"
-          >
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium bg-atlas-blue >
             Configurar Cuentas
           </button>
         </div>
@@ -185,7 +184,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
+    <div className={`bg-white shadow-sm border border-gray-200 ${className}`}>
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -199,7 +198,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value as any)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
+              className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
             >
               <option value="30d">Últimos 30 días</option>
               <option value="90d">Últimos 90 días</option>
@@ -210,7 +209,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             <select
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
+              className="px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
             >
               <option value="all">Todas las cuentas</option>
               {accounts.map(account => (
@@ -226,7 +225,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
       {/* Summary Stats */}
       <div className="p-6 border-b border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="btn-primary-horizon p-4">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600" />
               <div className="ml-3">
@@ -236,7 +235,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="btn-accent-horizon p-4">
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-green-600" />
               <div className="ml-3">
@@ -246,7 +245,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="bg-red-50 rounded-lg p-4">
+          <div className="btn-danger p-4">
             <div className="flex items-center">
               <TrendingDown className="h-8 w-8 text-red-600" />
               <div className="ml-3">
@@ -256,7 +255,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 p-4">
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-gray-600" />
               <div className="ml-3">
@@ -272,15 +271,15 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
       <div className="p-6">
         <div className="space-y-4">
           {filteredAnalytics.map((stat) => (
-            <div key={stat.accountId} className="border border-gray-200 rounded-lg p-4">
+            <div key={stat.accountId} className="border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <AccountOption account={stat.account} size="sm" />
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getUsageColor(stat.usageFrequency)}`}>
+                  <span className={`px-2 py-1 text-xs font-medium ${getUsageColor(stat.usageFrequency)}`}>
                     {getUsageLabel(stat.usageFrequency)}
                   </span>
                   {stat.account.isDefault && (
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="btn-primary-horizon px-2 py-1 text-xs font-medium text-blue-800">
                       Por defecto
                     </span>
                   )}

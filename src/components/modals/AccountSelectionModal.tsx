@@ -83,7 +83,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
         />
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -119,7 +119,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
               </div>
               <button
                 onClick={handleCancel}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" strokeWidth={1.5} />
               </button>
@@ -130,7 +130,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
           <div className="px-6 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+                <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
                 <span className="ml-3 text-sm" style={{ 
                   color: '#6C757D',
                   fontFamily: 'Inter, sans-serif'
@@ -161,7 +161,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     currentUrl.hash = '#/configuracion/cuentas';
                     window.location.href = currentUrl.toString();
                   }}
-                  className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-md hover:opacity-90 transition-opacity"
+                  className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
                   style={{ 
                     backgroundColor: '#042C5E',
                     fontFamily: 'Inter, sans-serif'
@@ -174,7 +174,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
             ) : (
               <div className="space-y-3">
                 {unrecognizedIBAN && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="p-3 bg-amber-50 border border-amber-200">
                     <div className="flex items-center">
                       <AlertCircle className="h-5 w-5 text-amber-600 mr-2" strokeWidth={1.5} />
                       <div className="text-sm">
@@ -199,7 +199,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     <button
                       key={account.id}
                       onClick={() => setSelectedAccountId(account.id!)}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                      className={`w-full text-left p-4 border-2 transition-all ${
                         selectedAccountId === account.id
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
@@ -210,7 +210,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     >
                       <div className="flex items-center">
                         {/* Account logo or fallback */}
-                        <div className="w-10 h-10 rounded-lg mr-3 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#042C5E' }}>
+                        <div className="w-10 h-10 mr-3 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#042C5E' }}>
                           {account.logo_url && (account.logo_url.endsWith('.jpg') || account.logo_url.endsWith('.jpeg') || account.logo_url.endsWith('.png')) ? (
                             <img 
                               src={account.logo_url} 
@@ -220,7 +220,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                                 // Fallback to initials if image fails to load
                                 const target = e.target as HTMLImageElement;
                                 const fallback = document.createElement('div');
-                                fallback.className = 'w-full h-full flex items-center justify-center text-white font-medium text-xs';
+                                fallback.className = 'w-full h-full flex items-center justify-center font-medium text-xs';
                                 fallback.textContent = (account.name || account.bank || 'A')
                                   .split(' ')
                                   .map(word => word.charAt(0).toUpperCase())
@@ -247,7 +247,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                               {account.name || `${account.bank} ${formatIBAN(account.iban)}`}
                             </h4>
                             {selectedAccountId === account.id && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                              <div className="btn-primary-horizon w-2 h-2"></div>
                             )}
                           </div>
                           <div className="mt-1 space-y-1">
@@ -285,7 +285,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                       currentUrl.hash = '#/configuracion/cuentas';
                       window.location.href = currentUrl.toString();
                     }}
-                    className="w-full text-left p-4 rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 transition-all"
+                    className="w-full text-left p-4 border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 transition-all"
                     style={{ 
                       fontFamily: 'Inter, sans-serif'
                     }}
@@ -312,7 +312,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
             <div className="px-6 py-4 bg-gray-50 flex items-center justify-end space-x-3">
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium border border-gray-300"
                 style={{ 
                   color: '#6C757D',
                   fontFamily: 'Inter, sans-serif'
@@ -323,7 +323,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
               <button
                 onClick={handleConfirmSelection}
                 disabled={!selectedAccountId}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-all ${
+                className={`px-4 py-2 text-sm font-medium transition-all ${
                   selectedAccountId 
                     ? 'hover:opacity-90 cursor-pointer' 
                     : 'opacity-50 cursor-not-allowed'

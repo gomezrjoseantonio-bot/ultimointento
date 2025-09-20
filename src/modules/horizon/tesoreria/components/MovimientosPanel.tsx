@@ -281,8 +281,8 @@ const MovimientosPanel: React.FC = () => {
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-32 bg-gray-200 rounded-lg"></div>
-        <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-gray-200"></div>
+        <div className="h-64 bg-gray-200"></div>
       </div>
     );
   }
@@ -295,7 +295,7 @@ const MovimientosPanel: React.FC = () => {
           {/* Back to Treasury button as required by problem statement */}
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700"
           >
             <ArrowLeft className="w-4 h-4" />
             Tesorería
@@ -303,7 +303,7 @@ const MovimientosPanel: React.FC = () => {
           
           <button
             onClick={() => setShowManualEntry(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-navy"
           >
             <Plus className="w-4 h-4" />
             Entrada Manual
@@ -311,16 +311,16 @@ const MovimientosPanel: React.FC = () => {
           
           <button
             onClick={() => setShowReconciliation(!showReconciliation)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 border ${
               showReconciliation 
                 ? 'bg-primary-50 border-primary-200 text-primary-700' 
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                : 'border-gray-300 text-gray-700
             }`}
           >
             <Link className="w-4 h-4" />
             Conciliación
             {potentialMatches.length > 0 && (
-              <span className="ml-1 bg-error-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="ml-1 bg-error-500 text-xs w-5 h-5 flex items-center justify-center">
                 {potentialMatches.length}
               </span>
             )}
@@ -336,7 +336,7 @@ const MovimientosPanel: React.FC = () => {
             <select
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
-              className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todas las cuentas</option>
               {accounts.map(account => (
@@ -348,7 +348,7 @@ const MovimientosPanel: React.FC = () => {
             
             {/* Show selected account preview using AccountOption */}
             {selectedAccount !== 'all' && accounts.find(acc => acc.id?.toString() === selectedAccount) && (
-              <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-2 p-2 bg-gray-50 border border-gray-200">
                 <AccountOption 
                   account={accounts.find(acc => acc.id?.toString() === selectedAccount)!} 
                   size="sm" 
@@ -362,7 +362,7 @@ const MovimientosPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-48 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="sin_conciliar">Sin conciliar</option>
@@ -378,18 +378,18 @@ const MovimientosPanel: React.FC = () => {
             placeholder="Buscar por descripción o contraparte..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
 
       {/* Reconciliation Panel */}
       {showReconciliation && potentialMatches.length > 0 && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <h3 className="text-lg font-semibold text-primary-900 mb-4">Sugerencias de conciliación</h3>
           <div className="space-y-4">
             {potentialMatches.map((match, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 border border-primary-200">
+              <div key={index} className="btn-secondary-horizon bg-white p-4 ">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-medium text-gray-900">
@@ -404,7 +404,7 @@ const MovimientosPanel: React.FC = () => {
                       <button
                         key={matchIndex}
                         onClick={() => handleReconcile(match.movementId, potentialMatch.type, potentialMatch.id)}
-                        className="ml-2 px-3 py-1 bg-success-600 text-white text-sm rounded hover:bg-success-700 transition-colors"
+                        className="ml-2 px-3 py-1 bg-success-600 text-sm rounded"
                       >
                         Conciliar con {potentialMatch.type}
                       </button>
@@ -420,7 +420,7 @@ const MovimientosPanel: React.FC = () => {
       {/* Manual Entry Modal */}
       {showManualEntry && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editingMovement ? 'Editar Movimiento' : 'Crear Movimiento Manual'}
@@ -442,7 +442,7 @@ const MovimientosPanel: React.FC = () => {
                   type="date"
                   value={newMovement.date}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
               
@@ -453,7 +453,7 @@ const MovimientosPanel: React.FC = () => {
                 <select
                   value={newMovement.accountId}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, accountId: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 >
                   <option value="">Seleccionar cuenta</option>
                   {accounts.map(account => (
@@ -473,7 +473,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.description}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Descripción del movimiento"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
               
@@ -487,7 +487,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.amount}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
               
@@ -500,7 +500,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.counterparty}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, counterparty: e.target.value }))}
                   placeholder="Nombre de la entidad o persona"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                 />
               </div>
             </div>
@@ -508,13 +508,13 @@ const MovimientosPanel: React.FC = () => {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={cancelEdit}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={editingMovement ? handleUpdateMovement : handleCreateManualMovement}
-                className="flex-1 px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-brand-navy/90 transition-colors"
+                className="flex-1 px-4 py-2 bg-brand-navy"
               >
                 {editingMovement ? 'Actualizar Movimiento' : 'Crear Movimiento'}
               </button>
@@ -526,7 +526,7 @@ const MovimientosPanel: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Confirmar Eliminación</h3>
               <button
@@ -541,7 +541,7 @@ const MovimientosPanel: React.FC = () => {
               <p className="text-gray-600 mb-4">
                 ¿Estás seguro de que deseas eliminar este movimiento?
               </p>
-              <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="bg-gray-50 p-4">
                 <p className="text-sm font-medium text-gray-900">
                   {showDeleteConfirm.description}
                 </p>
@@ -554,13 +554,13 @@ const MovimientosPanel: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleDeleteMovement(showDeleteConfirm)}
-                className="flex-1 px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-error-600"
               >
                 Eliminar
               </button>
@@ -570,7 +570,7 @@ const MovimientosPanel: React.FC = () => {
       )}
 
       {/* Movements Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -632,14 +632,14 @@ const MovimientosPanel: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
                         getStatusColor(movement.estado_conciliacion)
                       }`}>
                         {movement.estado_conciliacion === 'conciliado' ? 'Conciliado' : 'Sin conciliar'}
                       </span>
                       {movement.linked_registro && (
                         <div className="mt-1">
-                          <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
+                          <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs text-primary-800">
                             <Link className="w-3 h-3 mr-1" />
                             {movement.linked_registro.type}
                           </span>
@@ -650,14 +650,14 @@ const MovimientosPanel: React.FC = () => {
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleEditMovement(movement)}
-                          className="text-primary-600 hover:text-primary-800 transition-colors"
+                          className="text-primary-600 hover:text-primary-800"
                           title="Editar movimiento"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setShowDeleteConfirm(movement)}
-                          className="text-error-600 hover:text-error-800 transition-colors"
+                          className="text-error-600 hover:text-error-800"
                           title="Eliminar movimiento"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -686,7 +686,7 @@ const MovimientosPanel: React.FC = () => {
 
       {/* Summary */}
       {filteredMovements.length > 0 && (
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold text-success-600">

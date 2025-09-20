@@ -169,7 +169,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active;
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
     );
@@ -181,7 +181,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       : { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Temporada' };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
     );
@@ -199,7 +199,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     const badgeConfig = config[indexacion as keyof typeof config] || config.otros;
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeConfig.bg} ${badgeConfig.text}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${badgeConfig.bg} ${badgeConfig.text}`}>
         {badgeConfig.label}
       </span>
     );
@@ -230,7 +230,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
         <span className="ml-2 text-gray-600 mt-2">
           Cargando contratos...
           {retryCount > 0 && ` (reintento ${retryCount})`}
@@ -242,7 +242,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+        <div className="btn-danger border border-red-200 p-6 max-w-md">
           <div className="flex items-center mb-4">
             <XCircle className="h-6 w-6 text-red-500 mr-2" />
             <h3 className="text-lg font-medium text-red-900">Error de carga</h3>
@@ -251,13 +251,13 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           <div className="flex space-x-3">
             <button
               onClick={() => loadData()}
-              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-atlas-blue-700 transition-colors"
+              className="px-4 py-2 bg-atlas-blue"
             >
               Reintentar
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+              className="px-4 py-2 bg-gray-200 text-gray-800"
             >
               Recargar página
             </button>
@@ -270,7 +270,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div>
@@ -283,7 +283,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                className="pl-10 w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
                 placeholder="Nombre, DNI, email..."
               />
             </div>
@@ -297,7 +297,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
             >
               <option value="all">Todos</option>
               <option value="active">Activos</option>
@@ -314,7 +314,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
             <select
               value={modalidadFilter}
               onChange={(e) => setModalidadFilter(e.target.value as any)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
             >
               <option value="all">Todas</option>
               <option value="habitual">Habitual</option>
@@ -330,7 +330,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
             <select
               value={selectedPropertyId}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
             >
               <option value="all">Todos</option>
               {properties.map((property) => (
@@ -344,7 +344,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       </div>
 
       {/* Contracts Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">
             Contratos ({filteredContracts.length})

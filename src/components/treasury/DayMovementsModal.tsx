@@ -62,8 +62,8 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
+      <div className="bg-white shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div>
@@ -76,7 +76,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600"
           >
             <X className="h-6 w-6" />
           </button>
@@ -85,19 +85,19 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
         {/* Daily Summary */}
         <div className="p-6 bg-gray-50 border-b border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <div className="btn-accent-horizon p-4 border border-green-200">
               <p className="text-sm text-green-600">Ingresos</p>
               <p className="text-xl font-bold text-green-700">
                 {formatEuro(dailyTotals.ingresos)}
               </p>
             </div>
-            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <div className="btn-danger p-4 border border-red-200">
               <p className="text-sm text-red-600">Gastos</p>
               <p className="text-xl font-bold text-red-700">
                 {formatEuro(dailyTotals.gastos)}
               </p>
             </div>
-            <div className={`p-4 rounded-lg border ${
+            <div className={`p-4 border ${
               dailyTotals.neto >= 0 
                 ? 'bg-green-50 border-green-200' 
                 : 'bg-red-50 border-red-200'
@@ -125,14 +125,14 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
               return (
                 <div
                   key={movement.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="bg-white border border-gray-200 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       {/* Movement Header */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-3">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${status.color}`}>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium ${status.color}`}>
                             {status.label}
                           </span>
                           {movement.source && (
@@ -144,21 +144,21 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => onMovementAction(movement, 'edit')}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                            className="p-1 text-gray-400 hover:text-blue-600"
                             title="Editar"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'link')}
-                            className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                            className="p-1 text-gray-400 hover:text-green-600"
                             title="Conciliar"
                           >
                             <Link className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'delete')}
-                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                            className="p-1 text-gray-400 hover:text-red-600"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -234,7 +234,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="btn-primary-horizon px-4 py-2"
             >
               Cerrar
             </button>

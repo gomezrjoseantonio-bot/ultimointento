@@ -105,9 +105,9 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 p-6">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+          <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
           <span className="ml-2 text-neutral-600">Cargando datos personales...</span>
         </div>
       </div>
@@ -115,7 +115,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-neutral-200 p-6">
+    <div className="bg-white border border-neutral-200 p-6">
       <h2 className="text-lg font-semibold text-neutral-900 mb-4">Datos Personales</h2>
       <p className="text-neutral-600 mb-6">
         Configura tus datos personales para personalizar el módulo Personal según tu situación.
@@ -132,7 +132,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               required
             />
           </div>
@@ -145,7 +145,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               type="text"
               value={formData.apellidos}
               onChange={(e) => setFormData(prev => ({ ...prev, apellidos: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               required
             />
           </div>
@@ -160,7 +160,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               type="text"
               value={formData.dni}
               onChange={(e) => setFormData(prev => ({ ...prev, dni: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="12345678A"
               required
             />
@@ -176,7 +176,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
                 ...prev, 
                 situacionPersonal: e.target.value as PersonalData['situacionPersonal'] 
               }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               {situacionPersonalOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -195,7 +195,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
             value={formData.direccion}
             onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
             rows={2}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             placeholder="Calle, número, ciudad, código postal"
           />
         </div>
@@ -210,7 +210,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {situacionLaboralOptions.map(option => (
-              <label key={option.value} className="flex items-center space-x-3 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer">
+              <label key={option.value} className="flex items-center space-x-3 p-3 border border-neutral-200 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.situacionLaboral.includes(option.value as SituacionLaboral)}
@@ -222,7 +222,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
             ))}
           </div>
           {formData.situacionLaboral.length > 0 && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="btn-secondary-horizon btn-primary-horizon mt-3 p-3 ">
               <p className="text-sm text-blue-700">
                 <strong>Secciones que se mostrarán:</strong>
                 {formData.situacionLaboral.includes('asalariado') && ' Nómina,'}
@@ -238,7 +238,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 bg-brand-navy text-white text-sm font-medium rounded-lg hover:bg-brand-navy-dark focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-6 py-2 bg-brand-navy text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Guardando...' : 'Guardar Datos Personales'}
           </button>

@@ -40,6 +40,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmAction } from '../../services/confirmationService';
 
 const DashboardConfig: React.FC = () => {
   const { currentModule } = useTheme();
@@ -98,9 +99,11 @@ const DashboardConfig: React.FC = () => {
   };
 
   const handleResetToDefault = async () => {
-    if (!window.confirm('¿Estás seguro de que quieres restaurar la configuración por defecto? Esto eliminará todas las personalizaciones.')) {
-      return;
-    }
+    const confirmed = await confirmAction(
+      'restaurar la configuración por defecto',
+      'Esto eliminará todas las personalizaciones.'
+    );
+    if (!confirmed) return;
 
     try {
       const defaultConfig = await dashboardService.resetToDefault();
@@ -251,8 +254,7 @@ const DashboardConfig: React.FC = () => {
         <p className="text-error-600">Error al cargar la configuración del dashboard</p>
         <button 
           onClick={loadConfiguration}
-          className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
-        >
+          className="btn-primary-horizon mt-4 px-4 py-2 >
           Reintentar
         </button>
       </div>
@@ -281,7 +283,7 @@ const DashboardConfig: React.FC = () => {
         ref={setNodeRef}
         style={style}
         className={`
-          bg-white border border-neutral-200 rounded-lg p-4 shadow-sm
+          bg-white border border-neutral-200 p-4 shadow-sm
           ${isDragging ? 'shadow-lg' : ''}
           ${!block.isActive ? 'opacity-50' : ''}
         `}
@@ -346,7 +348,7 @@ const DashboardConfig: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <button
             onClick={handlePreview}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 text-sm font-medium text-neutral-700"
           >
             <Eye className="w-4 h-4" />
             <span className="hidden sm:inline">Vista previa</span>
@@ -355,7 +357,7 @@ const DashboardConfig: React.FC = () => {
           
           <button
             onClick={handleResetToDefault}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 text-sm font-medium text-neutral-700"
           >
             <RotateCcw className="w-4 h-4" />
             <span className="hidden sm:inline">Restaurar por defecto</span>
@@ -365,7 +367,7 @@ const DashboardConfig: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2 bg-${accentColor} text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50`}
+            className={`inline-flex items-center justify-center gap-2 px-4 py-2 bg-${accentColor} hover:opacity-90 transition-opacity disabled:opacity-50`}
           >
             <Save className="w-4 h-4" />
             {isSaving ? 'Guardando...' : 'Guardar'}
@@ -401,7 +403,7 @@ const DashboardConfig: React.FC = () => {
           </DndContext>
 
           {activeBlocks.length === 0 && (
-            <div className="text-center py-8 border border-dashed border-neutral-300 rounded-lg">
+            <div className="text-center py-8 border border-dashed border-neutral-300">
               <Settings className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
               <p className="text-neutral-600">No hay bloques activos</p>
               <p className="text-sm text-neutral-500">Añade bloques desde el catálogo de la derecha</p>
@@ -424,10 +426,10 @@ const DashboardConfig: React.FC = () => {
                 <div
                   key={blockId}
                   className={`
-                    border border-neutral-200 rounded-lg p-4 cursor-pointer transition-colors
+                    border border-neutral-200 p-4 cursor-pointer
                     ${isActive 
                       ? 'bg-success-50 border-success-200' 
-                      : 'bg-white hover:bg-neutral-50'
+                      : 'bg-white
                     }
                   `}
                   onClick={() => addBlock(blockId as DashboardBlockType)}
@@ -443,7 +445,7 @@ const DashboardConfig: React.FC = () => {
                     </div>
 
                     <div className={`
-                      w-6 h-6 rounded-full flex items-center justify-center text-white text-sm
+                      w-6 h-6 flex items-center justify-center text-sm
                       ${isActive ? 'bg-success-500' : 'bg-neutral-300'}
                     `}>
                       {isActive ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -455,7 +457,7 @@ const DashboardConfig: React.FC = () => {
           </div>
 
           {/* Info box */}
-          <div className="mt-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg mt-6 p-4">
             <div className="flex items-start gap-3">
               <div className="text-primary-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />

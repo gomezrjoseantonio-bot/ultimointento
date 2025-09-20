@@ -65,7 +65,7 @@ export const TreasuryStatusBadge: React.FC<{
 
   return (
     <span 
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}
+      className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${config.color}`}
       title={config.microcopy}
     >
       {config.text}
@@ -219,7 +219,7 @@ export const TreasuryFieldHelp: React.FC<{
     <div className={`group relative ${className}`}>
       <Info className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
       <div className="absolute z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-300 bottom-full left-1/2 transform -translate-x-1/2 mb-2">
-        <div className="bg-gray-50 text-white text-xs rounded-lg py-2 px-3 max-w-xs">
+        <div className="bg-gray-50 text-xs py-2 px-3 max-w-xs">
           <div className="font-medium mb-1">{help.title}</div>
           <div>{help.content}</div>
           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
@@ -303,7 +303,7 @@ export const TreasuryActionFeedback: React.FC<{
           <div className="ml-auto flex-shrink-0">
             <button
               onClick={onClose}
-              className={`rounded-md p-1.5 hover:bg-white/50 focus:outline-none focus:ring-2 focus:ring-offset-2 ${config.titleColor}`}
+              className={`rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${config.titleColor}`}
             >
               <span className="sr-only">Cerrar</span>
               <XCircle className="w-4 h-4" />
@@ -390,7 +390,7 @@ export const TreasuryEmptyState: React.FC<{
       <div className="mt-6">
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="btn-primary-horizon inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           {config.buttonText}
         </button>
@@ -424,7 +424,7 @@ export const TreasuryQuickStats: React.FC<{
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-success-50 rounded-lg p-4">
+      <div className="bg-success-50 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-success-600">Ingresos</p>
@@ -436,7 +436,7 @@ export const TreasuryQuickStats: React.FC<{
         </div>
       </div>
 
-      <div className="bg-error-50 rounded-lg p-4">
+      <div className="bg-error-50 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-error-600">Gastos</p>
@@ -448,7 +448,7 @@ export const TreasuryQuickStats: React.FC<{
         </div>
       </div>
 
-      <div className="bg-purple-50 rounded-lg p-4">
+      <div className="bg-purple-50 p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-purple-600">CAPEX</p>
@@ -460,7 +460,7 @@ export const TreasuryQuickStats: React.FC<{
         </div>
       </div>
 
-      <div className={`${netCashFlow >= 0 ? 'bg-primary-50' : 'bg-orange-50'} rounded-lg p-4`}>
+      <div className={`${netCashFlow >= 0 ? 'bg-primary-50' : 'bg-orange-50'} p-4`}>
         <div className="flex items-center justify-between">
           <div>
             <p className={`text-sm font-medium ${netCashFlow >= 0 ? 'text-primary-600' : 'text-warning-600'}`}>
@@ -475,7 +475,7 @@ export const TreasuryQuickStats: React.FC<{
               </p>
             )}
           </div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+          <div className={`w-8 h-8 flex items-center justify-center ${
             netCashFlow >= 0 ? 'bg-primary-100' : 'bg-warning-100'
           }`}>
             <span className={`text-lg font-bold ${

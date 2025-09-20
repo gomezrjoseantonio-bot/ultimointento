@@ -16,6 +16,7 @@ import {
 import { prestamosService } from '../../../../services/prestamosService';
 import { Prestamo } from '../../../../types/prestamos';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
@@ -182,7 +183,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   };
 
   const handleDeletePrestamo = async (prestamoId: string) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este préstamo?')) {
+    const prestamo = prestamos.find(p => p.id === prestamoId);
+    const confirmed = await confirmDelete(prestamo?.nombre || 'este préstamo');
+    if (confirmed) {
       try {
         await prestamosService.deletePrestamo(prestamoId);
         // Reload loans
@@ -218,7 +221,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
           <p className="text-atlas-navy-1">Cargando préstamos...</p>
         </div>
       </div>
@@ -229,7 +232,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
     <div className="space-y-6">
       {/* Information text with icon */}
       <div className="flex items-center space-x-2 text-sm text-text-gray">
-        <div className="flex-shrink-0 w-4 h-4 rounded-full bg-primary-100 flex items-center justify-center">
+        <div className="btn-primary-horizon flex-shrink-0 w-4 h-4 flex items-center justify-center">
           <span className="text-xs font-medium text-atlas-blue">i</span>
         </div>
         <span>Gestione sus préstamos hipotecarios y personales. Puede ordenar las columnas haciendo clic en los encabezados.</span>
@@ -237,7 +240,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
             <Calculator className="h-8 w-8 text-atlas-blue" />
             <div className="ml-4">
@@ -249,7 +252,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
             <DollarSign className="h-8 w-8 text-warn" />
             <div className="ml-4">
@@ -261,7 +264,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
             <TrendingUp className="h-8 w-8 text-ok" />
             <div className="ml-4">
@@ -273,7 +276,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
             <Clock className="h-8 w-8 text-error" />
             <div className="ml-4">
@@ -285,7 +288,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-atlas border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
             <Calendar className="h-8 w-8 text-atlas-blue" />
             <div className="ml-4">
@@ -300,19 +303,19 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
       {/* Loans List */}
       {sortedPrestamos.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-atlas border border-gray-200">
+        <div className="text-center py-12 bg-white border border-gray-200">
           <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
           <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
           <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
         </div>
       ) : (
-        <div className="bg-white rounded-atlas border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('nombre')}
                   >
                     <div className="flex items-center">
@@ -324,8 +327,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                     Tipo
                   </th>
                   <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('capitalVivo')}
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer onClick={() => handleSort("capitalVivo')}
                   >
                     <div className="flex items-center justify-end">
                       Capital Vivo
@@ -333,8 +335,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('tin')}
+                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer onClick={() => handleSort("tin')}
                   >
                     <div className="flex items-center justify-end">
                       TIN Efectivo
@@ -362,7 +363,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                     <tr key={prestamo.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
+                          <div className={`flex-shrink-0 h-8 w-8 flex items-center justify-center ${
                             isPersonal ? 'bg-primary-100' : 'bg-warning-100'
                           }`}>
                             {isPersonal ? (
@@ -382,7 +383,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
                           prestamo.tipo === 'FIJO' ? 'bg-blue-100 text-blue-800' :
                           prestamo.tipo === 'VARIABLE' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-purple-100 text-purple-800'
@@ -413,21 +414,21 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => handleViewDetail(prestamo)}
-                            className="text-atlas-blue hover:text-primary-800 transition-colors"
+                            className="text-atlas-blue hover:text-primary-800"
                             title="Ver detalle"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onEdit(prestamo.id)}
-                            className="text-text-gray hover:text-atlas-blue transition-colors"
+                            className="text-text-gray hover:text-atlas-blue"
                             title="Editar"
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeletePrestamo(prestamo.id)}
-                            className="text-text-gray hover:text-error transition-colors"
+                            className="text-text-gray hover:text-error"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />

@@ -64,7 +64,7 @@ const ProyeccionPresupuesto: React.FC = () => {
         {/* Header Action */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <div className="bg-primary-100 p-3 rounded-lg">
+            <div className="btn-primary-horizon p-3">
               <Calculator className="h-6 w-6 text-primary-600" />
             </div>
             <div>
@@ -79,7 +79,7 @@ const ProyeccionPresupuesto: React.FC = () => {
           
           <button
             onClick={handleCreateBudget}
-            className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -89,7 +89,7 @@ const ProyeccionPresupuesto: React.FC = () => {
         {/* Budget List or Empty State */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
           </div>
         ) : existingBudgets.length > 0 ? (
           <BudgetList 
@@ -97,7 +97,7 @@ const ProyeccionPresupuesto: React.FC = () => {
             onRefresh={loadBudgets}
           />
         ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <div className="text-center py-12 bg-gray-50">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No hay presupuestos para {currentYear}
@@ -107,7 +107,7 @@ const ProyeccionPresupuesto: React.FC = () => {
             </p>
             <button
               onClick={handleCreateBudget}
-              className="inline-flex items-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors"
+              className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
             >
               <Plus className="h-5 w-5" />
               <span>Crear Presupuesto {currentYear}</span>
@@ -117,7 +117,7 @@ const ProyeccionPresupuesto: React.FC = () => {
 
         {/* Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="bg-white p-6 border border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
               <Calculator className="h-5 w-5 text-success-600" />
               <h3 className="font-semibold text-gray-900">Categorías Fiscales</h3>
@@ -127,7 +127,7 @@ const ProyeccionPresupuesto: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="bg-white p-6 border border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
               <TrendingUp className="h-5 w-5 text-primary-600" />
               <h3 className="font-semibold text-gray-900">Frecuencias de Pago</h3>
@@ -137,7 +137,7 @@ const ProyeccionPresupuesto: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <div className="bg-white p-6 border border-gray-200">
             <div className="flex items-center space-x-3 mb-3">
               <FileText className="h-5 w-5 text-purple-600" />
               <h3 className="font-semibold text-gray-900">Versionado</h3>

@@ -84,7 +84,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
   return (
     <div className="space-y-6">
       {/* Completion Status */}
-      <div className={`p-4 rounded-atlas border ${
+      <div className={`p-4 border ${
         isFormComplete 
           ? 'border-ok-200 bg-ok-50' 
           : 'border-warning-200 bg-warning-50'
@@ -111,9 +111,9 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
       </div>
 
       {/* Main Summary Panel */}
-      <div className="bg-white border border-gray-200 rounded-atlas overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="bg-atlas-blue px-6 py-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
+          <h3 className="text-lg font-semibold flex items-center">
             <Calculator className="h-5 w-5 mr-2" />
             Resumen del Préstamo
           </h3>
@@ -123,7 +123,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           {/* Key Financial Data */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="text-center">
-              <div className="bg-primary-50 rounded-atlas p-4">
+              <div className="btn-primary-horizon p-4">
                 <Euro className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
                 <div className="text-sm text-text-gray">Capital</div>
                 <div className="text-xl font-bold text-atlas-navy-1">
@@ -133,7 +133,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
             </div>
 
             <div className="text-center">
-              <div className="bg-primary-50 rounded-atlas p-4">
+              <div className="btn-primary-horizon p-4">
                 <Calendar className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
                 <div className="text-sm text-text-gray">Plazo</div>
                 <div className="text-xl font-bold text-atlas-navy-1">
@@ -143,7 +143,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
             </div>
 
             <div className="text-center">
-              <div className="bg-primary-50 rounded-atlas p-4">
+              <div className="btn-primary-horizon p-4">
                 <Percent className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
                 <div className="text-sm text-text-gray">TIN Base</div>
                 <div className="text-xl font-bold text-atlas-navy-1">
@@ -171,7 +171,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
           {/* Live Calculation Results */}
           {calculoLive && (
-            <div className="bg-ok-50 border border-ok-200 rounded-atlas p-4 mb-6">
+            <div className="bg-ok-50 border border-ok-200 p-4 mb-6">
               <h4 className="font-medium text-ok-700 mb-3">Cálculo Financiero</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div>
@@ -212,7 +212,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
           {/* Bonifications Summary */}
           {bonificacionesTotales > 0 && (
-            <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 rounded-atlas p-4 mb-6">
+            <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 p-4 mb-6">
               <h4 className="font-medium text-atlas-blue mb-3">Beneficio de Bonificaciones</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
@@ -320,8 +320,8 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           {selectedAccount && (
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h4 className="font-medium text-atlas-navy-1 mb-3">Cuenta de Cargo</h4>
-              <div className="flex items-center p-3 bg-gray-50 rounded-atlas">
-                <div className="w-10 h-10 bg-atlas-blue rounded-full flex items-center justify-center text-white text-sm font-bold mr-3">
+              <div className="flex items-center p-3 bg-gray-50">
+                <div className="w-10 h-10 bg-atlas-blue flex items-center justify-center text-sm font-bold mr-3">
                   {selectedAccount.entidad.charAt(0)}
                 </div>
                 <div>
@@ -352,7 +352,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
       </div>
 
       {/* Important Notes */}
-      <div className="bg-info-50 border border-info-200 rounded-atlas p-4">
+      <div className="bg-info-50 border border-info-200 p-4">
         <div className="flex items-start">
           <Info className="h-5 w-5 text-info-600 flex-shrink-0 mt-0.5" />
           <div className="ml-3 text-sm">

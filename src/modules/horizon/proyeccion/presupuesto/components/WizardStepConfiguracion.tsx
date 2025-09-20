@@ -120,7 +120,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-success-50 border border-success-200 rounded-lg p-4">
+        <div className="bg-success-50 border border-success-200 p-4">
           <div className="text-sm text-success-600 font-medium">Ingresos anuales</div>
           <div className="text-xl font-bold text-success-700">
             {lines
@@ -129,7 +129,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
               .toLocaleString('es-ES')} €
           </div>
         </div>
-        <div className="bg-error-50 border border-error-200 rounded-lg p-4">
+        <div className="bg-error-50 border border-error-200 p-4">
           <div className="text-sm text-error-600 font-medium">Gastos anuales</div>
           <div className="text-xl font-bold text-error-700">
             {lines
@@ -138,7 +138,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
               .toLocaleString('es-ES')} €
           </div>
         </div>
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <div className="text-sm text-primary-600 font-medium">Resultado anual</div>
           <div className="text-xl font-bold text-primary-700">
             {(lines
@@ -153,7 +153,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       </div>
 
       {/* Budget lines configuration */}
-      <div className="bg-white border border-gray-200 rounded-lg mb-6">
+      <div className="bg-white border border-gray-200 mb-6">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-gray-900">Partidas del Presupuesto</h3>
@@ -163,7 +163,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
           </div>
           <button
             onClick={addNewLine}
-            className="flex items-center px-3 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary-horizon flex items-center px-3 py-2 text-sm"
           >
             <Plus className="h-4 w-4 mr-1" />
             Añadir partida
@@ -183,7 +183,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="text"
                     value={line.description}
                     onChange={(e) => updateLine(index, 'description', e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="btn-secondary-horizon block w-full px-3 py-2 "
                   />
                   
                   <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
@@ -192,7 +192,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <select
                     value={line.category}
                     onChange={(e) => updateLine(index, 'category', e.target.value as FiscalCategory)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="btn-secondary-horizon block w-full px-3 py-2 "
                   >
                     {fiscalCategories.map(cat => (
                       <option key={cat.value} value={cat.value}>
@@ -211,7 +211,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="number"
                     value={line.amount}
                     onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="btn-secondary-horizon block w-full px-3 py-2 "
                     min="0"
                     step="0.01"
                   />
@@ -225,7 +225,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <select
                     value={line.frequency}
                     onChange={(e) => updateLine(index, 'frequency', e.target.value as PaymentFrequency)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                    className="btn-secondary-horizon block w-full px-3 py-2 "
                   >
                     {paymentFrequencies.map(freq => (
                       <option key={freq.value} value={freq.value}>
@@ -245,7 +245,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <select
                         value={line.startMonth}
                         onChange={(e) => updateLine(index, 'startMonth', parseInt(e.target.value))}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                        className="btn-secondary-horizon block w-full px-3 py-2 "
                       >
                         {monthNames.map((month, i) => (
                           <option key={i + 1} value={i + 1}>
@@ -265,7 +265,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                         type="number"
                         value={line.installments || 2}
                         onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+                        className="btn-secondary-horizon block w-full px-3 py-2 "
                         min="1"
                         max="12"
                       />
@@ -296,7 +296,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     {!line.isAutoGenerated && (
                       <button
                         onClick={() => removeLine(index)}
-                        className="p-2 text-error-600 hover:bg-error-50 rounded-lg transition-colors"
+                        className="p-2 text-error-600"
                         title="Eliminar partida"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -308,7 +308,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
 
               {/* Monthly breakdown preview */}
               {line.amount > 0 && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="mt-4 p-3 bg-gray-50">
                   <div className="flex items-center mb-2">
                     <Calculator className="h-4 w-4 text-gray-600 mr-2" />
                     <span className="text-sm font-medium text-gray-700">Distribución mensual</span>
@@ -334,7 +334,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="btn-primary-horizon flex items-center px-6 py-3 font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

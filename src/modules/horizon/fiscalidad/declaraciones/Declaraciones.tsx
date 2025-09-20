@@ -610,7 +610,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     return (
       <PageLayout title="Declaraciones" subtitle="Preparación de declaraciones fiscales." primaryAction={primaryAction}>
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
         </div>
       </PageLayout>
     );
@@ -624,7 +624,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     >
       <div className="space-y-6">
         {/* Configuration Section */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración de Exportación</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -635,7 +635,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {getYearRange().map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -650,7 +650,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
               <select
                 value={selectedProperty}
                 onChange={(e) => setSelectedProperty(e.target.value === 'todos' ? 'todos' : Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="todos">Todos los inmuebles</option>
                 {properties.map(property => (
@@ -662,7 +662,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
             </div>
           </div>
           
-          <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+          <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-4 ">
             <div className="flex items-center space-x-2 text-sm text-primary-800">
               <Archive className="h-4 w-4" />
               <span>
@@ -674,7 +674,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         </div>
 
         {/* Export History */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">Histórico de Exportaciones</h3>
             <p className="text-sm text-gray-600">Últimas declaraciones generadas</p>
@@ -744,7 +744,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         </div>
 
         {/* Information Section */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Información del Paquete Renta</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-600">
             <div>

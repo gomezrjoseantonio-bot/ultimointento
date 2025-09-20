@@ -135,7 +135,7 @@ const Detalle: React.FC = () => {
     const IconComponent = statusInfo.icon;
     
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusInfo.color}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-medium border ${statusInfo.color}`}>
         <IconComponent className="w-3 h-3" />
         {statusInfo.label}
       </span>
@@ -143,7 +143,7 @@ const Detalle: React.FC = () => {
   };
 
   const renderFilters = () => (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+    <div className="bg-white border border-gray-200 p-4 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Búsqueda</label>
@@ -154,7 +154,7 @@ const Detalle: React.FC = () => {
               value={filters.searchTerm}
               onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
               placeholder="Buscar..."
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="pl-10 w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ const Detalle: React.FC = () => {
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="all">Todos</option>
             {activeSection === 'ingresos' && (
@@ -190,7 +190,7 @@ const Detalle: React.FC = () => {
             type="date"
             value={filters.dateFrom}
             onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
@@ -200,7 +200,7 @@ const Detalle: React.FC = () => {
             type="date"
             value={filters.dateTo}
             onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -226,7 +226,7 @@ const Detalle: React.FC = () => {
         
         {/* Reconciliation Summary */}
         {reconciliationSuggestions.length > 0 && (
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <div className="btn-secondary-horizon btn-primary-horizon ">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <RefreshCw className="w-5 h-5 text-primary-600" />
@@ -244,7 +244,7 @@ const Detalle: React.FC = () => {
           </div>
         )}
         
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -260,8 +260,7 @@ const Detalle: React.FC = () => {
               </div>
               <button
                 onClick={() => loadData()}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
-              >
+                className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-gray-700 bg-white >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualizar
               </button>
@@ -325,13 +324,13 @@ const Detalle: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {hasReconciliation ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-success-100 text-success-800">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Conciliado
                             </span>
                           ) : suggestion && suggestion.potentialMovements.length > 0 ? (
                             <div className="flex flex-col space-y-1">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-100 text-orange-800">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-orange-800">
                                 <AlertCircle className="w-3 h-3 mr-1" />
                                 {suggestion.potentialMovements.length} sugerencias
                               </span>
@@ -341,7 +340,7 @@ const Detalle: React.FC = () => {
                                     <button
                                       key={idx}
                                       onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
-                                      className="text-xs px-2 py-1 bg-primary-100 text-primary-800 rounded hover:bg-blue-200"
+                                      className="btn-primary-horizon btn-primary-horizon text-xs px-2 py-1 text-primary-800 rounded hover: "
                                       title={`Confianza: ${match.confidence}% - ${match.reason}`}
                                     >
                                       Conciliar ({match.confidence}%)
@@ -351,7 +350,7 @@ const Detalle: React.FC = () => {
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800">
                               <Clock className="w-3 h-3 mr-1" />
                               Pendiente
                             </span>
@@ -403,7 +402,7 @@ const Detalle: React.FC = () => {
       <div className="space-y-6">
         {renderFilters()}
         
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">Gastos Deducibles AEAT (0105-0117)</h3>
             <p className="text-sm text-gray-600">Clasificación por categorías con totales</p>
@@ -414,7 +413,7 @@ const Detalle: React.FC = () => {
               const total = categoryGastos.reduce((sum, gasto) => sum + gasto.total, 0);
               
               return (
-                <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={category} className="border border-gray-200 overflow-hidden">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium text-gray-900">
@@ -518,7 +517,7 @@ const Detalle: React.FC = () => {
     if (filteredProperties.length === 0) {
       return (
         <div className="space-y-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white border border-gray-200 p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Amortizaciones AEAT</h3>
             <div className="text-center py-8 text-gray-500">
               <Calculator className="w-12 h-12 mx-auto mb-2 text-gray-400" />
@@ -547,7 +546,7 @@ const Detalle: React.FC = () => {
 
   const renderArrastresSection = () => (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900">Arrastres</h3>
           <div className="flex items-center space-x-2 text-sm text-gray-600">
@@ -569,7 +568,7 @@ const Detalle: React.FC = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
         </div>
       );
     }
@@ -592,7 +591,7 @@ const Detalle: React.FC = () => {
     <PageLayout title="Detalle" subtitle="Detalle de ingresos, gastos, amortizaciones y arrastres.">
       <div className="space-y-6">
         {/* Section Tabs */}
-        <div className="bg-white rounded-lg border border-gray-200 p-1">
+        <div className="bg-white border border-gray-200 p-1">
           <div className="grid grid-cols-4 gap-1">
             {sections.map((section) => {
               const Icon = section.icon;
@@ -601,10 +600,10 @@ const Detalle: React.FC = () => {
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id)}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium ${
                     isActive
                       ? 'bg-primary-100 text-primary-700 border-b-2 border-primary-500'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      : 'text-gray-600 hover:text-gray-900
                   }`}
                 >
                   <Icon className="w-4 h-4" />

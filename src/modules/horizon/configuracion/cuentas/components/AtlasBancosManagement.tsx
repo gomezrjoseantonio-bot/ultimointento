@@ -377,7 +377,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         <img 
           src={account.logoUser} 
           alt="Logo de banco" 
-          className="w-8 h-8 rounded-full object-cover"
+          className="w-8 h-8 object-cover"
         />
       );
     }
@@ -388,7 +388,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         <img 
           src={account.banco.brand.logoUrl} 
           alt={account.banco.name || 'Banco'} 
-          className="w-8 h-8 rounded-full object-cover"
+          className="w-8 h-8 object-cover"
         />
       );
     }
@@ -399,7 +399,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     
     return (
       <div 
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+        className="w-8 h-8 flex items-center justify-center text-sm font-bold"
         style={{ backgroundColor }}
       >
         {initial}
@@ -414,7 +414,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
       <div className="relative">
         <button 
           onClick={() => setActiveDropdown(isDropdownOpen ? null : account.id!)}
-          className="p-2 hover:bg-gray-100 rounded-full"
+          className="p-2"
         >
           <MoreHorizontal className="w-4 h-4 text-gray-500" />
         </button>
@@ -429,14 +429,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         
         {/* Dropdown menu */}
         {isDropdownOpen && (
-          <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+          <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 shadow-lg z-20">
             <div className="py-1">
               <button
                 onClick={() => {
                   handleEditAccount(account);
                   setActiveDropdown(null);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 flex items-center gap-2"
               >
                 <Edit2 className="w-4 h-4" />
                 Editar
@@ -448,7 +448,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     handleSetDefault(account);
                     setActiveDropdown(null);
                   }}
-                  className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 flex items-center gap-2"
                 >
                   <Star className="w-4 h-4" />
                   Marcar como predeterminada
@@ -460,7 +460,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   handleToggleActive(account);
                   setActiveDropdown(null);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 flex items-center gap-2"
               >
                 {(account.status === 'ACTIVE' || (!account.status && account.activa)) ? (
                   <>
@@ -480,7 +480,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   handleHardDelete(account);
                   setActiveDropdown(null);
                 }}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                className="btn-danger w-full px-4 py-2 text-left text-sm text-red-600 hover: flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Eliminar definitivamente…
@@ -495,7 +495,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
+        <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
         <span className="ml-2 text-text-gray">Cargando cuentas...</span>
       </div>
     );
@@ -515,7 +515,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
             <div className="mt-6">
               <button
                 onClick={handleNewAccount}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-atlas-blue hover:bg-atlas-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium bg-atlas-blue focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
               >
                 <Banknote className="-ml-1 mr-2 h-5 w-5" />
                 Nueva cuenta
@@ -530,7 +530,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
             return (
               <div
                 key={account.id}
-                className={`bg-white rounded-lg border p-4 ${
+                className={`bg-white border p-4 ${
                   isActive 
                     ? 'border-gray-200' 
                     : 'border-gray-300 border-dashed opacity-60 bg-gray-50'
@@ -550,12 +550,12 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                           {account.alias || 'Sin alias'}
                         </h3>
                         {account.isDefault && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-atlas-blue text-white">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-atlas-blue">
                             Predeterminada
                           </span>
                         )}
                         {isInactive && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-400 text-white">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-400">
                             Inactiva
                           </span>
                         )}
@@ -582,8 +582,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
+          <div className="bg-white p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-atlas-navy-1">
                 {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
@@ -607,7 +607,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     type="text"
                     value={formData.alias}
                     onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
                     placeholder="ej. Cuenta principal, Nómina..."
                     maxLength={40}
                   />
@@ -625,7 +625,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     type="text"
                     value={formData.iban}
                     onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
                     placeholder="ES91 0049 1500 0512 3456 7892"
                     required
                     disabled={!!editingAccount} // Cannot edit IBAN
@@ -645,7 +645,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     type="file"
                     accept="image/*"
                     onChange={handleLogoFileChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
                   />
                   {formErrors.logoFile && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.logoFile}</p>
@@ -658,7 +658,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       <img 
                         src={getLogoPreviewUrl(formData.logoFile)} 
                         alt="Vista previa del logo" 
-                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                        className="w-8 h-8 object-cover border border-gray-300"
                       />
                       <div className="text-xs">
                         <p className="text-green-600 font-medium">
@@ -678,14 +678,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving || uploadingLogo}
-                  className="px-4 py-2 text-sm font-medium text-white bg-atlas-blue border border-transparent rounded-md hover:bg-atlas-blue-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium bg-atlas-blue border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
                 >
                   {uploadingLogo ? 'Subiendo logo...' : saving ? 'Guardando...' : editingAccount ? 'Actualizar' : 'Crear cuenta'}
                 </button>
@@ -697,8 +697,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
       {/* Enhanced Delete Confirmation Modal */}
       {deleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
+          <div className="bg-white p-6 w-full max-w-lg">
             <div className="flex items-center mb-4">
               <AlertTriangle className="w-6 h-6 mr-3 text-red-500" />
               <h2 className="text-lg font-semibold text-atlas-navy-1">
@@ -717,15 +717,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     <div className="flex justify-end space-x-3">
                       <button
                         onClick={() => setDeleteConfirmation(null)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 >
                         Cancelar
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                    <div className="bg-red-50 border border-red-200 p-3 mb-4">
                       <p className="text-sm text-red-800">
                         <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>
@@ -750,7 +749,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                         </div>
                         
                         {!deleteConfirmation.deleteMovements && (
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                          <div className="bg-yellow-50 border border-yellow-200 p-3">
                             <p className="text-sm text-yellow-800">
                               Selecciona una acción: re-asignar o borrar movimientos.
                             </p>
@@ -762,14 +761,13 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     <div className="flex justify-end space-x-3">
                       <button
                         onClick={() => setDeleteConfirmation(null)}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 >
                         Cancelar
                       </button>
                       <button
                         onClick={confirmDelete}
                         disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 disabled:opacity-50"
+                        className="btn-danger px-4 py-2 text-sm font-medium   border border-transparent disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
                       </button>

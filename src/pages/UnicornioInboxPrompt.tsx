@@ -6,7 +6,7 @@ const UnicornioInboxPrompt: React.FC = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-4">Unicornio Inbox</h1>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <p className="text-blue-800">
             Esta página ha sido temporalmente simplificada para demostrar las optimizaciones de bundle.
           </p>

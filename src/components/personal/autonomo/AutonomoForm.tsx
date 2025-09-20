@@ -133,7 +133,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Ej: Autónomo Principal 2024"
               required
             />
@@ -148,7 +148,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               step="0.01"
               value={formData.cuotaAutonomos}
               onChange={(e) => setFormData(prev => ({ ...prev, cuotaAutonomos: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="294.00"
               required
             />
@@ -161,7 +161,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
             <select
               value={formData.cuentaCobro}
               onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobro: parseInt(e.target.value) }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value={0}>Seleccionar cuenta</option>
               <option value={1}>Cuenta Principal</option>
@@ -289,7 +289,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         </div>
 
         {/* Information Note */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <p className="text-sm text-blue-700">
             <strong>Nota:</strong> Esta configuración te permitirá registrar ingresos y gastos asociados a tu actividad como autónomo. 
             Los cálculos automáticos incluirán las deducciones por cuota de autónomos y gastos deducibles.
@@ -301,14 +301,13 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
-          >
+            className="px-4 py-2 text-neutral-700 border border-neutral-300 >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark disabled:opacity-50"
+            className="px-4 py-2 bg-brand-navy disabled:opacity-50"
           >
             {loading ? 'Guardando...' : (autonomo ? 'Actualizar' : 'Crear')} Configuración
           </button>

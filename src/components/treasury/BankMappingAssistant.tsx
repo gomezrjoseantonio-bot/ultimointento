@@ -123,8 +123,8 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
+      <div className="bg-white shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -139,7 +139,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2"
           >
             <X className="w-5 h-5" />
           </button>
@@ -153,7 +153,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {data.headers.map((header, index) => (
-                <div key={index} className="border rounded-lg p-4">
+                <div key={index} className="border p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <div className="font-medium text-sm">
@@ -192,7 +192,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             <h3 className="text-lg font-medium mb-4">Vista Previa</h3>
             
             {/* Validation Status */}
-            <div className="mb-4 p-3 rounded-lg border">
+            <div className="mb-4 p-3 border">
               {isValid ? (
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="w-4 h-4" />
@@ -254,7 +254,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             {data.suggestions.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2">Sugerencias:</h4>
-                <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                <div className="btn-secondary-horizon btn-primary-horizon ">
                   <ul className="text-xs space-y-1">
                     {data.suggestions.map((suggestion, index) => (
                       <li key={index}>• {suggestion}</li>
@@ -284,17 +284,16 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
         <div className="flex items-center justify-between p-6 border-t bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
+            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 >
             Cancelar
           </button>
           
           <button
             onClick={handleComplete}
             disabled={!isValid}
-            className={`px-6 py-2 rounded-lg font-medium ${
+            className={`px-6 py-2 font-medium ${
               isValid 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                ? "bg-blue-600 
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

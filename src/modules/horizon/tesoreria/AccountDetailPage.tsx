@@ -235,7 +235,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
           <div className="text-hz-neutral-500 mb-4">Cuenta no encontrada</div>
           <button
             onClick={() => navigate('/tesoreria')}
-            className="px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+            className="btn-primary-horizon"
           >
             Volver a Tesorería
           </button>
@@ -250,7 +250,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
     <div className="min-h-screen bg-hz-bg">
       {/* Breadcrumb and Header */}
       <div className="bg-white border-b border-hz-neutral-300">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto">
           {/* Breadcrumb */}
           <nav className="flex items-center text-sm text-hz-neutral-600 mb-4">
             <button
@@ -349,7 +349,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
               {/* Import Button */}
               <button
                 onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+                className="btn-primary-horizon flex items-center gap-2"
               >
                 <Upload size={16} />
                 Importar extracto
@@ -360,7 +360,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
       </div>
 
       {/* Calendar */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-lg border border-hz-neutral-300 overflow-hidden">
           {/* Calendar Header */}
           <div className="grid grid-cols-7 border-b border-hz-neutral-300">

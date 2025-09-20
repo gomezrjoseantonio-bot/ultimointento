@@ -346,7 +346,7 @@ const ReglasAlertas: React.FC = () => {
   return (
     <div className="px-6">
       {/* ATLAS Info Banner */}
-      <div className="mb-6 bg-blue-50 border border-atlas-blue/20 rounded-lg p-4">
+      <div className="btn-primary-horizon mb-6 border border-atlas-blue/20 p-4">
         <div className="flex items-start">
           <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
@@ -360,7 +360,7 @@ const ReglasAlertas: React.FC = () => {
       </div>
 
       {/* Rules List */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
+      <div className="bg-white shadow border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-atlas-navy-1">
@@ -368,7 +368,7 @@ const ReglasAlertas: React.FC = () => {
             </h2>
             <button
               onClick={handleNewRule}
-              className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-navy-800 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-atlas-blue"
             >
               <Plus className="w-6 h-6 mr-2" style={{ strokeWidth: 1.5 }} />
               Nueva regla
@@ -383,10 +383,9 @@ const ReglasAlertas: React.FC = () => {
             </div>
           ) : (
             rules.map((rule, index) => (
-              <div key={rule.id} className="px-6 py-4 hover:bg-gray-50">
-                <div className="flex items-start justify-between">
+              <div key={rule.id} className="px-6 py-4 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-atlas-blue/10 rounded-full flex items-center justify-center mt-1">
+                    <div className="w-8 h-8 bg-atlas-blue/10 flex items-center justify-center mt-1">
                       <Settings className="w-6 h-6 text-atlas-blue" style={{ strokeWidth: 1.5 }} />
                     </div>
                     <div className="flex-1">
@@ -394,11 +393,11 @@ const ReglasAlertas: React.FC = () => {
                         <h3 className="font-medium text-atlas-navy-1">{rule.name}</h3>
                         <span className="text-xs text-text-gray">#{rule.priority}</span>
                         {rule.isActive ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="btn-accent-horizon inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-800">
                             Activa
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
                             Inactiva
                           </span>
                         )}
@@ -474,26 +473,26 @@ const ReglasAlertas: React.FC = () => {
       </div>
 
       {/* Examples Section */}
-      <div className="mt-8 bg-white rounded-lg shadow border border-gray-200">
+      <div className="mt-8 bg-white shadow border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-atlas-navy-1">Ejemplos de reglas ATLAS</h3>
         </div>
         <div className="px-6 py-4 space-y-4">
           <div>
             <h4 className="font-medium text-atlas-navy-1 mb-2">Clasificación por descripción</h4>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="bg-gray-50 p-3 text-sm">
               <code>Si descripción contiene "IBI" y cuenta = ESxx... → Clase: Inmuebles &gt; Suministros &gt; Agua; Inmueble: Tenderina 48</code>
             </div>
           </div>
           <div>
             <h4 className="font-medium text-atlas-navy-1 mb-2">Clasificación por tipo de ingreso</h4>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="bg-gray-50 p-3 text-sm">
               <code>Si descripción contiene "NÓMINA" → Clase: Personal &gt; Ingresos &gt; Nómina</code>
             </div>
           </div>
           <div>
             <h4 className="font-medium text-atlas-navy-1 mb-2">Clasificación combinada</h4>
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="bg-gray-50 p-3 text-sm">
               <code>Si importe &gt; 500€ y concepto contiene "ALQUILER" → Inmuebles &gt; Ingresos &gt; Alquiler + Alerta</code>
             </div>
           </div>
@@ -503,7 +502,7 @@ const ReglasAlertas: React.FC = () => {
       {/* Create/Edit Modal - Simplified for now */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-atlas-navy-1">
@@ -529,7 +528,7 @@ const ReglasAlertas: React.FC = () => {
                     type="text"
                     value={formData.name || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
+                    className={`w-full p-3 border focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                       formErrors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
                     placeholder="ej. Clasificar pagos de IBI"
@@ -548,7 +547,7 @@ const ReglasAlertas: React.FC = () => {
                   <textarea
                     value={formData.description || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
+                    className={`w-full p-3 border focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                       formErrors.description ? 'border-red-500' : 'border-gray-300'
                     }`}
                     rows={3}
@@ -561,7 +560,7 @@ const ReglasAlertas: React.FC = () => {
                 </div>
 
                 {/* Simplified condition/action for now */}
-                <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="btn-primary-horizon p-4">
                   <p className="text-sm text-atlas-blue">
                     <strong>Versión simplificada:</strong> Las condiciones y acciones detalladas se implementarán en la siguiente iteración. 
                     Por ahora, utiliza el nombre y descripción para definir la regla.
@@ -590,7 +589,7 @@ const ReglasAlertas: React.FC = () => {
                   saveRule();
                 }}
                 disabled={saving || !formData.name?.trim() || !formData.description?.trim()}
-                className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="btn-primary-horizon inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : (editingRule ? 'Actualizar' : 'Crear')}
               </button>
@@ -602,7 +601,7 @@ const ReglasAlertas: React.FC = () => {
       {/* Delete Confirmation Dialog */}
       {deleteConfirmation && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
+          <div className="bg-white max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-atlas-navy-1">Eliminar regla</h3>
             </div>
@@ -612,7 +611,7 @@ const ReglasAlertas: React.FC = () => {
                 ¿Estás seguro de que quieres eliminar esta regla? Esta acción no se puede deshacer.
               </p>
               
-              <div className="bg-gray-50 rounded-lg p-3">
+              <div className="bg-gray-50 p-3">
                 <p className="text-sm font-medium text-atlas-navy-1">{deleteConfirmation.name}</p>
                 <p className="text-sm text-text-gray">{deleteConfirmation.description}</p>
               </div>
@@ -631,7 +630,7 @@ const ReglasAlertas: React.FC = () => {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="btn-danger inline-flex items-center px-4 py-2"
               >
                 Eliminar
               </button>

@@ -207,7 +207,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Ej: Plan de Pensiones BBVA"
               required
             />
@@ -220,7 +220,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
             <select
               value={formData.tipo}
               onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as PlanPensionInversion['tipo'] }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               required
             >
               {tiposProducto.map(tipo => (
@@ -243,7 +243,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               step="0.01"
               value={formData.aportacionesRealizadas}
               onChange={(e) => setFormData(prev => ({ ...prev, aportacionesRealizadas: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="10000.00"
               required
             />
@@ -258,7 +258,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               step="0.01"
               value={formData.valorCompra}
               onChange={(e) => setFormData(prev => ({ ...prev, valorCompra: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Iguala aportaciones si vacío"
             />
           </div>
@@ -272,7 +272,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               step="0.01"
               value={formData.valorActual}
               onChange={(e) => setFormData(prev => ({ ...prev, valorActual: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="12000.00"
               required
             />
@@ -290,7 +290,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               step="0.0001"
               value={formData.unidades}
               onChange={(e) => setFormData(prev => ({ ...prev, unidades: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Para fondos con participaciones"
             />
           </div>
@@ -302,7 +302,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
             <select
               value={formData.titularidad}
               onChange={(e) => setFormData(prev => ({ ...prev, titularidad: e.target.value as PlanPensionInversion['titularidad'] }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value="yo">Mío</option>
               <option value="pareja">Pareja</option>
@@ -313,7 +313,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
 
         {/* Current Performance Summary */}
         {formData.aportacionesRealizadas && formData.valorActual && (
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 p-4">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Resumen Actual</h4>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
@@ -337,7 +337,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
         )}
 
         {/* Historical vs Active */}
-        <div className="border border-neutral-200 rounded-lg p-4">
+        <div className="border border-neutral-200 p-4">
           <div className="flex items-center space-x-3 mb-3">
             <input
               type="checkbox"
@@ -357,7 +357,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
 
         {/* Periodic Contribution (only if not historical) */}
         {!formData.esHistorico && (
-          <div className="border border-neutral-200 rounded-lg p-4">
+          <div className="border border-neutral-200 p-4">
             <div className="flex items-center space-x-3 mb-4">
               <input
                 type="checkbox"
@@ -389,7 +389,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         ...prev,
                         aportacionPeriodica: { ...prev.aportacionPeriodica, importe: e.target.value }
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                       placeholder="100.00"
                     />
                   </div>
@@ -404,7 +404,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         ...prev,
                         aportacionPeriodica: { ...prev.aportacionPeriodica, frecuencia: e.target.value as any }
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                     >
                       {frecuencias.map(freq => (
                         <option key={freq.value} value={freq.value}>
@@ -426,7 +426,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         ...prev,
                         aportacionPeriodica: { ...prev.aportacionPeriodica, cuentaAbono: parseInt(e.target.value) }
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                     >
                       {cuentas.map(cuenta => (
                         <option key={cuenta.value} value={cuenta.value}>
@@ -453,7 +453,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                             }
                           }
                         }))}
-                        className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                        className="flex-1 px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
                       >
                         <option value="fijo">Día fijo</option>
                         <option value="ultimo-habil">Último hábil</option>
@@ -471,7 +471,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                               reglasDia: { ...prev.aportacionPeriodica.reglasDia, dia: parseInt(e.target.value) }
                             }
                           }))}
-                          className="w-16 px-2 py-2 border border-neutral-300 rounded-md text-center"
+                          className="w-16 px-2 py-2 border border-neutral-300 text-center"
                         />
                       )}
                     </div>
@@ -479,7 +479,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                 </div>
 
                 {formData.aportacionPeriodica.importe && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="btn-primary-horizon p-3">
                     <p className="text-sm text-blue-700">
                       <strong>Aportación anual estimada:</strong> {
                         (parseFloat(formData.aportacionPeriodica.importe) * 
@@ -500,14 +500,13 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
-          >
+            className="px-4 py-2 text-neutral-700 border border-neutral-300 >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark disabled:opacity-50"
+            className="px-4 py-2 bg-brand-navy disabled:opacity-50"
           >
             {loading ? 'Guardando...' : (plan ? 'Actualizar' : 'Crear')} Plan
           </button>

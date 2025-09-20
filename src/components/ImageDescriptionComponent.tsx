@@ -125,7 +125,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
-          <div className="bg-blue-100 p-3 rounded-full">
+          <div className="btn-primary-horizon p-3">
             <Eye className="h-6 w-6 text-blue-600" />
           </div>
         </div>
@@ -140,11 +140,11 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {/* File Upload Area */}
       {!selectedImage ? (
         <div 
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
+          className="border-2 border-dashed border-gray-300 p-8 text-center hover:border-gray-400 cursor-pointer"
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center space-y-4">
-            <div className="bg-gray-100 p-4 rounded-full">
+            <div className="bg-gray-100 p-4">
               <Upload className="h-8 w-8 text-gray-400" />
             </div>
             <div>
@@ -162,7 +162,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
         </div>
       ) : (
         /* Image Preview */
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-gray-200 overflow-hidden">
           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <ImageIcon className="h-5 w-5 text-gray-500" />
@@ -177,7 +177,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
             </div>
             <button
               onClick={handleClearImage}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600"
             >
               <X className="h-5 w-5" />
             </button>
@@ -188,7 +188,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <img
                 src={imagePreview}
                 alt="Vista previa"
-                className="max-w-full max-h-64 mx-auto rounded-lg shadow-sm"
+                className="max-w-full max-h-64 mx-auto shadow-sm"
                 style={{ objectFit: 'contain' }}
               />
             </div>
@@ -206,7 +206,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
       {/* Options */}
       {selectedImage && (
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 p-4">
           <h3 className="font-medium text-gray-900 mb-3">Opciones de descripción</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -218,7 +218,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.language || 'es'}
                 onChange={(e) => setOptions({...options, language: e.target.value as 'es' | 'en'})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="es">Español</option>
                 <option value="en">English</option>
@@ -233,7 +233,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.style || 'detailed'}
                 onChange={(e) => setOptions({...options, style: e.target.value as 'detailed' | 'brief' | 'technical'})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="detailed">Detallado</option>
                 <option value="brief">Breve</option>
@@ -249,7 +249,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.maxLength || 500}
                 onChange={(e) => setOptions({...options, maxLength: parseInt(e.target.value)})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={200}>200 caracteres</option>
                 <option value={500}>500 caracteres</option>
@@ -266,7 +266,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
           <button
             onClick={handleDescribeImage}
             disabled={isProcessing}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+            className="btn-primary-horizon disabled:bg-blue-400 px-6 py-2 font-medium flex items-center space-x-2"
           >
             {isProcessing ? (
               <>
@@ -285,7 +285,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
       {/* Description Result */}
       {description && (
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">Descripción generada</h3>
             <div className="flex items-center space-x-2">
@@ -296,7 +296,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               )}
               <button
                 onClick={handleCopyDescription}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600"
                 title="Copiar descripción"
               >
                 {copied ? (
@@ -308,7 +308,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
             </div>
           </div>
           
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 p-4">
             <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
               {description}
             </p>

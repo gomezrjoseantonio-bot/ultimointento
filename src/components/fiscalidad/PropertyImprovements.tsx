@@ -158,7 +158,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-neutral-200 p-6">
+    <div className="bg-white border border-neutral-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Edit3 className="w-5 h-5 text-brand-navy" />
@@ -167,7 +167,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
         <button
           onClick={() => setShowForm(true)}
           disabled={loading || showForm}
-          className="flex items-center gap-2 px-3 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-2 bg-brand-navy disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
           Añadir mejora
@@ -176,7 +176,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
 
       {/* Summary */}
       {improvements.length > 0 && (
-        <div className="mb-6 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+        <div className="btn-secondary-horizon btn-primary-horizon mb-6 p-4 ">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-neutral-900">Total invertido en mejoras:</span>
             <span className="text-lg font-bold text-brand-navy">
@@ -191,7 +191,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
 
       {/* Add/Edit Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 border border-neutral-200 rounded-lg bg-neutral-50">
+        <form onSubmit={handleSubmit} className="mb-6 p-4 border border-neutral-200 bg-neutral-50">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-medium text-neutral-900">
               {editingId ? 'Editar mejora' : 'Nueva mejora'}
@@ -216,7 +216,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 max={new Date().getFullYear()}
                 value={formData.year}
                 onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -248,7 +248,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                     setFormData(prev => ({ ...prev, daysInYear: days.toString() }));
                   }
                 }}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               />
             </div>
 
@@ -263,7 +263,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.daysInYear}
                 onChange={(e) => setFormData(prev => ({ ...prev, daysInYear: e.target.value }))}
                 placeholder="365"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               />
               <p className="text-xs text-neutral-500 mt-1">
                 Solo si la mejora es del mismo año
@@ -279,7 +279,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.providerNIF}
                 onChange={(e) => setFormData(prev => ({ ...prev, providerNIF: e.target.value }))}
                 placeholder="12345678Z"
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               />
             </div>
 
@@ -292,7 +292,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Reforma cocina, cambio ventanas..."
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 required
               />
             </div>
@@ -302,7 +302,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 text-neutral-600 border border-neutral-300 rounded-md hover:bg-neutral-50 transition-colors"
+              className="px-4 py-2 text-neutral-600 border border-neutral-300"
               disabled={loading}
             >
               Cancelar
@@ -310,7 +310,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-navy disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {loading ? 'Guardando...' : 'Guardar mejora'}
@@ -322,7 +322,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       {/* Improvements List */}
       {loading && improvements.length === 0 ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-navy mx-auto"></div>
+          <div className="animate-spin h-8 w-8 border-b-2 border-brand-navy mx-auto"></div>
           <p className="text-neutral-600 mt-2">Cargando mejoras...</p>
         </div>
       ) : improvements.length === 0 ? (
@@ -384,7 +384,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       )}
 
       {/* Help text */}
-      <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+      <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-3 ">
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-primary-800">

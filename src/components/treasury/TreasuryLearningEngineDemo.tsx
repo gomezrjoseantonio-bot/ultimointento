@@ -247,7 +247,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="bg-white shadow-sm border p-6">
         <div className="flex items-center gap-3 mb-6">
           <Brain className="h-8 w-8 text-blue-600" />
           <div>
@@ -258,21 +258,21 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
         {/* Status and Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4">
+          <div className="btn-primary-horizon p-4">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600" />
               <span className="font-medium text-blue-900">Reglas Creadas</span>
             </div>
             <p className="text-2xl font-bold text-blue-600 mt-1">{stats.totalRules}</p>
           </div>
-          <div className="bg-green-50 rounded-lg p-4">
+          <div className="btn-accent-horizon p-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
               <span className="font-medium text-green-900">Aplicaciones</span>
             </div>
             <p className="text-2xl font-bold text-green-600 mt-1">{stats.totalApplications}</p>
           </div>
-          <div className="bg-purple-50 rounded-lg p-4">
+          <div className="bg-purple-50 p-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-purple-600" />
               <span className="font-medium text-purple-900">Movimientos</span>
@@ -286,7 +286,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
           <button
             onClick={performReconciliation}
             disabled={isLoading || step > 0 || movements.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check className="h-4 w-4" />
             1. Conciliar Manualmente (Crear Regla)
@@ -295,7 +295,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
           <button
             onClick={simulateNewImport}
             disabled={isLoading || step < 1 || step > 1}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-accent-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="h-4 w-4" />
             2. Simular Nueva Importación
@@ -304,7 +304,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
           <button
             onClick={resetDemo}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reset Demo
           </button>
@@ -312,7 +312,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
         {/* Status Message */}
         {message && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="btn-secondary-horizon btn-primary-horizon ">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <span className="text-blue-800">{message}</span>
@@ -321,11 +321,11 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
         )}
 
         {/* Movements Table */}
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 p-4">
           <h3 className="font-semibold text-gray-900 mb-3">Movimientos</h3>
           <div className="space-y-2">
             {movements.map((movement) => (
-              <div key={movement.id} className="bg-white rounded-lg p-3 border">
+              <div key={movement.id} className="bg-white p-3 border">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
@@ -366,7 +366,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
         {/* Logs */}
         {logs.length > 0 && (
-          <div className="mt-6 bg-gray-50 rounded-lg p-4">
+          <div className="mt-6 bg-gray-50 p-4">
             <h3 className="font-semibold text-gray-900 mb-3">Log de Aprendizaje</h3>
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {logs.map((log, index) => (

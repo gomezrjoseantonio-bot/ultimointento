@@ -193,7 +193,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder="Ej: Nómina Principal"
                 required
               />
@@ -208,7 +208,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 step="0.01"
                 value={formData.salarioBrutoAnual}
                 onChange={(e) => setFormData(prev => ({ ...prev, salarioBrutoAnual: e.target.value }))}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder="50000.00"
                 required
               />
@@ -281,7 +281,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     ...prev,
                     distribucion: { ...prev.distribucion, meses: parseInt(e.target.value) }
                   }))}
-                  className="w-32 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                  className="w-32 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 />
               </div>
             )}
@@ -296,7 +296,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <button
                 type="button"
                 onClick={() => setShowVariableForm(true)}
-                className="inline-flex items-center px-3 py-1 bg-brand-navy text-white text-sm rounded-md hover:bg-brand-navy-dark"
+                className="inline-flex items-center btn-primary-horizon  text-sm rounded-md hover:btn-primary-horizon"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Añadir Variable
@@ -344,7 +344,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <button
                 type="button"
                 onClick={() => setShowBonusForm(true)}
-                className="inline-flex items-center px-3 py-1 bg-brand-navy text-white text-sm rounded-md hover:bg-brand-navy-dark"
+                className="inline-flex items-center btn-primary-horizon  text-sm rounded-md hover:btn-primary-horizon"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Añadir Bonus
@@ -411,7 +411,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       ...prev,
                       reglaCobroDia: { ...prev.reglaCobroDia, dia: parseInt(e.target.value) }
                     }))}
-                    className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm"
+                    className="w-16 border border-neutral-300 rounded text-sm"
                   />
                 )}
               </label>
@@ -449,7 +449,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       ...prev,
                       reglaCobroDia: { ...prev.reglaCobroDia, posicion: parseInt(e.target.value) }
                     }))}
-                    className="px-2 py-1 border border-neutral-300 rounded text-sm"
+                    className="border border-neutral-300 rounded text-sm"
                   >
                     <option value={-1}>Último (-1)</option>
                     <option value={-2}>Penúltimo (-2)</option>
@@ -482,14 +482,14 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
+              className="text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark disabled:opacity-50"
+              className="btn-primary-horizon rounded-md hover:btn-primary-horizon disabled:opacity-50"
             >
               {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
             </button>
@@ -623,7 +623,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="Ej: Productividad"
               required
             />
@@ -637,7 +637,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as 'porcentaje' | 'importe' }))}
-                className="px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                className="border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy"
               >
                 <option value="porcentaje">% del salario</option>
                 <option value="importe">Importe fijo (€)</option>
@@ -647,7 +647,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
                 step="0.01"
                 value={formData.valor}
                 onChange={(e) => setFormData(prev => ({ ...prev, valor: e.target.value }))}
-                className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                className="flex-1 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
                 placeholder={formData.tipo === 'porcentaje' ? '15' : '5000'}
                 required
               />
@@ -675,7 +675,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
                   step="0.1"
                   value={dist.porcentaje}
                   onChange={(e) => updateDistribucion(dist.mes, parseFloat(e.target.value) || 0)}
-                  className="w-full px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
+                  className="w-full text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
                 />
               </div>
             ))}
@@ -686,13 +686,13 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
+            className="text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark"
+            className="btn-primary-horizon rounded-md hover:btn-primary-horizon"
           >
             {variable ? 'Actualizar' : 'Añadir'} Variable
           </button>
@@ -788,7 +788,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
             type="text"
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-            className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             placeholder="Ej: Bonus de objetivos Q2"
             required
           />
@@ -804,7 +804,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
               step="0.01"
               value={formData.importe}
               onChange={(e) => setFormData(prev => ({ ...prev, importe: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
               placeholder="1500.00"
               required
             />
@@ -817,7 +817,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
             <select
               value={formData.mes}
               onChange={(e) => setFormData(prev => ({ ...prev, mes: parseInt(e.target.value) }))}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               {meses.map(mes => (
                 <option key={mes.value} value={mes.value}>
@@ -832,13 +832,13 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
+            className="text-neutral-700 border border-neutral-300 rounded-md hover:bg-neutral-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy-dark"
+            className="btn-primary-horizon rounded-md hover:btn-primary-horizon"
           >
             {bonus ? 'Actualizar' : 'Añadir'} Bonus
           </button>

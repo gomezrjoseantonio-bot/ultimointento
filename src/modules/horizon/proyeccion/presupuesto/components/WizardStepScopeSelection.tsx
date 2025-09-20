@@ -70,7 +70,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* PERSONAL */}
         <div 
-          className={`relative border-2 rounded-lg p-6 cursor-pointer transition-all ${
+          className={`relative border-2 p-6 cursor-pointer transition-all ${
             selectedScopes.includes('PERSONAL')
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-200 hover:border-gray-300'
@@ -79,7 +79,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className={`p-3 rounded-lg ${
+              <div className={`p-3 ${
                 selectedScopes.includes('PERSONAL') 
                   ? 'bg-primary-100' 
                   : 'bg-gray-100'
@@ -113,7 +113,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
 
         {/* INMUEBLES */}
         <div 
-          className={`relative border-2 rounded-lg p-6 cursor-pointer transition-all ${
+          className={`relative border-2 p-6 cursor-pointer transition-all ${
             selectedScopes.includes('INMUEBLES')
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-200 hover:border-gray-300'
@@ -122,7 +122,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
         >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className={`p-3 rounded-lg ${
+              <div className={`p-3 ${
                 selectedScopes.includes('INMUEBLES') 
                   ? 'bg-primary-100' 
                   : 'bg-gray-100'
@@ -158,7 +158,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
 
       {/* Consolidado info */}
       {selectedScopes.length === 2 && (
-        <div className="bg-success-50 border border-success-200 rounded-lg p-4 mb-8">
+        <div className="bg-success-50 border border-success-200 p-4 mb-8">
           <div className="flex items-center space-x-2">
             <CheckCircle className="h-5 w-5 text-success-600" />
             <div>
@@ -174,9 +174,9 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
 
       {/* Date Range Selection */}
       {isMidYear && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-8">
+        <div className="btn-secondary-horizon btn-primary-horizon ">
           <div className="flex items-center mb-4">
-            <div className="bg-primary-100 p-2 rounded-lg mr-3">
+            <div className="btn-primary-horizon p-2 mr-3">
               <span className="text-primary-600 text-sm font-medium">📅</span>
             </div>
             <h3 className="font-semibold text-primary-900">Período del presupuesto</h3>
@@ -222,7 +222,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
               <select
                 value={startMonth}
                 onChange={(e) => setStartMonth(Number(e.target.value))}
-                className="block w-48 px-3 py-2 border border-primary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                className="btn-secondary-horizon block w-48 px-3 py-2 "
               >
                 {monthNames.slice(currentMonth - 1).map((month, index) => (
                   <option key={index} value={currentMonth + index}>
@@ -236,7 +236,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
       )}
 
       {/* Rules explanation */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
+      <div className="bg-gray-50 border border-gray-200 p-6 mb-8">
         <h4 className="font-semibold text-gray-900 mb-3">Reglas de creación</h4>
         <div className="space-y-2 text-sm text-gray-700">
           <div className="flex items-start space-x-2">
@@ -263,10 +263,10 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
         <button
           onClick={handleContinue}
           disabled={selectedScopes.length === 0}
-          className={`flex items-center px-6 py-3 rounded-lg font-medium transition-colors ${
+          className={`flex items-center px-6 py-3 font-medium ${
             selectedScopes.length === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-primary-600 text-white hover:bg-primary-700'
+              : 'bg-primary-600
           }`}
         >
           Continuar a Auto-Semilla

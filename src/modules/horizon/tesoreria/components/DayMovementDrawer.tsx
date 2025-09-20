@@ -180,7 +180,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-end md:items-center justify-center" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
       <div className="bg-white w-full md:w-2xl md:max-w-2xl h-screen md:h-auto md:max-h-[80vh] md:rounded-lg shadow-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-hz-neutral-300">
@@ -194,7 +194,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-hz-neutral-600 hover:text-hz-neutral-900 hover:bg-hz-neutral-100 rounded-lg transition-colors"
+            className="p-2 text-hz-neutral-600 hover:text-hz-neutral-900"
           >
             <X size={20} />
           </button>
@@ -222,7 +222,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             <span className="text-sm text-hz-neutral-600">
                               {movement.date}
                             </span>
-                            <span className={`text-xs px-2 py-1 rounded-full ${statusClass.bg} ${statusClass.text}`}>
+                            <span className={`text-xs px-2 py-1 ${statusClass.bg} ${statusClass.text}`}>
                               {getMovementStatusText(movement)}
                             </span>
                           </div>
@@ -290,14 +290,14 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                           <>
                             <button
                               onClick={handleSaveEdit}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-green-700 bg-green-100 rounded hover:bg-green-200 transition-colors"
+                              className="btn-accent-horizon flex items-center gap-1 px-3 py-1 text-sm text-green-700 rounded"
                             >
                               <Check size={14} />
                               Guardar
                             </button>
                             <button
                               onClick={() => setEditingMovement(null)}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-hz-neutral-700 bg-hz-neutral-100 rounded hover:bg-hz-neutral-200 transition-colors"
+                              className="flex items-center gap-1 px-3 py-1 text-sm text-hz-neutral-700 bg-hz-neutral-100 rounded"
                             >
                               <X size={14} />
                               Cancelar
@@ -308,7 +308,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             {movement.status !== 'conciliado' && movement.unifiedStatus !== 'conciliado' && (
                               <button
                                 onClick={() => handleConciliar(movement)}
-                                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition-colors"
+                                className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-sm text-blue-700 rounded"
                               >
                                 <Check size={14} />
                                 Conciliar
@@ -317,7 +317,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             
                             <button
                               onClick={() => handleEdit(movement)}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-hz-neutral-700 bg-hz-neutral-100 rounded hover:bg-hz-neutral-200 transition-colors"
+                              className="flex items-center gap-1 px-3 py-1 text-sm text-hz-neutral-700 bg-hz-neutral-100 rounded"
                             >
                               <Edit3 size={14} />
                               Editar
@@ -325,7 +325,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             
                             <button
                               onClick={() => handleIgnore(movement)}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-orange-700 bg-orange-100 rounded hover:bg-orange-200 transition-colors"
+                              className="flex items-center gap-1 px-3 py-1 text-sm text-orange-700 bg-orange-100 rounded"
                             >
                               <EyeOff size={14} />
                               Ignorar

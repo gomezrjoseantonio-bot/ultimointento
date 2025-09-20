@@ -389,7 +389,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   return (
     <div className="px-6">
       {/* ATLAS Info Banner */}
-      <div className="mb-6 bg-blue-50 border border-atlas-blue/20 rounded-lg p-4">
+      <div className="btn-primary-horizon mb-6 border border-atlas-blue/20 p-4">
         <div className="flex items-start">
           <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
@@ -403,7 +403,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       </div>
 
       {/* Accounts List */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
+      <div className="bg-white shadow border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-atlas-navy-1">
@@ -413,7 +413,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
               <button
                 onClick={handleCleanupDemoData}
                 disabled={cleaningDemo}
-                className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 disabled:opacity-50"
                 title="Eliminar cuentas y movimientos de demostración"
               >
                 <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
@@ -430,10 +430,9 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             </div>
           ) : (
             accounts.map((account) => (
-              <div key={account.id} className="px-6 py-4 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
+              <div key={account.id} className="px-6 py-4 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-12 h-12 bg-gray-200 flex items-center justify-center overflow-hidden">
                       {account.logo_url ? (
                         <img 
                           src={getLogoFromStorage(account.id!) || account.logo_url} 
@@ -458,14 +457,14 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEditAccount(account)}
-                      className="p-2 text-text-gray hover:text-atlas-blue transition-colors"
+                      className="p-2 text-text-gray hover:text-atlas-blue"
                       title="Editar cuenta"
                     >
                       <Edit2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
                     </button>
                     <button
                       onClick={() => handleDeleteAccount(account)}
-                      className="p-2 text-text-gray hover:text-red-600 transition-colors"
+                      className="p-2 text-text-gray hover:text-red-600"
                       title="Eliminar cuenta"
                     >
                       <Trash2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
@@ -481,7 +480,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium text-atlas-navy-1">
@@ -499,7 +498,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
               {/* Demo Data Warning */}
               {formErrors.demo && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="btn-danger border border-red-200 p-4">
                   <div className="flex items-start">
                     <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
                     <div>
@@ -520,7 +519,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   type="text"
                   value={formData.alias}
                   onChange={(e) => setFormData(prev => ({ ...prev, alias: e.target.value }))}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
+                  className={`w-full p-3 border focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                     formErrors.alias ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Mi cuenta personal, Nómina, etc."
@@ -540,7 +539,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   type="text"
                   value={formData.bank}
                   onChange={(e) => setFormData(prev => ({ ...prev, bank: e.target.value }))}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
+                  className={`w-full p-3 border focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue ${
                     formErrors.bank ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Nombre completo de su banco"
@@ -560,7 +559,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   type="text"
                   value={formData.iban}
                   onChange={(e) => setFormData(prev => ({ ...prev, iban: e.target.value }))}
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue font-mono ${
+                  className={`w-full p-3 border focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue font-mono ${
                     formErrors.iban ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="ES00 0000 0000 0000 0000 0000"
@@ -578,7 +577,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 </label>
                 <div className="flex items-center space-x-4">
                   {formData.logoUrl && (
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
+                    <div className="w-12 h-12 bg-gray-100 overflow-hidden">
                       <img
                         src={formData.logoUrl}
                         alt="Logo preview"
@@ -589,8 +588,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm text-text-gray hover:bg-gray-50"
-                    disabled={saving}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-text-gray disabled={saving}
                   >
                     <Upload className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
                     {formData.logoUrl ? 'Cambiar logo' : 'Subir logo'}
@@ -624,7 +622,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="btn-primary-horizon inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
                 >
                   {saving ? (
                     <>Guardando...</>
@@ -641,7 +639,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       {/* Delete Confirmation Dialog */}
       {deleteConfirmation && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full">
+          <div className="bg-white max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center">
                 <AlertTriangle className="w-6 h-6 text-red-600 mr-3" style={{ strokeWidth: 1.5 }} />
@@ -657,7 +655,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 Esta acción no se puede deshacer.
               </p>
               
-              <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <div className="bg-gray-50 p-3 mb-4">
                 <p className="text-sm font-medium text-atlas-navy-1">{deleteConfirmation.name || `${deleteConfirmation.bank} - ${deleteConfirmation.iban.slice(-4)}`}</p>
                 <p className="text-sm text-text-gray">{deleteConfirmation.bank}</p>
                 <p className="text-sm text-text-gray font-mono">{maskIBAN(deleteConfirmation.iban)}</p>
@@ -675,7 +673,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="btn-danger inline-flex items-center px-4 py-2 disabled:opacity-50"
               >
                 {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
               </button>

@@ -258,7 +258,7 @@ const TreasuryMainView: React.FC = () => {
     <div className="min-h-screen bg-hz-bg">
       {/* Page Header */}
       <div className="bg-white border-b border-hz-neutral-300">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-hz-neutral-900">Tesorería</h1>
@@ -269,7 +269,7 @@ const TreasuryMainView: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-dark transition-colors"
+                className="btn-primary-horizon flex items-center gap-2"
               >
                 <Upload size={16} />
                 Importar extracto
@@ -281,7 +281,7 @@ const TreasuryMainView: React.FC = () => {
 
       {/* Global Totals Band */}
       <div className="bg-white border-b border-hz-neutral-300">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
               <div className="text-sm text-hz-neutral-600">Saldo Total</div>
@@ -314,12 +314,12 @@ const TreasuryMainView: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setShowInactive(!showInactive)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-hz-neutral-700 hover:text-hz-neutral-900 transition-colors"
+              className="flex items-center gap-2 text-sm text-hz-neutral-700 hover:text-hz-neutral-900 transition-colors"
             >
               {showInactive ? (
                 <ToggleRight className="h-5 w-5 text-hz-primary" />
@@ -363,7 +363,7 @@ const TreasuryMainView: React.FC = () => {
                 >
                   {/* Inactive banner */}
                   {isInactive && (
-                    <div className="mb-3 -mx-6 -mt-6 px-6 py-2 bg-gray-100 border-b border-gray-300">
+                    <div className="mb-3 -mx-6 -mt-6 bg-gray-100 border-b border-gray-300">
                       <span className="text-sm text-gray-600">
                         Cuenta inactiva
                       </span>

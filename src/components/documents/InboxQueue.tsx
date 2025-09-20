@@ -118,7 +118,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     
     if (isFromEmail) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded-full">
+        <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-primary-700">
           <Mail className="w-3 h-3" />
           Email
         </span>
@@ -126,7 +126,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
     }
     
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-neutral-100 text-neutral-700 rounded-full">
+      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-neutral-100 text-neutral-700">
         <Upload className="w-3 h-3" />
         Upload
       </span>
@@ -226,7 +226,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
       <div className="p-4">
         <div className="animate-pulse space-y-3">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="h-16 bg-neutral-200 rounded-lg"></div>
+            <div key={i} className="h-16 bg-neutral-200"></div>
           ))}
         </div>
       </div>
@@ -287,7 +287,7 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
             return (
               <tr
                 key={doc.id || index}
-                className={`border-b border-neutral-100 transition-colors cursor-pointer ${
+                className={`border-b border-neutral-100 cursor-pointer ${
                   isSelected 
                     ? 'bg-primary-50' 
                     : 'hover:bg-neutral-50'

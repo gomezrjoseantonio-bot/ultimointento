@@ -182,7 +182,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
                 <button
                   type="button"
                   onClick={() => window.open('/cuenta/cuentas', '_blank')}
-                  className="text-sm text-atlas-blue hover:text-atlas-blue-dark underline"
+                  className="text-sm btn-ghost-horizon underline"
                 >
                   Ir a Cuenta → Configuración → Cuentas Bancarias
                 </button>
@@ -191,7 +191,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
               <select
                 value={formData.fromAccountId}
                 onChange={(e) => setFormData(prev => ({ ...prev, fromAccountId: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
+                className={`w-full  border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
                   errors.fromAccountId ? 'border-error-500' : 'border-gray-300'
                 }`}
               >
@@ -230,7 +230,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
             <select
               value={formData.toAccountId}
               onChange={(e) => setFormData(prev => ({ ...prev, toAccountId: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
+              className={`w-full  border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
                 errors.toAccountId ? 'border-error-500' : 'border-gray-300'
               }`}
               disabled={!formData.fromAccountId}
@@ -266,7 +266,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
                 min="0"
                 value={formData.amount}
                 onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                className={`w-full px-3 py-2 pr-8 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
+                className={`w-full  pr-8 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
                   errors.amount ? 'border-error-500' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
@@ -306,7 +306,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
+                className={`w-full  pr-10 border rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent ${
                   errors.date ? 'border-error-500' : 'border-gray-300'
                 }`}
               />
@@ -326,7 +326,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
               value={formData.note}
               onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent resize-none"
+              className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent resize-none"
               placeholder="Concepto de la transferencia..."
             />
           </div>
@@ -337,7 +337,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             disabled={creating}
           >
             Cancelar
@@ -345,7 +345,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
           <button
             onClick={handleSubmit}
             disabled={creating}
-            className="px-4 py-2 text-sm font-medium text-white bg-hz-primary rounded-lg hover:bg-hz-primary- light disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="text-sm font-medium bg-hz-primary rounded-lg hover:bg-hz-primary- light disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {creating && (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>

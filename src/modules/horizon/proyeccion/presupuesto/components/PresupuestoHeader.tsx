@@ -37,7 +37,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
     loadProperties();
   }, []);
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div className="bg-white border border-gray-200 p-6">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -57,7 +57,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
           <select
             value={inmuebleId}
             onChange={(e) => onInmuebleChange(e.target.value as UUID | 'todos')}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 px-3 py-2 text-sm"
           >
             <option value="todos">Todos los inmuebles</option>
             {properties.map(property => (
@@ -69,7 +69,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
           
           <button
             onClick={onSembrar}
-            className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+            className="flex items-center space-x-2 bg-yellow-600 px-4 py-2"
           >
             <Repeat className="h-4 w-4" />
             <span>Sembrar</span>
@@ -77,7 +77,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
           
           <button
             onClick={onAddLinea}
-            className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Añadir Línea</span>
@@ -85,7 +85,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
           
           <button
             onClick={onExport}
-            className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center space-x-2 bg-gray-600 px-4 py-2"
           >
             <Download className="h-4 w-4" />
             <span>Exportar CSV</span>

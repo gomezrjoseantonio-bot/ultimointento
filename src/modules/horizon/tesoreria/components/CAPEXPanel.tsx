@@ -139,8 +139,8 @@ const CAPEXPanel: React.FC = () => {
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
-        <div className="h-32 bg-gray-200 rounded-lg"></div>
-        <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="h-32 bg-gray-200"></div>
+        <div className="h-64 bg-gray-200"></div>
       </div>
     );
   }
@@ -152,7 +152,7 @@ const CAPEXPanel: React.FC = () => {
         <div className="flex gap-2">
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600"
           >
             <Plus className="w-4 h-4" />
             Nueva Inversión
@@ -168,7 +168,7 @@ const CAPEXPanel: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-48 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">Todos los estados</option>
               <option value="completo">Completo</option>
@@ -186,14 +186,14 @@ const CAPEXPanel: React.FC = () => {
             placeholder="Buscar por contraparte, inmueble o tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Total Invertido</h3>
             <Calculator className="w-5 h-5 text-gray-400" />
@@ -203,7 +203,7 @@ const CAPEXPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Amortización Anual</h3>
             <Calendar className="w-5 h-5 text-gray-400" />
@@ -213,7 +213,7 @@ const CAPEXPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Proyectos</h3>
             <Building className="w-5 h-5 text-gray-400" />
@@ -223,7 +223,7 @@ const CAPEXPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-gray-500">Amortizando</h3>
             <FileText className="w-5 h-5 text-gray-400" />
@@ -235,7 +235,7 @@ const CAPEXPanel: React.FC = () => {
       </div>
 
       {/* CAPEX Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
@@ -275,7 +275,7 @@ const CAPEXPanel: React.FC = () => {
                     {capex.contraparte}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTipoColor(capex.tipo)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getTipoColor(capex.tipo)}`}>
                       {capex.tipo}
                     </span>
                   </td>
@@ -293,12 +293,12 @@ const CAPEXPanel: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(capex.estado)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(capex.estado)}`}>
                       {capex.estado}
                     </span>
                     {capex.source_doc_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-success-100 text-success-800 rounded-full">
+                        <span className="inline-flex items-center px-2 py-1 text-xs bg-success-100 text-success-800">
                           <FileText className="w-3 h-3 mr-1" />
                           OCR
                         </span>
@@ -306,7 +306,7 @@ const CAPEXPanel: React.FC = () => {
                     )}
                     {capex.movement_id && (
                       <div className="mt-1">
-                        <span className="inline-flex items-center px-2 py-1 text-xs bg-primary-100 text-primary-800 rounded-full">
+                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs text-primary-800">
                           Conciliado
                         </span>
                       </div>
@@ -334,7 +334,7 @@ const CAPEXPanel: React.FC = () => {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nueva Inversión CAPEX</h3>
               <button
@@ -355,7 +355,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.inmueble_id}
                     onChange={(e) => setFormData({...formData, inmueble_id: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     <option value={0}>Seleccionar inmueble</option>
                     {properties.map(property => (
@@ -375,7 +375,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.contraparte}
                     onChange={(e) => setFormData({...formData, contraparte: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -390,7 +390,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
@@ -404,7 +404,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -425,7 +425,7 @@ const CAPEXPanel: React.FC = () => {
                         anos_amortizacion: selectedType?.defaultYears || 10
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
                     {capexTypes.map(type => (
                       <option key={type.value} value={type.value}>
@@ -446,7 +446,7 @@ const CAPEXPanel: React.FC = () => {
                     max="50"
                     value={formData.anos_amortizacion}
                     onChange={(e) => setFormData({...formData, anos_amortizacion: parseInt(e.target.value) || 10})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
@@ -455,13 +455,13 @@ const CAPEXPanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-gray-700 bg-gray-100"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 bg-gray-600"
                 >
                   Guardar Inversión
                 </button>
