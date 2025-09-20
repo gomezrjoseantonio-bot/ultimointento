@@ -316,6 +316,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                 <tr>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+          >
                     onClick={() => handleSort('nombre')}
                   >
                     <div className="flex items-center">
@@ -328,6 +329,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                   </th>
                   <th 
                     className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+          >
                     onClick={() => handleSort('capitalVivo')}
                   >
                     <div className="flex items-center justify-end">
@@ -337,6 +339,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                   </th>
                   <th 
                     className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
+          >
                     onClick={() => handleSort('tin')}
                   >
                     <div className="flex items-center justify-end">
@@ -417,6 +420,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                           <button
                             onClick={() => handleViewDetail(prestamo)}
                             className="text-atlas-blue hover:text-primary-800"
+                            >
                             title="Ver detalle"
                           >
                             <Eye className="h-4 w-4" />
@@ -424,6 +428,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                           <button
                             onClick={() => onEdit(prestamo.id)}
                             className="text-text-gray hover:text-atlas-blue"
+                            >
                             title="Editar"
                           >
                             <Edit3 className="h-4 w-4" />
@@ -431,6 +436,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                           <button
                             onClick={() => handleDeletePrestamo(prestamo.id)}
                             className="text-text-gray hover:text-error"
+                            >
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />

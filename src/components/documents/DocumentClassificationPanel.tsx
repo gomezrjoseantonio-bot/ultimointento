@@ -215,6 +215,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
   return (
     <section 
       className="p-6 space-y-6"
+      >
       role="form"
       aria-labelledby="classification-title"
       aria-describedby="classification-description"
@@ -266,8 +267,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             className={`flex items-center gap-2 px-4 py-2 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Personal'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200
-            }`}
+                : 'border-gray-200'            }`}
             aria-describedby="personal-description"
           >
             <User className="w-4 h-4" aria-hidden="true" />
@@ -286,8 +286,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
             className={`flex items-center gap-2 px-4 py-2 border focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
               formData.destino === 'Inmueble'
                 ? 'border-primary-500 bg-primary-50 text-primary-700'
-                : 'border-gray-200
-            }`}
+                : 'border-gray-200'            }`}
             aria-describedby="property-description"
           >
             <Building className="w-4 h-4" aria-hidden="true" />
@@ -341,6 +340,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onChange={(e) => handleFieldChange('counterpartyName', e.target.value)}
           aria-describedby="counterparty-help"
           className="btn-secondary-horizon w-full "
+          >
           placeholder="Nombre de la contraparte"
         />
         <div id="counterparty-help" className="text-xs text-gray-500">
@@ -389,6 +389,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('amount', parseFloat(e.target.value) || 0)}
               aria-describedby="total-amount-help"
               className="btn-secondary-horizon w-full "
+              >
               placeholder="0,00"
             />
             <div id="total-amount-help" className="sr-only">
@@ -407,6 +408,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('base', parseFloat(e.target.value) || 0)}
               aria-describedby="base-amount-help"
               className="btn-secondary-horizon w-full "
+              >
               placeholder="0,00"
             />
             <div id="base-amount-help" className="sr-only">
@@ -428,6 +430,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('iva', parseFloat(e.target.value) || 0)}
               aria-describedby="vat-amount-help"
               className="btn-secondary-horizon w-full "
+              >
               placeholder="0,00"
             />
             <div id="vat-amount-help" className="sr-only">
@@ -445,6 +448,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('issueDate', e.target.value)}
               aria-describedby="issue-date-help"
               className="btn-secondary-horizon w-full "
+          >
             />
             <div id="issue-date-help" className="sr-only">
               Seleccione la fecha de emisión del documento
@@ -470,6 +474,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               </div>
               <div 
                 className="px-3 py-2 bg-white border text-sm font-medium"
+                >
                 aria-labelledby="aeat-box-label"
                 role="textbox"
                 aria-readonly="true"
@@ -483,6 +488,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               </div>
               <div 
                 className="px-3 py-2 bg-white border text-sm"
+                >
                 aria-labelledby="exercise-year-label"
                 role="textbox"
                 aria-readonly="true"
@@ -513,6 +519,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           rows={3}
           aria-describedby="notes-help"
           className="btn-secondary-horizon w-full "
+          >
           placeholder="Notas adicionales..."
         />
         <div id="notes-help" className="text-xs text-gray-500">

@@ -710,6 +710,7 @@ const InboxPage: React.FC = () => {
               toast.dismiss(t.id);
             }}
             className="btn-primary-horizon px-2 py-1 text-xs rounded"
+            >
             Ver en Movimientos
           </button>
         </div>
@@ -1091,8 +1092,7 @@ const InboxPage: React.FC = () => {
             className={`px-3 py-2 text-sm border ${
               showBulkActions 
                 ? 'bg-neutral-100 border-neutral-300 text-neutral-700' 
-                : 'border-neutral-200
-            }`}
+                : 'border-neutral-200'            }`}
           >
             Selección múltiple
           </button>
@@ -1114,6 +1114,7 @@ const InboxPage: React.FC = () => {
                 window.history.replaceState({}, '', '/inbox');
               }}
               className="text-xs text-neutral-600 hover:text-neutral-800 px-2 py-1"
+              >
               Mostrar todos los documentos
             </button>
           </div>
@@ -1150,12 +1151,14 @@ const InboxPage: React.FC = () => {
                   <button
                     onClick={handleBulkDelete}
                     className="flex items-center gap-1 px-3 py-1 text-xs bg-error-600"
+              >
                     <Trash2 className="w-3 h-3" />
                     Eliminar
                   </button>
                   <button
                     onClick={handleBulkReassign}
                     className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-xs"
+              >
                     <FolderOpen className="w-3 h-3" />
                     Reasignar
                   </button>
@@ -1172,6 +1175,7 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Categoría</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    >
                     value={inboxFilter}
                     onChange={(e) => setInboxFilter(e.target.value)}
                   >
@@ -1189,6 +1193,7 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Estado</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    >
                     value={queueStatusFilter}
                     onChange={(e) => setQueueStatusFilter(e.target.value)}
                   >
@@ -1207,6 +1212,7 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Origen</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    >
                     value={origenFilter}
                     onChange={(e) => setOrigenFilter(e.target.value)}
                   >
@@ -1228,6 +1234,7 @@ const InboxPage: React.FC = () => {
                     type="text"
                     placeholder="Buscar documentos..."
                     className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
+                    >
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -1241,6 +1248,7 @@ const InboxPage: React.FC = () => {
               <div className="flex gap-2">
                 <select
                   className="flex-1 text-sm border border-neutral-200 px-2 py-1"
+                  >
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'date' | 'name')}
                 >

@@ -307,6 +307,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             src={url} 
             alt={document.filename} 
             className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg"
+          >
           />
         </div>
       );
@@ -388,6 +389,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               <input 
                 type="text" 
                 className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                >
                 value={metadata.proveedor}
                 onChange={(e) => setMetadata({...metadata, proveedor: e.target.value})}
                 placeholder="Nombre del proveedor"
@@ -402,6 +404,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             {isEditingMetadata ? (
               <select 
                 className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                >
                 value={metadata.tipo}
                 onChange={(e) => setMetadata({...metadata, tipo: e.target.value})}
               >
@@ -420,6 +423,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             {isEditingMetadata ? (
               <select 
                 className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
+                >
                 value={metadata.categoria}
                 onChange={(e) => setMetadata({...metadata, categoria: e.target.value})}
               >
@@ -459,6 +463,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           {isEditingMetadata ? (
             <textarea 
               className="mt-1 w-full border border-neutral-200 rounded px-3 py-2 text-sm"
+              >
               rows={2}
               value={metadata.notas}
               onChange={(e) => setMetadata({...metadata, notas: e.target.value})}
@@ -509,6 +514,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </p>
         <button 
           className="mt-4 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+          >
           onClick={handlePreview}
         >
           <Eye className="w-4 h-4 inline mr-2" />
@@ -520,6 +526,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       <div className="flex flex-wrap gap-3">
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          >
           onClick={handlePreview}
         >
           <Eye className="w-4 h-4" />
@@ -552,6 +559,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         
         <button 
           className="flex items-center gap-2 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+          >
           onClick={() => setShowAssignModal(true)}
         >
           <UserCheck className="w-4 h-4" />
@@ -559,6 +567,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </button>
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          >
           onClick={handleDownload}
         >
           <Download className="w-4 h-4" />
@@ -566,6 +575,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </button>
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-error-200 text-error-600 rounded-lg hover:bg-error-50 transition-colors"
+          >
           onClick={() => setShowDeleteConfirm(true)}
         >
           <Trash2 className="w-4 h-4" />
@@ -608,12 +618,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3">
               <button 
                 className="px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors"
+          >
                 onClick={handleDelete}
               >
                 Eliminar
               </button>
               <button 
                 className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          >
                 onClick={() => setShowDeleteConfirm(false)}
               >
                 Cancelar
@@ -638,6 +650,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                 </label>
                 <select 
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                  >
                   value={assignData.destino}
                   onChange={(e) => setAssignData({...assignData, destino: e.target.value})}
                 >
@@ -654,6 +667,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                   </label>
                   <select 
                     className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                    >
                     value={assignData.inmuebleId}
                     onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
                   >
@@ -675,6 +689,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                     </label>
                     <select 
                       className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                      >
                       value={assignData.inmuebleId}
                       onChange={(e) => setAssignData({...assignData, inmuebleId: e.target.value})}
                     >
@@ -692,6 +707,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                     </label>
                     <select 
                       className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                      >
                       value={assignData.habitacionId}
                       onChange={(e) => setAssignData({...assignData, habitacionId: e.target.value})}
                     >
@@ -708,6 +724,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                 </label>
                 <select 
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                  >
                   value={assignData.categoria}
                   onChange={(e) => setAssignData({...assignData, categoria: e.target.value})}
                 >
@@ -727,6 +744,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
                 </label>
                 <select 
                   className="w-full border border-neutral-200 rounded-lg px-3 py-2"
+                  >
                   value={assignData.carpeta}
                   onChange={(e) => setAssignData({...assignData, carpeta: e.target.value})}
                 >
@@ -741,12 +759,14 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3 mt-6">
               <button 
                 className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+          >
                 onClick={handleAssign}
               >
                 {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
               </button>
               <button 
                 className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+          >
                 onClick={() => setShowAssignModal(false)}
               >
                 Cancelar

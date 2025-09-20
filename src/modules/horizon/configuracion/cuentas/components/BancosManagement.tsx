@@ -414,6 +414,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 onClick={handleCleanupDemoData}
                 disabled={cleaningDemo}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 disabled:opacity-50"
+                >
                 title="Eliminar cuentas y movimientos de demostración"
               >
                 <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
@@ -438,6 +439,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                           src={getLogoFromStorage(account.id!) || account.logo_url} 
                           alt={`Logo ${account.bank}`}
                           className="w-full h-full object-cover"
+          >
                         />
                       ) : (
                         <Banknote className="w-6 h-6 text-gray-500" style={{ strokeWidth: 1.5 }} />
@@ -458,6 +460,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     <button
                       onClick={() => handleEditAccount(account)}
                       className="p-2 text-text-gray hover:text-atlas-blue"
+                      >
                       title="Editar cuenta"
                     >
                       <Edit2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
@@ -465,6 +468,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     <button
                       onClick={() => handleDeleteAccount(account)}
                       className="p-2 text-text-gray hover:text-red-600"
+                      >
                       title="Eliminar cuenta"
                     >
                       <Trash2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
@@ -582,6 +586,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                         src={formData.logoUrl}
                         alt="Logo preview"
                         className="w-full h-full object-cover"
+          >
                       />
                     </div>
                   )}
@@ -589,6 +594,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm text-text-gray disabled={saving}"
+              >
                     <Upload className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
                     {formData.logoUrl ? 'Cambiar logo' : 'Subir logo'}
                   </button>
@@ -602,6 +608,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     if (file) handleLogoUpload(file);
                   }}
                   className="hidden"
+          >
                 />
                 <p className="text-xs text-text-gray mt-1">
                   PNG/JPG, máximo 2MB
@@ -614,6 +621,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   type="button"
                   onClick={handleCloseModal}
                   className="px-4 py-2 text-text-gray hover:text-atlas-navy-1"
+                  >
                   disabled={saving}
                 >
                   Cancelar
@@ -665,6 +673,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
               <button
                 onClick={() => setDeleteConfirmation(null)}
                 className="px-4 py-2 text-text-gray hover:text-atlas-navy-1"
+                >
                 disabled={deleting}
               >
                 Cancelar

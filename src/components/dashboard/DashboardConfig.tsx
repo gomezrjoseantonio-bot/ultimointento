@@ -294,6 +294,7 @@ const DashboardConfig: React.FC = () => {
             {...attributes}
             {...listeners}
             className="text-neutral-400 hover:text-neutral-600 cursor-grab active:cursor-grabbing p-1 -m-1 touch-manipulation"
+            >
             aria-label="Reordenar bloque"
           >
             <GripVertical className="w-5 h-5" />

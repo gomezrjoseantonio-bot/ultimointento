@@ -364,8 +364,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   className={`p-2 text-sm border ${
                     dup.action === 'replace' 
                       ? 'border-primary-500 bg-primary-50 text-primary-700' 
-                      : 'border-neutral-200
-                  }`}
+                      : 'border-neutral-200'                  }`}
                 >
                   <strong>Reemplazar</strong><br />
                   <span className="text-xs">Sustituir el existente</span>
@@ -376,8 +375,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   className={`p-2 text-sm border ${
                     dup.action === 'keep-both' 
                       ? 'border-success-500 bg-success-50 text-success-700' 
-                      : 'border-neutral-200
-                  }`}
+                      : 'border-neutral-200'                  }`}
                 >
                   <strong>Conservar ambos</strong><br />
                   <span className="text-xs">Añadir "(2)" al nuevo</span>
@@ -388,8 +386,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   className={`p-2 text-sm border ${
                     dup.action === 'skip' 
                       ? 'border-neutral-500 bg-neutral-50 text-neutral-700' 
-                      : 'border-neutral-200
-                  }`}
+                      : 'border-neutral-200'                  }`}
                 >
                   <strong>Omitir</strong><br />
                   <span className="text-xs">No subir este archivo</span>
@@ -423,6 +420,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   return (
     <div 
       className="border-2 border-dashed border-neutral-300 p-6 text-center hover:border-neutral-400"
+          >
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -435,6 +433,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       </p>
       <button 
         className="px-6 py-2 bg-neutral-600 disabled:opacity-50"
+          >
         onClick={() => fileInputRef.current?.click()}
         disabled={isProcessing}
       >
@@ -446,6 +445,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         multiple
         accept=".pdf,.jpg,.jpeg,.png,.zip,.csv,.xlsx,.xls"
         className="hidden"
+          >
         onChange={(e) => handleFileUpload(e.target.files)}
       />
     </div>

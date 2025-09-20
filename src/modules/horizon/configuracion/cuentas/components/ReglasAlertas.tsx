@@ -420,6 +420,7 @@ const ReglasAlertas: React.FC = () => {
                         onClick={() => handleMovePriority(rule.id!, 'up')}
                         disabled={index === 0}
                         className="p-1 text-text-gray hover:text-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                         title="Subir prioridad"
                       >
                         <ArrowUp className="w-4 h-4" style={{ strokeWidth: 1.5 }} />
@@ -428,6 +429,7 @@ const ReglasAlertas: React.FC = () => {
                         onClick={() => handleMovePriority(rule.id!, 'down')}
                         disabled={index === rules.length - 1}
                         className="p-1 text-text-gray hover:text-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                         title="Bajar prioridad"
                       >
                         <ArrowDown className="w-4 h-4" style={{ strokeWidth: 1.5 }} />
@@ -438,6 +440,7 @@ const ReglasAlertas: React.FC = () => {
                     <button
                       onClick={() => handleToggleRule(rule.id!)}
                       className="p-2 text-text-gray hover:text-atlas-blue"
+                      >
                       title={rule.isActive ? 'Desactivar regla' : 'Activar regla'}
                     >
                       {rule.isActive ? (
@@ -451,6 +454,7 @@ const ReglasAlertas: React.FC = () => {
                     <button
                       onClick={() => handleEditRule(rule)}
                       className="p-2 text-text-gray hover:text-atlas-blue"
+                      >
                       title="Editar regla"
                     >
                       <Edit2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
@@ -460,6 +464,7 @@ const ReglasAlertas: React.FC = () => {
                     <button
                       onClick={() => handleDeleteRule(rule)}
                       className="p-2 text-text-gray hover:text-red-600"
+                      >
                       title="Eliminar regla"
                     >
                       <Trash2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
@@ -574,6 +579,7 @@ const ReglasAlertas: React.FC = () => {
                 type="button"
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-text-gray hover:text-atlas-navy-1"
+                >
                 disabled={saving}
               >
                 Cancelar

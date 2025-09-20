@@ -152,6 +152,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               
               <div 
                 className="flex-1 cursor-pointer"
+          >
                 onClick={() => onSelectDocument(doc)}
               >
                 <p className="font-medium text-neutral-900 text-sm line-clamp-2">

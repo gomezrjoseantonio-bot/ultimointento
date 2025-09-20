@@ -44,6 +44,7 @@ const ComparativaTable: React.FC<ComparativaTableProps> = ({ data, onMonthClick 
             <tr 
               key={index}
               className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+          >
               onClick={() => onMonthClick(index + 1)}
             >
               <td className="py-3 px-6 text-sm font-medium text-gray-900">
@@ -61,6 +62,7 @@ const ComparativaTable: React.FC<ComparativaTableProps> = ({ data, onMonthClick 
               <td className="py-3 px-4 text-center">
                 <span 
                   className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  >
                   style={{ 
                     backgroundColor: `${getDeviationColor(monthData.deviationStatus)}20`,
                     color: getDeviationColor(monthData.deviationStatus)
@@ -89,6 +91,7 @@ const ComparativaTable: React.FC<ComparativaTableProps> = ({ data, onMonthClick 
             <td className="py-4 px-4 text-center">
               <span 
                 className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"
+                >
                 style={{ 
                   backgroundColor: `${getDeviationColor(data.ytdTotals.deviationStatus)}20`,
                   color: getDeviationColor(data.ytdTotals.deviationStatus)

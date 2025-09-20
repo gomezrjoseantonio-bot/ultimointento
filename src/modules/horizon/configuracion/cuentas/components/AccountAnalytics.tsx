@@ -176,6 +176,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
           <button
             onClick={() => window.open('/cuenta/cuentas', '_blank')}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium bg-atlas-blue"
+            >
             Configurar Cuentas
           </button>
         </div>

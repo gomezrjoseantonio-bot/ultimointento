@@ -155,6 +155,7 @@ const Detalle: React.FC = () => {
               onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
               placeholder="Buscar..."
               className="pl-10 w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
             />
           </div>
         </div>
@@ -191,6 +192,7 @@ const Detalle: React.FC = () => {
             value={filters.dateFrom}
             onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
           />
         </div>
 
@@ -201,6 +203,7 @@ const Detalle: React.FC = () => {
             value={filters.dateTo}
             onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
           />
         </div>
       </div>
@@ -342,6 +345,7 @@ const Detalle: React.FC = () => {
                                       key={idx}
                                       onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
                                       className="btn-primary-horizon btn-primary-horizon text-xs px-2 py-1 text-primary-800 rounded hover: "
+                                      >
                                       title={`Confianza: ${match.confidence}% - ${match.reason}`}
                                     >
                                       Conciliar ({match.confidence}%)

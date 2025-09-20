@@ -95,6 +95,7 @@ const AlertsSection: React.FC<AlertsSectionProps> = ({ filters }) => {
           {/* Threshold marker */}
           <div 
             className="absolute top-0 w-0.5 h-full bg-hz-neutral-500"
+            >
             style={{ left: `${thresholdPercent}%` }}
           />
           

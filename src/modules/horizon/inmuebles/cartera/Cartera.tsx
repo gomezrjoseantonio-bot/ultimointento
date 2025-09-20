@@ -198,6 +198,7 @@ const Cartera: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
               />
             </div>
           </div>
@@ -238,6 +239,7 @@ const Cartera: React.FC = () => {
                 value={dateFromFilter}
                 onChange={(e) => setDateFromFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
               />
             </div>
 
@@ -250,6 +252,7 @@ const Cartera: React.FC = () => {
                 value={dateToFilter}
                 onChange={(e) => setDateToFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+          >
               />
             </div>
 
@@ -334,6 +337,7 @@ const Cartera: React.FC = () => {
                   <tr>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+          >
                       onClick={() => handleSort('alias')}
                     >
                       <div className="flex items-center space-x-1">
@@ -346,6 +350,7 @@ const Cartera: React.FC = () => {
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+          >
                       onClick={() => handleSort('purchaseDate')}
                     >
                       <div className="flex items-center space-x-1">
@@ -355,6 +360,7 @@ const Cartera: React.FC = () => {
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+          >
                       onClick={() => handleSort('squareMeters')}
                     >
                       <div className="flex items-center space-x-1">
@@ -370,6 +376,7 @@ const Cartera: React.FC = () => {
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+          >
                       onClick={() => handleSort('totalCost')}
                     >
                       <div className="flex items-center space-x-1">
@@ -442,6 +449,7 @@ const Cartera: React.FC = () => {
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}`)}
                               className="text-brand-navy hover:text-brand-navy/80"
+                              >
                               title="Ver"
                             >
                               <Eye className="h-4 w-4" size={24}  />
@@ -449,6 +457,7 @@ const Cartera: React.FC = () => {
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
                               className="text-brand-navy hover:text-brand-navy/80"
+                              >
                               title="Editar"
                             >
                               <Pencil className="h-4 w-4" size={24}  />
@@ -456,6 +465,7 @@ const Cartera: React.FC = () => {
                             <button
                               onClick={() => handleDelete(property)}
                               className="text-error-600 hover:text-error-800"
+                              >
                               title="Borrar"
                             >
                               <Trash2 className="h-4 w-4"  />

@@ -71,6 +71,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
           status={status === 'sin_match' ? 'no_planificado' : 'confirmado'}
           movementType={movementType}
           className="ml-2"
+          >
         />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
@@ -171,6 +172,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-gray-200"
+          >
         onClick={onClose}
       />
       
@@ -234,6 +236,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     description: e.target.value
                   })}
                   className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
+          >
                 />
               ) : (
                 <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
@@ -257,6 +260,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       counterparty: e.target.value
                     })}
                     className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
+          >
                   />
                 ) : (
                   <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
@@ -328,6 +332,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     value={reconciliationData.categoria}
                     onChange={(e) => setReconciliationData(prev => ({ ...prev, categoria: e.target.value }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
+                    >
                     required
                   >
                     <option value="">Seleccionar categoría</option>
@@ -350,6 +355,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       inmuebleId: e.target.value === 'PERSONAL' ? '' : prev.inmuebleId
                     }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
+                    >
                     required
                   >
                     <option value="PERSONAL">Personal</option>
@@ -367,6 +373,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       value={reconciliationData.inmuebleId}
                       onChange={(e) => setReconciliationData(prev => ({ ...prev, inmuebleId: e.target.value }))}
                       className="btn-secondary-horizon w-full px-3 py-2 "
+                      >
                       required
                     >
                       <option value="">Seleccionar inmueble</option>

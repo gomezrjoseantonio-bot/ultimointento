@@ -275,6 +275,7 @@ const PresupuestoNuevo: React.FC = () => {
                 <button
                   onClick={handleCreateLinea}
                   className="btn-primary-horizon flex items-center space-x-1 px-3 py-1 rounded text-sm"
+              >
                   <Plus className="h-4 w-4" />
                   <span>Añadir</span>
                 </button>

@@ -221,6 +221,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             </label>
             <select
               className="btn-secondary-horizon w-full "
+              >
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(Number(e.target.value) || null)}
             >

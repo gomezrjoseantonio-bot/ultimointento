@@ -273,6 +273,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.inmuebleId}
                 onChange={(e) => handlePropertyChange(parseInt(e.target.value))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 <option value="">Seleccionar inmueble</option>
@@ -296,6 +297,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   habitacionId: '' // Reset room when changing type
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 <option value="vivienda">Vivienda completa</option>
@@ -314,6 +316,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.habitacionId}
                 onChange={(e) => setFormData(prev => ({ ...prev, habitacionId: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 <option value="">Seleccionar habitación</option>
@@ -337,6 +340,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 modalidad: e.target.value as 'habitual' | 'temporada' 
               }))}
               className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
               required
             >
               <option value="habitual">Vivienda habitual</option>
@@ -365,6 +369,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, nombre: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -381,6 +386,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, apellidos: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -397,6 +403,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, dni: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -413,6 +420,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, telefono: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -429,6 +437,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, email: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -452,6 +461,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fechaInicio}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
             </div>
@@ -465,6 +475,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fechaFin}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               />
               {formData.modalidad === 'habitual' && (
@@ -493,6 +504,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.rentaMensual}
                 onChange={(e) => setFormData(prev => ({ ...prev, rentaMensual: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 placeholder="650,00"
                 required
               />
@@ -506,6 +518,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.diaPago}
                 onChange={(e) => setFormData(prev => ({ ...prev, diaPago: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 required
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
@@ -525,6 +538,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.margenGraciaDias}
                 onChange={(e) => setFormData(prev => ({ ...prev, margenGraciaDias: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 min="0"
                 max="30"
               />
@@ -569,6 +583,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                     indexOtros: { ...prev.indexOtros, formula: e.target.value } 
                   }))}
                   className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                  >
                   placeholder="2,5%"
                 />
               </div>
@@ -593,6 +608,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fianzaMeses}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaMeses: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                >
                 min="0"
                 step="1"
                 required
@@ -608,6 +624,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fianzaImporte}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaImporte: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent bg-neutral-50"
+                >
                 placeholder="Se calcula automáticamente"
                 readOnly
               />
@@ -634,6 +651,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                     value={formData.cuentaCobroId}
                     onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobroId: parseInt(e.target.value) }))}
                     className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                    >
                     required
                   >
                     <option value="">Seleccionar cuenta</option>

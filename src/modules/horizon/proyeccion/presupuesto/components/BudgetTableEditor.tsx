@@ -211,6 +211,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                   <button
                     onClick={onAddLine}
                     className="p-1 text-primary-600 hover:text-primary-800"
+                    >
                     title="Añadir fila"
                   >
                     <Plus className="h-4 w-4" />
@@ -296,6 +297,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                         <button
                           onClick={() => handleDuplicateLine(line.id)}
                           className="p-1 text-gray-400 hover:text-gray-600"
+                          >
                           title="Duplicar línea"
                         >
                           <Copy className="h-4 w-4" />
@@ -303,6 +305,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                         <button
                           onClick={() => handleDeleteLine(line.id)}
                           className="p-1 text-gray-400 hover:text-error-600"
+                          >
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />

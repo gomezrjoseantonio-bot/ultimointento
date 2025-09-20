@@ -167,6 +167,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
                 className="fixed inset-0 bg-gray-500 transition-opacity"
+          >
                 onClick={() => setShowModal(false)}
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-xl sm:my-8 sm:align-middle sm:p-6">
@@ -290,8 +291,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                       className={`flex items-center space-x-2 px-3 py-2 text-sm ${
                         selectedScenario.markedForComparison
                           ? 'bg-primary-700'
-                          : 'bg-[#F8F9FA] text-gray-500
-                      }`}
+                          : 'bg-[#F8F9FA] text-gray-500'                      }`}
                     >
                       {selectedScenario.markedForComparison ? (
                         <StarOff className="h-4 w-4" />
@@ -385,6 +385,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
                 className="fixed inset-0 bg-gray-500 transition-opacity"
+          >
                 onClick={() => setShowModal(false)}
               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-xl sm:my-8 sm:align-middle sm:p-6">
