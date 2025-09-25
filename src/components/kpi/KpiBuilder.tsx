@@ -439,7 +439,6 @@ const KpiBuilder: React.FC = () => {
                   value={config.parameters.managementFeePercent}
                   onChange={(e) => handleParameterChange('managementFeePercent', parseFloat(e.target.value) || 5)}
                   className="block w-20 rounded-md border-neutral-300 text-sm focus:border-brand-navy focus:ring-brand-navy"
-          >
                 />
               </div>
             )}
@@ -458,7 +457,6 @@ const KpiBuilder: React.FC = () => {
               value={config.parameters.vacancyPercent}
               onChange={(e) => handleParameterChange('vacancyPercent', parseFloat(e.target.value) || 7.5)}
               className="block w-24 rounded-md border-neutral-300 text-sm focus:border-brand-navy focus:ring-brand-navy"
-          >
             />
           </div>
 
