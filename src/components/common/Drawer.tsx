@@ -84,7 +84,6 @@ const Drawer: React.FC<DrawerProps> = ({
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white">
             <h2 
               className="text-lg font-semibold"
-              >
               style={{ color: 'var(--hz-text)' }}
             >
               {title}
@@ -92,7 +91,6 @@ const Drawer: React.FC<DrawerProps> = ({
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
               aria-label="Cerrar"
             >
               <X className="h-5 w-5" />

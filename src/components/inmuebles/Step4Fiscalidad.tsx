@@ -102,8 +102,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
-                />
+              />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <span className="text-gray-500 text-sm">€</span>
                 </div>
@@ -126,8 +125,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
-                />
+              />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <span className="text-gray-500 text-sm">€</span>
                 </div>
@@ -186,7 +184,6 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
                 max="100"
                 step="0.0001"
                 className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
-          >
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                 <span className="text-gray-500 text-sm">%</span>
@@ -286,8 +283,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               placeholder="Casos especiales, aclaraciones AEAT, etc."
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
-            />
+              />
             <p className="text-xs text-gray-500 mt-1">
               Campo opcional para casos especiales o aclaraciones puntuales
             </p>

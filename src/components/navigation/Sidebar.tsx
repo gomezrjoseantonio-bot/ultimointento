@@ -46,7 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     >
       <item.icon
         className="mr-3 h-6 w-6 flex-shrink-0"
-        >
         aria-hidden="true"
       />
       {item.name}
