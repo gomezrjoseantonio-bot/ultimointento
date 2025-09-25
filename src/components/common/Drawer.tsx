@@ -71,7 +71,6 @@ const Drawer: React.FC<DrawerProps> = ({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-gray-200 transition-opacity"
-          >
         onClick={onClose}
       />
       
