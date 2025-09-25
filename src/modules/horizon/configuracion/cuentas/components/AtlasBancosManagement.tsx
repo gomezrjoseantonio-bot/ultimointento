@@ -626,7 +626,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     value={formData.iban}
                     onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
-                    >
                     placeholder="ES91 0049 1500 0512 3456 7892"
                     required
                     disabled={!!editingAccount} // Cannot edit IBAN
