@@ -378,7 +378,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
           src={account.logoUser} 
           alt="Logo de banco" 
           className="w-8 h-8 object-cover"
-          >
         />
       );
     }
@@ -390,7 +389,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
           src={account.banco.brand.logoUrl} 
           alt={account.banco.name || 'Banco'} 
           className="w-8 h-8 object-cover"
-          >
         />
       );
     }
@@ -424,8 +422,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         {/* Backdrop to close dropdown */}
         {isDropdownOpen && (
           <div 
-            className="fixed inset-0 z-10" 
-          >
+            className="fixed inset-0 z-10"
             onClick={() => setActiveDropdown(null)}
           />
         )}
@@ -611,7 +608,6 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     value={formData.alias}
                     onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
-                    >
                     placeholder="ej. Cuenta principal, Nómina..."
                     maxLength={40}
                   />
@@ -651,8 +647,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     accept="image/*"
                     onChange={handleLogoFileChange}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
-          >
-                  />
+        />
                   {formErrors.logoFile && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.logoFile}</p>
                   )}
@@ -665,8 +660,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                         src={getLogoPreviewUrl(formData.logoFile)} 
                         alt="Vista previa del logo" 
                         className="w-8 h-8 object-cover border border-gray-300"
-          >
-                      />
+        />
                       <div className="text-xs">
                         <p className="text-green-600 font-medium">
                           {formData.logoFile.name}
@@ -750,8 +744,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                               deleteMovements: e.target.checked
                             })}
                             className="mt-0.5 mr-3 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-          >
-                          />
+        />
                           <label htmlFor="deleteMovements" className="text-sm text-gray-700">
                             <strong>También borrar sus {deleteConfirmation.movementsCount} movimientos (irreversible)</strong>
                           </label>
