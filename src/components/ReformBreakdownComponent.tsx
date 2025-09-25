@@ -234,7 +234,6 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={breakdown.mejora.toFixed(2)}
                       onChange={(e) => handleManualUpdate('mejora', parseFloat(e.target.value) || 0)}
                       className="w-20 px-2 py-1 text-sm border rounded text-right"
-                      >
                       min="0"
                       max={totalAmount}
                       step="0.01"
@@ -257,13 +256,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                     <input
                       type="number"
                       value={percentages.mobiliario.toFixed(1)}
-                      onChange={(e) => handlePercentageUpdate('mobiliario', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 text-sm border rounded text-right"
-                      >
-                      min="0"
-                      max="100"
-                      step="0.1"
-                    />
+                      onChange={(e) => handlePercentageUpdate('mobiliario', parseFloat(e.target.value) || 0)}className="w-16 px-2 py-1 text-sm border rounded text-right" min="0" max="100" step="0.1" />
                     <span className="text-xs">%</span>
                   </>
                 ) : (
@@ -296,13 +289,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                     <input
                       type="number"
                       value={percentages.reparacion_conservacion.toFixed(1)}
-                      onChange={(e) => handlePercentageUpdate('reparacion_conservacion', parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 text-sm border rounded text-right"
-                      >
-                      min="0"
-                      max="100"
-                      step="0.1"
-                    />
+                      onChange={(e) => handlePercentageUpdate('reparacion_conservacion', parseFloat(e.target.value) || 0)}className="w-16 px-2 py-1 text-sm border rounded text-right" min="0" max="100" step="0.1" />
                     <span className="text-xs">%</span>
                   </>
                 ) : (

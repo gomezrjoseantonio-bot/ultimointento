@@ -269,12 +269,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               <input
                 type="number"
                 value={formData.taxYear}
-                onChange={(e) => setFormData(prev => ({ ...prev, taxYear: parseInt(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                min="2020"
-                max="2030"
-              />
+                onChange={(e) => setFormData(prev => ({ ...prev, taxYear: parseInt(e.target.value) }))}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" min="2020" max="2030" />
             </div>
           </div>
 

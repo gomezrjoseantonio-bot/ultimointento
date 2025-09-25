@@ -726,12 +726,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <input
                     type="text"
                     value={editablePaymentFields.iban ?? aligned.payment.iban ?? ''}
-                    onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
-                    >
-                    placeholder="ES** **** **** ** **********"
-                    pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
-                  />
+                    onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600" placeholder="ES** **** **** ** **********" pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}" />
                   {(editablePaymentFields.method ?? aligned.payment.method) === 'SEPA' && !(editablePaymentFields.iban ?? aligned.payment.iban) && (
                     <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
                       <span className="text-sm text-amber-800">⚠ Falta IBAN para domiciliación SEPA</span>

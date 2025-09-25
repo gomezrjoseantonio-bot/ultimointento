@@ -209,12 +209,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <input
                     type="number"
                     value={line.amount}
-                    onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="btn-secondary-horizon block w-full px-3 py-2 "
-                    >
-                    min="0"
-                    step="0.01"
-                  />
+                    onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)}className="btn-secondary-horizon block w-full px-3 py-2 " min="0" step="0.01" />
                 </div>
 
                 {/* Frequency */}
@@ -264,12 +259,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <input
                         type="number"
                         value={line.installments || 2}
-                        onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)}
-                        className="btn-secondary-horizon block w-full px-3 py-2 "
-                        >
-                        min="1"
-                        max="12"
-                      />
+                        onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)}className="btn-secondary-horizon block w-full px-3 py-2 " min="1" max="12" />
                     </>
                   )}
                   

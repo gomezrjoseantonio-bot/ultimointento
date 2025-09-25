@@ -801,12 +801,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   <input
                     type="number"
                     value={mesesSoloIntereses}
-                    onChange={(e) => setMesesSoloIntereses(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                    >
-                    placeholder="0"
-                    min="0"
-                  />
+                    onChange={(e) => setMesesSoloIntereses(e.target.value)}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="0" min="0" />
                   <p className="text-xs text-gray-500 mt-1">
                     Períodos iniciales donde solo se pagan intereses
                   </p>
@@ -819,12 +814,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   <input
                     type="number"
                     value={diferirPrimeraCuotaMeses}
-                    onChange={(e) => setDiferirPrimeraCuotaMeses(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                    >
-                    placeholder="0"
-                    min="0"
-                  />
+                    onChange={(e) => setDiferirPrimeraCuotaMeses(e.target.value)}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="0" min="0" />
                   <p className="text-xs text-gray-500 mt-1">
                     Meses de diferimiento hasta primera cuota
                   </p>
@@ -1107,12 +1097,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     <input
                       type="number"
                       value={offsetEvaluacionDias}
-                      onChange={(e) => setOffsetEvaluacionDias(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                      >
-                      placeholder="30"
-                      min="0"
-                    />
+                      onChange={(e) => setOffsetEvaluacionDias(e.target.value)}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="30" min="0" />
                     <p className="text-xs text-gray-500 mt-1">
                       Días antes del fin del período para evaluar
                     </p>
