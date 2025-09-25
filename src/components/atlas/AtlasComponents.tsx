@@ -306,8 +306,8 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
   return (
     <div
       className="flex items-start p-4 rounded-lg border-l-4 mb-6"
-            style={variantStyles[variant]}
-          >
+      style={variantStyles[variant]}
+    >
       <div className="flex-shrink-0 mr-3">
         {variantIcons[variant]}
       </div>
@@ -317,8 +317,7 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="flex-shrink-0 ml-3 p-1 rounded hover:bg-gray-100"
-        >
+          className="flex-shrink-0 ml-3 p-1 rounded hover:bg-gray-100">
           <X size={16} style={{ color: 'var(--text-gray)' }} />
         </button>
       )}
@@ -356,7 +355,6 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
       {/* Light overlay - no dark overlays per ATLAS */}
       <div 
         className="absolute inset-0 bg-white"
-        >
         style={{ opacity: 0.75 }}
         onClick={onClose}
       />
@@ -377,8 +375,7 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
             </h2>
             <button
               onClick={onClose}
-              className="p-1 rounded hover:bg-gray-100"
-            >
+              className="p-1 rounded hover:bg-gray-100">
               <X size={20} style={{ color: 'var(--text-gray)' }} />
             </button>
           </div>
