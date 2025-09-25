@@ -257,9 +257,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 type="text"
                 value={formatPercentage(maxBonificacion)}
                 onChange={(e) => setMaxBonificacion(parseNumber(e.target.value))}
-                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
-          >
-              />
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12" />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">p.p.</span>
               </div>
@@ -333,9 +331,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   value={customBonification.nombre}
                   onChange={(e) => setCustomBonification(prev => ({ ...prev, nombre: e.target.value }))}
                   placeholder="Ej: Vinculación especial"
-                  className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
-                />
+                  className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-atlas-navy-1 mb-2">
@@ -347,9 +343,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                     value={customBonification.descuentoTIN ? formatPercentage(customBonification.descuentoTIN) : ''}
                     onChange={(e) => setCustomBonification(prev => ({ ...prev, descuentoTIN: parseNumber(e.target.value) }))}
                     placeholder="0,50"
-                    className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
-          >
-                  />
+                    className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12" />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">p.p.</span>
                   </div>
@@ -365,9 +359,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 value={customBonification.condicionParametrizable}
                 onChange={(e) => setCustomBonification(prev => ({ ...prev, condicionParametrizable: e.target.value }))}
                 placeholder="Descripción de la condición para aplicar la bonificación"
-                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
-              />
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue" />
             </div>
             <div className="flex justify-end space-x-2">
               <button
@@ -413,9 +405,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                       type="checkbox"
                       checked={bonificacion.seleccionado || false}
                       onChange={() => toggleBonificationSelection(bonificacion.id)}
-                      className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300 rounded"
-          >
-                    />
+                      className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300 rounded" />
                     <span className="ml-3 text-sm font-medium text-gray-900">
                       La cumpliré
                     </span>
@@ -451,9 +441,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                             name={`gracia-${bonificacion.id}`}
                             checked={(bonificacion.graciaMeses || 0) === meses}
                             onChange={() => updateGracePeriod(bonificacion.id, meses as 0|6|12)}
-                            className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300"
-          >
-                          />
+                            className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300" />
                           <span className="ml-2 text-sm text-gray-900">
                             {meses === 0 ? 'Sin promo' : `${meses} meses`}
                           </span>

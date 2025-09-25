@@ -619,9 +619,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                                     newBonif[index] = { ...bonif, descripcion: e.target.value };
                                     setEditableData(prev => ({ ...prev, bonificaciones: newBonif }));
                                   }}
-                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-          >
-                                />
+                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Descuento (%)</label>
@@ -634,9 +632,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                                     newBonif[index] = { ...bonif, descuento: Number(e.target.value) };
                                     setEditableData(prev => ({ ...prev, bonificaciones: newBonif }));
                                   }}
-                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-          >
-                                />
+                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
                               </div>
                             </div>
                           </div>
@@ -745,9 +741,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         type="date"
                         value={editableData.fechaEmisionFEIN || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, fechaEmisionFEIN: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
                     <div>
@@ -758,9 +752,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         type="date"
                         value={editableData.fechaPrimerPago || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, fechaPrimerPago: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
                     <div className="md:col-span-2">

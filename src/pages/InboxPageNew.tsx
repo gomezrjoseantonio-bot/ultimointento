@@ -438,9 +438,7 @@ const InboxPageNew: React.FC = () => {
               multiple
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
-            />
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
             <button
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
               >

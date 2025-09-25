@@ -447,9 +447,7 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 placeholder="Nombre de la entidad o persona"
                 value={form.counterparty}
                 onChange={(e) => handleInputChange('counterparty', e.target.value)}
-                className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-          >
-              />
+                className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm" />
             </div>
 
             {/* State */}

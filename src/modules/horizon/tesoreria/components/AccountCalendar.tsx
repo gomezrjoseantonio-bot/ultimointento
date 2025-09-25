@@ -292,9 +292,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
               placeholder="Buscar..."
               value={localSearchText}
               onChange={(e) => setLocalSearchText(e.target.value)}
-              className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm "
-          >
-            />
+              className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm " />
           </div>
           
           <button

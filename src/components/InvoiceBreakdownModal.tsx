@@ -411,9 +411,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                   type="checkbox"
                   checked={breakdown.menorCuantiaActivated}
                   onChange={(e) => setBreakdown(prev => ({ ...prev, menorCuantiaActivated: e.target.checked }))}
-                  className="rounded border-gray-300"
-          >
-                />
+                  className="rounded border-gray-300" />
                 <span className="text-sm text-gray-700">
                   Menor cuantía → R&C (≤ 300€)
                 </span>
@@ -442,9 +440,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     max="100"
                     value={percentageDistribution.mejora}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mejora: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
-                  />
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">R&C (%)</label>
@@ -454,9 +450,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     max="100"
                     value={percentageDistribution.reparacionConservacion}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, reparacionConservacion: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
-                  />
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Mobiliario (%)</label>
@@ -466,9 +460,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     max="100"
                     value={percentageDistribution.mobiliario}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mobiliario: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
-                  />
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-600">
@@ -663,9 +655,7 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
             step="0.01"
             value={item.baseAmount.toFixed(2)}
             onChange={(e) => onUpdate({ baseAmount: parseFloat(e.target.value) || 0 })}
-            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
-          />
+            className="w-full px-2 py-1 border border-gray-300 rounded text-sm" />
         </div>
         <div>
           <label className="block text-xs text-gray-600 mb-1">IVA (%)</label>

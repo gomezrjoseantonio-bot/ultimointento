@@ -158,9 +158,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
               placeholder="Buscar inquilino..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-          >
-            />
+              className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" />
           </div>
 
           {/* Status Filter */}

@@ -346,9 +346,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                   type="checkbox"
                   checked={Boolean(value)}
                   onChange={(e) => handleFieldChange(fieldDef.field, e.target.checked)}
-                  className="mr-2"
-          >
-                />
+                  className="mr-2" />
                 <span className="text-sm text-gray-600">Sí</span>
               </label>
             )}

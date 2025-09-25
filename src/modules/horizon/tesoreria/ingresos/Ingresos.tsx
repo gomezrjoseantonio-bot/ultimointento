@@ -186,9 +186,7 @@ const Ingresos: React.FC = () => {
                 placeholder="Buscar por proveedor o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-              />
+                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
           </div>
 

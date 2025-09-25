@@ -248,9 +248,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                     setFormData(prev => ({ ...prev, daysInYear: days.toString() }));
                   }
                 }}
-                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-          >
-              />
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" />
             </div>
 
             <div>
@@ -264,9 +262,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.daysInYear}
                 onChange={(e) => setFormData(prev => ({ ...prev, daysInYear: e.target.value }))}
                 placeholder="365"
-                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-          >
-              />
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" />
               <p className="text-xs text-neutral-500 mt-1">
                 Solo si la mejora es del mismo año
               </p>
@@ -281,9 +277,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.providerNIF}
                 onChange={(e) => setFormData(prev => ({ ...prev, providerNIF: e.target.value }))}
                 placeholder="12345678Z"
-                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-          >
-              />
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" />
             </div>
 
             <div className="md:col-span-2 lg:col-span-1">

@@ -164,9 +164,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   type="date"
                   value={fechaAmortizacion}
                   onChange={(e) => setFechaAmortizacion(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" />
               </div>
             </div>
 

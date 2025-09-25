@@ -184,9 +184,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               placeholder="Buscar por nombre, proveedor o tipo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-navy-600 focus:ring-2 focus:ring-navy-200"
-          >
-            />
+              className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-navy-600 focus:ring-2 focus:ring-navy-200" />
           </div>
 
           <select
@@ -299,9 +297,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               type="checkbox"
               checked={filteredDocuments.length > 0 && selectedDocs.length === filteredDocuments.length}
               onChange={handleSelectAll}
-              className="mr-3 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
-          >
-            />
+              className="mr-3 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600" />
             <span className="text-sm text-neutral-700">
               Seleccionar todos ({filteredDocuments.length})
             </span>
@@ -338,9 +334,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                     e.stopPropagation();
                     handleSelectDocument(doc.id, e.target.checked);
                   }}
-                  className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
-          >
-                />
+                  className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600" />
 
                 {/* Document thumbnail/icon */}
                 <div className="flex-shrink-0">
@@ -348,9 +342,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                     <img 
                       src={doc.thumbnail} 
                       alt={doc.filename}
-                      className="w-12 h-12 object-cover border border-neutral-200"
-          >
-                    />
+                      className="w-12 h-12 object-cover border border-neutral-200" />
                   ) : (
                     <div className="w-12 h-12 bg-neutral-100 border border-neutral-200 flex items-center justify-center">
                       {getDocumentIcon(doc.documentType)}

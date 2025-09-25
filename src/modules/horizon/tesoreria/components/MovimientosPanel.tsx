@@ -377,9 +377,7 @@ const MovimientosPanel: React.FC = () => {
             placeholder="Buscar por descripción o contraparte..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-          />
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
       </div>
 
@@ -442,9 +440,7 @@ const MovimientosPanel: React.FC = () => {
                   type="date"
                   value={newMovement.date}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </div>
               
               <div>
@@ -474,9 +470,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.description}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Descripción del movimiento"
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </div>
               
               <div>
@@ -489,9 +483,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.amount}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </div>
               
               <div>
@@ -503,9 +495,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.counterparty}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, counterparty: e.target.value }))}
                   placeholder="Nombre de la entidad o persona"
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </div>
             </div>
             

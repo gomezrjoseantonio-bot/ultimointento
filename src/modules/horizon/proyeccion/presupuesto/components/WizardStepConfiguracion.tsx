@@ -183,9 +183,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="text"
                     value={line.description}
                     onChange={(e) => updateLine(index, 'description', e.target.value)}
-                    className="btn-secondary-horizon block w-full px-3 py-2 "
-          >
-                  />
+                    className="btn-secondary-horizon block w-full px-3 py-2 " />
                   
                   <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
                     Categoría fiscal

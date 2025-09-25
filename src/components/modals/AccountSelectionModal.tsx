@@ -77,11 +77,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity" 
-          >
-          style={{ backgroundColor: 'rgba(156, 163, 175, 0.1)' }}
-          onClick={handleCancel}
-        />
+          className="fixed inset-0 transition-opacity" />
 
         {/* Modal panel */}
         <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">

@@ -863,9 +863,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     id="prorratearPrimerPeriodo"
                     checked={prorratearPrimerPeriodo}
                     onChange={(e) => setProrratearPrimerPeriodo(e.target.checked)}
-                    className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue"
-          >
-                  />
+                    className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue" />
                   <label htmlFor="prorratearPrimerPeriodo" className="text-sm text-gray-700">
                     Prorratear primer período por días reales
                   </label>
@@ -877,9 +875,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     id="cobroMesVencido"
                     checked={cobroMesVencido}
                     onChange={(e) => setCobroMesVencido(e.target.checked)}
-                    className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue"
-          >
-                  />
+                    className="rounded border-gray-300 text-atlas-blue focus:ring-atlas-blue" />
                   <label htmlFor="cobroMesVencido" className="text-sm text-gray-700">
                     Cobro a mes vencido (devengo mes t, cargo mes t+1)
                   </label>

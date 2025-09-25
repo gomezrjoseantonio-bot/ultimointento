@@ -395,9 +395,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="checkbox"
                     checked={formData.ivaIncluido}
                     onChange={(e) => updateField('ivaIncluido', e.target.checked)}
-                    className="mr-2"
-          >
-                  />
+                    className="mr-2" />
                   <span className="text-sm font-medium text-gray-700">IVA Incluido</span>
                 </label>
               </div>

@@ -143,9 +143,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
               type="radio"
               checked={mode === 'by_lines'}
               onChange={() => setMode('by_lines')}
-              className="mr-2"
-          >
-            />
+              className="mr-2" />
             Por líneas de factura
           </label>
           <label className="flex items-center">
@@ -153,9 +151,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
               type="radio"
               checked={mode === 'manual'}
               onChange={() => setMode('manual')}
-              className="mr-2"
-          >
-            />
+              className="mr-2" />
             Reparto manual
           </label>
         </div>
@@ -225,7 +221,6 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
                       value={percentages.mejora.toFixed(1)}
                       onChange={(e) => handlePercentageUpdate('mejora', parseFloat(e.target.value) || 0)}
                       className="w-16 px-2 py-1 text-sm border rounded text-right"
-                      >
                       min="0"
                       max="100"
                       step="0.1"

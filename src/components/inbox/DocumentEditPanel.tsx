@@ -383,9 +383,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.proveedor_nombre}
                     onChange={(e) => handleFieldChange('proveedor_nombre', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
 
                 <div>
@@ -396,9 +394,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.proveedor_nif}
                     onChange={(e) => handleFieldChange('proveedor_nif', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
               </div>
             )}
@@ -419,9 +415,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       type="date"
                       value={editableFields.fecha_emision}
                       onChange={(e) => handleFieldChange('fecha_emision', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
                   
                   <div>
@@ -432,9 +426,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       type="date"
                       value={editableFields.fecha_cargo}
                       onChange={(e) => handleFieldChange('fecha_cargo', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
                 </div>
 
@@ -448,9 +440,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.importe_total}
                       onChange={(e) => handleFieldChange('importe_total', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
                   
                   <div>
@@ -502,9 +492,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     type="text"
                     value={editableFields.cups}
                     onChange={(e) => handleFieldChange('cups', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
 
                 <div>
@@ -539,9 +527,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.mejora}
                       onChange={(e) => handleFieldChange('mejora', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
 
                   <div>
@@ -553,9 +539,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.mobiliario}
                       onChange={(e) => handleFieldChange('mobiliario', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
 
                   <div>
@@ -567,9 +551,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       step="0.01"
                       value={editableFields.reparacion_conservacion}
                       onChange={(e) => handleFieldChange('reparacion_conservacion', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
                   </div>
 
                   <div className="text-sm text-gray-600 mt-2">

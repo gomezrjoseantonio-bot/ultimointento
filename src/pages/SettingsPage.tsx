@@ -238,9 +238,7 @@ const SettingsPage: React.FC = () => {
                   value={formData.canonicalName}
                   onChange={(e) => setFormData({...formData, canonicalName: e.target.value})}
                   placeholder="ej. ENDESA"
-                  className="btn-secondary-horizon w-full "
-          >
-                />
+                  className="btn-secondary-horizon w-full " />
               </div>
               
               <div>
@@ -252,9 +250,7 @@ const SettingsPage: React.FC = () => {
                   value={formData.nif}
                   onChange={(e) => setFormData({...formData, nif: e.target.value})}
                   placeholder="ej. A81948077"
-                  className="btn-secondary-horizon w-full "
-          >
-                />
+                  className="btn-secondary-horizon w-full " />
               </div>
               
               <div>
@@ -266,9 +262,7 @@ const SettingsPage: React.FC = () => {
                   onChange={(e) => setFormData({...formData, aliases: e.target.value})}
                   placeholder="ej. Endesa Energía XXI, Endesa S.A., ENDESA ENERGIA"
                   rows={3}
-                  className="btn-secondary-horizon w-full "
-          >
-                />
+                  className="btn-secondary-horizon w-full " />
               </div>
             </div>
             
@@ -315,9 +309,7 @@ const SettingsPage: React.FC = () => {
               max="1" 
               step="0.05" 
               defaultValue="0.8"
-              className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
-          >
-            />
+              className="w-full h-2 bg-gray-200 appearance-none cursor-pointer" />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>50%</span>
               <span>80%</span>
@@ -345,11 +337,7 @@ const SettingsPage: React.FC = () => {
             <label className="relative inline-flex items-center cursor-pointer">
               <input 
                 type="checkbox" 
-                className="sr-only peer" 
-          >
-                checked={autoSaveConfig.enabled}
-                onChange={handleToggleAutoSave}
-              />
+                className="sr-only peer" />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
             </label>
           </div>
@@ -458,9 +446,7 @@ const SettingsPage: React.FC = () => {
                       factura: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
-          >
-                />
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer" />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.factura * 100)}%
                 </div>
@@ -479,9 +465,7 @@ const SettingsPage: React.FC = () => {
                       extracto: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
-          >
-                />
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer" />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.extracto * 100)}%
                 </div>
@@ -500,9 +484,7 @@ const SettingsPage: React.FC = () => {
                       contrato: parseFloat(e.target.value) 
                     }
                   })}
-                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer"
-          >
-                />
+                  className="w-full h-2 bg-gray-200 appearance-none cursor-pointer" />
                 <div className="text-center text-xs text-gray-500 mt-1">
                   {Math.round(autoSaveConfig.confidenceThresholds.contrato * 100)}%
                 </div>

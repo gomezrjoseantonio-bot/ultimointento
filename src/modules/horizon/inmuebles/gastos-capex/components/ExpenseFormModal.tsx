@@ -364,9 +364,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 id="taxIncluded"
                 checked={formData.taxIncluded}
                 onChange={(e) => setFormData(prev => ({ ...prev, taxIncluded: e.target.checked }))}
-                className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-gray-300 rounded"
-          >
-              />
+                className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-gray-300 rounded" />
               <label htmlFor="taxIncluded" className="ml-2 text-sm text-gray-700">
                 Impuesto incluido
               </label>

@@ -306,9 +306,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <img 
             src={url} 
             alt={document.filename} 
-            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg"
-          >
-          />
+            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg" />
         </div>
       );
     }

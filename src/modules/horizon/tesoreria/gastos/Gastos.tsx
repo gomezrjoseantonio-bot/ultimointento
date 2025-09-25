@@ -207,9 +207,7 @@ const Gastos: React.FC = () => {
                 placeholder="Buscar por proveedor, categoría o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-              />
+                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
           </div>
 
@@ -399,9 +397,7 @@ const Gastos: React.FC = () => {
                         min="0"
                         value={formData.base}
                         onChange={(e) => setFormData(prev => ({ ...prev, base: parseFloat(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
                     <div>
@@ -414,9 +410,7 @@ const Gastos: React.FC = () => {
                         min="0"
                         value={formData.iva}
                         onChange={(e) => setFormData(prev => ({ ...prev, iva: parseFloat(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
                   </div>
 

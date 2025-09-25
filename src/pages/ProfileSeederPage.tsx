@@ -205,9 +205,7 @@ const ProfileSeederPage: React.FC = () => {
             multiple
             accept=".csv,.xlsx,.xls"
             onChange={handleFileUpload}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
-          />
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         </div>
 
         {files.length > 0 && (

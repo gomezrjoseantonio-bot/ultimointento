@@ -247,9 +247,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <embed
             src={previewContent}
             type="application/pdf"
-            className="w-full h-full"
-          >
-          />
+            className="w-full h-full" />
         </div>
       );
     }
@@ -260,9 +258,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <img 
             src={previewContent} 
             alt={filename}
-            className="w-full h-auto max-h-96 object-contain"
-          >
-          />
+            className="w-full h-auto max-h-96 object-contain" />
         </div>
       );
     }

@@ -453,9 +453,7 @@ const AutomatizacionesPanel: React.FC = () => {
                   value={newRule.name || ''}
                   onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="ej. Alerta saldo mínimo cuenta principal"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy" />
               </div>
               
               <div>
@@ -502,9 +500,7 @@ const AutomatizacionesPanel: React.FC = () => {
                     value={newRule.threshold || ''}
                     onChange={(e) => setNewRule(prev => ({ ...prev, threshold: parseFloat(e.target.value) }))}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy" />
                 </div>
               )}
               
@@ -520,9 +516,7 @@ const AutomatizacionesPanel: React.FC = () => {
                       value={newRule.expectedAmount || ''}
                       onChange={(e) => setNewRule(prev => ({ ...prev, expectedAmount: parseFloat(e.target.value) }))}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -532,9 +526,7 @@ const AutomatizacionesPanel: React.FC = () => {
                       type="date"
                       value={newRule.expectedDate || ''}
                       onChange={(e) => setNewRule(prev => ({ ...prev, expectedDate: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy"
-          >
-                    />
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-navy" />
                   </div>
                 </>
               )}
@@ -565,9 +557,7 @@ const AutomatizacionesPanel: React.FC = () => {
                   id="isActive"
                   checked={newRule.isActive ?? true}
                   onChange={(e) => setNewRule(prev => ({ ...prev, isActive: e.target.checked }))}
-                  className="rounded border-gray-300 text-brand-navy focus:ring-brand-navy"
-          >
-                />
+                  className="rounded border-gray-300 text-brand-navy focus:ring-brand-navy" />
                 <label htmlFor="isActive" className="text-sm text-gray-700">
                   Activar regla inmediatamente
                 </label>

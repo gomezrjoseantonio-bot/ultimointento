@@ -265,9 +265,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
               placeholder="Buscar por alias o IBAN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-atlas-blue focus:border-atlas-blue"
-          >
-            />
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-atlas-blue focus:border-atlas-blue" />
           </div>
         </div>
       </div>
@@ -480,9 +478,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             ...prev, 
                             titular: { ...prev.titular, nombre: e.target.value }
                           }))}
-                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
-          >
-                        />
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm" />
                       </div>
                       <div>
                         <label htmlFor="nif" className="block text-xs font-medium text-text-gray mb-1">
@@ -496,9 +492,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             ...prev, 
                             titular: { ...prev.titular, nif: e.target.value }
                           }))}
-                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
-          >
-                        />
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm" />
                       </div>
                     </div>
                   </div>

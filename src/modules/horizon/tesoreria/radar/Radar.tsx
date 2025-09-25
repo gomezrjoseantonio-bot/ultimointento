@@ -298,9 +298,7 @@ const Radar: React.FC = () => {
               type="checkbox"
               checked={excludePersonal}
               onChange={handleExcludePersonalToggle}
-              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
-          >
-            />
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2" />
           </div>
         </div>
 

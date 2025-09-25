@@ -437,9 +437,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                         <img 
                           src={getLogoFromStorage(account.id!) || account.logo_url} 
                           alt={`Logo ${account.bank}`}
-                          className="w-full h-full object-cover"
-          >
-                        />
+                          className="w-full h-full object-cover" />
                       ) : (
                         <Banknote className="w-6 h-6 text-gray-500" style={{ strokeWidth: 1.5 }} />
                       )}
@@ -582,9 +580,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                       <img
                         src={formData.logoUrl}
                         alt="Logo preview"
-                        className="w-full h-full object-cover"
-          >
-                      />
+                        className="w-full h-full object-cover" />
                     </div>
                   )}
                   <button
@@ -604,9 +600,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     const file = e.target.files?.[0];
                     if (file) handleLogoUpload(file);
                   }}
-                  className="hidden"
-          >
-                />
+                  className="hidden" />
                 <p className="text-xs text-text-gray mt-1">
                   PNG/JPG, máximo 2MB
                 </p>

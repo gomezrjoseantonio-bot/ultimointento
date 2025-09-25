@@ -443,9 +443,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               value={formData.financialData?.issueDate || ''}
               onChange={(e) => handleFinancialDataChange('issueDate', e.target.value)}
               aria-describedby="issue-date-help"
-              className="btn-secondary-horizon w-full "
-          >
-            />
+              className="btn-secondary-horizon w-full " />
             <div id="issue-date-help" className="sr-only">
               Seleccione la fecha de emisión del documento
             </div>

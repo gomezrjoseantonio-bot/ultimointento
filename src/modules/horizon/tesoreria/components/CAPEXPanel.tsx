@@ -186,9 +186,7 @@ const CAPEXPanel: React.FC = () => {
             placeholder="Buscar por contraparte, inmueble o tipo..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-          />
+            className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
       </div>
 
@@ -376,9 +374,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.contraparte}
                     onChange={(e) => setFormData({...formData, contraparte: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
               </div>
 
@@ -392,9 +388,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.fecha_emision}
                     onChange={(e) => setFormData({...formData, fecha_emision: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
 
                 <div>
@@ -407,9 +401,7 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.total}
                     onChange={(e) => setFormData({...formData, total: parseFloat(e.target.value) || 0})}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
               </div>
 
@@ -450,9 +442,7 @@ const CAPEXPanel: React.FC = () => {
                     max="50"
                     value={formData.anos_amortizacion}
                     onChange={(e) => setFormData({...formData, anos_amortizacion: parseInt(e.target.value) || 10})}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
                 </div>
               </div>
 

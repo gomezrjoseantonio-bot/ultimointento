@@ -236,9 +236,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   value="percentage"
                   checked={splitMethod === 'percentage'}
                   onChange={(e) => setSplitMethod(e.target.value as 'percentage')}
-                  className="mr-2 h-4 w-4 text-primary-600"
-          >
-                />
+                  className="mr-2 h-4 w-4 text-primary-600" />
                 <Percent className="w-4 h-4 mr-1" />
                 Por porcentaje
               </label>
@@ -248,9 +246,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   value="amount"
                   checked={splitMethod === 'amount'}
                   onChange={(e) => setSplitMethod(e.target.value as 'amount')}
-                  className="mr-2 h-4 w-4 text-primary-600"
-          >
-                />
+                  className="mr-2 h-4 w-4 text-primary-600" />
                 <Euro className="w-4 h-4 mr-1" />
                 Por importe
               </label>
@@ -311,9 +307,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('mejora', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -327,9 +321,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       mejora: { ...prev.mejora, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200" />
                 </div>
               </div>
             </div>
@@ -372,9 +364,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('mobiliario', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -388,9 +378,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       mobiliario: { ...prev.mobiliario, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200" />
                 </div>
               </div>
             </div>
@@ -433,9 +421,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                         handleAmountChange('reparacionConservacion', value);
                       }
                     }}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -449,9 +435,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       ...prev,
                       reparacionConservacion: { ...prev.reparacionConservacion, description: e.target.value }
                     }))}
-                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
-          >
-                  />
+                    className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200" />
                 </div>
               </div>
             </div>
@@ -523,9 +507,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
               onChange={(e) => setSplitData(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Información adicional sobre el reparto..."
               rows={3}
-              className="btn-secondary-horizon w-full "
-          >
-            />
+              className="btn-secondary-horizon w-full " />
           </div>
         </div>
 

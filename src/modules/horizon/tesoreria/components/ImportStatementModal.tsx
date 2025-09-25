@@ -213,9 +213,7 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
               type="file"
               accept=".xls,.xlsx,.csv"
               onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
-            />
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
             
             {selectedFile ? (
               <div className="space-y-2">

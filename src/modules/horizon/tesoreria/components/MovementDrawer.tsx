@@ -70,9 +70,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         <MovementStatusChip 
           status={status === 'sin_match' ? 'no_planificado' : 'confirmado'}
           movementType={movementType}
-          className="ml-2"
-          >
-        />
+          className="ml-2" />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
           <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
@@ -234,9 +232,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     ...editedMovement,
                     description: e.target.value
                   })}
-                  className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-          >
-                />
+                  className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent" />
               ) : (
                 <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                   {movement.description || 'Sin descripción'}
@@ -258,9 +254,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       ...editedMovement,
                       counterparty: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent" />
                 ) : (
                   <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                     {movement.counterparty}

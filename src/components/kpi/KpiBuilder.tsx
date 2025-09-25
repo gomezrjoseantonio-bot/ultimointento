@@ -487,7 +487,6 @@ const KpiBuilder: React.FC = () => {
               onChange={(e) => handleParameterChange('marketValue', e.target.value ? parseFloat(e.target.value) : undefined)}
               placeholder="Si está, cap rate usa este valor"
               className="block w-64 rounded-md border-neutral-300 text-sm focus:border-brand-navy focus:ring-brand-navy"
-          >
             />
             <p className="text-xs text-neutral-500 mt-1">
               Si no se especifica, cap rate usará la base de coste seleccionada

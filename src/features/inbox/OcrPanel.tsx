@@ -744,9 +744,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     type="date"
                     value={editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, paymentDate: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600" />
                 </div>
               </div>
             </section>

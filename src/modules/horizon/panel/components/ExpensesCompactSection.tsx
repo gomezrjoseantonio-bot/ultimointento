@@ -152,11 +152,7 @@ const ExpensesCompactSection: React.FC<ExpensesCompactSectionProps> = ({ filters
               {/* Budget marker if exists */}
               {category.budget && (
                 <div 
-                  className="absolute top-0 w-0.5 h-full bg-hz-neutral-700"
-                  >
-                  style={{ left: `${getBarWidth(category.budget)}%` }}
-                  title={`Presupuesto: ${formatCurrency(category.budget)}`}
-                />
+                  className="absolute top-0 w-0.5 h-full bg-hz-neutral-700" />
               )}
             </div>
             

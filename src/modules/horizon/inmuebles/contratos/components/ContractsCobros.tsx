@@ -427,9 +427,7 @@ const ContractsCobros: React.FC = () => {
                   type="text"
                   value={formatEuro(paymentModalData.expectedAmount)}
                   disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-          >
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500" />
               </div>
 
               <div>

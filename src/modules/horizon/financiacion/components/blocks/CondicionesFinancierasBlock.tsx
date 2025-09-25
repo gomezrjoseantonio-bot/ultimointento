@@ -141,9 +141,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               onChange={(e) => updateFormData({ carenciaMeses: parseInt(e.target.value) || undefined })}
               placeholder="6"
               min="1"
-              className="w-32 border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
-            />
+              className="w-32 border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue" />
           </div>
         )}
       </div>
@@ -406,9 +404,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
                     onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
                     placeholder="4,20"
-                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
-          >
-                  />
+                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue" />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
                   </div>
@@ -426,9 +422,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                     value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
                     onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
                     placeholder="0,85"
-                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
-          >
-                  />
+                    className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue" />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">%</span>
                   </div>
@@ -484,9 +478,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionApertura ? formatPercentage(formData.comisionApertura) : ''}
                 onChange={(e) => updateFormData({ comisionApertura: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
-          >
-              />
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8" />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>
               </div>
@@ -504,9 +496,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : ''}
                 onChange={(e) => updateFormData({ comisionMantenimiento: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
-          >
-              />
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8" />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">€</span>
               </div>
@@ -524,9 +514,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 value={formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : ''}
                 onChange={(e) => updateFormData({ comisionAmortizacionAnticipada: parseNumber(e.target.value) || undefined })}
                 placeholder="0,00"
-                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
-          >
-              />
+                className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8" />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">%</span>
               </div>

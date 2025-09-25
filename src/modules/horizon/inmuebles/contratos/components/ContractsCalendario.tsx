@@ -372,9 +372,7 @@ const ContractsCalendario: React.FC = () => {
                                   type="text"
                                   value={editForm.expectedAmount}
                                   onChange={(e) => setEditForm(prev => ({ ...prev, expectedAmount: e.target.value }))}
-                                  className="w-24 px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
-          >
-                                />
+                                  className="w-24 px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy" />
                               ) : (
                                 <span className="font-medium text-neutral-900">
                                   {formatEuro(entry.expectedAmount)}
@@ -398,9 +396,7 @@ const ContractsCalendario: React.FC = () => {
                                     type="text"
                                     value={editForm.notes}
                                     onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
-                                    className="w-full px-1 py-0 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
-          >
-                                  />
+                                    className="w-full px-1 py-0 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy" />
                                 ) : (
                                   entry.notes
                                 )}

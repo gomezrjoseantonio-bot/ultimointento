@@ -338,9 +338,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           value={account.id}
                           checked={selectedAccountId === account.id}
                           onChange={(e) => setSelectedAccountId(Number(e.target.value))}
-                          className="text-neutral-600 focus:ring-neutral-500"
-          >
-                        />
+                          className="text-neutral-600 focus:ring-neutral-500" />
                         <div className="flex-1">
                           <div className="font-medium">{account.name}</div>
                           <div className="text-sm text-neutral-500">
@@ -360,9 +358,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           setSelectedAccountId('new');
                           setShowCreateAccount(true);
                         }}
-                        className="text-neutral-600 focus:ring-neutral-500"
-          >
-                      />
+                        className="text-neutral-600 focus:ring-neutral-500" />
                       <div className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
                         <span className="font-medium">Crear nueva cuenta</span>
@@ -448,9 +444,7 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                       type="checkbox"
                       checked={skipDuplicates}
                       onChange={(e) => setSkipDuplicates(e.target.checked)}
-                      className="rounded text-neutral-600 focus:ring-neutral-500"
-          >
-                    />
+                      className="rounded text-neutral-600 focus:ring-neutral-500" />
                     <span>Omitir duplicados (recomendado)</span>
                   </label>
                   <p className="text-sm text-neutral-500 mt-1">
