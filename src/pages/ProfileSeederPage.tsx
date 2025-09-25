@@ -206,6 +206,7 @@ const ProfileSeederPage: React.FC = () => {
             accept=".csv,.xlsx,.xls"
             onChange={handleFileUpload}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          >
           />
         </div>
 
@@ -315,6 +316,7 @@ const ProfileSeederPage: React.FC = () => {
                       bankKey: e.target.value
                     })}
                     className="w-full border border-neutral-300 px-3 py-2 text-sm"
+                    >
                     placeholder="Ej: ING, BBVA, Santander..."
                   />
                 </div>
@@ -347,13 +349,15 @@ const ProfileSeederPage: React.FC = () => {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={addToRegistry}
-                  className="flex items-center gap-2 px-4 py-2 bg-success-600 >
+                  className="flex items-center gap-2 px-4 py-2 bg-success-600"
+              >
                   <Plus className="w-4 h-4" />
                   Añadir al registro
                 </button>
                 <button
                   onClick={() => setShowMapping(false)}
-                  className="px-4 py-2 border border-neutral-300 >
+                  className="px-4 py-2 border border-neutral-300"
+                  >
                   Cancelar
                 </button>
               </div>

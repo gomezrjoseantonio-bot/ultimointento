@@ -685,6 +685,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     value={editableServiceFields.serviceAddress ?? aligned.service.serviceAddress ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, serviceAddress: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
+                    >
                     placeholder="Dirección de instalación o suministro"
                   />
                 </div>
@@ -695,6 +696,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     value={editableServiceFields.supplyPointId ?? aligned.service.supplyPointId ?? ''}
                     onChange={(e) => setEditableServiceFields(prev => ({ ...prev, supplyPointId: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
+                    >
                     placeholder="ES****..."
                   />
                 </div>
@@ -728,6 +730,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     value={editablePaymentFields.iban ?? aligned.payment.iban ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, iban: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
+                    >
                     placeholder="ES** **** **** ** **********"
                     pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
                   />
@@ -744,6 +747,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     value={editablePaymentFields.paymentDate ?? aligned.payment.paymentDate ?? ''}
                     onChange={(e) => setEditablePaymentFields(prev => ({ ...prev, paymentDate: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-navy-600 focus:border-navy-600"
+          >
                   />
                 </div>
               </div>
@@ -887,6 +891,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
               <button
                 onClick={() => setShowInvoiceBreakdown?.(true)}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-navy-700 text-white hover:bg-navy-800 transition-colors"
+                >
                 title="Desglosar factura en Mejora, R&C y Mobiliario"
               >
                 Desglose reforma

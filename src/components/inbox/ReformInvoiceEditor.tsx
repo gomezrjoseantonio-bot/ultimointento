@@ -237,6 +237,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   checked={splitMethod === 'percentage'}
                   onChange={(e) => setSplitMethod(e.target.value as 'percentage')}
                   className="mr-2 h-4 w-4 text-primary-600"
+          >
                 />
                 <Percent className="w-4 h-4 mr-1" />
                 Por porcentaje
@@ -248,6 +249,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                   checked={splitMethod === 'amount'}
                   onChange={(e) => setSplitMethod(e.target.value as 'amount')}
                   className="mr-2 h-4 w-4 text-primary-600"
+          >
                 />
                 <Euro className="w-4 h-4 mr-1" />
                 Por importe
@@ -310,6 +312,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       }
                     }}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
+          >
                   />
                 </div>
                 <div>
@@ -325,6 +328,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       mejora: { ...prev.mejora, description: e.target.value }
                     }))}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-success-500 focus:ring-2 focus:ring-success-200"
+          >
                   />
                 </div>
               </div>
@@ -369,6 +373,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       }
                     }}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          >
                   />
                 </div>
                 <div>
@@ -384,6 +389,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       mobiliario: { ...prev.mobiliario, description: e.target.value }
                     }))}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          >
                   />
                 </div>
               </div>
@@ -428,6 +434,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       }
                     }}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+          >
                   />
                 </div>
                 <div>
@@ -443,6 +450,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
                       reparacionConservacion: { ...prev.reparacionConservacion, description: e.target.value }
                     }))}
                     className="w-full border border-neutral-200 px-3 py-2 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+          >
                   />
                 </div>
               </div>
@@ -516,6 +524,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
               placeholder="Información adicional sobre el reparto..."
               rows={3}
               className="btn-secondary-horizon w-full "
+          >
             />
           </div>
         </div>

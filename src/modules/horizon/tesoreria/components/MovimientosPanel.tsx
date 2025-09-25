@@ -314,8 +314,7 @@ const MovimientosPanel: React.FC = () => {
             className={`flex items-center gap-2 px-4 py-2 border ${
               showReconciliation 
                 ? 'bg-primary-50 border-primary-200 text-primary-700' 
-                : 'border-gray-300 text-gray-700
-            }`}
+                : 'border-gray-300 text-gray-700'            }`}
           >
             <Link className="w-4 h-4" />
             Conciliación
@@ -379,6 +378,7 @@ const MovimientosPanel: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-64 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
           />
         </div>
       </div>
@@ -443,6 +443,7 @@ const MovimientosPanel: React.FC = () => {
                   value={newMovement.date}
                   onChange={(e) => setNewMovement(prev => ({ ...prev, date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                 />
               </div>
               
@@ -474,6 +475,7 @@ const MovimientosPanel: React.FC = () => {
                   onChange={(e) => setNewMovement(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Descripción del movimiento"
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                 />
               </div>
               
@@ -488,6 +490,7 @@ const MovimientosPanel: React.FC = () => {
                   onChange={(e) => setNewMovement(prev => ({ ...prev, amount: e.target.value }))}
                   placeholder="0.00"
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                 />
               </div>
               
@@ -501,6 +504,7 @@ const MovimientosPanel: React.FC = () => {
                   onChange={(e) => setNewMovement(prev => ({ ...prev, counterparty: e.target.value }))}
                   placeholder="Nombre de la entidad o persona"
                   className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
+          >
                 />
               </div>
             </div>
@@ -651,6 +655,7 @@ const MovimientosPanel: React.FC = () => {
                         <button
                           onClick={() => handleEditMovement(movement)}
                           className="text-primary-600 hover:text-primary-800"
+                          >
                           title="Editar movimiento"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -658,6 +663,7 @@ const MovimientosPanel: React.FC = () => {
                         <button
                           onClick={() => setShowDeleteConfirm(movement)}
                           className="text-error-600 hover:text-error-800"
+                          >
                           title="Eliminar movimiento"
                         >
                           <Trash2 className="w-4 h-4" />

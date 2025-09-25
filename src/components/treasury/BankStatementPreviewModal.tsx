@@ -558,7 +558,8 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
             <div className="flex space-x-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 >
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300"
+                >
                 Cancelar
               </button>
               <button

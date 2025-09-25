@@ -444,11 +444,13 @@ const InboxPageV2: React.FC = () => {
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.csv,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="hidden"
+              >
               id="file-upload"
             />
             <label
               htmlFor="file-upload"
               className="flex items-center gap-2 px-3 sm:px-4 py-2 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
+              >
               style={{ backgroundColor: '#0A2A57' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0C356B'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0A2A57'}
@@ -470,6 +472,7 @@ const InboxPageV2: React.FC = () => {
               type="text"
               placeholder="Buscar por proveedor, importe, IBAN, inmueble, ID..."
               className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              >
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -502,6 +505,7 @@ const InboxPageV2: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <select
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 sm:flex-none"
+          >
               defaultValue=""
             >
               <option value="">Tipos</option>
@@ -514,6 +518,7 @@ const InboxPageV2: React.FC = () => {
             
             <select
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 sm:flex-none"
+              >
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
             >
@@ -600,6 +605,7 @@ const InboxPageV2: React.FC = () => {
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer"
+                          >
                           style={{ backgroundColor: '#EAF1F8', color: '#0A2A57' }}
                         >
                           {doc.destino}
@@ -619,6 +625,7 @@ const InboxPageV2: React.FC = () => {
                       <div className="flex gap-1 sm:gap-2">
                         <button 
                           className="text-primary-600 hover:text-primary-900"
+          >
                           onClick={(e) => {
                             e.stopPropagation();
                             handleView(doc);
@@ -629,6 +636,7 @@ const InboxPageV2: React.FC = () => {
                         </button>
                         <button 
                           className="text-success-600 hover:text-success-900"
+          >
                           onClick={(e) => {
                             e.stopPropagation();
                             handleReprocess(doc);
@@ -639,6 +647,7 @@ const InboxPageV2: React.FC = () => {
                         </button>
                         <button 
                           className="text-error-600 hover:text-error-900"
+          >
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(doc);
@@ -729,6 +738,7 @@ const InboxPageV2: React.FC = () => {
                       </label>
                       <select 
                         className="w-full p-2 border border-yellow-300 rounded"
+                        >
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
                       >
@@ -743,6 +753,7 @@ const InboxPageV2: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
+                    >
                     style={{ backgroundColor: '#0A2A57' }}
                   >
                     Completar y archivar

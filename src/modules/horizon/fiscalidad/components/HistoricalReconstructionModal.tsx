@@ -187,6 +187,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               <div className="w-full bg-gray-200 h-3">
                 <div 
                   className="btn-primary-horizon h-3 transition-all duration-300"
+                  >
                   style={{ width: `${progress.percentage}%` }}
                 />
               </div>
