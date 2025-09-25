@@ -236,7 +236,6 @@ const PreferenciasDatos: React.FC = () => {
                         checked={importMode === 'replace'}
                         onChange={(e) => setImportMode(e.target.value as 'replace')}
                         className="mr-2"
-          >
                       />
                       <span className="text-sm text-neutral-700">
                         <strong>Reemplazar todo</strong> - Borra los datos actuales y los sustituye por los del snapshot
@@ -249,7 +248,6 @@ const PreferenciasDatos: React.FC = () => {
                         checked={importMode === 'merge'}
                         onChange={(e) => setImportMode(e.target.value as 'merge')}
                         className="mr-2"
-          >
                       />
                       <span className="text-sm text-neutral-700">
                         <strong>Fusionar</strong> - Actualiza/añade los datos del snapshot respetando los existentes
@@ -265,7 +263,6 @@ const PreferenciasDatos: React.FC = () => {
                     onChange={handleImportSnapshot}
                     disabled={isImporting}
                     className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200 disabled:opacity-50"
-          >
                   />
                   {isImporting && (
                     <span className="text-sm text-neutral-600">Importando...</span>
