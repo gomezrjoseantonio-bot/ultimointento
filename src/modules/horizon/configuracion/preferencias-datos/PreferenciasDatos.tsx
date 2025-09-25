@@ -362,7 +362,6 @@ const PreferenciasDatos: React.FC = () => {
                       onChange={(e) => setAtlasResetText(e.target.value)}
                       placeholder="Escribe: ELIMINAR DATOS LOCALES"
                       className="w-full p-2 border border-orange-300 rounded mb-4 text-sm"
-          >
                     />
                     <div className="flex gap-2">
                       <button
