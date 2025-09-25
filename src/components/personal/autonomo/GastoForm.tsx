@@ -113,9 +113,9 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="Ej: Compra ordenador portátil"
+            placeholder="Ej: Compra ordenador portátil"
             required
-            />
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -208,7 +208,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.porcentajeDeducible}
               onChange={(e) => setFormData(prev => ({ ...prev, porcentajeDeducible: parseInt(e.target.value) }))}
               className="flex-1"
-          >
             />
             <div className="flex items-center space-x-2">
               <input

@@ -191,7 +191,8 @@ const OtrosIngresosManager: React.FC = () => {
               const taxInfo = otrosIngresosService.getTaxImplications(ingreso);
               
               return (
-                <div key={ingreso.id} className="border p-4 <div className="flex items-center justify-between">
+                <div key={ingreso.id} className="border p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h5 className="font-medium text-gray-900">{ingreso.nombre}</h5>

@@ -259,7 +259,8 @@ const PlanesManager: React.FC = () => {
               const taxInfo = planesInversionService.getTaxImplications(plan);
               
               return (
-                <div key={plan.id} className="border p-4 <div className="flex items-center justify-between">
+                <div key={plan.id} className="border p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h5 className="font-medium text-gray-900">{plan.nombre}</h5>
