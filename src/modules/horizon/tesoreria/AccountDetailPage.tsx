@@ -285,9 +285,8 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
               ) : null}
               <div
                 className="w-full h-full bg-hz-neutral-300 rounded flex items-center justify-center font-medium text-hz-neutral-600"
-                >
-                style={{ display: account.logo_url ? 'none' : 'flex' }}
-              >
+            style={{ display: account.logo_url ? 'none' : 'flex' }}
+          >
                 {(account.bank || '').slice(0, 2).toUpperCase()}
               </div>
             </div>

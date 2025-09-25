@@ -263,9 +263,8 @@ const ContractsCalendario: React.FC = () => {
                             value={editForm.expectedAmount}
                             onChange={(e) => setEditForm(prev => ({ ...prev, expectedAmount: e.target.value }))}
                             className="w-32 px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
-                            >
-                            placeholder="1.200,00"
-                          />
+            placeholder="1.200,00"
+          />
                         ) : (
                           <span className="text-sm font-medium text-neutral-900">
                             {formatEuro(entry.expectedAmount)}
@@ -295,9 +294,8 @@ const ContractsCalendario: React.FC = () => {
                             value={editForm.notes}
                             onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
                             className="w-full px-2 py-1 text-sm border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy"
-                            >
-                            placeholder="Notas..."
-                          />
+            placeholder="Notas..."
+          />
                         ) : (
                           <span className="text-sm text-neutral-600">
                             {entry.notes || '—'}
@@ -310,17 +308,15 @@ const ContractsCalendario: React.FC = () => {
                             <button
                               onClick={saveEdit}
                               className="text-success-600 hover:text-success-800 transition-colors"
-                              >
-                              title="Guardar"
-                            >
+            title="Guardar"
+          >
                               <Save className="h-4 w-4" />
                             </button>
                             <button
                               onClick={cancelEdit}
                               className="text-neutral-600 hover:text-neutral-800 transition-colors"
-                              >
-                              title="Cancelar"
-                            >
+            title="Cancelar"
+          >
                               <X className="h-4 w-4" />
                             </button>
                           </div>
@@ -328,9 +324,8 @@ const ContractsCalendario: React.FC = () => {
                           <button
                             onClick={() => startEdit(entry)}
                             className="text-brand-navy hover:text-brand-navy/80 transition-colors"
-                            >
-                            title="Editar"
-                          >
+            title="Editar"
+          >
                             <Edit2 className="h-4 w-4" />
                           </button>
                         )}
@@ -418,17 +413,15 @@ const ContractsCalendario: React.FC = () => {
                                   <button
                                     onClick={saveEdit}
                                     className="text-success-600 hover:text-success-800 transition-colors"
-                                    >
-                                    title="Guardar"
-                                  >
+            title="Guardar"
+          >
                                     <Save className="h-4 w-4" />
                                   </button>
                                   <button
                                     onClick={cancelEdit}
                                     className="text-neutral-600 hover:text-neutral-800 transition-colors"
-                                    >
-                                    title="Cancelar"
-                                  >
+            title="Cancelar"
+          >
                                     <X className="h-4 w-4" />
                                   </button>
                                 </div>
@@ -436,9 +429,8 @@ const ContractsCalendario: React.FC = () => {
                                 <button
                                   onClick={() => startEdit(entry)}
                                   className="text-brand-navy hover:text-brand-navy/80 transition-colors"
-                                  >
-                                  title="Editar"
-                                >
+            title="Editar"
+          >
                                   <Edit2 className="h-4 w-4" />
                                 </button>
                               )}

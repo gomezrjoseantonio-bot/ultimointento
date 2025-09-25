@@ -307,9 +307,8 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
     return (
       <div 
         className="border overflow-hidden"
-          >
-        dangerouslySetInnerHTML={{ __html: previewContent }}
-      />
+            dangerouslySetInnerHTML={{ __html: previewContent }}
+          />
     );
   };
 

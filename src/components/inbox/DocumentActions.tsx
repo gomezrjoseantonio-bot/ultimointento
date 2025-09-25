@@ -102,9 +102,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       <button
         onClick={handleView}
         className="p-1.5 text-neutral-600 hover:text-neutral-800"
-        >
-        title="Ver documento"
-      >
+            title="Ver documento"
+          >
         <Eye className="w-4 h-4" />
       </button>
 
@@ -129,7 +128,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           <button
             onClick={handleViewFEINFields}
             className="btn-primary-horizon p-1.5 text-blue-600 hover:text-blue-800 hover:"
-            >
             title="Ver campos extraídos de la FEIN"
           >
             <FileText className="w-4 h-4" />
@@ -140,9 +138,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
             <button
               onClick={handleOpenInFinanciacion}
               className="btn-accent-horizon p-1.5 text-green-600 hover:text-green-800 hover:"
-              >
-              title="Abrir préstamo en Financiación"
-            >
+            title="Abrir préstamo en Financiación"
+          >
               <ExternalLink className="w-4 h-4" />
             </button>
           )}
@@ -153,9 +150,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
       <button
         onClick={handleDownload}
         className="p-1.5 text-neutral-600 hover:text-neutral-800"
-        >
-        title="Descargar documento"
-      >
+            title="Descargar documento"
+          >
         <Download className="w-4 h-4" />
       </button>
 
@@ -164,9 +160,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
         <button
           onClick={() => setShowDeleteConfirm(true)}
           className="p-1.5 text-error-600 hover:text-error-800"
+            title="Eliminar documento"
           >
-          title="Eliminar documento"
-        >
           <Trash2 className="w-4 h-4" />
         </button>
       ) : (

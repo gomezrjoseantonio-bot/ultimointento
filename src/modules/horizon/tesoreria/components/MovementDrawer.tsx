@@ -172,9 +172,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-gray-200"
-          >
-        onClick={onClose}
-      />
+            onClick={onClose}
+          />
       
       {/* Drawer */}
       <div className="absolute right-0 top-0 h-full w-96 bg-hz-card-bg shadow-xl overflow-y-auto">
@@ -332,9 +331,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     value={reconciliationData.categoria}
                     onChange={(e) => setReconciliationData(prev => ({ ...prev, categoria: e.target.value }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
-                    >
-                    required
-                  >
+            required
+          >
                     <option value="">Seleccionar categoría</option>
                     {CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -355,9 +353,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       inmuebleId: e.target.value === 'PERSONAL' ? '' : prev.inmuebleId
                     }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
-                    >
-                    required
-                  >
+            required
+          >
                     <option value="PERSONAL">Personal</option>
                     <option value="INMUEBLE">Inmueble</option>
                   </select>
@@ -373,9 +370,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       value={reconciliationData.inmuebleId}
                       onChange={(e) => setReconciliationData(prev => ({ ...prev, inmuebleId: e.target.value }))}
                       className="btn-secondary-horizon w-full px-3 py-2 "
-                      >
-                      required
-                    >
+            required
+          >
                       <option value="">Seleccionar inmueble</option>
                       {properties.map(property => (
                         <option key={property.id} value={property.id?.toString() || ''}>

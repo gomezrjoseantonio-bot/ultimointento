@@ -310,7 +310,6 @@ const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
           <button
             onClick={handleClose}
             className="px-4 py-2 text-sm font-medium text-hz-neutral-700 bg-hz-card-bg border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100"
-            >
             disabled={importing}
           >
             Cancelar

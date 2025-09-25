@@ -122,9 +122,8 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.fecha}
               onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              required
-            />
+            required
+          />
           </div>
         </div>
 
@@ -138,9 +137,8 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.numeroFactura}
               onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="2024-001"
-            />
+            placeholder="2024-001"
+          />
           </div>
 
           <div>
@@ -152,9 +150,8 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.cliente}
               onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Empresa XYZ"
-            />
+            placeholder="Empresa XYZ"
+          />
           </div>
         </div>
 

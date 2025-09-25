@@ -325,17 +325,15 @@ const PlanesManager: React.FC = () => {
                       <button
                         onClick={() => handleEditPlan(plan)}
                         className="p-2 text-gray-400 hover:text-blue-600"
-                        >
-                        title="Editar plan"
-                      >
+            title="Editar plan"
+          >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeletePlan(plan.id!)}
                         className="p-2 text-gray-400 hover:text-red-600"
-                        >
-                        title="Eliminar plan"
-                      >
+            title="Eliminar plan"
+          >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

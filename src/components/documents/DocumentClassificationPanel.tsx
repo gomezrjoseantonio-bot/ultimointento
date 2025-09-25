@@ -340,9 +340,8 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           onChange={(e) => handleFieldChange('counterpartyName', e.target.value)}
           aria-describedby="counterparty-help"
           className="btn-secondary-horizon w-full "
-          >
-          placeholder="Nombre de la contraparte"
-        />
+            placeholder="Nombre de la contraparte"
+          />
         <div id="counterparty-help" className="text-xs text-gray-500">
           Ingrese el nombre de la contraparte o empresa que emitió el documento
         </div>
@@ -389,9 +388,8 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('amount', parseFloat(e.target.value) || 0)}
               aria-describedby="total-amount-help"
               className="btn-secondary-horizon w-full "
-              >
-              placeholder="0,00"
-            />
+            placeholder="0,00"
+          />
             <div id="total-amount-help" className="sr-only">
               Ingrese el importe total del documento en euros
             </div>
@@ -408,9 +406,8 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('base', parseFloat(e.target.value) || 0)}
               aria-describedby="base-amount-help"
               className="btn-secondary-horizon w-full "
-              >
-              placeholder="0,00"
-            />
+            placeholder="0,00"
+          />
             <div id="base-amount-help" className="sr-only">
               Ingrese la base imponible sin IVA
             </div>
@@ -430,9 +427,8 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
               onChange={(e) => handleFinancialDataChange('iva', parseFloat(e.target.value) || 0)}
               aria-describedby="vat-amount-help"
               className="btn-secondary-horizon w-full "
-              >
-              placeholder="0,00"
-            />
+            placeholder="0,00"
+          />
             <div id="vat-amount-help" className="sr-only">
               Ingrese el importe del IVA
             </div>
@@ -519,9 +515,8 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           rows={3}
           aria-describedby="notes-help"
           className="btn-secondary-horizon w-full "
-          >
-          placeholder="Notas adicionales..."
-        />
+            placeholder="Notas adicionales..."
+          />
         <div id="notes-help" className="text-xs text-gray-500">
           Agregue cualquier información adicional relevante para este documento
         </div>

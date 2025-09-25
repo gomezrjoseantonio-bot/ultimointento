@@ -449,25 +449,22 @@ const Cartera: React.FC = () => {
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}`)}
                               className="text-brand-navy hover:text-brand-navy/80"
-                              >
-                              title="Ver"
-                            >
+            title="Ver"
+          >
                               <Eye className="h-4 w-4" size={24}  />
                             </button>
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
                               className="text-brand-navy hover:text-brand-navy/80"
-                              >
-                              title="Editar"
-                            >
+            title="Editar"
+          >
                               <Pencil className="h-4 w-4" size={24}  />
                             </button>
                             <button
                               onClick={() => handleDelete(property)}
                               className="text-error-600 hover:text-error-800"
-                              >
-                              title="Borrar"
-                            >
+            title="Borrar"
+          >
                               <Trash2 className="h-4 w-4"  />
                             </button>
                           </div>

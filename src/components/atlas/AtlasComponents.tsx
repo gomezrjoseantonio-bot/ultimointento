@@ -306,9 +306,8 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
   return (
     <div
       className="flex items-start p-4 rounded-lg border-l-4 mb-6"
-      >
-      style={variantStyles[variant]}
-    >
+            style={variantStyles[variant]}
+          >
       <div className="flex-shrink-0 mr-3">
         {variantIcons[variant]}
       </div>

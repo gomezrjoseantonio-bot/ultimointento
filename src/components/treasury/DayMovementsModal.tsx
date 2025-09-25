@@ -145,25 +145,22 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
                           <button
                             onClick={() => onMovementAction(movement, 'edit')}
                             className="p-1 text-gray-400 hover:text-blue-600"
-                            >
-                            title="Editar"
-                          >
+            title="Editar"
+          >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'link')}
                             className="p-1 text-gray-400 hover:text-green-600"
-                            >
-                            title="Conciliar"
-                          >
+            title="Conciliar"
+          >
                             <Link className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'delete')}
                             className="p-1 text-gray-400 hover:text-red-600"
-                            >
-                            title="Eliminar"
-                          >
+            title="Eliminar"
+          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>

@@ -260,9 +260,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.tipoConcepto}
                     onChange={(e) => updateField('tipoConcepto', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    placeholder="Ej: Seguro hogar, Renta habitación 1"
-                  />
+            placeholder="Ej: Seguro hogar, Renta habitación 1"
+          />
                 )}
               </div>
 
@@ -278,9 +277,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedor}
                       onChange={(e) => updateField('proveedor', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
-                      placeholder="Nombre del proveedor"
-                    />
+            placeholder="Nombre del proveedor"
+          />
                   </div>
 
                   <div>
@@ -292,9 +290,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedorNif}
                       onChange={(e) => updateField('proveedorNif', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
-                      placeholder="NIF del proveedor"
-                    />
+            placeholder="NIF del proveedor"
+          />
                   </div>
                 </>
               )}
@@ -367,9 +364,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.dayOfMonth || ''}
                     onChange={(e) => updateField('dayOfMonth', parseInt(e.target.value) || undefined)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    placeholder="1-28"
-                  />
+            placeholder="1-28"
+          />
                   <p className="text-xs text-gray-600 mt-1">
                     Recomendado 1-28 para evitar problemas con meses cortos
                   </p>
@@ -388,9 +384,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.importeUnitario}
                   onChange={(e) => updateField('importeUnitario', parseFloat(e.target.value) || 0)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
-                  placeholder="0.00"
-                />
+            placeholder="0.00"
+          />
               </div>
 
               {/* IVA Incluido */}

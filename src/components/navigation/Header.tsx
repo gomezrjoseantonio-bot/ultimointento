@@ -111,9 +111,8 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             <button 
               onClick={handleHelpClick}
               className="flex items-center space-x-1 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 rounded-atlas p-2 hover:bg-gray-50"
-              >
-              aria-label="Menú de ayuda"
-            >
+            aria-label="Menú de ayuda"
+          >
               <HelpCircle className="h-5 w-5 text-gray-500" />
               <span className="hidden md:inline-block text-sm font-medium text-gray-700">
                 Ayuda
@@ -163,9 +162,8 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
               onMouseEnter={() => setAccountMenuOpen(true)}
               onMouseLeave={() => setAccountMenuOpen(false)}
               className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 rounded-atlas p-1"
-              >
-              aria-label="Menú de cuenta"
-            >
+            aria-label="Menú de cuenta"
+          >
               <UserCircle className="h-8 w-8 text-gray-500" />
               <span className="hidden md:inline-block text-sm font-medium text-gray-700">
                 Cuenta

@@ -254,17 +254,15 @@ const OtrosIngresosManager: React.FC = () => {
                       <button
                         onClick={() => toast('Edición de ingresos - En desarrollo', { icon: 'ℹ️' })}
                         className="p-2 text-gray-400 hover:text-blue-600"
-                        >
-                        title="Editar ingreso"
-                      >
+            title="Editar ingreso"
+          >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => toast('Eliminación de ingresos - En desarrollo', { icon: 'ℹ️' })}
                         className="p-2 text-gray-400 hover:text-red-600"
-                        >
-                        title="Eliminar ingreso"
-                      >
+            title="Eliminar ingreso"
+          >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

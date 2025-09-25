@@ -28,9 +28,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       
       <h3 
         className="text-lg font-medium mb-2"
-        >
-        style={{ color: 'var(--hz-text)' }}
-      >
+            style={{ color: 'var(--hz-text)' }}
+          >
         {title}
       </h3>
       

@@ -217,9 +217,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 value={formData.year}
                 onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
                 className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>
@@ -297,9 +296,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Reforma cocina, cambio ventanas..."
                 className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
           </div>
 
@@ -308,9 +306,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
               type="button"
               onClick={resetForm}
               className="px-4 py-2 text-neutral-600 border border-neutral-300"
-              >
-              disabled={loading}
-            >
+            disabled={loading}
+          >
               Cancelar
             </button>
             <button
@@ -377,9 +374,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                       onClick={() => handleDelete(improvement.id!)}
                       disabled={loading}
                       className="text-error-600 hover:text-error-800 disabled:opacity-50"
-                      >
-                      title="Eliminar mejora"
-                    >
+            title="Eliminar mejora"
+          >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>

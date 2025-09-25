@@ -55,9 +55,8 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
         {/* Overlay */}
         <div 
           className="fixed inset-0 bg-gray-500 transition-opacity"
-          >
-          onClick={onClose}
-        />
+            onClick={onClose}
+          />
 
         {/* Modal */}
         <div className="relative inline-block w-full max-w-2xl px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-xl sm:my-8 sm:align-middle sm:p-6">

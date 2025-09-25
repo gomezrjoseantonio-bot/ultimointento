@@ -115,9 +115,8 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.propertyId}
                 onChange={(e) => setFormData(prev => ({ ...prev, propertyId: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              >
+            required
+          >
                 {properties.map(property => (
                   <option key={property.id} value={property.id}>
                     {property.alias}
@@ -152,9 +151,8 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.startDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>

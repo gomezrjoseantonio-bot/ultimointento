@@ -444,9 +444,8 @@ const InboxPageV2: React.FC = () => {
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.csv,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="hidden"
-              >
-              id="file-upload"
-            />
+            id="file-upload"
+          />
             <label
               htmlFor="file-upload"
               className="flex items-center gap-2 px-3 sm:px-4 py-2 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
@@ -505,9 +504,8 @@ const InboxPageV2: React.FC = () => {
           <div className="flex flex-wrap gap-2">
             <select
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 sm:flex-none"
+            defaultValue=""
           >
-              defaultValue=""
-            >
               <option value="">Tipos</option>
               <option value="factura">Factura</option>
               <option value="recibo">Recibo</option>
@@ -605,9 +603,8 @@ const InboxPageV2: React.FC = () => {
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer"
-                          >
-                          style={{ backgroundColor: '#EAF1F8', color: '#0A2A57' }}
-                        >
+            style={{ backgroundColor: '#EAF1F8', color: '#0A2A57' }}
+          >
                           {doc.destino}
                         </span>
                       ) : '-'}
@@ -753,9 +750,8 @@ const InboxPageV2: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    >
-                    style={{ backgroundColor: '#0A2A57' }}
-                  >
+            style={{ backgroundColor: '#0A2A57' }}
+          >
                     Completar y archivar
                   </button>
                 </div>

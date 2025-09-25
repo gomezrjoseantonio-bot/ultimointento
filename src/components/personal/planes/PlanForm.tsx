@@ -222,9 +222,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.tipo}
               onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as PlanPensionInversion['tipo'] }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              required
-            >
+            required
+          >
               {tiposProducto.map(tipo => (
                 <option key={tipo.value} value={tipo.value}>
                   {tipo.label}
@@ -262,9 +261,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.valorCompra}
               onChange={(e) => setFormData(prev => ({ ...prev, valorCompra: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Iguala aportaciones si vacío"
-            />
+            placeholder="Iguala aportaciones si vacío"
+          />
           </div>
 
           <div>
@@ -296,9 +294,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.unidades}
               onChange={(e) => setFormData(prev => ({ ...prev, unidades: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Para fondos con participaciones"
-            />
+            placeholder="Para fondos con participaciones"
+          />
           </div>
 
           <div>
@@ -398,9 +395,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         aportacionPeriodica: { ...prev.aportacionPeriodica, importe: e.target.value }
                       }))}
                       className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      >
-                      placeholder="100.00"
-                    />
+            placeholder="100.00"
+          />
                   </div>
 
                   <div>

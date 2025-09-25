@@ -145,9 +145,8 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.fecha}
               onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              required
-            />
+            required
+          />
           </div>
         </div>
 
@@ -159,7 +158,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
             value={formData.categoria}
             onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
             required
           >
             {categorias.map(categoria => (
@@ -180,9 +178,8 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.proveedor}
               onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Nombre del proveedor"
-            />
+            placeholder="Nombre del proveedor"
+          />
           </div>
 
           <div>
@@ -194,9 +191,8 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.numeroFactura}
               onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="F-2024-001"
-            />
+            placeholder="F-2024-001"
+          />
           </div>
         </div>
 

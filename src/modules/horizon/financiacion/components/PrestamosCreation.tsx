@@ -339,9 +339,8 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
             <button
               onClick={onCancel}
               className="p-2 text-text-gray hover:text-atlas-navy-1"
-              >
-              aria-label="Volver"
-            >
+            aria-label="Volver"
+          >
               <X className="h-5 w-5" />
             </button>
             <div>

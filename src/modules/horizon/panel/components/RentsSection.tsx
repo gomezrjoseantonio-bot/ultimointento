@@ -207,9 +207,8 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
               <div key={index} className="flex items-center gap-2">
                 <div 
                   className="w-3 h-3 rounded-full"
-                  >
-                  style={{ backgroundColor: item.color }}
-                />
+            style={{ backgroundColor: item.color }}
+          />
                 <span className="text-sm text-hz-neutral-600">
                   {item.name}: {formatCurrency(item.value)}
                 </span>

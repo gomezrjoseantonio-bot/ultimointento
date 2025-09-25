@@ -289,9 +289,8 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             {/* Account */}
@@ -303,9 +302,8 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.accountId}
                 onChange={(e) => handleInputChange('accountId', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
-                required
-              >
+            required
+          >
                 <option value="">Seleccionar cuenta...</option>
                 {accounts.map(account => (
                   <option 
@@ -353,9 +351,8 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                   value={form.transferToAccountId}
                   onChange={(e) => handleInputChange('transferToAccountId', e.target.value)}
                   className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                  required
-                >
+            required
+          >
                   <option value="">Seleccionar cuenta destino...</option>
                   {accounts
                     .filter(account => account.id?.toString() !== form.accountId)
@@ -386,17 +383,15 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                   value={form.amount}
                   onChange={(e) => handleInputChange('amount', e.target.value)}
                   className="flex-1 border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                  required
-                />
+            required
+          />
                 {form.type !== 'Transferencia' && (
                   <button
                     type="button"
                     onClick={toggleAmountSign}
                     className="p-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-50"
-                    >
-                    title="Cambiar signo"
-                  >
+            title="Cambiar signo"
+          >
                     {parseFloat(form.amount) >= 0 ? <Plus className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
                   </button>
                 )}
@@ -419,9 +414,8 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             {/* Category */}
@@ -479,9 +473,8 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
             <button
               onClick={handleClose}
               className="px-4 py-2 border border-hz-neutral-300 text-hz-text rounded-lg hover:bg-hz-neutral-50 transition-colors"
-              >
-              disabled={saving}
-            >
+            disabled={saving}
+          >
               Cancelar
             </button>
             <button

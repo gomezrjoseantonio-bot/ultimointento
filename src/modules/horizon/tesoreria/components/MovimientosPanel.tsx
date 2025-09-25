@@ -655,17 +655,15 @@ const MovimientosPanel: React.FC = () => {
                         <button
                           onClick={() => handleEditMovement(movement)}
                           className="text-primary-600 hover:text-primary-800"
-                          >
-                          title="Editar movimiento"
-                        >
+            title="Editar movimiento"
+          >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setShowDeleteConfirm(movement)}
                           className="text-error-600 hover:text-error-800"
-                          >
-                          title="Eliminar movimiento"
-                        >
+            title="Eliminar movimiento"
+          >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

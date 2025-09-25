@@ -300,9 +300,8 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <button
                         onClick={() => removeLine(index)}
                         className="p-2 text-error-600"
-                        >
-                        title="Eliminar partida"
-                      >
+            title="Eliminar partida"
+          >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}

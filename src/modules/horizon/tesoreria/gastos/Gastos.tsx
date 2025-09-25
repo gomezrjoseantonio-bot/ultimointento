@@ -327,9 +327,8 @@ const Gastos: React.FC = () => {
                         value={formData.proveedor_nombre}
                         onChange={(e) => setFormData(prev => ({ ...prev, proveedor_nombre: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      />
+            required
+          />
                     </div>
 
                     <div>
@@ -341,9 +340,8 @@ const Gastos: React.FC = () => {
                         value={formData.proveedor_nif}
                         onChange={(e) => setFormData(prev => ({ ...prev, proveedor_nif: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="12345678A"
-                      />
+            placeholder="12345678A"
+          />
                     </div>
                   </div>
 
@@ -357,9 +355,8 @@ const Gastos: React.FC = () => {
                         value={formData.fecha_emision}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      />
+            required
+          />
                     </div>
 
                     <div>
@@ -371,9 +368,8 @@ const Gastos: React.FC = () => {
                         value={formData.fecha_pago_prevista}
                         onChange={(e) => setFormData(prev => ({ ...prev, fecha_pago_prevista: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      />
+            required
+          />
                     </div>
                   </div>
 
@@ -389,9 +385,8 @@ const Gastos: React.FC = () => {
                         value={formData.total}
                         onChange={(e) => setFormData(prev => ({ ...prev, total: parseFloat(e.target.value) || 0 }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      />
+            required
+          />
                     </div>
 
                     <div>
@@ -433,9 +428,8 @@ const Gastos: React.FC = () => {
                       value={formData.categoria_AEAT}
                       onChange={(e) => setFormData(prev => ({ ...prev, categoria_AEAT: e.target.value as AEATFiscalType }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      required
-                    >
+            required
+          >
                       {aeatCategories.map(category => (
                         <option key={category.value} value={category.value}>
                           {category.label}

@@ -420,25 +420,22 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                           <button
                             onClick={() => handleViewDetail(prestamo)}
                             className="text-atlas-blue hover:text-primary-800"
-                            >
-                            title="Ver detalle"
-                          >
+            title="Ver detalle"
+          >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onEdit(prestamo.id)}
                             className="text-text-gray hover:text-atlas-blue"
-                            >
-                            title="Editar"
-                          >
+            title="Editar"
+          >
                             <Edit3 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeletePrestamo(prestamo.id)}
                             className="text-text-gray hover:text-error"
-                            >
-                            title="Eliminar"
-                          >
+            title="Eliminar"
+          >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>

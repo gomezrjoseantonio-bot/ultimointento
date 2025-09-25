@@ -273,9 +273,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.inmuebleId}
                 onChange={(e) => handlePropertyChange(parseInt(e.target.value))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              >
+            required
+          >
                 <option value="">Seleccionar inmueble</option>
                 {properties.map(property => (
                   <option key={property.id} value={property.id}>
@@ -297,9 +296,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   habitacionId: '' // Reset room when changing type
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              >
+            required
+          >
                 <option value="vivienda">Vivienda completa</option>
                 <option value="habitacion">Habitación</option>
               </select>
@@ -316,9 +314,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.habitacionId}
                 onChange={(e) => setFormData(prev => ({ ...prev, habitacionId: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              >
+            required
+          >
                 <option value="">Seleccionar habitación</option>
                 {getAvailableRooms().map(room => (
                   <option key={room} value={room}>
@@ -340,9 +337,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 modalidad: e.target.value as 'habitual' | 'temporada' 
               }))}
               className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              required
-            >
+            required
+          >
               <option value="habitual">Vivienda habitual</option>
               <option value="temporada">Vivienda de temporada</option>
             </select>
@@ -369,9 +365,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, nombre: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>
@@ -386,9 +381,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, apellidos: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>
@@ -403,9 +397,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, dni: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>
@@ -420,9 +413,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, telefono: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div className="md:col-span-2">
@@ -437,9 +429,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   inquilino: { ...prev.inquilino, email: e.target.value } 
                 }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
           </div>
         </div>
@@ -461,9 +452,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fechaInicio}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaInicio: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
             </div>
 
             <div>
@@ -475,9 +465,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fechaFin}
                 onChange={(e) => setFormData(prev => ({ ...prev, fechaFin: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              />
+            required
+          />
               {formData.modalidad === 'habitual' && (
                 <p className="text-sm text-neutral-500 mt-1">
                   Se calcula automáticamente para contratos habituales (+5 años)
@@ -518,9 +507,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.diaPago}
                 onChange={(e) => setFormData(prev => ({ ...prev, diaPago: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                required
-              >
+            required
+          >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                   <option key={day} value={day}>
                     Día {day}
@@ -583,9 +571,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                     indexOtros: { ...prev.indexOtros, formula: e.target.value } 
                   }))}
                   className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                  >
-                  placeholder="2,5%"
-                />
+            placeholder="2,5%"
+          />
               </div>
             )}
           </div>
@@ -651,9 +638,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                     value={formData.cuentaCobroId}
                     onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobroId: parseInt(e.target.value) }))}
                     className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    >
-                    required
-                  >
+            required
+          >
                     <option value="">Seleccionar cuenta</option>
                     {accounts.map(account => (
                       <option key={account.id} value={account.id}>

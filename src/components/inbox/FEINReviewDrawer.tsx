@@ -85,9 +85,8 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-              style={{ color: 'var(--text-gray)' }}
-            >
+            style={{ color: 'var(--text-gray)' }}
+          >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -240,9 +239,8 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                       value={editableData.tin ? (editableData.tin * 100) : ''}
                       onChange={(e) => updateField('tin', parseFloat(e.target.value) / 100 || undefined)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      >
-                      placeholder="Ej: 3.45"
-                    />
+            placeholder="Ej: 3.45"
+          />
                   ) : (
                     <div className="text-lg font-medium">
                       {formatPercentage(editableData.tin)}

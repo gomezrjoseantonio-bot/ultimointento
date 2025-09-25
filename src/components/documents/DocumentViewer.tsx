@@ -514,9 +514,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </p>
         <button 
           className="mt-4 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+            onClick={handlePreview}
           >
-          onClick={handlePreview}
-        >
           <Eye className="w-4 h-4 inline mr-2" />
           Abrir vista previa
         </button>
@@ -526,9 +525,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       <div className="flex flex-wrap gap-3">
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            onClick={handlePreview}
           >
-          onClick={handlePreview}
-        >
           <Eye className="w-4 h-4" />
           Ver
         </button>
@@ -567,9 +565,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </button>
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            onClick={handleDownload}
           >
-          onClick={handleDownload}
-        >
           <Download className="w-4 h-4" />
           Descargar
         </button>
@@ -618,9 +615,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3">
               <button 
                 className="px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors"
+            onClick={handleDelete}
           >
-                onClick={handleDelete}
-              >
                 Eliminar
               </button>
               <button 
@@ -759,9 +755,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3 mt-6">
               <button 
                 className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+            onClick={handleAssign}
           >
-                onClick={handleAssign}
-              >
                 {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
               </button>
               <button 

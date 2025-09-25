@@ -402,9 +402,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     return (
       <div 
         className="w-8 h-8 flex items-center justify-center text-sm font-bold"
-        >
-        style={{ backgroundColor }}
-      >
+            style={{ backgroundColor }}
+          >
         {initial}
       </div>
     );

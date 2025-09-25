@@ -171,7 +171,6 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             value={bonification.nombre}
             onChange={(e) => handleFieldChange('nombre', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-            >
             placeholder="ej: Nómina"
           />
         </div>
@@ -195,7 +194,6 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
               }
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-            >
             placeholder="0,300"
           />
           <p className="text-xs text-gray-500 mt-1">
@@ -240,7 +238,6 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
               }
             }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-            >
             placeholder="240"
           />
         </div>
@@ -317,9 +314,8 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 }
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-              >
-              placeholder="1.200"
-            />
+            placeholder="1.200"
+          />
           </div>
         )}
 

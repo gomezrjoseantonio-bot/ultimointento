@@ -216,9 +216,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
                   accept=".csv,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={handleFileInput}
                   className="hidden"
-                  >
-                  id="file-upload"
-                />
+            id="file-upload"
+          />
                 <label
                   htmlFor="file-upload"
                   className="inline-flex items-center px-4 py-2 bg-hz-primary text-white rounded-lg hover:bg-hz-primary-600 cursor-pointer transition-colors"
@@ -267,9 +266,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
                   value={selectedAccount || ''}
                   onChange={(e) => setSelectedAccount(e.target.value ? Number(e.target.value) : null)}
                   className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                  required
-                >
+            required
+          >
                   <option value="">Seleccionar cuenta...</option>
                   {accounts.map(account => (
                     <option key={account.id} value={account.id}>
@@ -329,9 +327,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, accounts, on
               <button
                 onClick={handleClose}
                 className="px-4 py-2 border border-hz-neutral-300 text-hz-text rounded-lg hover:bg-hz-neutral-50 transition-colors"
-                >
-                disabled={importing}
-              >
+            disabled={importing}
+          >
                 Cancelar
               </button>
               {file && (

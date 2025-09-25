@@ -72,9 +72,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <div className="flex items-center space-x-2">
             <div 
               className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-              >
-              style={{ backgroundColor: 'var(--atlas-teal)' }}
-            >
+            style={{ backgroundColor: 'var(--atlas-teal)' }}
+          >
               A
             </div>
             <h1 className="text-white text-xl font-bold">

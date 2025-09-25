@@ -485,35 +485,31 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                         {expense.documentId && (
                           <button
                             className="text-brand-navy hover:text-navy-800 p-1"
-                            >
-                            title="Ver documento"
-                          >
+            title="Ver documento"
+          >
                             <EyeIcon className="h-4 w-4" />
                           </button>
                         )}
                         {expense.estado_conciliacion === 'pendiente' && (
                           <button
                             className="text-success-600 hover:text-success-800 p-1"
-                            >
-                            title="Conciliar"
-                          >
+            title="Conciliar"
+          >
                             <CheckCircleIcon className="h-4 w-4" />
                           </button>
                         )}
                         <button
                           onClick={() => handleEditExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
-                          >
-                          title="Ver/Editar"
-                        >
+            title="Ver/Editar"
+          >
                           <PencilIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteExpense(expense.id!)}
                           className="text-error-600 hover:text-error-800 p-1"
-                          >
-                          title="Eliminar"
-                        >
+            title="Eliminar"
+          >
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>

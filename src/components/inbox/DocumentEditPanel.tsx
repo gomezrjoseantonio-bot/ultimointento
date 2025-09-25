@@ -120,9 +120,8 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
     return (
       <span 
         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
-        >
-        style={{ backgroundColor: config.bgColor }}
-      >
+            style={{ backgroundColor: config.bgColor }}
+          >
         {config.label}
       </span>
     );
@@ -352,9 +351,8 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   value={editableFields.tipo_documento}
                   onChange={(e) => handleFieldChange('tipo_documento', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                  readOnly
-                />
+            readOnly
+          />
               </div>
 
               <div>
@@ -365,9 +363,8 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   type="text"
                   value={getDestinationPath()}
                   className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
-          >
-                  readOnly
-                />
+            readOnly
+          />
               </div>
             </div>
 
@@ -519,9 +516,8 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     value={editableFields.iban_masked}
                     onChange={(e) => handleFieldChange('iban_masked', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                    placeholder="ES12 **** **** 1234"
-                  />
+            placeholder="ES12 **** **** 1234"
+          />
                 </div>
               </div>
             )}

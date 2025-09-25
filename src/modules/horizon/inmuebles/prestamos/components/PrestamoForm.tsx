@@ -418,9 +418,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     if (e.target.value) expandNextSection('basic');
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  required
-                >
+            required
+          >
                   <option value="">Seleccionar inmueble</option>
                   {availableInmuebles.map(inmueble => (
                     <option key={inmueble.id} value={inmueble.id}>
@@ -489,9 +488,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   value={fechaFirma}
                   onChange={(e) => setFechaFirma(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  required
-                />
+            required
+          />
               </div>
 
               <div>
@@ -502,9 +500,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                   value={cuentaCargoId}
                   onChange={(e) => setCuentaCargoId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  required
-                >
+            required
+          >
                   <option value="">Seleccionar cuenta</option>
                   {availableAccounts.map(account => (
                     <option key={account.id} value={account.id}>
@@ -932,9 +929,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  placeholder="1,000"
-                />
+            placeholder="1,000"
+          />
                 <p className="text-xs text-gray-500 mt-1">
                   Ejemplo: 1,000 para 1,000%
                 </p>
@@ -957,9 +953,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  placeholder="0,500"
-                />
+            placeholder="0,500"
+          />
                 <p className="text-xs text-gray-500 mt-1">
                   Ejemplo: 0,500 para 0,500%
                 </p>
@@ -982,9 +977,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                  >
-                  placeholder="30,00"
-                />
+            placeholder="30,00"
+          />
               </div>
             </div>
           )}
@@ -1031,9 +1025,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                      >
-                      placeholder="0,60"
-                    />
+            placeholder="0,60"
+          />
                     <p className="text-xs text-gray-500 mt-1">
                       Máximo % de bonificación que se puede aplicar (ej: 0,60% = 60 puntos básicos)
                     </p>
@@ -1068,9 +1061,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaFinMaximaBonificacion}
                       onChange={(e) => setFechaFinMaximaBonificacion(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                      >
-                      placeholder="2026-12-31"
-                    />
+            placeholder="2026-12-31"
+          />
                     <p className="text-xs text-gray-500 mt-1">
                       Fecha hasta la cual se aplicará la bonificación máxima garantizada. 
                       Después de esta fecha se evaluará el cumplimiento para determinar la bonificación aplicable.
@@ -1089,9 +1081,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaFinPeriodo}
                       onChange={(e) => setFechaFinPeriodo(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                      >
-                      placeholder="2025-12-31"
-                    />
+            placeholder="2025-12-31"
+          />
                     <p className="text-xs text-gray-500 mt-1">
                       Fecha hasta la cual se aplicarán las bonificaciones
                     </p>
@@ -1106,9 +1097,8 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       value={fechaEvaluacion}
                       onChange={(e) => setFechaEvaluacion(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                      >
-                      placeholder="2025-12-01"
-                    />
+            placeholder="2025-12-01"
+          />
                     <p className="text-xs text-gray-500 mt-1">
                       Fecha de evaluación de cumplimiento
                     </p>

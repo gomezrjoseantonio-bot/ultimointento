@@ -474,9 +474,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                     type="button"
                     onClick={() => removeBonification(bonificacion.id)}
                     className="text-gray-400 hover:text-red-500"
-                    >
-                    title="Eliminar bonificación"
-                  >
+            title="Eliminar bonificación"
+          >
                     <X className="h-4 w-4" />
                   </button>
                 </div>

@@ -377,18 +377,16 @@ const EmailEntrante: React.FC = () => {
                     <button
                       onClick={() => copyToClipboard(alias.email)}
                       className="p-2 text-neutral-500 hover:text-brand-navy"
-                      >
-                      title="Copiar email"
-                    >
+            title="Copiar email"
+          >
                       <Copy className="w-4 h-4" />
                     </button>
                     
                     <button
                       onClick={() => regenerateAlias(alias.id)}
                       className="p-2 text-neutral-500 hover:text-warning-600"
-                      >
-                      title="Regenerar alias"
-                    >
+            title="Regenerar alias"
+          >
                       <RotateCcw className="w-4 h-4" />
                     </button>
                     

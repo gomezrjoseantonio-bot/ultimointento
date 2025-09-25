@@ -316,9 +316,8 @@ const ProfileSeederPage: React.FC = () => {
                       bankKey: e.target.value
                     })}
                     className="w-full border border-neutral-300 px-3 py-2 text-sm"
-                    >
-                    placeholder="Ej: ING, BBVA, Santander..."
-                  />
+            placeholder="Ej: ING, BBVA, Santander..."
+          />
                 </div>
 
                 {['date', 'valueDate', 'amount', 'description', 'counterparty'].map((field) => (

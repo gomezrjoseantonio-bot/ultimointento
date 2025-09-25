@@ -617,9 +617,8 @@ const InboxPageNew: React.FC = () => {
                             setSelectedDocument(doc);
                           }}
                           className="text-primary-600 hover:text-primary-900"
-                          >
-                          title="Ver"
-                        >
+            title="Ver"
+          >
                           <Eye className="w-4 h-4" />
                         </button>
                         {doc.status === 'error' && (
@@ -629,9 +628,8 @@ const InboxPageNew: React.FC = () => {
                               handleReprocess(doc.id);
                             }}
                             className="text-success-600 hover:text-success-900"
-                            >
-                            title="Reprocesar"
-                          >
+            title="Reprocesar"
+          >
                             <RotateCcw className="w-4 h-4" />
                           </button>
                         )}
@@ -641,9 +639,8 @@ const InboxPageNew: React.FC = () => {
                             handleDelete(doc.id);
                           }}
                           className="text-error-600 hover:text-error-900"
-                          >
-                          title="Eliminar"
-                        >
+            title="Eliminar"
+          >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -733,9 +730,8 @@ const InboxPageNew: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    >
-                    style={{ backgroundColor: '#0A2A57' }}
-                  >
+            style={{ backgroundColor: '#0A2A57' }}
+          >
                     Completar y archivar
                   </button>
                 </div>

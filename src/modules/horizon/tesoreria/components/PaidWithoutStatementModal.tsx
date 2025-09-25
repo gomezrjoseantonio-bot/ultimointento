@@ -162,9 +162,8 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-              required
-            />
+            required
+          />
           </div>
 
           {/* Notes */}

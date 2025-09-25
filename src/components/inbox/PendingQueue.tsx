@@ -428,9 +428,8 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onMapColumns(doc);
                           }}
                           className="p-1 text-neutral-400 hover:text-neutral-600"
-                          >
-                          title="Mapear columnas"
-                        >
+            title="Mapear columnas"
+          >
                           <Edit className="w-4 h-4" />
                         </button>
                       )}
@@ -442,9 +441,8 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onSplitReform(doc);
                           }}
                           className="p-1 text-neutral-400 hover:text-neutral-600"
-                          >
-                          title="Dividir reforma"
-                        >
+            title="Dividir reforma"
+          >
                           <Edit className="w-4 h-4" />
                         </button>
                       )}
@@ -455,9 +453,8 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                           onSelectDocument(doc);
                         }}
                         className="p-1 text-neutral-400 hover:text-neutral-600"
-                        >
-                        title="Ver detalles"
-                      >
+            title="Ver detalles"
+          >
                         <Eye className="w-4 h-4" />
                       </button>
                       
@@ -468,9 +465,8 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onPublishDocument(doc);
                           }}
                           className="p-1 text-success-600 hover:text-success-700 font-medium"
-                          >
-                          title="Publicar ahora"
-                        >
+            title="Publicar ahora"
+          >
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       )}

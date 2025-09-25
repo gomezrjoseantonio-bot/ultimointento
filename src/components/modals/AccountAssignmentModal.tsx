@@ -101,9 +101,8 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                   checked={assignmentType === 'iban'}
                   onChange={(e) => setAssignmentType(e.target.value as 'iban')}
                   className="mr-2"
-                  >
-                  style={{ accentColor: 'var(--horizon-primary)' }}
-                />
+            style={{ accentColor: 'var(--horizon-primary)' }}
+          />
                 <CreditCard className="h-4 w-4 mr-1" />
                 IBAN
               </label>
@@ -114,9 +113,8 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                   checked={assignmentType === 'account'}
                   onChange={(e) => setAssignmentType(e.target.value as 'account')}
                   className="mr-2"
-                  >
-                  style={{ accentColor: 'var(--horizon-primary)' }}
-                />
+            style={{ accentColor: 'var(--horizon-primary)' }}
+          />
                 <Building className="h-4 w-4 mr-1" />
                 Nº Cuenta
               </label>

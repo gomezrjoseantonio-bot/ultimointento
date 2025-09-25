@@ -232,9 +232,8 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     return (
       <div 
         className="w-full h-full flex items-center justify-center font-bold text-sm"
-        >
-        style={{ backgroundColor: color }}
-      >
+            style={{ backgroundColor: color }}
+          >
         {initial}
       </div>
     );
@@ -330,18 +329,16 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   <button
                     onClick={() => openEditModal(account)}
                     className="p-2 text-gray-500 hover:text-atlas-blue rounded-lg hover:bg-gray-100"
-                    >
-                    title="Editar cuenta"
-                  >
+            title="Editar cuenta"
+          >
                     <Edit2 className="h-4 w-4" />
                   </button>
                   {account.activa && (
                     <button
                       onClick={() => setDeleteConfirmation(account)}
                       className="p-2 text-gray-500 hover:text-error-600 rounded-lg hover:bg-gray-100"
-                      >
-                      title="Desactivar cuenta"
-                    >
+            title="Desactivar cuenta"
+          >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}

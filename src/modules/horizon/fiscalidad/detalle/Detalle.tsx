@@ -345,9 +345,8 @@ const Detalle: React.FC = () => {
                                       key={idx}
                                       onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
                                       className="btn-primary-horizon btn-primary-horizon text-xs px-2 py-1 text-primary-800 rounded hover: "
-                                      >
-                                      title={`Confianza: ${match.confidence}% - ${match.reason}`}
-                                    >
+            title={`Confianza: ${match.confidence}% - ${match.reason}`}
+          >
                                       Conciliar ({match.confidence}%)
                                     </button>
                                   ))}
