@@ -410,7 +410,6 @@ const KpiBuilder: React.FC = () => {
                   value={config.parameters.capexYears}
                   onChange={(e) => handleParameterChange('capexYears', parseInt(e.target.value) || 10)}
                   className="block w-20 rounded-md border-neutral-300 text-sm focus:border-brand-navy focus:ring-brand-navy"
-          >
                 />
               </div>
             )}
