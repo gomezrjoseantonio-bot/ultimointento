@@ -153,10 +153,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
         {/* Main Chart */}
         <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-neutral-900 mb-6">
-            Proyección a 20 años
-          </h3>
-          <ProjectionChart data={projection.yearlyData} />
+          <h3 className="text-lg font-semibold text-neutral-900 mb-6" Proyección a 20 años </h3> <ProjectionChart data={projection.yearlyData} />
         </div>
 
         {/* Assumptions Summary */}

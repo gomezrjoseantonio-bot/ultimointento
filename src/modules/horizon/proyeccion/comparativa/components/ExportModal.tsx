@@ -111,11 +111,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </div>
               <div className="flex-1 text-left">
                 <h4 className="font-medium text-gray-900">Exportar CSV</h4>
-                <p className="text-sm text-gray-600">
-                  Formato compatible con Excel y hojas de cálculo
-                </p>
-              </div>
-              <Download className="h-4 w-4 text-gray-400" />
+                <p className="text-sm text-gray-600" Formato compatible con Excel y hojas de cálculo </p> </div> <Download className="h-4 w-4 text-gray-400" />
             </button>
 
             {/* PDF Export */}
@@ -129,11 +125,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
               </div>
               <div className="flex-1 text-left">
                 <h4 className="font-medium text-gray-900">Exportar PDF</h4>
-                <p className="text-sm text-gray-600">
-                  Documento formateado para presentación e impresión
-                </p>
-              </div>
-              <Download className="h-4 w-4 text-gray-400" />
+                <p className="text-sm text-gray-600" Documento formateado para presentación e impresión </p> </div> <Download className="h-4 w-4 text-gray-400" />
             </button>
           </div>
 

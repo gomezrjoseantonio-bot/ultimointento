@@ -122,18 +122,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
         {itemCount && (
           <span 
             className="text-xs px-2 py-1 rounded-full"
-            >
-            style={{ 
-              backgroundColor: 'var(--bg)', 
-              color: 'var(--text-gray)' 
-            }}
-          >
-            {itemCount} campos
-          </span>
-        )}
-      </div>
-      {isOpen ? (
-        <ChevronUp className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
+             style={{ backgroundColor: 'var(--bg)', color: 'var(--text-gray)' }} > {itemCount} campos </span> )} </div> {isOpen ? ( <ChevronUp className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
       ) : (
         <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
       )}

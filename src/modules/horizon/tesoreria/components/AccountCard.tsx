@@ -91,13 +91,12 @@ const AccountCard: React.FC<AccountCardProps> = ({
                 src={account.logo_url}
                 alt={`Logo ${account.bank}`}
                 className="w-full h-full object-cover"
-          >
-                onError={(e) => {
+           onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   target.nextElementSibling?.classList.remove('hidden');
                 }}
-              />
+               />
             ) : null}
             <div
               className={`w-full h-full bg-hz-neutral-300 flex items-center justify-center text-xs font-medium text-hz-neutral-700 ${

@@ -171,10 +171,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.counterparty}
                 onChange={(e) => setFormData(prev => ({ ...prev, counterparty: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                placeholder="Nombre del proveedor"
-                required
-              />
+                 placeholder="Nombre del proveedor"
+                required />
             </div>
 
             <div>
@@ -202,10 +200,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={formData.concept}
                 onChange={(e) => setFormData(prev => ({ ...prev, concept: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                placeholder="Descripción del gasto"
-                required
-              />
+                 placeholder="Descripción del gasto"
+                required />
             </div>
 
             <div>
@@ -217,10 +213,8 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
                 value={amountInput}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent text-right"
-                >
-                placeholder="1.234,56"
-                required
-              />
+                 placeholder="1.234,56"
+                required />
             </div>
           </div>
 
@@ -269,7 +263,7 @@ const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
               <input
                 type="number"
                 value={formData.taxYear}
-                onChange={(e) => setFormData(prev => ({ ...prev, taxYear: parseInt(e.target.value) }))}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" min="2020" max="2030" />
+                onChange={(e) => setFormData(prev => ({ ...prev, taxYear: parseInt(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" min="2020" max="2030" />
             </div>
           </div>
 

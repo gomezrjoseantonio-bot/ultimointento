@@ -116,7 +116,7 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
               tick={{ fontSize: 12, fill: '#6B7280' }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(value) => `€${Math.abs(value) / 1000}k`}
+              tickFormatter={(value) => `€${Math.abs(value) / 1000} k`}
             />
             <Tooltip 
               content={({ active, payload, label }) => {
@@ -128,17 +128,7 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
                       <div className="space-y-1">
                         <p className="text-hz-success">Ingresos: {formatCurrency(data.income)}</p>
                         <p className="text-hz-error">Gastos: {formatCurrency(data.expenses)}</p>
-                        <p className="border-t border-hz-neutral-700 pt-1 mt-1">
-                          Neto: {formatCurrency(data.income - data.expenses)}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Bar dataKey="income" fill="#10B981" radius={[2, 2, 0, 0]} />
+                        <p className="border-t border-hz-neutral-700 pt-1 mt-1" Neto: {formatCurrency(data.income - data.expenses)} </p> </div> </div> ); } return null; }} /> <Bar dataKey="income" fill="#10B981" radius={[2, 2, 0, 0]} />
             <Bar dataKey="expenses" fill="#EF4444" radius={[2, 2, 0, 0]} />
             <Line 
               type="monotone" 

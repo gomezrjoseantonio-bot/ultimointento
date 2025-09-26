@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-medium text-neutral-900 mb-2">Empezar</h3>
             <p className="text-neutral-500 mb-6 max-w-md mx-auto">
               Tu plataforma de gestión está vacía. 
-              {' '}Comienza creando contratos y configurando automatizaciones.
+              {' '} Comienza creando contratos y configurando automatizaciones.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <button 

@@ -379,16 +379,7 @@ const RadarPanel: React.FC = () => {
                       </div>
                     </div>
                     
-                    <button className="text-xs text-teal-400 hover:text-primary-800 font-medium transition-colors">
-                      Ver proyección 30d →
-                    </button>
-                  </div>
-                  
-                  <MiniBalanceChart
-                    current={account.balance || 0}
-                    projected7d={projectedBalance}
-                    projected30d={projectedBalance}
-                  />
+                    <button className="text-xs text-teal-400 hover:text-primary-800 font-medium transition-colors" Ver proyección 30d → </button> </div> <MiniBalanceChart current={account.balance || 0} projected7d={projectedBalance} projected30d={projectedBalance} />
                 </div>
               );
             })}

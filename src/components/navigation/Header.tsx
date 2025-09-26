@@ -165,10 +165,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             aria-label="Menú de cuenta"
           >
               <UserCircle className="h-8 w-8 text-gray-500" />
-              <span className="hidden md:inline-block text-sm font-medium text-gray-700">
-                Cuenta
-              </span>
-              <ChevronDown className="hidden md:inline-block h-4 w-4 text-gray-500" />
+              <span className="hidden md:inline-block text-sm font-medium text-gray-700" Cuenta </span> <ChevronDown className="hidden md:inline-block h-4 w-4 text-gray-500" />
             </button>
             
             {/* Account Dropdown Menu */}

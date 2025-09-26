@@ -347,10 +347,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.fechaUnica}
                     onChange={(e) => updateField('fechaUnica', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
               ) : (
                 <div>
@@ -411,10 +409,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.desde}
                     onChange={(e) => updateField('desde', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,10 +421,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.hasta}
                     onChange={(e) => updateField('hasta', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
               </div>
 
@@ -441,10 +435,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.notas}
                   onChange={(e) => updateField('notas', e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
-                  rows={3}
-                  placeholder="Notas adicionales..."
-                />
+                   rows={3}
+                  placeholder="Notas adicionales..." />
               </div>
             </div>
           </div>

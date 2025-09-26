@@ -216,13 +216,12 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
           src={account.banco.brand.logoUrl} 
           alt={`Logo ${account.banco.name}`}
           className="w-full h-full object-cover"
-          >
-          onError={(e) => {
+           onError={(e) => {
             // Fallback to avatar
             e.currentTarget.style.display = 'none';
             e.currentTarget.nextElementSibling?.setAttribute('style', 'display: flex');
           }}
-        />
+         />
       );
     }
     

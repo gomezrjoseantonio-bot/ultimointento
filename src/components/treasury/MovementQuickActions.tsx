@@ -119,9 +119,8 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
             {/* Backdrop to close menu */}
             <div 
               className="fixed inset-0 z-10" 
-          >
-              onClick={() => setShowMenu(false)}
-            />
+           onClick={() => setShowMenu(false)}
+             />
             
             {/* Actions menu */}
             <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 shadow-lg z-20">

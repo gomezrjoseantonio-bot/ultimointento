@@ -106,7 +106,7 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
               {metrics.avgDurationMs > 0 && (
                 <>
                   <span>•</span>
-                  <span>~{Math.round(metrics.avgDurationMs / 1000)}s promedio</span>
+                  <span>~{Math.round(metrics.avgDurationMs / 1000)} s promedio</span>
                 </>
               )}
             </div>

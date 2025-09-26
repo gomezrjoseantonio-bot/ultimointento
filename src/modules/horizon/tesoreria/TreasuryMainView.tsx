@@ -378,15 +378,14 @@ const TreasuryMainView: React.FC = () => {
                         src={account.logo_url}
                         alt={`${account.bank} logo`}
                         className="w-full h-full object-cover rounded"
-          >
-                        onError={(e) => {
+           onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
                           if (target.nextElementSibling) {
                             (target.nextElementSibling as HTMLElement).style.display = 'flex';
                           }
                         }}
-                      />
+                       />
                     ) : null}
                     <div
                       className="w-full h-full bg-hz-neutral-300 rounded flex items-center justify-center text-xs font-medium text-hz-neutral-600"

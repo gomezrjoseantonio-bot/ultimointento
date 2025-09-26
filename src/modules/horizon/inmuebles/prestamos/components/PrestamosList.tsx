@@ -148,11 +148,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
       render: (value: any, item: Prestamo) => (
         <div className="text-center">
           <div className="text-sm font-medium text-gray-900">
-            {item.plazoMesesTotal - (item.mesesSoloIntereses || 0)}m
+            {item.plazoMesesTotal - (item.mesesSoloIntereses || 0)} m
           </div>
           {item.mesesSoloIntereses && (
             <div className="text-xs text-amber-600">
-              {item.mesesSoloIntereses}m solo intereses
+              {item.mesesSoloIntereses} m solo intereses
             </div>
           )}
         </div>

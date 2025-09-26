@@ -255,18 +255,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               disabled={isProcessing}
               className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: 'var(--atlas-blue)' }}
-            >
-              Seleccionar archivo FEIN
-            </button>
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileInput}
-              disabled={isProcessing}
-              className="hidden"
-            />
+             Seleccionar archivo FEIN </button> <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileInput} disabled={isProcessing} className="hidden" />
           </div>
 
           {/* Information Panel - Horizon colors */}

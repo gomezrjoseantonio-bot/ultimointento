@@ -444,12 +444,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
         >
           {saving ? (
             <>
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" strokeWidth={1.5} />
-              Guardando...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" strokeWidth={1.5} / Guardando... </> ) : ( <> <Save className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Guardar correcciones
             </>
           )}

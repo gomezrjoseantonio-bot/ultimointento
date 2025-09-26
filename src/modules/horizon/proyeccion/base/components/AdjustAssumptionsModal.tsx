@@ -93,11 +93,9 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.rentGrowth}
                 onChange={(e) => handleInputChange('rentGrowth', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
-                style={{
+                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${formData.rentGrowth * 10}%, #F8F9FA ${formData.rentGrowth * 10}%, #F8F9FA 100%)`
-                }}
-              />
+                }} />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
                 <span>0%</span>
                 <span>10%</span>

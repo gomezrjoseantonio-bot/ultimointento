@@ -356,15 +356,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ruta final
-                </label>
-                <input
-                  type="text"
-                  value={getDestinationPath()}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
-            readOnly
-          />
+                <label className="block text-sm font-medium text-gray-700 mb-1" Ruta final </label> <input type="text" value={getDestinationPath()} className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600" readOnly />
               </div>
             </div>
 

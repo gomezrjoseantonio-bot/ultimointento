@@ -101,10 +101,8 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                placeholder="Reforma cocina, Ampliación salón, etc."
-                required
-              />
+                 placeholder="Reforma cocina, Ampliación salón, etc."
+                required />
             </div>
 
             <div>
@@ -176,10 +174,8 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
               value={formData.notes || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              rows={3}
-              placeholder="Descripción de la reforma, detalles adicionales..."
-            />
+               rows={3}
+              placeholder="Descripción de la reforma, detalles adicionales..." />
           </div>
 
           {/* Actions */}

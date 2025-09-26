@@ -200,15 +200,7 @@ const ProyeccionComparativa: React.FC = () => {
         <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Comparativa mensual</h3>
-            <p className="text-sm text-gray-600">
-              Budget (presupuesto) vs Forecast (proyección) vs Actual (real conciliado)
-            </p>
-          </div>
-          
-          <ComparativaTable 
-            data={data}
-            onMonthClick={handleMonthClick}
-          />
+            <p className="text-sm text-gray-600" Budget (presupuesto) vs Forecast (proyección) vs Actual (real conciliado) </p> </div> <ComparativaTable data={data} onMonthClick={handleMonthClick} />
         </div>
 
         {/* Monthly Detail Modal */}

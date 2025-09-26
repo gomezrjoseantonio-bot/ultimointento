@@ -208,7 +208,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
           <input
             type="number"
             value={bonification.lookbackMeses}
-            onChange={(e) => handleFieldChange('lookbackMeses', parseInt(e.target.value))}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="3" min="1" />
+            onChange={(e) => handleFieldChange('lookbackMeses', parseInt(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="3" min="1" />
         </div>
 
         <div>
@@ -327,7 +327,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                   tipo: 'TARJETA',
                   movimientosMesMin: parseInt(e.target.value) || undefined,
                   importeMinimo: bonification.regla.tipo === 'TARJETA' ? bonification.regla.importeMinimo : undefined
-                })}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="6" min="0" />
+                })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="6" min="0" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -340,7 +340,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                   tipo: 'TARJETA',
                   movimientosMesMin: bonification.regla.tipo === 'TARJETA' ? bonification.regla.movimientosMesMin : undefined,
                   importeMinimo: parseInt(e.target.value) || undefined
-                })}className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="3000" min="0" />
+                })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue" placeholder="3000" min="0" />
             </div>
           </div>
         )}
@@ -366,10 +366,8 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 descripcion: e.target.value
               })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-              >
-              placeholder="Describe las condiciones para obtener esta bonificación"
-              rows={3}
-            />
+               placeholder="Describe las condiciones para obtener esta bonificación"
+              rows={3} />
           </div>
         )}
       </div>

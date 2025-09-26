@@ -54,7 +54,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
       case 'VARIABLE':
         return `Variable ${prestamo.indice} + ${formatPercentage(prestamo.diferencial || 0)}`;
       case 'MIXTO':
-        return `Mixto (${prestamo.tramoFijoMeses}m fijo)`;
+        return `Mixto (${prestamo.tramoFijoMeses} m fijo)`;
       default:
         return prestamo.tipo;
     }
@@ -168,14 +168,7 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
               {feature}
             </span>
           ))}
-          <span className="px-2 py-1 bg-[#E5E7EB] text-gray-700 rounded text-xs">
-            Día de cargo: {prestamo.diaCargoMes}
-          </span>
-        </div>
-      </div>
-
-      {/* Bonifications Panel */}
-      <BonificationPanel prestamo={prestamo} />
+          <span className="px-2 py-1 bg-[#E5E7EB] text-gray-700 rounded text-xs" Día de cargo: {prestamo.diaCargoMes} </span> </div> </div> {/* Bonifications Panel */} <BonificationPanel prestamo={prestamo} />
 
       {/* Payment Schedule */}
       <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">

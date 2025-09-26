@@ -218,10 +218,7 @@ const ResumenTab: React.FC = () => {
             disabled={summaries.length === 0}
             className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium bg-brand-navy focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </button>
-          <CalendarIcon className="h-5 w-5 text-gray-400" />
+            <Download className="h-4 w-4 mr-2" / Exportar CSV </button> <CalendarIcon className="h-5 w-5 text-gray-400" />
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}

@@ -291,7 +291,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
             <div className="flex items-center space-x-2">
               {metadata?.processingTime && (
                 <span className="text-xs text-gray-500">
-                  {metadata.processingTime}ms
+                  {metadata.processingTime} ms
                 </span>
               )}
               <button

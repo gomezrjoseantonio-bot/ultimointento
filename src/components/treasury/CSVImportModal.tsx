@@ -212,9 +212,8 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                     type="file"
                     accept=".csv"
                     className="hidden"
-          >
-                    onChange={(e) => handleFileUpload(e.target.files)}
-                  />
+           onChange={(e) => handleFileUpload(e.target.files)}
+                   />
                 </div>
               </div>
             </div>

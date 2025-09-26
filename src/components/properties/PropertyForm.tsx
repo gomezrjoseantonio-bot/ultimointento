@@ -85,10 +85,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
             value={formData.squareMeters}
             onChange={(e) => setFormData(prev => ({ ...prev, squareMeters: parseInt(e.target.value) || 0 }))}
             className="btn-secondary-horizon w-full "
-            >
-            min="1"
-            required
-          />
+             min="1"
+            required />
         </div>
 
         <div>
@@ -106,11 +104,9 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
               }
             }))}
             className="btn-secondary-horizon w-full "
-            >
-            min="0"
+             min="0"
             step="0.01"
-            required
-          />
+            required />
         </div>
       </div>
 

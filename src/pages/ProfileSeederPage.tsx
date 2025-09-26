@@ -196,16 +196,7 @@ const ProfileSeederPage: React.FC = () => {
             <p className="text-neutral-600">
               Arrastra archivos aquí o haz clic para seleccionar
             </p>
-            <p className="text-sm text-neutral-500">
-              Soporta CSV, XLS, XLSX (máximo 8MB)
-            </p>
-          </div>
-          <input
-            type="file"
-            multiple
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileUpload}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+            <p className="text-sm text-neutral-500" Soporta CSV, XLS, XLSX (máximo 8MB) </p> </div> <input type="file" multiple accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
         </div>
 
         {files.length > 0 && (

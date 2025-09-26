@@ -297,12 +297,7 @@ const FEINDemoPage: React.FC = () => {
           >
             {isLoadingDemo ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Cargando...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4" />
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" / Cargando... </> ) : ( <> <Upload className="h-4 w-4" />
                 Cargar documentos demo
               </>
             )}

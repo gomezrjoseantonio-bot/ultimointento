@@ -290,15 +290,7 @@ const Radar: React.FC = () => {
 
           {/* Exclude Personal Accounts Switch */}
           <div className="flex items-center gap-3">
-            <label htmlFor="exclude-personal" className="text-sm font-medium text-gray-700">
-              Excluir cuentas personales
-            </label>
-            <input
-              id="exclude-personal"
-              type="checkbox"
-              checked={excludePersonal}
-              onChange={handleExcludePersonalToggle}
-              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2" />
+            <label htmlFor="exclude-personal" className="text-sm font-medium text-gray-700" Excluir cuentas personales </label> <input id="exclude-personal" type="checkbox" checked={excludePersonal} onChange={handleExcludePersonalToggle} className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2" />
           </div>
         </div>
 
@@ -375,12 +367,7 @@ const Radar: React.FC = () => {
                       >
                         {account.isExpanded ? (
                           <>
-                            <ChevronUp className="w-4 h-4" />
-                            Contraer
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronUp className="w-4 h-4" / Contraer </> ) : ( <> <ChevronDown className="w-4 h-4" />
                             Expandir
                           </>
                         )}

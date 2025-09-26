@@ -265,9 +265,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
             selectedScopes.length === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-primary-600'          }`}
-        >
-          Continuar a Auto-Semilla
-          <ChevronRight className="h-4 w-4 ml-2" />
+         Continuar a Auto-Semilla <ChevronRight className="h-4 w-4 ml-2" />
         </button>
       </div>
     </div>

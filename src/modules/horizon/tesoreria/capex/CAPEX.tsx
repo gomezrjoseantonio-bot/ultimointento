@@ -362,10 +362,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.contraparte}
                       onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      placeholder="Nombre del proveedor o contratista"
-                      required
-                    />
+                       placeholder="Nombre del proveedor o contratista"
+                      required />
                   </div>
 
                   <div>
@@ -392,10 +390,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.total}
                       onChange={(e) => setFormData(prev => ({ ...prev, total: parseFloat(e.target.value) || 0 }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      placeholder="0.00"
-                      required
-                    />
+                       placeholder="0.00"
+                      required />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

@@ -493,10 +493,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.rentaMensual}
                 onChange={(e) => setFormData(prev => ({ ...prev, rentaMensual: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                placeholder="650,00"
-                required
-              />
+                 placeholder="650,00"
+                required />
             </div>
 
             <div>
@@ -524,7 +522,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
               <input
                 type="number"
                 value={formData.margenGraciaDias}
-                onChange={(e) => setFormData(prev => ({ ...prev, margenGraciaDias: e.target.value }))}className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" min="0" max="30" />
+                onChange={(e) => setFormData(prev => ({ ...prev, margenGraciaDias: e.target.value }))} className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent" min="0" max="30" />
             </div>
           </div>
         </div>
@@ -590,11 +588,9 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fianzaMeses}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaMeses: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
-                min="0"
+                 min="0"
                 step="1"
-                required
-              />
+                required />
             </div>
 
             <div>
@@ -606,10 +602,8 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 value={formData.fianzaImporte}
                 onChange={(e) => setFormData(prev => ({ ...prev, fianzaImporte: e.target.value }))}
                 className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent bg-neutral-50"
-                >
-                placeholder="Se calcula automáticamente"
-                readOnly
-              />
+                 placeholder="Se calcula automáticamente"
+                readOnly />
             </div>
 
             <div>

@@ -464,12 +464,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
               >
                 {(account.status === 'ACTIVE' || (!account.status && account.activa)) ? (
                   <>
-                    <EyeOff className="w-4 h-4" />
-                    Desactivar
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4" />
+                    <EyeOff className="w-4 h-4" / Desactivar </> ) : ( <> <Eye className="w-4 h-4" />
                     Activar
                   </>
                 )}
