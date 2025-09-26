@@ -260,9 +260,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.tipoConcepto}
                     onChange={(e) => updateField('tipoConcepto', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    placeholder="Ej: Seguro hogar, Renta habitación 1"
-                  />
+            placeholder="Ej: Seguro hogar, Renta habitación 1"
+          />
                 )}
               </div>
 
@@ -278,9 +277,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedor}
                       onChange={(e) => updateField('proveedor', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
-                      placeholder="Nombre del proveedor"
-                    />
+            placeholder="Nombre del proveedor"
+          />
                   </div>
 
                   <div>
@@ -292,9 +290,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedorNif}
                       onChange={(e) => updateField('proveedorNif', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
-                      placeholder="NIF del proveedor"
-                    />
+            placeholder="NIF del proveedor"
+          />
                   </div>
                 </>
               )}
@@ -350,10 +347,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.fechaUnica}
                     onChange={(e) => updateField('fechaUnica', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
               ) : (
                 <div>
@@ -367,9 +362,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.dayOfMonth || ''}
                     onChange={(e) => updateField('dayOfMonth', parseInt(e.target.value) || undefined)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    placeholder="1-28"
-                  />
+            placeholder="1-28"
+          />
                   <p className="text-xs text-gray-600 mt-1">
                     Recomendado 1-28 para evitar problemas con meses cortos
                   </p>
@@ -388,9 +382,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.importeUnitario}
                   onChange={(e) => updateField('importeUnitario', parseFloat(e.target.value) || 0)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
-                  placeholder="0.00"
-                />
+            placeholder="0.00"
+          />
               </div>
 
               {/* IVA Incluido */}
@@ -400,9 +393,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     type="checkbox"
                     checked={formData.ivaIncluido}
                     onChange={(e) => updateField('ivaIncluido', e.target.checked)}
-                    className="mr-2"
-          >
-                  />
+                    className="mr-2" />
                   <span className="text-sm font-medium text-gray-700">IVA Incluido</span>
                 </label>
               </div>
@@ -418,10 +409,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.desde}
                     onChange={(e) => updateField('desde', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -432,10 +421,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.hasta}
                     onChange={(e) => updateField('hasta', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
-                    min={`${year}-01-01`}
-                    max={`${year}-12-31`}
-                  />
+                     min={`${year}-01-01`}
+                    max={`${year}-12-31`} />
                 </div>
               </div>
 
@@ -448,10 +435,8 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.notas}
                   onChange={(e) => updateField('notas', e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
-                  rows={3}
-                  placeholder="Notas adicionales..."
-                />
+                   rows={3}
+                  placeholder="Notas adicionales..." />
               </div>
             </div>
           </div>

@@ -306,9 +306,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <img 
             src={url} 
             alt={document.filename} 
-            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg"
-          >
-          />
+            className="max-w-full max-h-96 mx-auto object-contain border border-neutral-200 rounded-lg" />
         </div>
       );
     }
@@ -389,11 +387,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               <input 
                 type="text" 
                 className="ml-2 border border-neutral-200 rounded px-2 py-1 text-sm"
-                >
-                value={metadata.proveedor}
-                onChange={(e) => setMetadata({...metadata, proveedor: e.target.value})}
-                placeholder="Nombre del proveedor"
-              />
+                 value={metadata.proveedor}
+                onChange={(e) => setMetadata({...metadata, proveedor: e.target.value})} placeholder="Nombre del proveedor"
+               />
             ) : (
               <span className="ml-2 text-neutral-600">{metadata.proveedor || 'Sin especificar'}</span>
             )}
@@ -463,12 +459,10 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           {isEditingMetadata ? (
             <textarea 
               className="mt-1 w-full border border-neutral-200 rounded px-3 py-2 text-sm"
-              >
-              rows={2}
+               rows={2}
               value={metadata.notas}
-              onChange={(e) => setMetadata({...metadata, notas: e.target.value})}
-              placeholder="Notas adicionales sobre el documento..."
-            />
+              onChange={(e) => setMetadata({...metadata, notas: e.target.value})} placeholder="Notas adicionales sobre el documento..."
+             />
           ) : (
             <p className="mt-1 text-neutral-600 text-sm">{metadata.notas || 'Sin notas'}</p>
           )}
@@ -514,9 +508,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </p>
         <button 
           className="mt-4 px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+            onClick={handlePreview}
           >
-          onClick={handlePreview}
-        >
           <Eye className="w-4 h-4 inline mr-2" />
           Abrir vista previa
         </button>
@@ -526,9 +519,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
       <div className="flex flex-wrap gap-3">
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            onClick={handlePreview}
           >
-          onClick={handlePreview}
-        >
           <Eye className="w-4 h-4" />
           Ver
         </button>
@@ -567,9 +559,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         </button>
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+            onClick={handleDownload}
           >
-          onClick={handleDownload}
-        >
           <Download className="w-4 h-4" />
           Descargar
         </button>
@@ -618,9 +609,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3">
               <button 
                 className="px-4 py-2 bg-error-600 text-white rounded-lg hover:bg-error-700 transition-colors"
+            onClick={handleDelete}
           >
-                onClick={handleDelete}
-              >
                 Eliminar
               </button>
               <button 
@@ -759,9 +749,8 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
             <div className="flex gap-3 mt-6">
               <button 
                 className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors"
+            onClick={handleAssign}
           >
-                onClick={handleAssign}
-              >
                 {metadata.status === 'Asignado' ? 'Reasignar' : 'Asignar'}
               </button>
               <button 

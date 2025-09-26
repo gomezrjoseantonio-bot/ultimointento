@@ -697,9 +697,7 @@ const InboxAtlasHorizon: React.FC = () => {
         multiple
         accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
         onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-        className="hidden"
-          >
-      />
+        className="hidden" />
 
       {/* Standardized Filter Bar */}
       <FilterBar
@@ -760,9 +758,7 @@ const InboxAtlasHorizon: React.FC = () => {
             emptyMessage="No hay documentos que coincidan con los filtros"
             emptyIcon={<FileText className="h-12 w-12 text-gray-400" />}
             onSort={undefined} // Could implement sorting later
-            className="border-0"
-          >
-          />
+            className="border-0" />
         </div>
 
         {/* Vista de detalle (split/panel lateral) */}
@@ -781,9 +777,7 @@ const InboxAtlasHorizon: React.FC = () => {
                   fileType={selectedDocument.type}
                   fileContent={selectedDocument.fileContent}
                   fileUrl={selectedDocument.fileUrl}
-                  className="border rounded-lg"
-          >
-                />
+                  className="border rounded-lg" />
               </div>
 
               {/* H-HOTFIX: Enhanced campos extraídos */}

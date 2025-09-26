@@ -414,9 +414,8 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 onClick={handleCleanupDemoData}
                 disabled={cleaningDemo}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 disabled:opacity-50"
-                >
-                title="Eliminar cuentas y movimientos de demostración"
-              >
+            title="Eliminar cuentas y movimientos de demostración"
+          >
                 <Trash className="w-4 h-4 mr-2" style={{ strokeWidth: 1.5 }} />
                 {cleaningDemo ? 'Limpiando...' : 'Limpiar datos demo'}
               </button>
@@ -438,9 +437,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                         <img 
                           src={getLogoFromStorage(account.id!) || account.logo_url} 
                           alt={`Logo ${account.bank}`}
-                          className="w-full h-full object-cover"
-          >
-                        />
+                          className="w-full h-full object-cover" />
                       ) : (
                         <Banknote className="w-6 h-6 text-gray-500" style={{ strokeWidth: 1.5 }} />
                       )}
@@ -460,17 +457,15 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     <button
                       onClick={() => handleEditAccount(account)}
                       className="p-2 text-text-gray hover:text-atlas-blue"
-                      >
-                      title="Editar cuenta"
-                    >
+            title="Editar cuenta"
+          >
                       <Edit2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
                     </button>
                     <button
                       onClick={() => handleDeleteAccount(account)}
                       className="p-2 text-text-gray hover:text-red-600"
-                      >
-                      title="Eliminar cuenta"
-                    >
+            title="Eliminar cuenta"
+          >
                       <Trash2 className="w-5 h-5" style={{ strokeWidth: 1.5 }} />
                     </button>
                   </div>
@@ -585,9 +580,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                       <img
                         src={formData.logoUrl}
                         alt="Logo preview"
-                        className="w-full h-full object-cover"
-          >
-                      />
+                        className="w-full h-full object-cover" />
                     </div>
                   )}
                   <button
@@ -607,9 +600,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                     const file = e.target.files?.[0];
                     if (file) handleLogoUpload(file);
                   }}
-                  className="hidden"
-          >
-                />
+                  className="hidden" />
                 <p className="text-xs text-text-gray mt-1">
                   PNG/JPG, máximo 2MB
                 </p>
@@ -621,9 +612,8 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   type="button"
                   onClick={handleCloseModal}
                   className="px-4 py-2 text-text-gray hover:text-atlas-navy-1"
-                  >
-                  disabled={saving}
-                >
+            disabled={saving}
+          >
                   Cancelar
                 </button>
                 <button
@@ -673,9 +663,8 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
               <button
                 onClick={() => setDeleteConfirmation(null)}
                 className="px-4 py-2 text-text-gray hover:text-atlas-navy-1"
-                >
-                disabled={deleting}
-              >
+            disabled={deleting}
+          >
                 Cancelar
               </button>
               <button

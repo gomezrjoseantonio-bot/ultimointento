@@ -438,17 +438,10 @@ const InboxPageNew: React.FC = () => {
               multiple
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
-            />
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
             <button
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
-              >
-              style={{ 
-                backgroundColor: '#0A2A57'
-              }}
-            >
-              <Upload className="w-4 h-4 mr-2" />
+               style={{ backgroundColor: '#0A2A57' }} > <Upload className="w-4 h-4 mr-2" />
               Subir documentos
             </button>
           </div>
@@ -617,9 +610,8 @@ const InboxPageNew: React.FC = () => {
                             setSelectedDocument(doc);
                           }}
                           className="text-primary-600 hover:text-primary-900"
-                          >
-                          title="Ver"
-                        >
+            title="Ver"
+          >
                           <Eye className="w-4 h-4" />
                         </button>
                         {doc.status === 'error' && (
@@ -629,9 +621,8 @@ const InboxPageNew: React.FC = () => {
                               handleReprocess(doc.id);
                             }}
                             className="text-success-600 hover:text-success-900"
-                            >
-                            title="Reprocesar"
-                          >
+            title="Reprocesar"
+          >
                             <RotateCcw className="w-4 h-4" />
                           </button>
                         )}
@@ -641,9 +632,8 @@ const InboxPageNew: React.FC = () => {
                             handleDelete(doc.id);
                           }}
                           className="text-error-600 hover:text-error-900"
-                          >
-                          title="Eliminar"
-                        >
+            title="Eliminar"
+          >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -733,9 +723,8 @@ const InboxPageNew: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    >
-                    style={{ backgroundColor: '#0A2A57' }}
-                  >
+            style={{ backgroundColor: '#0A2A57' }}
+          >
                     Completar y archivar
                   </button>
                 </div>

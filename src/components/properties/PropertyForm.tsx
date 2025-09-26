@@ -58,9 +58,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
           value={formData.alias}
           onChange={(e) => setFormData(prev => ({ ...prev, alias: e.target.value }))}
           className="btn-secondary-horizon w-full "
-          >
-          required
-        />
+            required
+          />
       </div>
 
       <div>
@@ -72,9 +71,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
           value={formData.address}
           onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
           className="btn-secondary-horizon w-full "
-          >
-          required
-        />
+            required
+          />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -87,10 +85,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
             value={formData.squareMeters}
             onChange={(e) => setFormData(prev => ({ ...prev, squareMeters: parseInt(e.target.value) || 0 }))}
             className="btn-secondary-horizon w-full "
-            >
-            min="1"
-            required
-          />
+             min="1"
+            required />
         </div>
 
         <div>
@@ -108,11 +104,9 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
               }
             }))}
             className="btn-secondary-horizon w-full "
-            >
-            min="0"
+             min="0"
             step="0.01"
-            required
-          />
+            required />
         </div>
       </div>
 
@@ -127,9 +121,8 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
         <button
           type="submit"
           className="btn-primary-horizon px-4 py-2 disabled:opacity-50"
+            disabled={isSubmitting}
           >
-          disabled={isSubmitting}
-        >
           {isSubmitting ? 'Adding...' : 'Add Property'}
         </button>
       </div>

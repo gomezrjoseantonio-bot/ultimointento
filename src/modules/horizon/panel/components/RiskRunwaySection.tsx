@@ -44,9 +44,7 @@ const RiskRunwaySection: React.FC<RiskRunwaySectionProps> = ({ filters }) => {
               r="40"
               strokeWidth="8"
               fill="none"
-              className="stroke-hz-neutral-200"
-          >
-            />
+              className="stroke-hz-neutral-200" />
             {/* Progress circle */}
             <circle
               cx="50"

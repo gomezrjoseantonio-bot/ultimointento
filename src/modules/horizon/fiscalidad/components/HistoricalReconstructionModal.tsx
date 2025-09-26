@@ -98,7 +98,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
+    return `${minutes} m ${remainingSeconds}s`;
   };
 
   if (!isOpen) return null;
@@ -187,9 +187,8 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               <div className="w-full bg-gray-200 h-3">
                 <div 
                   className="btn-primary-horizon h-3 transition-all duration-300"
-                  >
-                  style={{ width: `${progress.percentage}%` }}
-                />
+            style={{ width: `${progress.percentage}%` }}
+          />
               </div>
               <div className="text-xs text-gray-500">
                 {progress.details} ({progress.current}/{progress.total})

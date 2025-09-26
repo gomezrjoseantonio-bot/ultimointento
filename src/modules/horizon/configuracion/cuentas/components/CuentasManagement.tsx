@@ -216,13 +216,12 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
           src={account.banco.brand.logoUrl} 
           alt={`Logo ${account.banco.name}`}
           className="w-full h-full object-cover"
-          >
-          onError={(e) => {
+           onError={(e) => {
             // Fallback to avatar
             e.currentTarget.style.display = 'none';
             e.currentTarget.nextElementSibling?.setAttribute('style', 'display: flex');
           }}
-        />
+         />
       );
     }
     
@@ -232,9 +231,8 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     return (
       <div 
         className="w-full h-full flex items-center justify-center font-bold text-sm"
-        >
-        style={{ backgroundColor: color }}
-      >
+            style={{ backgroundColor: color }}
+          >
         {initial}
       </div>
     );
@@ -266,9 +264,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
               placeholder="Buscar por alias o IBAN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-atlas-blue focus:border-atlas-blue"
-          >
-            />
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-atlas-blue focus:border-atlas-blue" />
           </div>
         </div>
       </div>
@@ -330,18 +326,16 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   <button
                     onClick={() => openEditModal(account)}
                     className="p-2 text-gray-500 hover:text-atlas-blue rounded-lg hover:bg-gray-100"
-                    >
-                    title="Editar cuenta"
-                  >
+            title="Editar cuenta"
+          >
                     <Edit2 className="h-4 w-4" />
                   </button>
                   {account.activa && (
                     <button
                       onClick={() => setDeleteConfirmation(account)}
                       className="p-2 text-gray-500 hover:text-error-600 rounded-lg hover:bg-gray-100"
-                      >
-                      title="Desactivar cuenta"
-                    >
+            title="Desactivar cuenta"
+          >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   )}
@@ -483,9 +477,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             ...prev, 
                             titular: { ...prev.titular, nombre: e.target.value }
                           }))}
-                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
-          >
-                        />
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm" />
                       </div>
                       <div>
                         <label htmlFor="nif" className="block text-xs font-medium text-text-gray mb-1">
@@ -499,9 +491,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                             ...prev, 
                             titular: { ...prev.titular, nif: e.target.value }
                           }))}
-                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm"
-          >
-                        />
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue text-sm" />
                       </div>
                     </div>
                   </div>

@@ -14,7 +14,7 @@ const DynamicImportDemo: React.FC = () => {
       const XLSX = await import('xlsx');
       
       const endTime = performance.now();
-      console.log(`✅ XLSX loaded in ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`✅ XLSX loaded in ${(endTime - startTime).toFixed(2)} ms`);
       
       // Create a simple workbook to test
       const wb = XLSX.utils.book_new();
@@ -45,7 +45,7 @@ Bundle optimization working - heavy library only loaded when needed.`);
       const JSZip = (await import('jszip')).default;
       
       const endTime = performance.now();
-      console.log(`✅ JSZip loaded in ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`✅ JSZip loaded in ${(endTime - startTime).toFixed(2)} ms`);
       
       // Create a simple zip to test
       const zip = new JSZip();

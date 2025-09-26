@@ -70,9 +70,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         <MovementStatusChip 
           status={status === 'sin_match' ? 'no_planificado' : 'confirmado'}
           movementType={movementType}
-          className="ml-2"
-          >
-        />
+          className="ml-2" />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
           <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
@@ -172,9 +170,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-gray-200"
-          >
-        onClick={onClose}
-      />
+            onClick={onClose}
+          />
       
       {/* Drawer */}
       <div className="absolute right-0 top-0 h-full w-96 bg-hz-card-bg shadow-xl overflow-y-auto">
@@ -235,9 +232,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     ...editedMovement,
                     description: e.target.value
                   })}
-                  className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-          >
-                />
+                  className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent" />
               ) : (
                 <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                   {movement.description || 'Sin descripción'}
@@ -259,9 +254,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       ...editedMovement,
                       counterparty: e.target.value
                     })}
-                    className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent"
-          >
-                  />
+                    className="w-full px-3 py-2 border border-hz-neutral-300 focus:ring-2 focus:ring-hz-primary focus:border-transparent" />
                 ) : (
                   <p className="text-hz-neutral-700 bg-hz-neutral-100 px-3 py-2">
                     {movement.counterparty}
@@ -332,9 +325,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     value={reconciliationData.categoria}
                     onChange={(e) => setReconciliationData(prev => ({ ...prev, categoria: e.target.value }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
-                    >
-                    required
-                  >
+            required
+          >
                     <option value="">Seleccionar categoría</option>
                     {CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -355,9 +347,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       inmuebleId: e.target.value === 'PERSONAL' ? '' : prev.inmuebleId
                     }))}
                     className="btn-secondary-horizon w-full px-3 py-2 "
-                    >
-                    required
-                  >
+            required
+          >
                     <option value="PERSONAL">Personal</option>
                     <option value="INMUEBLE">Inmueble</option>
                   </select>
@@ -373,9 +364,8 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       value={reconciliationData.inmuebleId}
                       onChange={(e) => setReconciliationData(prev => ({ ...prev, inmuebleId: e.target.value }))}
                       className="btn-secondary-horizon w-full px-3 py-2 "
-                      >
-                      required
-                    >
+            required
+          >
                       <option value="">Seleccionar inmueble</option>
                       {properties.map(property => (
                         <option key={property.id} value={property.id?.toString() || ''}>

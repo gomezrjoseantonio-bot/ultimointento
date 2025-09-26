@@ -77,11 +77,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div 
-          className="fixed inset-0 transition-opacity" 
-          >
-          style={{ backgroundColor: 'rgba(156, 163, 175, 0.1)' }}
-          onClick={handleCancel}
-        />
+          className="fixed inset-0 transition-opacity" />
 
         {/* Modal panel */}
         <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
@@ -163,13 +159,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     window.location.href = currentUrl.toString();
                   }}
                   className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                  style={{ 
-                    backgroundColor: '#042C5E',
-                    fontFamily: 'Inter, sans-serif'
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                   style={{ backgroundColor: '#042C5E', fontFamily: 'Inter, sans-serif' }} > <Plus className="w-4 h-4 mr-2" strokeWidth={1.5} />
                   Configurar cuentas
                 </button>
               </div>
@@ -218,8 +208,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                               src={account.logo_url} 
                               alt={`Logo ${account.bank}`}
                               className="w-full h-full object-cover"
-          >
-                              onError={(e) => {
+           onError={(e) => {
                                 // Fallback to initials if image fails to load
                                 const target = e.target as HTMLImageElement;
                                 const fallback = document.createElement('div');
@@ -231,7 +220,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                                   .join('');
                                 target.parentNode?.replaceChild(fallback, target);
                               }}
-                            />
+                             />
                           ) : (
                             <span className="text-white font-medium text-xs">
                               {(account.name || account.bank || 'A')

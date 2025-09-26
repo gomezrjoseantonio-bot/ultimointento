@@ -317,7 +317,6 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
           <button
             onClick={onCancel}
             className="px-4 py-2 border border-gray-300 text-gray-700 focus:ring-2 focus:ring-hz-primary focus:ring-offset-2"
-            >
             disabled={isSaving}
           >
             Cancelar

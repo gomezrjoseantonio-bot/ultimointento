@@ -167,9 +167,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
                 className="fixed inset-0 bg-gray-500 transition-opacity"
-          >
-                onClick={() => setShowModal(false)}
-              />
+           onClick={() => setShowModal(false)}
+               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-xl sm:my-8 sm:align-middle sm:p-6">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-neutral-900 mb-4">
@@ -385,9 +384,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
               <div 
                 className="fixed inset-0 bg-gray-500 transition-opacity"
-          >
-                onClick={() => setShowModal(false)}
-              />
+           onClick={() => setShowModal(false)}
+               />
               <div className="relative inline-block w-full max-w-md px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white shadow-xl sm:my-8 sm:align-middle sm:p-6">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-neutral-900 mb-4">

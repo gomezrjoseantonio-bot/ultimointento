@@ -142,10 +142,9 @@ const EnhancedInboxWithFEIN: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 
-              className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
+              className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]"
+            style={{ color: 'var(--hz-text)' }}
           >
-              style={{ color: 'var(--hz-text)' }}
-            >
               Bandeja de Entrada
             </h1>
             <p className="text-neutral-600 text-sm leading-5 font-normal mt-1">

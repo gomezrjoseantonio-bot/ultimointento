@@ -87,9 +87,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
         <button
           onClick={handleContinue}
           className="btn-primary-horizon flex items-center px-6 py-3 font-medium"
-        >
-          Continuar a revisión
-          <ChevronRight className="h-4 w-4 ml-2" />
+         Continuar a revisión <ChevronRight className="h-4 w-4 ml-2" />
         </button>
       </div>
     </div>

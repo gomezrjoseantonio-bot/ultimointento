@@ -71,9 +71,7 @@ describe('KpiCard', () => {
       <KpiCard 
         title="Revenue" 
         value="€15,000" 
-        className="custom-class" 
-          >
-      />
+        className="custom-class" />
     );
     
     const card = screen.getByText('Revenue').closest('div');

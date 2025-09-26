@@ -377,18 +377,16 @@ const EmailEntrante: React.FC = () => {
                     <button
                       onClick={() => copyToClipboard(alias.email)}
                       className="p-2 text-neutral-500 hover:text-brand-navy"
-                      >
-                      title="Copiar email"
-                    >
+            title="Copiar email"
+          >
                       <Copy className="w-4 h-4" />
                     </button>
                     
                     <button
                       onClick={() => regenerateAlias(alias.id)}
                       className="p-2 text-neutral-500 hover:text-warning-600"
-                      >
-                      title="Regenerar alias"
-                    >
+            title="Regenerar alias"
+          >
                       <RotateCcw className="w-4 h-4" />
                     </button>
                     
@@ -429,19 +427,7 @@ const EmailEntrante: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium text-neutral-900">Lista blanca de remitentes</h3>
-                <p className="text-sm text-neutral-600">
-                  Solo aceptar emails de remitentes autorizados
-                </p>
-              </div>
-              <button
-                onClick={toggleWhitelist}
-                className={`flex items-center gap-2 px-4 py-2 ${
-                  whitelistEnabled 
-                    ? 'bg-success-100 text-success-800'
-                    : 'bg-neutral-100 text-neutral-600'
-                }`}
-              >
-                {whitelistEnabled ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                <p className="text-sm text-neutral-600" Solo aceptar emails de remitentes autorizados </p> </div> <button onClick={toggleWhitelist} className={`flex items-center gap-2 px-4 py-2 ${ whitelistEnabled ? 'bg-success-100 text-success-800' : 'bg-neutral-100 text-neutral-600' }`} > {whitelistEnabled ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                 {whitelistEnabled ? 'Activada' : 'Desactivada'}
               </button>
             </div>
@@ -455,7 +441,6 @@ const EmailEntrante: React.FC = () => {
                   value={newWhitelistEmail}
                   onChange={(e) => setNewWhitelistEmail(e.target.value)}
                   className="flex-1 border border-neutral-200 px-3 py-2 text-sm"
-          >
                   onKeyPress={(e) => e.key === 'Enter' && addToWhitelist()}
                 />
                 <button
@@ -490,7 +475,7 @@ const EmailEntrante: React.FC = () => {
               <h4 className="text-sm font-medium text-primary-900 mb-2">Límites de seguridad</h4>
               <ul className="text-xs text-primary-800 space-y-1">
                 <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENTS} adjuntos por email</li>
-                <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENT_SIZE / (1024*1024)}MB por adjunto</li>
+                <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENT_SIZE / (1024*1024)} MB por adjunto</li>
                 <li>• Validación SPF, DKIM y DMARC (registrada en logs)</li>
               </ul>
             </div>
@@ -514,15 +499,7 @@ const EmailEntrante: React.FC = () => {
               {/* Issue 3: Mock email testing */}
               <div className="flex items-center gap-2">
                 <label className="cursor-pointer px-4 py-2 bg-warning-100 text-orange-800">
-                  <Upload className="w-4 h-4 inline mr-2" />
-                  Probar con .eml/.zip
-                  <input
-                    type="file"
-                    accept=".eml,.zip"
-                    onChange={handleMockEmailTest}
-                    className="hidden"
-          >
-                  />
+                  <Upload className="w-4 h-4 inline mr-2" / Probar con .eml/.zip <input type="file" accept=".eml,.zip" onChange={handleMockEmailTest} className="hidden" />
                 </label>
               </div>
             </div>
@@ -539,7 +516,6 @@ const EmailEntrante: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-neutral-200 text-sm"
-          >
                 />
               </div>
               

@@ -224,9 +224,8 @@ const UnifiedInboxPage: React.FC = () => {
                 accept=".pdf,.jpg,.jpeg,.png,.heic,.docx,.xlsx,.xls,.csv"
                 onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 className="hidden"
-                >
-                id="file-upload"
-              />
+            id="file-upload"
+          />
               <label
                 htmlFor="file-upload"
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white cursor-pointer"
@@ -528,7 +527,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           <button
             onClick={() => onSelect(document)}
             className="p-1 text-gray-400 hover:text-gray-600"
-            >
             title="Ver detalles"
           >
             <Eye className="h-4 w-4" />
@@ -538,9 +536,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <button
               onClick={() => onReprocessOCR(document.id)}
               className="p-1 text-gray-400 hover:text-gray-600"
-              >
-              title="Reprocesar OCR"
-            >
+            title="Reprocesar OCR"
+          >
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
@@ -552,9 +549,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <button
               onClick={() => onAssignAccount(document)}
               className="p-1 text-primary-500 hover:text-primary-700"
-              >
-              title="Asignar cuenta bancaria"
-            >
+            title="Asignar cuenta bancaria"
+          >
               <CreditCard className="h-4 w-4" />
             </button>
           )}

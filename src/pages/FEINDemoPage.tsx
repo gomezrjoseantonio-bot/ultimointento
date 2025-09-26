@@ -280,10 +280,9 @@ const FEINDemoPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 
-              className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
+              className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]"
+            style={{ color: 'var(--hz-text)' }}
           >
-              style={{ color: 'var(--hz-text)' }}
-            >
               FEIN Demo - QA Testing
             </h1>
             <p className="text-neutral-600 text-sm leading-5 font-normal mt-1">
@@ -298,12 +297,7 @@ const FEINDemoPage: React.FC = () => {
           >
             {isLoadingDemo ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                Cargando...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4" />
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" / Cargando... </> ) : ( <> <Upload className="h-4 w-4" />
                 Cargar documentos demo
               </>
             )}

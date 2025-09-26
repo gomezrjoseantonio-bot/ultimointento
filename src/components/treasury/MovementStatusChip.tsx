@@ -110,9 +110,8 @@ export const MovementStatusChip: React.FC<StatusChipProps> = ({
       {shouldShowAutoFlag && (
         <span 
           className="btn-primary-horizon inline-flex items-center justify-center w-4 h-4 text-blue-600 rounded text-xs font-medium"
+            title="Clasificado automáticamente por regla de aprendizaje"
           >
-          title="Clasificado automáticamente por regla de aprendizaje"
-        >
           <Bot className="w-2.5 h-2.5" />
         </span>
       )}

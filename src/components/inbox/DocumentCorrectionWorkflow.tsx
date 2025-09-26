@@ -269,9 +269,8 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             <button
               onClick={() => startEditing(fieldDef.field)}
               className="text-blue-600 hover:text-blue-800 p-1"
-              >
-              title="Editar campo"
-            >
+            title="Editar campo"
+          >
               <Edit3 className="w-4 h-4" strokeWidth={1.5} />
             </button>
           )}
@@ -347,9 +346,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                   type="checkbox"
                   checked={Boolean(value)}
                   onChange={(e) => handleFieldChange(fieldDef.field, e.target.checked)}
-                  className="mr-2"
-          >
-                />
+                  className="mr-2" />
                 <span className="text-sm text-gray-600">Sí</span>
               </label>
             )}
@@ -357,9 +354,8 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             <button
               onClick={() => stopEditing(fieldDef.field)}
               className="text-green-600 hover:text-green-800 p-1"
-              >
-              title="Confirmar cambio"
-            >
+            title="Confirmar cambio"
+          >
               <Check className="w-4 h-4" strokeWidth={1.5} />
             </button>
           </div>
@@ -448,12 +444,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
         >
           {saving ? (
             <>
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" strokeWidth={1.5} />
-              Guardando...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" strokeWidth={1.5} />
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" strokeWidth={1.5} / Guardando... </> ) : ( <> <Save className="w-4 h-4 mr-2" strokeWidth={1.5} />
               Guardar correcciones
             </>
           )}

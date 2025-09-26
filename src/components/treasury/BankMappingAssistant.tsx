@@ -243,9 +243,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
                 value={profileName}
                 onChange={(e) => setProfileName(e.target.value)}
                 placeholder="Ej: MiBanco BBVA v2024"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-          >
-              />
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
               <div className="text-xs text-gray-500 mt-1">
                 Se guardará para futuros archivos similares
               </div>

@@ -189,9 +189,7 @@ const CapexComponent: React.FC = () => {
                 placeholder="Buscar por contraparte, tipo o inmueble..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-              />
+                className="pl-10 pr-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
           </div>
 
@@ -344,9 +342,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.inmueble_id}
                       onChange={(e) => setFormData(prev => ({ ...prev, inmueble_id: parseInt(e.target.value) }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      required
-                    >
+            required
+          >
                       <option value={0}>Seleccionar inmueble</option>
                       {properties.map(property => (
                         <option key={property.id} value={property.id}>
@@ -365,10 +362,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.contraparte}
                       onChange={(e) => setFormData(prev => ({ ...prev, contraparte: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      placeholder="Nombre del proveedor o contratista"
-                      required
-                    />
+                       placeholder="Nombre del proveedor o contratista"
+                      required />
                   </div>
 
                   <div>
@@ -380,9 +375,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.fecha_emision}
                       onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      required
-                    />
+            required
+          />
                   </div>
 
                   <div>
@@ -396,10 +390,8 @@ const CapexComponent: React.FC = () => {
                       value={formData.total}
                       onChange={(e) => setFormData(prev => ({ ...prev, total: parseFloat(e.target.value) || 0 }))}
                       className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                      placeholder="0.00"
-                      required
-                    />
+                       placeholder="0.00"
+                      required />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -411,9 +403,8 @@ const CapexComponent: React.FC = () => {
                         value={formData.tipo}
                         onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as CAPEXTipo }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      >
+            required
+          >
                         {capexTipos.map(tipo => (
                           <option key={tipo.value} value={tipo.value}>
                             {tipo.label}
@@ -433,9 +424,8 @@ const CapexComponent: React.FC = () => {
                         value={formData.anos_amortizacion}
                         onChange={(e) => setFormData(prev => ({ ...prev, anos_amortizacion: parseInt(e.target.value) || 10 }))}
                         className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        required
-                      />
+            required
+          />
                     </div>
                   </div>
 

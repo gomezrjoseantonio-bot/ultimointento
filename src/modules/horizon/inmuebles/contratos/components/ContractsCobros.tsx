@@ -362,17 +362,15 @@ const ContractsCobros: React.FC = () => {
                             <button
                               onClick={() => openPaymentModal(payment, false)}
                               className="text-success-600 hover:text-success-800 transition-colors"
-                              >
-                              title="Marcar como cobrado"
-                            >
+            title="Marcar como cobrado"
+          >
                               <Check className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => openPaymentModal(payment, true)}
                               className="text-primary-600 hover:text-primary-800 transition-colors"
-                              >
-                              title="Pago parcial"
-                            >
+            title="Pago parcial"
+          >
                               <DollarSign className="h-4 w-4" />
                             </button>
                           </>
@@ -382,18 +380,16 @@ const ContractsCobros: React.FC = () => {
                           <button
                             onClick={() => openPaymentModal(payment, false)}
                             className="text-success-600 hover:text-success-800 transition-colors"
-                            >
-                            title="Completar pago"
-                          >
+            title="Completar pago"
+          >
                             <Check className="h-4 w-4" />
                           </button>
                         )}
                         
                         <button
                           className="text-neutral-600 hover:text-neutral-800 transition-colors"
-                          >
-                          title="Adjuntar justificante"
-                        >
+            title="Adjuntar justificante"
+          >
                           <FileText className="h-4 w-4" />
                         </button>
                       </div>
@@ -424,16 +420,7 @@ const ContractsCobros: React.FC = () => {
 
             <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Importe esperado
-                </label>
-                <input
-                  type="text"
-                  value={formatEuro(paymentModalData.expectedAmount)}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-          >
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1" Importe esperado </label> <input type="text" value={formatEuro(paymentModalData.expectedAmount)} disabled className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500" />
               </div>
 
               <div>
@@ -445,7 +432,6 @@ const ContractsCobros: React.FC = () => {
                   value={modalForm.amount}
                   onChange={(e) => setModalForm(prev => ({ ...prev, amount: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                  >
                   placeholder="1.200,00"
                   required
                 />
@@ -460,9 +446,8 @@ const ContractsCobros: React.FC = () => {
                   value={modalForm.date}
                   onChange={(e) => setModalForm(prev => ({ ...prev, date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                  >
-                  required
-                />
+            required
+          />
               </div>
 
               <div>
@@ -473,10 +458,8 @@ const ContractsCobros: React.FC = () => {
                   value={modalForm.notes}
                   onChange={(e) => setModalForm(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                  >
-                  rows={3}
-                  placeholder="Notas sobre el pago..."
-                />
+                   rows={3}
+                  placeholder="Notas sobre el pago..." />
               </div>
 
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

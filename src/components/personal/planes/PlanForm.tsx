@@ -208,7 +208,6 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="Ej: Plan de Pensiones BBVA"
               required
             />
@@ -222,9 +221,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.tipo}
               onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as PlanPensionInversion['tipo'] }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              required
-            >
+            required
+          >
               {tiposProducto.map(tipo => (
                 <option key={tipo.value} value={tipo.value}>
                   {tipo.label}
@@ -246,7 +244,6 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.aportacionesRealizadas}
               onChange={(e) => setFormData(prev => ({ ...prev, aportacionesRealizadas: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="10000.00"
               required
             />
@@ -262,9 +259,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.valorCompra}
               onChange={(e) => setFormData(prev => ({ ...prev, valorCompra: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Iguala aportaciones si vacío"
-            />
+            placeholder="Iguala aportaciones si vacío"
+          />
           </div>
 
           <div>
@@ -277,7 +273,6 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.valorActual}
               onChange={(e) => setFormData(prev => ({ ...prev, valorActual: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="12000.00"
               required
             />
@@ -296,9 +291,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               value={formData.unidades}
               onChange={(e) => setFormData(prev => ({ ...prev, unidades: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-              placeholder="Para fondos con participaciones"
-            />
+            placeholder="Para fondos con participaciones"
+          />
           </div>
 
           <div>
@@ -351,7 +345,6 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
               checked={formData.esHistorico}
               onChange={(e) => setFormData(prev => ({ ...prev, esHistorico: e.target.checked }))}
               className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-          >
             />
             <label htmlFor="esHistorico" className="text-sm font-medium text-neutral-700">
               Solo seguimiento (histórico)
@@ -375,7 +368,6 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                   aportacionPeriodica: { ...prev.aportacionPeriodica, activa: e.target.checked }
                 }))}
                 className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-          >
               />
               <label htmlFor="aportacionActiva" className="text-sm font-medium text-neutral-700">
                 Aportación Periódica Activa
@@ -398,9 +390,8 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         aportacionPeriodica: { ...prev.aportacionPeriodica, importe: e.target.value }
                       }))}
                       className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      >
-                      placeholder="100.00"
-                    />
+            placeholder="100.00"
+          />
                   </div>
 
                   <div>
@@ -413,8 +404,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         ...prev,
                         aportacionPeriodica: { ...prev.aportacionPeriodica, frecuencia: e.target.value as any }
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    >
+                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent">
                       {frecuencias.map(freq => (
                         <option key={freq.value} value={freq.value}>
                           {freq.label}
@@ -435,8 +425,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                         ...prev,
                         aportacionPeriodica: { ...prev.aportacionPeriodica, cuentaAbono: parseInt(e.target.value) }
                       }))}
-                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    >
+                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent">
                       {cuentas.map(cuenta => (
                         <option key={cuenta.value} value={cuenta.value}>
                           {cuenta.label}
@@ -480,9 +469,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                               reglasDia: { ...prev.aportacionPeriodica.reglasDia, dia: parseInt(e.target.value) }
                             }
                           }))}
-                          className="w-16 px-2 py-2 border border-neutral-300 text-center"
-          >
-                        />
+                          className="w-16 px-2 py-2 border border-neutral-300 text-center" />
                       )}
                     </div>
                   </div>
@@ -517,8 +504,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-brand-navy disabled:opacity-50"
-          >
+            className="px-4 py-2 bg-brand-navy disabled:opacity-50">
             {loading ? 'Guardando...' : (plan ? 'Actualizar' : 'Crear')} Plan
           </button>
         </div>

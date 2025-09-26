@@ -183,9 +183,7 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
           value={formData.alias || ''}
           onChange={(e) => updateFormData({ alias: e.target.value || undefined })}
           placeholder="Ej: Préstamo vivienda principal"
-          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
-        />
+          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue" />
       </div>
 
       {/* Dates Section */}

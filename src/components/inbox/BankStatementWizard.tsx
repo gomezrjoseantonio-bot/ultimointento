@@ -856,9 +856,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                   (step === 3 && !validateMapping())
                 }
                 className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
-              >
-                Siguiente
-                <ArrowRight className="w-4 h-4" />
+               Siguiente <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
               <button

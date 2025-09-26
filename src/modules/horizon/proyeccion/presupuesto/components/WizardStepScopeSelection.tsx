@@ -193,9 +193,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
                 name="period"
                 checked={isFullYear}
                 onChange={() => setIsFullYear(true)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-          >
-              />
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300" />
               <span className="ml-3 text-sm text-primary-900">
                 <strong>Todo el año:</strong> Rellenar meses previos como "retro estimado"
               </span>
@@ -207,9 +205,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
                 name="period"
                 checked={!isFullYear}
                 onChange={() => setIsFullYear(false)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-          >
-              />
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300" />
               <span className="ml-3 text-sm text-primary-900">
                 <strong>Desde {monthNames[currentMonth - 1]}:</strong> Meses previos quedan en blanco
               </span>
@@ -269,9 +265,7 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
             selectedScopes.length === 0
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
               : 'bg-primary-600'          }`}
-        >
-          Continuar a Auto-Semilla
-          <ChevronRight className="h-4 w-4 ml-2" />
+         Continuar a Auto-Semilla <ChevronRight className="h-4 w-4 ml-2" />
         </button>
       </div>
     </div>

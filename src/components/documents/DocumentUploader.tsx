@@ -445,9 +445,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         multiple
         accept=".pdf,.jpg,.jpeg,.png,.zip,.csv,.xlsx,.xls"
         className="hidden"
-          >
-        onChange={(e) => handleFileUpload(e.target.files)}
-      />
+           onChange={(e) => handleFileUpload(e.target.files)}
+       />
     </div>
   );
 };

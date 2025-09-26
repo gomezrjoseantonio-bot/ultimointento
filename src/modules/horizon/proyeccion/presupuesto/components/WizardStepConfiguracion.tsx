@@ -183,9 +183,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                     type="text"
                     value={line.description}
                     onChange={(e) => updateLine(index, 'description', e.target.value)}
-                    className="btn-secondary-horizon block w-full px-3 py-2 "
-          >
-                  />
+                    className="btn-secondary-horizon block w-full px-3 py-2 " />
                   
                   <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
                     Categoría fiscal
@@ -211,12 +209,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                   <input
                     type="number"
                     value={line.amount}
-                    onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="btn-secondary-horizon block w-full px-3 py-2 "
-                    >
-                    min="0"
-                    step="0.01"
-                  />
+                    onChange={(e) => updateLine(index, 'amount', parseFloat(e.target.value) || 0)} className="btn-secondary-horizon block w-full px-3 py-2 " min="0" step="0.01" />
                 </div>
 
                 {/* Frequency */}
@@ -266,12 +259,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <input
                         type="number"
                         value={line.installments || 2}
-                        onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)}
-                        className="btn-secondary-horizon block w-full px-3 py-2 "
-                        >
-                        min="1"
-                        max="12"
-                      />
+                        onChange={(e) => updateLine(index, 'installments', parseInt(e.target.value) || 2)} className="btn-secondary-horizon block w-full px-3 py-2 " min="1" max="12" />
                     </>
                   )}
                   
@@ -300,9 +288,8 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
                       <button
                         onClick={() => removeLine(index)}
                         className="p-2 text-error-600"
-                        >
-                        title="Eliminar partida"
-                      >
+            title="Eliminar partida"
+          >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
@@ -339,9 +326,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
         <button
           onClick={handleContinue}
           className="btn-primary-horizon flex items-center px-6 py-3 font-medium"
-        >
-          Continuar a revisión
-          <ChevronRight className="h-4 w-4 ml-2" />
+         Continuar a revisión <ChevronRight className="h-4 w-4 ml-2" />
         </button>
       </div>
     </div>

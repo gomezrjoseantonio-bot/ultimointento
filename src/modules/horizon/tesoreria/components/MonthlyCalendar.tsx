@@ -252,9 +252,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                           <MovementStatusChip 
                             status={entry.movement.unifiedStatus as any} 
                             movementType={entry.movement.type}
-                            className="flex-shrink-0"
-          >
-                          />
+                            className="flex-shrink-0" />
                         )}
                         {entry.type === 'rent' && (
                           <span className={`px-1 py-0.5 text-xs rounded ${
@@ -277,9 +275,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
                             onEdit={() => onMovementAction(entry.movement!, 'edit')}
                             onLinkInvoice={() => onMovementAction(entry.movement!, 'link')}
                             onReclassify={() => onMovementAction(entry.movement!, 'reclassify')}
-                            className="flex-row"
-          >
-                          />
+                            className="flex-row" />
                         </div>
                       )}
                     </div>

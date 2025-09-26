@@ -254,9 +254,8 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             <button
               onClick={() => navigateMonth('prev')}
               className="p-1 rounded"
-              >
-              title="Mes anterior"
-            >
+            title="Mes anterior"
+          >
               <ChevronLeft className="h-4 w-4 text-gray-700" />
             </button>
             
@@ -270,9 +269,8 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             <button
               onClick={() => navigateMonth('next')}
               className="p-1 rounded"
-              >
-              title="Mes siguiente"
-            >
+            title="Mes siguiente"
+          >
               <ChevronRight className="h-4 w-4 text-gray-700" />
             </button>
           </div>
@@ -294,15 +292,12 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
               placeholder="Buscar..."
               value={localSearchText}
               onChange={(e) => setLocalSearchText(e.target.value)}
-              className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm "
-          >
-            />
+              className="btn-secondary-horizon pl-10 pr-4 py-1.5 text-sm " />
           </div>
           
           <button
             onClick={() => setLocalExcludePersonal(!localExcludePersonal)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
-            >
             title={localExcludePersonal ? 'Mostrar movimientos personales' : 'Ocultar movimientos personales'}
           >
             {localExcludePersonal ? (

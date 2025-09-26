@@ -49,9 +49,8 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
         <button
           onClick={() => onConfirm(movement)}
           className="btn-primary-horizon flex items-center justify-center w-8 h-8"
+            title="Marcar como confirmado"
           >
-          title="Marcar como confirmado"
-        >
           <Check className="w-4 h-4" />
         </button>
       );
@@ -62,9 +61,8 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
         <button
           onClick={() => onEdit(movement)}
           className="flex items-center justify-center w-8 h-8 bg-gray-600"
+            title="Editar movimiento"
           >
-          title="Editar movimiento"
-        >
           <Edit2 className="w-4 h-4" />
         </button>
       );
@@ -111,9 +109,8 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
         <button
           onClick={() => setShowMenu(!showMenu)}
           className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600"
+            title="Más acciones"
           >
-          title="Más acciones"
-        >
           <MoreVertical className="w-4 h-4" />
         </button>
 
@@ -122,9 +119,8 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
             {/* Backdrop to close menu */}
             <div 
               className="fixed inset-0 z-10" 
-          >
-              onClick={() => setShowMenu(false)}
-            />
+           onClick={() => setShowMenu(false)}
+             />
             
             {/* Actions menu */}
             <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 shadow-lg z-20">

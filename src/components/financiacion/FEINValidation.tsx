@@ -122,18 +122,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
         {itemCount && (
           <span 
             className="text-xs px-2 py-1 rounded-full"
-            >
-            style={{ 
-              backgroundColor: 'var(--bg)', 
-              color: 'var(--text-gray)' 
-            }}
-          >
-            {itemCount} campos
-          </span>
-        )}
-      </div>
-      {isOpen ? (
-        <ChevronUp className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
+             style={{ backgroundColor: 'var(--bg)', color: 'var(--text-gray)' }} > {itemCount} campos </span> )} </div> {isOpen ? ( <ChevronUp className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
       ) : (
         <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-gray)' }} />
       )}
@@ -162,7 +151,6 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
           <button
             onClick={handleContinue}
             className="px-6 py-2 text-white rounded-atlas font-medium transition-colors"
-            >
             style={{ backgroundColor: 'var(--atlas-blue)' }}
           >
             Crear Préstamo
@@ -316,9 +304,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={mapping.alias || ''}
                         onChange={(e) => setMapping(prev => ({ ...prev, alias: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Nombre del préstamo"
-                      />
+            placeholder="Nombre del préstamo"
+          />
                     </div>
 
                     <div>
@@ -330,9 +317,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.bancoEntidad || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, bancoEntidad: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Nombre del banco"
-                      />
+            placeholder="Nombre del banco"
+          />
                     </div>
 
                     <div>
@@ -414,9 +400,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.capitalInicial || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, capitalInicial: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Capital inicial en €"
-                      />
+            placeholder="Capital inicial en €"
+          />
                     </div>
 
                     <div>
@@ -444,9 +429,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.plazoAnos || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, plazoAnos: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Plazo en años"
-                      />
+            placeholder="Plazo en años"
+          />
                     </div>
 
                     <div>
@@ -458,9 +442,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.plazoMeses || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, plazoMeses: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Plazo adicional en meses"
-                      />
+            placeholder="Plazo adicional en meses"
+          />
                     </div>
                   </div>
                 </div>
@@ -489,9 +472,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.tin || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, tin: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="TIN en %"
-                      />
+            placeholder="TIN en %"
+          />
                     </div>
 
                     <div>
@@ -504,9 +486,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.tae || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, tae: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="TAE en %"
-                      />
+            placeholder="TAE en %"
+          />
                     </div>
 
                     {(editableData.tipo === 'VARIABLE' || editableData.tipo === 'MIXTO') && (
@@ -520,9 +501,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                             value={editableData.indice || ''}
                             onChange={(e) => setEditableData(prev => ({ ...prev, indice: e.target.value }))}
                             className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                            placeholder="ej. EURIBOR 12M"
-                          />
+            placeholder="ej. EURIBOR 12M"
+          />
                         </div>
 
                         <div>
@@ -535,9 +515,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                             value={editableData.diferencial || ''}
                             onChange={(e) => setEditableData(prev => ({ ...prev, diferencial: Number(e.target.value) }))}
                             className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                            placeholder="Diferencial en %"
-                          />
+            placeholder="Diferencial en %"
+          />
                         </div>
                       </>
                     )}
@@ -552,9 +531,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                           value={editableData.tramoFijoAnos || ''}
                           onChange={(e) => setEditableData(prev => ({ ...prev, tramoFijoAnos: Number(e.target.value) }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          >
-                          placeholder="Años del tramo fijo"
-                        />
+            placeholder="Años del tramo fijo"
+          />
                       </div>
                     )}
 
@@ -630,9 +608,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                                     newBonif[index] = { ...bonif, descripcion: e.target.value };
                                     setEditableData(prev => ({ ...prev, bonificaciones: newBonif }));
                                   }}
-                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-          >
-                                />
+                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
                               </div>
                               <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Descuento (%)</label>
@@ -645,9 +621,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                                     newBonif[index] = { ...bonif, descuento: Number(e.target.value) };
                                     setEditableData(prev => ({ ...prev, bonificaciones: newBonif }));
                                   }}
-                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded"
-          >
-                                />
+                                  className="w-full px-2 py-1 text-sm border border-gray-200 rounded" />
                               </div>
                             </div>
                           </div>
@@ -686,9 +660,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.comisionApertura || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, comisionApertura: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Comisión de apertura"
-                      />
+            placeholder="Comisión de apertura"
+          />
                     </div>
 
                     <div>
@@ -701,9 +674,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.comisionAmortizacionParcial || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, comisionAmortizacionParcial: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Comisión amortización parcial"
-                      />
+            placeholder="Comisión amortización parcial"
+          />
                     </div>
 
                     <div>
@@ -716,9 +688,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.comisionCancelacionTotal || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, comisionCancelacionTotal: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Comisión cancelación total"
-                      />
+            placeholder="Comisión cancelación total"
+          />
                     </div>
 
                     <div>
@@ -731,9 +702,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.comisionSubrogacion || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, comisionSubrogacion: Number(e.target.value) }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="Comisión subrogación"
-                      />
+            placeholder="Comisión subrogación"
+          />
                     </div>
                   </div>
                 </div>
@@ -760,9 +730,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         type="date"
                         value={editableData.fechaEmisionFEIN || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, fechaEmisionFEIN: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
                     <div>
@@ -773,9 +741,7 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         type="date"
                         value={editableData.fechaPrimerPago || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, fechaPrimerPago: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-                      />
+                        className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500" />
                     </div>
 
                     <div className="md:col-span-2">
@@ -787,9 +753,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
                         value={editableData.cuentaCargoIban || ''}
                         onChange={(e) => setEditableData(prev => ({ ...prev, cuentaCargoIban: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-atlas focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                        placeholder="IBAN de la cuenta de cargo"
-                      />
+            placeholder="IBAN de la cuenta de cargo"
+          />
                       {editableData.ibanMascarado && (
                         <p className="text-xs mt-1" style={{ color: 'var(--warn)' }}>
                           ⚠️ IBAN parcialmente oculto en el documento original
@@ -857,9 +822,8 @@ const FEINValidation = ({ feinResult, onContinue, onBack }: FEINValidationProps)
             <button
               onClick={onBack}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-atlas border border-gray-200 transition-colors hover:bg-gray-50"
-              >
-              style={{ color: 'var(--text-gray)' }}
-            >
+            style={{ color: 'var(--text-gray)' }}
+          >
               <ArrowLeft className="h-4 w-4" />
               Volver al documento
             </button>
