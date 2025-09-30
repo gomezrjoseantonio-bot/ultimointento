@@ -92,7 +92,6 @@ const DashboardBlockBase: React.FC<{
           Ver detalles
           <svg 
             className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" 
-          >
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
