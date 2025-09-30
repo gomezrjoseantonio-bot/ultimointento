@@ -8,6 +8,36 @@ import { unifiedDocumentProcessor, ProcessedDocument, DocumentStatus } from '../
 import { unifiedOcrService } from '../services/unifiedOcrService';
 import AccountAssignmentModal from '../components/modals/AccountAssignmentModal';
 
+const currencyFormatter = new Intl.NumberFormat('es-ES', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES');
+
+const dateTimeFormatter = new Intl.DateTimeFormat('es-ES', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+});
+
+const safeFormatDate = (value: string | number | Date) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return typeof value === 'string' ? value : '';
+  }
+  return dateFormatter.format(date);
+};
+
+const safeFormatDateTime = (value: string | number | Date) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return typeof value === 'string' ? value : '';
+  }
+  return dateTimeFormatter.format(date);
+};
+
 const UnifiedInboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<ProcessedDocument | null>(null);
@@ -136,7 +166,7 @@ const UnifiedInboxPage: React.FC = () => {
 
   const handleTestOCR = async () => {
     if (!isDev) return;
-    
+
     try {
       const result = await unifiedOcrService.testOCREndpoint();
       toast(`🧪 Test OCR: ${result.status} - ${result.message}`, {
@@ -151,13 +181,13 @@ const UnifiedInboxPage: React.FC = () => {
   const getStatusIcon = (status: DocumentStatus) => {
     switch (status) {
       case 'guardado_automatico':
-        return <CheckCircle className="h-5 w-5 text-success-500" />;
+        return <CheckCircle className="h-5 w-5" style={{ color: 'var(--ok)' }} />;
       case 'revision_requerida':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+        return <AlertTriangle className="h-5 w-5" style={{ color: 'var(--warn)' }} />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-error-500" />;
+        return <XCircle className="h-5 w-5" style={{ color: 'var(--error)' }} />;
       default:
-        return <File className="h-5 w-5 text-gray-500" />;
+        return <File className="h-5 w-5" style={{ color: 'var(--text-gray)' }} />;
     }
   };
 
@@ -178,15 +208,15 @@ const UnifiedInboxPage: React.FC = () => {
     const extension = filename.toLowerCase().split('.').pop();
     
     if (['pdf'].includes(extension || '')) {
-      return <FileText className="h-6 w-6 text-error-500" />;
+      return <FileText className="h-6 w-6" style={{ color: 'var(--error)' }} />;
     }
     if (['jpg', 'jpeg', 'png', 'heic'].includes(extension || '')) {
       return <Image className="h-6 w-6" style={{ color: 'var(--horizon-primary)' }} />;
     }
     if (['xls', 'xlsx', 'csv'].includes(extension || '')) {
-      return <FileSpreadsheet className="h-6 w-6 text-success-500" />;
+      return <FileSpreadsheet className="h-6 w-6" style={{ color: 'var(--ok)' }} />;
     }
-    return <File className="h-6 w-6 text-gray-500" />;
+    return <File className="h-6 w-6" style={{ color: 'var(--text-gray)' }} />;
   };
 
   const filteredDocuments = documents.filter(doc => {
@@ -200,8 +230,14 @@ const UnifiedInboxPage: React.FC = () => {
   const reviewDocs = filteredDocuments.filter(doc => doc.status === 'revision_requerida');
   const errorDocs = filteredDocuments.filter(doc => doc.status === 'error');
 
+  const headerBorderStyle: React.CSSProperties = {
+    borderColor: 'var(--hz-neutral-300)',
+  };
+
+  const focusableFieldClass = 'atlas-field';
+
   return (
-    <div 
+    <div
       className="h-screen flex flex-col bg-gray-50"
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -209,9 +245,9 @@ const UnifiedInboxPage: React.FC = () => {
       onDrop={handleDrop}
     >
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
+      <div className="bg-white border-b px-4 sm:px-6 py-4" style={headerBorderStyle}>
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-start sm:items-center">
-          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: '#0A2A57' }}>
+          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
             Bandeja de entrada
           </h1>
           <div className="flex gap-2">
@@ -227,22 +263,16 @@ const UnifiedInboxPage: React.FC = () => {
               />
               <label
                 htmlFor="file-upload"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white cursor-pointer"
-                style={{ backgroundColor: 'var(--horizon-primary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary-hover)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary)'}
+                className="atlas-btn-primary shadow-sm text-sm font-medium cursor-pointer"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Subir documentos
               </label>
             </div>
-            
+
             {/* DEV Test button */}
             {isDev && (
-              <button
-                onClick={handleTestOCR}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
+              <button className="atlas-btn-secondary shadow-sm" onClick={handleTestOCR}>
                 🧪 Probar OCR (DEV)
               </button>
             )}
@@ -259,35 +289,15 @@ const UnifiedInboxPage: React.FC = () => {
                 placeholder="Buscar documentos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ 
-                  '--tw-ring-color': 'var(--horizon-primary)',
-                  borderColor: '#d1d5db'
-                } as React.CSSProperties}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--horizon-primary)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                }}
+                className={`${focusableFieldClass} pl-10 pr-4`}
               />
             </div>
           </div>
-          
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'todos' | DocumentStatus)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-            style={{ 
-              '--tw-ring-color': 'var(--horizon-primary)',
-              borderColor: '#d1d5db'
-            } as React.CSSProperties}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = 'var(--horizon-primary)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
+            className={`${focusableFieldClass} sm:w-auto`}
           >
             <option value="todos">Todos los estados</option>
             <option value="guardado_automatico">Auto-guardado</option>
@@ -401,10 +411,7 @@ const UnifiedInboxPage: React.FC = () => {
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Detalles del documento</h3>
-                  <button
-                    onClick={() => setSelectedDocument(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
+                  <button className="atlas-btn-ghost" onClick={() => setSelectedDocument(null)} aria-label="Cerrar detalles">
                     <X className="h-5 w-5" />
                   </button>
                 </div>
@@ -457,7 +464,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   getStatusText
 }) => {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+    <div className="atlas-card p-4">
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
           {getFileIcon(document.filename)}
@@ -471,7 +478,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             
             <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
               <span>{(document.size / 1024).toFixed(1)} KB</span>
-              <span>{new Date(document.uploadDate).toLocaleDateString()}</span>
+              <span>{safeFormatDate(document.uploadDate)}</span>
             </div>
 
             {/* Status and destination */}
@@ -493,9 +500,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               </div>
             )}
             
-            {document.amount && (
+            {typeof document.amount === 'number' && (
               <div className="text-xs text-gray-600">
-                <span className="font-medium">Importe:</span> {document.amount.toFixed(2)}€
+                <span className="font-medium">Importe:</span> {currencyFormatter.format(document.amount)}
               </div>
             )}
 
@@ -509,7 +516,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             {document.blockingReasons && document.blockingReasons.length > 0 && (
               <div className="mt-2">
                 {document.blockingReasons.map((reason, index) => (
-                  <div key={index} className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                  <div
+                    key={index}
+                    className="atlas-chip-warning text-xs block w-full"
+                    style={{ color: 'var(--warn)' }}
+                  >
                     {reason}
                   </div>
                 ))}
@@ -519,33 +530,21 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
 
         <div className="flex flex-col space-y-2 ml-4">
-          <button
-            onClick={() => onSelect(document)}
-            className="p-1 text-gray-400 hover:text-gray-600"
-            title="Ver detalles"
-          >
+          <button className="atlas-btn-ghost" onClick={() => onSelect(document)} title="Ver detalles">
             <Eye className="h-4 w-4" />
           </button>
-          
+
           {document.documentType === 'factura' && (
-            <button
-              onClick={() => onReprocessOCR(document.id)}
-              className="p-1 text-gray-400 hover:text-gray-600"
-              title="Reprocesar OCR"
-            >
+            <button className="atlas-btn-ghost" onClick={() => onReprocessOCR(document.id)} title="Reprocesar OCR">
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
 
           {/* Bank account assignment button for CSV/XLS files requiring manual assignment */}
-          {document.documentType === 'extracto_bancario' && 
+          {document.documentType === 'extracto_bancario' &&
            document.status === 'revision_requerida' &&
            document.blockingReasons?.some(reason => reason.includes('cuenta')) && (
-            <button
-              onClick={() => onAssignAccount(document)}
-              className="p-1 text-primary-500 hover:text-primary-700"
-              title="Asignar cuenta bancaria"
-            >
+            <button className="atlas-btn-ghost" onClick={() => onAssignAccount(document)} title="Asignar cuenta bancaria" style={{ color: 'var(--atlas-blue)' }}>
               <CreditCard className="h-4 w-4" />
             </button>
           )}
@@ -604,16 +603,16 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
                 <dd className="text-sm text-gray-900">{document.supplier}</dd>
               </div>
             )}
-            {document.amount && (
+            {typeof document.amount === 'number' && (
               <div>
                 <dt className="text-xs text-gray-500">Importe</dt>
-                <dd className="text-sm text-gray-900">{document.amount.toFixed(2)}€</dd>
+                <dd className="text-sm text-gray-900">{currencyFormatter.format(document.amount)}</dd>
               </div>
             )}
             {document.issueDate && (
               <div>
                 <dt className="text-xs text-gray-500">Fecha emisión</dt>
-                <dd className="text-sm text-gray-900">{document.issueDate}</dd>
+                <dd className="text-sm text-gray-900">{safeFormatDate(document.issueDate)}</dd>
               </div>
             )}
             {document.utilityType && (
@@ -629,10 +628,7 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
       {/* Actions */}
       <div className="space-y-2">
         {document.documentType === 'factura' && (
-          <button
-            onClick={onReprocessOCR}
-            className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
+          <button className="atlas-btn-secondary w-full justify-center" onClick={onReprocessOCR}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Reprocesar OCR
           </button>
@@ -641,10 +637,7 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
 
       {/* Logs */}
       <div>
-        <button
-          onClick={onToggleLogs}
-          className="flex items-center justify-between w-full text-sm font-medium text-gray-900"
-        >
+        <button className="atlas-btn-ghost w-full justify-between text-sm font-medium" onClick={onToggleLogs}>
           <span>Registro de actividad</span>
           {showLogs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
@@ -653,9 +646,7 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
           <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
             {document.logs.map((log, index) => (
               <div key={index} className="text-xs">
-                <div className="text-gray-500">
-                  {new Date(log.timestamp).toLocaleString()}
-                </div>
+                <div className="text-gray-500">{safeFormatDateTime(log.timestamp)}</div>
                 <div className="text-gray-900">{log.action}</div>
               </div>
             ))}

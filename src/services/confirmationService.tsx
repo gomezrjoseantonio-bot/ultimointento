@@ -41,21 +41,21 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
         border: 'var(--warn)',
         icon: 'var(--warn)',
         confirmBg: 'var(--warn)',
-        confirmText: '#FFFFFF'
+        confirmText: 'var(--primary-contrast)'
       },
       danger: {
         bg: 'var(--bg)',
         border: 'var(--error)',
         icon: 'var(--error)',
         confirmBg: 'var(--error)',
-        confirmText: '#FFFFFF'
+        confirmText: 'var(--primary-contrast)'
       },
       info: {
         bg: 'var(--bg)',
         border: 'var(--atlas-blue)',
         icon: 'var(--atlas-blue)',
         confirmBg: 'var(--atlas-blue)',
-        confirmText: '#FFFFFF'
+        confirmText: 'var(--primary-contrast)'
       }
     };
 
@@ -79,22 +79,25 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
             </div>
           </div>
         </div>
-        <div className="flex space-x-2 justify-end pt-2 border-t border-gray-200">
+        <div
+          className="flex space-x-2 justify-end pt-2 border-t"
+          style={{ borderColor: 'var(--hz-neutral-300)' }}
+        >
           <button
+            className="atlas-btn-secondary"
             onClick={() => {
               toast.dismiss(t.id);
               resolve(false);
             }}
-            className="px-3 py-1.5 text-sm font-medium text-text-gray bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 transition-colors"
           >
             {cancelText}
           </button>
           <button
+            className="atlas-btn-primary"
             onClick={() => {
               toast.dismiss(t.id);
               resolve(true);
             }}
-            className="px-3 py-1.5 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors"
             style={{
               backgroundColor: colorScheme.confirmBg,
               color: colorScheme.confirmText,
