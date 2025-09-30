@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { processZipFile, ZipProcessingResult } from '../../services/zipProcessingService';
+import type { Document } from '../../services/db';
+import { detectPayrollMetadata, isPayrollFileName } from '../../utils/payrollDocumentUtils';
 
 interface DocumentUploaderProps {
   onUploadComplete: (documents: any[]) => void;
@@ -15,10 +17,18 @@ interface DuplicateFile {
   action: 'replace' | 'keep-both' | 'skip' | null;
 }
 
-const DocumentUploader: React.FC<DocumentUploaderProps> = ({ 
-  onUploadComplete, 
+type DocumentMetadata = Document['metadata'];
+
+interface FileClassification {
+  tipo: string;
+  confidence: number;
+  metadata?: Partial<DocumentMetadata>;
+}
+
+const DocumentUploader: React.FC<DocumentUploaderProps> = ({
+  onUploadComplete,
   onZipProcessed,
-  existingDocuments = [] 
+  existingDocuments = []
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [duplicates, setDuplicates] = useState<DuplicateFile[]>([]);
@@ -47,10 +57,82 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     return { duplicates: duplicateFiles, newFiles };
   };
 
+  const mergeTags = (...groups: (string[] | undefined)[]): string[] => {
+    const unique = new Set<string>();
+    for (const group of groups) {
+      if (!group) continue;
+      for (const tag of group) {
+        if (tag && tag.trim()) {
+          unique.add(tag.trim());
+        }
+      }
+    }
+    return Array.from(unique);
+  };
+
+  const mergeFinancialData = (
+    base: DocumentMetadata['financialData'],
+    incoming?: DocumentMetadata['financialData']
+  ): DocumentMetadata['financialData'] | undefined => {
+    if (!incoming) return base;
+
+    return {
+      ...(base || {}),
+      ...incoming,
+      ...(incoming.servicePeriod
+        ? {
+            servicePeriod: {
+              ...(base?.servicePeriod || {}),
+              ...incoming.servicePeriod
+            }
+          }
+        : {})
+    };
+  };
+
   const createDocumentFromFile = (file: File, index: number = 0) => {
     // H8 Issue 2: Enhanced automatic file classification
     const classification = classifyFileOnUpload(file);
-    
+
+    const baseMetadata: DocumentMetadata = {
+      title: file.name.split('.')[0],
+      description: '',
+      tags: [],
+      proveedor: '',
+      tipo: classification.tipo === 'Nómina' ? 'Otros' : classification.tipo,
+      categoria: 'Otros',
+      destino: 'Personal',
+      status: 'pendiente', // H8: Default status is pendiente
+      queueStatus: 'pendiente',
+      entityType: 'personal',
+      entityId: undefined,
+      confidence: classification.confidence,
+      clasificacion_automatica: true,
+      tipo_detectado: classification.tipo, // H8: Store detected type
+      notas: '',
+      origen: 'upload'
+    };
+
+    const metadata: DocumentMetadata = { ...baseMetadata };
+
+    if (classification.metadata) {
+      const { tags, financialData, ...rest } = classification.metadata;
+
+      Object.assign(metadata, rest);
+
+      if (tags?.length) {
+        metadata.tags = mergeTags(metadata.tags, tags);
+      }
+
+      metadata.financialData = mergeFinancialData(metadata.financialData, financialData);
+    }
+
+    if (classification.tipo === 'Nómina') {
+      metadata.categoria = metadata.categoria || 'Nómina';
+      metadata.tags = mergeTags(metadata.tags, ['Nómina']);
+      metadata.destino = metadata.destino || 'Personal';
+    }
+
     return {
       id: Date.now() + index,
       filename: file.name,
@@ -59,46 +141,41 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       lastModified: file.lastModified,
       uploadDate: new Date().toISOString(),
       content: file,
-      metadata: {
-        title: file.name.split('.')[0],
-        description: '',
-        tags: [],
-        proveedor: '',
-        tipo: classification.tipo,
-        categoria: 'Otros',
-        destino: 'Personal',
-        status: 'pendiente', // H8: Default status is pendiente
-        queueStatus: 'pendiente',
-        entityType: 'personal',
-        entityId: undefined,
-        confidence: classification.confidence,
-        clasificacion_automatica: true,
-        tipo_detectado: classification.tipo, // H8: Store detected type
-        notas: '',
-        origen: 'upload' // H8: Mark as upload origin
-      }
+      metadata
     };
   };
 
   // H8 Issue 2: Enhanced file type detection with OCR patterns
-  const classifyFileOnUpload = (file: File): { tipo: string, confidence: number } => {
+  const classifyFileOnUpload = (file: File): FileClassification => {
     const fileName = file.name.toLowerCase();
-    
+
     // Factura detection: PDF/JPG/PNG/ZIP/EML with invoice patterns
     if (isInvoiceFile(file, fileName)) {
       return { tipo: 'Factura', confidence: 0.85 };
     }
-    
+
     // Extracto detection: XLS/XLSX/CSV/TXT with bank patterns
     if (isBankStatementFile(file)) {
       return { tipo: 'Extracto bancario', confidence: 0.90 };
     }
-    
+
+    if (isPayrollFileName(file.name)) {
+      const payrollDetection = detectPayrollMetadata(file.name, file.lastModified);
+      if (payrollDetection) {
+        return {
+          tipo: 'Nómina',
+          confidence: payrollDetection.confidence,
+          metadata: payrollDetection.metadata
+        };
+      }
+      return { tipo: 'Nómina', confidence: 0.85, metadata: { categoria: 'Nómina', destino: 'Personal' } };
+    }
+
     // Contrato detection: PDF with contract patterns
     if (isContractFile(file, fileName)) {
       return { tipo: 'Contrato', confidence: 0.75 };
     }
-    
+
     // Default to Otros for unclassified
     return { tipo: 'Otros', confidence: 0.50 };
   };
