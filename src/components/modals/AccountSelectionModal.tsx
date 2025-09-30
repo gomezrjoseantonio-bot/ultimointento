@@ -78,7 +78,6 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
         {/* Background overlay */}
         <div 
           className="fixed inset-0 transition-opacity" 
-          >
           style={{ backgroundColor: 'rgba(156, 163, 175, 0.1)' }}
           onClick={handleCancel}
         />
@@ -163,7 +162,6 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     window.location.href = currentUrl.toString();
                   }}
                   className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
                   style={{ 
                     backgroundColor: '#042C5E',
                     fontFamily: 'Inter, sans-serif'
@@ -218,7 +216,6 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                               src={account.logo_url} 
                               alt={`Logo ${account.bank}`}
                               className="w-full h-full object-cover"
-          >
                               onError={(e) => {
                                 // Fallback to initials if image fails to load
                                 const target = e.target as HTMLImageElement;
@@ -289,7 +286,6 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                       window.location.href = currentUrl.toString();
                     }}
                     className="w-full text-left p-4 border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 transition-all"
-                    >
                     style={{ 
                       fontFamily: 'Inter, sans-serif'
                     }}
@@ -317,7 +313,6 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
               <button
                 onClick={handleCancel}
                 className="px-4 py-2 text-sm font-medium border border-gray-300"
-                >
                 style={{ 
                   color: '#6C757D',
                   fontFamily: 'Inter, sans-serif'

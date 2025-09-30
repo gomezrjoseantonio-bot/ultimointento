@@ -281,7 +281,6 @@ const FEINDemoPage: React.FC = () => {
           <div>
             <h1 
               className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
-          >
               style={{ color: 'var(--hz-text)' }}
             >
               FEIN Demo - QA Testing

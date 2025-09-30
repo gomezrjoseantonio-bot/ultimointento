@@ -120,7 +120,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
     return (
       <span 
         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white"
-        >
         style={{ backgroundColor: config.bgColor }}
       >
         {config.label}
@@ -352,7 +351,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   value={editableFields.tipo_documento}
                   onChange={(e) => handleFieldChange('tipo_documento', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                   readOnly
                 />
               </div>
@@ -365,7 +363,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                   type="text"
                   value={getDestinationPath()}
                   className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-600"
-          >
                   readOnly
                 />
               </div>
@@ -387,7 +384,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     value={editableFields.proveedor_nombre}
                     onChange={(e) => handleFieldChange('proveedor_nombre', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                   />
                 </div>
 
@@ -400,7 +396,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     value={editableFields.proveedor_nif}
                     onChange={(e) => handleFieldChange('proveedor_nif', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                   />
                 </div>
               </div>
@@ -423,7 +418,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.fecha_emision}
                       onChange={(e) => handleFieldChange('fecha_emision', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
                   
@@ -436,7 +430,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.fecha_cargo}
                       onChange={(e) => handleFieldChange('fecha_cargo', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
                 </div>
@@ -452,7 +445,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.importe_total}
                       onChange={(e) => handleFieldChange('importe_total', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
                   
@@ -506,7 +498,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     value={editableFields.cups}
                     onChange={(e) => handleFieldChange('cups', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                   />
                 </div>
 
@@ -519,7 +510,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                     value={editableFields.iban_masked}
                     onChange={(e) => handleFieldChange('iban_masked', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
                     placeholder="ES12 **** **** 1234"
                   />
                 </div>
@@ -544,7 +534,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.mejora}
                       onChange={(e) => handleFieldChange('mejora', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
 
@@ -558,7 +547,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.mobiliario}
                       onChange={(e) => handleFieldChange('mobiliario', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
 
@@ -572,7 +560,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
                       value={editableFields.reparacion_conservacion}
                       onChange={(e) => handleFieldChange('reparacion_conservacion', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
                     />
                   </div>
 
@@ -660,7 +647,6 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
             onClick={handleSave}
             disabled={validationErrors.length > 0}
             className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-            >
             style={{ 
               backgroundColor: validationErrors.length > 0 ? '#9CA3AF' : colors.primary
             }}

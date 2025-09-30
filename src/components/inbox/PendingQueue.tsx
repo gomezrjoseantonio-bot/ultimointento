@@ -185,7 +185,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-navy-600 focus:ring-2 focus:ring-navy-200"
-          >
             />
           </div>
 
@@ -217,7 +216,8 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             onClick={() => {
               setSortBy(sortBy === 'date' ? 'type' : sortBy === 'type' ? 'amount' : 'date');
             }}
-            className="p-2 border border-neutral-200 title="Cambiar ordenación"
+            className="p-2 border border-neutral-200"
+            title="Cambiar ordenación"
           >
             <ArrowUpDown className="w-4 h-4" />
           </button>
@@ -300,7 +300,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
               checked={filteredDocuments.length > 0 && selectedDocs.length === filteredDocuments.length}
               onChange={handleSelectAll}
               className="mr-3 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
-          >
             />
             <span className="text-sm text-neutral-700">
               Seleccionar todos ({filteredDocuments.length})
@@ -326,7 +325,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             <div
               key={doc.id}
               className="p-4 cursor-pointer"
-          >
               onClick={() => onSelectDocument(doc)}
             >
               <div className="flex items-start gap-4">
@@ -339,7 +337,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                     handleSelectDocument(doc.id, e.target.checked);
                   }}
                   className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
-          >
                 />
 
                 {/* Document thumbnail/icon */}
@@ -349,7 +346,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                       src={doc.thumbnail} 
                       alt={doc.filename}
                       className="w-12 h-12 object-cover border border-neutral-200"
-          >
                     />
                   ) : (
                     <div className="w-12 h-12 bg-neutral-100 border border-neutral-200 flex items-center justify-center">
@@ -428,7 +424,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onMapColumns(doc);
                           }}
                           className="p-1 text-neutral-400 hover:text-neutral-600"
-                          >
                           title="Mapear columnas"
                         >
                           <Edit className="w-4 h-4" />
@@ -442,7 +437,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onSplitReform(doc);
                           }}
                           className="p-1 text-neutral-400 hover:text-neutral-600"
-                          >
                           title="Dividir reforma"
                         >
                           <Edit className="w-4 h-4" />
@@ -455,7 +449,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                           onSelectDocument(doc);
                         }}
                         className="p-1 text-neutral-400 hover:text-neutral-600"
-                        >
                         title="Ver detalles"
                       >
                         <Eye className="w-4 h-4" />
@@ -468,7 +461,6 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
                             onPublishDocument(doc);
                           }}
                           className="p-1 text-success-600 hover:text-success-700 font-medium"
-                          >
                           title="Publicar ahora"
                         >
                           <ChevronRight className="w-4 h-4" />

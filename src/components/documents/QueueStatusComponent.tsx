@@ -87,7 +87,6 @@ const QueueStatusComponent: React.FC<QueueStatusComponentProps> = ({ className =
       {/* Header */}
       <div 
         className="flex items-center justify-between p-3 cursor-pointer"
-          >
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center space-x-3">

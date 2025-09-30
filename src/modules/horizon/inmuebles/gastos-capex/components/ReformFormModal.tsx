@@ -101,7 +101,6 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
                 placeholder="Reforma cocina, Ampliación salón, etc."
                 required
               />
@@ -115,7 +114,6 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.propertyId}
                 onChange={(e) => setFormData(prev => ({ ...prev, propertyId: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
                 required
               >
                 {properties.map(property => (
@@ -152,7 +150,6 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.startDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
                 required
               />
             </div>
@@ -166,7 +163,6 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
                 value={formData.endDate || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-          >
               />
             </div>
           </div>
@@ -180,7 +176,6 @@ const ReformFormModal: React.FC<ReformFormModalProps> = ({
               value={formData.notes || ''}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               rows={3}
               placeholder="Descripción de la reforma, detalles adicionales..."
             />

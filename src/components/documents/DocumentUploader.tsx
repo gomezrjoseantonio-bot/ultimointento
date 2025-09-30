@@ -420,7 +420,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   return (
     <div 
       className="border-2 border-dashed border-neutral-300 p-6 text-center hover:border-neutral-400"
-          >
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -433,7 +432,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       </p>
       <button 
         className="px-6 py-2 bg-neutral-600 disabled:opacity-50"
-          >
         onClick={() => fileInputRef.current?.click()}
         disabled={isProcessing}
       >
@@ -445,7 +443,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         multiple
         accept=".pdf,.jpg,.jpeg,.png,.zip,.csv,.xlsx,.xls"
         className="hidden"
-          >
         onChange={(e) => handleFileUpload(e.target.files)}
       />
     </div>

@@ -212,7 +212,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                     type="file"
                     accept=".csv"
                     className="hidden"
-          >
                     onChange={(e) => handleFileUpload(e.target.files)}
                   />
                 </div>
@@ -339,7 +338,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           checked={selectedAccountId === account.id}
                           onChange={(e) => setSelectedAccountId(Number(e.target.value))}
                           className="text-neutral-600 focus:ring-neutral-500"
-          >
                         />
                         <div className="flex-1">
                           <div className="font-medium">{account.name}</div>
@@ -361,7 +359,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           setShowCreateAccount(true);
                         }}
                         className="text-neutral-600 focus:ring-neutral-500"
-          >
                       />
                       <div className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
@@ -385,7 +382,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           value={newAccount.name}
                           onChange={(e) => setNewAccount(prev => ({ ...prev, name: e.target.value }))}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500"
-                          >
                           placeholder="Ej: Cuenta corriente principal"
                         />
                       </div>
@@ -398,7 +394,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           value={newAccount.bank}
                           onChange={(e) => setNewAccount(prev => ({ ...prev, bank: e.target.value }))}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500"
-                          >
                           placeholder="Ej: BBVA"
                         />
                       </div>
@@ -411,7 +406,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           value={newAccount.iban}
                           onChange={(e) => setNewAccount(prev => ({ ...prev, iban: e.target.value }))}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500"
-                          >
                           placeholder="ES91 2100 0418 4502 0005 1332"
                         />
                       </div>
@@ -425,7 +419,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                           value={newAccount.openingBalance}
                           onChange={(e) => setNewAccount(prev => ({ ...prev, openingBalance: parseFloat(e.target.value) || 0 }))}
                           className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-500 focus:border-neutral-500"
-                          >
                           placeholder="0,00"
                         />
                       </div>
@@ -453,7 +446,6 @@ const CSVImportModal: React.FC<CSVImportModalProps> = ({
                       checked={skipDuplicates}
                       onChange={(e) => setSkipDuplicates(e.target.checked)}
                       className="rounded text-neutral-600 focus:ring-neutral-500"
-          >
                     />
                     <span>Omitir duplicados (recomendado)</span>
                   </label>

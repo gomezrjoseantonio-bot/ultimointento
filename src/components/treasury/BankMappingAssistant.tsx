@@ -244,7 +244,6 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
                 onChange={(e) => setProfileName(e.target.value)}
                 placeholder="Ej: MiBanco BBVA v2024"
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-          >
               />
               <div className="text-xs text-gray-500 mt-1">
                 Se guardará para futuros archivos similares
@@ -295,7 +294,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             disabled={!isValid}
             className={`px-6 py-2 font-medium ${
               isValid 
-                ? "bg-blue-600 
+                ? "bg-blue-600 text-white hover:bg-blue-700" 
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

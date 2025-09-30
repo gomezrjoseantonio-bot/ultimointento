@@ -439,11 +439,9 @@ const InboxPageNew: React.FC = () => {
               accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx,.xls,.zip,.eml"
               onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
             />
             <button
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
-              >
               style={{ 
                 backgroundColor: '#0A2A57'
               }}
@@ -464,7 +462,6 @@ const InboxPageNew: React.FC = () => {
             type="text"
             placeholder="Buscar por proveedor, importe, IBAN, inmueble, ID..."
             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-            >
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -594,7 +591,6 @@ const InboxPageNew: React.FC = () => {
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer text-white"
-                          >
                           style={{ backgroundColor: '#0A2A57' }}
                           title={`Ir a ${doc.destino}`}
                         >
@@ -617,7 +613,6 @@ const InboxPageNew: React.FC = () => {
                             setSelectedDocument(doc);
                           }}
                           className="text-primary-600 hover:text-primary-900"
-                          >
                           title="Ver"
                         >
                           <Eye className="w-4 h-4" />
@@ -629,7 +624,6 @@ const InboxPageNew: React.FC = () => {
                               handleReprocess(doc.id);
                             }}
                             className="text-success-600 hover:text-success-900"
-                            >
                             title="Reprocesar"
                           >
                             <RotateCcw className="w-4 h-4" />
@@ -641,7 +635,6 @@ const InboxPageNew: React.FC = () => {
                             handleDelete(doc.id);
                           }}
                           className="text-error-600 hover:text-error-900"
-                          >
                           title="Eliminar"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -718,7 +711,6 @@ const InboxPageNew: React.FC = () => {
                       </label>
                       <select 
                         className="w-full p-2 border border-yellow-300 rounded"
-                        >
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
                       >
@@ -733,7 +725,6 @@ const InboxPageNew: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    >
                     style={{ backgroundColor: '#0A2A57' }}
                   >
                     Completar y archivar

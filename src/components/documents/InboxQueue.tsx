@@ -266,7 +266,6 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                     }
                   }}
                   className="rounded border-neutral-300"
-          >
                 />
               </th>
             )}
@@ -302,7 +301,6 @@ const InboxQueue: React.FC<InboxQueueProps> = ({
                       checked={isChecked}
                       onChange={() => onToggleDocumentSelection?.(doc.id)}
                       className="rounded border-neutral-300"
-          >
                     />
                   </td>
                 )}

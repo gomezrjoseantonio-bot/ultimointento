@@ -1175,7 +1175,6 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Categoría</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                    >
                     value={inboxFilter}
                     onChange={(e) => setInboxFilter(e.target.value)}
                   >
@@ -1193,7 +1192,6 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Estado</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                    >
                     value={queueStatusFilter}
                     onChange={(e) => setQueueStatusFilter(e.target.value)}
                   >
@@ -1212,7 +1210,6 @@ const InboxPage: React.FC = () => {
                   <label className="block text-xs text-neutral-600 mb-1">Origen</label>
                   <select
                     className="w-full border border-neutral-200 px-3 py-2 text-sm focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                    >
                     value={origenFilter}
                     onChange={(e) => setOrigenFilter(e.target.value)}
                   >
@@ -1234,7 +1231,6 @@ const InboxPage: React.FC = () => {
                     type="text"
                     placeholder="Buscar documentos..."
                     className="w-full pl-10 pr-3 py-2 border border-neutral-200 focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200 focus:ring-opacity-50"
-                    >
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -1248,7 +1244,6 @@ const InboxPage: React.FC = () => {
               <div className="flex gap-2">
                 <select
                   className="flex-1 text-sm border border-neutral-200 px-2 py-1"
-                  >
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'date' | 'name')}
                 >
@@ -1258,7 +1253,8 @@ const InboxPage: React.FC = () => {
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   className="p-1 border border-neutral-200"
-                  {sortOrder === "asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                >
+                  {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </button>
               </div>
             </div>

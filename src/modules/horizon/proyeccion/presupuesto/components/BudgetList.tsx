@@ -44,7 +44,8 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
       
       <div className="divide-y divide-gray-200">
         {budgets.map((budget) => (
-          <div key={budget.id} className="px-6 py-4 <div className="flex items-center justify-between">
+          <div key={budget.id} className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="btn-primary-horizon p-2">
                   <FileText className="h-5 w-5 text-primary-600" />
@@ -99,7 +100,8 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
                 </div>
                 
                 <div className="relative">
-                  <button className="p-2 text-gray-400 hover:text-gray-600 <MoreVertical className="h-4 w-4" />
+                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                    <MoreVertical className="h-4 w-4" />
                   </button>
                   
                   {/* TODO: Implement dropdown menu */}

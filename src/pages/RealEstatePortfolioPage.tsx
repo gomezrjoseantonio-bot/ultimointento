@@ -59,7 +59,6 @@ const RealEstatePortfolioPage: React.FC = () => {
         
         <button
           className="bg-navy-600 hover:bg-navy-700 text-white px-4 py-2 rounded-md"
-          >
           onClick={() => setShowAddForm(true)}
         >
           Add Property
@@ -72,7 +71,6 @@ const RealEstatePortfolioPage: React.FC = () => {
             <h2 className="text-xl font-medium text-gray-800">Add New Property</h2>
             <button
               className="text-gray-500 hover:text-gray-700"
-          >
               onClick={() => setShowAddForm(false)}
             >
               Cancel
@@ -96,7 +94,6 @@ const RealEstatePortfolioPage: React.FC = () => {
           <p className="text-gray-500 mb-4">Add your first property to get started tracking your real estate investments.</p>
           <button
             className="bg-navy-600 hover:bg-navy-700 text-white px-4 py-2 rounded-md"
-          >
             onClick={() => setShowAddForm(true)}
           >
             Add Your First Property
