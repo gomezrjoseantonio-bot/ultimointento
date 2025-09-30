@@ -1,7 +1,16 @@
 import React, { useRef, useState } from 'react';
 import { Upload, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import type { Document as StoredDocument } from '../../services/db';
 import { processZipFile, ZipProcessingResult } from '../../services/zipProcessingService';
+
+type DocumentMetadata = StoredDocument['metadata'];
+type InboxDocumentType = NonNullable<DocumentMetadata['tipo']> | 'Nómina';
+
+interface FileClassification {
+  tipo: InboxDocumentType;
+  confidence: number;
+}
 
 interface DocumentUploaderProps {
   onUploadComplete: (documents: any[]) => void;
@@ -64,7 +73,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         description: '',
         tags: [],
         proveedor: '',
-        tipo: classification.tipo,
+        tipo: classification.tipo === 'Nómina' ? 'Otros' : classification.tipo,
         categoria: 'Otros',
         destino: 'Personal',
         status: 'pendiente', // H8: Default status is pendiente
@@ -81,7 +90,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   };
 
   // H8 Issue 2: Enhanced file type detection with OCR patterns
-  const classifyFileOnUpload = (file: File): { tipo: string, confidence: number } => {
+  const classifyFileOnUpload = (file: File): FileClassification => {
     const fileName = file.name.toLowerCase();
     
     // Factura detection: PDF/JPG/PNG/ZIP/EML with invoice patterns
