@@ -134,7 +134,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="Ej: Autónomo Principal 2024"
               required
             />
@@ -150,7 +149,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               value={formData.cuotaAutonomos}
               onChange={(e) => setFormData(prev => ({ ...prev, cuotaAutonomos: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="294.00"
               required
             />
@@ -191,7 +189,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                     reglaCobroDia: { tipo: 'fijo', dia: 1 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-          >
                 />
                 <span className="text-sm">Día fijo del mes</span>
                 {formData.reglaCobroDia.tipo === 'fijo' && (
@@ -205,7 +202,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                       reglaCobroDia: { ...prev.reglaCobroDia, dia: parseInt(e.target.value) }
                     }))}
                     className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm"
-          >
                   />
                 )}
               </label>
@@ -220,7 +216,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                     reglaCobroDia: { tipo: 'ultimo-habil', dia: undefined }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-          >
                 />
                 <span className="text-sm">Último día hábil del mes</span>
               </label>
@@ -243,7 +238,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                     reglaPagoDia: { tipo: 'fijo', dia: 5 }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-          >
                 />
                 <span className="text-sm">Día fijo del mes</span>
                 {formData.reglaPagoDia.tipo === 'fijo' && (
@@ -257,7 +251,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                       reglaPagoDia: { ...prev.reglaPagoDia, dia: parseInt(e.target.value) }
                     }))}
                     className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm"
-          >
                   />
                 )}
               </label>
@@ -272,7 +265,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
                     reglaPagoDia: { tipo: 'ultimo-habil', dia: undefined }
                   }))}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-          >
                 />
                 <span className="text-sm">Último día hábil del mes</span>
               </label>
@@ -288,7 +280,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               checked={formData.activo}
               onChange={(e) => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
               className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-          >
             />
             <span className="text-sm font-medium text-neutral-700">Configuración activa</span>
           </label>

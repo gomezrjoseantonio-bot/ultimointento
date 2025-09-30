@@ -172,7 +172,6 @@ const PrestamoDetailDrawer: React.FC<PrestamoDetailDrawerProps> = ({
               <button
                 onClick={handleExportPDF}
                 className="p-2 text-text-gray hover:text-atlas-blue transition-colors"
-                >
                 title="Exportar a PDF"
               >
                 <FileText className="h-5 w-5" />
@@ -180,7 +179,6 @@ const PrestamoDetailDrawer: React.FC<PrestamoDetailDrawerProps> = ({
               <button
                 onClick={handleExportExcel}
                 className="p-2 text-text-gray hover:text-atlas-blue transition-colors"
-                >
                 title="Exportar a Excel"
               >
                 <Download className="h-5 w-5" />

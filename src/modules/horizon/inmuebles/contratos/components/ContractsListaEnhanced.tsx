@@ -284,7 +284,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-                >
                 placeholder="Nombre, DNI, email..."
               />
             </div>
@@ -475,7 +474,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         <button
                           onClick={() => onEditContract(contract)}
                           className="text-atlas-blue hover:text-blue-800"
-                          >
                           title="Editar contrato"
                         >
                           <Edit2 className="h-4 w-4" />
@@ -485,7 +483,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                           <button
                             onClick={() => handleRescindContract(contract)}
                             className="text-warn hover:text-yellow-700"
-                            >
                             title="Rescindir contrato"
                           >
                             <XCircle className="h-4 w-4" />
@@ -495,7 +492,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         <button
                           onClick={() => handleDeleteContract(contract)}
                           className="text-error hover:text-red-700"
-                          >
                           title="Eliminar contrato"
                         >
                           <Trash2 className="h-4 w-4" />

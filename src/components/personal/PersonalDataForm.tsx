@@ -133,7 +133,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               required
             />
           </div>
@@ -147,7 +146,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               value={formData.apellidos}
               onChange={(e) => setFormData(prev => ({ ...prev, apellidos: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               required
             />
           </div>
@@ -163,7 +161,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               value={formData.dni}
               onChange={(e) => setFormData(prev => ({ ...prev, dni: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="12345678A"
               required
             />
@@ -199,7 +196,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
             onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
             rows={2}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
             placeholder="Calle, número, ciudad, código postal"
           />
         </div>
@@ -220,7 +216,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
                   checked={formData.situacionLaboral.includes(option.value as SituacionLaboral)}
                   onChange={(e) => handleSituacionLaboralChange(option.value as SituacionLaboral, e.target.checked)}
                   className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-          >
                 />
                 <span className="text-sm font-medium text-neutral-700">{option.label}</span>
               </label>

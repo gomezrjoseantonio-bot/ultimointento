@@ -228,7 +228,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                 checked={data.compra?.regimen === 'USADA_ITP'}
                 onChange={(e) => updateCompra('regimen', e.target.value as RegimenCompra)}
                 className="mr-3 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <div>
                 <div className="font-medium text-gray-900">Vivienda usada (ITP)</div>
@@ -243,7 +242,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                 checked={data.compra?.regimen === 'NUEVA_IVA_AJD'}
                 onChange={(e) => updateCompra('regimen', e.target.value as RegimenCompra)}
                 className="mr-3 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <div>
                 <div className="font-medium text-gray-900">Obra nueva (IVA + AJD)</div>
@@ -273,7 +271,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                 min="0"
                 step="0.01"
                 className="w-full px-3 py-2 pr-12 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                 <span className="text-gray-500 text-sm">€</span>
@@ -306,7 +303,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -327,7 +323,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -348,7 +343,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -369,7 +363,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -390,7 +383,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -412,7 +404,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                   <span className="text-gray-500 text-xs">€</span>
@@ -442,7 +433,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                     checked={taxCalculationMode === 'auto'}
                     onChange={(e) => setTaxCalculationMode(e.target.checked ? 'auto' : 'manual')}
                     className="sr-only peer"
-          >
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-hz-primary/20 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-hz-primary"></div>
                 </label>
@@ -467,7 +457,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         checked={baseItpConfig.modo === 'auto'}
                         onChange={() => handleBaseItpModeChange(true)}
                         className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
                       />
                       <span className="text-sm text-gray-700">Automática (precio de compra)</span>
                     </label>
@@ -477,7 +466,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                         checked={baseItpConfig.modo === 'manual'}
                         onChange={() => handleBaseItpModeChange(false)}
                         className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
                       />
                       <span className="text-sm text-gray-700">Manual</span>
                     </label>
@@ -495,7 +483,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                           onChange={(e) => handleManualItpBaseChange(e.target.value)}
                           placeholder="Ej: 200.000,00"
                           className="w-full px-3 py-2 pr-8 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary text-sm"
-          >
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                           <span className="text-gray-500 text-xs">€</span>
@@ -714,7 +701,6 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
               value={data.compra?.fecha_compra || ''}
               onChange={(e) => updateCompra('fecha_compra', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
             />
             <p className="text-xs text-gray-500 mt-1">
               Fecha de escrituración o contrato de compraventa

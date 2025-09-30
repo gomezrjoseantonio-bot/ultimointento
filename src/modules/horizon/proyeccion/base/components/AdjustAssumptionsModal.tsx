@@ -55,7 +55,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
         {/* Overlay */}
         <div 
           className="fixed inset-0 bg-gray-500 transition-opacity"
-          >
           onClick={onClose}
         />
 
@@ -94,7 +93,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.rentGrowth}
                 onChange={(e) => handleInputChange('rentGrowth', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${formData.rentGrowth * 10}%, #F8F9FA ${formData.rentGrowth * 10}%, #F8F9FA 100%)`
                 }}
@@ -118,7 +116,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.expenseInflation}
                 onChange={(e) => handleInputChange('expenseInflation', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.expenseInflation / 8) * 100}%, #F8F9FA ${(formData.expenseInflation / 8) * 100}%, #F8F9FA 100%)`
                 }}
@@ -142,7 +139,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.propertyAppreciation}
                 onChange={(e) => handleInputChange('propertyAppreciation', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA 100%)`
                 }}
@@ -166,7 +162,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.vacancyRate}
                 onChange={(e) => handleInputChange('vacancyRate', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.vacancyRate / 20) * 100}%, #F8F9FA ${(formData.vacancyRate / 20) * 100}%, #F8F9FA 100%)`
                 }}
@@ -190,7 +185,6 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 value={formData.referenceRate}
                 onChange={(e) => handleInputChange('referenceRate', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
-                >
                 style={{
                   background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.referenceRate / 15) * 100}%, #F8F9FA ${(formData.referenceRate / 15) * 100}%, #F8F9FA 100%)`
                 }}

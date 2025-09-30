@@ -339,7 +339,6 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
             <button
               onClick={onCancel}
               className="p-2 text-text-gray hover:text-atlas-navy-1"
-              >
               aria-label="Volver"
             >
               <X className="h-5 w-5" />
@@ -377,7 +376,6 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
             {/* Block Header */}
             <div 
               className="px-6 py-4 border-b border-gray-200 cursor-pointer"
-          >
               onClick={() => toggleBlock(block.id as keyof typeof visibleBlocks)}
             >
               <div className="flex items-center justify-between">

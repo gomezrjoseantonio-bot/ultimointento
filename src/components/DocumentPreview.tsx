@@ -248,7 +248,6 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             src={previewContent}
             type="application/pdf"
             className="w-full h-full"
-          >
           />
         </div>
       );
@@ -261,7 +260,6 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
             src={previewContent} 
             alt={filename}
             className="w-full h-auto max-h-96 object-contain"
-          >
           />
         </div>
       );
@@ -276,7 +274,6 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
               <div 
                 key={index}
                 className="flex items-center justify-between p-2 bg-gray-50 rounded cursor-pointer"
-          >
                 onClick={() => setSelectedZipEntry(entry)}
               >
                 <div className="flex items-center">

@@ -258,7 +258,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 value={formatPercentage(maxBonificacion)}
                 onChange={(e) => setMaxBonificacion(parseNumber(e.target.value))}
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
-          >
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <span className="text-text-gray text-sm">p.p.</span>
@@ -334,7 +333,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   onChange={(e) => setCustomBonification(prev => ({ ...prev, nombre: e.target.value }))}
                   placeholder="Ej: Vinculación especial"
                   className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
                 />
               </div>
               <div>
@@ -348,7 +346,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                     onChange={(e) => setCustomBonification(prev => ({ ...prev, descuentoTIN: parseNumber(e.target.value) }))}
                     placeholder="0,50"
                     className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-12"
-          >
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <span className="text-text-gray text-sm">p.p.</span>
@@ -366,7 +363,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 onChange={(e) => setCustomBonification(prev => ({ ...prev, condicionParametrizable: e.target.value }))}
                 placeholder="Descripción de la condición para aplicar la bonificación"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
               />
             </div>
             <div className="flex justify-end space-x-2">
@@ -414,7 +410,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                       checked={bonificacion.seleccionado || false}
                       onChange={() => toggleBonificationSelection(bonificacion.id)}
                       className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300 rounded"
-          >
                     />
                     <span className="ml-3 text-sm font-medium text-gray-900">
                       La cumpliré
@@ -452,7 +447,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                             checked={(bonificacion.graciaMeses || 0) === meses}
                             onChange={() => updateGracePeriod(bonificacion.id, meses as 0|6|12)}
                             className="h-4 w-4 text-atlas-blue focus:ring-atlas-blue border-gray-300"
-          >
                           />
                           <span className="ml-2 text-sm text-gray-900">
                             {meses === 0 ? 'Sin promo' : `${meses} meses`}
@@ -474,7 +468,6 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                     type="button"
                     onClick={() => removeBonification(bonificacion.id)}
                     className="text-gray-400 hover:text-red-500"
-                    >
                     title="Eliminar bonificación"
                   >
                     <X className="h-4 w-4" />

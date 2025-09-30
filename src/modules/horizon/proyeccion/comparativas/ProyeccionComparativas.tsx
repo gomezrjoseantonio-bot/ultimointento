@@ -183,7 +183,6 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                 <button
                   onClick={() => handleEditScenario(scenario.id)}
                   className="p-2 text-gray-500 hover:text-primary-700"
-                  >
                   title="Editar escenario"
                 >
                   <Edit className="h-4 w-4" />

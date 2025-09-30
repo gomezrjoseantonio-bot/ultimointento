@@ -206,7 +206,6 @@ const ProfileSeederPage: React.FC = () => {
             accept=".csv,.xlsx,.xls"
             onChange={handleFileUpload}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          >
           />
         </div>
 
@@ -316,7 +315,6 @@ const ProfileSeederPage: React.FC = () => {
                       bankKey: e.target.value
                     })}
                     className="w-full border border-neutral-300 px-3 py-2 text-sm"
-                    >
                     placeholder="Ej: ING, BBVA, Santander..."
                   />
                 </div>

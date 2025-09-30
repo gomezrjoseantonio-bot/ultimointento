@@ -54,7 +54,6 @@ const AccountOption: React.FC<AccountOptionProps> = ({
           src={account.banco.brand.logoUrl} 
           alt={`Logo ${account.banco.name}`}
           className="w-full h-full object-cover"
-          >
           onError={(e) => {
             // Fallback to avatar
             e.currentTarget.style.display = 'none';
@@ -76,7 +75,6 @@ const AccountOption: React.FC<AccountOptionProps> = ({
     return (
       <div 
         className="fallback-avatar w-full h-full flex items-center justify-center text-white font-bold"
-        >
         style={{ 
           backgroundColor: color,
           fontSize: size === 'sm' ? '0.6rem' : size === 'md' ? '0.75rem' : '0.875rem'
