@@ -190,7 +190,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
                 <div key={index} className="flex items-center gap-2">
                   <div 
                     className="w-3 h-3 rounded-full flex-shrink-0"
-                    >
                     style={{ backgroundColor: item.color }}
                   />
                   <span className="text-xs text-hz-neutral-600 truncate">
@@ -250,7 +249,6 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
                     {/* Budget bar (background) */}
                     <div 
                       className="absolute top-0 left-0 h-full bg-hz-neutral-300 rounded-full"
-                      >
                       style={{ width: `${budgetPercent}%` }}
                     />
                     

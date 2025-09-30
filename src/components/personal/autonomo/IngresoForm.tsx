@@ -90,7 +90,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
             placeholder="Ej: Desarrollo web aplicación"
             required
           />
@@ -107,7 +106,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.importe}
               onChange={(e) => setFormData(prev => ({ ...prev, importe: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="1500.00"
               required
             />
@@ -122,7 +120,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.fecha}
               onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               required
             />
           </div>
@@ -138,7 +135,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.numeroFactura}
               onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="2024-001"
             />
           </div>
@@ -152,7 +148,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               value={formData.cliente}
               onChange={(e) => setFormData(prev => ({ ...prev, cliente: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="Empresa XYZ"
             />
           </div>
@@ -167,7 +162,6 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
               checked={formData.conIva}
               onChange={(e) => setFormData(prev => ({ ...prev, conIva: e.target.checked }))}
               className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-          >
             />
             <label htmlFor="conIva" className="text-sm font-medium text-neutral-700">
               Incluye IVA

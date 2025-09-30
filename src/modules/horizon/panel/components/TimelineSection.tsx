@@ -132,7 +132,6 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
               fill="#10B981" 
               radius={[0, 0, 0, 0]}
               className="cursor-pointer"
-          >
             />
             
             {/* Expense bars (negative values) */}
@@ -142,7 +141,6 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
               fill="#EF4444" 
               radius={[0, 0, 0, 0]}
               className="cursor-pointer"
-          >
             />
           </BarChart>
         </ResponsiveContainer>

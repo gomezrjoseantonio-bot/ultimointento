@@ -113,7 +113,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
             placeholder="Ej: Compra ordenador portátil"
             required
           />
@@ -130,7 +129,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.importe}
               onChange={(e) => setFormData(prev => ({ ...prev, importe: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="500.00"
               required
             />
@@ -145,7 +143,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.fecha}
               onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               required
             />
           </div>
@@ -159,7 +156,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
             value={formData.categoria}
             onChange={(e) => setFormData(prev => ({ ...prev, categoria: e.target.value }))}
             className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
             required
           >
             {categorias.map(categoria => (
@@ -180,7 +176,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.proveedor}
               onChange={(e) => setFormData(prev => ({ ...prev, proveedor: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="Nombre del proveedor"
             />
           </div>
@@ -194,7 +189,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.numeroFactura}
               onChange={(e) => setFormData(prev => ({ ...prev, numeroFactura: e.target.value }))}
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
               placeholder="F-2024-001"
             />
           </div>
@@ -214,7 +208,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
               value={formData.porcentajeDeducible}
               onChange={(e) => setFormData(prev => ({ ...prev, porcentajeDeducible: parseInt(e.target.value) }))}
               className="flex-1"
-          >
             />
             <div className="flex items-center space-x-2">
               <input
@@ -224,7 +217,6 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
                 value={formData.porcentajeDeducible}
                 onChange={(e) => setFormData(prev => ({ ...prev, porcentajeDeducible: parseInt(e.target.value) || 0 }))}
                 className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm text-center"
-          >
               />
               <span className="text-sm text-neutral-600">%</span>
             </div>

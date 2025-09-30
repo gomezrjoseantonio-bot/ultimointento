@@ -348,7 +348,6 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 className="btn-secondary-horizon pl-10 pr-4 py-2 "
-          >
               />
             </div>
 

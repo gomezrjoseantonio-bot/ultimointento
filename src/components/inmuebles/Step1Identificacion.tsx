@@ -87,7 +87,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
             })}
             placeholder="Ej: Piso Centro, Casa Playa..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
             maxLength={80}
           />
           <p className="text-xs text-gray-500 mt-1">
@@ -114,7 +113,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Nombre de la calle"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               maxLength={120}
             />
           </div>
@@ -135,7 +133,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Nº"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               maxLength={10}
             />
           </div>
@@ -159,7 +156,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Ej: 2º, Bajo..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               maxLength={10}
             />
           </div>
@@ -180,7 +176,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Ej: A, B, Izq..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               maxLength={10}
             />
           </div>
@@ -198,7 +193,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               onChange={(e) => handlePostalCodeChange(e.target.value)}
               placeholder="Ej: 28001"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               maxLength={5}
               pattern="[0-9]{5}"
             />
@@ -231,7 +225,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Autocompletado por CP"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
-          >
               maxLength={80}
             />
           </div>
@@ -252,7 +245,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
               })}
               placeholder="Autocompletado por CP"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
-          >
               maxLength={80}
             />
           </div>
@@ -275,7 +267,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
             })}
             placeholder="Autocompletado por CP"
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary bg-gray-50"
-          >
             readOnly={false}
           />
         </div>
@@ -295,7 +286,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
             })}
             placeholder="Opcional"
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
             maxLength={20}
           />
           <p className="text-xs text-gray-500 mt-1">
@@ -319,7 +309,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
                   estado: e.target.value as EstadoInmueble
                 })}
                 className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <span className="text-sm">Activo</span>
             </label>
@@ -333,7 +322,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
                   estado: e.target.value as EstadoInmueble
                 })}
                 className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <span className="text-sm">Vendido</span>
             </label>

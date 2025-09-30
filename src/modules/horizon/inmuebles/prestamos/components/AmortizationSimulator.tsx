@@ -89,7 +89,6 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div 
           className="fixed inset-0 bg-gray-500 transition-opacity"
-          >
           onClick={onClose}
         />
         
@@ -142,7 +141,6 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                     value={importe}
                     onChange={(e) => setImporte(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-                    >
                     placeholder="0,00"
                     min="0"
                     max={prestamo.principalVivo}
@@ -166,7 +164,6 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   value={fechaAmortizacion}
                   onChange={(e) => setFechaAmortizacion(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-atlas-blue focus:border-atlas-blue"
-          >
                 />
               </div>
             </div>

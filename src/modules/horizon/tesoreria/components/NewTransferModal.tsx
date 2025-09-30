@@ -327,7 +327,6 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
               onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))}
               rows={3}
               className="w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-hz-primary focus:border-transparent resize-none"
-              >
               placeholder="Concepto de la transferencia..."
             />
           </div>
@@ -339,7 +338,6 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
             type="button"
             onClick={handleClose}
             className="text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
             disabled={creating}
           >
             Cancelar

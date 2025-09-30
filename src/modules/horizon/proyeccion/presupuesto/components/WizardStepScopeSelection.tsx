@@ -194,7 +194,6 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
                 checked={isFullYear}
                 onChange={() => setIsFullYear(true)}
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-          >
               />
               <span className="ml-3 text-sm text-primary-900">
                 <strong>Todo el año:</strong> Rellenar meses previos como "retro estimado"
@@ -208,7 +207,6 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
                 checked={!isFullYear}
                 onChange={() => setIsFullYear(false)}
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-          >
               />
               <span className="ml-3 text-sm text-primary-900">
                 <strong>Desde {monthNames[currentMonth - 1]}:</strong> Meses previos quedan en blanco

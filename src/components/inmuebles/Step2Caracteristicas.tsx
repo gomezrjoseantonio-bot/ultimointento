@@ -74,7 +74,6 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
                   min="0"
                   step="0.01"
                   className="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <span className="text-gray-500 text-sm">m²</span>
@@ -106,7 +105,6 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
                 placeholder="Ej: 3"
                 min="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               />
               <p className="text-xs text-gray-500 mt-1">
                 Incluyendo dormitorios y estudio
@@ -134,7 +132,6 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
                 placeholder="Ej: 2"
                 min="0"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               />
               <p className="text-xs text-gray-500 mt-1">
                 Incluyendo aseos completos y medios baños
@@ -163,7 +160,6 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
                 min="1800"
                 max="2100"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-hz-primary focus:border-hz-primary"
-          >
               />
               <p className="text-xs text-gray-500 mt-1">
                 Campo opcional, puede completarse más adelante

@@ -119,7 +119,8 @@ const ColorCodedMovementDemo: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b <td className="p-3">15/09/2025</td>
+                <tr className="border-b">
+                  <td className="p-3">15/09/2025</td>
                   <td className="p-3">Luz</td>
                   <td className="p-3 text-right text-red-600 font-medium">-85.50 €</td>
                   <td className="p-3">Santander · 1234</td>
@@ -127,7 +128,8 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="confirmado" movementType="Gasto" />
                   </td>
                 </tr>
-                <tr className="border-b <td className="p-3">14/09/2025</td>
+                <tr className="border-b">
+                  <td className="p-3">14/09/2025</td>
                   <td className="p-3">Agua</td>
                   <td className="p-3 text-right text-red-600 font-medium">-45.20 €</td>
                   <td className="p-3">BBVA · 5678</td>
@@ -135,7 +137,8 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="previsto" movementType="Gasto" />
                   </td>
                 </tr>
-                <tr className="border-b <td className="p-3">13/09/2025</td>
+                <tr className="border-b">
+                  <td className="p-3">13/09/2025</td>
                   <td className="p-3">Alquiler</td>
                   <td className="p-3 text-right text-green-600 font-medium">+1,200.00 €</td>
                   <td className="p-3">CaixaBank · 9012</td>
@@ -143,7 +146,8 @@ const ColorCodedMovementDemo: React.FC = () => {
                     <MovementStatusChip status="previsto" movementType="Ingreso" />
                   </td>
                 </tr>
-                <tr className="border-b <td className="p-3">12/09/2025</td>
+                <tr className="border-b">
+                  <td className="p-3">12/09/2025</td>
                   <td className="p-3">Telco</td>
                   <td className="p-3 text-right text-red-600 font-medium">-55.99 €</td>
                   <td className="p-3">Santander · 1234</td>

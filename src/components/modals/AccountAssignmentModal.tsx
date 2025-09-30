@@ -101,7 +101,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                   checked={assignmentType === 'iban'}
                   onChange={(e) => setAssignmentType(e.target.value as 'iban')}
                   className="mr-2"
-                  >
                   style={{ accentColor: 'var(--horizon-primary)' }}
                 />
                 <CreditCard className="h-4 w-4 mr-1" />
@@ -114,7 +113,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                   checked={assignmentType === 'account'}
                   onChange={(e) => setAssignmentType(e.target.value as 'account')}
                   className="mr-2"
-                  >
                   style={{ accentColor: 'var(--horizon-primary)' }}
                 />
                 <Building className="h-4 w-4 mr-1" />
@@ -137,7 +135,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                 placeholder="ES91 2100 0418 4502 0005 1332"
                 maxLength={29} // IBAN max length with spaces
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-                >
                 style={{ 
                   '--tw-ring-color': 'var(--horizon-primary)',
                   borderColor: '#d1d5db'
@@ -169,7 +166,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="12345678901234567890"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-                >
                 style={{ 
                   '--tw-ring-color': 'var(--horizon-primary)',
                   borderColor: '#d1d5db'
@@ -197,7 +193,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
               onChange={(e) => setBankName(e.target.value)}
               placeholder="Santander, BBVA, ING..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
-              >
               style={{ 
                 '--tw-ring-color': 'var(--horizon-primary)',
                 borderColor: '#d1d5db'
@@ -216,7 +211,6 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
             <button
               type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white rounded-md"
-              >
               style={{ backgroundColor: 'var(--horizon-primary)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary-hover)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--horizon-primary)'}

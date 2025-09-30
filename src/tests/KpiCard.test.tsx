@@ -72,7 +72,6 @@ describe('KpiCard', () => {
         title="Revenue" 
         value="€15,000" 
         className="custom-class" 
-          >
       />
     );
     

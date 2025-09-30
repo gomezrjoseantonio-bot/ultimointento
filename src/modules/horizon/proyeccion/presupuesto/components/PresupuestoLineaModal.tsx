@@ -260,7 +260,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.tipoConcepto}
                     onChange={(e) => updateField('tipoConcepto', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
                     placeholder="Ej: Seguro hogar, Renta habitación 1"
                   />
                 )}
@@ -278,7 +277,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedor}
                       onChange={(e) => updateField('proveedor', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
                       placeholder="Nombre del proveedor"
                     />
                   </div>
@@ -292,7 +290,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                       value={formData.proveedorNif}
                       onChange={(e) => updateField('proveedorNif', e.target.value)}
                       className="w-full border border-gray-300 px-3 py-2"
-                      >
                       placeholder="NIF del proveedor"
                     />
                   </div>
@@ -350,7 +347,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.fechaUnica}
                     onChange={(e) => updateField('fechaUnica', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -367,7 +363,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.dayOfMonth || ''}
                     onChange={(e) => updateField('dayOfMonth', parseInt(e.target.value) || undefined)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
                     placeholder="1-28"
                   />
                   <p className="text-xs text-gray-600 mt-1">
@@ -388,7 +383,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.importeUnitario}
                   onChange={(e) => updateField('importeUnitario', parseFloat(e.target.value) || 0)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
                   placeholder="0.00"
                 />
               </div>
@@ -401,7 +395,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     checked={formData.ivaIncluido}
                     onChange={(e) => updateField('ivaIncluido', e.target.checked)}
                     className="mr-2"
-          >
                   />
                   <span className="text-sm font-medium text-gray-700">IVA Incluido</span>
                 </label>
@@ -418,7 +411,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.desde}
                     onChange={(e) => updateField('desde', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -432,7 +424,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                     value={formData.hasta}
                     onChange={(e) => updateField('hasta', e.target.value)}
                     className="w-full border border-gray-300 px-3 py-2"
-                    >
                     min={`${year}-01-01`}
                     max={`${year}-12-31`}
                   />
@@ -448,7 +439,6 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
                   value={formData.notas}
                   onChange={(e) => updateField('notas', e.target.value)}
                   className="w-full border border-gray-300 px-3 py-2"
-                  >
                   rows={3}
                   placeholder="Notas adicionales..."
                 />
@@ -505,6 +495,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
           <button
             onClick={handleSubmit}
             className="btn-primary-horizon px-4 py-2"
+          >
             {linea ? 'Actualizar' : 'Crear'}
           </button>
         </div>

@@ -79,7 +79,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
       <button
         onClick={onToggleExpanded}
         className="w-full px-6 py-4 flex items-center justify-between hover:bg-hz-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-hz-primary focus:ring-inset"
-        >
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? 'Contraer' : 'Expandir'} cuenta ${account.name}`}
       >
@@ -91,7 +90,6 @@ const AccountCard: React.FC<AccountCardProps> = ({
                 src={account.logo_url}
                 alt={`Logo ${account.bank}`}
                 className="w-full h-full object-cover"
-          >
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';

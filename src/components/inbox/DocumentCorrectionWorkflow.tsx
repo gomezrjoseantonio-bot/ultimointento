@@ -269,7 +269,6 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             <button
               onClick={() => startEditing(fieldDef.field)}
               className="text-blue-600 hover:text-blue-800 p-1"
-              >
               title="Editar campo"
             >
               <Edit3 className="w-4 h-4" strokeWidth={1.5} />
@@ -348,7 +347,6 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                   checked={Boolean(value)}
                   onChange={(e) => handleFieldChange(fieldDef.field, e.target.checked)}
                   className="mr-2"
-          >
                 />
                 <span className="text-sm text-gray-600">Sí</span>
               </label>
@@ -357,7 +355,6 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
             <button
               onClick={() => stopEditing(fieldDef.field)}
               className="text-green-600 hover:text-green-800 p-1"
-              >
               title="Confirmar cambio"
             >
               <Check className="w-4 h-4" strokeWidth={1.5} />
@@ -424,7 +421,6 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
         <button
           onClick={onCancel}
           className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
           style={{ 
             color: '#6C757D',
             fontFamily: 'Inter, sans-serif'

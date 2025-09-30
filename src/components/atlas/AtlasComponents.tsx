@@ -306,7 +306,6 @@ export const AtlasHelperBanner: React.FC<AtlasHelperBannerProps> = ({
   return (
     <div
       className="flex items-start p-4 rounded-lg border-l-4 mb-6"
-      >
       style={variantStyles[variant]}
     >
       <div className="flex-shrink-0 mr-3">
@@ -357,7 +356,6 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
       {/* Light overlay - no dark overlays per ATLAS */}
       <div 
         className="absolute inset-0 bg-white"
-        >
         style={{ opacity: 0.75 }}
         onClick={onClose}
       />

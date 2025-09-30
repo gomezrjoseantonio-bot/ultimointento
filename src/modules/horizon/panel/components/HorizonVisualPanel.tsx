@@ -47,7 +47,6 @@ const HorizonVisualPanel: React.FC = () => {
                   checked={filters.excludePersonal}
                   onChange={(e) => handleFilterChange({ excludePersonal: e.target.checked })}
                   className="sr-only"
-          >
                 />
                 <div className={`relative w-11 h-6 transition-colors rounded-full ${
                   filters.excludePersonal ? 'bg-hz-primary' : 'bg-hz-neutral-300'

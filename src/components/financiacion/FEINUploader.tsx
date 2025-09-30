@@ -166,7 +166,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
               <div 
                 className="h-2 rounded-full transition-all duration-300"
-                >
                 style={{ 
                   width: `${uploadProgress}%`,
                   backgroundColor: 'var(--atlas-blue)'
@@ -193,7 +192,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           <div>
             <h1 
               className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
-          >
               style={{ color: 'var(--hz-text)' }}
             >
               Crear préstamo desde FEIN
@@ -206,7 +204,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           <button
             onClick={onCancel}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors hover:bg-gray-100"
-            >
             style={{ color: 'var(--text-gray)' }}
           >
             <X className="h-4 w-4" />
@@ -238,7 +235,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
           >
             <FileText 
               className="mx-auto h-16 w-16 mb-4" 
-          >
               style={{ color: 'var(--atlas-blue)' }}
             />
             
@@ -258,7 +254,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
               className="px-6 py-3 text-white rounded-md font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
               style={{ backgroundColor: 'var(--atlas-blue)' }}
             >
               Seleccionar archivo FEIN
@@ -271,7 +266,6 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
               onChange={handleFileInput}
               disabled={isProcessing}
               className="hidden"
-          >
             />
           </div>
 

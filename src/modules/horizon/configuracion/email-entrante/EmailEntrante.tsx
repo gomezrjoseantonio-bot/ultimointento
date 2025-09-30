@@ -324,7 +324,6 @@ const EmailEntrante: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <select
                     className="border border-neutral-200 px-3 py-2 text-sm"
-          >
                     onChange={(e) => e.target.value && generatePropertyAlias(e.target.value)}
                     value=""
                   >
@@ -377,7 +376,6 @@ const EmailEntrante: React.FC = () => {
                     <button
                       onClick={() => copyToClipboard(alias.email)}
                       className="p-2 text-neutral-500 hover:text-brand-navy"
-                      >
                       title="Copiar email"
                     >
                       <Copy className="w-4 h-4" />
@@ -386,7 +384,6 @@ const EmailEntrante: React.FC = () => {
                     <button
                       onClick={() => regenerateAlias(alias.id)}
                       className="p-2 text-neutral-500 hover:text-warning-600"
-                      >
                       title="Regenerar alias"
                     >
                       <RotateCcw className="w-4 h-4" />
@@ -455,7 +452,6 @@ const EmailEntrante: React.FC = () => {
                   value={newWhitelistEmail}
                   onChange={(e) => setNewWhitelistEmail(e.target.value)}
                   className="flex-1 border border-neutral-200 px-3 py-2 text-sm"
-          >
                   onKeyPress={(e) => e.key === 'Enter' && addToWhitelist()}
                 />
                 <button
@@ -521,7 +517,6 @@ const EmailEntrante: React.FC = () => {
                     accept=".eml,.zip"
                     onChange={handleMockEmailTest}
                     className="hidden"
-          >
                   />
                 </label>
               </div>
@@ -539,7 +534,6 @@ const EmailEntrante: React.FC = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-neutral-200 text-sm"
-          >
                 />
               </div>
               

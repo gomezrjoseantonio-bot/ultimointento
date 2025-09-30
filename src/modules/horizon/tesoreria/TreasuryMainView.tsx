@@ -378,7 +378,6 @@ const TreasuryMainView: React.FC = () => {
                         src={account.logo_url}
                         alt={`${account.bank} logo`}
                         className="w-full h-full object-cover rounded"
-          >
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.style.display = 'none';
@@ -390,7 +389,6 @@ const TreasuryMainView: React.FC = () => {
                     ) : null}
                     <div
                       className="w-full h-full bg-hz-neutral-300 rounded flex items-center justify-center text-xs font-medium text-hz-neutral-600"
-                      >
                       style={{ display: account.logo_url ? 'none' : 'flex' }}
                     >
                       {account.bank.slice(0, 2).toUpperCase()}

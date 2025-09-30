@@ -365,7 +365,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                 value={breakdown.inmuebleId}
                 onChange={(e) => setBreakdown(prev => ({ ...prev, inmuebleId: parseInt(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                >
                 required
               >
                 {properties.map(property => (
@@ -413,7 +412,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                   checked={breakdown.menorCuantiaActivated}
                   onChange={(e) => setBreakdown(prev => ({ ...prev, menorCuantiaActivated: e.target.checked }))}
                   className="rounded border-gray-300"
-          >
                 />
                 <span className="text-sm text-gray-700">
                   Menor cuantía → R&C (≤ 300€)
@@ -444,7 +442,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.mejora}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mejora: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
                   />
                 </div>
                 <div>
@@ -456,7 +453,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.reparacionConservacion}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, reparacionConservacion: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
                   />
                 </div>
                 <div>
@@ -468,7 +464,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                     value={percentageDistribution.mobiliario}
                     onChange={(e) => setPercentageDistribution(prev => ({ ...prev, mobiliario: parseInt(e.target.value) || 0 }))}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
                   />
                 </div>
               </div>
@@ -510,7 +505,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                       value={breakdown.fechaFinObra || ''}
                       onChange={(e) => setBreakdown(prev => ({ ...prev, fechaFinObra: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 text-sm"
-                      >
                       required
                     />
                   </div>
@@ -571,7 +565,6 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
                       value={breakdown.fechaAltaMobiliario || ''}
                       onChange={(e) => setBreakdown(prev => ({ ...prev, fechaAltaMobiliario: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 text-sm"
-                      >
                       required
                     />
                   </div>
@@ -654,7 +647,6 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
           value={item.description}
           onChange={(e) => onUpdate({ description: e.target.value })}
           className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
           placeholder="Descripción del concepto"
         />
       </div>
@@ -668,7 +660,6 @@ const LineItemCard: React.FC<LineItemCardProps> = ({ item, onUpdate, onCategoryC
             value={item.baseAmount.toFixed(2)}
             onChange={(e) => onUpdate({ baseAmount: parseFloat(e.target.value) || 0 })}
             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-          >
           />
         </div>
         <div>

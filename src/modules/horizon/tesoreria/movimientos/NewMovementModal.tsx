@@ -289,7 +289,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
                 required
               />
             </div>
@@ -303,7 +302,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.accountId}
                 onChange={(e) => handleInputChange('accountId', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
                 required
               >
                 <option value="">Seleccionar cuenta...</option>
@@ -353,7 +351,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                   value={form.transferToAccountId}
                   onChange={(e) => handleInputChange('transferToAccountId', e.target.value)}
                   className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                  >
                   required
                 >
                   <option value="">Seleccionar cuenta destino...</option>
@@ -386,7 +383,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                   value={form.amount}
                   onChange={(e) => handleInputChange('amount', e.target.value)}
                   className="flex-1 border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                  >
                   required
                 />
                 {form.type !== 'Transferencia' && (
@@ -394,7 +390,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                     type="button"
                     onClick={toggleAmountSign}
                     className="p-2 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-50"
-                    >
                     title="Cambiar signo"
                   >
                     {parseFloat(form.amount) >= 0 ? <Plus className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
@@ -419,7 +414,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-                >
                 required
               />
             </div>
@@ -454,7 +448,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 value={form.counterparty}
                 onChange={(e) => handleInputChange('counterparty', e.target.value)}
                 className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
-          >
               />
             </div>
 
@@ -479,7 +472,6 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
             <button
               onClick={handleClose}
               className="px-4 py-2 border border-hz-neutral-300 text-hz-text rounded-lg hover:bg-hz-neutral-50 transition-colors"
-              >
               disabled={saving}
             >
               Cancelar

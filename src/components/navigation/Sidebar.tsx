@@ -46,7 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     >
       <item.icon
         className="mr-3 h-6 w-6 flex-shrink-0"
-        >
         aria-hidden="true"
       />
       {item.name}
@@ -73,7 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <div className="flex items-center space-x-2">
             <div 
               className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-              >
               style={{ backgroundColor: 'var(--atlas-teal)' }}
             >
               A
@@ -84,7 +82,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </div>
           <button
             className="md:hidden text-white hover:text-gray-200 focus:outline-none"
-          >
             onClick={() => setSidebarOpen(false)}
             aria-label="Cerrar menú lateral"
           >

@@ -142,7 +142,6 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                   <button
                     onClick={() => onEdit(linea)}
                     className="text-primary-600 hover:text-primary-900"
-                    >
                     title="Editar"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -150,7 +149,6 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                   <button
                     onClick={() => navigator.clipboard.writeText(JSON.stringify(linea, null, 2))}
                     className="text-gray-600 hover:text-gray-900"
-                    >
                     title="Duplicar"
                   >
                     <Copy className="h-4 w-4" />
@@ -162,7 +160,6 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                       }
                     }}
                     className="text-error-600 hover:text-error-900"
-                    >
                     title="Eliminar"
                   >
                     <Trash2 className="h-4 w-4" />
