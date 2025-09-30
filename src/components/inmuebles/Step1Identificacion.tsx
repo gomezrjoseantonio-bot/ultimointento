@@ -309,7 +309,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
                   estado: e.target.value as EstadoInmueble
                 })}
                 className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <span className="text-sm">Activo</span>
             </label>
@@ -323,7 +322,6 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
                   estado: e.target.value as EstadoInmueble
                 })}
                 className="mr-2 text-hz-primary focus:ring-hz-primary"
-          >
               />
               <span className="text-sm">Vendido</span>
             </label>

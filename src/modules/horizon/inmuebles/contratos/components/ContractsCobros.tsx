@@ -466,7 +466,6 @@ const ContractsCobros: React.FC = () => {
                   value={modalForm.notes}
                   onChange={(e) => setModalForm(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                  >
                   rows={3}
                   placeholder="Notas sobre el pago..."
                 />
