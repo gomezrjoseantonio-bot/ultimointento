@@ -109,8 +109,8 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
   };
 
   const doughnutData = [
-    { name: 'Cobradas', value: rentData.collected, color: '#10B981' },
-    { name: 'Pendientes', value: rentData.pending, color: '#F59E0B' }
+    { name: 'Cobradas', value: rentData.collected, color: 'var(--ok)' },
+    { name: 'Pendientes', value: rentData.pending, color: 'var(--warn)' }
   ];
 
   const collectionRate = ((rentData.collected / rentData.total) * 100).toFixed(1);
@@ -232,7 +232,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
               >
                 <XAxis 
                   type="number" 
-                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                  tick={{ fontSize: 12, fill: 'var(--text-gray)' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(value) => `€${value}`}
@@ -240,7 +240,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
                 <YAxis 
                   type="category" 
                   dataKey="name" 
-                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  tick={{ fontSize: 11, fill: 'var(--text-gray)' }}
                   axisLine={false}
                   tickLine={false}
                   width={80}
@@ -265,8 +265,8 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
                     return null;
                   }}
                 />
-                <Bar dataKey="expected" fill="#0A84FF" name="Previsto" radius={[0, 2, 2, 0]} />
-                <Bar dataKey="collected" fill="#10B981" name="Cobrado" radius={[0, 2, 2, 0]} />
+                <Bar dataKey="expected" fill="var(--atlas-blue)" name="Previsto" radius={[0, 2, 2, 0]} />
+                <Bar dataKey="collected" fill="var(--ok)" name="Cobrado" radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -89,20 +89,20 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold" style={{ 
-                  color: '#303A4C',
+                  color: 'var(--atlas-navy-1)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   {title}
                 </h3>
                 <p className="mt-1 text-sm" style={{ 
-                  color: '#6C757D',
+                  color: 'var(--text-gray)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   {subtitle}
                 </p>
                 {filename && (
                   <p className="mt-1 text-xs font-mono" style={{ 
-                    color: '#6C757D',
+                    color: 'var(--text-gray)',
                     fontFamily: 'Inter, sans-serif'
                   }}>
                     Archivo: {filename}
@@ -110,7 +110,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                 )}
                 {unrecognizedIBAN && (
                   <p className="mt-1 text-xs font-mono" style={{ 
-                    color: '#DC3545',
+                    color: 'var(--error)',
                     fontFamily: 'Inter, sans-serif'
                   }}>
                     IBAN detectado: {unrecognizedIBAN}
@@ -132,7 +132,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
               <div className="flex items-center justify-center py-8">
                 <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
                 <span className="ml-3 text-sm" style={{ 
-                  color: '#6C757D',
+                  color: 'var(--text-gray)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   Cargando cuentas...
@@ -142,13 +142,13 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
               <div className="text-center py-8">
                 <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" strokeWidth={1.5} />
                 <h4 className="text-sm font-medium" style={{ 
-                  color: '#303A4C',
+                  color: 'var(--atlas-navy-1)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   No hay cuentas disponibles
                 </h4>
                 <p className="mt-2 text-sm" style={{ 
-                  color: '#6C757D',
+                  color: 'var(--text-gray)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   Configura al menos una cuenta bancaria para importar extractos.
@@ -163,7 +163,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                   }}
                   className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
                   style={{ 
-                    backgroundColor: '#042C5E',
+                    backgroundColor: 'var(--atlas-blue)',
                     fontFamily: 'Inter, sans-serif'
                   }}
                 >
@@ -188,7 +188,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                 )}
                 
                 <p className="text-sm" style={{ 
-                  color: '#303A4C',
+                  color: 'var(--atlas-navy-1)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
                   Selecciona la cuenta bancaria correspondiente:
@@ -210,7 +210,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     >
                       <div className="flex items-center">
                         {/* Account logo or fallback */}
-                        <div className="w-10 h-10 mr-3 flex items-center justify-center overflow-hidden" style={{ backgroundColor: '#042C5E' }}>
+                        <div className="w-10 h-10 mr-3 flex items-center justify-center overflow-hidden" style={{ backgroundColor: 'var(--atlas-blue)' }}>
                           {account.logo_url && (account.logo_url.endsWith('.jpg') || account.logo_url.endsWith('.jpeg') || account.logo_url.endsWith('.png')) ? (
                             <img 
                               src={account.logo_url} 
@@ -314,7 +314,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                 onClick={handleCancel}
                 className="px-4 py-2 text-sm font-medium border border-gray-300"
                 style={{ 
-                  color: '#6C757D',
+                  color: 'var(--text-gray)',
                   fontFamily: 'Inter, sans-serif'
                 }}
               >
@@ -329,7 +329,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                     : 'opacity-50 cursor-not-allowed'
                 }`}
                 style={{ 
-                  backgroundColor: selectedAccountId ? '#042C5E' : '#6C757D',
+                  backgroundColor: selectedAccountId ? 'var(--atlas-blue)' : 'var(--text-gray)',
                   fontFamily: 'Inter, sans-serif'
                 }}
               >

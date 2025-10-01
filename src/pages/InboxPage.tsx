@@ -619,7 +619,7 @@ const InboxPage: React.FC = () => {
           position: 'top-center',
           style: {
             background: '#fee2e2',
-            color: '#dc2626',
+            color: 'var(--error)',
             border: '1px solid #fca5a5',
           },
         });

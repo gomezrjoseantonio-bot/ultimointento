@@ -28,7 +28,7 @@ const MiniBalanceChart: React.FC<{
       <svg width="50" height="40" className="overflow-visible">
         <path
           d={pathData}
-          stroke={projected30d >= current ? '#10b981' : '#ef4444'}
+          stroke={projected30d >= current ? 'var(--ok)' : 'var(--error)'}
           strokeWidth="2"
           fill="none"
           strokeLinecap="round"
@@ -40,7 +40,7 @@ const MiniBalanceChart: React.FC<{
             cx={i * 25}
             cy={y}
             r="2"
-            fill={projected30d >= current ? '#10b981' : '#ef4444'}
+            fill={projected30d >= current ? 'var(--ok)' : 'var(--error)'}
           />
         ))}
       </svg>

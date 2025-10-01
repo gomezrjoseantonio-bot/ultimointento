@@ -385,13 +385,13 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
     }}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold" style={{ color: '#303A4C' }}>
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
           Corregir datos extraídos
         </h3>
-        <p className="mt-1 text-sm" style={{ color: '#6C757D' }}>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-gray)' }}>
           Revisa y corrige los datos extraídos del documento antes de archivar
         </p>
-        <p className="mt-1 text-xs font-mono" style={{ color: '#6C757D' }}>
+        <p className="mt-1 text-xs font-mono" style={{ color: 'var(--text-gray)' }}>
           {filename}
         </p>
       </div>
@@ -422,7 +422,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
           onClick={onCancel}
           className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
           style={{ 
-            color: '#6C757D',
+            color: 'var(--text-gray)',
             fontFamily: 'Inter, sans-serif'
           }}
         >
@@ -438,7 +438,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
               : 'hover:opacity-90 cursor-pointer'
           }`}
           style={{ 
-            backgroundColor: '#042C5E',
+            backgroundColor: 'var(--atlas-blue)',
             fontFamily: 'Inter, sans-serif'
           }}
         >

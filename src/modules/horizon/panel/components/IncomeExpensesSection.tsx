@@ -108,12 +108,12 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
           <ComposedChart data={timelineData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <XAxis 
               dataKey="dateShort" 
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12, fill: 'var(--text-gray)' }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis 
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 12, fill: 'var(--text-gray)' }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => `€${Math.abs(value) / 1000}k`}
@@ -138,8 +138,8 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
                 return null;
               }}
             />
-            <Bar dataKey="income" fill="#10B981" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="expenses" fill="#EF4444" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="income" fill="var(--ok)" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="expenses" fill="var(--error)" radius={[2, 2, 0, 0]} />
             <Line 
               type="monotone" 
               dataKey="netBalance" 

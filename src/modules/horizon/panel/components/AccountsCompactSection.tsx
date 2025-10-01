@@ -153,7 +153,7 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo
         <Line 
           type="monotone" 
           dataKey="balance" 
-          stroke="#0A84FF" 
+          stroke="var(--atlas-blue)" 
           strokeWidth={1.5}
           dot={false}
         />
@@ -162,9 +162,9 @@ const AccountsCompactSection: React.FC<AccountsCompactSectionProps> = React.memo
           <Line 
             type="monotone" 
             dataKey={(entry) => entry.belowThreshold ? entry.balance : null}
-            stroke="#EF4444" 
+            stroke="var(--error)" 
             strokeWidth={0}
-            dot={{ fill: '#EF4444', strokeWidth: 0, r: 1.5 }}
+            dot={{ fill: 'var(--error)', strokeWidth: 0, r: 1.5 }}
             connectNulls={false}
           />
         )}

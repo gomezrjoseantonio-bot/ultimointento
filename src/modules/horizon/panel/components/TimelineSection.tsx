@@ -118,7 +118,7 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
           >
             <XAxis 
               dataKey="dateShort"
-              tick={{ fontSize: 10, fill: '#6B7280' }}
+              tick={{ fontSize: 10, fill: 'var(--text-gray)' }}
               axisLine={false}
               tickLine={false}
             />
@@ -129,7 +129,7 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
             <Bar 
               dataKey="income" 
               stackId="a" 
-              fill="#10B981" 
+              fill="var(--ok)" 
               radius={[0, 0, 0, 0]}
               className="cursor-pointer"
             />
@@ -138,7 +138,7 @@ const TimelineSection: React.FC<TimelineSectionProps> = React.memo(({ filters })
             <Bar 
               dataKey={(data) => -data.expenses} 
               stackId="b" 
-              fill="#EF4444" 
+              fill="var(--error)" 
               radius={[0, 0, 0, 0]}
               className="cursor-pointer"
             />

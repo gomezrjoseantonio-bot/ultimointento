@@ -52,7 +52,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Gastos (operativos + impuestos + seguros + comunidad)',
         data: filteredData.map(d => -d.operatingExpenses), // Negative for visualization
-        borderColor: '#EF4444', // Horizon error color
+        borderColor: 'var(--error)', // Horizon error color
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         fill: false,
         tension: 0.2,
@@ -63,7 +63,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Servicio de deuda',
         data: filteredData.map(d => -d.debtService), // Negative for visualization
-        borderColor: '#F59E0B', // Horizon warning color
+        borderColor: 'var(--warn)', // Horizon warning color
         backgroundColor: 'rgba(245, 158, 11, 0.1)',
         fill: false,
         tension: 0.2,
@@ -109,8 +109,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       },
       tooltip: {
         backgroundColor: 'rgba(156, 163, 175, 0.1)',
-        titleColor: '#ffffff',
-        bodyColor: '#ffffff',
+        titleColor: '#FFFFFF',
+        bodyColor: '#FFFFFF',
         borderColor: '#0F2C5C', // Official Horizon primary
         borderWidth: 1,
         cornerRadius: 8,
@@ -133,7 +133,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
           display: false
         },
         ticks: {
-          color: '#6B7280',
+          color: 'var(--text-gray)',
           font: {
             family: 'Inter',
             size: 11
@@ -142,14 +142,14 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       },
       y: {
         grid: {
-          color: '#F3F4F6',
+          color: 'var(--hz-neutral-100)',
           borderDash: [2, 2]
         },
         border: {
           display: false
         },
         ticks: {
-          color: '#6B7280',
+          color: 'var(--text-gray)',
           font: {
             family: 'Inter',
             size: 11
