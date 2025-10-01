@@ -3,6 +3,8 @@
  * Auto-detects decimal separator (comma/dot) and thousands separator for different locales
  */
 
+import { parseAmountToCents } from './localeAmount';
+
 export interface NumberLocale {
   decimalSep: ',' | '.';
   thousandSep: '.' | ',' | ' ' | '';
@@ -40,8 +42,9 @@ export class LocaleDetector {
   }
 
   /**
-   * Parse amount using detected locale - Enhanced per problem statement
+   * Parse amount using detected locale - Enhanced with parseAmountToCents
    * Rejects date-like patterns and handles all EU/EN formats
+   * Returns: amount in euros (decimal) for backward compatibility
    */
   parseImporte(amountStr: string, locale: NumberLocale): ParsedAmount {
     const cleaned = this.cleanNumberString(amountStr);
@@ -57,10 +60,21 @@ export class LocaleDetector {
     }
     
     try {
-      const value = this.parseWithLocale(cleaned, locale);
+      // Use the robust parseAmountToCents utility
+      const result = parseAmountToCents(amountStr);
       
-      // Return result with rounded to 2 decimals as required
-      const roundedValue = Math.round(value * 100) / 100;
+      if (!result.ok) {
+        return {
+          value: 0,
+          confidence: 0,
+          originalText: amountStr,
+          locale
+        };
+      }
+      
+      // Convert cents to euros for backward compatibility
+      const euros = result.cents / 100;
+      const roundedValue = Math.round(euros * 100) / 100;
       
       return {
         value: roundedValue,

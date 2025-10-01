@@ -204,6 +204,18 @@ describe('parseAmountToCents', () => {
       expect(result.ok).toBe(true);
       expect(result.cents).toBe(-123456);
     });
+
+    test('Plus sign prefix: "+24,00" → 2400 cents', () => {
+      const result = parseAmountToCents('+24,00');
+      expect(result.ok).toBe(true);
+      expect(result.cents).toBe(2400);
+    });
+
+    test('High precision decimals: "9.876,543" → 987654 cents (rounded)', () => {
+      const result = parseAmountToCents('9.876,543');
+      expect(result.ok).toBe(true);
+      expect(result.cents).toBe(987654); // Rounded from 987654.3
+    });
   });
 
   describe('Ambiguous Cases - Rightmost Separator is Decimal', () => {

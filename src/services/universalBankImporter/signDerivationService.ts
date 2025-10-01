@@ -4,6 +4,7 @@
  */
 
 import { NumberLocale, ParsedAmount } from './localeDetector';
+import { parseAmountToCents } from './localeAmount';
 
 export interface SignDerivationResult {
   amount: number;
@@ -192,112 +193,61 @@ export class SignDerivationService {
   }
 
   /**
-   * Parse number with locale awareness - Enhanced per problem statement
-   * Handles: 1.234,56 (EU), 1,234.56 (EN), -38,69, +25,00, (38,69)
+   * Parse number with locale awareness - Enhanced with parseAmountToCents
+   * Handles: 1.234,56 (EU), 1,234.56 (EN), -38,69, +25,00, (38,69), €, EUR
+   * Returns: amount in euros (decimal)
+   * Note: Handles high precision decimals (>2) by preserving them as floats
    */
   private parseNumber(str: string, locale: NumberLocale): { value: number; confidence: number } {
     try {
-      // Clean the string
-      let cleaned = str.toString().trim();
+      // First try parseAmountToCents for robust parsing
+      const result = parseAmountToCents(str);
       
-      // Problem statement requirement: Handle all negative patterns
-      let isNegative = false;
-      
-      // Pattern 1: Standard minus (-38,69)
-      if (cleaned.startsWith('-')) {
-        isNegative = true;
-        cleaned = cleaned.substring(1);
+      if (!result.ok) {
+        return { value: 0, confidence: 0 };
       }
       
-      // Pattern 2: Plus sign (+25,00) - remove but keep positive
-      if (cleaned.startsWith('+')) {
-        cleaned = cleaned.substring(1);
+      // Convert cents to euros
+      const euros = result.cents / 100;
+      
+      // Check if original had more than 2 decimal places
+      // If so, re-parse to preserve precision beyond cents
+      const cleaned = str.replace(/\s|\u00A0|€|EUR|CR|DR/gi, '').replace(/[()]/g, '').replace(/^[-+]|-$/g, '').trim();
+      const lastComma = cleaned.lastIndexOf(',');
+      const lastDot = cleaned.lastIndexOf('.');
+      
+      let decimalDigits = 0;
+      if (lastComma > lastDot && lastComma > -1) {
+        decimalDigits = cleaned.substring(lastComma + 1).length;
+      } else if (lastDot > lastComma && lastDot > -1) {
+        decimalDigits = cleaned.substring(lastDot + 1).length;
       }
       
-      // Pattern 3: Parentheses for negative ((38,69))
-      if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
-        isNegative = true;
-        cleaned = cleaned.substring(1, cleaned.length - 1);
-      }
-      
-      // Pattern 4: Handle text indicators for sign
-      const lowerCleaned = cleaned.toLowerCase();
-      if (lowerCleaned.includes('cargo') || lowerCleaned.includes('debe') || lowerCleaned.includes('debit')) {
-        isNegative = true;
-        // Remove text, keep only numbers
-        cleaned = cleaned.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
-      } else if (lowerCleaned.includes('abono') || lowerCleaned.includes('haber') || lowerCleaned.includes('credit')) {
-        isNegative = false;
-        // Remove text, keep only numbers
-        cleaned = cleaned.replace(/[a-zA-ZÀ-ÿ\s]/g, '');
-      }
-      
-      // Now parse based on locale
-      let result = 0;
-      
-      if (locale.decimalSep === ',') {
-        // EU format: 1.234,56
-        const lastComma = cleaned.lastIndexOf(',');
-        if (lastComma > -1) {
-          const beforeComma = cleaned.substring(0, lastComma);
-          const afterComma = cleaned.substring(lastComma + 1);
-          
-          // Validate decimal part (1-2 digits)
-          if (!/^\d{1,2}$/.test(afterComma)) {
-            return { value: 0, confidence: 0 };
-          }
-          
-          // Remove thousands separators (dots and spaces)
-          const cleanInteger = beforeComma.replace(/[.\s]/g, '');
-          if (!/^\d+$/.test(cleanInteger)) {
-            return { value: 0, confidence: 0 };
-          }
-          
-          result = parseFloat(`${cleanInteger}.${afterComma}`);
+      // If high precision (>2 decimals), parse directly to preserve precision
+      if (decimalDigits > 2) {
+        let normalized = cleaned;
+        let isNegative = str.includes('-') || str.includes('(') || /\bDR\b/i.test(str);
+        
+        if (locale.decimalSep === ',') {
+          // Spanish: remove dots (thousands), replace comma with dot
+          normalized = normalized.replace(/\./g, '').replace(',', '.');
         } else {
-          // No decimal part, remove thousands separators
-          const cleanNumber = cleaned.replace(/[.\s]/g, '');
-          if (!/^\d+$/.test(cleanNumber)) {
-            return { value: 0, confidence: 0 };
-          }
-          result = parseFloat(cleanNumber);
+          // Anglo: remove commas (thousands)
+          normalized = normalized.replace(/,/g, '');
         }
-      } else {
-        // EN format: 1,234.56
-        const lastDot = cleaned.lastIndexOf('.');
-        if (lastDot > -1) {
-          const beforeDot = cleaned.substring(0, lastDot);
-          const afterDot = cleaned.substring(lastDot + 1);
-          
-          // Validate decimal part
-          if (!/^\d{1,2}$/.test(afterDot)) {
-            return { value: 0, confidence: 0 };
-          }
-          
-          // Remove thousands separators (commas and spaces)
-          const cleanInteger = beforeDot.replace(/[,\s]/g, '');
-          if (!/^\d+$/.test(cleanInteger)) {
-            return { value: 0, confidence: 0 };
-          }
-          
-          result = parseFloat(`${cleanInteger}.${afterDot}`);
-        } else {
-          // No decimal part, remove thousands separators
-          const cleanNumber = cleaned.replace(/[,\s]/g, '');
-          if (!/^\d+$/.test(cleanNumber)) {
-            return { value: 0, confidence: 0 };
-          }
-          result = parseFloat(cleanNumber);
+        
+        const highPrecValue = parseFloat(normalized);
+        if (!isNaN(highPrecValue)) {
+          return {
+            value: isNegative ? -Math.abs(highPrecValue) : Math.abs(highPrecValue),
+            confidence: 0.9
+          };
         }
       }
-      
-      // Apply sign and round to 2 decimals as required by problem statement
-      const finalValue = isNegative ? -result : result;
-      const roundedValue = Math.round(finalValue * 100) / 100;
       
       return {
-        value: roundedValue,
-        confidence: isNaN(roundedValue) ? 0 : 0.9
+        value: euros,
+        confidence: 0.9
       };
       
     } catch (error) {

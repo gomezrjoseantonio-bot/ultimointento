@@ -58,6 +58,11 @@ export function parseAmountToCents(raw: string): ParseAmountResult {
 
     // Step 3: Detect additional sign patterns
 
+    // Check for prefix plus (remove it, keep positive)
+    if (/^\+/.test(s0)) {
+      s0 = s0.substring(1);
+    }
+
     // Check for parentheses (negative)
     if (/^\(/.test(s0) && /\)$/.test(s0)) {
       neg = true;
@@ -93,24 +98,26 @@ export function parseAmountToCents(raw: string): ParseAmountResult {
     // Case 1: Both separators present - rightmost is decimal
     if (lastDotIdx > -1 && lastCommaIdx > -1) {
       if (lastCommaIdx > lastDotIdx) {
-        // Comma is decimal separator (e.g., 1.234,56)
+        // Comma is decimal separator (e.g., 1.234,56 or 9.876,543)
         const decimalPart = s.substring(lastCommaIdx + 1);
         const integerPart = s.substring(0, lastCommaIdx).replace(/[.,]/g, ''); // Remove all separators
         
-        if (!/^\d+$/.test(integerPart) || !/^\d{1,2}$/.test(decimalPart)) {
+        if (!/^\d+$/.test(integerPart) || !/^\d+$/.test(decimalPart)) {
           return { cents: 0, ok: false };
         }
         
+        // Keep original precision for the float value (don't round yet)
         value = parseFloat(`${integerPart}.${decimalPart}`);
       } else {
         // Dot is decimal separator (e.g., 1,234.56)
         const decimalPart = s.substring(lastDotIdx + 1);
         const integerPart = s.substring(0, lastDotIdx).replace(/[.,]/g, ''); // Remove all separators
         
-        if (!/^\d+$/.test(integerPart) || !/^\d{1,2}$/.test(decimalPart)) {
+        if (!/^\d+$/.test(integerPart) || !/^\d+$/.test(decimalPart)) {
           return { cents: 0, ok: false };
         }
         
+        // Keep original precision for the float value
         value = parseFloat(`${integerPart}.${decimalPart}`);
       }
     }
