@@ -51,7 +51,10 @@
     "optimize:bundle": "node scripts/bundleOptimizer.js",
     "performance:analyze": "npm run build && npm run optimize:bundle",
     "lint:atlas": "node scripts/atlas-lint.js",
-    "build:atlas": "npm run lint:atlas && npm run build"
+    "build:atlas": "npm run lint:atlas && npm run build",
+    "test:accessibility": "node scripts/test-accessibility.js",
+    "migrate:buttons": "node scripts/migrate-buttons-to-atlas.js",
+    "migrate:colors": "node scripts/replace-hardcoded-colors.js"
   },
   "eslintConfig": {
     "extends": [
