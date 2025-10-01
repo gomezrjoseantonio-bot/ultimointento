@@ -5,10 +5,10 @@ import type { Document as StoredDocument } from '../../services/db';
 import { processZipFile, ZipProcessingResult } from '../../services/zipProcessingService';
 
 type DocumentMetadata = StoredDocument['metadata'];
-type FileClassificationTipo = NonNullable<DocumentMetadata['tipo']> | 'Nómina';
+type InboxDocumentType = NonNullable<DocumentMetadata['tipo']> | 'Nómina';
 
 interface FileClassification {
-  tipo: FileClassificationTipo;
+  tipo: InboxDocumentType;
   confidence: number;
 }
 
