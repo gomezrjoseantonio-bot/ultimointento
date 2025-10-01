@@ -480,7 +480,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   handleHardDelete(account);
                   setActiveDropdown(null);
                 }}
-                className="btn-danger w-full px-4 py-2 text-left text-sm text-red-600 hover: flex items-center gap-2"
+                className="atlas-atlas-btn-destructive w-full px-4 py-2 text-left text-sm text-red-600 hover: flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Eliminar definitivamente…
@@ -725,7 +725,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   </div>
                 ) : (
                   <div>
-                    <div className="btn-danger border border-red-200 p-3 mb-4">
+                    <div className="atlas-atlas-btn-destructive border border-red-200 p-3 mb-4">
                       <p className="text-sm text-red-800">
                         <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>
@@ -769,7 +769,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       <button
                         onClick={confirmDelete}
                         disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
-                        className="btn-danger px-4 py-2 text-sm font-medium border border-transparent disabled:opacity-50"
+                        className="atlas-atlas-btn-destructive px-4 py-2 text-sm font-medium border border-transparent disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
                       </button>

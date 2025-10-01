@@ -5,6 +5,7 @@ import { getAllContracts, deleteContract, terminateContract, getContractStatus }
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
+import { promptDate } from '../../../../../services/promptService';
 
 interface ContractsListaProps {
   onEditContract: (contract?: Contract) => void;
@@ -88,8 +89,10 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleTerminateContract = async (id: number) => {
-    // TODO: Replace with ATLAS input modal
-    const terminationDate = prompt('Ingrese la fecha de terminación (YYYY-MM-DD):');
+    const terminationDate = await promptDate(
+      'Fecha de terminación del contrato',
+      new Date().toISOString().split('T')[0]
+    );
     if (!terminationDate) return;
 
     try {

@@ -319,7 +319,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   {!account.isDefault && account.activa && (
                     <button
                       onClick={() => handleSetDefault(account)}
-                      className="btn-ghost-horizon text-sm"
+                      className="atlas-btn-ghost-horizon text-sm"
                     >
                       Marcar por defecto
                     </button>
@@ -505,7 +505,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="btn-primary-horizon w-full sm:w-auto"
+                  className="atlas-atlas-btn-primary w-full sm:w-auto"
                 >
                   {saving ? 'Guardando...' : 'Guardar'}
                 </button>

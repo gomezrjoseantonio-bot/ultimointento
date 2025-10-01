@@ -397,7 +397,7 @@ const Ingresos: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      className="btn-primary-horizon px-4 py-2"
+                      className="atlas-atlas-btn-primary px-4 py-2"
                       >
                       Guardar Ingreso
                     </button>

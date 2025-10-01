@@ -74,7 +74,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
-          <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
+          <span className="atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
             <Sparkles className="w-3 h-3" />
             auto
           </span>
@@ -303,7 +303,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                    movement.statusConciliacion === 'match_manual' ? 'Conciliado manualmente' : 'Sin conciliar'}
                 </p>
                 {movement.statusConciliacion === 'match_automatico' && (
-                  <span className="btn-primary-horizon inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
+                  <span className="atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
                     <Sparkles className="w-3 h-3" />
                     auto
                   </span>
@@ -313,7 +313,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
 
             {/* V1.1: Reconciliation modal */}
             {isReconciling && (
-              <div className="btn-secondary-horizon btn-primary-horizon ">
+              <div className="btn-secondary-horizon atlas-atlas-btn-primary ">
                 <h4 className="font-medium text-blue-900 flex items-center gap-2">
                   <Target className="w-4 h-4" />
                   Conciliación Manual
@@ -385,7 +385,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                     onClick={handleManualReconciliation}
                     disabled={isProcessing || !reconciliationData.categoria || !reconciliationData.ambito || 
                              (reconciliationData.ambito === 'INMUEBLE' && !reconciliationData.inmuebleId)}
-                    className="btn-primary-horizon flex-1 px-4 py-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    className="atlas-atlas-btn-primary flex-1 px-4 py-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   >
                     {isProcessing ? 'Procesando...' : 'Conciliar'}
                   </button>
@@ -460,7 +460,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                       });
                       setIsReconciling(true);
                     }}
-                    className="btn-primary-horizon w-full flex items-center justify-center gap-2 px-4 py-2"
+                    className="atlas-atlas-btn-primary w-full flex items-center justify-center gap-2 px-4 py-2"
                   >
                     <Target className="h-4 w-4" />
                     Conciliar
@@ -479,7 +479,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                 {/* Delete */}
                 <button
                   onClick={handleDelete}
-                  className="btn-danger w-full flex items-center justify-center gap-2 px-4 py-2 bg-hz-error hover:"
+                  className="atlas-atlas-btn-destructive w-full flex items-center justify-center gap-2 px-4 py-2 bg-hz-error hover:"
                 >
                   <Trash2 className="h-4 w-4" />
                   Eliminar

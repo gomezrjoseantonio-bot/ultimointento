@@ -521,7 +521,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
           {/* Step 2: Bank Detection */}
           {step === 2 && (
             <div className="space-y-6">
-              <div className="btn-primary-horizon p-4">
+              <div className="atlas-atlas-btn-primary p-4">
                 <h3 className="font-medium text-primary-900 mb-2">Archivo detectado</h3>
                 <p className="text-sm text-primary-700">
                   {file?.name} ({parsedData?.headers.length} columnas, {parsedData?.rows.length} filas)
@@ -855,7 +855,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
                   (step === 2 && !selectedTemplate && !parsedData?.detectedBank) ||
                   (step === 3 && !validateMapping())
                 }
-                className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+                className="atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
               >
                 Siguiente
                 <ArrowRight className="w-4 h-4" />
@@ -864,7 +864,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
               <button
                 onClick={processImport}
                 disabled={!selectedAccount || isProcessing || accounts.find(acc => acc.id?.toString() === selectedAccount)?.status === 'INACTIVE'}
-                className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+                className="atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>

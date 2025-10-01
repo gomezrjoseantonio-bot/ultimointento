@@ -42,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex flex-col items-center justify-center py-12 px-4">
-          <div className="btn-danger border border-red-200 p-8 max-w-lg w-full">
+          <div className="atlas-atlas-btn-destructive border border-red-200 p-8 max-w-lg w-full">
             <div className="flex items-center mb-4">
               <XCircle className="h-8 w-8 text-red-500 mr-3" />
               <h2 className="text-xl font-semibold text-red-900">
@@ -59,7 +59,7 @@ class ErrorBoundary extends Component<Props, State> {
                 <summary className="text-sm text-red-600 cursor-pointer mb-2">
                   Detalles del error (desarrollo)
                 </summary>
-                <pre className="btn-danger text-xs p-3 rounded overflow-auto text-red-800">
+                <pre className="atlas-atlas-btn-destructive text-xs p-3 rounded overflow-auto text-red-800">
                   {this.state.error?.toString()}
                   {this.state.errorInfo?.componentStack}
                 </pre>

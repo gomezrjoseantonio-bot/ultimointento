@@ -209,7 +209,7 @@ const PresupuestoNuevo: React.FC = () => {
           </p>
           <button
             onClick={handleCreatePresupuesto}
-            className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
+            className="atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
           >
             <Plus className="h-5 w-5" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -274,7 +274,7 @@ const PresupuestoNuevo: React.FC = () => {
                 
                 <button
                   onClick={handleCreateLinea}
-                  className="btn-primary-horizon flex items-center space-x-1 px-3 py-1 rounded text-sm"
+                  className="atlas-atlas-btn-primary flex items-center space-x-1 px-3 py-1 rounded text-sm"
               >
                   <Plus className="h-4 w-4" />
                   <span>Añadir</span>

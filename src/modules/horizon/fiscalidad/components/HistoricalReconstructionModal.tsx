@@ -129,7 +129,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
         <div className="p-6 space-y-6">
           {/* Scope Info */}
-          <div className="btn-secondary-horizon btn-primary-horizon ">
+          <div className="btn-secondary-horizon atlas-atlas-btn-primary ">
             <div className="flex items-start space-x-3">
               <Database className="w-5 h-5 text-primary-600 mt-0.5" />
               <div>
@@ -186,7 +186,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               </div>
               <div className="w-full bg-gray-200 h-3">
                 <div 
-                  className="btn-primary-horizon h-3 transition-all duration-300"
+                  className="atlas-atlas-btn-primary h-3 transition-all duration-300"
                   style={{ width: `${progress.percentage}%` }}
                 />
               </div>
@@ -288,7 +288,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               <button
                 onClick={handleStartReconstruction}
                 disabled={isProcessing}
-                className="btn-primary-horizon flex-1 flex items-center justify-center space-x-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="atlas-atlas-btn-primary flex-1 flex items-center justify-center space-x-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>

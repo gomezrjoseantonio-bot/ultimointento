@@ -99,7 +99,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -189,7 +189,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="btn-primary-horizon w-full px-4 py-2"
+                      className="atlas-atlas-btn-primary w-full px-4 py-2"
                     >
                       Crear escenario de prueba
                     </button>
@@ -226,7 +226,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -254,7 +254,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">{scenario.name}</div>
                       {scenario.markedForComparison && (
-                        <div className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs">
+                        <div className="atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs">
                           Para comparar
                         </div>
                       )}
@@ -406,7 +406,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="btn-primary-horizon w-full px-4 py-2"
+                      className="atlas-atlas-btn-primary w-full px-4 py-2"
                     >
                       Crear escenario de prueba
                     </button>

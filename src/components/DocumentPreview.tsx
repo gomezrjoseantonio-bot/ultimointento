@@ -218,7 +218,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
             <p className="text-sm text-gray-600">{error}</p>
-            <button className="btn-primary-horizon mt-2 inline-flex items-center px-3 py-1 text-xs text-primary-700 rounded">
+            <button className="atlas-atlas-btn-primary mt-2 inline-flex items-center px-3 py-1 text-xs text-primary-700 rounded">
               <Download className="w-3 h-3 mr-1" />
               Descargar archivo
             </button>
@@ -280,7 +280,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({
                   {renderFileIcon()}
                   <span className="ml-2 text-sm">{entry.name}</span>
                 </div>
-                <button className="btn-ghost-horizon text-xs">
+                <button className="atlas-btn-ghost-horizon text-xs">
                   Ver
                 </button>
               </div>

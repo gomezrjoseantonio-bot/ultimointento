@@ -181,7 +181,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
 
       {/* Fixed Rate Details */}
       {formData.tipo === 'FIJO' && (
-        <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
+        <div className="btn-secondary-horizon atlas-atlas-btn-primary p-4 ">
           <h4 className="font-medium text-atlas-blue mb-3">Configuración Tipo Fijo</h4>
           <div>
             <label htmlFor="tinFijo" className="block text-sm font-medium text-atlas-navy-1 mb-2">

@@ -292,7 +292,7 @@ const NominaManager: React.FC = () => {
                         {nomina.nombre}
                       </h5>
                       {nomina.activa && (
-                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
+                        <span className="atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
                           Activa
                         </span>
                       )}
@@ -326,7 +326,7 @@ const NominaManager: React.FC = () => {
                     {!nomina.activa && (
                       <button
                         onClick={() => handleActivateNomina(nomina)}
-                        className="btn-secondary-horizon btn-primary-horizon px-3 py-1 text-sm text-blue-600 "
+                        className="btn-secondary-horizon atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-blue-600 "
                       >
                         Activar
                       </button>

@@ -152,7 +152,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Fixed */}
               {feinData.prestamo.fijo && (
-                <div className="btn-primary-horizon mb-3 p-3 rounded">
+                <div className="atlas-atlas-btn-primary mb-3 p-3 rounded">
                   <h4 className="font-medium text-blue-800">Tramo Fijo</h4>
                   <p>TIN: {formatPercentage(feinData.prestamo.fijo.tinFijoPrc)}</p>
                 </div>
@@ -160,7 +160,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Variable */}
               {feinData.prestamo.variable && (
-                <div className="btn-accent-horizon mb-3 p-3 rounded">
+                <div className="atlas-atlas-btn-primary mb-3 p-3 rounded">
                   <h4 className="font-medium text-green-800">Tramo Variable</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Índice: {feinData.prestamo.variable.indice}</div>
@@ -174,14 +174,14 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               {/* Mixed */}
               {feinData.prestamo.mixto && (
                 <div className="space-y-3">
-                  <div className="btn-primary-horizon p-3 rounded">
+                  <div className="atlas-atlas-btn-primary p-3 rounded">
                     <h4 className="font-medium text-blue-800">Período Fijo Initial</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Duración: {feinData.prestamo.mixto.tramoFijoAnios} años</div>
                       <div>TIN: {formatPercentage(feinData.prestamo.mixto.tinFijoTramoPrc)}</div>
                     </div>
                   </div>
-                  <div className="btn-accent-horizon p-3 rounded">
+                  <div className="atlas-atlas-btn-primary p-3 rounded">
                     <h4 className="font-medium text-green-800">Posterior Variable</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Índice: {feinData.prestamo.mixto.posteriorVariable.indice}</div>
@@ -271,7 +271,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
           <div className="border-t p-4 flex justify-end bg-white" style={{ borderColor: 'var(--hz-neutral-300)' }}>
             <button
               onClick={onClose}
-              className="atlas-btn-secondary"
+              className="atlas-atlas-btn-secondary"
             >
               Cerrar
             </button>

@@ -380,7 +380,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 type="button"
                 onClick={addCustomBonification}
                 disabled={!customBonification.nombre || customBonification.descuentoTIN <= 0}
-                className="btn-primary-horizon px-4 py-2 bg-atlas-blue hover: disabled:opacity-50 disabled:cursor-not-allowed"
+                className="atlas-atlas-btn-primary px-4 py-2 bg-atlas-blue hover: disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Añadir Bonificación
               </button>
@@ -434,7 +434,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
                 {/* Grace period selector - only show if selected */}
                 {bonificacion.seleccionado && (
-                  <div className="btn-secondary-horizon btn-primary-horizon ">
+                  <div className="btn-secondary-horizon atlas-atlas-btn-primary ">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Aplicar como promo durante:
                     </label>
@@ -519,7 +519,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
           {/* Next change information */}
           {calculoLive?.proximoCambio && (
-            <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-3 ">
+            <div className="btn-secondary-horizon atlas-atlas-btn-primary mt-4 p-3 ">
               <h5 className="font-medium text-blue-700 mb-1">Próximo cambio</h5>
               <p className="text-sm text-blue-600">
                 <strong>{new Date(calculoLive.proximoCambio.fecha).toLocaleDateString('es-ES')}</strong>

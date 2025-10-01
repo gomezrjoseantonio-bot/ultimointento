@@ -226,7 +226,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
       {/* Summary Stats */}
       <div className="p-6 border-b border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="btn-primary-horizon p-4">
+          <div className="atlas-atlas-btn-primary p-4">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-blue-600" />
               <div className="ml-3">
@@ -236,7 +236,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="btn-accent-horizon p-4">
+          <div className="atlas-atlas-btn-primary p-4">
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-green-600" />
               <div className="ml-3">
@@ -246,7 +246,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="btn-danger p-4">
+          <div className="atlas-atlas-btn-destructive p-4">
             <div className="flex items-center">
               <TrendingDown className="h-8 w-8 text-red-600" />
               <div className="ml-3">
@@ -280,7 +280,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
                     {getUsageLabel(stat.usageFrequency)}
                   </span>
                   {stat.account.isDefault && (
-                    <span className="btn-primary-horizon px-2 py-1 text-xs font-medium text-blue-800">
+                    <span className="atlas-atlas-btn-primary px-2 py-1 text-xs font-medium text-blue-800">
                       Por defecto
                     </span>
                   )}

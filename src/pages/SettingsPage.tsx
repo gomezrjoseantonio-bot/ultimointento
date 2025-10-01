@@ -133,7 +133,7 @@ const SettingsPage: React.FC = () => {
             </div>
             <button
               onClick={handleAddProvider}
-              className="btn-primary-horizon flex items-center gap-2 px-4 py-2"
+              className="atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
             >
               <Plus className="w-4 h-4" />
               Añadir Proveedor
@@ -192,7 +192,7 @@ const SettingsPage: React.FC = () => {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleEditProvider(provider)}
-                            className="btn-primary-horizon p-2 text-gray-600 hover:text-primary-600 hover: rounded"
+                            className="atlas-atlas-atlas-btn-primary p-2 text-gray-600 hover:text-primary-600 hover: rounded"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -273,7 +273,7 @@ const SettingsPage: React.FC = () => {
             <div className="p-4 border-t flex gap-3">
               <button
                 onClick={handleSaveProvider}
-                className="btn-primary-horizon flex items-center gap-2 px-4 py-2"
+                className="atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
               >
                 <Save className="w-4 h-4" />
                 {editingProvider ? 'Actualizar' : 'Guardar'}

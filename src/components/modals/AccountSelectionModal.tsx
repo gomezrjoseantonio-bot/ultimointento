@@ -247,7 +247,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                               {account.name || `${account.bank} ${formatIBAN(account.iban)}`}
                             </h4>
                             {selectedAccountId === account.id && (
-                              <div className="btn-primary-horizon w-2 h-2"></div>
+                              <div className="atlas-atlas-atlas-btn-primary w-2 h-2"></div>
                             )}
                           </div>
                           <div className="mt-1 space-y-1">

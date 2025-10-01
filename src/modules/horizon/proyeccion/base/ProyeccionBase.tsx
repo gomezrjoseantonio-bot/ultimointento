@@ -96,7 +96,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Settings className="h-4 w-4" />
             <span>Ajustar supuestos</span>

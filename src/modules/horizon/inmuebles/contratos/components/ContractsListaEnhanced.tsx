@@ -5,6 +5,7 @@ import { getAllContracts, deleteContract, rescindContract, getContractStatus } f
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
+import { showPrompt } from '../../../../../services/promptService';
 
 interface ContractsListaEnhancedProps {
   onEditContract: (contract?: Contract) => void;
@@ -139,11 +140,18 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   };
 
   const handleRescindContract = async (contract: Contract) => {
-    const motivo = window.prompt('Motivo de la rescisión:');
+    const motivo = await showPrompt({
+      title: 'Motivo de la rescisión',
+      placeholder: 'Ingrese el motivo de la rescisión del contrato',
+      type: 'textarea'
+    });
     if (!motivo) return;
 
-    // TODO: Replace with ATLAS input modal
-    const fechaRescision = window.prompt('Fecha de rescisión (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    const fechaRescision = await showPrompt({
+      title: 'Fecha de rescisión',
+      type: 'date',
+      defaultValue: new Date().toISOString().split('T')[0]
+    });
     if (!fechaRescision) return;
 
     try {
@@ -244,7 +252,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="btn-danger border border-red-200 p-6 max-w-md">
+        <div className="atlas-atlas-btn-destructive border border-red-200 p-6 max-w-md">
           <div className="flex items-center mb-4">
             <XCircle className="h-6 w-6 text-red-500 mr-2" />
             <h3 className="text-lg font-medium text-red-900">Error de carga</h3>

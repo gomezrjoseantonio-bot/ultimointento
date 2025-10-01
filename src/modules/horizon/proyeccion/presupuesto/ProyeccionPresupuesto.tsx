@@ -64,7 +64,7 @@ const ProyeccionPresupuesto: React.FC = () => {
         {/* Header Action */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <div className="btn-primary-horizon p-3">
+            <div className="atlas-atlas-btn-primary p-3">
               <Calculator className="h-6 w-6 text-primary-600" />
             </div>
             <div>
@@ -79,7 +79,7 @@ const ProyeccionPresupuesto: React.FC = () => {
           
           <button
             onClick={handleCreateBudget}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -107,7 +107,7 @@ const ProyeccionPresupuesto: React.FC = () => {
             </p>
             <button
               onClick={handleCreateBudget}
-              className="btn-primary-horizon inline-flex items-center space-x-2 px-6 py-3"
+              className="atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
             >
               <Plus className="h-5 w-5" />
               <span>Crear Presupuesto {currentYear}</span>
