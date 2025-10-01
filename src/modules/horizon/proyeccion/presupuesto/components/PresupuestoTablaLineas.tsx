@@ -155,9 +155,9 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                     <Copy className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const confirmed = await confirmDelete('esta línea');
-    if (confirmed) {
+                      if (confirmed) {
                         onDelete(linea.id);
                       }
                     }}

@@ -65,7 +65,12 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* ATLAS light backdrop-blur-sm overlays */}
-      <button className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }}  / onClick={onClose}>
+      <button 
+        className="absolute inset-0" 
+        style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} 
+        onClick={onClose}
+        aria-label="Cerrar"
+      />
       
       <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
         <div className="flex flex-col h-full">
@@ -80,7 +85,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                 <p className="atlas-caption">
                   Campos extraídos del documento FEIN
                 </p>
-              </button>
+              </div>
             </div>
             <button
               onClick={onClose}

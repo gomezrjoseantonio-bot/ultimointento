@@ -46,7 +46,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       // Validate account assignments
       const linesWithoutAccount = wizardData.lines.filter(line => !line.accountId);
       if (linesWithoutAccount.length > 0) {
-        const shouldContinue = await confirmDelete('Hay ${linesWithoutAccount.length} líneas sin cuenta asignada. Deseas continuar');
+        const shouldContinue = await confirmDelete(`Hay ${linesWithoutAccount.length} líneas sin cuenta asignada. Deseas continuar`);
         if (!shouldContinue) return;
       }
 

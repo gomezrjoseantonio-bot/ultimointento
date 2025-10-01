@@ -44,7 +44,12 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* ATLAS light backdrop-blur-sm overlays */}
-      <button className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }}  / onClick={onClose}>
+      <button 
+        className="absolute inset-0" 
+        style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} 
+        onClick={onClose}
+        aria-label="Cerrar"
+      />
       
       {/* Drawer */}
       <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
@@ -60,7 +65,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
                 <p className="atlas-caption">
                   Datos extraídos del documento {feinData.docMeta.sourceFile}
                 </p>
-              </button>
+              </div>
             </div>
             <button
               onClick={onClose}

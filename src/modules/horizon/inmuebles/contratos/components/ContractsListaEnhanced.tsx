@@ -38,7 +38,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       setContracts(contractsData);
       
       // Load properties for display with timeout
-      const dbPromise = async (await import('../../../../../services/db')).initDB();
+      const dbPromise = (await import('../../../../../services/db')).initDB();
       const dbTimeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Timeout initializing database')), 5000)
       );
@@ -124,7 +124,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       return;
     }
 
-    const confirmed = await confirmDelete('el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}');
+    const confirmed = await confirmDelete(`el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}`);
     if (!confirmed) {
       return;
     }
