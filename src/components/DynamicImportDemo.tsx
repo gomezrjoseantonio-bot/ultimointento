@@ -73,7 +73,7 @@ Bundle optimization working - heavy library only loaded when needed.`);
           <button
             onClick={testDynamicXLSX}
             disabled={isLoading}
-            className="atlas-atlas-atlas-btn-primary px-4 py-2 rounded mr-4 disabled:opacity-50"
+            className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 rounded mr-4 disabled:opacity-50"
           >
             {isLoading ? 'Loading...' : 'Test XLSX Dynamic Load'}
           </button>
@@ -97,7 +97,7 @@ Bundle optimization working - heavy library only loaded when needed.`);
       </div>
       
       {result && (
-        <div className="atlas-atlas-atlas-btn-primary mt-6 p-4 border border-green-200 rounded">
+        <div className="atlas-atlas-atlas-atlas-btn-primary mt-6 p-4 border border-green-200 rounded">
           <pre className="text-sm text-green-800 whitespace-pre-wrap">{result}</pre>
         </div>
       )}

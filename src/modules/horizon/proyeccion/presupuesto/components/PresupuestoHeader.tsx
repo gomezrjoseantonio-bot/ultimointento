@@ -77,7 +77,7 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
           
           <button
             onClick={onAddLinea}
-            className="atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Añadir Línea</span>

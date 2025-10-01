@@ -57,7 +57,7 @@ export const showSuccess = (message: string, options: ToastOptions = {}): string
               options.actionHandler!();
               toast.dismiss(t.id);
             }}
-            className="atlas-atlas-atlas-atlas-btn-primary ml-3 px-2 py-1 text-xs rounded"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-3 px-2 py-1 text-xs rounded"
           >
             {options.actionLabel}
           </button>

@@ -434,7 +434,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           <button
             onClick={processDuplicates}
             disabled={duplicates.some(d => !d.action)}
-            className="atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CheckCircle className="w-4 h-4 inline mr-2" />
             Procesar Documentos

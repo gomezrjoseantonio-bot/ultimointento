@@ -710,7 +710,7 @@ const InboxPage: React.FC = () => {
               window.open(url, '_blank');
               toast.dismiss(t.id);
             }}
-            className="atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs rounded"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs rounded"
             >
             Ver en Movimientos
           </button>
@@ -1136,7 +1136,7 @@ const InboxPage: React.FC = () => {
           <div className="w-full lg:w-80 lg:flex-shrink-0 border-r border-neutral-200">
             {/* Bulk Actions */}
             {showBulkActions && selectedDocuments.length > 0 && (
-              <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary p-4 ">
+              <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary p-4 ">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-primary-900">
                     {selectedDocuments.length} seleccionado(s)
@@ -1158,7 +1158,7 @@ const InboxPage: React.FC = () => {
                   </button>
                   <button
                     onClick={handleBulkReassign}
-                    className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-xs"
+                    className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-xs"
               >
                     <FolderOpen className="w-3 h-3" />
                     Reasignar

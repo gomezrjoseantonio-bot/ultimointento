@@ -306,7 +306,7 @@ const CAPEXPanel: React.FC = () => {
                     )}
                     {capex.movement_id && (
                       <div className="mt-1">
-                        <span className="atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs text-primary-800">
+                        <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs text-primary-800">
                           Conciliado
                         </span>
                       </div>

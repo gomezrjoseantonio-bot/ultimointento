@@ -209,7 +209,7 @@ const WizardStepSemilla: React.FC<WizardStepSemillaProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
+          className="atlas-atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
         >
           Continuar a configuración
           <ChevronRight className="h-4 w-4 ml-2" />

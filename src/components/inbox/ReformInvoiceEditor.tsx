@@ -259,7 +259,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
           <div className="mb-6">
             <button
               onClick={autoDistribute}
-              className="atlas-atlas-atlas-btn-primary atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 text-primary-700 hover: "
+              className="atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 text-primary-700 hover: "
             >
               <Calculator className="w-4 h-4" />
               Distribución automática
@@ -537,7 +537,7 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({
             <button
               onClick={handleSave}
               disabled={errors.length > 0}
-              className="atlas-atlas-atlas-btn-primary px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
+              className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:bg-neutral-300 disabled:cursor-not-allowed"
             >
               Guardar reparto
             </button>

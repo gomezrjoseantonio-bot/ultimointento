@@ -178,7 +178,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
 
       {/* Summary */}
       {improvements.length > 0 && (
-        <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary mb-6 p-4 ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mb-6 p-4 ">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-neutral-900">Total invertido en mejoras:</span>
             <span className="text-lg font-bold text-brand-navy">
@@ -386,7 +386,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       )}
 
       {/* Help text */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary mt-4 p-3 ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mt-4 p-3 ">
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-primary-800">

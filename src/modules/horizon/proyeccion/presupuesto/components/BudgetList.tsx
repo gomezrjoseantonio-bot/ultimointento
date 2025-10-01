@@ -47,7 +47,7 @@ const BudgetList: React.FC<BudgetListProps> = ({ budgets, onRefresh }) => {
           <div key={budget.id} className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="atlas-atlas-atlas-btn-primary p-2">
+                <div className="atlas-atlas-atlas-atlas-btn-primary p-2">
                   <FileText className="h-5 w-5 text-primary-600" />
                 </div>
                 

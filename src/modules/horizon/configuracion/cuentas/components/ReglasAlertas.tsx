@@ -346,7 +346,7 @@ const ReglasAlertas: React.FC = () => {
   return (
     <div className="px-6">
       {/* ATLAS Info Banner */}
-      <div className="atlas-atlas-atlas-btn-primary mb-6 border border-atlas-blue/20 p-4">
+      <div className="atlas-atlas-atlas-atlas-btn-primary mb-6 border border-atlas-blue/20 p-4">
         <div className="flex items-start">
           <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
@@ -394,7 +394,7 @@ const ReglasAlertas: React.FC = () => {
                         <h3 className="font-medium text-atlas-navy-1">{rule.name}</h3>
                         <span className="text-xs text-text-gray">#{rule.priority}</span>
                         {rule.isActive ? (
-                          <span className="atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-800">
+                          <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-800">
                             Activa
                           </span>
                         ) : (
@@ -561,7 +561,7 @@ const ReglasAlertas: React.FC = () => {
                 </div>
 
                 {/* Simplified condition/action for now */}
-                <div className="atlas-atlas-atlas-btn-primary p-4">
+                <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
                   <p className="text-sm text-atlas-blue">
                     <strong>Versión simplificada:</strong> Las condiciones y acciones detalladas se implementarán en la siguiente iteración. 
                     Por ahora, utiliza el nombre y descripción para definir la regla.
@@ -590,7 +590,7 @@ const ReglasAlertas: React.FC = () => {
                   saveRule();
                 }}
                 disabled={saving || !formData.name?.trim() || !formData.description?.trim()}
-                className="atlas-atlas-atlas-btn-primary inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
+                className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : (editingRule ? 'Actualizar' : 'Crear')}
               </button>
@@ -631,7 +631,7 @@ const ReglasAlertas: React.FC = () => {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="atlas-atlas-atlas-btn-destructive inline-flex items-center px-4 py-2"
+                className="atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-4 py-2"
               >
                 Eliminar
               </button>

@@ -72,7 +72,7 @@ export default function DiagnosticDashboard() {
         <Activity className="w-4 h-4" />
         <span className="text-xs font-medium">Diagnóstico</span>
         {events.length > 0 && (
-          <span className="atlas-atlas-atlas-btn-primary text-xs px-1.5 py-0.5">
+          <span className="atlas-atlas-atlas-atlas-btn-primary text-xs px-1.5 py-0.5">
             {events.length}
           </span>
         )}

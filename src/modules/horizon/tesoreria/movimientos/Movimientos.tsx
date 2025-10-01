@@ -287,14 +287,14 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowNewMovementModal(true)}
-              className="atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+              className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
               >
               <Plus className="h-4 w-4" />
               <span>Nuevo movimiento</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+              className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
               >
               <Upload className="h-4 w-4" />
               <span>Importar extracto</span>
@@ -311,13 +311,13 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
                 {formatEuro(selectedAccount.balance || 0)}
               </p>
             </div>
-            <div className="atlas-atlas-atlas-btn-primary p-3">
+            <div className="atlas-atlas-atlas-atlas-btn-primary p-3">
               <p className="text-sm text-green-600">Ingresos del mes</p>
               <p className="text-lg font-semibold text-green-700">
                 {formatEuro(monthlyTotals.ingresos)}
               </p>
             </div>
-            <div className="atlas-atlas-atlas-btn-destructive p-3">
+            <div className="atlas-atlas-atlas-atlas-btn-destructive p-3">
               <p className="text-sm text-red-600">Gastos del mes</p>
               <p className="text-lg font-semibold text-red-700">
                 {formatEuro(monthlyTotals.gastos)}

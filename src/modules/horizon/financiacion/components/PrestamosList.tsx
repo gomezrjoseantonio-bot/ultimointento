@@ -232,7 +232,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
     <div className="space-y-6">
       {/* Information text with icon */}
       <div className="flex items-center space-x-2 text-sm text-text-gray">
-        <div className="atlas-atlas-atlas-btn-primary flex-shrink-0 w-4 h-4 flex items-center justify-center">
+        <div className="atlas-atlas-atlas-atlas-btn-primary flex-shrink-0 w-4 h-4 flex items-center justify-center">
           <span className="text-xs font-medium text-atlas-blue">i</span>
         </div>
         <span>Gestione sus préstamos hipotecarios y personales. Puede ordenar las columnas haciendo clic en los encabezados.</span>

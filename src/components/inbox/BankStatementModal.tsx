@@ -167,7 +167,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleGoToSettings}
-                className="atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
+                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
               >
                 <Settings className="w-4 h-4" />
                 Ir a Configuración &gt; Cuentas
@@ -202,7 +202,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
         <div className="p-6 space-y-4">
           {/* File info */}
-          <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary ">
+          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
             <div className="flex items-center gap-3">
               <Upload className="w-5 h-5 text-primary-600" />
               <div>
@@ -247,7 +247,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
               </button>
             </div>
           ) : (
-            <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary ">
+            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
               <p className="text-sm text-blue-700">
                 💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
               </p>
@@ -259,7 +259,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             <button
               onClick={handleImport}
               disabled={!selectedAccountId || isLoading || accounts.length === 0}
-              className="atlas-atlas-atlas-btn-primary flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="atlas-atlas-atlas-atlas-btn-primary flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Importando...' : accounts.length === 0 ? 'Sin cuentas disponibles' : 'Importar Movimientos'}
             </button>

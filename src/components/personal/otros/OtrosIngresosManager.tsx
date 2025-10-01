@@ -207,7 +207,7 @@ const OtrosIngresosManager: React.FC = () => {
                           </span>
                         </div>
                         {!ingreso.activo && (
-                          <span className="atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-2 py-1 text-xs font-medium text-red-800">
+                          <span className="atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-2 py-1 text-xs font-medium text-red-800">
                             Inactivo
                           </span>
                         )}
@@ -276,7 +276,7 @@ const OtrosIngresosManager: React.FC = () => {
       </div>
 
       {/* Integration Info */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
         <p className="text-sm text-blue-700">
           <strong>Integración automática:</strong> Los ingresos recurrentes configurados se integrarán automáticamente 
           con el módulo de Tesorería para el seguimiento de flujos de caja y con Proyecciones para la planificación financiera.

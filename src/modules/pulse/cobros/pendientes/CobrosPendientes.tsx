@@ -81,7 +81,7 @@ const CobrosPendientes: React.FC = () => {
               <span className="text-sm text-gray-500">
                 {pendingRents.length} rentas pendientes
               </span>
-              <button className="atlas-atlas-atlas-btn-primary px-4 py-2">
+              <button className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2">
                 Nuevo Cobro
               </button>
             </div>
@@ -134,7 +134,7 @@ const CobrosPendientes: React.FC = () => {
                       </div>
                       
                       <div className="flex space-x-2">
-                        <button className="atlas-atlas-atlas-btn-primary px-3 py-1 text-xs text-primary-700 rounded">
+                        <button className="atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-xs text-primary-700 rounded">
                           Conciliar
                         </button>
                         <button className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded">

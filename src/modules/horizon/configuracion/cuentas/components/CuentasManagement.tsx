@@ -319,7 +319,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   {!account.isDefault && account.activa && (
                     <button
                       onClick={() => handleSetDefault(account)}
-                      className="atlas-atlas-btn-ghost-horizon text-sm"
+                      className="atlas-atlas-atlas-btn-ghost-horizon text-sm"
                     >
                       Marcar por defecto
                     </button>
@@ -349,10 +349,10 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowModal(false)}>
+        <button className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowModal(false)}>
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></button>
             </div>
 
             <div 
@@ -505,7 +505,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="atlas-atlas-atlas-btn-primary w-full sm:w-auto"
+                  className="atlas-atlas-atlas-atlas-btn-primary w-full sm:w-auto"
                 >
                   {saving ? 'Guardando...' : 'Guardar'}
                 </button>

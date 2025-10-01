@@ -280,7 +280,7 @@ const InmuebleResumen: React.FC<InmuebleResumenProps> = ({
         </div>
 
         {/* Checklist de completitud */}
-        <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
           <h4 className="text-sm font-medium text-blue-800 mb-3">
             📋 Estado de completitud
           </h4>

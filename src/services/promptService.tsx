@@ -80,7 +80,7 @@ export const showPrompt = (options: PromptOptions): Promise<string | null> => {
             </div>
             <button
               onClick={handleCancel}
-              className="atlas-atlas-atlas-atlas-btn-ghost p-1 ml-2"
+              className="atlas-atlas-atlas-atlas-atlas-btn-ghost p-1 ml-2"
               aria-label="Cerrar"
             >
               <X className="h-4 w-4" />
@@ -123,13 +123,13 @@ export const showPrompt = (options: PromptOptions): Promise<string | null> => {
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-2">
             <button
-              className="atlas-atlas-atlas-atlas-btn-secondary"
+              className="atlas-atlas-atlas-atlas-atlas-btn-secondary"
               onClick={handleCancel}
             >
               {cancelText}
             </button>
             <button
-              className="atlas-atlas-atlas-atlas-btn-primary"
+              className="atlas-atlas-atlas-atlas-atlas-btn-primary"
               onClick={handleSubmit}
             >
               {confirmText}

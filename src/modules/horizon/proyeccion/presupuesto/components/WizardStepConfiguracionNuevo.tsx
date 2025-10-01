@@ -86,7 +86,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
+          className="atlas-atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

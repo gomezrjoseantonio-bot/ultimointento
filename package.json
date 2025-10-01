@@ -55,7 +55,8 @@
     "test:accessibility": "node scripts/test-accessibility.js",
     "migrate:buttons": "node scripts/migrate-buttons-to-atlas.js",
     "migrate:colors": "node scripts/replace-hardcoded-colors.js",
-    "fix:aria-labels": "node scripts/add-aria-labels.js"
+    "fix:aria-labels": "node scripts/add-aria-labels.js",
+    "fix:divs-to-buttons": "node scripts/convert-divs-to-buttons.js"
   },
   "eslintConfig": {
     "extends": [
