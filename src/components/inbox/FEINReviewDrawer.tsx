@@ -65,7 +65,12 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* ATLAS light backdrop-blur-sm overlays */}
-      <div className="absolute inset-0" style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} onClick={onClose} />
+      <button 
+        className="absolute inset-0" 
+        style={{ backgroundColor: 'rgba(248, 249, 250, 0.9)' }} 
+        onClick={onClose}
+        aria-label="Cerrar"
+      />
       
       <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200">
         <div className="flex flex-col h-full">
@@ -368,7 +373,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               {loanId ? (
                 <button
                   onClick={() => onOpenInFinanciacion(loanId)}
-                  className="atlas-btn-primary"
+                  className="atlas-atlas-atlas-atlas-btn-primary"
                 >
                   Abrir en Financiación
                 </button>
@@ -376,13 +381,13 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="atlas-btn-secondary"
+                    className="atlas-atlas-atlas-atlas-btn-secondary"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSave}
-                    className="atlas-btn-primary"
+                    className="atlas-atlas-atlas-atlas-btn-primary"
                   >
                     {feinResult.fieldsMissing.length > 0 
                       ? 'Crear borrador igualmente' 
@@ -393,7 +398,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="atlas-btn-secondary"
+                  className="atlas-atlas-atlas-atlas-btn-secondary"
                 >
                   Editar campos
                 </button>

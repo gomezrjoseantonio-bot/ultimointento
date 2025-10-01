@@ -4,6 +4,8 @@ import { Contract } from '../../../../../services/db';
 import { getAllContracts, deleteContract, terminateContract, getContractStatus } from '../../../../../services/contractService';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
+import { promptDate } from '../../../../../services/promptService';
 
 interface ContractsListaProps {
   onEditContract: (contract?: Contract) => void;
@@ -71,7 +73,8 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleDeleteContract = async (id: number) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar este contrato? Esta acción no se puede deshacer.')) {
+    const confirmed = await confirmDelete('Está seguro de que desea eliminar este contrato Esta acción no se puede deshacer.');
+    if (!confirmed) {
       return;
     }
 
@@ -86,8 +89,10 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleTerminateContract = async (id: number) => {
-    // TODO: Replace with ATLAS input modal
-    const terminationDate = prompt('Ingrese la fecha de terminación (YYYY-MM-DD):');
+    const terminationDate = await promptDate(
+      'Fecha de terminación del contrato',
+      new Date().toISOString().split('T')[0]
+    );
     if (!terminationDate) return;
 
     try {

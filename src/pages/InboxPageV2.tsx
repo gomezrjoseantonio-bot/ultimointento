@@ -4,6 +4,7 @@ import {
   FileText, Image, FileSpreadsheet, Archive, File, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../services/confirmationService';
 import BankStatementModal from '../components/inbox/BankStatementModal';
 
 // Document state types as per requirements
@@ -372,8 +373,9 @@ const InboxPageV2: React.FC = () => {
     }
   };
 
-  const handleDelete = (doc: InboxDocument) => {
-    if (window.confirm(`¿Eliminar ${doc.filename}?`)) {
+  const handleDelete = async (doc: InboxDocument) => {
+    const confirmed = await confirmDelete(doc.filename);
+    if (confirmed) {
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       if (selectedDocument?.id === doc.id) {
         setSelectedDocument(null);
@@ -434,7 +436,7 @@ const InboxPageV2: React.FC = () => {
       {/* Header compacto */}
       <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-start sm:items-center">
-          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: '#0A2A57' }}>
+          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--atlas-blue)' }}>
             Bandeja de entrada
           </h1>
           <div className="relative">
@@ -449,9 +451,9 @@ const InboxPageV2: React.FC = () => {
             <label
               htmlFor="file-upload"
               className="flex items-center gap-2 px-3 sm:px-4 py-2 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
-              style={{ backgroundColor: '#0A2A57' }}
+              style={{ backgroundColor: 'var(--atlas-blue)' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0C356B'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0A2A57'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--atlas-blue)'}
             >
               <Upload className="w-4 h-4" />
               Subir documentos
@@ -600,7 +602,7 @@ const InboxPageV2: React.FC = () => {
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer"
-                          style={{ backgroundColor: '#EAF1F8', color: '#0A2A57' }}
+                          style={{ backgroundColor: '#EAF1F8', color: 'var(--atlas-blue)' }}
                         >
                           {doc.destino}
                         </span>
@@ -743,7 +745,7 @@ const InboxPageV2: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    style={{ backgroundColor: '#0A2A57' }}
+                    style={{ backgroundColor: 'var(--atlas-blue)' }}
                   >
                     Completar y archivar
                   </button>

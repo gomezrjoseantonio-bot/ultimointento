@@ -290,7 +290,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                           <>
                             <button
                               onClick={handleSaveEdit}
-                              className="btn-accent-horizon flex items-center gap-1 px-3 py-1 text-sm text-green-700 rounded"
+                              className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-green-700 rounded"
                             >
                               <Check size={14} />
                               Guardar
@@ -308,7 +308,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             {movement.status !== 'conciliado' && movement.unifiedStatus !== 'conciliado' && (
                               <button
                                 onClick={() => handleConciliar(movement)}
-                                className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-sm text-blue-700 rounded"
+                                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-blue-700 rounded"
                               >
                                 <Check size={14} />
                                 Conciliar

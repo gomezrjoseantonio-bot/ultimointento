@@ -30,9 +30,9 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
   const getDeviationColor = (status: 'green' | 'amber' | 'red') => {
     switch (status) {
       case 'green': return '#16A34A';
-      case 'amber': return '#F59E0B';
-      case 'red': return '#DC2626';
-      default: return '#6B7280';
+      case 'amber': return 'var(--warn)';
+      case 'red': return 'var(--error)';
+      default: return 'var(--text-gray)';
     }
   };
 

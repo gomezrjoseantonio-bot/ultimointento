@@ -231,7 +231,7 @@ const ProfileSeederPage: React.FC = () => {
                     <button
                       onClick={() => processFile(file)}
                       disabled={processingFile === file}
-                      className="btn-primary-horizon px-3 py-1 text-xs disabled:opacity-50"
+                      className="atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-xs disabled:opacity-50"
                     >
                       {processingFile === file ? 'Procesando...' : 'Procesar'}
                     </button>
@@ -257,7 +257,7 @@ const ProfileSeederPage: React.FC = () => {
           </h2>
 
           {previewData.sheetName && (
-            <div className="btn-primary-horizon mb-4 p-3">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary mb-4 p-3">
               <p className="text-sm text-primary-700">
                 Hoja detectada: <strong>{previewData.sheetName}</strong>
               </p>
@@ -373,7 +373,7 @@ const ProfileSeederPage: React.FC = () => {
           <button
             onClick={exportBankProfiles}
             disabled={capturedProfiles.length === 0}
-            className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             Exportar bank-profiles.json

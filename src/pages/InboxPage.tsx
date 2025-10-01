@@ -19,6 +19,7 @@ import { processDocumentOCR } from '../services/documentAIService';
 import { detectDocumentType } from '../services/documentTypeDetectionService';
 import { validateDocumentForPending } from '../services/documentValidationService';
 import { showError } from '../services/toastService';
+import { confirmDelete } from '../services/confirmationService';
 import { ZipProcessingResult } from '../services/zipProcessingService';
 import { processDocumentIngestion } from '../services/documentIngestionService';
 import { isAutoRouteEnabled } from '../config/envFlags';
@@ -618,7 +619,7 @@ const InboxPage: React.FC = () => {
           position: 'top-center',
           style: {
             background: '#fee2e2',
-            color: '#dc2626',
+            color: 'var(--error)',
             border: '1px solid #fca5a5',
           },
         });
@@ -709,7 +710,7 @@ const InboxPage: React.FC = () => {
               window.open(url, '_blank');
               toast.dismiss(t.id);
             }}
-            className="btn-primary-horizon px-2 py-1 text-xs rounded"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs rounded"
             >
             Ver en Movimientos
           </button>
@@ -996,8 +997,8 @@ const InboxPage: React.FC = () => {
   };
 
   const handleDiscardDocuments = async (docs: any[]) => {
-    // TODO: Replace with ATLAS confirmation modal
-    if (window.confirm(`¿Eliminar ${docs.length} documento(s)?`)) {
+    const confirmed = await confirmDelete(`${docs.length} documento(s)`);
+    if (confirmed) {
       for (const doc of docs) {
         await handleDeleteDocument(doc.id);
       }
@@ -1135,7 +1136,7 @@ const InboxPage: React.FC = () => {
           <div className="w-full lg:w-80 lg:flex-shrink-0 border-r border-neutral-200">
             {/* Bulk Actions */}
             {showBulkActions && selectedDocuments.length > 0 && (
-              <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
+              <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary p-4 ">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-primary-900">
                     {selectedDocuments.length} seleccionado(s)
@@ -1157,7 +1158,7 @@ const InboxPage: React.FC = () => {
                   </button>
                   <button
                     onClick={handleBulkReassign}
-                    className="btn-primary-horizon flex items-center gap-1 px-3 py-1 text-xs"
+                    className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-xs"
               >
                     <FolderOpen className="w-3 h-3" />
                     Reasignar

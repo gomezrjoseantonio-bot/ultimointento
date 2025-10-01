@@ -254,7 +254,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             {data.suggestions.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2">Sugerencias:</h4>
-                <div className="btn-secondary-horizon btn-primary-horizon ">
+                <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
                   <ul className="text-xs space-y-1">
                     {data.suggestions.map((suggestion, index) => (
                       <li key={index}>• {suggestion}</li>

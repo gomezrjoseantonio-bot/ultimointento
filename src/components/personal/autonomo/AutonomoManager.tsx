@@ -7,6 +7,7 @@ import IngresoForm from './IngresoForm';
 import GastoForm from './GastoForm';
 import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, Receipt, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../services/confirmationService';
 
 const AutonomoManager: React.FC = () => {
   const [autonomos, setAutonomos] = useState<Autonomo[]>([]);
@@ -57,7 +58,8 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleDeleteAutonomo = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta configuración de autónomo?')) {
+    const confirmed = await confirmDelete('esta configuración de autónomo');
+    if (!confirmed) {
       return;
     }
 
@@ -99,7 +101,10 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleRemoveIngreso = async (ingresoId: string) => {
-    if (!activoAutonomo || !window.confirm('¿Eliminar este ingreso?')) return;
+    if (!activoAutonomo) return;
+    
+    const confirmed = await confirmDelete('este ingreso');
+    if (!confirmed) return;
     
     try {
       await autonomoService.removeIngreso(activoAutonomo.id!, ingresoId);
@@ -112,7 +117,10 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleRemoveGasto = async (gastoId: string) => {
-    if (!activoAutonomo || !window.confirm('¿Eliminar este gasto?')) return;
+    if (!activoAutonomo) return;
+    
+    const confirmed = await confirmDelete('este gasto');
+    if (!confirmed) return;
     
     try {
       await autonomoService.removeGasto(activoAutonomo.id!, gastoId);
@@ -189,14 +197,14 @@ const AutonomoManager: React.FC = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowIngresoForm(true)}
-                className="btn-accent-horizon inline-flex items-center px-3 py-1 text-sm"
+                className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-3 py-1 text-sm"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Ingreso
               </button>
               <button
                 onClick={() => setShowGastoForm(true)}
-                className="btn-danger inline-flex items-center px-3 py-1 text-sm"
+                className="atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-3 py-1 text-sm"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Gasto
@@ -262,13 +270,13 @@ const AutonomoManager: React.FC = () => {
                 .filter(i => new Date(i.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((ingreso) => (
-                  <div key={ingreso.id} className="btn-accent-horizon flex items-center justify-between p-3">
+                  <div key={ingreso.id} className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{ingreso.descripcion}</p>
                       <p className="text-sm text-gray-600">
                         {formatDate(ingreso.fecha)} • {formatCurrency(ingreso.importe)}
                         {ingreso.conIva && ingreso.tipoIva && (
-                          <span className="btn-primary-horizon ml-2 text-xs text-blue-800 px-2 py-1 rounded">
+                          <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-blue-800 px-2 py-1 rounded">
                             IVA {ingreso.tipoIva}%
                           </span>
                         )}
@@ -309,7 +317,7 @@ const AutonomoManager: React.FC = () => {
                 .filter(g => new Date(g.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((gasto) => (
-                  <div key={gasto.id} className="btn-danger flex items-center justify-between p-3">
+                  <div key={gasto.id} className="atlas-atlas-atlas-atlas-atlas-btn-destructive flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{gasto.descripcion}</p>
                       <p className="text-sm text-gray-600">
@@ -378,7 +386,7 @@ const AutonomoManager: React.FC = () => {
                         {autonomo.nombre}
                       </h5>
                       {autonomo.activo && (
-                        <span className="btn-accent-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
+                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
                           Activo
                         </span>
                       )}
@@ -401,7 +409,7 @@ const AutonomoManager: React.FC = () => {
                     {!autonomo.activo && (
                       <button
                         onClick={() => handleActivateAutonomo(autonomo)}
-                        className="btn-accent-horizon px-3 py-1 text-sm text-green-600 border border-green-600 rounded hover: "
+                        className="atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-green-600 border border-green-600 rounded hover: "
                       >
                         Activar
                       </button>

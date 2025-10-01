@@ -400,7 +400,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <button
                   onClick={() => generatePreview(manualMapping!)}
                   disabled={!canConfirm() || isProcessing}
-                  className="btn-primary-horizon px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Generar vista previa
                 </button>
@@ -464,7 +464,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <div className="space-y-4">
                   {/* Preview stats */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="btn-accent-horizon p-4 border border-green-200">
+                    <div className="atlas-atlas-atlas-atlas-btn-primary p-4 border border-green-200">
                       <p className="text-sm text-green-600">Bien mapeados</p>
                       <p className="text-2xl font-bold text-green-700">
                         {previewResult.wellMappedRows}
@@ -476,7 +476,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                         {previewResult.estimatedDuplicates}
                       </p>
                     </div>
-                    <div className="btn-secondary-horizon btn-primary-horizon p-4 ">
+                    <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary p-4 ">
                       <p className="text-sm text-blue-600">No planificados</p>
                       <p className="text-2xl font-bold text-blue-700">
                         {previewResult.previewMovements.filter(m => m.status !== 'valid').length}
@@ -565,7 +565,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
               <button
                 onClick={handleConfirm}
                 disabled={!canConfirm() || isProcessing}
-                className="btn-primary-horizon px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="atlas-atlas-atlas-atlas-btn-primary px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Procesando...' : 'Importar extracto'}
               </button>

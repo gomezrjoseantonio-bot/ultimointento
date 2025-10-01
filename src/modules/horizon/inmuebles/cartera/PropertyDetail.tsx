@@ -342,7 +342,7 @@ const PropertyDetail: React.FC = () => {
 
           {/* Inmueble accesorio */}
           {property.fiscalData?.isAccessory && (
-            <div className="btn-secondary-horizon btn-primary-horizon ">
+            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
               <div className="text-sm font-medium text-primary-900 mb-2">Inmueble accesorio</div>
               {property.fiscalData.mainPropertyId && (
                 <div className="text-xs text-primary-700">

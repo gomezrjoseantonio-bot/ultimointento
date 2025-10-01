@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Plus, Settings, Trash2, Copy, Star, StarOff } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro } from '../../../../utils/formatUtils';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 // Temporary types until we create the service
 interface Scenario {
@@ -26,7 +27,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<ScenarioMode>('diy');
 
-  const handleCreateScenario = (mode: ScenarioMode) => {
+  const handleCreateScenario = async (mode: ScenarioMode) => {
     setModalMode(mode);
     setShowModal(true);
   };
@@ -76,7 +77,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   };
 
   const handleDeleteScenario = async (scenario: Scenario) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
+    const confirmed = await confirmDelete('este escenario');
+    if (confirmed) {
       const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
       setScenarios(updatedScenarios);
       
@@ -97,7 +99,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -187,7 +189,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="btn-primary-horizon w-full px-4 py-2"
+                      className="atlas-atlas-atlas-atlas-btn-primary w-full px-4 py-2"
                     >
                       Crear escenario de prueba
                     </button>
@@ -224,7 +226,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           </div>
           <button
             onClick={() => handleCreateScenario('diy')}
-            className="btn-primary-horizon flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Plus className="h-4 w-4" />
             <span>Nueva simulación</span>
@@ -252,7 +254,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">{scenario.name}</div>
                       {scenario.markedForComparison && (
-                        <div className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs">
+                        <div className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs">
                           Para comparar
                         </div>
                       )}
@@ -404,7 +406,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                           createdAt: new Date().toISOString()
                         });
                       }}
-                      className="btn-primary-horizon w-full px-4 py-2"
+                      className="atlas-atlas-atlas-atlas-btn-primary w-full px-4 py-2"
                     >
                       Crear escenario de prueba
                     </button>

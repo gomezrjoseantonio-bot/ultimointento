@@ -39,8 +39,8 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
   ];
 
   const doughnutData = [
-    { name: 'Cobradas', value: collected, color: '#10B981' },
-    { name: 'Pendientes', value: pending, color: '#F59E0B' }
+    { name: 'Cobradas', value: collected, color: 'var(--ok)' },
+    { name: 'Pendientes', value: pending, color: 'var(--warn)' }
   ];
 
   const formatCurrency = (amount: number) => {

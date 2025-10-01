@@ -5,6 +5,7 @@ import { Reform, initDB, Property } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ReformFormModal from './ReformFormModal';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 const CapexTab: React.FC = () => {
   const navigate = useNavigate();
@@ -54,13 +55,14 @@ const CapexTab: React.FC = () => {
     setShowReformModal(true);
   };
 
-  const handleEditReform = (reform: Reform) => {
+  const handleEditReform = async (reform: Reform) => {
     setEditingReform(reform);
     setShowReformModal(true);
   };
 
   const handleDeleteReform = async (reformId: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta reforma?')) {
+    const confirmed = await confirmDelete('Estás seguro de que deseas eliminar esta reforma');
+    if (!confirmed) {
       return;
     }
 

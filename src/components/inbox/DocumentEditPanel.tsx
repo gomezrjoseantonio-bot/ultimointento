@@ -19,17 +19,17 @@ interface DocumentEditPanelProps {
 
 // Atlas Horizon color scheme (ATLAS palette exact colors)
 const colors = {
-  primary: '#042C5E',    // Exact ATLAS primary
+  primary: 'var(--atlas-blue)',    // Exact ATLAS primary
   accent: '#0B5FFF',     // Acento
-  success: '#28A745',    // Exact ATLAS success (status badge green)
-  warning: '#FFC107',    // Exact ATLAS warning (status badge yellow)
-  error: '#DC3545',      // Exact ATLAS error (status badge red)
-  gray50: '#F9FAFB',
-  gray100: '#F3F4F6',
-  gray200: '#E5E7EB',
-  gray300: '#D1D5DB',
-  gray400: '#9CA3AF',
-  gray500: '#6B7280',
+  success: 'var(--ok)',    // Exact ATLAS success (status badge green)
+  warning: 'var(--warn)',    // Exact ATLAS warning (status badge yellow)
+  error: 'var(--error)',      // Exact ATLAS error (status badge red)
+  gray50: 'var(--hz-neutral-100)',
+  gray100: 'var(--hz-neutral-100)',
+  gray200: 'var(--hz-neutral-300)',
+  gray300: 'var(--hz-neutral-300)',
+  gray400: 'var(--text-gray)',
+  gray500: 'var(--text-gray)',
   gray600: '#4B5563',
   gray700: '#374151',
   gray800: '#1F2937',
@@ -110,9 +110,9 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'Guardado': { color: colors.success, label: '✅ Guardado', bgColor: '#28A745' },
-      'Revisión': { color: colors.warning, label: '⚠ Revisión', bgColor: '#FFC107' },
-      'Error': { color: colors.error, label: '⛔ Error', bgColor: '#DC3545' }
+      'Guardado': { color: colors.success, label: '✅ Guardado', bgColor: 'var(--ok)' },
+      'Revisión': { color: colors.warning, label: '⚠ Revisión', bgColor: 'var(--warn)' },
+      'Error': { color: colors.error, label: '⛔ Error', bgColor: 'var(--error)' }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.Error;
@@ -648,7 +648,7 @@ const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({
             disabled={validationErrors.length > 0}
             className="inline-flex items-center px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
             style={{ 
-              backgroundColor: validationErrors.length > 0 ? '#9CA3AF' : colors.primary
+              backgroundColor: validationErrors.length > 0 ? 'var(--text-gray)' : colors.primary
             }}
           >
             Guardar y archivar

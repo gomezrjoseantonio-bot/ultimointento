@@ -203,7 +203,7 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
           <button
             type="submit"
             disabled={loading}
-            className="btn-accent-horizon px-4 py-2 disabled:opacity-50"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50"
           >
             {loading ? 'Añadiendo...' : 'Añadir Ingreso'}
           </button>

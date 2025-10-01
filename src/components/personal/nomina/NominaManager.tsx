@@ -5,6 +5,7 @@ import { Nomina, CalculoNominaResult } from '../../../types/personal';
 import NominaForm from './NominaForm';
 import { Plus, Edit2, Trash2, Calculator, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../services/confirmationService';
 
 const NominaManager: React.FC = () => {
   const [nominas, setNominas] = useState<Nomina[]>([]);
@@ -52,7 +53,8 @@ const NominaManager: React.FC = () => {
   };
 
   const handleDeleteNomina = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta nómina?')) {
+    const confirmed = await confirmDelete('esta nómina');
+    if (!confirmed) {
       return;
     }
 
@@ -290,7 +292,7 @@ const NominaManager: React.FC = () => {
                         {nomina.nombre}
                       </h5>
                       {nomina.activa && (
-                        <span className="btn-primary-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
+                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
                           Activa
                         </span>
                       )}
@@ -324,7 +326,7 @@ const NominaManager: React.FC = () => {
                     {!nomina.activa && (
                       <button
                         onClick={() => handleActivateNomina(nomina)}
-                        className="btn-secondary-horizon btn-primary-horizon px-3 py-1 text-sm text-blue-600 "
+                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-blue-600 "
                       >
                         Activar
                       </button>

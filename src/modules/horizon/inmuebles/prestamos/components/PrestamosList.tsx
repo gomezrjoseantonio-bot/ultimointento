@@ -13,6 +13,7 @@ import PageHeader from '../../../../../components/common/PageHeader';
 import FilterBar from '../../../../../components/common/FilterBar';
 import DataTable from '../../../../../components/common/DataTable';
 import KpiCard from '../../../../../components/common/KpiCard';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface PrestamosListProps {
   onSelectPrestamo: (prestamoId: string) => void;
@@ -43,7 +44,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
   };
 
   const handleDeletePrestamo = async (prestamoId: string, prestamoNombre: string) => {
-    if (!window.confirm(`¿Está seguro de que desea eliminar el préstamo "${prestamoNombre}"?`)) {
+    const confirmed = await confirmDelete(`préstamo "${prestamoNombre}"`);
+    if (!confirmed) {
       return;
     }
 

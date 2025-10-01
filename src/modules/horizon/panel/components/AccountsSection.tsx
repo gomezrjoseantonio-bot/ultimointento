@@ -255,7 +255,7 @@ const AccountsSection: React.FC<AccountsSectionProps> = ({ filters }) => {
                   <Line 
                     type="monotone" 
                     dataKey="balance" 
-                    stroke="#0A84FF" 
+                    stroke="var(--atlas-blue)" 
                     strokeWidth={2}
                     dot={false}
                   />

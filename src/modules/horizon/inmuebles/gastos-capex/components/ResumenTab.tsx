@@ -367,7 +367,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
       </div>
 
       {/* Rental/Availability Days */}
-      <div className="btn-primary-horizon p-4">
+      <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
         <h4 className="font-medium text-gray-900 mb-3">
           Días arrendado / a disposición
         </h4>

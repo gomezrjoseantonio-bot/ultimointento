@@ -94,7 +94,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 onChange={(e) => handleInputChange('rentGrowth', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #022D5E 0%, #022D5E ${formData.rentGrowth * 10}%, #F8F9FA ${formData.rentGrowth * 10}%, #F8F9FA 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${formData.rentGrowth * 10}%, var(--bg) ${formData.rentGrowth * 10}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -117,7 +117,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 onChange={(e) => handleInputChange('expenseInflation', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.expenseInflation / 8) * 100}%, #F8F9FA ${(formData.expenseInflation / 8) * 100}%, #F8F9FA 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.expenseInflation / 8) * 100}%, var(--bg) ${(formData.expenseInflation / 8) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -140,7 +140,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 onChange={(e) => handleInputChange('propertyAppreciation', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA ${(formData.propertyAppreciation / 12) * 100}%, #F8F9FA 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -163,7 +163,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 onChange={(e) => handleInputChange('vacancyRate', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.vacancyRate / 20) * 100}%, #F8F9FA ${(formData.vacancyRate / 20) * 100}%, #F8F9FA 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.vacancyRate / 20) * 100}%, var(--bg) ${(formData.vacancyRate / 20) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -186,7 +186,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 onChange={(e) => handleInputChange('referenceRate', parseFloat(e.target.value))}
                 className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #022D5E 0%, #022D5E ${(formData.referenceRate / 15) * 100}%, #F8F9FA ${(formData.referenceRate / 15) * 100}%, #F8F9FA 100%)`
+                  background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.referenceRate / 15) * 100}%, var(--bg) ${(formData.referenceRate / 15) * 100}%, var(--bg) 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -221,7 +221,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             <button
               onClick={handleSave}
               disabled={!hasChanges}
-              className="btn-primary-horizon flex items-center space-x-2 px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="h-4 w-4" />
               <span>Guardar</span>

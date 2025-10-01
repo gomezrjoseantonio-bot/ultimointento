@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit2, Trash2, Copy } from 'lucide-react';
 import { PresupuestoLinea, UUID } from '../../../../../services/db';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface PresupuestoTablaLineasProps {
   lineas: PresupuestoLinea[];
@@ -33,7 +34,7 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
     }
   };
 
-  const getTipoColor = (tipo: string) => {
+  const getTipoColor = async (tipo: string) => {
     return tipo === 'Ingreso' ? 'text-success-600' : 'text-error-600';
   };
 
@@ -154,8 +155,9 @@ const PresupuestoTablaLineas: React.FC<PresupuestoTablaLineasProps> = ({
                     <Copy className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm('¿Estás seguro de que quieres eliminar esta línea?')) {
+                    onClick={async () => {
+                      const confirmed = await confirmDelete('esta línea');
+                      if (confirmed) {
                         onDelete(linea.id);
                       }
                     }}

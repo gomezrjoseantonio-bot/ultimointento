@@ -269,7 +269,7 @@ const TreasuryMainView: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="btn-primary-horizon flex items-center gap-2"
+                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2"
               >
                 <Upload size={16} />
                 Importar extracto

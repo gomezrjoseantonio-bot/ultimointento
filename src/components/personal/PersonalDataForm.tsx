@@ -222,7 +222,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
             ))}
           </div>
           {formData.situacionLaboral.length > 0 && (
-            <div className="btn-secondary-horizon btn-primary-horizon mt-3 p-3 ">
+            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary mt-3 p-3 ">
               <p className="text-sm text-blue-700">
                 <strong>Secciones que se mostrarán:</strong>
                 {formData.situacionLaboral.includes('asalariado') && ' Nómina,'}

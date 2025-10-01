@@ -128,7 +128,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           {/* Ver campos FEIN */}
           <button
             onClick={handleViewFEINFields}
-            className="btn-primary-horizon p-1.5 text-blue-600 hover:text-blue-800 hover:"
+            className="atlas-atlas-atlas-atlas-btn-primary p-1.5 text-blue-600 hover:text-blue-800 hover:"
             title="Ver campos extraídos de la FEIN"
           >
             <FileText className="w-4 h-4" />
@@ -138,7 +138,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           {hasLoanId && (
             <button
               onClick={handleOpenInFinanciacion}
-              className="btn-accent-horizon p-1.5 text-green-600 hover:text-green-800 hover:"
+              className="atlas-atlas-atlas-atlas-btn-primary p-1.5 text-green-600 hover:text-green-800 hover:"
               title="Abrir préstamo en Financiación"
             >
               <ExternalLink className="w-4 h-4" />

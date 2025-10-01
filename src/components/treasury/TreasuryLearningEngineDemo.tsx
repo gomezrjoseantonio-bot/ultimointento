@@ -258,14 +258,14 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
         {/* Status and Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="btn-primary-horizon p-4">
+          <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600" />
               <span className="font-medium text-blue-900">Reglas Creadas</span>
             </div>
             <p className="text-2xl font-bold text-blue-600 mt-1">{stats.totalRules}</p>
           </div>
-          <div className="btn-accent-horizon p-4">
+          <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
               <span className="font-medium text-green-900">Aplicaciones</span>
@@ -286,7 +286,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
           <button
             onClick={performReconciliation}
             disabled={isLoading || step > 0 || movements.length === 0}
-            className="btn-primary-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check className="h-4 w-4" />
             1. Conciliar Manualmente (Crear Regla)
@@ -295,7 +295,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
           <button
             onClick={simulateNewImport}
             disabled={isLoading || step < 1 || step > 1}
-            className="btn-accent-horizon flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileText className="h-4 w-4" />
             2. Simular Nueva Importación
@@ -312,7 +312,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
 
         {/* Status Message */}
         {message && (
-          <div className="btn-secondary-horizon btn-primary-horizon ">
+          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <span className="text-blue-800">{message}</span>

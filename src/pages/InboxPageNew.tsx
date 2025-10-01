@@ -443,7 +443,7 @@ const InboxPageNew: React.FC = () => {
             <button
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
               style={{ 
-                backgroundColor: '#0A2A57'
+                backgroundColor: 'var(--atlas-blue)'
               }}
             >
               <Upload className="w-4 h-4 mr-2" />
@@ -484,7 +484,7 @@ const InboxPageNew: React.FC = () => {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
               style={{
-                backgroundColor: statusFilter === key ? '#0A2A57' : 'transparent'
+                backgroundColor: statusFilter === key ? 'var(--atlas-blue)' : 'transparent'
               }}
             >
               {label} ({count})
@@ -591,7 +591,7 @@ const InboxPageNew: React.FC = () => {
                       {doc.destino ? (
                         <span 
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer text-white"
-                          style={{ backgroundColor: '#0A2A57' }}
+                          style={{ backgroundColor: 'var(--atlas-blue)' }}
                           title={`Ir a ${doc.destino}`}
                         >
                           {doc.destino}
@@ -725,7 +725,7 @@ const InboxPageNew: React.FC = () => {
                   <button
                     onClick={() => handleCompleteAndArchive(selectedDocument)}
                     className="mt-4 w-full px-4 py-2 text-white rounded-lg"
-                    style={{ backgroundColor: '#0A2A57' }}
+                    style={{ backgroundColor: 'var(--atlas-blue)' }}
                   >
                     Completar y archivar
                   </button>

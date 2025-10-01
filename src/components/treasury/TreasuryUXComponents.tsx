@@ -390,7 +390,7 @@ export const TreasuryEmptyState: React.FC<{
       <div className="mt-6">
         <button
           onClick={onCreateNew}
-          className="btn-primary-horizon inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           {config.buttonText}
         </button>

@@ -5,6 +5,7 @@ import PageLayout from '../../../../components/common/PageLayout';
 import { Property, initDB } from '../../../../services/db';
 import { formatEuro, formatDate, formatInteger } from '../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 const Cartera: React.FC = () => {
   const navigate = useNavigate();
@@ -146,7 +147,8 @@ const Cartera: React.FC = () => {
   };
 
   const handleDelete = async (property: Property) => {
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar "${property.alias}"?`)) {
+    const confirmed = await confirmDelete(`"${property.alias}"`);
+    if (!confirmed) {
       return;
     }
 

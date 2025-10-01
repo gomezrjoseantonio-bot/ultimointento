@@ -137,13 +137,13 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ 
                   '--tw-ring-color': 'var(--horizon-primary)',
-                  borderColor: '#d1d5db'
+                  borderColor: 'var(--hz-neutral-300)'
                 } as React.CSSProperties}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--horizon-primary)';
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.borderColor = 'var(--hz-neutral-300)';
                 }}
                 required
               />
@@ -168,13 +168,13 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ 
                   '--tw-ring-color': 'var(--horizon-primary)',
-                  borderColor: '#d1d5db'
+                  borderColor: 'var(--hz-neutral-300)'
                 } as React.CSSProperties}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = 'var(--horizon-primary)';
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
+                  e.currentTarget.style.borderColor = 'var(--hz-neutral-300)';
                 }}
                 required
               />
@@ -195,13 +195,13 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2"
               style={{ 
                 '--tw-ring-color': 'var(--horizon-primary)',
-                borderColor: '#d1d5db'
+                borderColor: 'var(--hz-neutral-300)'
               } as React.CSSProperties}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = 'var(--horizon-primary)';
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.borderColor = 'var(--hz-neutral-300)';
               }}
             />
           </div>

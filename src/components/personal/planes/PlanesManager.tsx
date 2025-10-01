@@ -1,3 +1,4 @@
+import { confirmDelete } from '../../../services/confirmationService';
 import React, { useState, useEffect, useCallback } from 'react';
 import { planesInversionService } from '../../../services/planesInversionService';
 import { personalDataService } from '../../../services/personalDataService';
@@ -54,7 +55,8 @@ const PlanesManager: React.FC = () => {
   };
 
   const handleDeletePlan = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este plan?')) {
+    const confirmed = await confirmDelete('este plan');
+    if (!confirmed) {
       return;
     }
 
@@ -313,7 +315,7 @@ const PlanesManager: React.FC = () => {
                           <p>
                             Aportación {plan.aportacionPeriodica.frecuencia}: {formatCurrency(plan.aportacionPeriodica.importe)}
                             {taxInfo.deducibleAnual > 0 && (
-                              <span className="btn-accent-horizon ml-2 text-xs text-green-800 px-2 py-1 rounded">
+                              <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-green-800 px-2 py-1 rounded">
                                 Deducible: {formatCurrency(taxInfo.deducibleAnual)}/año
                               </span>
                             )}

@@ -11,6 +11,7 @@ import { PropertyImprovement } from '../../services/db';
 import { parseEuroInput } from '../../utils/formatUtils';
 import MoneyInput from '../common/MoneyInput';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../services/confirmationService';
 
 interface PropertyImprovementsProps {
   propertyId: number;
@@ -60,7 +61,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
     loadImprovements();
   }, [loadImprovements]);
 
-  const resetForm = () => {
+  const resetForm = async () => {
     setFormData({
       year: new Date().getFullYear().toString(),
       amount: '',
@@ -121,7 +122,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
   };
 
   const handleDelete = async (improvementId: number) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar esta mejora?')) {
+    const confirmed = await confirmDelete('Está seguro de que desea eliminar esta mejora');
+    if (!confirmed) {
       return;
     }
 
@@ -176,7 +178,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
 
       {/* Summary */}
       {improvements.length > 0 && (
-        <div className="btn-secondary-horizon btn-primary-horizon mb-6 p-4 ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mb-6 p-4 ">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-neutral-900">Total invertido en mejoras:</span>
             <span className="text-lg font-bold text-brand-navy">
@@ -384,7 +386,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       )}
 
       {/* Help text */}
-      <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-3 ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mt-4 p-3 ">
         <div className="flex items-start gap-2">
           <Calendar className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-primary-800">

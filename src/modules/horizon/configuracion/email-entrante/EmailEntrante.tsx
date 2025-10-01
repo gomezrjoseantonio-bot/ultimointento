@@ -482,7 +482,7 @@ const EmailEntrante: React.FC = () => {
             </div>
 
             {/* Security limits info */}
-            <div className="btn-secondary-horizon btn-primary-horizon ">
+            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
               <h4 className="text-sm font-medium text-primary-900 mb-2">Límites de seguridad</h4>
               <ul className="text-xs text-primary-800 space-y-1">
                 <li>• Máximo {EMAIL_LIMITS.MAX_ATTACHMENTS} adjuntos por email</li>

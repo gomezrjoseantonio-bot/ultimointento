@@ -254,7 +254,7 @@ const DashboardConfig: React.FC = () => {
         <p className="text-error-600">Error al cargar la configuración del dashboard</p>
         <button 
           onClick={loadConfiguration}
-          className="btn-primary-horizon mt-4 px-4 py-2"
+          className="atlas-atlas-atlas-atlas-atlas-btn-primary mt-4 px-4 py-2"
         >
           Reintentar
         </button>
@@ -458,7 +458,7 @@ const DashboardConfig: React.FC = () => {
           </div>
 
           {/* Info box */}
-          <div className="btn-secondary-horizon btn-primary-horizon ">
+          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
             <div className="flex items-start gap-3">
               <div className="text-primary-600 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />
