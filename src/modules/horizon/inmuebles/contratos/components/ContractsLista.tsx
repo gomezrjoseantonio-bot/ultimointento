@@ -4,6 +4,7 @@ import { Contract } from '../../../../../services/db';
 import { getAllContracts, deleteContract, terminateContract, getContractStatus } from '../../../../../services/contractService';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface ContractsListaProps {
   onEditContract: (contract?: Contract) => void;
@@ -71,7 +72,8 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
   };
 
   const handleDeleteContract = async (id: number) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar este contrato? Esta acción no se puede deshacer.')) {
+    const confirmed = await confirmDelete('Está seguro de que desea eliminar este contrato Esta acción no se puede deshacer.');
+    if (!confirmed) {
       return;
     }
 

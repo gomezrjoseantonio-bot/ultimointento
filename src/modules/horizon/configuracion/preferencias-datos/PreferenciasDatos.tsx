@@ -7,6 +7,7 @@ import { Download, Trash2, AlertTriangle, BarChart3, Settings } from 'lucide-rea
 import toast from 'react-hot-toast';
 import KpiBuilder from '../../../../components/kpi/KpiBuilder';
 import DashboardConfig from '../../../../components/dashboard/DashboardConfig';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 type PreferencesTab = 'datos' | 'kpis' | 'panel';
 
@@ -57,11 +58,11 @@ const PreferenciasDatos: React.FC = () => {
 
     // Add confirmation as required by H1
     const confirmMessage = importMode === 'replace' 
-      ? `¿Estás seguro de que quieres importar este archivo? Esto reemplazará TODOS tus datos actuales con los del archivo ${file.name}. Esta acción no se puede deshacer.`
-      : `¿Quieres fusionar los datos del archivo ${file.name} con tus datos actuales?`;
+      ? `archivo ${file.name}? Esto reemplazará TODOS tus datos actuales. Esta acción no se puede deshacer.`
+      : `datos del archivo ${file.name} con tus datos actuales?`;
     
-    // TODO: Replace with ATLAS confirmation modal
-    if (!window.confirm(confirmMessage)) {
+    const confirmed = await confirmDelete(confirmMessage);
+    if (!confirmed) {
       event.target.value = ''; // Reset file input
       return;
     }

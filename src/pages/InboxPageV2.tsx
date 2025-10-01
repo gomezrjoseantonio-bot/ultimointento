@@ -4,6 +4,7 @@ import {
   FileText, Image, FileSpreadsheet, Archive, File, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../services/confirmationService';
 import BankStatementModal from '../components/inbox/BankStatementModal';
 
 // Document state types as per requirements
@@ -372,8 +373,9 @@ const InboxPageV2: React.FC = () => {
     }
   };
 
-  const handleDelete = (doc: InboxDocument) => {
-    if (window.confirm(`¿Eliminar ${doc.filename}?`)) {
+  const handleDelete = async (doc: InboxDocument) => {
+    const confirmed = await confirmDelete(doc.filename);
+    if (confirmed) {
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       if (selectedDocument?.id === doc.id) {
         setSelectedDocument(null);

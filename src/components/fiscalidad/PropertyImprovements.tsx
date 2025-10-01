@@ -11,6 +11,7 @@ import { PropertyImprovement } from '../../services/db';
 import { parseEuroInput } from '../../utils/formatUtils';
 import MoneyInput from '../common/MoneyInput';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../services/confirmationService';
 
 interface PropertyImprovementsProps {
   propertyId: number;
@@ -60,7 +61,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
     loadImprovements();
   }, [loadImprovements]);
 
-  const resetForm = () => {
+  const resetForm = async () => {
     setFormData({
       year: new Date().getFullYear().toString(),
       amount: '',
@@ -121,7 +122,8 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
   };
 
   const handleDelete = async (improvementId: number) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar esta mejora?')) {
+    const confirmed = await confirmDelete('Está seguro de que desea eliminar esta mejora');
+    if (!confirmed) {
       return;
     }
 

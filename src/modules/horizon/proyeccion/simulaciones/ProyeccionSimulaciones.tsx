@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Plus, Settings, Trash2, Copy, Star, StarOff } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { formatEuro } from '../../../../utils/formatUtils';
+import { confirmDelete } from '../../../../services/confirmationService';
 
 // Temporary types until we create the service
 interface Scenario {
@@ -26,7 +27,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<ScenarioMode>('diy');
 
-  const handleCreateScenario = (mode: ScenarioMode) => {
+  const handleCreateScenario = async (mode: ScenarioMode) => {
     setModalMode(mode);
     setShowModal(true);
   };
@@ -76,7 +77,8 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
   };
 
   const handleDeleteScenario = async (scenario: Scenario) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este escenario?')) {
+    const confirmed = await confirmDelete('este escenario');
+    if (confirmed) {
       const updatedScenarios = scenarios.filter(s => s.id !== scenario.id);
       setScenarios(updatedScenarios);
       

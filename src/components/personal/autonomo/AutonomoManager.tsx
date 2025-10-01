@@ -7,6 +7,7 @@ import IngresoForm from './IngresoForm';
 import GastoForm from './GastoForm';
 import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, Receipt, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../services/confirmationService';
 
 const AutonomoManager: React.FC = () => {
   const [autonomos, setAutonomos] = useState<Autonomo[]>([]);
@@ -57,7 +58,8 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleDeleteAutonomo = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta configuración de autónomo?')) {
+    const confirmed = await confirmDelete('esta configuración de autónomo');
+    if (!confirmed) {
       return;
     }
 
@@ -99,7 +101,10 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleRemoveIngreso = async (ingresoId: string) => {
-    if (!activoAutonomo || !window.confirm('¿Eliminar este ingreso?')) return;
+    if (!activoAutonomo) return;
+    
+    const confirmed = await confirmDelete('este ingreso');
+    if (!confirmed) return;
     
     try {
       await autonomoService.removeIngreso(activoAutonomo.id!, ingresoId);
@@ -112,7 +117,10 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleRemoveGasto = async (gastoId: string) => {
-    if (!activoAutonomo || !window.confirm('¿Eliminar este gasto?')) return;
+    if (!activoAutonomo) return;
+    
+    const confirmed = await confirmDelete('este gasto');
+    if (!confirmed) return;
     
     try {
       await autonomoService.removeGasto(activoAutonomo.id!, gastoId);

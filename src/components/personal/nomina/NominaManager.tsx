@@ -5,6 +5,7 @@ import { Nomina, CalculoNominaResult } from '../../../types/personal';
 import NominaForm from './NominaForm';
 import { Plus, Edit2, Trash2, Calculator, Calendar, DollarSign, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../services/confirmationService';
 
 const NominaManager: React.FC = () => {
   const [nominas, setNominas] = useState<Nomina[]>([]);
@@ -52,7 +53,8 @@ const NominaManager: React.FC = () => {
   };
 
   const handleDeleteNomina = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta nómina?')) {
+    const confirmed = await confirmDelete('esta nómina');
+    if (!confirmed) {
       return;
     }
 

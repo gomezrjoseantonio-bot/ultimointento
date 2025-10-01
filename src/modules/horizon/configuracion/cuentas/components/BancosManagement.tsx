@@ -6,6 +6,7 @@ import { processLogoUpload, validateLogoFile, getLogoFromStorage, removeLogoFrom
 import { cleanupAllDemoData } from '../../../../../services/demoDataCleanupService';
 import { isDemoModeEnabled } from '../../../../../config/envFlags';
 import { Account } from '../../../../../services/db';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface AccountFormData {
   alias: string;
@@ -174,13 +175,14 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
     setShowModal(true);
   };
 
-  const handleDeleteAccount = (account: Account) => {
+  const handleDeleteAccount = async (account: Account) => {
     setDeleteConfirmation(account);
   };
 
   const handleCleanupDemoData = async () => {
     // TODO: Replace with ATLAS confirmation modal
-    if (!window.confirm('¿Estás seguro de que quieres eliminar todos los movimientos y cuentas de demostración? Esta acción no se puede deshacer.')) {
+    const confirmed = await confirmDelete('todos los movimientos y cuentas de demostración Esta acción no se puede deshacer.');
+    if (!confirmed) {
       return;
     }
 

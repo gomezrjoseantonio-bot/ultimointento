@@ -19,6 +19,7 @@ import { processDocumentOCR } from '../services/documentAIService';
 import { detectDocumentType } from '../services/documentTypeDetectionService';
 import { validateDocumentForPending } from '../services/documentValidationService';
 import { showError } from '../services/toastService';
+import { confirmDelete } from '../services/confirmationService';
 import { ZipProcessingResult } from '../services/zipProcessingService';
 import { processDocumentIngestion } from '../services/documentIngestionService';
 import { isAutoRouteEnabled } from '../config/envFlags';
@@ -996,8 +997,8 @@ const InboxPage: React.FC = () => {
   };
 
   const handleDiscardDocuments = async (docs: any[]) => {
-    // TODO: Replace with ATLAS confirmation modal
-    if (window.confirm(`¿Eliminar ${docs.length} documento(s)?`)) {
+    const confirmed = await confirmDelete(`${docs.length} documento(s)`);
+    if (confirmed) {
       for (const doc of docs) {
         await handleDeleteDocument(doc.id);
       }

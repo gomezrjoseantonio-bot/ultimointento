@@ -6,6 +6,7 @@ import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
 
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface GastosTabProps {
   triggerAddExpense?: boolean;
@@ -182,13 +183,14 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     setShowExpenseModal(true);
   };
 
-  const handleEditExpense = (expense: ExpenseH5) => {
+  const handleEditExpense = async (expense: ExpenseH5) => {
     setEditingExpense(expense);
     setShowExpenseModal(true);
   };
 
   const handleDeleteExpense = async (expenseId: number) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+    const confirmed = await confirmDelete('Estás seguro de que deseas eliminar este gasto');
+    if (!confirmed) {
       return;
     }
 

@@ -1,3 +1,4 @@
+import { confirmDelete } from '../../../services/confirmationService';
 import React, { useState, useEffect, useCallback } from 'react';
 import { planesInversionService } from '../../../services/planesInversionService';
 import { personalDataService } from '../../../services/personalDataService';
@@ -54,7 +55,8 @@ const PlanesManager: React.FC = () => {
   };
 
   const handleDeletePlan = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este plan?')) {
+    const confirmed = await confirmDelete('este plan');
+    if (!confirmed) {
       return;
     }
 

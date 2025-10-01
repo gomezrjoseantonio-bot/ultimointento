@@ -4,6 +4,7 @@ import { Contract, Property } from '../../../../../services/db';
 import { getAllContracts, deleteContract, rescindContract, getContractStatus } from '../../../../../services/contractServiceNew';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface ContractsListaEnhancedProps {
   onEditContract: (contract?: Contract) => void;
@@ -36,7 +37,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       setContracts(contractsData);
       
       // Load properties for display with timeout
-      const dbPromise = (await import('../../../../../services/db')).initDB();
+      const dbPromise = async (await import('../../../../../services/db')).initDB();
       const dbTimeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Timeout initializing database')), 5000)
       );
@@ -122,7 +123,8 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       return;
     }
 
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}?`)) {
+    const confirmed = await confirmDelete('el contrato de ${contract.inquilino.nombre} ${contract.inquilino.apellidos}');
+    if (!confirmed) {
       return;
     }
 
