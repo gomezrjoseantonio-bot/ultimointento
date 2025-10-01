@@ -315,7 +315,7 @@ const PlanesManager: React.FC = () => {
                           <p>
                             Aportación {plan.aportacionPeriodica.frecuencia}: {formatCurrency(plan.aportacionPeriodica.importe)}
                             {taxInfo.deducibleAnual > 0 && (
-                              <span className="atlas-atlas-atlas-btn-primary ml-2 text-xs text-green-800 px-2 py-1 rounded">
+                              <span className="atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-green-800 px-2 py-1 rounded">
                                 Deducible: {formatCurrency(taxInfo.deducibleAnual)}/año
                               </span>
                             )}

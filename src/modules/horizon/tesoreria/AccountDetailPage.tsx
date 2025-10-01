@@ -235,7 +235,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
           <div className="text-hz-neutral-500 mb-4">Cuenta no encontrada</div>
           <button
             onClick={() => navigate('/tesoreria')}
-            className="atlas-atlas-btn-primary"
+            className="atlas-atlas-atlas-btn-primary"
           >
             Volver a Tesorería
           </button>
@@ -349,7 +349,7 @@ const AccountDetailPage: React.FC<AccountDetailPageProps> = ({ accountId }) => {
               {/* Import Button */}
               <button
                 onClick={() => setShowImportModal(true)}
-                className="atlas-atlas-btn-primary flex items-center gap-2"
+                className="atlas-atlas-atlas-btn-primary flex items-center gap-2"
               >
                 <Upload size={16} />
                 Importar extracto

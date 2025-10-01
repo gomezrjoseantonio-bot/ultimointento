@@ -153,7 +153,7 @@ const PresupuestoScopeView: React.FC = () => {
           </p>
           <button
             onClick={handleCreateBudget}
-            className="atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
+            className="atlas-atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
           >
             <Plus className="h-5 w-5" />
             <span>Crear Presupuesto {currentYear}</span>
@@ -192,7 +192,7 @@ const PresupuestoScopeView: React.FC = () => {
             </p>
             <button
               onClick={handleCreateBudget}
-              className="atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
+              className="atlas-atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
             >
               <Plus className="h-5 w-5" />
               <span>Recrear Presupuesto {currentYear}</span>

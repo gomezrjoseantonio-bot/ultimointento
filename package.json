@@ -54,7 +54,8 @@
     "build:atlas": "npm run lint:atlas && npm run build",
     "test:accessibility": "node scripts/test-accessibility.js",
     "migrate:buttons": "node scripts/migrate-buttons-to-atlas.js",
-    "migrate:colors": "node scripts/replace-hardcoded-colors.js"
+    "migrate:colors": "node scripts/replace-hardcoded-colors.js",
+    "fix:aria-labels": "node scripts/add-aria-labels.js"
   },
   "eslintConfig": {
     "extends": [

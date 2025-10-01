@@ -471,7 +471,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="atlas-atlas-btn-primary inline-flex items-center px-2.5 py-0.5 text-xs font-medium text-primary-800">
+                      <span className="atlas-atlas-atlas-btn-primary inline-flex items-center px-2.5 py-0.5 text-xs font-medium text-primary-800">
                         {getTipoGastoLabel(expense.tipo_gasto)}
                       </span>
                     </td>

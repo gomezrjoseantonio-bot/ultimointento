@@ -252,7 +252,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="atlas-atlas-btn-destructive border border-red-200 p-6 max-w-md">
+        <div className="atlas-atlas-atlas-btn-destructive border border-red-200 p-6 max-w-md">
           <div className="flex items-center mb-4">
             <XCircle className="h-6 w-6 text-red-500 mr-2" />
             <h3 className="text-lg font-medium text-red-900">Error de carga</h3>

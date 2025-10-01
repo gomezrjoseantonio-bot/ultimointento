@@ -133,7 +133,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
           {activeTab !== 'CONSOLIDADO' && onAddLine && (
             <button
               onClick={handleAddLineForScope}
-              className="atlas-atlas-btn-primary inline-flex items-center px-4 py-2"
+              className="atlas-atlas-atlas-btn-primary inline-flex items-center px-4 py-2"
             >
               <Plus className="h-4 w-4 mr-2" />
               Añadir Línea
@@ -170,7 +170,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
                 {getTabIcon(tab)}
                 <span>{getTabTitle(tab)}</span>
                 {tab === 'CONSOLIDADO' && (
-                  <span className="atlas-atlas-btn-primary text-primary-800 text-xs px-2 py-1">
+                  <span className="atlas-atlas-atlas-btn-primary text-primary-800 text-xs px-2 py-1">
                     Auto
                   </span>
                 )}
@@ -190,7 +190,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
               <p className="text-sm text-info-800 mt-1">
                 Esta vista muestra la suma automática de los presupuestos PERSONAL e INMUEBLES. 
                 Las líneas se distinguen por colores: 
-                <span className="atlas-atlas-btn-primary inline-block w-3 h-3 mx-1"></span>Personal 
+                <span className="atlas-atlas-atlas-btn-primary inline-block w-3 h-3 mx-1"></span>Personal 
                 <span className="inline-block w-3 h-3 bg-success-500 mx-1"></span>Inmuebles
               </p>
               <p className="text-sm text-info-700 mt-2">
@@ -260,7 +260,7 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
 
         <div className="bg-white border border-gray-200 p-6">
           <div className="flex items-center">
-            <div className="atlas-atlas-btn-primary p-3">
+            <div className="atlas-atlas-atlas-btn-primary p-3">
               <TrendingUp className="h-6 w-6 text-primary-600" />
             </div>
             <div className="ml-4">

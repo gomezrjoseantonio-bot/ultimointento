@@ -324,7 +324,7 @@ const ReformBreakdownComponent: React.FC<ReformBreakdownProps> = ({
           {/* Auto-distribute button */}
           <button
             onClick={autoDistribute}
-            className="atlas-atlas-atlas-btn-primary atlas-atlas-atlas-btn-primary w-full flex items-center justify-center px-3 py-2 text-sm text-primary-700 rounded hover: "
+            className="atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-btn-primary w-full flex items-center justify-center px-3 py-2 text-sm text-primary-700 rounded hover: "
           >
             <Calculator className="w-4 h-4 mr-2" />
             Distribución automática

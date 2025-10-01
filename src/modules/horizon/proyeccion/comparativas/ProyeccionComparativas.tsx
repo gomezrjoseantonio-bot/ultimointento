@@ -133,7 +133,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </p>
           <button
             onClick={() => window.location.href = '/proyeccion/simulaciones'}
-            className="atlas-atlas-btn-primary px-6 py-3"
+            className="atlas-atlas-atlas-btn-primary px-6 py-3"
           >
             Ir a Simulaciones
           </button>
@@ -160,7 +160,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </div>
           <button
             onClick={handleExportPDF}
-            className="atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+            className="atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
           >
             <Download className="h-4 w-4" />
             <span>Exportar comparativa (PDF)</span>

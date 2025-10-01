@@ -368,7 +368,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               {loanId ? (
                 <button
                   onClick={() => onOpenInFinanciacion(loanId)}
-                  className="atlas-atlas-btn-primary"
+                  className="atlas-atlas-atlas-btn-primary"
                 >
                   Abrir en Financiación
                 </button>
@@ -376,13 +376,13 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="atlas-atlas-btn-secondary"
+                    className="atlas-atlas-atlas-btn-secondary"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSave}
-                    className="atlas-atlas-btn-primary"
+                    className="atlas-atlas-atlas-btn-primary"
                   >
                     {feinResult.fieldsMissing.length > 0 
                       ? 'Crear borrador igualmente' 
@@ -393,7 +393,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="atlas-atlas-btn-secondary"
+                  className="atlas-atlas-atlas-btn-secondary"
                 >
                   Editar campos
                 </button>

@@ -85,13 +85,13 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
         {/* Daily Summary */}
         <div className="p-6 bg-gray-50 border-b border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="atlas-atlas-btn-primary p-4 border border-green-200">
+            <div className="atlas-atlas-atlas-btn-primary p-4 border border-green-200">
               <p className="text-sm text-green-600">Ingresos</p>
               <p className="text-xl font-bold text-green-700">
                 {formatEuro(dailyTotals.ingresos)}
               </p>
             </div>
-            <div className="atlas-atlas-btn-destructive p-4 border border-red-200">
+            <div className="atlas-atlas-atlas-btn-destructive p-4 border border-red-200">
               <p className="text-sm text-red-600">Gastos</p>
               <p className="text-xl font-bold text-red-700">
                 {formatEuro(dailyTotals.gastos)}
@@ -234,7 +234,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
             </p>
             <button
               onClick={onClose}
-              className="atlas-atlas-btn-primary px-4 py-2"
+              className="atlas-atlas-atlas-btn-primary px-4 py-2"
             >
               Cerrar
             </button>

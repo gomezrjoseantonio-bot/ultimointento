@@ -125,7 +125,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
-          <div className="atlas-atlas-btn-primary p-3">
+          <div className="atlas-atlas-atlas-btn-primary p-3">
             <Eye className="h-6 w-6 text-blue-600" />
           </div>
         </div>
@@ -266,7 +266,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
           <button
             onClick={handleDescribeImage}
             disabled={isProcessing}
-            className="atlas-atlas-btn-primary atlas-atlas-btn-primary disabled: px-6 py-2 font-medium flex items-center space-x-2"
+            className="atlas-atlas-atlas-btn-primary atlas-atlas-atlas-btn-primary disabled: px-6 py-2 font-medium flex items-center space-x-2"
           >
             {isProcessing ? (
               <>

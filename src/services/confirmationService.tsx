@@ -84,7 +84,7 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
           style={{ borderColor: 'var(--hz-neutral-300)' }}
         >
           <button
-            className="atlas-atlas-atlas-btn-secondary"
+            className="atlas-atlas-atlas-atlas-btn-secondary"
             onClick={() => {
               toast.dismiss(t.id);
               resolve(false);
@@ -93,7 +93,7 @@ export const showConfirmation = (options: ConfirmationOptions): Promise<boolean>
             {cancelText}
           </button>
           <button
-            className="atlas-atlas-atlas-btn-primary"
+            className="atlas-atlas-atlas-atlas-btn-primary"
             onClick={() => {
               toast.dismiss(t.id);
               resolve(true);

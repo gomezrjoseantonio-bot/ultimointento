@@ -494,7 +494,7 @@ const PresupuestoLineaModal: React.FC<PresupuestoLineaModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            className="atlas-atlas-btn-primary px-4 py-2"
+            className="atlas-atlas-atlas-btn-primary px-4 py-2"
           >
             {linea ? 'Actualizar' : 'Crear'}
           </button>

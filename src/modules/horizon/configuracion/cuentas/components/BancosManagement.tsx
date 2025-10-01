@@ -391,7 +391,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
   return (
     <div className="px-6">
       {/* ATLAS Info Banner */}
-      <div className="atlas-atlas-btn-primary mb-6 border border-atlas-blue/20 p-4">
+      <div className="atlas-atlas-atlas-btn-primary mb-6 border border-atlas-blue/20 p-4">
         <div className="flex items-start">
           <Info className="w-6 h-6 text-atlas-blue mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
           <div>
@@ -501,7 +501,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
             <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
               {/* Demo Data Warning */}
               {formErrors.demo && (
-                <div className="atlas-atlas-btn-destructive border border-red-200 p-4">
+                <div className="atlas-atlas-atlas-btn-destructive border border-red-200 p-4">
                   <div className="flex items-start">
                     <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" style={{ strokeWidth: 1.5 }} />
                     <div>
@@ -625,7 +625,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="atlas-atlas-btn-primary inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
+                  className="atlas-atlas-atlas-btn-primary inline-flex items-center px-4 py-2 bg-atlas-blue hover: disabled:opacity-50"
                 >
                   {saving ? (
                     <>Guardando...</>
@@ -676,7 +676,7 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
               <button
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="atlas-atlas-btn-destructive inline-flex items-center px-4 py-2 disabled:opacity-50"
+                className="atlas-atlas-atlas-btn-destructive inline-flex items-center px-4 py-2 disabled:opacity-50"
               >
                 {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
               </button>

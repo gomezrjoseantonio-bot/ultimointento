@@ -479,7 +479,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                 </div>
 
                 {formData.aportacionPeriodica.importe && (
-                  <div className="atlas-atlas-atlas-btn-primary p-3">
+                  <div className="atlas-atlas-atlas-atlas-btn-primary p-3">
                     <p className="text-sm text-blue-700">
                       <strong>Aportación anual estimada:</strong> {
                         (parseFloat(formData.aportacionPeriodica.importe) * 

@@ -132,7 +132,7 @@ const DesignBiblePage: React.FC = () => {
               </span>
               <button
                 onClick={() => window.close()}
-                className="atlas-atlas-atlas-btn-secondary"
+                className="atlas-atlas-atlas-atlas-btn-secondary"
               >
                 Cerrar
               </button>

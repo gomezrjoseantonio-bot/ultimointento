@@ -123,13 +123,13 @@ const Personal: React.FC = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4">Secciones Activas</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {config?.seccionesActivas.nomina && (
-            <div className="atlas-atlas-btn-primary flex items-center space-x-3 p-3">
+            <div className="atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
               <Banknote className="w-5 h-5 text-blue-600" />
               <span className="text-sm font-medium text-blue-900">Nómina configurada</span>
             </div>
           )}
           {config?.seccionesActivas.autonomo && (
-            <div className="atlas-atlas-btn-primary flex items-center space-x-3 p-3">
+            <div className="atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
               <User className="w-5 h-5 text-green-600" />
               <span className="text-sm font-medium text-green-900">Autónomo configurado</span>
             </div>

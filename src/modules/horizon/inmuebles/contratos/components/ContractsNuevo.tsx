@@ -623,7 +623,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   <button
                     type="button"
                     onClick={() => window.open('/cuenta/cuentas', '_blank')}
-                    className="text-sm atlas-btn-ghost-horizon underline"
+                    className="text-sm atlas-atlas-btn-ghost-horizon underline"
                   >
                     Ir a Cuenta → Configuración → Cuentas Bancarias
                   </button>
@@ -672,7 +672,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
             <button
               type="submit"
               disabled={loading}
-              className="text-sm font-medium atlas-atlas-btn-primary hover:bg-navy-800 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-sm font-medium atlas-atlas-atlas-btn-primary hover:bg-navy-800 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Guardando...' : (editingContract ? 'Actualizar contrato' : 'Crear contrato')}
             </button>

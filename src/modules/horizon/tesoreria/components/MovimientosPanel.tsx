@@ -384,7 +384,7 @@ const MovimientosPanel: React.FC = () => {
 
       {/* Reconciliation Panel */}
       {showReconciliation && potentialMatches.length > 0 && (
-        <div className="btn-secondary-horizon atlas-atlas-btn-primary ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-btn-primary ">
           <h3 className="text-lg font-semibold text-primary-900 mb-4">Sugerencias de conciliación</h3>
           <div className="space-y-4">
             {potentialMatches.map((match, index) => (
@@ -638,7 +638,7 @@ const MovimientosPanel: React.FC = () => {
                       </span>
                       {movement.linked_registro && (
                         <div className="mt-1">
-                          <span className="atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs text-primary-800">
+                          <span className="atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs text-primary-800">
                             <Link className="w-3 h-3 mr-1" />
                             {movement.linked_registro.type}
                           </span>

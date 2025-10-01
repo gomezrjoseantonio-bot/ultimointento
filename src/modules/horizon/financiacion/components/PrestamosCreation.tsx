@@ -415,7 +415,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
           <button
             onClick={handleSave}
             disabled={loading}
-            className="atlas-atlas-btn-primary inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium bg-atlas-blue hover: focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
+            className="atlas-atlas-atlas-btn-primary inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium bg-atlas-blue hover: focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

@@ -263,7 +263,7 @@ const UnifiedInboxPage: React.FC = () => {
               />
               <label
                 htmlFor="file-upload"
-                className="atlas-atlas-atlas-btn-primary shadow-sm text-sm font-medium cursor-pointer"
+                className="atlas-atlas-atlas-atlas-btn-primary shadow-sm text-sm font-medium cursor-pointer"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Subir documentos
@@ -272,7 +272,7 @@ const UnifiedInboxPage: React.FC = () => {
 
             {/* DEV Test button */}
             {isDev && (
-              <button className="atlas-atlas-atlas-btn-secondary shadow-sm" onClick={handleTestOCR}>
+              <button className="atlas-atlas-atlas-atlas-btn-secondary shadow-sm" onClick={handleTestOCR}>
                 🧪 Probar OCR (DEV)
               </button>
             )}
@@ -411,7 +411,7 @@ const UnifiedInboxPage: React.FC = () => {
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">Detalles del documento</h3>
-                  <button className="atlas-atlas-atlas-btn-ghost" onClick={() => setSelectedDocument(null)} aria-label="Cerrar detalles">
+                  <button className="atlas-atlas-atlas-atlas-btn-ghost" onClick={() => setSelectedDocument(null)} aria-label="Cerrar detalles">
                     <X className="h-5 w-5" />
                   </button>
                 </div>
@@ -530,12 +530,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
 
         <div className="flex flex-col space-y-2 ml-4">
-          <button className="atlas-atlas-atlas-btn-ghost" onClick={() => onSelect(document)} title="Ver detalles">
+          <button className="atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onSelect(document)} title="Ver detalles">
             <Eye className="h-4 w-4" />
           </button>
 
           {document.documentType === 'factura' && (
-            <button className="atlas-atlas-atlas-btn-ghost" onClick={() => onReprocessOCR(document.id)} title="Reprocesar OCR">
+            <button className="atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onReprocessOCR(document.id)} title="Reprocesar OCR">
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
@@ -544,7 +544,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           {document.documentType === 'extracto_bancario' &&
            document.status === 'revision_requerida' &&
            document.blockingReasons?.some(reason => reason.includes('cuenta')) && (
-            <button className="atlas-atlas-atlas-btn-ghost" onClick={() => onAssignAccount(document)} title="Asignar cuenta bancaria" style={{ color: 'var(--atlas-blue)' }}>
+            <button className="atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onAssignAccount(document)} title="Asignar cuenta bancaria" style={{ color: 'var(--atlas-blue)' }}>
               <CreditCard className="h-4 w-4" />
             </button>
           )}
@@ -628,7 +628,7 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
       {/* Actions */}
       <div className="space-y-2">
         {document.documentType === 'factura' && (
-          <button className="atlas-atlas-atlas-btn-secondary w-full justify-center" onClick={onReprocessOCR}>
+          <button className="atlas-atlas-atlas-atlas-btn-secondary w-full justify-center" onClick={onReprocessOCR}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Reprocesar OCR
           </button>
@@ -637,7 +637,7 @@ const DocumentDetails: React.FC<DocumentDetailsProps> = ({
 
       {/* Logs */}
       <div>
-        <button className="atlas-atlas-atlas-btn-ghost w-full justify-between text-sm font-medium" onClick={onToggleLogs}>
+        <button className="atlas-atlas-atlas-atlas-btn-ghost w-full justify-between text-sm font-medium" onClick={onToggleLogs}>
           <span>Registro de actividad</span>
           {showLogs ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
