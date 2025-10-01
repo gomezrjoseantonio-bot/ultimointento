@@ -5,10 +5,10 @@ import type { Document as StoredDocument } from '../../services/db';
 import { processZipFile, ZipProcessingResult } from '../../services/zipProcessingService';
 
 type DocumentMetadata = StoredDocument['metadata'];
-type InboxDocumentType = NonNullable<DocumentMetadata['tipo']> | 'Nómina';
+type FileClassificationTipo = NonNullable<DocumentMetadata['tipo']> | 'Nómina';
 
 interface FileClassification {
-  tipo: InboxDocumentType;
+  tipo: FileClassificationTipo;
   confidence: number;
 }
 
@@ -92,17 +92,21 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   // H8 Issue 2: Enhanced file type detection with OCR patterns
   const classifyFileOnUpload = (file: File): FileClassification => {
     const fileName = file.name.toLowerCase();
-    
+
     // Factura detection: PDF/JPG/PNG/ZIP/EML with invoice patterns
     if (isInvoiceFile(file, fileName)) {
       return { tipo: 'Factura', confidence: 0.85 };
     }
-    
+
     // Extracto detection: XLS/XLSX/CSV/TXT with bank patterns
     if (isBankStatementFile(file)) {
       return { tipo: 'Extracto bancario', confidence: 0.90 };
     }
-    
+
+    if (isPayrollFile(fileName)) {
+      return { tipo: 'Nómina', confidence: 0.8 };
+    }
+
     // Contrato detection: PDF with contract patterns
     if (isContractFile(file, fileName)) {
       return { tipo: 'Contrato', confidence: 0.75 };
@@ -149,20 +153,41 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const isBankStatementFile = (file: File): boolean => {
     const fileName = file.name.toLowerCase();
     const extension = fileName.split('.').pop();
-    
+
     // Check file extension
     if (!['csv', 'xlsx', 'xls'].includes(extension || '')) {
       return false;
     }
-    
+
     // Check file name patterns that suggest bank statements
     const bankStatementPatterns = [
       'extracto', 'movimientos', 'transacciones', 'bancario', 'cuenta',
-      'bbva', 'santander', 'ing', 'caixa', 'unicaja', 'openbank', 
+      'bbva', 'santander', 'ing', 'caixa', 'unicaja', 'openbank',
       'revolut', 'bankinter', 'sabadell', 'abanca'
     ];
-    
+
     return bankStatementPatterns.some(pattern => fileName.includes(pattern));
+  };
+
+  const isPayrollFile = (fileName: string): boolean => {
+    const normalizedFileName = fileName.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const extension = fileName.split('.').pop();
+
+    if (!['pdf', 'zip', 'eml'].includes(extension || '')) {
+      return false;
+    }
+
+    const payrollPatterns = [
+      'nomina',
+      'payroll',
+      'salary',
+      'salario',
+      'payslip',
+      'recibo de salarios',
+      'recibo salarial'
+    ];
+
+    return payrollPatterns.some(pattern => normalizedFileName.includes(pattern));
   };
 
   const handleFileUpload = async (files: FileList | null) => {
