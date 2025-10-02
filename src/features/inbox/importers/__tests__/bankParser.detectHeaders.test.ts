@@ -64,4 +64,24 @@ describe('BankParserService detectHeaders', () => {
     expect(movement?.date.toISOString()).toBe(new Date(2024, 0, 2).toISOString());
     expect(movement?.amount).toBe(150.5);
   });
+
+  it('prefers explicit "Amount" header over currency codes', () => {
+    const parser = new BankParserService();
+
+    const data = [
+      ['Fecha', 'EUR', 'Amount', 'Descripción'],
+      ['03/02/2024', 'EUR', '123,45', 'Pago factura']
+    ];
+
+    const headerResult = (parser as any).detectHeaders(data);
+
+    expect(headerResult.detectedColumns.amount).toBe(2);
+    expect(headerResult.fallbackRequired).toBe(false);
+
+    const movement = (parser as any).parseMovementRow(data[1], headerResult.detectedColumns);
+
+    expect(movement).not.toBeNull();
+    expect(movement?.amount).toBe(123.45);
+    expect(movement?.description).toBe('Pago factura');
+  });
 });
