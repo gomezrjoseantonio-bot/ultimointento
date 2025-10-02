@@ -727,7 +727,7 @@ export class BankParserService {
     if (!amountStr) return NaN;
     
     const result = parseEsNumber(amountStr);
-    return result.value || NaN;
+    return result.value ?? NaN;
   }
 
   /**

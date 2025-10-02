@@ -90,6 +90,11 @@ describe('Enhanced Bank Parser', () => {
         expect(result).toBeCloseTo(expected, 2);
       });
     });
+
+    test('should preserve zero amounts', () => {
+      const result = (bankParser as any).parseSpanishAmount('0,00');
+      expect(result).toBe(0);
+    });
   });
 
   describe('Duplicate Detection in Preview', () => {
