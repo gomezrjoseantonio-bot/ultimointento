@@ -154,16 +154,26 @@ export function parseAmountToCents(raw: string): ParseAmountResult {
       if (k >= 1 && k <= 2) {
         // Dot is decimal separator (e.g., 32.18 or 1,234.56)
         const integerPart = s.substring(0, lastDotIdx).replace(/[.,\s]/g, ''); // Remove thousands separators
-        
+
         if (!/^\d+$/.test(integerPart) || !/^\d{1,2}$/.test(afterDot)) {
           return { cents: 0, ok: false };
         }
-        
+
         value = parseFloat(`${integerPart}.${afterDot}`);
       } else {
         // Dot is thousands separator (e.g., 2.000 means 2000)
+        const dotGroups = s.split('.');
+
+        // Validate thousands grouping: every group after the first must have exactly 3 digits
+        if (
+          dotGroups.length > 1 &&
+          (!dotGroups.every((group) => /^\d+$/.test(group)) || dotGroups.slice(1).some((group) => group.length !== 3))
+        ) {
+          return { cents: 0, ok: false };
+        }
+
         const cleanNumber = s.replace(/\./g, '');
-        
+
         if (!/^\d+$/.test(cleanNumber)) {
           return { cents: 0, ok: false };
         }
