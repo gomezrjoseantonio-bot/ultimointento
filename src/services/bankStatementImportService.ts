@@ -16,6 +16,7 @@ import { safeMatch } from '../utils/safe';
 import toast from 'react-hot-toast';
 import { applyLearningRulesToNewMovements } from './movementLearningService';
 import { reclassifyMovementsOnBudgetUpdate } from './budgetReclassificationService';
+import { parseAmountToCents } from './universalBankImporter/localeAmount';
 
 // Logging prefix as specified in requirements
 const LOG_PREFIX = '[TESO-IMPORT]';
@@ -134,7 +135,7 @@ async function parseFileToRows(file: File): Promise<ParsedRow[]> {
   
   return parseResult.movements.map((movement, index) => {
     // Convert to standardized row format
-    const amount = typeof movement.amount === 'number' ? movement.amount : parseFloat(String(movement.amount));
+    const amount = normalizeMovementAmount(movement.amount, index);
     
     // Ensure UTC date format (YYYY-MM-DD)
     let valueDate: string;
@@ -164,6 +165,31 @@ async function parseFileToRows(file: File): Promise<ParsedRow[]> {
       originalIndex: index
     };
   });
+}
+
+function normalizeMovementAmount(amountValue: unknown, index: number): number {
+  if (typeof amountValue === 'number') {
+    if (!Number.isFinite(amountValue)) {
+      throw new Error(`Importe inválido en fila ${index + 1}: valor numérico no finito`);
+    }
+    return amountValue;
+  }
+
+  if (typeof amountValue === 'string') {
+    const trimmed = amountValue.trim();
+    if (!trimmed) {
+      throw new Error(`Importe inválido en fila ${index + 1}: valor vacío`);
+    }
+
+    const parsed = parseAmountToCents(trimmed);
+    if (!parsed.ok) {
+      throw new Error(`Importe inválido en fila ${index + 1}: "${amountValue}"`);
+    }
+
+    return parsed.cents / 100;
+  }
+
+  throw new Error(`Importe inválido en fila ${index + 1}: formato ${typeof amountValue}`);
 }
 
 /**

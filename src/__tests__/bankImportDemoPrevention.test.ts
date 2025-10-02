@@ -109,6 +109,47 @@ describe('bankStatementImportService - Demo Prevention', () => {
     expect(result.errors).toBe(1); // Invalid account
   });
 
+  it('should fail import when amount field looks like a date string', async () => {
+    mockDB.get.mockResolvedValue({
+      id: 1,
+      name: 'Cuenta Principal',
+      bank: 'BBVA',
+      iban: 'ES1234567890123456789012',
+      isActive: true
+    });
+
+    mockDB.getAll.mockResolvedValue([]);
+
+    const mockBankParser = require('../features/inbox/importers/bankParser').BankParserService;
+    mockBankParser.prototype.parseFile = jest.fn().mockResolvedValue({
+      success: true,
+      movements: [
+        {
+          date: '2024-01-01',
+          description: 'Ingreso real',
+          amount: '2024-01-01'
+        }
+      ]
+    });
+
+    const ibanService = require('../services/ibanAccountMatchingService');
+    ibanService.extractIBANFromBankStatement = jest.fn().mockResolvedValue({ iban_completo: 'ES1234567890123456789012' });
+    ibanService.matchAccountByIBAN = jest.fn().mockResolvedValue({ cuenta_id: 1, requiresSelection: false });
+
+    const options: ImportOptions = {
+      file: new File(['test'], 'bank-statement.csv', { type: 'text/csv' }),
+      destinationAccountId: 1,
+      usuario: 'test-user'
+    };
+
+    const result = await importBankStatement(options);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toBe(1);
+    expect(result.inserted).toBe(0);
+    expect(mockDB.add).not.toHaveBeenCalled();
+  });
+
   it('should accept valid movements for existing accounts', async () => {
     // Mock account exists
     mockDB.get.mockResolvedValue({
