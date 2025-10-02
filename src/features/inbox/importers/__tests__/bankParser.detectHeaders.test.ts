@@ -15,4 +15,19 @@ describe('BankParserService detectHeaders', () => {
     expect(result.detectedColumns.valueDate).toBe(3);
     expect(result.fallbackRequired).toBe(false);
   });
+
+  it('maps movimiento to description and saldo movimiento to balance', () => {
+    const parser = new BankParserService();
+
+    const data = [
+      ['Fecha', 'Movimiento', 'Importe', 'Saldo movimiento'],
+      ['01/01/2024', 'Ingreso nómina', '1.000,00', '5.000,00']
+    ];
+
+    const result = (parser as any).detectHeaders(data);
+
+    expect(result.detectedColumns.amount).toBe(2);
+    expect(result.detectedColumns.balance).toBe(3);
+    expect(result.detectedColumns.description).toBe(1);
+  });
 });

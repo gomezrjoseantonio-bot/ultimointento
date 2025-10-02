@@ -20,7 +20,7 @@ const COLUMN_ALIASES = {
   ],
   amount: [
     'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto',
-    'euros', 'eur', 'movimiento', 'saldo movimiento', 'amount'
+    'euros', 'eur', 'amount'
   ],
   cargo: [
     'cargo', 'cargos', 'debito', 'débito', 'debe', 'debit', 'paid out'
@@ -32,11 +32,12 @@ const COLUMN_ALIASES = {
     'concepto', 'descripcion', 'descripción', 'detalle', 'descripcion ampliada',
     'detalle operacion', 'detalle operación', 'description', 'observaciones',
     'motivo', 'referencia', 'concepto operacion', 'concepto operación',
+    'movimiento',
     'description' // Revolut
   ],
   balance: [
     'saldo', 'saldo disponible', 'saldo tras', 'saldo después', 'balance',
-    'saldo final', 'saldo resultante', 'saldo actual'
+    'saldo final', 'saldo resultante', 'saldo actual', 'saldo movimiento'
   ],
   currency: [
     'divisa', 'moneda', 'currency', 'coin', 'curr'
@@ -467,12 +468,30 @@ export class BankParserService {
           }
         }
       }
-      
+
       // Valid header row must have at least 3 matches (increased threshold) and include date + amount info
       const hasDateInfo = detectedColumns.date !== undefined || detectedColumns.valueDate !== undefined;
-      const hasAmountInfo = detectedColumns.amount !== undefined || 
+      const hasAmountInfo = detectedColumns.amount !== undefined ||
                            (detectedColumns.cargo !== undefined && detectedColumns.abono !== undefined);
-      
+
+      if (
+        detectedColumns.amount !== undefined &&
+        detectedColumns.description !== undefined
+      ) {
+        const descriptionHeader = normalizedRow[detectedColumns.description];
+        const movimientoText = this.normalizeText('movimiento');
+
+        if (descriptionHeader === movimientoText) {
+          const amountHeaderIndex = normalizedRow.findIndex(cell =>
+            COLUMN_ALIASES.amount.some(alias => this.normalizeText(alias) === cell)
+          );
+
+          if (amountHeaderIndex !== -1) {
+            detectedColumns.amount = amountHeaderIndex;
+          }
+        }
+      }
+
       if (score >= 3 && hasDateInfo && hasAmountInfo) {
         return {
           headerRow: row,
