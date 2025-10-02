@@ -43,4 +43,25 @@ describe('BankParserService detectHeaders', () => {
     expect(result.detectedColumns.balance).toBe(3);
     expect(result.detectedColumns.description).toBe(1);
   });
+
+  it('falls back to valueDate when only "Fecha valor" is present', () => {
+    const parser = new BankParserService();
+
+    const data = [
+      ['Fecha valor', 'Concepto', 'Importe'],
+      ['02/01/2024', 'Transferencia recibida', '150,50']
+    ];
+
+    const headerResult = (parser as any).detectHeaders(data);
+
+    expect(headerResult.detectedColumns.valueDate).toBe(0);
+    expect(headerResult.detectedColumns.date).toBe(0);
+    expect(headerResult.fallbackRequired).toBe(false);
+
+    const movement = (parser as any).parseMovementRow(data[1], headerResult.detectedColumns);
+
+    expect(movement).not.toBeNull();
+    expect(movement?.date.toISOString()).toBe(new Date(2024, 0, 2).toISOString());
+    expect(movement?.amount).toBe(150.5);
+  });
 });
