@@ -442,6 +442,7 @@ export class BankParserService {
       
       const normalizedRow = rowData.map(cell => this.normalizeText(cell));
       const detectedColumns: Record<string, number> = {};
+      const matchQuality: Record<string, number> = {};
       let score = 0;
       
       // Try to match columns with aliases
@@ -456,12 +457,17 @@ export class BankParserService {
             break;
           }
 
-          const isAliasMatch = aliases.some(alias => this.normalizeText(alias) === cellText);
+          const aliasIndex = aliases.findIndex(alias => this.normalizeText(alias) === cellText);
 
-          if (isAliasMatch) {
-            if (detectedColumns[columnType] === undefined) {
+          if (aliasIndex !== -1) {
+            const previousQuality = matchQuality[columnType];
+
+            if (previousQuality === undefined || aliasIndex < previousQuality) {
+              if (previousQuality === undefined) {
+                score++;
+              }
               detectedColumns[columnType] = col;
-              score++;
+              matchQuality[columnType] = aliasIndex;
             }
             matched = true;
             break;
@@ -488,6 +494,12 @@ export class BankParserService {
 
           if (amountHeaderIndex !== -1) {
             detectedColumns.amount = amountHeaderIndex;
+            const matchedAliasIndex = COLUMN_ALIASES.amount.findIndex(alias =>
+              this.normalizeText(alias) === normalizedRow[amountHeaderIndex]
+            );
+            if (matchedAliasIndex !== -1) {
+              matchQuality.amount = matchedAliasIndex;
+            }
           }
         }
       }

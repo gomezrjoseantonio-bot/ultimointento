@@ -16,6 +16,19 @@ describe('BankParserService detectHeaders', () => {
     expect(result.fallbackRequired).toBe(false);
   });
 
+  it('prefers higher priority amount alias over later matches', () => {
+    const parser = new BankParserService();
+
+    const data = [
+      ['Fecha', 'Cantidad', 'Importe', 'Concepto'],
+      ['01/01/2024', '100,00', '200,00', 'Ingreso']
+    ];
+
+    const result = (parser as any).detectHeaders(data);
+
+    expect(result.detectedColumns.amount).toBe(2);
+  });
+
   it('maps movimiento to description and saldo movimiento to balance', () => {
     const parser = new BankParserService();
 
