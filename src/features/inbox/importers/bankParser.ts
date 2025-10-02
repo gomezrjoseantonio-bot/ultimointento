@@ -493,10 +493,19 @@ export class BankParserService {
       }
 
       if (score >= 3 && hasDateInfo && hasAmountInfo) {
+        const normalizedDetectedColumns = { ...detectedColumns };
+
+        if (
+          normalizedDetectedColumns.date === undefined &&
+          normalizedDetectedColumns.valueDate !== undefined
+        ) {
+          normalizedDetectedColumns.date = normalizedDetectedColumns.valueDate;
+        }
+
         return {
           headerRow: row,
           dataStartRow: row + 1,
-          detectedColumns,
+          detectedColumns: normalizedDetectedColumns,
           confidence: Math.min(score / 6, 1), // Max confidence at 6+ matches
           fallbackRequired: false
         };
@@ -594,7 +603,7 @@ export class BankParserService {
   ): ParsedMovement | null {
     
     // Extract required fields
-    const dateCol = columns.date;
+    const dateCol = columns.date !== undefined ? columns.date : columns.valueDate;
     const descCol = columns.description;
     
     if (dateCol === undefined) {
