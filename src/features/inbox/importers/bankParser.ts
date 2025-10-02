@@ -468,6 +468,11 @@ export class BankParserService {
         }
       }
       
+      // If only valueDate was detected, also treat it as the main date column
+      if (detectedColumns.date === undefined && detectedColumns.valueDate !== undefined) {
+        detectedColumns.date = detectedColumns.valueDate;
+      }
+
       // Valid header row must have at least 3 matches (increased threshold) and include date + amount info
       const hasDateInfo = detectedColumns.date !== undefined || detectedColumns.valueDate !== undefined;
       const hasAmountInfo = detectedColumns.amount !== undefined || 
@@ -575,9 +580,9 @@ export class BankParserService {
   ): ParsedMovement | null {
     
     // Extract required fields
-    const dateCol = columns.date;
+    const dateCol = columns.date ?? columns.valueDate;
     const descCol = columns.description;
-    
+
     if (dateCol === undefined) {
       return null; // Missing required date column
     }
