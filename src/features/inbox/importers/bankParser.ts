@@ -20,7 +20,7 @@ const COLUMN_ALIASES = {
   ],
   amount: [
     'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto',
-    'euros', 'eur', 'amount'
+    'amount', 'euros', 'eur'
   ],
   cargo: [
     'cargo', 'cargos', 'debito', 'débito', 'debe', 'debit', 'paid out'
