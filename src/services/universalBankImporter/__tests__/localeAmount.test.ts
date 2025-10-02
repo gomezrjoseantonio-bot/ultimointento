@@ -218,6 +218,18 @@ describe('parseAmountToCents', () => {
     });
   });
 
+  describe('Invalid dotted inputs', () => {
+    test.each([
+      '02.10.2025',
+      '15.08.2024',
+      '1.12.2023',
+      '31.12.2024',
+    ])('Rejects dotted date-like input "%s"', (input) => {
+      const result = parseAmountToCents(input);
+      expect(result.ok).toBe(false);
+    });
+  });
+
   describe('Ambiguous Cases - Rightmost Separator is Decimal', () => {
     test('Both separators: "1.234,56" → comma is decimal', () => {
       const result = parseAmountToCents('1.234,56');
