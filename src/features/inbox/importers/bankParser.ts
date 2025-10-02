@@ -10,7 +10,7 @@ import { safeMatch } from '../../../utils/safe';
 const COLUMN_ALIASES = {
   // Order matters - more specific patterns first
   valueDate: [
-    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor'
+    'fecha valor', 'f valor', 'value date', 'f. valor', 'fecha de valor', 'valor'
   ],
   date: [
     'fecha', 'fecha operacion', 'fecha operación', 
@@ -19,7 +19,7 @@ const COLUMN_ALIASES = {
     'completed date' // Revolut
   ],
   amount: [
-    'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto', 'valor', 
+    'importe', 'importe (€)', 'importe eur', 'cantidad', 'monto',
     'euros', 'eur', 'movimiento', 'saldo movimiento', 'amount'
   ],
   cargo: [
@@ -451,9 +451,17 @@ export class BankParserService {
         let matched = false;
         
         for (const [columnType, aliases] of Object.entries(COLUMN_ALIASES)) {
-          if (!matched && aliases.some(alias => this.normalizeText(alias) === cellText)) {
-            detectedColumns[columnType] = col;
-            score++;
+          if (matched) {
+            break;
+          }
+
+          const isAliasMatch = aliases.some(alias => this.normalizeText(alias) === cellText);
+
+          if (isAliasMatch) {
+            if (detectedColumns[columnType] === undefined) {
+              detectedColumns[columnType] = col;
+              score++;
+            }
             matched = true;
             break;
           }
