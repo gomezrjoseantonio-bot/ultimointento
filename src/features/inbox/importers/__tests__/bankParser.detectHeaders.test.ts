@@ -44,6 +44,19 @@ describe('BankParserService detectHeaders', () => {
     expect(result.detectedColumns.description).toBe(1);
   });
 
+  it('does not downgrade importe amount mapping when movimiento column is present', () => {
+    const parser = new BankParserService();
+
+    const data = [
+      ['Fecha', 'Movimiento', 'Cantidad', 'Importe'],
+      ['01/01/2024', 'Ingreso nómina', '1.000,00', '2.000,00']
+    ];
+
+    const result = (parser as any).detectHeaders(data);
+
+    expect(result.detectedColumns.amount).toBe(3);
+  });
+
   it('falls back to valueDate when only "Fecha valor" is present', () => {
     const parser = new BankParserService();
 

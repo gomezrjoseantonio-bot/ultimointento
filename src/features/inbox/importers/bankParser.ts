@@ -488,17 +488,29 @@ export class BankParserService {
         const movimientoText = this.normalizeText('movimiento');
 
         if (descriptionHeader === movimientoText) {
-          const amountHeaderIndex = normalizedRow.findIndex(cell =>
-            COLUMN_ALIASES.amount.some(alias => this.normalizeText(alias) === cell)
-          );
+          let bestAmountCandidate: { index: number; aliasIndex: number } | null = null;
 
-          if (amountHeaderIndex !== -1) {
-            detectedColumns.amount = amountHeaderIndex;
-            const matchedAliasIndex = COLUMN_ALIASES.amount.findIndex(alias =>
-              this.normalizeText(alias) === normalizedRow[amountHeaderIndex]
+          for (let col = 0; col < normalizedRow.length; col++) {
+            if (col === detectedColumns.description) continue;
+
+            const cellText = normalizedRow[col];
+            const aliasIndex = COLUMN_ALIASES.amount.findIndex(
+              alias => this.normalizeText(alias) === cellText
             );
-            if (matchedAliasIndex !== -1) {
-              matchQuality.amount = matchedAliasIndex;
+
+            if (aliasIndex !== -1) {
+              if (!bestAmountCandidate || aliasIndex < bestAmountCandidate.aliasIndex) {
+                bestAmountCandidate = { index: col, aliasIndex };
+              }
+            }
+          }
+
+          if (bestAmountCandidate) {
+            const currentQuality = matchQuality.amount ?? Number.POSITIVE_INFINITY;
+
+            if (bestAmountCandidate.aliasIndex < currentQuality) {
+              detectedColumns.amount = bestAmountCandidate.index;
+              matchQuality.amount = bestAmountCandidate.aliasIndex;
             }
           }
         }
