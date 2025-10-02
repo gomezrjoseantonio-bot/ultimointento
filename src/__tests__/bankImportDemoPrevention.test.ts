@@ -9,6 +9,9 @@ import { initDB } from '../services/db';
 jest.mock('../services/db');
 jest.mock('../features/inbox/importers/bankParser');
 jest.mock('../services/ibanAccountMatchingService');
+jest.mock('../services/demoDataCleanupService', () => ({
+  isDemoMovement: jest.fn().mockReturnValue(false)
+}));
 
 describe('bankStatementImportService - Demo Prevention', () => {
   let mockDB: any;
@@ -109,7 +112,11 @@ describe('bankStatementImportService - Demo Prevention', () => {
     expect(result.errors).toBe(1); // Invalid account
   });
 
-  it('should fail import when amount field looks like a date string', async () => {
+  it.each([
+    '2024-01-01',
+    '02/10/2025',
+    '02.10.2025'
+  ])('should fail import when amount field looks like a date string (%s)', async (dateLikeAmount) => {
     mockDB.get.mockResolvedValue({
       id: 1,
       name: 'Cuenta Principal',
@@ -121,16 +128,17 @@ describe('bankStatementImportService - Demo Prevention', () => {
     mockDB.getAll.mockResolvedValue([]);
 
     const mockBankParser = require('../features/inbox/importers/bankParser').BankParserService;
-    mockBankParser.prototype.parseFile = jest.fn().mockResolvedValue({
+    const parseFileMock = jest.fn().mockResolvedValue({
       success: true,
       movements: [
         {
           date: '2024-01-01',
           description: 'Ingreso real',
-          amount: '2024-01-01'
+          amount: dateLikeAmount
         }
       ]
     });
+    mockBankParser.prototype.parseFile = parseFileMock;
 
     const ibanService = require('../services/ibanAccountMatchingService');
     ibanService.extractIBANFromBankStatement = jest.fn().mockResolvedValue({ iban_completo: 'ES1234567890123456789012' });
@@ -148,6 +156,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
     expect(result.errors).toBe(1);
     expect(result.inserted).toBe(0);
     expect(mockDB.add).not.toHaveBeenCalled();
+    expect(parseFileMock).toHaveBeenCalledTimes(1);
   });
 
   it('should accept valid movements for existing accounts', async () => {
@@ -171,7 +180,7 @@ describe('bankStatementImportService - Demo Prevention', () => {
         {
           date: '2024-01-01',
           description: 'Valid payment to supplier',
-          amount: 100
+          amount: 87.65
         }
       ]
     });
