@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { ParsedMovement } from '../types/bankProfiles';
 
 /**
@@ -18,7 +19,12 @@ export function generateMovementHash(movement: ParsedMovement): string {
   const hashString = `${dateStr}|${amountStr}|${normalizedDescription}`;
   
   // Simple hash function (could be replaced with crypto.subtle.digest in production)
-  return btoa(hashString).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+  const base64Encoded =
+    typeof btoa === 'function'
+      ? btoa(hashString)
+      : Buffer.from(hashString, 'utf-8').toString('base64');
+
+  return base64Encoded.replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
 }
 
 /**
