@@ -61,6 +61,7 @@ const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'))
 const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
 const ContratosNuevoPage = React.lazy(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
 const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
+const FirmasPlantillas = React.lazy(() => import('./modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
 const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
 const TareasPendientes = React.lazy(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
@@ -402,7 +403,7 @@ function App() {
               } />
               <Route path="plantillas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <FirmasPendientes />
+                  <FirmasPlantillas />
                 </React.Suspense>
               } />
             </Route>
