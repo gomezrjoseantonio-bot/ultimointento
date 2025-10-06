@@ -1,5 +1,7 @@
 import { initDB, Contract, RentaMensual } from './db';
 
+type SignatureMetadata = NonNullable<Contract['firma']>;
+
 // Enhanced contract management service for CONTRATOS module
 
 // Helper function to suggest indexation based on start date
@@ -45,7 +47,7 @@ const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['docum
   };
 };
 
-const normaliseSignatureMetadata = (contract: Partial<Contract>): Contract['firma'] => {
+const normaliseSignatureMetadata = (contract: Partial<Contract>): SignatureMetadata => {
   const metodo = contract.firma?.metodo || 'manual';
   const cleanedEmails = (contract.firma?.emails || [])
     .map(email => email?.trim())
@@ -265,11 +267,12 @@ export const updateSignatureStatus = async (
     throw new Error('Contract not found');
   }
 
-  const firmaActual = contract.firma || normaliseSignatureMetadata(contract);
+  const firmaActual: SignatureMetadata = contract.firma ?? normaliseSignatureMetadata(contract);
 
   await updateContract(id, {
     firma: {
       ...firmaActual,
+      metodo: firmaActual.metodo ?? 'manual',
       estado,
       fechaEnvio: options.fechaEnvio ?? (estado === 'enviado' ? new Date().toISOString() : firmaActual.fechaEnvio),
       fechaFirma: options.fechaFirma ?? (estado === 'firmado' ? new Date().toISOString() : firmaActual.fechaFirma),
