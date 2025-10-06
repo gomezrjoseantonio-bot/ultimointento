@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
-import { Calculator, TrendingUp, BarChart3 } from 'lucide-react';
+import { BarChart3, Calculator, LayoutDashboard, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 
 // Direct imports for internal navigation
 import ProyeccionBase from '../base/ProyeccionBase';
 import ProyeccionSimulaciones from '../simulaciones/ProyeccionSimulaciones';
 import ProyeccionComparativas from '../comparativas/ProyeccionComparativas';
+import ScenarioManagement from './components/ScenarioManagement';
 
-type EscenarioTab = 'base' | 'simulaciones' | 'comparativas';
+type EscenarioTab = 'gestion' | 'base' | 'simulaciones' | 'comparativas';
 
 const ProyeccionEscenarios: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<EscenarioTab>('base');
+  const [activeTab, setActiveTab] = useState<EscenarioTab>('gestion');
 
   const tabs = [
+    {
+      id: 'gestion' as const,
+      label: 'Gestión',
+      icon: LayoutDashboard,
+    },
     {
       id: 'base' as const,
       label: 'Base',
@@ -32,6 +38,8 @@ const ProyeccionEscenarios: React.FC = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'gestion':
+        return <ScenarioManagement />;
       case 'base':
         return <ProyeccionBase isEmbedded={true} />;
       case 'simulaciones':
@@ -45,6 +53,8 @@ const ProyeccionEscenarios: React.FC = () => {
 
   const getSubtitle = () => {
     switch (activeTab) {
+      case 'gestion':
+        return 'Escenarios accionables con métricas, planes y stress tests listos para ejecutar';
       case 'base':
         return 'Línea base a 20 años derivada de contratos y gastos recurrentes';
       case 'simulaciones':
