@@ -36,7 +36,7 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
       const formattedNet = formatCurrency(netAmount);
 
       // Calculate percentage change (mock)
-      const mockPreviousPeriod = excludePersonal ? 3120.45 : 2890.45;
+      const mockPreviousPeriod: number = excludePersonal ? 3120.45 : 2890.45;
       const percentageChange = mockPreviousPeriod === 0 ? 0 : ((netAmount - mockPreviousPeriod) / mockPreviousPeriod) * 100;
       const formattedPercentage = new Intl.NumberFormat('es-ES', {
         style: 'percent',
