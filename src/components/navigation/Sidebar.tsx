@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { X, Sunrise, Activity, BookOpen } from 'lucide-react';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
 
 interface SidebarProps {
@@ -92,20 +92,50 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         <nav className="px-2 mt-5 flex-1 overflow-y-auto">
           <div className="space-y-1">
             {/* HORIZON — Supervisión */}
-            <div className={`px-2 py-2 ${themeClasses.separatorText}`}>
-              HORIZON — Supervisión
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 border-t border-[--atlas-line]" role="separator" aria-label="Horizon section">
+              <Sunrise className="w-4 h-4 text-[--atlas-blue]" strokeWidth={1.5} aria-hidden="true" />
+              <span
+                className="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-[--atlas-blue]"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--atlas-blue) 10%, transparent)",
+                  border: "1px solid",
+                  borderColor: "color-mix(in srgb, var(--atlas-blue) 30%, transparent)"
+                }}
+              >
+                Horizon
+              </span>
             </div>
             {horizonItems.map(renderNavItem)}
             
             {/* PULSE — Gestión */}
-            <div className={`px-2 py-2 mt-4 ${themeClasses.separatorText}`}>
-              PULSE — Gestión
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 border-t border-[--atlas-line]" role="separator" aria-label="Pulse section">
+              <Activity className="w-4 h-4 text-[--atlas-teal]" strokeWidth={1.5} aria-hidden="true" />
+              <span
+                className="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-[--atlas-teal]"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--atlas-teal) 10%, transparent)",
+                  border: "1px solid",
+                  borderColor: "color-mix(in srgb, var(--atlas-teal) 30%, transparent)"
+                }}
+              >
+                Pulse
+              </span>
             </div>
             {pulseItems.map(renderNavItem)}
             
             {/* DOCUMENTACIÓN */}
-            <div className={`px-2 py-2 mt-4 ${themeClasses.separatorText}`}>
-              DOCUMENTACIÓN
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 border-t border-[--atlas-line]" role="separator" aria-label="Documentación section">
+              <BookOpen className="w-4 h-4 text-[--text-gray]" strokeWidth={1.5} aria-hidden="true" />
+              <span
+                className="inline-flex items-center rounded-full px-2 py-[2px] text-[10px] font-semibold uppercase tracking-wide text-[--text-gray]"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--bg) 60%, white)",
+                  border: "1px solid",
+                  borderColor: "var(--atlas-line)"
+                }}
+              >
+                Docs
+              </span>
             </div>
             {documentationItems.map(renderNavItem)}
           </div>
