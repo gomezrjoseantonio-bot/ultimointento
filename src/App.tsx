@@ -26,7 +26,7 @@ const LoadingSpinner = () => (
 
 // Lazy-loaded components for route-based code splitting
 // Core dashboard with charts - lazy load to reduce main bundle
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const PanelPage = React.lazy(() => import('./pages/PanelPage'));
 
 // Inbox pages - lazy load to reduce main bundle
 const InboxAtlasHorizon = React.lazy(() => import('./pages/InboxAtlasHorizon'));
@@ -192,7 +192,7 @@ function App() {
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <Dashboard />
+                <PanelPage />
               </React.Suspense>
             } />
             <Route path="inbox" element={
