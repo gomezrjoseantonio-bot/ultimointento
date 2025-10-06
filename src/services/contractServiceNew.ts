@@ -1,5 +1,7 @@
 import { initDB, Contract, RentaMensual } from './db';
 
+type SignatureMetadata = NonNullable<Contract['firma']>;
+
 // Enhanced contract management service for CONTRATOS module
 
 // Helper function to suggest indexation based on start date
@@ -21,37 +23,76 @@ export const calculateHabitualEndDate = (fechaInicio: string): string => {
 export const calculateDuration = (fechaInicio: string, fechaFin: string): string => {
   const start = new Date(fechaInicio);
   const end = new Date(fechaFin);
-  
+
   const diffTime = Math.abs(end.getTime() - start.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   const months = Math.floor(diffDays / 30);
   const days = diffDays % 30;
-  
+
   return `${months}m ${days}d`;
+};
+
+const normaliseDocumentMetadata = (contract: Partial<Contract>): Contract['documentoContrato'] => {
+  const plantillaBase = contract.documentoContrato?.plantilla
+    || (contract.unidadTipo === 'habitacion' ? 'habitacion'
+    : contract.modalidad === 'vacacional' ? 'vacacional'
+    : contract.modalidad === 'temporada' ? 'temporada' : 'habitual');
+
+  return {
+    plantilla: plantillaBase,
+    incluirInventario: contract.documentoContrato?.incluirInventario ?? true,
+    incluirCertificadoEnergetico: contract.documentoContrato?.incluirCertificadoEnergetico ?? false,
+    clausulasAdicionales: contract.documentoContrato?.clausulasAdicionales?.trim() || undefined,
+  };
+};
+
+const normaliseSignatureMetadata = (contract: Partial<Contract>): SignatureMetadata => {
+  const metodo = contract.firma?.metodo || 'manual';
+  const cleanedEmails = (contract.firma?.emails || [])
+    .map(email => email?.trim())
+    .filter((email): email is string => Boolean(email));
+
+  const estadoBase = metodo === 'digital'
+    ? (contract.firma?.estado || (cleanedEmails.length > 0 ? 'preparado' : 'borrador'))
+    : 'borrador';
+
+  return {
+    metodo,
+    proveedor: contract.firma?.proveedor || (metodo === 'digital' ? 'signaturit' : undefined),
+    emails: cleanedEmails,
+    enviarCopiaPropietario: contract.firma?.enviarCopiaPropietario ?? true,
+    emailPropietario: contract.firma?.emailPropietario?.trim() || undefined,
+    estado: contract.firma?.estado || estadoBase,
+    fechaEnvio: contract.firma?.fechaEnvio,
+    fechaFirma: contract.firma?.fechaFirma,
+  };
 };
 
 export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> => {
   const db = await initDB();
   const now = new Date().toISOString();
-  
+
   // Ensure default values for required fields
   const enhancedContract: Omit<Contract, 'id'> = {
     ...contract,
     // Set defaults for backward compatibility
-    status: contract.estadoContrato === 'activo' ? 'active' : 
+    status: contract.estadoContrato === 'activo' ? 'active' :
            contract.estadoContrato === 'finalizado' ? 'terminated' : 'upcoming',
     documents: contract.documents || [],
-    
+
     // Ensure default grace period
     margenGraciaDias: contract.margenGraciaDias || 5,
-    
+
     // Initialize empty historical indexations
     historicoIndexaciones: contract.historicoIndexaciones || [],
-    
+
     // Set default deposit status
     fianzaEstado: contract.fianzaEstado || 'retenida',
-    
+
+    documentoContrato: normaliseDocumentMetadata(contract),
+    firma: normaliseSignatureMetadata(contract),
+
     createdAt: now,
     updatedAt: now,
   };
@@ -72,9 +113,24 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
     throw new Error('Contract not found');
   }
   
+  const documentoContrato = normaliseDocumentMetadata({
+    ...existing,
+    documentoContrato: {
+      ...(existing.documentoContrato || {}),
+      ...(updates.documentoContrato || {}),
+    },
+  });
+
+  const firma = normaliseSignatureMetadata({
+    ...existing,
+    firma: { ...(existing.firma || {}), ...(updates.firma || {}) },
+  });
+
   const updatedContract: Contract = {
     ...existing,
     ...updates,
+    documentoContrato,
+    firma,
     updatedAt: new Date().toISOString(),
   };
   
@@ -199,8 +255,64 @@ export const getRentaMensual = async (contratoId: number): Promise<RentaMensual[
   return allEntries.filter(entry => entry.contratoId === contratoId);
 };
 
+export type SignatureStatus = 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';
+
+export const updateSignatureStatus = async (
+  id: number,
+  estado: SignatureStatus,
+  options: { fechaEnvio?: string; fechaFirma?: string; emails?: string[]; emailPropietario?: string } = {}
+): Promise<void> => {
+  const contract = await getContract(id);
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  const firmaActual: SignatureMetadata = contract.firma ?? normaliseSignatureMetadata(contract);
+
+  await updateContract(id, {
+    firma: {
+      ...firmaActual,
+      metodo: firmaActual.metodo ?? 'manual',
+      estado,
+      fechaEnvio: options.fechaEnvio ?? (estado === 'enviado' ? new Date().toISOString() : firmaActual.fechaEnvio),
+      fechaFirma: options.fechaFirma ?? (estado === 'firmado' ? new Date().toISOString() : firmaActual.fechaFirma),
+      emails: options.emails || firmaActual.emails,
+      emailPropietario: options.emailPropietario ?? firmaActual.emailPropietario,
+    }
+  });
+};
+
+export const sendContractForSignature = async (id: number, emails?: string[]): Promise<void> => {
+  const contract = await getContract(id);
+  if (!contract) {
+    throw new Error('Contract not found');
+  }
+
+  if ((contract.firma?.metodo || 'manual') !== 'digital') {
+    throw new Error('Solo se pueden enviar a firma digital los contratos con método digital');
+  }
+
+  const destinatarios = emails && emails.length > 0 ? emails : contract.firma?.emails || [];
+
+  if (destinatarios.length === 0) {
+    throw new Error('Debe especificar al menos un correo electrónico para la firma digital');
+  }
+
+  await updateSignatureStatus(id, 'enviado', {
+    fechaEnvio: new Date().toISOString(),
+    emails: destinatarios,
+    emailPropietario: contract.firma?.emailPropietario,
+  });
+};
+
+export const markContractAsSigned = async (id: number, fechaFirma?: string): Promise<void> => {
+  await updateSignatureStatus(id, 'firmado', {
+    fechaFirma: fechaFirma ? new Date(fechaFirma).toISOString() : new Date().toISOString(),
+  });
+};
+
 // Calculate rent periods for new Contract interface
-interface RentPeriodNew {
+export interface RentPeriodNew {
   periodo: string; // YYYY-MM
   importe: number;
   esProrrata: boolean;
@@ -265,6 +377,11 @@ export const calculateRentPeriodsNew = (contract: Omit<Contract, 'id' | 'created
   return periods;
 };
 
+export const calculateRentPeriodsFromContract = (contract: Contract): RentPeriodNew[] => {
+  const { id, createdAt, updatedAt, ...rest } = contract;
+  return calculateRentPeriodsNew(rest);
+};
+
 const formatYearMonth = (date: Date): string => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -317,16 +434,46 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
   if (!contract.fechaInicio) {
     errors.push('La fecha de inicio es obligatoria');
   }
-  
+
   if (!contract.fechaFin) {
     errors.push('La fecha de fin es obligatoria');
   }
-  
+
+  if (!contract.modalidad || !['habitual', 'temporada', 'vacacional'].includes(contract.modalidad)) {
+    errors.push('Debe seleccionar una modalidad válida (habitual, temporada o vacacional)');
+  }
+
+  if (!contract.documentoContrato?.plantilla) {
+    errors.push('Seleccione una plantilla de contrato para generar el PDF');
+  }
+
+  if (!contract.firma?.metodo) {
+    errors.push('Seleccione el método de firma preferido');
+  }
+
+  if (contract.firma?.metodo === 'digital') {
+    const destinatarios = (contract.firma.emails || []).filter(email => Boolean(email && email.trim()));
+    if (destinatarios.length === 0) {
+      errors.push('Debe indicar al menos un correo electrónico para la firma digital');
+    }
+    if (!contract.firma.proveedor) {
+      errors.push('Seleccione la solución de firma digital que se utilizará');
+    }
+  }
+
   if (contract.fechaInicio && contract.fechaFin) {
     const start = new Date(contract.fechaInicio);
     const end = new Date(contract.fechaFin);
     if (end <= start) {
       errors.push('La fecha de fin debe ser posterior a la fecha de inicio');
+    }
+
+    if (contract.modalidad === 'vacacional') {
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 180) {
+        errors.push('Los contratos vacacionales no deberían exceder los 6 meses de duración');
+      }
     }
   }
   
