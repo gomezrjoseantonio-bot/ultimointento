@@ -5,7 +5,7 @@ import { KPIsBlockOptions } from '../../services/dashboardService';
 import { kpiService } from '../../services/kpiService';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className }) => {
+const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const { currentModule } = useTheme();
   const [data, setData] = useState<DashboardBlockData>({
     value: 0,
@@ -16,35 +16,83 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
 
   const options = config.options as KPIsBlockOptions;
 
+  const getMetricDisplayName = useCallback((metricId: string): string => {
+    const nameMap: Record<string, string> = {
+      'rentabilidad-neta': 'Rentabilidad neta',
+      'beneficio-neto-mes': 'Cashflow mensual',
+      'ocupacion': 'Ocupación',
+      'rentabilidad-bruta': 'Rentabilidad bruta',
+      'cap-rate': 'Cap Rate',
+      'cash-on-cash': 'Cash-on-Cash'
+    };
+    return nameMap[metricId] || metricId;
+  }, []);
+
+  const getMockValueForMetric = useCallback(
+    (metricId: string): string => {
+      const baseMap: Record<string, string> = {
+        'rentabilidad-neta': excludePersonal ? '3,98%' : '4,25%',
+        'beneficio-neto-mes': excludePersonal ? '1.986,40 €' : '2.456,78 €',
+        'ocupacion': excludePersonal ? '92,1%' : '87,5%',
+        'rentabilidad-bruta': excludePersonal ? '6,12%' : '6,85%',
+        'cap-rate': excludePersonal ? '4,9%' : '5,2%',
+        'cash-on-cash': excludePersonal ? '3,4%' : '3,8%'
+      };
+      return baseMap[metricId] || '--';
+    },
+    [excludePersonal]
+  );
+
   const loadKPIData = useCallback(async () => {
     try {
       setData(prev => ({ ...prev, isLoading: true, error: undefined }));
 
       if (options.source === 'fixed-preset') {
         // Fixed KPIs for Preset B
-        const fixedKPIs = [
-          { 
-            name: 'Rentabilidad neta', 
-            value: '4,25%', 
-            trend: 'up' as const,
-            rawValue: 4.25 
-          },
-          { 
-            name: 'Cashflow mensual', 
-            value: '2.456,78 €', 
-            trend: 'up' as const,
-            rawValue: 2456.78 
-          },
-          { 
-            name: 'Ocupación', 
-            value: '87,5%', 
-            trend: 'neutral' as const,
-            rawValue: 87.5 
-          }
-        ];
+        const fixedKPIs = excludePersonal
+          ? [
+              {
+                name: 'Rentabilidad neta',
+                value: '3,98%',
+                trend: 'up' as const,
+                rawValue: 3.98
+              },
+              {
+                name: 'Cashflow mensual',
+                value: '1.986,40 €',
+                trend: 'up' as const,
+                rawValue: 1986.4
+              },
+              {
+                name: 'Ocupación',
+                value: '92,1%',
+                trend: 'up' as const,
+                rawValue: 92.1
+              }
+            ]
+          : [
+              {
+                name: 'Rentabilidad neta',
+                value: '4,25%',
+                trend: 'up' as const,
+                rawValue: 4.25
+              },
+              {
+                name: 'Cashflow mensual',
+                value: '2.456,78 €',
+                trend: 'up' as const,
+                rawValue: 2456.78
+              },
+              {
+                name: 'Ocupación',
+                value: '87,5%',
+                trend: 'neutral' as const,
+                rawValue: 87.5
+              }
+            ];
 
         setKpiValues(fixedKPIs);
-        
+
         // Use the first KPI as the main display value
         setData({
           value: fixedKPIs[0].rawValue,
@@ -105,35 +153,17 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
         error: 'Error al cargar datos de KPIs'
       }));
     }
-  }, [options, currentModule]);
+  }, [
+    options,
+    currentModule,
+    excludePersonal,
+    getMetricDisplayName,
+    getMockValueForMetric
+  ]);
 
   useEffect(() => {
     loadKPIData();
   }, [loadKPIData]);
-
-  const getMetricDisplayName = (metricId: string): string => {
-    const nameMap: Record<string, string> = {
-      'rentabilidad-neta': 'Rentabilidad neta',
-      'beneficio-neto-mes': 'Cashflow mensual',
-      'ocupacion': 'Ocupación',
-      'rentabilidad-bruta': 'Rentabilidad bruta',
-      'cap-rate': 'Cap Rate',
-      'cash-on-cash': 'Cash-on-Cash'
-    };
-    return nameMap[metricId] || metricId;
-  };
-
-  const getMockValueForMetric = (metricId: string): string => {
-    const valueMap: Record<string, string> = {
-      'rentabilidad-neta': '4,25%',
-      'beneficio-neto-mes': '2.456,78 €',
-      'ocupacion': '87,5%',
-      'rentabilidad-bruta': '6,85%',
-      'cap-rate': '5,2%',
-      'cash-on-cash': '3,8%'
-    };
-    return valueMap[metricId] || '--';
-  };
 
   const handleNavigate = () => {
     if (onNavigate) {
@@ -159,6 +189,7 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
       icon={<BarChart3 className="w-5 h-5" />}
       onNavigate={handleNavigate}
       className={className}
+      filterLabel={excludePersonal ? 'Sin finanzas personales' : undefined}
     >
       {/* KPI specific content */}
       <div className="mt-3 space-y-2">

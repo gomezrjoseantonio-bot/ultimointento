@@ -58,12 +58,21 @@ export interface KPIsBlockOptions {
 }
 
 // Dashboard configuration
+export interface DashboardPreferences {
+  excludePersonalFromAnalytics: boolean;
+}
+
 export interface DashboardConfiguration {
   preset: DashboardPreset;
   blocks: DashboardBlockConfig[];
   lastModified: string;
   version: string;
+  preferences?: DashboardPreferences;
 }
+
+const DEFAULT_PREFERENCES: DashboardPreferences = {
+  excludePersonalFromAnalytics: false
+};
 
 // Default configurations
 const PRESET_A_BLOCKS: DashboardBlockConfig[] = [
@@ -208,12 +217,13 @@ class DashboardService {
    */
   getDefaultConfigForPreset(preset: DashboardPreset): DashboardConfiguration {
     const blocks = preset === 'preset-a' ? [...PRESET_A_BLOCKS] : [...PRESET_B_BLOCKS];
-    
+
     return {
       preset,
       blocks,
       lastModified: new Date().toISOString(),
-      version: '1.0.0'
+      version: '1.0.0',
+      preferences: { ...DEFAULT_PREFERENCES }
     };
   }
 
@@ -227,7 +237,7 @@ class DashboardService {
       const config = await db.get('keyval', this.indexedDbKey);
       
       if (config && this.isValidConfiguration(config)) {
-        return config;
+        return this.withDefaultPreferences(config);
       }
     } catch (error) {
       console.warn('Error loading from IndexedDB:', error);
@@ -239,7 +249,7 @@ class DashboardService {
       if (stored) {
         const config = JSON.parse(stored);
         if (this.isValidConfiguration(config)) {
-          return config;
+          return this.withDefaultPreferences(config);
         }
       }
     } catch (error) {
@@ -256,6 +266,7 @@ class DashboardService {
    */
   async saveConfiguration(config: DashboardConfiguration): Promise<void> {
     config.lastModified = new Date().toISOString();
+    config.preferences = this.withDefaultPreferences(config).preferences;
 
     try {
       // Save to IndexedDB
@@ -279,9 +290,25 @@ class DashboardService {
   async resetToDefault(): Promise<DashboardConfiguration> {
     const recommendedPreset = await this.getRecommendedPreset();
     const defaultConfig = this.getDefaultConfigForPreset(recommendedPreset);
-    
+
     await this.saveConfiguration(defaultConfig);
     return defaultConfig;
+  }
+
+  async setExcludePersonalPreference(excludePersonal: boolean): Promise<DashboardConfiguration> {
+    const config = await this.loadConfiguration();
+    const preferences = this.withDefaultPreferences(config).preferences ?? { ...DEFAULT_PREFERENCES };
+
+    const updatedConfig: DashboardConfiguration = {
+      ...config,
+      preferences: {
+        ...preferences,
+        excludePersonalFromAnalytics: excludePersonal
+      }
+    };
+
+    await this.saveConfiguration(updatedConfig);
+    return updatedConfig;
   }
 
   /**
@@ -343,6 +370,14 @@ class DashboardService {
       typeof config.lastModified === 'string' &&
       typeof config.version === 'string'
     );
+  }
+
+  private withDefaultPreferences(config: DashboardConfiguration): DashboardConfiguration {
+    const preferences = config.preferences ? { ...DEFAULT_PREFERENCES, ...config.preferences } : { ...DEFAULT_PREFERENCES };
+    return {
+      ...config,
+      preferences
+    };
   }
 
   /**

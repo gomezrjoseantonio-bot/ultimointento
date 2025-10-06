@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Settings, Inbox } from 'lucide-react';
-import { dashboardService, DashboardConfiguration, DashboardBlockType } from '../services/dashboardService';
+import { dashboardService, DashboardConfiguration, DashboardBlockType, DashboardPreset } from '../services/dashboardService';
 import TreasuryBlock from '../components/dashboard/TreasuryBlock';
 import IncomeExpensesBlock from '../components/dashboard/IncomeExpensesBlock';
 import KPIsBlock from '../components/dashboard/KPIsBlock';
@@ -10,6 +10,8 @@ import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
 import DynamicImportDemo from '../components/DynamicImportDemo';
+import PulseDashboardHero from '../components/dashboard/PulseDashboardHero';
+import PulsePresetShowcase from '../components/dashboard/PulsePresetShowcase';
 
 const Dashboard: React.FC = () => {
   const { currentModule } = useTheme();
@@ -17,6 +19,9 @@ const Dashboard: React.FC = () => {
   const [config, setConfig] = useState<DashboardConfiguration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [propertyCount, setPropertyCount] = useState(0);
+  const [isResettingPreset, setIsResettingPreset] = useState(false);
+  const [excludePersonal, setExcludePersonal] = useState(false);
+  const [isUpdatingPersonalPreference, setIsUpdatingPersonalPreference] = useState(false);
 
   useEffect(() => {
     loadDashboardConfig();
@@ -32,6 +37,7 @@ const Dashboard: React.FC = () => {
       
       setConfig(dashboardConfig);
       setPropertyCount(propCount);
+      setExcludePersonal(dashboardConfig.preferences?.excludePersonalFromAnalytics ?? false);
     } catch (error) {
       console.error('Error loading dashboard config:', error);
     } finally {
@@ -47,11 +53,41 @@ const Dashboard: React.FC = () => {
     navigate('/configuracion/preferencias-datos#panel');
   };
 
+  const handleResetPreset = async () => {
+    try {
+      setIsResettingPreset(true);
+      const defaultConfig = await dashboardService.resetToDefault();
+      setConfig(defaultConfig);
+      setExcludePersonal(defaultConfig.preferences?.excludePersonalFromAnalytics ?? false);
+    } catch (error) {
+      console.error('Error resetting dashboard preset:', error);
+    } finally {
+      setIsResettingPreset(false);
+    }
+  };
+
+  const handleToggleExcludePersonal = async () => {
+    const nextValue = !excludePersonal;
+    setExcludePersonal(nextValue);
+    setIsUpdatingPersonalPreference(true);
+
+    try {
+      const updatedConfig = await dashboardService.setExcludePersonalPreference(nextValue);
+      setConfig(updatedConfig);
+    } catch (error) {
+      console.error('Error updating personal exclusion preference:', error);
+      setExcludePersonal(!nextValue);
+    } finally {
+      setIsUpdatingPersonalPreference(false);
+    }
+  };
+
   const renderBlock = (blockConfig: any) => {
     const props = {
       config: blockConfig,
       onNavigate: handleNavigate,
-      className: ''
+      className: 'h-full',
+      excludePersonal
     };
 
     switch (blockConfig.id as DashboardBlockType) {
@@ -74,29 +110,46 @@ const Dashboard: React.FC = () => {
     switch (currentModule) {
       case 'horizon':
         return {
-          title: 'Horizon — Invest',
-          subtitle: 'Plataforma de Inversión Inmobiliaria',
+          title: 'Atlas Horrizon',
+          subtitle: 'Supervisión financiera en tiempo real',
           accentColor: 'brand-navy',
-          description: 'Gestiona tu cartera inmobiliaria, rastrea el rendimiento y monitorea inversiones.',
+          description: 'Orquesta la salud financiera de tu cartera con perspectiva de inversor y métricas accionables.',
+          badgeLabel: 'Atlas • Horrizon'
         };
       case 'pulse':
         return {
-          title: 'Pulse — Gestión',
-          subtitle: 'Plataforma de Gestión Operativa',
+          title: 'Atlas Pulse',
+          subtitle: 'Gestión activa de inmuebles',
           accentColor: 'brand-teal',
-          description: 'Gestiona contratos, firmas digitales, cobros, automatizaciones y tareas operativas.',
+          description: 'Controla la operación diaria y conecta con Horrizon para supervisar el rendimiento financiero sin salir de Atlas.',
+          badgeLabel: 'Atlas • Pulse'
         };
       default:
         return {
-          title: 'ATLAS',
-          subtitle: 'Plataforma de Gestión Financiera',
+          title: 'Atlas',
+          subtitle: 'Plataforma integral de gestión de cartera',
           accentColor: 'brand-navy',
-          description: 'Bienvenido a ATLAS',
+          description: 'Centraliza operación y supervisión en un mismo panel.',
+          badgeLabel: 'Atlas'
         };
     }
   };
 
   const moduleInfo = getModuleInfo();
+
+  const getPresetCopy = (preset?: DashboardPreset) => {
+    if (preset === 'preset-b') {
+      return {
+        label: 'Atlas Horrizon — Supervisión avanzada',
+        description: 'Ideal para carteras consolidadas: tesorería extendida, KPIs y fiscalidad orientada al inversor.'
+      };
+    }
+
+    return {
+      label: 'Atlas Pulse — Operación esencial',
+      description: 'Pensada para empezar con foco en liquidez operativa, ingresos/gastos y coordinación fiscal.'
+    };
+  };
 
   // Use HorizonVisualPanel for Horizon module
   if (currentModule === 'horizon') {
@@ -209,57 +262,87 @@ const Dashboard: React.FC = () => {
     .filter(block => block.isActive)
     .sort((a, b) => a.position - b.position);
 
+  const { label: presetLabel, description: presetDescription } = getPresetCopy(config.preset);
+  const lastUpdatedLabel = config.lastModified
+    ? new Intl.DateTimeFormat('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(config.lastModified))
+    : undefined;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* Bundle Optimization Demo */}
       <DynamicImportDemo />
-      
-      {/* Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-navy-900">
-            {moduleInfo.title}
-          </h1>
-          <p className="text-base sm:text-lg text-neutral-600 mt-1">{moduleInfo.subtitle}</p>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-sm text-neutral-500">
-            <span>{propertyCount} inmueble{propertyCount !== 1 ? 's' : ''}</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Preset {config.preset === 'preset-a' ? 'A' : 'B'}</span>
-            <span className="hidden sm:inline">•</span>
-            <span>{activeBlocks.length} bloque{activeBlocks.length !== 1 ? 's' : ''} activos</span>
-          </div>
-        </div>
-        
-        <button
-          onClick={handleConfigureClick}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors self-start sm:self-center"
-        >
-          <Settings className="w-4 h-4" />
-          <span className="hidden sm:inline">Configurar Panel</span>
-          <span className="sm:hidden">Configurar</span>
-        </button>
-      </div>
 
-      {/* Dashboard Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-        {activeBlocks.map((blockConfig) => (
-          <div key={blockConfig.id}>
-            {renderBlock(blockConfig)}
-          </div>
-        ))}
-      </div>
+      <PulseDashboardHero
+        title={moduleInfo.title}
+        subtitle={moduleInfo.subtitle}
+        description={moduleInfo.description}
+        propertyCount={propertyCount}
+        presetLabel={presetLabel}
+        presetDescription={presetDescription}
+        activeBlocks={activeBlocks.length}
+        lastUpdatedLabel={lastUpdatedLabel}
+        onConfigure={handleConfigureClick}
+        onReset={handleResetPreset}
+        isResetting={isResettingPreset}
+        badgeLabel={moduleInfo.badgeLabel}
+        excludePersonal={excludePersonal}
+        onToggleExcludePersonal={handleToggleExcludePersonal}
+        isUpdatingPersonalPreference={isUpdatingPersonalPreference}
+      />
 
-      {/* Footer info */}
-      <div className="text-center text-xs text-neutral-400 pt-4 border-t border-neutral-200">
-        <p>
-          Dashboard configurado automáticamente según tu cartera. 
-          <button 
+      <PulsePresetShowcase
+        blocks={activeBlocks}
+        presetLabel={presetLabel}
+        presetDescription={presetDescription}
+        onConfigure={handleConfigureClick}
+        excludePersonalActive={excludePersonal}
+      />
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900">Resumen dinámico</h2>
+          <p className="text-sm text-neutral-500">
+            Revisa el pulso operativo y financiero de tu cartera desde Atlas con los bloques inteligentes seleccionados automáticamente.
+          </p>
+          </div>
+          <button
             onClick={handleConfigureClick}
-            className="text-navy-900 hover:underline ml-1"
+            className="inline-flex items-center gap-2 self-start rounded-full border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-brand-navy transition hover:border-brand-teal/60 hover:text-brand-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
-            Personalizar dashboard
+            <Settings className="h-4 w-4" />
+            Ajustar bloques
           </button>
-        </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {activeBlocks.map((blockConfig) => (
+            <div key={blockConfig.id} className="h-full">
+              {renderBlock(blockConfig)}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/80 p-6 text-center text-sm text-neutral-600 shadow-[0_20px_60px_-40px_rgba(4,44,94,0.4)] backdrop-blur">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.1),transparent_55%)]" />
+        <div className="relative z-10 space-y-3">
+          <p>
+            Esta vista evoluciona con tu cartera. Personaliza bloques, orden y presets en el asistente de configuración.
+          </p>
+          <button
+            onClick={handleConfigureClick}
+            className="inline-flex items-center gap-2 rounded-full border border-brand-navy/20 bg-brand-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-navy-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy"
+          >
+            <Settings className="h-4 w-4" />
+            Abrir asistente de personalización
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -9,9 +9,10 @@ interface Alert {
   title: string;
   priority: 'high' | 'medium' | 'low';
   date?: string;
+  scope?: 'portfolio' | 'personal';
 }
 
-const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className }) => {
+const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const [data, setData] = useState<DashboardBlockData>({
     value: 0,
     formattedValue: '0',
@@ -33,43 +34,52 @@ const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classN
           type: 'reconciliation',
           title: 'Conciliar movimientos bancarios',
           priority: 'high',
-          date: '2024-01-15'
+          date: '2024-01-15',
+          scope: 'portfolio'
         },
         {
           id: '2',
           type: 'ocr',
           title: 'Revisar facturas OCR',
-          priority: 'medium'
+          priority: 'medium',
+          scope: 'portfolio'
         },
         {
           id: '3',
           type: 'due-dates',
           title: 'Pago vencimiento contrato',
           priority: 'high',
-          date: '2024-01-20'
+          date: '2024-01-20',
+          scope: 'portfolio'
         },
         {
           id: '4',
           type: 'reconciliation',
           title: 'Confirmar transferencias',
-          priority: 'low'
+          priority: 'low',
+          scope: 'personal'
         },
         {
           id: '5',
           type: 'due-dates',
           title: 'Renovación seguro',
           priority: 'medium',
-          date: '2024-01-25'
+          date: '2024-01-25',
+          scope: 'personal'
         }
       ];
 
       // Filter by configured types
-      const filteredAlerts = mockAlerts.filter(alert => 
+      const filteredAlerts = mockAlerts.filter(alert =>
         options.types.includes(alert.type)
       );
 
+      const scopedAlerts = excludePersonal
+        ? filteredAlerts.filter(alert => alert.scope !== 'personal')
+        : filteredAlerts;
+
       // Limit by max count
-      const limitedAlerts = filteredAlerts.slice(0, options.maxLimit);
+      const limitedAlerts = scopedAlerts.slice(0, options.maxLimit);
 
       setAlerts(limitedAlerts);
 
@@ -93,7 +103,7 @@ const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classN
         error: 'Error al cargar alertas'
       }));
     }
-  }, [options]);
+  }, [options, excludePersonal]);
 
   useEffect(() => {
     loadAlertsData();
@@ -155,6 +165,7 @@ const AlertsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classN
       icon={<AlertTriangle className="w-5 h-5" />}
       onNavigate={handleNavigate}
       className={className}
+      filterLabel={excludePersonal ? 'Sin finanzas personales' : undefined}
     >
       {/* Alerts specific content */}
       <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
