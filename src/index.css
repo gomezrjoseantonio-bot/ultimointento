@@ -44,6 +44,7 @@
   --hz-neutral-300: #DEE2E6;               /* Light borders */
   --hz-neutral-100: var(--bg);             /* #F8F9FA - Light backgrounds */
   --hz-card-bg: #FFFFFF;                   /* White cards */
+  --atlas-line: #DEE2E6;                   /* Separator lines */
   
   /* Movement States - EXACT per specification */
   --movement-previsto-ingreso: var(--ok);  /* Green for expected income */
