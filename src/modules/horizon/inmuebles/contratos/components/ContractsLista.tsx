@@ -23,7 +23,7 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
     loadContracts();
   }, []);
 
-  const filterContracts = useCallback(() => {
+  useEffect(() => {
     let filtered = [...contracts];
 
     // Filter by search term (tenant name)
@@ -54,10 +54,6 @@ const ContractsLista: React.FC<ContractsListaProps> = ({ onEditContract }) => {
 
     setFilteredContracts(filtered);
   }, [contracts, searchTerm, statusFilter, selectedPropertyId]);
-
-  useEffect(() => {
-    filterContracts();
-  }, [filterContracts]);
 
   const loadContracts = async () => {
     try {
