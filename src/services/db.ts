@@ -229,7 +229,7 @@ export interface Contract {
   habitacionId?: string; // Specific room ID if type is 'habitacion'
   
   // NEW FIELDS: Contract modality
-  modalidad: 'habitual' | 'temporada'; // Dwelling type: habitual or seasonal
+  modalidad: 'habitual' | 'temporada' | 'vacacional'; // Dwelling type: habitual, seasonal or vacation rentals
   
   // NEW FIELDS: Tenant information (complete as required)
   inquilino: {
@@ -279,6 +279,26 @@ export interface Contract {
   
   // NEW FIELDS: Contract status
   estadoContrato: 'activo' | 'rescindido' | 'finalizado';
+
+  // NEW FIELDS: Document preparation for PDF generation
+  documentoContrato?: {
+    plantilla: 'habitual' | 'temporada' | 'vacacional' | 'habitacion';
+    incluirInventario?: boolean;
+    incluirCertificadoEnergetico?: boolean;
+    clausulasAdicionales?: string;
+  };
+
+  // NEW FIELDS: Signature workflow metadata
+  firma?: {
+    metodo: 'digital' | 'manual';
+    proveedor?: 'signaturit' | 'docusign' | 'adobesign' | 'otro';
+    emails?: string[];
+    enviarCopiaPropietario?: boolean;
+    emailPropietario?: string;
+    estado?: 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';
+    fechaEnvio?: string;
+    fechaFirma?: string;
+  };
   
   // NEW FIELDS: Rescission information
   rescision?: {

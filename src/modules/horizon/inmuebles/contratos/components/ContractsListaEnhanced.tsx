@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro } from 'lucide-react';
+import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { Contract, Property } from '../../../../../services/db';
-import { getAllContracts, deleteContract, rescindContract, getContractStatus } from '../../../../../services/contractServiceNew';
+import {
+  getAllContracts,
+  deleteContract,
+  rescindContract,
+  getContractStatus,
+  sendContractForSignature,
+  markContractAsSigned,
+  SignatureStatus
+} from '../../../../../services/contractServiceNew';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
@@ -9,9 +17,10 @@ import { showPrompt } from '../../../../../services/promptService';
 
 interface ContractsListaEnhancedProps {
   onEditContract: (contract?: Contract) => void;
+  onContractsUpdated?: (contracts: Contract[]) => void;
 }
 
-const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditContract }) => {
+const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditContract, onContractsUpdated }) => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -20,8 +29,9 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [retryCount, setRetryCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'terminated'>('all');
-  const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada'>('all');
+  const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada' | 'vacacional'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
+  const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
 
   const loadData = useCallback(async (retry = false) => {
     try {
@@ -36,6 +46,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       
       const contractsData = await Promise.race([contractsPromise, timeoutPromise]);
       setContracts(contractsData);
+      onContractsUpdated?.(contractsData);
       
       // Load properties for display with timeout
       const dbPromise = (await import('../../../../../services/db')).initDB();
@@ -72,7 +83,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     } finally {
       setLoading(false);
     }
-  }, [retryCount]);
+  }, [retryCount, onContractsUpdated]);
 
   useEffect(() => {
     loadData();
@@ -164,6 +175,49 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     }
   };
 
+  const handleSendSignature = async (contract: Contract) => {
+    if (!contract.id) return;
+
+    if (contract.firma?.metodo !== 'digital') {
+      toast.error('Este contrato está configurado para firma manual. Cambia la modalidad en la ficha del contrato.');
+      return;
+    }
+
+    try {
+      setSignatureProcessingId(contract.id);
+      await sendContractForSignature(contract.id, contract.firma?.emails);
+      toast.success('Contrato enviado a firma digital');
+      loadData();
+    } catch (error) {
+      console.error('Error sending contract for signature:', error);
+      const message = error instanceof Error ? error.message : 'Error al enviar a firma digital';
+      toast.error(message);
+    } finally {
+      setSignatureProcessingId(null);
+    }
+  };
+
+  const handleMarkSigned = async (contract: Contract) => {
+    if (!contract.id) return;
+
+    if (contract.firma?.metodo !== 'digital') {
+      toast.error('Solo los contratos digitales pueden marcarse como firmados desde aquí.');
+      return;
+    }
+
+    try {
+      setSignatureProcessingId(contract.id);
+      await markContractAsSigned(contract.id);
+      toast.success('Contrato marcado como firmado');
+      loadData();
+    } catch (error) {
+      console.error('Error marking contract as signed:', error);
+      toast.error('Error al marcar el contrato como firmado');
+    } finally {
+      setSignatureProcessingId(null);
+    }
+  };
+
   const getPropertyName = (inmuebleId: number): string => {
     const property = properties.find(p => p.id === inmuebleId);
     return property ? property.alias : `Inmueble ${inmuebleId}`;
@@ -185,10 +239,41 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     );
   };
 
-  const getModalidadBadge = (modalidad: 'habitual' | 'temporada') => {
-    const config = modalidad === 'habitual' 
-      ? { bg: 'bg-atlas-blue', text: 'text-white', label: 'Habitual' }
-      : { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Temporada' };
+  const getModalidadBadge = (modalidad: Contract['modalidad']) => {
+    const configMap: Record<Contract['modalidad'], { bg: string; text: string; label: string }> = {
+      habitual: { bg: 'bg-atlas-blue', text: 'text-white', label: 'Habitual' },
+      temporada: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Temporada' },
+      vacacional: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Vacacional' }
+    };
+
+    const config = configMap[modalidad] || configMap.habitual;
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${config.bg} ${config.text}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  const getSignatureBadge = (contract: Contract) => {
+    if (!contract.firma || contract.firma.metodo === 'manual') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-neutral-100 text-neutral-700">
+          Firma manual
+        </span>
+      );
+    }
+
+    const estado = (contract.firma.estado || 'borrador') as SignatureStatus;
+    const badgeConfig: Record<SignatureStatus, { bg: string; text: string; label: string }> = {
+      borrador: { bg: 'bg-neutral-100', text: 'text-neutral-700', label: 'Borrador' },
+      preparado: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Preparado' },
+      enviado: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Enviado' },
+      firmado: { bg: 'bg-green-100', text: 'text-green-800', label: 'Firmado' },
+      rechazado: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rechazado' },
+    };
+
+    const config = badgeConfig[estado] || badgeConfig.borrador;
 
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${config.bg} ${config.text}`}>
@@ -329,6 +414,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
               <option value="all">Todas</option>
               <option value="habitual">Habitual</option>
               <option value="temporada">Temporada</option>
+              <option value="vacacional">Vacacional</option>
             </select>
           </div>
 
@@ -396,6 +482,9 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Próximo vencimiento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Firma
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
@@ -477,10 +566,45 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {getSignatureBadge(contract)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(contract)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
+                        {contract.firma?.metodo === 'digital' && (
+                          <>
+                            {(['borrador', 'preparado'] as SignatureStatus[]).includes(((contract.firma?.estado) || 'borrador') as SignatureStatus) && (
+                              <button
+                                onClick={() => handleSendSignature(contract)}
+                                className="text-brand-navy hover:text-brand-navy/80"
+                                title="Enviar a firma digital"
+                                disabled={signatureProcessingId === contract.id}
+                              >
+                                {signatureProcessingId === contract.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Send className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                            {contract.firma?.estado === 'enviado' && (
+                              <button
+                                onClick={() => handleMarkSigned(contract)}
+                                className="text-green-600 hover:text-green-700"
+                                title="Marcar como firmado"
+                                disabled={signatureProcessingId === contract.id}
+                              >
+                                {signatureProcessingId === contract.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                          </>
+                        )}
                         <button
                           onClick={() => onEditContract(contract)}
                           className="text-atlas-blue hover:text-blue-800"

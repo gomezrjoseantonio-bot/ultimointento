@@ -59,6 +59,7 @@ const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'))
 
 // Pulse (Management) Module Components
 const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
+const ContratosNuevoPage = React.lazy(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
 const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
 const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
 const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
@@ -377,7 +378,7 @@ function App() {
               } />
               <Route path="nuevo" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosLista />
+                  <ContratosNuevoPage />
                 </React.Suspense>
               } />
               <Route path="gestion" element={
