@@ -2,13 +2,19 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
 import MainLayout from './layouts/MainLayout';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
+
+// Auth pages
+const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
+const RegisterPage = React.lazy(() => import('./pages/auth/RegisterPage'));
 
 // Loading component for better UX - ATLAS compliant
 const LoadingSpinner = () => (
@@ -136,35 +142,53 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Router>
-        <Toaster 
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-              color: 'var(--atlas-navy-1)',
-              background: 'white',
-              border: '1px solid var(--hz-neutral-300)',
-              borderRadius: '10px',
-              boxShadow: '0 4px 6px rgba(156, 163, 175, 0.1)',
-            },
-            success: {
-              iconTheme: {
-                primary: 'var(--ok)',
-                secondary: 'white',
+      <AuthProvider>
+        <Router>
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                color: 'var(--atlas-navy-1)',
+                background: 'white',
+                border: '1px solid var(--hz-neutral-300)',
+                borderRadius: '10px',
+                boxShadow: '0 4px 6px rgba(156, 163, 175, 0.1)',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: 'var(--error)',
-                secondary: 'white',
+              success: {
+                iconTheme: {
+                  primary: 'var(--ok)',
+                  secondary: 'white',
+                },
               },
-            },
-          }}
-        />
-        <Routes>
-          <Route path="/" element={<MainLayout />}>
+              error: {
+                iconTheme: {
+                  primary: 'var(--error)',
+                  secondary: 'white',
+                },
+              },
+            }}
+          />
+          <Routes>
+            {/* Public Auth Routes */}
+            <Route path="/login" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <LoginPage />
+              </React.Suspense>
+            } />
+            <Route path="/register" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <RegisterPage />
+              </React.Suspense>
+            } />
+
+            {/* Protected App Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }>
             <Route index element={<Navigate to="/panel" replace />} />
             <Route path="panel" element={
               <React.Suspense fallback={<LoadingSpinner />}>
@@ -541,6 +565,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
