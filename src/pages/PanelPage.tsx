@@ -26,8 +26,6 @@ import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
-import PulseDashboardHero from '../components/dashboard/PulseDashboardHero';
-import PulsePresetShowcase from '../components/dashboard/PulsePresetShowcase';
 
 type ModuleInfo = {
   title: string;
@@ -380,147 +378,179 @@ const PulsePanelContent: React.FC<PulsePanelContentProps> = ({
 
   return (
     <div className="space-y-12">
-      <PulseDashboardHero
-        title={moduleInfo.title}
-        subtitle={moduleInfo.subtitle}
-        description={moduleInfo.description}
-        propertyCount={propertyCount}
-        presetLabel={presetLabel}
-        presetDescription={presetDescription}
-        activeBlocks={activeBlocks.length}
-        lastUpdatedLabel={lastUpdatedLabel}
-        onConfigure={onConfigure}
-        onReset={onResetPreset}
-        isResetting={isResettingPreset}
-        badgeLabel={moduleInfo.badgeLabel}
-        excludePersonal={excludePersonal}
-        onToggleExcludePersonal={onToggleExcludePersonal}
-        isUpdatingPersonalPreference={isUpdatingPersonalPreference}
-      />
+      <section className="relative overflow-hidden rounded-4xl border border-brand-navy/25 bg-gradient-to-br from-brand-navy via-brand-navy/95 to-brand-teal/60 text-white shadow-[0_40px_120px_-50px_rgba(6,34,66,0.65)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.18),transparent_60%)]" />
+        <div className="absolute -bottom-24 -right-28 h-64 w-64 rounded-full bg-brand-teal/30 blur-3xl" />
+        <div className="relative grid gap-10 px-8 py-10 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)] lg:px-12">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/70">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-white">
+                <Sparkles className="h-3.5 w-3.5" />
+                {moduleInfo.badgeLabel}
+              </span>
+              <span>Panel Atlas</span>
+              {lastUpdatedLabel && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-white/70">
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Actualizado {lastUpdatedLabel}
+                </span>
+              )}
+            </div>
 
-      <PulsePresetShowcase
-        blocks={activeBlocks}
-        presetLabel={presetLabel}
-        presetDescription={presetDescription}
-        onConfigure={onConfigure}
-        excludePersonalActive={excludePersonal}
-      />
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.66fr)_minmax(0,0.34fr)]">
-        <div className="space-y-6">
-          <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/90 p-6 shadow-[0_30px_90px_-45px_rgba(4,44,94,0.45)] backdrop-blur sm:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(4,44,94,0.06),transparent_60%)]" />
-            <div className="absolute -top-20 -right-16 h-36 w-36 rounded-full bg-brand-teal/15 blur-3xl" />
-            <div className="relative z-10 space-y-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.26em] text-brand-navy/70">Situación actual del cliente</p>
-                  <h2 className="text-2xl font-semibold text-neutral-900 sm:text-3xl">{clientStage.title}</h2>
-                  <p className="max-w-2xl text-sm text-neutral-600 sm:text-base">{clientStage.description}</p>
-                </div>
-                {clientStage.badge && (
-                  <span className="inline-flex items-center gap-2 self-start rounded-full border border-brand-navy/20 bg-brand-navy/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.26em] text-brand-navy">
-                    <Compass className="h-4 w-4" />
-                    {clientStage.badge}
-                  </span>
-                )}
+            <div className="space-y-5">
+              <div className="space-y-3">
+                <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{moduleInfo.title}</h1>
+                <p className="text-lg text-white/80">{moduleInfo.subtitle}</p>
+                <p className="max-w-2xl text-sm text-white/70">{moduleInfo.description}</p>
               </div>
 
+              <div className="space-y-3">
+                <div className="rounded-3xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white/80 sm:inline-flex sm:items-center sm:gap-2">
+                  <span className="font-semibold tracking-wide">{clientStage.title}</span>
+                  <span className="hidden sm:inline text-white/40">•</span>
+                  <span>{clientStage.description}</span>
+                </div>
+                <div className="rounded-3xl border border-white/15 bg-white/5 px-4 py-3 text-sm text-white/75 sm:inline-flex sm:items-center sm:gap-2">
+                  <span className="font-semibold tracking-wide">{presetLabel}</span>
+                  <span className="hidden sm:inline text-white/40">•</span>
+                  <span>{presetDescription}</span>
+                </div>
+              </div>
+            </div>
+
+            {insightChips.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {insightChips.map((chip) => (
                   <span
                     key={chip.label}
-                    className="inline-flex items-center gap-2 rounded-full border border-brand-teal/30 bg-brand-teal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-brand-teal"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.26em] text-white/90"
                   >
                     {chip.icon}
                     {chip.label}
                   </span>
                 ))}
               </div>
+            )}
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-neutral-200 bg-white/75 p-4">
-                  <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">Activos</p>
-                  <p className="mt-2 text-2xl font-semibold text-neutral-900">{propertyCount}</p>
-                  <p className="mt-1 text-xs text-neutral-500">Inmuebles gestionados actualmente</p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-white/75 p-4">
-                  <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">Preset</p>
-                  <p className="mt-2 text-base font-semibold text-neutral-900">{presetFocus}</p>
-                  <p className="mt-1 text-xs text-neutral-500">Configuración inteligente aplicada</p>
-                </div>
-                <div className="rounded-2xl border border-neutral-200 bg-white/75 p-4">
-                  <p className="text-xs uppercase tracking-[0.28em] text-neutral-500">Finanzas personales</p>
-                  <p className="mt-2 text-base font-semibold text-neutral-900">{excludePersonal ? 'Excluidas' : 'Incluidas'}</p>
-                  <p className="mt-1 text-xs text-neutral-500">Controla el filtro desde este panel</p>
-                </div>
-              </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={onConfigure}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              >
+                <Settings className="h-4 w-4" />
+                Abrir asistente de panel
+              </button>
+              <button
+                onClick={onResetPreset}
+                disabled={isResettingPreset}
+                className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+                  isResettingPreset ? 'cursor-not-allowed opacity-70' : 'hover:border-white/30 hover:bg-white/10'
+                }`}
+              >
+                {isResettingPreset ? 'Restaurando…' : 'Restablecer preset base'}
+              </button>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {highlightCards.map((card) => (
-              <div
-                key={card.key}
-                className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/80 p-5 shadow-[0_20px_70px_-40px_rgba(4,44,94,0.5)] backdrop-blur transition hover:-translate-y-0.5 hover:shadow-[0_32px_90px_-38px_rgba(4,44,94,0.55)]"
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(29,160,186,0.12),transparent_58%)]" />
-                <div className="relative z-10 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-brand-navy/60">{card.title}</p>
-                    <p className="mt-2 text-xl font-semibold text-neutral-900">{card.value}</p>
-                    <p className="mt-2 text-xs text-neutral-500">{card.description}</p>
-                  </div>
-                  <div className="rounded-2xl bg-brand-navy/10 p-2 text-brand-navy">{card.icon}</div>
-                </div>
+          <div className="space-y-5 rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur">
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-white/60">Activos monitorizados</p>
+              <p className="mt-2 text-3xl font-semibold text-white">{propertyCount}</p>
+              <p className="mt-1 text-xs text-white/60">Inmuebles con seguimiento activo</p>
+            </div>
+            <div className="h-px bg-white/15" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.32em] text-white/60">Preset activo</p>
+              <p className="mt-2 text-base font-semibold text-white">{presetFocus}</p>
+              <p className="mt-1 text-xs text-white/60">Sincronizado con tesorería e ingresos</p>
+            </div>
+            <div className="h-px bg-white/15" />
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.32em] text-white/60">Finanzas personales</p>
+                <p className="mt-2 text-base font-semibold text-white">
+                  {excludePersonal ? 'Excluidas del análisis' : 'Incluidas en las métricas'}
+                </p>
               </div>
-            ))}
+              <button
+                onClick={onToggleExcludePersonal}
+                disabled={isUpdatingPersonalPreference}
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${
+                  isUpdatingPersonalPreference ? 'cursor-not-allowed opacity-70' : 'hover:border-white/40 hover:bg-white/15'
+                }`}
+              >
+                {isUpdatingPersonalPreference ? 'Actualizando…' : personalToggleLabel}
+              </button>
+              <p className="text-xs text-white/60">{personalToggleHelper}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {highlightCards.map((card) => (
+          <article
+            key={card.key}
+            className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/95 p-6 shadow-[0_30px_90px_-55px_rgba(6,34,66,0.55)] transition hover:-translate-y-1 hover:shadow-[0_34px_100px_-48px_rgba(6,34,66,0.6)]"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(29,160,186,0.12),transparent_60%)]" />
+            <div className="relative z-10 flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-navy/60">{card.title}</p>
+                <p className="text-xl font-semibold text-neutral-900">{card.value}</p>
+                <p className="text-xs text-neutral-500">{card.description}</p>
+              </div>
+              <div className="rounded-2xl bg-brand-navy/10 p-3 text-brand-navy">{card.icon}</div>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,0.4fr)]">
+        <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/95 p-6 shadow-[0_30px_90px_-55px_rgba(6,34,66,0.5)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.08),transparent_65%)]" />
+          <div className="relative z-10 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-brand-navy/10 p-2 text-brand-navy">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-navy/60">Radar operativo</p>
+                <h3 className="text-xl font-semibold text-neutral-900">Siguientes pasos sugeridos</h3>
+              </div>
+            </div>
+
+            <ul className="space-y-4">
+              {priorityActions.map((action) => (
+                <li key={action.title} className="group rounded-2xl border border-neutral-200 bg-white/80 p-4 transition hover:border-brand-teal/40 hover:shadow-[0_20px_60px_-50px_rgba(6,34,66,0.6)]">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-brand-teal/10 p-2 text-brand-teal">{action.icon}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">{action.title}</p>
+                      <p className="mt-1 text-sm text-neutral-500">{action.description}</p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <div className="relative overflow-hidden rounded-3xl border border-brand-navy/80 bg-brand-navy text-white shadow-[0_30px_90px_-45px_rgba(4,44,94,0.6)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.28),transparent_55%)]" />
-            <div className="relative z-10 flex h-full flex-col gap-6 p-6 sm:p-8">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/70">Radar operativo</p>
-                  <h3 className="text-xl font-semibold">Siguientes pasos sugeridos</h3>
-                </div>
+        <div className="space-y-6">
+          <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/95 p-6 shadow-[0_30px_90px_-55px_rgba(6,34,66,0.5)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(29,160,186,0.12),transparent_60%)]" />
+            <div className="relative z-10 space-y-4">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-navy/60">Control del panel</p>
+                <h3 className="text-lg font-semibold text-neutral-900">Atajos clave</h3>
+                <p className="text-sm text-neutral-500">Gestiona presets y filtros sin salir del panel central.</p>
               </div>
-
-              <ul className="space-y-4">
-                {priorityActions.map((action) => (
-                  <li key={action.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-xl bg-white/15 p-2 text-white">{action.icon}</div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">{action.title}</p>
-                        <p className="mt-1 text-sm text-white/70">{action.description}</p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/90 p-6 shadow-[0_24px_80px_-45px_rgba(4,44,94,0.45)] backdrop-blur">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(29,160,186,0.08),transparent_60%)]" />
-            <div className="relative z-10 space-y-5">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-navy/60">Acciones rápidas</p>
-                <h3 className="text-lg font-semibold text-neutral-900">Control del panel</h3>
-                <p className="text-sm text-neutral-500">Personaliza bloques, filtros y presets sin salir de Pulse.</p>
-              </div>
-
               <div className="space-y-3">
                 <button
                   onClick={onConfigure}
                   className="inline-flex w-full items-center justify-between gap-2 rounded-2xl border border-brand-navy/15 bg-white px-4 py-3 text-sm font-semibold text-brand-navy transition hover:border-brand-teal/50 hover:text-brand-teal focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal/60"
                 >
-                  Personalizar panel
+                  Abrir preferencias de panel
                   <Settings className="h-4 w-4" />
                 </button>
                 <button
@@ -530,7 +560,7 @@ const PulsePanelContent: React.FC<PulsePanelContentProps> = ({
                     isResettingPreset ? 'cursor-not-allowed opacity-70' : 'hover:border-brand-teal/40 hover:text-brand-teal'
                   }`}
                 >
-                  {isResettingPreset ? 'Restaurando…' : 'Restablecer preset base'}
+                  {isResettingPreset ? 'Restaurando…' : 'Volver al preset recomendado'}
                   <Compass className="h-4 w-4" />
                 </button>
                 <button
@@ -546,14 +576,24 @@ const PulsePanelContent: React.FC<PulsePanelContentProps> = ({
                   <Sparkles className="h-4 w-4" />
                 </button>
               </div>
-
               <p className="text-xs text-neutral-400">{personalToggleHelper}</p>
               {lastUpdatedLabel && (
                 <p className="text-xs text-neutral-400">Última actualización registrada {lastUpdatedLabel}.</p>
               )}
             </div>
           </div>
-        </aside>
+
+          <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/95 p-6 text-sm text-neutral-600 shadow-[0_30px_90px_-55px_rgba(6,34,66,0.5)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.1),transparent_65%)]" />
+            <div className="relative z-10 space-y-3">
+              <h3 className="text-base font-semibold text-neutral-900">Cómo estamos midiendo</h3>
+              <p>
+                Los presets de Pulse combinan bloques operativos y financieros para mantener una foto coordinada con Horrizon.
+                Ajusta los umbrales cuando quieras comparar escenarios o activar nuevas métricas.
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="space-y-6">
@@ -583,11 +623,11 @@ const PulsePanelContent: React.FC<PulsePanelContentProps> = ({
         </div>
       </section>
 
-      <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/85 p-6 text-center text-sm text-neutral-600 shadow-[0_24px_70px_-40px_rgba(4,44,94,0.45)] backdrop-blur">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.12),transparent_55%)]" />
+      <div className="relative overflow-hidden rounded-3xl border border-neutral-200/70 bg-white/90 p-6 text-center text-sm text-neutral-600 shadow-[0_30px_90px_-55px_rgba(6,34,66,0.5)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(29,160,186,0.12),transparent_60%)]" />
         <div className="relative z-10 space-y-3">
           <p>
-            ¿Necesitas otra perspectiva? Abre el asistente para duplicar presets, reorganizar bloques o activar nuevas métricas.
+            ¿Necesitas otra perspectiva? Duplica presets, reorganiza bloques o activa nuevas métricas desde la configuración de Pulse.
           </p>
           <button
             onClick={onConfigure}
