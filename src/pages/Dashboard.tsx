@@ -9,7 +9,6 @@ import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
-import DynamicImportDemo from '../components/DynamicImportDemo';
 import PulseDashboardHero from '../components/dashboard/PulseDashboardHero';
 import PulsePresetShowcase from '../components/dashboard/PulsePresetShowcase';
 
@@ -153,24 +152,13 @@ const Dashboard: React.FC = () => {
 
   // Use HorizonVisualPanel for Horizon module
   if (currentModule === 'horizon') {
-    return (
-      <div className="space-y-8">
-        {/* Bundle Optimization Demo */}
-        <DynamicImportDemo />
-        
-        {/* Horizon Visual Panel */}
-        <HorizonVisualPanel />
-      </div>
-    );
+    return <HorizonVisualPanel />;
   }
 
   // For Pulse module, continue with the existing dashboard logic
   if (isLoading) {
     return (
       <div className="space-y-8">
-        {/* Bundle Optimization Demo */}
-        <DynamicImportDemo />
-        
         <div className="text-center py-8">
           <h1 className="text-3xl font-semibold mb-2 text-navy-900">
             {moduleInfo.title}
@@ -199,9 +187,6 @@ const Dashboard: React.FC = () => {
   if (propertyCount === 0 && config?.preset === 'preset-a') {
     return (
       <div className="space-y-8">
-        {/* Bundle Optimization Demo */}
-        <DynamicImportDemo />
-        
         {/* Module Header */}
         <div className="text-center py-8">
           <h1 className="text-3xl font-semibold mb-2 text-navy-900">
@@ -245,9 +230,6 @@ const Dashboard: React.FC = () => {
   if (!config) {
     return (
       <div className="space-y-8">
-        {/* Bundle Optimization Demo */}
-        <DynamicImportDemo />
-        
         <div className="text-center py-8">
           <h1 className="text-3xl font-semibold mb-2 text-navy-900">
             {moduleInfo.title}
@@ -274,9 +256,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-10">
-      {/* Bundle Optimization Demo */}
-      <DynamicImportDemo />
-
       <PulseDashboardHero
         title={moduleInfo.title}
         subtitle={moduleInfo.subtitle}
