@@ -3,7 +3,7 @@ import { TrendingUp } from 'lucide-react';
 import DashboardBlockBase, { DashboardBlockProps, DashboardBlockData } from './DashboardBlockBase';
 import { IncomeExpensesBlockOptions } from '../../services/dashboardService';
 
-const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className }) => {
+const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const [data, setData] = useState<DashboardBlockData>({
     value: 0,
     formattedValue: '0,00 €',
@@ -11,6 +11,15 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
   });
 
   const options = config.options as IncomeExpensesBlockOptions;
+  const baseIncome = 4567.89;
+  const baseExpenses = 1234.56;
+  const personalIncomeShare = 680.12;
+  const personalExpenseShare = 210.43;
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(value);
 
   const loadIncomeExpensesData = useCallback(async () => {
     try {
@@ -18,20 +27,17 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
 
       // Mock income vs expenses calculation
       // In real implementation, this would fetch from contracts and expenses
-      const mockIncome = 4567.89;
-      const mockExpenses = 1234.56;
-      const netAmount = mockIncome - mockExpenses;
-      const trend = netAmount > 0 ? 'up' : 'down';
+      const effectiveIncome = excludePersonal ? baseIncome - personalIncomeShare : baseIncome;
+      const effectiveExpenses = excludePersonal ? baseExpenses - personalExpenseShare : baseExpenses;
+      const netAmount = effectiveIncome - effectiveExpenses;
+      const trend = netAmount >= 0 ? 'up' : 'down';
 
       // Apply Spanish formatting
-      const formattedNet = new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: 'EUR'
-      }).format(netAmount);
+      const formattedNet = formatCurrency(netAmount);
 
       // Calculate percentage change (mock)
-      const mockPreviousPeriod = 2890.45;
-      const percentageChange = ((netAmount - mockPreviousPeriod) / mockPreviousPeriod) * 100;
+      const mockPreviousPeriod = excludePersonal ? 3120.45 : 2890.45;
+      const percentageChange = mockPreviousPeriod === 0 ? 0 : ((netAmount - mockPreviousPeriod) / mockPreviousPeriod) * 100;
       const formattedPercentage = new Intl.NumberFormat('es-ES', {
         style: 'percent',
         minimumFractionDigits: 1,
@@ -54,7 +60,7 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
         error: 'Error al cargar datos de ingresos/gastos'
       }));
     }
-  }, []);
+  }, [excludePersonal]);
 
   useEffect(() => {
     loadIncomeExpensesData();
@@ -85,19 +91,20 @@ const IncomeExpensesBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate
       icon={<TrendingUp className="w-5 h-5" />}
       onNavigate={handleNavigate}
       className={className}
+      filterLabel={excludePersonal ? 'Sin finanzas personales' : undefined}
     >
       {/* Income vs Expenses specific content */}
       <div className="mt-3 text-xs text-neutral-500">
         <div className="flex justify-between">
           <span>Ingresos</span>
           <span className="font-medium text-success-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(4567.89)}
+            {formatCurrency(excludePersonal ? baseIncome - personalIncomeShare : baseIncome)}
           </span>
         </div>
         <div className="flex justify-between mt-1">
           <span>Gastos</span>
           <span className="font-medium text-error-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(1234.56)}
+            {formatCurrency(excludePersonal ? baseExpenses - personalExpenseShare : baseExpenses)}
           </span>
         </div>
         <div className="border-t border-neutral-200 mt-2 pt-2 flex justify-between font-medium">

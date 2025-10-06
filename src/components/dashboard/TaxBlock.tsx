@@ -3,7 +3,7 @@ import { FileText } from 'lucide-react';
 import DashboardBlockBase, { DashboardBlockProps, DashboardBlockData } from './DashboardBlockBase';
 import { TaxBlockOptions } from '../../services/dashboardService';
 
-const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className }) => {
+const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const [data, setData] = useState<DashboardBlockData>({
     value: 0,
     formattedValue: '0,00 €',
@@ -11,6 +11,12 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
   });
 
   const options = config.options as TaxBlockOptions;
+  const baseDeductions = 3456.78;
+  const basePending = 789.12;
+  const baseAmortizations = 2890.45;
+  const personalDeductionsShare = 540.32;
+  const personalPendingShare = 120.45;
+  const personalAmortizationsShare = 310.2;
 
   const loadTaxData = useCallback(async () => {
     try {
@@ -18,8 +24,8 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
 
       // Mock tax data calculation
       // In real implementation, this would fetch from fiscal summary service
-      const mockDeductions = 3456.78;
-      const mockAmortizations = 2890.45;
+      const mockDeductions = excludePersonal ? baseDeductions - personalDeductionsShare : baseDeductions;
+      const mockAmortizations = excludePersonal ? baseAmortizations - personalAmortizationsShare : baseAmortizations;
       const totalTaxBenefit = mockDeductions + (options.showAmortizations ? mockAmortizations : 0);
 
       // Apply Spanish formatting
@@ -29,7 +35,7 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
       }).format(totalTaxBenefit);
 
       // Mock trend calculation
-      const mockPreviousYear = 5567.89;
+      const mockPreviousYear = excludePersonal ? 4987.21 : 5567.89;
       const trend = totalTaxBenefit > mockPreviousYear ? 'up' : 'down';
       const trendValue = new Intl.NumberFormat('es-ES', {
         style: 'percent',
@@ -53,7 +59,7 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
         error: 'Error al cargar datos fiscales'
       }));
     }
-  }, [options]);
+  }, [options, excludePersonal]);
 
   useEffect(() => {
     loadTaxData();
@@ -86,26 +92,27 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
       icon={<FileText className="w-5 h-5" />}
       onNavigate={handleNavigate}
       className={className}
+      filterLabel={excludePersonal ? 'Sin finanzas personales' : undefined}
     >
       {/* Tax specific content */}
       <div className="mt-3 text-xs text-neutral-500">
         <div className="flex justify-between">
           <span>Deducciones aplicadas</span>
           <span className="font-medium text-success-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(3456.78)}
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? baseDeductions - personalDeductionsShare : baseDeductions)}
           </span>
         </div>
         <div className="flex justify-between mt-1">
           <span>Deducciones pendientes</span>
           <span className="font-medium text-amber-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(789.12)}
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? basePending - personalPendingShare : basePending)}
           </span>
         </div>
         {options.showAmortizations && (
           <div className="flex justify-between mt-1">
             <span>Amortizaciones</span>
             <span className="font-medium text-primary-600">
-              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(2890.45)}
+              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? baseAmortizations - personalAmortizationsShare : baseAmortizations)}
             </span>
           </div>
         )}
