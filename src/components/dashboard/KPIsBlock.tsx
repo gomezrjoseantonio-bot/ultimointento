@@ -16,6 +16,33 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
 
   const options = config.options as KPIsBlockOptions;
 
+  const getMetricDisplayName = useCallback((metricId: string): string => {
+    const nameMap: Record<string, string> = {
+      'rentabilidad-neta': 'Rentabilidad neta',
+      'beneficio-neto-mes': 'Cashflow mensual',
+      'ocupacion': 'Ocupación',
+      'rentabilidad-bruta': 'Rentabilidad bruta',
+      'cap-rate': 'Cap Rate',
+      'cash-on-cash': 'Cash-on-Cash'
+    };
+    return nameMap[metricId] || metricId;
+  }, []);
+
+  const getMockValueForMetric = useCallback(
+    (metricId: string): string => {
+      const baseMap: Record<string, string> = {
+        'rentabilidad-neta': excludePersonal ? '3,98%' : '4,25%',
+        'beneficio-neto-mes': excludePersonal ? '1.986,40 €' : '2.456,78 €',
+        'ocupacion': excludePersonal ? '92,1%' : '87,5%',
+        'rentabilidad-bruta': excludePersonal ? '6,12%' : '6,85%',
+        'cap-rate': excludePersonal ? '4,9%' : '5,2%',
+        'cash-on-cash': excludePersonal ? '3,4%' : '3,8%'
+      };
+      return baseMap[metricId] || '--';
+    },
+    [excludePersonal]
+  );
+
   const loadKPIData = useCallback(async () => {
     try {
       setData(prev => ({ ...prev, isLoading: true, error: undefined }));
@@ -126,35 +153,17 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
         error: 'Error al cargar datos de KPIs'
       }));
     }
-  }, [options, currentModule, excludePersonal]);
+  }, [
+    options,
+    currentModule,
+    excludePersonal,
+    getMetricDisplayName,
+    getMockValueForMetric
+  ]);
 
   useEffect(() => {
     loadKPIData();
   }, [loadKPIData]);
-
-  const getMetricDisplayName = (metricId: string): string => {
-    const nameMap: Record<string, string> = {
-      'rentabilidad-neta': 'Rentabilidad neta',
-      'beneficio-neto-mes': 'Cashflow mensual',
-      'ocupacion': 'Ocupación',
-      'rentabilidad-bruta': 'Rentabilidad bruta',
-      'cap-rate': 'Cap Rate',
-      'cash-on-cash': 'Cash-on-Cash'
-    };
-    return nameMap[metricId] || metricId;
-  };
-
-  const getMockValueForMetric = (metricId: string): string => {
-    const baseMap: Record<string, string> = {
-      'rentabilidad-neta': excludePersonal ? '3,98%' : '4,25%',
-      'beneficio-neto-mes': excludePersonal ? '1.986,40 €' : '2.456,78 €',
-      'ocupacion': excludePersonal ? '92,1%' : '87,5%',
-      'rentabilidad-bruta': excludePersonal ? '6,12%' : '6,85%',
-      'cap-rate': excludePersonal ? '4,9%' : '5,2%',
-      'cash-on-cash': excludePersonal ? '3,4%' : '3,8%'
-    };
-    return baseMap[metricId] || '--';
-  };
 
   const handleNavigate = () => {
     if (onNavigate) {
