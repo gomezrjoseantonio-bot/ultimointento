@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown, HelpCircle } from 'lucide-react';
+import { Menu, UserCircle, ChevronDown, HelpCircle, LogOut } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
   const { currentModule, setCurrentModule } = useTheme();
@@ -34,6 +36,11 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
     setAccountMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   const handleHelpClick = () => {
@@ -80,6 +87,13 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         </div>
         
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* User Plan Badge */}
+          {user && (
+            <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium bg-atlas-blue bg-opacity-10 text-atlas-blue">
+              Plan {user.subscriptionPlan.toUpperCase()}
+            </div>
+          )}
+
           {/* Direct Module Navigation */}
           <nav className="flex items-center bg-gray-100 rounded-atlas p-1">
             <button
@@ -164,20 +178,28 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
               aria-label="Menú de cuenta"
             >
               <UserCircle className="h-8 w-8 text-gray-500" />
-              <span className="hidden md:inline-block text-sm font-medium text-gray-700">
-                Cuenta
-              </span>
+              <div className="hidden md:block text-left">
+                <div className="text-sm font-medium text-gray-700">
+                  {user?.name || 'Usuario'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {user?.email}
+                </div>
+              </div>
               <ChevronDown className="hidden md:inline-block h-4 w-4 text-gray-500" />
             </button>
             
             {/* Account Dropdown Menu */}
             {accountMenuOpen && (
               <div 
-                className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50"
+                className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50"
                 onMouseEnter={() => setAccountMenuOpen(true)}
                 onMouseLeave={() => setAccountMenuOpen(false)}
               >
                 <div className="py-1">
+                  <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
+                    {user?.email}
+                  </div>
                   <button
                     onClick={() => { navigate('/cuenta/perfil'); setAccountMenuOpen(false); }}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
@@ -207,6 +229,14 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                   >
                     Cuentas Bancarias
+                  </button>
+                  <div className="border-t border-gray-100 my-1"></div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Cerrar sesión
                   </button>
                 </div>
               </div>
