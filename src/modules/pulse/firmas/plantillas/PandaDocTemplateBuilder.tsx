@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import PageLayout from '../../../../components/common/PageLayout';
 import { PandaDocConnectionResponse, testPandaDocConnection } from '../../../../services/pandadocService';
 
 interface FieldConfig {
@@ -159,13 +158,9 @@ const PandaDocTemplateBuilder: React.FC = () => {
   };
 
   return (
-    <PageLayout
-      title="Plantillas PandaDoc"
-      subtitle="Configura la conexión y construye plantillas con campos dinámicos para contratos de alquiler"
-    >
-      <div className="space-y-8">
-        <section className="bg-white border border-gray-200 rounded-xl p-6">
-          <h2 className="text-xl font-semibold text-gray-900">1. Probar conexión con PandaDoc</h2>
+    <div className="space-y-8">
+      <section className="bg-white border border-gray-200 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-gray-900">1. Probar conexión con PandaDoc</h2>
           <p className="mt-2 text-sm text-gray-500">
             Utiliza una API Key del entorno gratuito de PandaDoc para validar que la comunicación funciona antes de generar contratos.
           </p>
@@ -384,7 +379,6 @@ const PandaDocTemplateBuilder: React.FC = () => {
           </pre>
         </section>
       </div>
-    </PageLayout>
   );
 };
 

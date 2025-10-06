@@ -3,9 +3,11 @@ import { useLocation } from 'react-router-dom';
 import PageLayout from '../../components/common/PageLayout';
 import PersonalDataForm from '../../components/personal/PersonalDataForm';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
-import { User, Shield, CreditCard, Database } from 'lucide-react';
+import { User, Shield, CreditCard, Database, Settings } from 'lucide-react';
 
-type AccountTab = 'perfil' | 'seguridad' | 'plan' | 'privacidad';
+const PandaDocTemplateBuilder = React.lazy(() => import('../../modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
+
+type AccountTab = 'perfil' | 'seguridad' | 'plan' | 'privacidad' | 'configuracion';
 
 const AccountPage: React.FC = () => {
   const location = useLocation();
@@ -15,7 +17,7 @@ const AccountPage: React.FC = () => {
   useEffect(() => {
     const pathSegments = location.pathname.split('/');
     const tabFromPath = pathSegments[2] as AccountTab;
-    if (['perfil', 'seguridad', 'plan', 'privacidad'].includes(tabFromPath)) {
+    if (['perfil', 'seguridad', 'plan', 'privacidad', 'configuracion'].includes(tabFromPath)) {
       setActiveTab(tabFromPath);
     }
   }, [location.pathname]);
@@ -25,6 +27,7 @@ const AccountPage: React.FC = () => {
     { key: 'seguridad', label: 'Seguridad', icon: Shield },
     { key: 'plan', label: 'Plan & Facturación', icon: CreditCard },
     { key: 'privacidad', label: 'Privacidad & Datos', icon: Database },
+    { key: 'configuracion', label: 'Configuración', icon: Settings },
   ];
 
   return (
@@ -98,6 +101,17 @@ const AccountPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'configuracion' && (
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
+            <span className="ml-2 text-hz-neutral-700">Cargando...</span>
+          </div>
+        }>
+          <PandaDocTemplateBuilder />
+        </React.Suspense>
       )}
     </PageLayout>
   );

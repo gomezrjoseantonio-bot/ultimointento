@@ -61,7 +61,6 @@ const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'))
 const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
 const ContratosNuevoPage = React.lazy(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
 const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
-const FirmasPlantillas = React.lazy(() => import('./modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
 const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
 const TareasPendientes = React.lazy(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
@@ -401,11 +400,7 @@ function App() {
                   <FirmasPendientes />
                 </React.Suspense>
               } />
-              <Route path="plantillas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <FirmasPlantillas />
-                </React.Suspense>
-              } />
+              <Route path="plantillas" element={<Navigate to="/cuenta/configuracion" replace />} />
             </Route>
             
             <Route path="cobros">
@@ -527,6 +522,7 @@ function App() {
               <Route path="seguridad" element={<AccountPage />} />
               <Route path="plan" element={<AccountPage />} />
               <Route path="privacidad" element={<AccountPage />} />
+              <Route path="configuracion" element={<AccountPage />} />
               {/* ATLAS: New Cuentas section under Cuenta ▸ Configuración ▸ Cuentas Bancarias */}
               <Route path="cuentas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
