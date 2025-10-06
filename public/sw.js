@@ -1,12 +1,12 @@
 // ATLAS PWA Service Worker
 // Provides basic caching for offline functionality
 
-const CACHE_NAME = 'atlas-pwa-v1';
-const STATIC_CACHE_URLS = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
+const CACHE_VERSION = 'atlas-pwa-v3';
+const STATIC_CACHE = `atlas-static-${CACHE_VERSION}`;
+const PRECACHE_URLS = [
+  '/index.html',
   '/manifest.json',
+  '/favicon.ico',
   '/icon-192x192.svg',
   '/icon-512x512.svg'
 ];
@@ -14,12 +14,18 @@ const STATIC_CACHE_URLS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
-  
+
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_CACHE_URLS.map(url => new Request(url, { cache: 'reload' })));
+        console.log('[SW] Precaching static assets');
+        return Promise.all(
+          PRECACHE_URLS.map((url) =>
+            cache.add(new Request(url, { cache: 'reload' })).catch((error) => {
+              console.warn(`[SW] Failed to precache ${url}:`, error);
+            })
+          )
+        );
       })
       .catch((error) => {
         console.warn('[SW] Failed to cache some assets:', error);
@@ -35,13 +41,13 @@ self.addEventListener('install', (event) => {
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating service worker...');
-  
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            if (cacheName !== STATIC_CACHE) {
               console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -61,50 +67,75 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') {
     return;
   }
-  
+
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version if available
-        if (response) {
-          return response;
+
+  const { request } = event;
+  const requestUrl = new URL(request.url);
+
+  // Network-first strategy for navigation requests to ensure the latest UI
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(STATIC_CACHE)
+            .then((cache) => cache.put(request, responseClone))
+            .catch((error) => console.warn('[SW] Failed to update navigation cache:', error));
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cache = await caches.open(STATIC_CACHE);
+          const cachedResponse = await cache.match(request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return cache.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // Cache-first strategy for known static assets
+  if (PRECACHE_URLS.includes(requestUrl.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        
-        // Otherwise fetch from network
-        return fetch(event.request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
+
+        return fetch(request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseClone = networkResponse.clone();
+              caches.open(STATIC_CACHE)
+                .then((cache) => cache.put(request, responseClone))
+                .catch((error) => console.warn('[SW] Failed to cache static asset:', error));
             }
-            
-            // Clone the response for caching
-            const responseToCache = response.clone();
-            
-            // Cache successful responses
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
+            return networkResponse;
           })
-          .catch(() => {
-            // Offline fallback for navigation requests
-            if (event.request.mode === 'navigate') {
-              return caches.match('/');
-            }
-            return new Response('Network error occurred', {
-              status: 408,
-              headers: { 'Content-Type': 'text/plain' },
-            });
-          });
+          .catch(() => caches.match('/index.html'));
       })
+    );
+    return;
+  }
+
+  // For other requests, use network-first with cache fallback
+  event.respondWith(
+    fetch(request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseClone = networkResponse.clone();
+          caches.open(STATIC_CACHE)
+            .then((cache) => cache.put(request, responseClone))
+            .catch((error) => console.warn('[SW] Failed to cache response:', error));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(request))
   );
 });
 
