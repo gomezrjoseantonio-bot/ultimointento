@@ -87,9 +87,10 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const filterContracts = useCallback(() => {
+  useEffect(() => {
     // First filter out any undefined or invalid contracts
     let filtered = contracts.filter(contract => contract && contract.inquilino);
 
@@ -124,10 +125,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
     setFilteredContracts(filtered);
   }, [contracts, searchTerm, statusFilter, modalidadFilter, selectedPropertyId]);
-
-  useEffect(() => {
-    filterContracts();
-  }, [filterContracts]);
 
   const handleDeleteContract = async (contract: Contract) => {
     if (!contract || !contract.inquilino) {
