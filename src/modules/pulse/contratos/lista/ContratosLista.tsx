@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Contract } from '../../../../services/db';
@@ -91,9 +91,9 @@ const ContratosLista: React.FC = () => {
     }
   };
 
-  const handleContractsUpdated = (updatedContracts: Contract[]) => {
+  const handleContractsUpdated = useCallback((updatedContracts: Contract[]) => {
     setContracts(updatedContracts);
-  };
+  }, []);
 
   const formatDate = (value: string) => {
     return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value));
