@@ -686,12 +686,12 @@ const PanelPage: React.FC = () => {
     }).format(new Date(config.lastModified));
   }, [config?.lastModified]);
 
-  if (currentModule === 'horizon') {
-    return <HorizonVisualPanel />;
-  }
+  let content: React.ReactNode = null;
 
-  if (isLoading) {
-    return (
+  if (currentModule === 'horizon') {
+    content = <HorizonVisualPanel />;
+  } else if (isLoading) {
+    content = (
       <div className="space-y-8">
         <div className="text-center py-8">
           <h1 className="text-3xl font-semibold mb-2 text-navy-900">
@@ -715,10 +715,19 @@ const PanelPage: React.FC = () => {
         </div>
       </div>
     );
-  }
-
-  if (propertyCount === 0 && config?.preset === 'preset-a') {
-    return (
+  } else if (!config) {
+    content = (
+      <div className="space-y-8">
+        <div className="text-center py-8">
+          <h1 className="text-3xl font-semibold mb-2 text-navy-900">
+            {moduleInfo.title}
+          </h1>
+          <p className="text-lg text-neutral-600">Error al cargar el dashboard</p>
+        </div>
+      </div>
+    );
+  } else if (propertyCount === 0 && config.preset === 'preset-a') {
+    content = (
       <div className="space-y-8">
         <div className="text-center py-8">
           <h1 className="text-3xl font-semibold mb-2 text-navy-900">
@@ -755,38 +764,27 @@ const PanelPage: React.FC = () => {
         </div>
       </div>
     );
-  }
-
-  if (!config) {
-    return (
-      <div className="space-y-8">
-        <div className="text-center py-8">
-          <h1 className="text-3xl font-semibold mb-2 text-navy-900">
-            {moduleInfo.title}
-          </h1>
-          <p className="text-lg text-neutral-600">Error al cargar el dashboard</p>
-        </div>
-      </div>
+  } else {
+    content = (
+      <PulsePanelContent
+        moduleInfo={moduleInfo}
+        config={config}
+        propertyCount={propertyCount}
+        presetLabel={presetCopy.label}
+        presetDescription={presetCopy.description}
+        lastUpdatedLabel={lastUpdatedLabel}
+        excludePersonal={excludePersonal}
+        onConfigure={handleConfigureClick}
+        onResetPreset={handleResetPreset}
+        isResettingPreset={isResettingPreset}
+        onToggleExcludePersonal={handleToggleExcludePersonal}
+        isUpdatingPersonalPreference={isUpdatingPersonalPreference}
+        onNavigate={handleNavigate}
+      />
     );
   }
 
-  return (
-    <PulsePanelContent
-      moduleInfo={moduleInfo}
-      config={config}
-      propertyCount={propertyCount}
-      presetLabel={presetCopy.label}
-      presetDescription={presetCopy.description}
-      lastUpdatedLabel={lastUpdatedLabel}
-      excludePersonal={excludePersonal}
-      onConfigure={handleConfigureClick}
-      onResetPreset={handleResetPreset}
-      isResettingPreset={isResettingPreset}
-      onToggleExcludePersonal={handleToggleExcludePersonal}
-      isUpdatingPersonalPreference={isUpdatingPersonalPreference}
-      onNavigate={handleNavigate}
-    />
-  );
+  return content;
 };
 
 export default PanelPage;
