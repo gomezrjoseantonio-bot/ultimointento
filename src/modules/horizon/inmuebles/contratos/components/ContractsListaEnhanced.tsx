@@ -32,6 +32,11 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
   const retryAttemptsRef = useRef(0);
+  const onContractsUpdatedRef = useRef(onContractsUpdated);
+
+  useEffect(() => {
+    onContractsUpdatedRef.current = onContractsUpdated;
+  }, [onContractsUpdated]);
 
   const loadData = useCallback(async (retry = false) => {
     try {
@@ -46,7 +51,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       
       const contractsData = await Promise.race([contractsPromise, timeoutPromise]);
       setContracts(contractsData);
-      onContractsUpdated?.(contractsData);
+      onContractsUpdatedRef.current?.(contractsData);
       
       // Load properties for display with timeout
       const dbPromise = (await import('../../../../../services/db')).initDB();
@@ -83,7 +88,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     } finally {
       setLoading(false);
     }
-  }, [onContractsUpdated]);
+  }, []);
 
   useEffect(() => {
     loadData();
