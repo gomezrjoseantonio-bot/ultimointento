@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { Contract, Property } from '../../../../../services/db';
 import {
@@ -26,12 +26,12 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'terminated'>('all');
   const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada' | 'vacacional'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
+  const retryAttemptsRef = useRef(0);
 
   const loadData = useCallback(async (retry = false) => {
     try {
@@ -58,37 +58,36 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       const propertiesData = await db.getAll('properties');
       setProperties(propertiesData);
       
-      setRetryCount(0);
-      
+      retryAttemptsRef.current = 0;
+
     } catch (error) {
       console.error('Error loading data:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       setError(`Error al cargar los datos: ${errorMessage}`);
-      
+
       // Auto-retry logic for certain errors
-      if (retryCount < 3 && (
-        errorMessage.includes('Timeout') || 
+      if (retryAttemptsRef.current < 3 && (
+        errorMessage.includes('Timeout') ||
         errorMessage.includes('Database') ||
         errorMessage.includes('network')
       )) {
-        console.log(`Retrying data load (attempt ${retryCount + 1})`);
-        setRetryCount(prev => prev + 1);
+        retryAttemptsRef.current += 1;
+        console.log(`Retrying data load (attempt ${retryAttemptsRef.current})`);
         setTimeout(() => loadData(true), 2000);
         return;
       }
-      
+
       if (!retry) {
         toast.error('Error al cargar los datos. Intente recargar la página.');
       }
     } finally {
       setLoading(false);
     }
-  }, [retryCount, onContractsUpdated]);
+  }, [onContractsUpdated]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     // First filter out any undefined or invalid contracts
