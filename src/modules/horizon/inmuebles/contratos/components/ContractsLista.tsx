@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Edit2, FileText, Trash2, XCircle, Search } from 'lucide-react';
 import { Contract } from '../../../../../services/db';
 import { getAllContracts, deleteContract, terminateContract, getContractStatus } from '../../../../../services/contractService';
