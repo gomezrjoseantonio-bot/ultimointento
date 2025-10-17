@@ -43,7 +43,7 @@ describe('Property Analysis Utils', () => {
   });
 
   describe('calculateFiscalROI', () => {
-    it('should calculate fiscal ROI with MANTENER conclusion', () => {
+    it('should calculate fiscal ROI and return VENDER when below opportunity cost', () => {
       const result = calculateFiscalROI(5400, 70000, DEFAULT_ANALYSIS_CONFIG);
       
       expect(result.impuestoRentas).toBeCloseTo(2538, 0);
@@ -61,7 +61,7 @@ describe('Property Analysis Utils', () => {
       expect(result.conclusion).toBe('VENDER'); // Below opportunity cost by more than 1%
     });
 
-    it('should return REVISAR when ROI is within 1% of opportunity cost', () => {
+    it('should return MANTENER when ROI is above opportunity cost', () => {
       const result = calculateFiscalROI(14000, 70000, DEFAULT_ANALYSIS_CONFIG);
       
       expect(result.roiFiscalNeto).toBeCloseTo(10.6, 1);
