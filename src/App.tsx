@@ -88,6 +88,9 @@ const TreasuryLearningEngineDemo = React.lazy(() => import('./components/treasur
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
 
+// Glossary page - Sprint 3: Accessible technical terms reference
+const GlossaryPage = React.lazy(() => import('./pages/GlossaryPage'));
+
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
@@ -223,6 +226,13 @@ function App() {
             <Route path="design-bible" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <DesignBiblePage />
+              </React.Suspense>
+            } />
+            
+            {/* Glossary - Sprint 3: Accessible technical terms */}
+            <Route path="glosario" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <GlossaryPage />
               </React.Suspense>
             } />
             

@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { X, Sunrise, Activity, BookOpen } from 'lucide-react';
+import { X, Sunrise, Activity, BookOpen, Info } from 'lucide-react';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ interface SeparatorOverlineProps {
   collapsed?: boolean;
   tooltip?: string;
   className?: string;
+  description?: string;
 }
 
 interface SectionDocsProps {
@@ -28,8 +29,11 @@ const SeparatorOverline: React.FC<SeparatorOverlineProps> = ({
   colorToken, 
   collapsed = false, 
   tooltip, 
-  className = '' 
+  className = '',
+  description
 }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   return (
     <div
       role="separator"
@@ -65,6 +69,32 @@ const SeparatorOverline: React.FC<SeparatorOverlineProps> = ({
           >
             {label}
           </span>
+          {description && (
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={() => setShowTooltip(!showTooltip)}
+                className="text-gray-400 hover:text-gray-300 transition-colors"
+                aria-label={`Ver información sobre ${label}`}
+                aria-describedby={showTooltip ? `tooltip-${label}` : undefined}
+                aria-expanded={showTooltip}
+                type="button"
+              >
+                <Info size={14} />
+              </button>
+              {showTooltip && (
+                <div 
+                  id={`tooltip-${label}`}
+                  className="absolute left-0 top-6 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-50 whitespace-normal max-w-xs shadow-lg border border-gray-700"
+                  role="tooltip"
+                >
+                  <div className="font-semibold mb-1">{label}</div>
+                  <div className="text-gray-300">{description}</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -196,6 +226,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               colorToken="--atlas-blue"
               collapsed={collapsed}
               tooltip="Horizon — Supervisión"
+              description="Módulo de supervisión financiera. Vista ejecutiva para inversores y gestores de alto nivel con KPIs y métricas clave."
             />
             {horizonItems.map(renderNavItem)}
             
@@ -206,6 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               colorToken="--atlas-teal"
               collapsed={collapsed}
               tooltip="Pulse — Gestión"
+              description="Módulo de gestión operativa diaria. Herramientas para tareas administrativas, documentación y flujos de trabajo."
               className="mt-3"
             />
             {pulseItems.map(renderNavItem)}
