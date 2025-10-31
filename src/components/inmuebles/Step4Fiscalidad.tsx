@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Calculator, Info } from 'lucide-react';
 import { InmuebleStep4, MetodoAmortizacion } from '../../types/inmueble';
 import { validateStep4, calculateConstructionPercentage, formatEuroAmount } from '../../utils/inmuebleUtils';
+import { Tooltip } from '../common/Tooltip';
 
 interface Step4FiscalidadProps {
   data: InmuebleStep4;
@@ -91,7 +92,9 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor catastral total (VC)
+                <Tooltip content="Valor asignado por el catastro al inmueble completo (suelo + construcción)" showIcon>
+                  <span>Valor catastral total (VC)</span>
+                </Tooltip>
               </label>
               <div className="relative">
                 <input
@@ -114,7 +117,9 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor catastral construcción (VCc)
+                <Tooltip content="Valor catastral solo de la construcción (edificio), sin incluir el valor del suelo" showIcon>
+                  <span>Valor catastral construcción (VCc)</span>
+                </Tooltip>
               </label>
               <div className="relative">
                 <input
@@ -172,7 +177,9 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
           {/* Posibilidad de editar el porcentaje manualmente */}
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              % Construcción (editable)
+              <Tooltip content="Porcentaje del valor catastral correspondiente a la construcción. Se calcula automáticamente pero puede ajustarse manualmente" showIcon>
+                <span>% Construcción (editable)</span>
+              </Tooltip>
             </label>
             <div className="relative">
               <input

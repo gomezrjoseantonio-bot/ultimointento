@@ -17,6 +17,7 @@ import {
   getCCAAFromPostalCode,
   BaseITPConfig
 } from '../../utils/taxCalculationUtils';
+import { Tooltip } from '../common/Tooltip';
 
 interface Step3CosteProps {
   data: InmuebleStep3;
@@ -217,7 +218,9 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
         <div className="bg-white border border-gray-200 p-6 shadow-sm">
           <div className="flex items-center mb-4">
             <FileText className="w-5 h-5 text-hz-primary mr-2" size={24}  />
-            <h3 className="text-lg font-medium text-gray-900">Régimen de compra *</h3>
+            <Tooltip content="Define qué impuestos se aplican a la compra: ITP para vivienda usada, IVA+AJD para obra nueva" showIcon>
+              <h3 className="text-lg font-medium text-gray-900">Régimen de compra *</h3>
+            </Tooltip>
           </div>
           
           <div className="space-y-3">
@@ -260,7 +263,9 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Precio de adquisición
+              <Tooltip content="Precio escriturado sin incluir impuestos ni gastos de compraventa" showIcon>
+                <span>Precio de adquisición</span>
+              </Tooltip>
             </label>
             <div className="relative">
               <input
