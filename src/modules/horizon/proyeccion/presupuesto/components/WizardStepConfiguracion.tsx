@@ -138,7 +138,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
               .toLocaleString('es-ES')} €
           </div>
         </div>
-        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
           <div className="text-sm text-primary-600 font-medium">Resultado anual</div>
           <div className="text-xl font-bold text-primary-700">
             {(lines
@@ -163,7 +163,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
           </div>
           <button
             onClick={addNewLine}
-            className="atlas-atlas-atlas-atlas-btn-primary flex items-center px-3 py-2 text-sm"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center px-3 py-2 text-sm"
           >
             <Plus className="h-4 w-4 mr-1" />
             Añadir partida
@@ -334,7 +334,7 @@ const WizardStepConfiguracion: React.FC<WizardStepConfiguracionProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleContinue}
-          className="atlas-atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
+          className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center px-6 py-3 font-medium"
         >
           Continuar a revisión
           <ChevronRight className="h-4 w-4 ml-2" />

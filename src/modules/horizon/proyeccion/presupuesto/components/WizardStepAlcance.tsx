@@ -106,7 +106,7 @@ const WizardStepAlcance: React.FC<WizardStepAlcanceProps> = ({
 
       {/* Date Range Selection */}
       {isMidYear && (
-        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
           <div className="flex items-center mb-4">
             <Calendar className="h-5 w-5 text-primary-600 mr-2" />
             <h3 className="font-semibold text-primary-900">Período del presupuesto</h3>

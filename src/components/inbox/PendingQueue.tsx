@@ -281,7 +281,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             
             <button
               onClick={() => onDiscard(selectedDocuments)}
-              className="atlas-atlas-atlas-atlas-btn-destructive px-3 py-1 bg-error-100 text-error-700 hover: text-xs"
+              className="atlas-atlas-atlas-atlas-atlas-btn-destructive px-3 py-1 bg-error-100 text-error-700 hover: text-xs"
             >
               <Trash2 className="w-3 h-3 inline mr-1" />
               Descartar

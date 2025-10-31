@@ -157,7 +157,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Fixed */}
               {feinData.prestamo.fijo && (
-                <div className="atlas-atlas-atlas-atlas-btn-primary mb-3 p-3 rounded">
+                <div className="atlas-atlas-atlas-atlas-atlas-btn-primary mb-3 p-3 rounded">
                   <h4 className="font-medium text-primary-800">Tramo Fijo</h4>
                   <p>TIN: {formatPercentage(feinData.prestamo.fijo.tinFijoPrc)}</p>
                 </div>
@@ -165,8 +165,8 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               
               {/* Variable */}
               {feinData.prestamo.variable && (
-                <div className="atlas-atlas-atlas-atlas-btn-primary mb-3 p-3 rounded">
-                  <h4 className="font-medium text-green-800">Tramo Variable</h4>
+                <div className="atlas-atlas-atlas-atlas-atlas-btn-primary mb-3 p-3 rounded">
+                  <h4 className="font-medium text-success-800">Tramo Variable</h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>Índice: {feinData.prestamo.variable.indice}</div>
                     <div>Valor actual: {formatPercentage(feinData.prestamo.variable.valorIndiceActualPrc)}</div>
@@ -179,15 +179,15 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               {/* Mixed */}
               {feinData.prestamo.mixto && (
                 <div className="space-y-3">
-                  <div className="atlas-atlas-atlas-atlas-btn-primary p-3 rounded">
+                  <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3 rounded">
                     <h4 className="font-medium text-primary-800">Período Fijo Initial</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Duración: {feinData.prestamo.mixto.tramoFijoAnios} años</div>
                       <div>TIN: {formatPercentage(feinData.prestamo.mixto.tinFijoTramoPrc)}</div>
                     </div>
                   </div>
-                  <div className="atlas-atlas-atlas-atlas-btn-primary p-3 rounded">
-                    <h4 className="font-medium text-green-800">Posterior Variable</h4>
+                  <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3 rounded">
+                    <h4 className="font-medium text-success-800">Posterior Variable</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Índice: {feinData.prestamo.mixto.posteriorVariable.indice}</div>
                       <div>Diferencial: {formatPercentage(feinData.prestamo.mixto.posteriorVariable.diferencialPrc)}</div>
@@ -229,14 +229,14 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
                 </h3>
                 <div className="space-y-2">
                   {feinData.prestamo.bonificaciones.map((bonif, index) => (
-                    <div key={index} className="flex justify-between items-center p-2 bg-yellow-50 rounded">
+                    <div key={index} className="flex justify-between items-center p-2 bg-warning-50 rounded">
                       <span className="text-sm">{bonif.tipo.replace('_', ' ')}</span>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-green-600">{bonif.pp.toFixed(2)} p.p.</span>
+                        <span className="font-medium text-success-600">{bonif.pp.toFixed(2)} p.p.</span>
                         <span className={`text-xs px-2 py-1 rounded ${
-                          bonif.estado === 'CUMPLE' ? 'bg-green-100 text-green-800' :
-                          bonif.estado === 'NO_CUMPLE' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
+                          bonif.estado === 'CUMPLE' ? 'bg-success-100 text-success-800' :
+                          bonif.estado === 'NO_CUMPLE' ? 'bg-error-100 text-error-800' :
+                          'bg-warning-100 text-yellow-800'
                         }`}>
                           {bonif.estado}
                         </span>
@@ -264,7 +264,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
                   {feinData.prestamo.complementos.cuotaEstim && (
                     <div>
                       <span className="font-medium" style={{ color: 'var(--text-gray)' }}>Cuota Estimada:</span>
-                      <p className="font-medium text-green-600">{formatCurrency(feinData.prestamo.complementos.cuotaEstim)}</p>
+                      <p className="font-medium text-success-600">{formatCurrency(feinData.prestamo.complementos.cuotaEstim)}</p>
                     </div>
                   )}
                 </div>
@@ -276,7 +276,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
           <div className="border-t p-4 flex justify-end bg-white" style={{ borderColor: 'var(--hz-neutral-300)' }}>
             <button
               onClick={onClose}
-              className="atlas-atlas-atlas-atlas-btn-secondary"
+              className="atlas-atlas-atlas-atlas-atlas-btn-secondary"
             >
               Cerrar
             </button>

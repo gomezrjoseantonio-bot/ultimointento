@@ -182,7 +182,7 @@ const NewTransferModal: React.FC<NewTransferModalProps> = ({
                 <button
                   type="button"
                   onClick={() => window.open('/cuenta/cuentas', '_blank')}
-                  className="text-sm atlas-atlas-atlas-btn-ghost-horizon underline"
+                  className="text-sm atlas-atlas-atlas-atlas-btn-ghost-horizon underline"
                 >
                   Ir a Cuenta → Configuración → Cuentas Bancarias
                 </button>

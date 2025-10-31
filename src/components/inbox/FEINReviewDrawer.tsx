@@ -209,14 +209,14 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
 
                 {/* Tipo de Interés */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${isCriticalFieldMissing('tipo') ? 'text-red-600' : 'text-gray-700'}`}>
+                  <label className={`block text-sm font-medium mb-2 ${isCriticalFieldMissing('tipo') ? 'text-error-600' : 'text-gray-700'}`}>
                     Tipo de Interés *
                   </label>
                   {isEditing ? (
                     <select
                       value={editableData.tipo || ''}
                       onChange={(e) => updateField('tipo', e.target.value as any)}
-                      className={`w-full px-3 py-2 border rounded-md ${isCriticalFieldMissing('tipo') ? 'border-red-300' : 'border-gray-300'}`}
+                      className={`w-full px-3 py-2 border rounded-md ${isCriticalFieldMissing('tipo') ? 'border-error-300' : 'border-gray-300'}`}
                     >
                       <option value="">Seleccionar...</option>
                       <option value="FIJO">Fijo</option>
@@ -337,7 +337,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                         <div className="text-sm text-gray-600">{bonif.condicion}</div>
                       )}
                       {bonif.descuento && (
-                        <div className="text-sm font-medium text-green-600">
+                        <div className="text-sm font-medium text-success-600">
                           -{formatPercentage(bonif.descuento)}
                         </div>
                       )}
@@ -373,7 +373,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               {loanId ? (
                 <button
                   onClick={() => onOpenInFinanciacion(loanId)}
-                  className="atlas-atlas-atlas-atlas-btn-primary"
+                  className="atlas-atlas-atlas-atlas-atlas-btn-primary"
                 >
                   Abrir en Financiación
                 </button>
@@ -381,13 +381,13 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
                 <>
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="atlas-atlas-atlas-atlas-btn-secondary"
+                    className="atlas-atlas-atlas-atlas-atlas-btn-secondary"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSave}
-                    className="atlas-atlas-atlas-atlas-btn-primary"
+                    className="atlas-atlas-atlas-atlas-atlas-btn-primary"
                   >
                     {feinResult.fieldsMissing.length > 0 
                       ? 'Crear borrador igualmente' 
@@ -398,7 +398,7 @@ const FEINReviewDrawer: React.FC<FEINReviewDrawerProps> = ({
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="atlas-atlas-atlas-atlas-btn-secondary"
+                  className="atlas-atlas-atlas-atlas-atlas-btn-secondary"
                 >
                   Editar campos
                 </button>

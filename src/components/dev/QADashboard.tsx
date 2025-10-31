@@ -120,7 +120,7 @@ const QADashboard: React.FC<QADashboardProps> = ({ isVisible, onClose }) => {
         <div className="p-6 overflow-y-auto max-h-[70vh]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Session Summary */}
-            <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-4">
               <h4 className="font-medium text-primary-900 mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Session Summary

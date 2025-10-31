@@ -39,15 +39,15 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const variantStyles = {
     danger: {
       icon: Trash2,
-      iconColor: 'text-red-600',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200',
-      buttonClass: 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+      iconColor: 'text-error-600',
+      bgColor: 'bg-error-50',
+      borderColor: 'border-error-200',
+      buttonClass: 'bg-error-600 hover:bg-error-700 focus:ring-red-500'
     },
     warning: {
       icon: AlertTriangle,
-      iconColor: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
+      iconColor: 'text-warning-600',
+      bgColor: 'bg-warning-50',
       borderColor: 'border-yellow-200',
       buttonClass: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
     },

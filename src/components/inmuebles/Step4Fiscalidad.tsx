@@ -298,11 +298,11 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         </div>
 
         {/* Información de ayuda */}
-        <div className="bg-yellow-50 border border-yellow-200 p-4">
+        <div className="bg-warning-50 border border-yellow-200 p-4">
           <h4 className="text-sm font-medium text-yellow-800 mb-2">
             💡 Información importante
           </h4>
-          <ul className="text-sm text-yellow-700 space-y-1">
+          <ul className="text-sm text-warning-700 space-y-1">
             <li>• Todos los campos de este paso son opcionales</li>
             <li>• Los valores catastrales se pueden obtener de la sede electrónica del Catastro</li>
             <li>• El % de construcción se calcula automáticamente pero puede editarse</li>

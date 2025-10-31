@@ -379,7 +379,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 {schemaDetection?.needsManualMapping ? (
                   <AlertCircle className="h-4 w-4 text-yellow-500" />
                 ) : (
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CheckCircle className="h-4 w-4 text-success-500" />
                 )}
                 <span className="font-medium">
                   {schemaDetection?.needsManualMapping ? 'Requiere ajuste' : 'Automático'}
@@ -400,7 +400,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <button
                   onClick={() => generatePreview(manualMapping!)}
                   disabled={!canConfirm() || isProcessing}
-                  className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Generar vista previa
                 </button>
@@ -464,19 +464,19 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                 <div className="space-y-4">
                   {/* Preview stats */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="atlas-atlas-atlas-atlas-btn-primary p-4 border border-green-200">
-                      <p className="text-sm text-green-600">Bien mapeados</p>
-                      <p className="text-2xl font-bold text-green-700">
+                    <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-4 border border-success-200">
+                      <p className="text-sm text-success-600">Bien mapeados</p>
+                      <p className="text-2xl font-bold text-success-700">
                         {previewResult.wellMappedRows}
                       </p>
                     </div>
-                    <div className="bg-yellow-50 p-4 border border-yellow-200">
-                      <p className="text-sm text-yellow-600">Duplicados estimados</p>
-                      <p className="text-2xl font-bold text-yellow-700">
+                    <div className="bg-warning-50 p-4 border border-yellow-200">
+                      <p className="text-sm text-warning-600">Duplicados estimados</p>
+                      <p className="text-2xl font-bold text-warning-700">
                         {previewResult.estimatedDuplicates}
                       </p>
                     </div>
-                    <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary p-4 ">
+                    <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary p-4 ">
                       <p className="text-sm text-atlas-blue">No planificados</p>
                       <p className="text-2xl font-bold text-primary-700">
                         {previewResult.previewMovements.filter(m => m.status !== 'valid').length}
@@ -514,20 +514,20 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                             </td>
                             <td className="px-4 py-3 text-sm text-right">
                               <span className={`font-medium ${
-                                movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                movement.amount >= 0 ? 'text-success-600' : 'text-error-600'
                               }`}>
                                 {movement.amount >= 0 ? '+' : ''}{movement.amount.toFixed(2)} €
                               </span>
                             </td>
                             <td className="px-4 py-3 text-center">
                               {movement.status === 'valid' && (
-                                <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
+                                <CheckCircle className="h-5 w-5 text-success-500 mx-auto" />
                               )}
                               {movement.status === 'warning' && (
                                 <AlertCircle className="h-5 w-5 text-yellow-500 mx-auto" />
                               )}
                               {movement.status === 'error' && (
-                                <AlertCircle className="h-5 w-5 text-red-500 mx-auto" />
+                                <AlertCircle className="h-5 w-5 text-error-500 mx-auto" />
                               )}
                             </td>
                           </tr>
@@ -565,7 +565,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
               <button
                 onClick={handleConfirm}
                 disabled={!canConfirm() || isProcessing}
-                className="atlas-atlas-atlas-atlas-btn-primary px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="atlas-atlas-atlas-atlas-atlas-btn-primary px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? 'Procesando...' : 'Importar extracto'}
               </button>

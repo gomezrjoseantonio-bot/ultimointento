@@ -122,7 +122,7 @@ const PropertyForm: React.FC<PropertyFormProps> = ({ onSubmit, onCancel }) => {
         </button>
         <button
           type="submit"
-          className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50"
+          className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-2 disabled:opacity-50"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Adding...' : 'Add Property'}

@@ -54,7 +54,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             }`}
             placeholder="ej. Piso Centro Madrid"
           />
-          {errors.alias && <p className="mt-1 text-sm text-red-600">{errors.alias}</p>}
+          {errors.alias && <p className="mt-1 text-sm text-error-600">{errors.alias}</p>}
         </div>
 
         {/* Global Alias */}
@@ -89,7 +89,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             }`}
             placeholder="ej. Calle Mayor 123, 2º A"
           />
-          {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+          {errors.address && <p className="mt-1 text-sm text-error-600">{errors.address}</p>}
         </div>
 
         {/* Postal Code */}
@@ -107,7 +107,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             placeholder="ej. 28013"
             maxLength={5}
           />
-          {errors.postalCode && <p className="mt-1 text-sm text-red-600">{errors.postalCode}</p>}
+          {errors.postalCode && <p className="mt-1 text-sm text-error-600">{errors.postalCode}</p>}
         </div>
 
         {/* Municipality */}
@@ -124,7 +124,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             }`}
             placeholder="ej. Madrid"
           />
-          {errors.municipality && <p className="mt-1 text-sm text-red-600">{errors.municipality}</p>}
+          {errors.municipality && <p className="mt-1 text-sm text-error-600">{errors.municipality}</p>}
         </div>
 
         {/* Province */}
@@ -141,7 +141,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             }`}
             placeholder="ej. Madrid"
           />
-          {errors.province && <p className="mt-1 text-sm text-red-600">{errors.province}</p>}
+          {errors.province && <p className="mt-1 text-sm text-error-600">{errors.province}</p>}
         </div>
 
         {/* CCAA */}
@@ -163,7 +163,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
               </option>
             ))}
           </select>
-          {errors.ccaa && <p className="mt-1 text-sm text-red-600">{errors.ccaa}</p>}
+          {errors.ccaa && <p className="mt-1 text-sm text-error-600">{errors.ccaa}</p>}
         </div>
       </div>
     </div>

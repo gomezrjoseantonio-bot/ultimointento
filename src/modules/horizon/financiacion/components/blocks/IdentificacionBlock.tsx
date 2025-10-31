@@ -136,7 +136,7 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
                 // Open Cuenta → Configuración → Cuentas Bancarias in a new tab to maintain form state
                 window.open('/cuenta/cuentas', '_blank');
               }}
-              className="atlas-atlas-atlas-btn-ghost-horizon text-sm underline"
+              className="atlas-atlas-atlas-atlas-btn-ghost-horizon text-sm underline"
             >
               Ir a Cuenta → Configuración → Cuentas Bancarias
             </button>

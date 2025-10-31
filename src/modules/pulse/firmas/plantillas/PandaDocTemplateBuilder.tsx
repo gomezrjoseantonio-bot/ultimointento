@@ -193,7 +193,7 @@ const PandaDocTemplateBuilder: React.FC = () => {
           </div>
 
           {connectionResult && (
-            <div className={`mt-6 rounded-lg border p-4 ${connectionResult.ok ? 'border-teal-200 bg-teal-50 text-teal-900' : 'border-red-200 bg-red-50 text-red-900'}`}>
+            <div className={`mt-6 rounded-lg border p-4 ${connectionResult.ok ? 'border-teal-200 bg-teal-50 text-teal-900' : 'border-error-200 bg-error-50 text-error-900'}`}>
               {connectionResult.ok ? (
                 <div>
                   <p className="font-semibold">Conexión verificada correctamente.</p>
@@ -211,7 +211,7 @@ const PandaDocTemplateBuilder: React.FC = () => {
                   <p className="font-semibold">No se pudo validar la API Key.</p>
                   <p className="mt-1 text-sm">{connectionResult.message || 'Revisa la clave proporcionada e inténtalo nuevamente.'}</p>
                   {connectionResult.status && (
-                    <p className="mt-1 text-xs text-red-700">Código HTTP: {connectionResult.status}</p>
+                    <p className="mt-1 text-xs text-error-700">Código HTTP: {connectionResult.status}</p>
                   )}
                 </div>
               )}
@@ -219,7 +219,7 @@ const PandaDocTemplateBuilder: React.FC = () => {
           )}
 
           {testError && !connectionResult?.ok && (
-            <p className="mt-4 text-sm text-red-600">{testError}</p>
+            <p className="mt-4 text-sm text-error-600">{testError}</p>
           )}
         </section>
 
@@ -372,7 +372,7 @@ const PandaDocTemplateBuilder: React.FC = () => {
             </button>
           </div>
 
-          {copyError && <p className="mt-2 text-sm text-red-600">{copyError}</p>}
+          {copyError && <p className="mt-2 text-sm text-error-600">{copyError}</p>}
 
           <pre className="mt-4 max-h-80 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
             {JSON.stringify(templateDefinition, null, 2)}

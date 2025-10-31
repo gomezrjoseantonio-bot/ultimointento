@@ -296,7 +296,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <button
                 type="button"
                 onClick={() => setShowVariableForm(true)}
-                className="inline-flex items-center atlas-atlas-atlas-atlas-atlas-btn-primary  text-sm rounded-md hover:atlas-atlas-atlas-atlas-atlas-btn-primary"
+                className="inline-flex items-center atlas-atlas-atlas-atlas-atlas-atlas-btn-primary  text-sm rounded-md hover:atlas-atlas-atlas-atlas-atlas-atlas-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Añadir Variable
@@ -324,7 +324,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       <button
                         type="button"
                         onClick={() => handleDeleteVariable(variable.id!)}
-                        className="p-1 text-neutral-600 hover:text-red-600"
+                        className="p-1 text-neutral-600 hover:text-error-600"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -344,7 +344,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <button
                 type="button"
                 onClick={() => setShowBonusForm(true)}
-                className="inline-flex items-center atlas-atlas-atlas-atlas-atlas-btn-primary  text-sm rounded-md hover:atlas-atlas-atlas-atlas-atlas-btn-primary"
+                className="inline-flex items-center atlas-atlas-atlas-atlas-atlas-atlas-btn-primary  text-sm rounded-md hover:atlas-atlas-atlas-atlas-atlas-atlas-btn-primary"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Añadir Bonus
@@ -372,7 +372,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       <button
                         type="button"
                         onClick={() => handleDeleteBonus(bonus.id!)}
-                        className="p-1 text-neutral-600 hover:text-red-600"
+                        className="p-1 text-neutral-600 hover:text-error-600"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -489,7 +489,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
             <button
               type="submit"
               disabled={loading}
-              className="atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-btn-primary disabled:opacity-50"
+              className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-atlas-btn-primary disabled:opacity-50"
             >
               {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
             </button>
@@ -692,7 +692,7 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
           </button>
           <button
             type="submit"
-            className="atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-btn-primary"
+            className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-atlas-btn-primary"
           >
             {variable ? 'Actualizar' : 'Añadir'} Variable
           </button>
@@ -838,7 +838,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ isOpen, onClose, bonus, onSaved }
           </button>
           <button
             type="submit"
-            className="atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-btn-primary"
+            className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary rounded-md hover:atlas-atlas-atlas-atlas-atlas-atlas-btn-primary"
           >
             {bonus ? 'Actualizar' : 'Añadir'} Bonus
           </button>

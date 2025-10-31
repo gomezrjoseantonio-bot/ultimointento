@@ -194,17 +194,17 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             {/* Validation Status */}
             <div className="mb-4 p-3 border">
               {isValid ? (
-                <div className="flex items-center gap-2 text-green-700">
+                <div className="flex items-center gap-2 text-success-700">
                   <CheckCircle className="w-4 h-4" />
                   <span className="text-sm font-medium">Configuración válida</span>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-red-700">
+                  <div className="flex items-center gap-2 text-error-700">
                     <AlertCircle className="w-4 h-4" />
                     <span className="text-sm font-medium">Configuración incompleta</span>
                   </div>
-                  <ul className="text-xs text-red-600 ml-6 space-y-1">
+                  <ul className="text-xs text-error-600 ml-6 space-y-1">
                     {validationErrors.map((error, index) => (
                       <li key={index}>• {error}</li>
                     ))}
@@ -254,7 +254,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             {data.suggestions.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2">Sugerencias:</h4>
-                <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+                <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
                   <ul className="text-xs space-y-1">
                     {data.suggestions.map((suggestion, index) => (
                       <li key={index}>• {suggestion}</li>
@@ -268,7 +268,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             {data.ambiguities.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium mb-2">Advertencias:</h4>
-                <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+                <div className="bg-warning-50 border border-yellow-200 rounded p-2">
                   <ul className="text-xs space-y-1">
                     {data.ambiguities.map((ambiguity, index) => (
                       <li key={index}>• {ambiguity}</li>

@@ -318,13 +318,13 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <p className="text-gray-600">Plusvalía/Pérdida</p>
-                <p className={`font-medium ${plusvalia >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`font-medium ${plusvalia >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                   {(plusvalia >= 0 ? '+' : '')}{plusvalia.toFixed(2)}€
                 </p>
               </div>
               <div>
                 <p className="text-gray-600">Rentabilidad</p>
-                <p className={`font-medium ${rentabilidad >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`font-medium ${rentabilidad >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                   {(rentabilidad >= 0 ? '+' : '')}{rentabilidad.toFixed(2)}%
                 </p>
               </div>
@@ -479,7 +479,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
                 </div>
 
                 {formData.aportacionPeriodica.importe && (
-                  <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
+                  <div className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
                     <p className="text-sm text-primary-700">
                       <strong>Aportación anual estimada:</strong> {
                         (parseFloat(formData.aportacionPeriodica.importe) * 

@@ -451,7 +451,7 @@ const CapexComponent: React.FC = () => {
 
                   {/* Preview Calculation */}
                   {formData.total > 0 && formData.anos_amortizacion > 0 && (
-                    <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+                    <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
                       <div className="text-sm font-medium text-primary-900 mb-2">
                         Vista previa de amortización:
                       </div>
@@ -471,7 +471,7 @@ const CapexComponent: React.FC = () => {
                     </button>
                     <button
                       type="submit"
-                      className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2"
+                      className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-2"
                       >
                       Guardar CAPEX
                     </button>

@@ -233,7 +233,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             </div>
           </div>
           
-          <div className="bg-green-900/20 rounded-lg p-4 border border-green-700/30">
+          <div className="atlas-btn-success p-4 border">
             <p className="text-green-200 text-sm">
               ✅ Puedes volver a ver este tour en cualquier momento desde el menú de ayuda
             </p>

@@ -123,15 +123,15 @@ const Personal: React.FC = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4">Secciones Activas</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {config?.seccionesActivas.nomina && (
-            <div className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
               <Banknote className="w-5 h-5 text-atlas-blue" />
               <span className="text-sm font-medium text-primary-900">Nómina configurada</span>
             </div>
           )}
           {config?.seccionesActivas.autonomo && (
-            <div className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
-              <User className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Autónomo configurado</span>
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
+              <User className="w-5 h-5 text-success-600" />
+              <span className="text-sm font-medium text-success-900">Autónomo configurado</span>
             </div>
           )}
           {config?.seccionesActivas.pensionesInversiones && (
@@ -141,8 +141,8 @@ const Personal: React.FC = () => {
             </div>
           )}
           {config?.seccionesActivas.otrosIngresos && (
-            <div className="flex items-center space-x-3 p-3 bg-yellow-50">
-              <DollarSign className="w-5 h-5 text-yellow-600" />
+            <div className="flex items-center space-x-3 p-3 bg-warning-50">
+              <DollarSign className="w-5 h-5 text-warning-600" />
               <span className="text-sm font-medium text-yellow-900">Otros ingresos disponibles</span>
             </div>
           )}

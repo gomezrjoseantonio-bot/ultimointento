@@ -48,10 +48,10 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
     }
     
     if (movement.state === 'ignored') {
-      return { label: 'Ignorado', color: 'bg-red-100 text-red-800' };
+      return { label: 'Ignorado', color: 'bg-error-100 text-error-800' };
     }
     
-    return { label: 'Confirmado', color: 'bg-green-100 text-green-800' };
+    return { label: 'Confirmado', color: 'bg-success-100 text-success-800' };
   };
 
   // Calculate daily totals
@@ -85,30 +85,30 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
         {/* Daily Summary */}
         <div className="p-6 bg-gray-50 border-b border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="atlas-atlas-atlas-atlas-btn-primary p-4 border border-green-200">
-              <p className="text-sm text-green-600">Ingresos</p>
-              <p className="text-xl font-bold text-green-700">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-4 border border-success-200">
+              <p className="text-sm text-success-600">Ingresos</p>
+              <p className="text-xl font-bold text-success-700">
                 {formatEuro(dailyTotals.ingresos)}
               </p>
             </div>
-            <div className="atlas-atlas-atlas-atlas-btn-destructive p-4 border border-red-200">
-              <p className="text-sm text-red-600">Gastos</p>
-              <p className="text-xl font-bold text-red-700">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive p-4 border border-error-200">
+              <p className="text-sm text-error-600">Gastos</p>
+              <p className="text-xl font-bold text-error-700">
                 {formatEuro(dailyTotals.gastos)}
               </p>
             </div>
             <div className={`p-4 border ${
               dailyTotals.neto >= 0 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-red-50 border-red-200'
+                ? 'bg-success-50 border-success-200' 
+                : 'bg-error-50 border-error-200'
             }`}>
               <p className={`text-sm ${
-                dailyTotals.neto >= 0 ? 'text-green-600' : 'text-red-600'
+                dailyTotals.neto >= 0 ? 'text-success-600' : 'text-error-600'
               }`}>
                 Neto del día
               </p>
               <p className={`text-xl font-bold ${
-                dailyTotals.neto >= 0 ? 'text-green-700' : 'text-red-700'
+                dailyTotals.neto >= 0 ? 'text-success-700' : 'text-error-700'
               }`}>
                 {formatEuro(dailyTotals.neto)}
               </p>
@@ -151,14 +151,14 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'link')}
-                            className="p-1 text-gray-400 hover:text-green-600"
+                            className="p-1 text-gray-400 hover:text-success-600"
                             title="Conciliar"
                           >
                             <Link className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onMovementAction(movement, 'delete')}
-                            className="p-1 text-gray-400 hover:text-red-600"
+                            className="p-1 text-gray-400 hover:text-error-600"
                             title="Eliminar"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -185,7 +185,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
                         <div>
                           <p className="text-sm text-gray-500">Importe</p>
                           <p className={`text-lg font-bold ${
-                            movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                            movement.amount >= 0 ? 'text-success-600' : 'text-error-600'
                           }`}>
                             {movement.amount >= 0 ? '+' : ''}{formatEuro(movement.amount)}
                           </p>
@@ -234,7 +234,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
             </p>
             <button
               onClick={onClose}
-              className="atlas-atlas-atlas-atlas-btn-primary px-4 py-2"
+              className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-2"
             >
               Cerrar
             </button>

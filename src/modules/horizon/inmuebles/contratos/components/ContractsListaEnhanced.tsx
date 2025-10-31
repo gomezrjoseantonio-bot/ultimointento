@@ -240,7 +240,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     const configMap: Record<Contract['modalidad'], { bg: string; text: string; label: string }> = {
       habitual: { bg: 'bg-atlas-blue', text: 'text-white', label: 'Habitual' },
       temporada: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Temporada' },
-      vacacional: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Vacacional' }
+      vacacional: { bg: 'bg-warning-100', text: 'text-orange-800', label: 'Vacacional' }
     };
 
     const config = configMap[modalidad] || configMap.habitual;
@@ -265,9 +265,9 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     const badgeConfig: Record<SignatureStatus, { bg: string; text: string; label: string }> = {
       borrador: { bg: 'bg-neutral-100', text: 'text-neutral-700', label: 'Borrador' },
       preparado: { bg: 'bg-primary-100', text: 'text-primary-800', label: 'Preparado' },
-      enviado: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Enviado' },
-      firmado: { bg: 'bg-green-100', text: 'text-green-800', label: 'Firmado' },
-      rechazado: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rechazado' },
+      enviado: { bg: 'bg-warning-100', text: 'text-yellow-800', label: 'Enviado' },
+      firmado: { bg: 'bg-success-100', text: 'text-success-800', label: 'Firmado' },
+      rechazado: { bg: 'bg-error-100', text: 'text-error-800', label: 'Rechazado' },
     };
 
     const config = badgeConfig[estado] || badgeConfig.borrador;
@@ -284,7 +284,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     
     const config = {
       ipc: { bg: 'bg-primary-100', text: 'text-primary-800', label: 'IPC' },
-      irav: { bg: 'bg-green-100', text: 'text-green-800', label: 'IRAV' },
+      irav: { bg: 'bg-success-100', text: 'text-success-800', label: 'IRAV' },
       otros: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Otros' }
     };
 
@@ -356,12 +356,12 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="atlas-atlas-atlas-atlas-btn-destructive border border-red-200 p-6 max-w-md">
+        <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive border border-error-200 p-6 max-w-md">
           <div className="flex items-center mb-4">
-            <XCircle className="h-6 w-6 text-red-500 mr-2" />
-            <h3 className="text-lg font-medium text-red-900">Error de carga</h3>
+            <XCircle className="h-6 w-6 text-error-500 mr-2" />
+            <h3 className="text-lg font-medium text-error-900">Error de carga</h3>
           </div>
-          <p className="text-red-700 mb-4">{error}</p>
+          <p className="text-error-700 mb-4">{error}</p>
           <div className="flex space-x-3">
             <button
               onClick={() => loadData()}
@@ -611,7 +611,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                             {contract.firma?.estado === 'enviado' && (
                               <button
                                 onClick={() => handleMarkSigned(contract)}
-                                className="text-green-600 hover:text-green-700"
+                                className="text-success-600 hover:text-success-700"
                                 title="Marcar como firmado"
                                 disabled={signatureProcessingId === contract.id}
                               >
@@ -635,7 +635,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         {contract.estadoContrato === 'activo' && (
                           <button
                             onClick={() => handleRescindContract(contract)}
-                            className="text-warn hover:text-yellow-700"
+                            className="text-warn hover:text-warning-700"
                             title="Rescindir contrato"
                           >
                             <XCircle className="h-4 w-4" />
@@ -644,7 +644,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         
                         <button
                           onClick={() => handleDeleteContract(contract)}
-                          className="text-error hover:text-red-700"
+                          className="text-error hover:text-error-700"
                           title="Eliminar contrato"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -101,9 +101,9 @@ const getEventStatus = (event: TreasuryEvent, balanceAfter: number): EventStatus
 
 const getStatusColor = (status: EventStatus): string => {
   switch (status) {
-    case 'confirmado': return 'text-green-600';
-    case 'riesgo': return 'text-yellow-600';
-    case 'alerta': return 'text-red-600';
+    case 'confirmado': return 'text-success-600';
+    case 'riesgo': return 'text-warning-600';
+    case 'alerta': return 'text-error-600';
     case 'programado': return 'text-gray-500';
   }
 };
@@ -350,20 +350,20 @@ const Radar: React.FC = () => {
                     <div className="flex items-center gap-6">
                       <div className="text-center">
                         <div className="text-sm font-medium text-gray-500">Entradas</div>
-                        <div className="text-lg font-semibold text-green-600">
+                        <div className="text-lg font-semibold text-success-600">
                           +{formatEuro(account.upcomingIncome)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-sm font-medium text-gray-500">Salidas</div>
-                        <div className="text-lg font-semibold text-red-600">
+                        <div className="text-lg font-semibold text-error-600">
                           -{formatEuro(account.upcomingExpenses)}
                         </div>
                       </div>
                       <div className="text-center">
                         <div className="text-sm font-medium text-gray-500">Saldo final</div>
                         <div className={`text-lg font-semibold ${
-                          account.projectedBalance < 0 ? 'text-red-600' : 'text-gray-900'
+                          account.projectedBalance < 0 ? 'text-error-600' : 'text-gray-900'
                         }`}>
                           {formatEuro(account.projectedBalance)}
                         </div>
@@ -428,7 +428,7 @@ const Radar: React.FC = () => {
                               </div>
                               
                               <div className="flex items-center gap-4">
-                                <div className={`font-medium ${event.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <div className={`font-medium ${event.amount >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                                   {event.amount >= 0 ? '+' : ''}{formatEuro(event.amount)}
                                 </div>
                                 <div className="text-sm text-gray-600">
@@ -454,7 +454,7 @@ const Radar: React.FC = () => {
                     </span>
                     <span className="text-gray-600">
                       Saldo al final del periodo: <span className={`font-medium ${
-                        account.projectedBalance < 0 ? 'text-red-600' : 'text-gray-900'
+                        account.projectedBalance < 0 ? 'text-error-600' : 'text-gray-900'
                       }`}>{formatEuro(account.projectedBalance)}</span>
                     </span>
                   </div>

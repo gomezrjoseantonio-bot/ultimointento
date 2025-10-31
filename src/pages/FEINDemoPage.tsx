@@ -315,7 +315,7 @@ const FEINDemoPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-success-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">FEIN Completa</h3>
                 <p className="text-sm text-gray-600">Auto-guardado OK (72h)</p>

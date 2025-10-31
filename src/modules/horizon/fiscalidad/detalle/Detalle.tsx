@@ -226,7 +226,7 @@ const Detalle: React.FC = () => {
         
         {/* Reconciliation Summary */}
         {reconciliationSuggestions.length > 0 && (
-          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <RefreshCw className="w-5 h-5 text-primary-600" />
@@ -341,7 +341,7 @@ const Detalle: React.FC = () => {
                                     <button
                                       key={idx}
                                       onClick={() => handleReconcileIncome(ingreso.id!, match.movement.id)}
-                                      className="atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-btn-primary text-xs px-2 py-1 text-primary-800 rounded hover: "
+                                      className="atlas-atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-atlas-btn-primary text-xs px-2 py-1 text-primary-800 rounded hover: "
                                       title={`Confianza: ${match.confidence}% - ${match.reason}`}
                                     >
                                       Conciliar ({match.confidence}%)

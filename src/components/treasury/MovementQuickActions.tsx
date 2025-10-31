@@ -48,7 +48,7 @@ export const MovementQuickActions: React.FC<QuickActionsProps> = ({
       return (
         <button
           onClick={() => onConfirm(movement)}
-          className="atlas-atlas-atlas-atlas-btn-primary flex items-center justify-center w-8 h-8"
+          className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center justify-center w-8 h-8"
           title="Marcar como confirmado"
         >
           <Check className="w-4 h-4" />

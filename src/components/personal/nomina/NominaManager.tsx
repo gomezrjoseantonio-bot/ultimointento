@@ -292,7 +292,7 @@ const NominaManager: React.FC = () => {
                         {nomina.nombre}
                       </h5>
                       {nomina.activa && (
-                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-primary-800">
+                        <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-primary-800">
                           Activa
                         </span>
                       )}
@@ -326,7 +326,7 @@ const NominaManager: React.FC = () => {
                     {!nomina.activa && (
                       <button
                         onClick={() => handleActivateNomina(nomina)}
-                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-atlas-blue "
+                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-atlas-blue "
                       >
                         Activar
                       </button>
@@ -339,7 +339,7 @@ const NominaManager: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleDeleteNomina(nomina.id!)}
-                      className="p-2 text-gray-400 hover:text-red-600"
+                      className="p-2 text-gray-400 hover:text-error-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

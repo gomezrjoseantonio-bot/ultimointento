@@ -209,7 +209,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     
     return {
       amount: total,
-      color: total > 0 ? 'text-green-600' : total < 0 ? 'text-red-600' : 'text-gray-500',
+      color: total > 0 ? 'text-success-600' : total < 0 ? 'text-error-600' : 'text-gray-500',
       sign: total > 0 ? '+' : total < 0 ? '' : '', // negative already has minus
       countDisplay
     };
@@ -277,7 +277,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
 
           {/* Current Balance */}
           <div className="text-sm text-gray-600">
-            Saldo actual: <span className={`font-medium ${account.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            Saldo actual: <span className={`font-medium ${account.balance >= 0 ? 'text-success-600' : 'text-error-600'}`}>
               {formatEuro(account.balance)}
             </span>
           </div>

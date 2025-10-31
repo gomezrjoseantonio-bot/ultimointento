@@ -125,7 +125,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
-          <div className="atlas-atlas-atlas-atlas-btn-primary p-3">
+          <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
             <Eye className="h-6 w-6 text-atlas-blue" />
           </div>
         </div>
@@ -266,7 +266,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
           <button
             onClick={handleDescribeImage}
             disabled={isProcessing}
-            className="atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-btn-primary disabled: px-6 py-2 font-medium flex items-center space-x-2"
+            className="atlas-atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-atlas-btn-primary disabled: px-6 py-2 font-medium flex items-center space-x-2"
           >
             {isProcessing ? (
               <>
@@ -300,7 +300,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
                 title="Copiar descripción"
               >
                 {copied ? (
-                  <Check className="h-5 w-5 text-green-600" />
+                  <Check className="h-5 w-5 text-success-600" />
                 ) : (
                   <Copy className="h-5 w-5" />
                 )}

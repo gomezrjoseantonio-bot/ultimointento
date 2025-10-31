@@ -142,8 +142,8 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({ item, className 
       onClick={handleToggle}
       className={`p-2 rounded-lg transition-colors ${
         isFavorite
-          ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50 hover:bg-yellow-100'
-          : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'
+          ? 'text-yellow-500 hover:text-warning-600 bg-warning-50 hover:bg-warning-100'
+          : 'text-gray-400 hover:text-yellow-500 hover:bg-warning-50'
       } ${className}`}
       aria-label={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
       title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
@@ -236,8 +236,8 @@ const FavoritesWidget: React.FC = () => {
                 className="flex-1 flex items-center gap-3 text-left min-w-0"
               >
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-yellow-600" />
+                  <div className="w-10 h-10 rounded-lg bg-warning-50 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-warning-600" />
                   </div>
                 </div>
                 
@@ -255,7 +255,7 @@ const FavoritesWidget: React.FC = () => {
               
               <button
                 onClick={(e) => handleRemove(e, item.id)}
-                className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                className="atlas-btn-destructive flex-shrink-0 p-1.5 text-gray-400 opacity-0 group-hover:opacity-100"
                 aria-label="Quitar de favoritos"
               >
                 <X className="w-4 h-4" />

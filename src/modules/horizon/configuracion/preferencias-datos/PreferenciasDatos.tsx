@@ -382,7 +382,7 @@ const PreferenciasDatos: React.FC = () => {
                         Cancelar
                       </button>
                     </div>
-                    <p className="text-xs text-orange-600 mt-2">
+                    <p className="text-xs text-warning-600 mt-2">
                       Tras la limpieza, la página se recargará automáticamente.
                     </p>
                   </div>

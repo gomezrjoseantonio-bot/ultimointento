@@ -480,7 +480,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   handleHardDelete(account);
                   setActiveDropdown(null);
                 }}
-                className="atlas-atlas-atlas-atlas-btn-destructive w-full px-4 py-2 text-left text-sm text-red-600 hover: flex items-center gap-2"
+                className="atlas-atlas-atlas-atlas-atlas-btn-destructive w-full px-4 py-2 text-left text-sm text-error-600 hover: flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Eliminar definitivamente…
@@ -612,14 +612,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     maxLength={40}
                   />
                   {formErrors.alias && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.alias}</p>
+                    <p className="mt-1 text-sm text-error-600">{formErrors.alias}</p>
                   )}
                 </div>
 
                 {/* IBAN field - Required */}
                 <div>
                   <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                    IBAN <span className="text-red-500">*</span>
+                    IBAN <span className="text-error-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -631,7 +631,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     disabled={!!editingAccount} // Cannot edit IBAN
                   />
                   {formErrors.iban && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.iban}</p>
+                    <p className="mt-1 text-sm text-error-600">{formErrors.iban}</p>
                   )}
                 </div>
 
@@ -648,7 +648,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
                   />
                   {formErrors.logoFile && (
-                    <p className="mt-1 text-sm text-red-600">{formErrors.logoFile}</p>
+                    <p className="mt-1 text-sm text-error-600">{formErrors.logoFile}</p>
                   )}
                   <p className="mt-1 text-xs text-gray-500">
                     Se detectará automáticamente el logo del banco. Puedes subir uno personalizado (máx. 2MB).
@@ -661,7 +661,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                         className="w-8 h-8 object-cover border border-gray-300"
                       />
                       <div className="text-xs">
-                        <p className="text-green-600 font-medium">
+                        <p className="text-success-600 font-medium">
                           {formData.logoFile.name}
                         </p>
                         <p className="text-gray-500">
@@ -700,7 +700,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50" style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}>
           <div className="bg-white p-6 w-full max-w-lg">
             <div className="flex items-center mb-4">
-              <AlertTriangle className="w-6 h-6 mr-3 text-red-500" />
+              <AlertTriangle className="w-6 h-6 mr-3 text-error-500" />
               <h2 className="text-lg font-semibold text-atlas-navy-1">
                 Eliminar cuenta definitivamente
               </h2>
@@ -725,8 +725,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   </div>
                 ) : (
                   <div>
-                    <div className="atlas-atlas-atlas-atlas-btn-destructive border border-red-200 p-3 mb-4">
-                      <p className="text-sm text-red-800">
+                    <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive border border-error-200 p-3 mb-4">
+                      <p className="text-sm text-error-800">
                         <strong>Acción irreversible:</strong> Esta cuenta será eliminada permanentemente de la base de datos y no se podrá recuperar.
                       </p>
                     </div>
@@ -742,7 +742,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                               ...deleteConfirmation,
                               deleteMovements: e.target.checked
                             })}
-                            className="mt-0.5 mr-3 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                            className="mt-0.5 mr-3 h-4 w-4 text-error-600 focus:ring-red-500 border-gray-300 rounded"
                           />
                           <label htmlFor="deleteMovements" className="text-sm text-gray-700">
                             <strong>También borrar sus {deleteConfirmation.movementsCount} movimientos (irreversible)</strong>
@@ -750,7 +750,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                         </div>
                         
                         {!deleteConfirmation.deleteMovements && (
-                          <div className="bg-yellow-50 border border-yellow-200 p-3">
+                          <div className="bg-warning-50 border border-yellow-200 p-3">
                             <p className="text-sm text-yellow-800">
                               Selecciona una acción: re-asignar o borrar movimientos.
                             </p>
@@ -769,7 +769,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       <button
                         onClick={confirmDelete}
                         disabled={deleting || ((deleteConfirmation.movementsCount || 0) > 0 && !deleteConfirmation.deleteMovements)}
-                        className="atlas-atlas-atlas-atlas-btn-destructive px-4 py-2 text-sm font-medium border border-transparent disabled:opacity-50"
+                        className="atlas-atlas-atlas-atlas-atlas-btn-destructive px-4 py-2 text-sm font-medium border border-transparent disabled:opacity-50"
                       >
                         {deleting ? 'Eliminando...' : 'Eliminar definitivamente'}
                       </button>
