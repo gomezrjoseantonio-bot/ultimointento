@@ -56,11 +56,17 @@ export const Tooltip: React.FC<TooltipProps> = ({
       {children}
       {showIcon && (
         <button 
-          className="ml-1.5 p-0.5 rounded hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-atlas-blue/30"
+          className="ml-1.5 p-0.5 rounded transition-colors focus:outline-none focus:ring-2"
+          style={{
+            backgroundColor: 'transparent',
+            color: 'var(--hz-neutral-500)',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--hz-neutral-100)'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
           aria-label="Ver información"
           type="button"
         >
-          <Info size={16} style={{ color: 'var(--text-gray)' }} />
+          <Info size={16} />
         </button>
       )}
       
