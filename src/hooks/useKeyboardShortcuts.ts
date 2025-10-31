@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface UseKeyboardShortcutsOptions {
@@ -12,11 +12,12 @@ interface UseKeyboardShortcutsOptions {
 export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
   const navigate = useNavigate();
   const { onShowShortcuts } = options || {};
+  
+  // Use refs to avoid race conditions and maintain state across renders
+  const isGPressedRef = useRef(false);
+  const gPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let isGPressed = false;
-    let gPressTimer: NodeJS.Timeout;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore shortcuts when typing in input fields
       const target = e.target as HTMLElement;
@@ -28,8 +29,8 @@ export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
         return;
       }
 
-      // Show shortcuts modal with '?'
-      if (e.key === '?' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      // Show shortcuts modal with '?' (Shift+/)
+      if (e.key === '?' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         onShowShortcuts?.();
         return;
@@ -37,20 +38,22 @@ export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
 
       // Handle 'G' key for navigation shortcuts
       if (e.key === 'g' || e.key === 'G') {
-        if (!isGPressed) {
-          isGPressed = true;
+        if (!isGPressedRef.current) {
+          isGPressedRef.current = true;
           // Reset after 1.5 seconds if no second key is pressed
-          gPressTimer = setTimeout(() => {
-            isGPressed = false;
+          gPressTimerRef.current = setTimeout(() => {
+            isGPressedRef.current = false;
           }, 1500);
         }
         return;
       }
 
       // Handle navigation shortcuts after 'G' is pressed
-      if (isGPressed) {
-        clearTimeout(gPressTimer);
-        isGPressed = false;
+      if (isGPressedRef.current) {
+        if (gPressTimerRef.current) {
+          clearTimeout(gPressTimerRef.current);
+        }
+        isGPressedRef.current = false;
 
         switch (e.key.toLowerCase()) {
           case 'h':
@@ -100,7 +103,9 @@ export const useKeyboardShortcuts = (options?: UseKeyboardShortcutsOptions) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      clearTimeout(gPressTimer);
+      if (gPressTimerRef.current) {
+        clearTimeout(gPressTimerRef.current);
+      }
     };
   }, [navigate, onShowShortcuts]);
 };

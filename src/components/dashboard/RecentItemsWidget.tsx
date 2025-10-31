@@ -59,7 +59,7 @@ export class RecentItemsService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch (error) {
-      console.error('Failed to save recent items:', error);
+      console.error('Failed to save recent items - storage may be full. Consider clearing browser data or recent items.', error);
     }
   }
   

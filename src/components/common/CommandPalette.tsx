@@ -122,32 +122,32 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     },
   ], [navigate, onClose]);
 
-  // Load recent commands from localStorage
-  const getRecentCommands = (): string[] => {
+  // Load recent commands from localStorage - memoized
+  const getRecentCommands = useCallback((): string[] => {
     try {
       const recent = localStorage.getItem('atlas_recent_commands');
       return recent ? JSON.parse(recent) : [];
     } catch {
       return [];
     }
-  };
+  }, []);
 
-  // Load favorite commands from localStorage
-  const getFavoriteCommands = (): string[] => {
+  // Load favorite commands from localStorage - memoized
+  const getFavoriteCommands = useCallback((): string[] => {
     try {
       const favorites = localStorage.getItem('atlas_favorite_commands');
       return favorites ? JSON.parse(favorites) : [];
     } catch {
       return [];
     }
-  };
+  }, []);
 
   // Save command to recent
   const saveToRecent = useCallback((commandId: string) => {
     const recent = getRecentCommands();
     const updated = [commandId, ...recent.filter(id => id !== commandId)].slice(0, 5);
     localStorage.setItem('atlas_recent_commands', JSON.stringify(updated));
-  }, []);
+  }, [getRecentCommands]);
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
@@ -175,7 +175,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       const keywordMatch = cmd.keywords?.some(kw => kw.includes(lowerQuery));
       return labelMatch || descMatch || keywordMatch;
     });
-  }, [query, allCommands]);
+  }, [query, allCommands, getFavoriteCommands, getRecentCommands]);
 
   // Execute selected command
   const executeCommand = useCallback((command: Command) => {
@@ -216,7 +216,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     if (isOpen) {
       setQuery('');
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      // Use requestAnimationFrame for better timing
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     }
   }, [isOpen]);
 

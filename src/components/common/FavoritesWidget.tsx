@@ -21,6 +21,15 @@ interface FavoriteItem {
 
 const STORAGE_KEY = 'atlas_favorites';
 
+// Type for serialized favorite item (without icon function)
+interface SerializedFavoriteItem {
+  id: string;
+  type: 'page' | 'property' | 'document' | 'feature';
+  title: string;
+  subtitle?: string;
+  path: string;
+}
+
 /**
  * Service to manage favorite items
  */
@@ -30,10 +39,10 @@ export class FavoritesService {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return [];
       
-      const items = JSON.parse(stored);
+      const items: SerializedFavoriteItem[] = JSON.parse(stored);
       
       // Restore icon functions
-      return items.map((item: any) => ({
+      return items.map((item) => ({
         ...item,
         icon: this.getIconForType(item.type),
       }));
