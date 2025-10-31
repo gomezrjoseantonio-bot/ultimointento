@@ -678,4 +678,45 @@ table td,
     white-space: nowrap;
     border: 0;
   }
+
+/* Sprint 1 UX Improvements - Mobile Touch Targets (44px minimum) */
+@media (max-width: 768px) {
+  /* Ensure buttons meet 44px touch target on mobile */
+  button:not(.atlas-btn-sm),
+  .atlas-btn-primary,
+  .atlas-btn-secondary,
+  .atlas-btn-destructive,
+  .atlas-btn-ghost {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Input fields on mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  select,
+  textarea {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+
+  /* Icon buttons specifically */
+  button[aria-label]:not([aria-label=""]) {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem;
+  }
+
+  /* Increase tap area for interactive elements */
+  a, 
+  label {
+    padding: 0.5rem 0;
+  }
+}
 }

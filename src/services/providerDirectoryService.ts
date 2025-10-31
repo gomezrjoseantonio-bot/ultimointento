@@ -44,7 +44,7 @@ export const saveProvider = async (provider: Omit<ProviderDirectoryEntry, 'id' |
     return newProvider.id!; // We just assigned it above
   } catch (error) {
     console.error('Error saving provider:', error);
-    throw new Error('No se pudo guardar el proveedor');
+    throw new Error('No se pudo guardar el proveedor. Verifica que el nombre sea único y los datos sean correctos.');
   }
 };
 
@@ -55,7 +55,7 @@ export const updateProvider = async (id: number, updates: Partial<ProviderDirect
     const index = providers.findIndex(p => p.id === id);
     
     if (index === -1) {
-      throw new Error('Proveedor no encontrado');
+      throw new Error('Proveedor no encontrado. Es posible que haya sido eliminado.');
     }
     
     providers[index] = {
@@ -67,7 +67,7 @@ export const updateProvider = async (id: number, updates: Partial<ProviderDirect
     localStorage.setItem('provider-directory', JSON.stringify(providers));
   } catch (error) {
     console.error('Error updating provider:', error);
-    throw new Error('No se pudo actualizar el proveedor');
+    throw new Error('No se pudo actualizar el proveedor. Verifica que los datos sean válidos e intenta nuevamente.');
   }
 };
 
@@ -79,7 +79,7 @@ export const deleteProvider = async (id: number): Promise<void> => {
     localStorage.setItem('provider-directory', JSON.stringify(filtered));
   } catch (error) {
     console.error('Error deleting provider:', error);
-    throw new Error('No se pudo eliminar el proveedor');
+    throw new Error('No se pudo eliminar el proveedor. Intenta recargar la página y volver a intentarlo.');
   }
 };
 
