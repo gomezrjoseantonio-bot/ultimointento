@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  StarIcon as StarOutline,
-  BuildingOfficeIcon,
-  DocumentTextIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
-import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
+  Star,
+  Building,
+  FileText,
+  BarChart3,
+  Settings,
+  X,
+} from 'lucide-react';
 
 interface FavoriteItem {
   id: string;
@@ -104,13 +103,13 @@ export class FavoritesService {
   private static getIconForType(type: string) {
     switch (type) {
       case 'property':
-        return BuildingOfficeIcon;
+        return Building;
       case 'document':
-        return DocumentTextIcon;
+        return FileText;
       case 'feature':
-        return ChartBarIcon;
+        return BarChart3;
       default:
-        return Cog6ToothIcon;
+        return Settings;
     }
   }
 }
@@ -149,11 +148,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({ item, className 
       aria-label={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
       title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
     >
-      {isFavorite ? (
-        <StarSolid className="w-5 h-5" />
-      ) : (
-        <StarOutline className="w-5 h-5" />
-      )}
+      <Star className="w-5 h-5" fill={isFavorite ? "currentColor" : "none"} />
     </button>
   );
 };
@@ -196,13 +191,13 @@ const FavoritesWidget: React.FC = () => {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <StarSolid className="w-5 h-5 text-yellow-500" />
+          <Star className="w-5 h-5 text-yellow-500" fill="currentColor" />
           <h3 className="text-lg font-semibold text-gray-900">
             Favoritos
           </h3>
         </div>
         <div className="text-center py-8 text-gray-500">
-          <StarOutline className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <Star className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p className="text-sm">No hay favoritos</p>
           <p className="text-xs mt-1">
             Marca páginas o elementos como favoritos para acceso rápido
@@ -217,7 +212,7 @@ const FavoritesWidget: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <StarSolid className="w-5 h-5 text-yellow-500" />
+          <Star className="w-5 h-5 text-yellow-500" fill="currentColor" />
           <h3 className="text-lg font-semibold text-gray-900">
             Favoritos
           </h3>
@@ -263,7 +258,7 @@ const FavoritesWidget: React.FC = () => {
                 className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                 aria-label="Quitar de favoritos"
               >
-                <XMarkIcon className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           );

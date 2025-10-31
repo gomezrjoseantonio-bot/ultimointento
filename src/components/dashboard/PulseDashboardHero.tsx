@@ -161,7 +161,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                     <span className="sr-only">{personalToggleLabel}</span>
                     <span
                       className={`mx-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-brand-navy transition ${
-                        excludePersonal ? 'shadow-[0_0_0_2px_rgba(255,255,255,0.3)]' : 'shadow-[0_0_0_0_rgba(0,0,0,0)]'
+                        excludePersonal ? 'shadow-[0_0_0_2px_rgba(255,255,255,0.3)]' : 'shadow-[0_0_0_0_rgba(255,255,255,0)]'
                       }`}
                     >
                       {isUpdatingPersonalPreference ? (

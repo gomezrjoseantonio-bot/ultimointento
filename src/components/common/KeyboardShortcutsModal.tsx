@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon, CommandLineIcon } from '@heroicons/react/24/outline';
+import { X, Command } from 'lucide-react';
 
 interface KeyboardShortcut {
   keys: string[];
@@ -100,8 +100,8 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ isOpen,
       aria-modal="true"
       aria-labelledby="shortcuts-title"
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      {/* Backdrop - ATLAS light overlay */}
+      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm" />
 
       {/* Modal */}
       <div 
@@ -111,7 +111,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ isOpen,
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <CommandLineIcon className="w-6 h-6 text-atlas-blue-600" />
+            <Command className="w-6 h-6 text-atlas-blue-600" />
             <h2 id="shortcuts-title" className="text-xl font-semibold text-gray-900">
               Atajos de Teclado
             </h2>
@@ -121,7 +121,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ isOpen,
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Cerrar"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 

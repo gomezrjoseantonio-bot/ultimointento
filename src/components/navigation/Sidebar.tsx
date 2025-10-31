@@ -86,7 +86,7 @@ const SeparatorOverline: React.FC<SeparatorOverlineProps> = ({
               {showTooltip && (
                 <div 
                   id={`tooltip-${label}`}
-                  className="absolute left-0 top-6 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-50 whitespace-normal max-w-xs shadow-lg border border-gray-700"
+                  className="absolute left-0 top-6 bg-white text-white text-xs rounded-lg px-3 py-2 z-50 whitespace-normal max-w-xs shadow-lg border border-gray-700"
                   role="tooltip"
                 >
                   <div className="font-semibold mb-1">{label}</div>

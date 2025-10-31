@@ -143,7 +143,7 @@ const PlanFacturacion: React.FC = () => {
           </div>
           <div className="text-right">
             <p className="text-sm text-hz-neutral-700">Estado</p>
-            <span className="inline-block px-3 py-1 bg-ok bg-opacity-10 text-ok rounded-full text-sm font-medium mt-1">
+            <span className="inline-block px-3 py-1 text-ok rounded-full text-sm font-medium mt-1" style={{ backgroundColor: 'rgba(40, 167, 69, 0.1)' }}>
               {user?.subscriptionStatus === 'active' ? 'Activo' : 
                user?.subscriptionStatus === 'trial' ? 'Prueba' : 'Cancelado'}
             </span>
@@ -207,7 +207,7 @@ const PlanFacturacion: React.FC = () => {
                   isCurrentPlan
                     ? 'bg-hz-neutral-300 text-hz-neutral-700 cursor-not-allowed'
                     : isUpgrade
-                    ? 'bg-atlas-blue text-white hover:bg-opacity-90'
+                    ? 'bg-atlas-blue text-white hover:opacity-90'
                     : 'bg-hz-neutral-100 text-atlas-navy-1 hover:bg-hz-neutral-300'
                 } disabled:opacity-50`}
               >
@@ -236,7 +236,7 @@ const PlanFacturacion: React.FC = () => {
 
       {/* Cancel Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-xl font-semibold text-atlas-navy-1 mb-4">
               ¿Cancelar suscripción?

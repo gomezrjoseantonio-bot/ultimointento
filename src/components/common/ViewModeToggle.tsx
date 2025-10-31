@@ -23,7 +23,7 @@ const ViewModeToggle: React.FC<ViewModeToggleProps> = ({
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <span className="text-sm text-gray-400 mr-2">Modo:</span>
-      <div className="inline-flex rounded-lg bg-gray-800 p-1 border border-gray-700">
+      <div className="inline-flex rounded-lg bg-gray-50 p-1 border border-gray-200">
         <button
           onClick={() => onModeChange('simple')}
           className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${

@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MagnifyingGlassIcon,
-  HomeIcon,
-  BuildingOfficeIcon,
-  DocumentTextIcon,
-  BanknotesIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-  XMarkIcon,
-  ClockIcon,
-  StarIcon,
-} from '@heroicons/react/24/outline';
+  Search,
+  Home,
+  Building,
+  FileText,
+  Banknote,
+  BarChart3,
+  Settings,
+  X,
+  Clock,
+  Star,
+} from 'lucide-react';
 
 interface Command {
   id: string;
@@ -42,7 +42,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-dashboard',
       label: 'Ir al Panel',
       description: 'Vista general del dashboard',
-      icon: HomeIcon,
+      icon: Home,
       action: () => { navigate('/panel'); onClose(); },
       category: 'navigation',
       keywords: ['dashboard', 'panel', 'home', 'inicio'],
@@ -51,7 +51,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-properties',
       label: 'Ir a Inmuebles',
       description: 'Gestión de propiedades',
-      icon: BuildingOfficeIcon,
+      icon: Building,
       action: () => { navigate('/portfolio'); onClose(); },
       category: 'navigation',
       keywords: ['inmuebles', 'propiedades', 'portfolio', 'properties'],
@@ -60,7 +60,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-treasury',
       label: 'Ir a Tesorería',
       description: 'Gestión de cuentas y movimientos',
-      icon: BanknotesIcon,
+      icon: Banknote,
       action: () => { navigate('/treasury'); onClose(); },
       category: 'navigation',
       keywords: ['tesorería', 'treasury', 'cuentas', 'banco', 'movimientos'],
@@ -69,7 +69,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-documents',
       label: 'Ir a Documentos',
       description: 'Gestión documental',
-      icon: DocumentTextIcon,
+      icon: FileText,
       action: () => { navigate('/inbox'); onClose(); },
       category: 'navigation',
       keywords: ['documentos', 'documents', 'inbox', 'archivos'],
@@ -78,7 +78,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-tax',
       label: 'Ir a Fiscalidad',
       description: 'Información fiscal',
-      icon: ChartBarIcon,
+      icon: BarChart3,
       action: () => { navigate('/tax'); onClose(); },
       category: 'navigation',
       keywords: ['fiscalidad', 'tax', 'impuestos', 'fiscal'],
@@ -87,7 +87,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'nav-settings',
       label: 'Ir a Configuración',
       description: 'Ajustes de la aplicación',
-      icon: Cog6ToothIcon,
+      icon: Settings,
       action: () => { navigate('/settings'); onClose(); },
       category: 'navigation',
       keywords: ['configuración', 'settings', 'ajustes', 'preferencias'],
@@ -97,7 +97,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'action-new-property',
       label: 'Crear Nuevo Inmueble',
       description: 'Añadir una nueva propiedad',
-      icon: BuildingOfficeIcon,
+      icon: Building,
       action: () => { navigate('/portfolio?action=new'); onClose(); },
       category: 'action',
       keywords: ['crear', 'nuevo', 'inmueble', 'propiedad', 'añadir'],
@@ -106,7 +106,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'action-import-movements',
       label: 'Importar Movimientos',
       description: 'Importar movimientos bancarios',
-      icon: BanknotesIcon,
+      icon: Banknote,
       action: () => { navigate('/treasury?action=import'); onClose(); },
       category: 'action',
       keywords: ['importar', 'movimientos', 'banco', 'csv', 'excel'],
@@ -115,7 +115,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       id: 'action-upload-document',
       label: 'Subir Documento',
       description: 'Añadir un nuevo documento',
-      icon: DocumentTextIcon,
+      icon: FileText,
       action: () => { navigate('/inbox?action=upload'); onClose(); },
       category: 'action',
       keywords: ['subir', 'documento', 'upload', 'archivo'],
@@ -258,8 +258,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       aria-modal="true"
       aria-labelledby="command-palette-title"
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      {/* Backdrop - ATLAS light overlay */}
+      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm" />
 
       {/* Command Palette */}
       <div 
@@ -268,7 +268,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       >
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
-          <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+          <Search className="w-5 h-5 text-gray-400" />
           <input
             ref={inputRef}
             type="text"
@@ -287,7 +287,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
             className="p-1 hover:bg-gray-100 rounded-md transition-colors"
             aria-label="Cerrar"
           >
-            <XMarkIcon className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
 
@@ -338,10 +338,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                       )}
                     </div>
                     {category === 'favorite' && (
-                      <StarIcon className="w-4 h-4 text-yellow-500 fill-current" />
+                      <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
                     )}
                     {category === 'recent' && (
-                      <ClockIcon className="w-4 h-4 text-gray-400" />
+                      <Clock className="w-4 h-4 text-gray-400" />
                     )}
                   </button>
                 );
