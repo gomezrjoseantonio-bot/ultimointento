@@ -70,10 +70,10 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
       {/* Optional Notice */}
       <div className="btn-secondary-horizon btn-primary-horizon mb-6 ">
         <div className="flex items-center">
-          <Info className="w-5 h-5 text-blue-600 mr-2" size={24}  />
+          <Info className="w-5 h-5 text-atlas-blue mr-2" size={24}  />
           <div>
-            <h4 className="text-sm font-medium text-blue-800">Información opcional</h4>
-            <p className="text-sm text-blue-700 mt-1">
+            <h4 className="text-sm font-medium text-primary-800">Información opcional</h4>
+            <p className="text-sm text-primary-700 mt-1">
               Esta sección es opcional para guardar el inmueble. Puedes completarla ahora o más adelante cuando tengas los datos fiscales disponibles.
             </p>
           </div>

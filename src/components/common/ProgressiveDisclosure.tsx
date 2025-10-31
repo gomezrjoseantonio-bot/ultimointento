@@ -40,7 +40,7 @@ const ProgressiveDisclosure: React.FC<ProgressiveDisclosureProps> = ({
             <div className="flex items-center gap-2">
               <h3 className="text-white font-semibold">{title}</h3>
               {badge && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-700/30">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-900/30 text-primary-300 border border-primary-700/30">
                   {badge}
                 </span>
               )}

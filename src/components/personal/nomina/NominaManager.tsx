@@ -148,15 +148,15 @@ const NominaManager: React.FC = () => {
 
       {/* Active Nomina Summary */}
       {activaNomina && calculo && (
-        <div className="btn-secondary-horizon bg-gradient-to-r from-blue-50 to-indigo-50 ">
+        <div className="btn-secondary-horizon bg-gradient-to-r from-primary-50 to-primary-100 ">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <DollarSign className="w-5 h-5 text-blue-600" />
-              <h4 className="text-lg font-semibold text-blue-900">
+              <DollarSign className="w-5 h-5 text-atlas-blue" />
+              <h4 className="text-lg font-semibold text-primary-900">
                 {activaNomina.nombre} (Activa)
               </h4>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-blue-700">
+            <div className="flex items-center space-x-2 text-sm text-primary-700">
               <Calendar className="w-4 h-4" />
               <span>Próximo pago: {getNextPaymentDate(activaNomina)}</span>
             </div>
@@ -164,35 +164,35 @@ const NominaManager: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-blue-600 font-medium">Salario Bruto Anual</p>
-              <p className="text-xl font-bold text-blue-900">
+              <p className="text-sm text-atlas-blue font-medium">Salario Bruto Anual</p>
+              <p className="text-xl font-bold text-primary-900">
                 {formatCurrency(activaNomina.salarioBrutoAnual)}
               </p>
             </div>
 
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-blue-600 font-medium">Neto Mensual Promedio</p>
-              <p className="text-xl font-bold text-blue-900">
+              <p className="text-sm text-atlas-blue font-medium">Neto Mensual Promedio</p>
+              <p className="text-xl font-bold text-primary-900">
                 {formatCurrency(calculo.netoMensual)}
               </p>
             </div>
 
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-blue-600 font-medium">Total Anual Neto</p>
-              <p className="text-xl font-bold text-blue-900">
+              <p className="text-sm text-atlas-blue font-medium">Total Anual Neto</p>
+              <p className="text-xl font-bold text-primary-900">
                 {formatCurrency(calculo.totalAnualNeto)}
               </p>
             </div>
 
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-blue-600 font-medium">Variables y Bonus</p>
-              <p className="text-xl font-bold text-blue-900">
+              <p className="text-sm text-atlas-blue font-medium">Variables y Bonus</p>
+              <p className="text-xl font-bold text-primary-900">
                 {activaNomina.variables.length + activaNomina.bonus.length}
               </p>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center space-x-4 text-sm text-blue-700">
+          <div className="mt-4 flex items-center space-x-4 text-sm text-primary-700">
             <div className="flex items-center space-x-1">
               <Calculator className="w-4 h-4" />
               <span>Distribución: {
@@ -282,17 +282,17 @@ const NominaManager: React.FC = () => {
                 key={nomina.id}
                 className={`border p-4 ${
                   nomina.activa 
-                    ? 'border-blue-200 bg-blue-50' 
+                    ? 'border-primary-200 bg-primary-50' 
                     : 'border-gray-200 bg-white'                }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <h5 className={`font-medium ${nomina.activa ? 'text-blue-900' : 'text-gray-900'}`}>
+                      <h5 className={`font-medium ${nomina.activa ? 'text-primary-900' : 'text-gray-900'}`}>
                         {nomina.nombre}
                       </h5>
                       {nomina.activa && (
-                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-blue-800">
+                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-primary-800">
                           Activa
                         </span>
                       )}
@@ -326,14 +326,14 @@ const NominaManager: React.FC = () => {
                     {!nomina.activa && (
                       <button
                         onClick={() => handleActivateNomina(nomina)}
-                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-blue-600 "
+                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-atlas-blue "
                       >
                         Activar
                       </button>
                     )}
                     <button
                       onClick={() => handleEditNomina(nomina)}
-                      className="p-2 text-gray-400 hover:text-blue-600"
+                      className="p-2 text-gray-400 hover:text-atlas-blue"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

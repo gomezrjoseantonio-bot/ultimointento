@@ -7,10 +7,10 @@ const UnicornioInboxPrompt: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold mb-4">Unicornio Inbox</h1>
         <div className="btn-secondary-horizon btn-primary-horizon ">
-          <p className="text-blue-800">
+          <p className="text-primary-800">
             Esta página ha sido temporalmente simplificada para demostrar las optimizaciones de bundle.
           </p>
-          <p className="text-blue-600 mt-2">
+          <p className="text-atlas-blue mt-2">
             Las funcionalidades de procesamiento de documentos volverán en la próxima actualización.
           </p>
         </div>

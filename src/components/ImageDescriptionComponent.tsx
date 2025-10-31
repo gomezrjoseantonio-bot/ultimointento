@@ -126,7 +126,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
           <div className="atlas-atlas-atlas-atlas-btn-primary p-3">
-            <Eye className="h-6 w-6 text-blue-600" />
+            <Eye className="h-6 w-6 text-atlas-blue" />
           </div>
         </div>
         <h2 className="text-2xl font-semibold text-gray-900 mb-2">
@@ -218,7 +218,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.language || 'es'}
                 onChange={(e) => setOptions({...options, language: e.target.value as 'es' | 'en'})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
               >
                 <option value="es">Español</option>
                 <option value="en">English</option>
@@ -233,7 +233,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.style || 'detailed'}
                 onChange={(e) => setOptions({...options, style: e.target.value as 'detailed' | 'brief' | 'technical'})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
               >
                 <option value="detailed">Detallado</option>
                 <option value="brief">Breve</option>
@@ -249,7 +249,7 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
               <select
                 value={options?.maxLength || 500}
                 onChange={(e) => setOptions({...options, maxLength: parseInt(e.target.value)})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
               >
                 <option value={200}>200 caracteres</option>
                 <option value={500}>500 caracteres</option>

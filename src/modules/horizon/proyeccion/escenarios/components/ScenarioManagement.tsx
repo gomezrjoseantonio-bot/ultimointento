@@ -173,7 +173,7 @@ const ScenarioManagement: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Snapshot */}
-      <section className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+      <section className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-primary-700">Foto actual</p>
@@ -189,7 +189,7 @@ const ScenarioManagement: React.FC = () => {
         </div>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {dashboard.snapshot.metrics.map((metric) => (
-            <div key={metric.id} className="rounded border border-[#D7DEE7] bg-[#F8F9FA] p-4">
+            <div key={metric.id} className="rounded border border-hz-neutral-300 bg-hz-neutral-100 p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">{metric.label}</p>
               <p className="mt-2 text-xl font-semibold text-neutral-900">{metric.value}</p>
               {metric.helper && <p className="mt-1 text-xs text-gray-500">{metric.helper}</p>}
@@ -199,7 +199,7 @@ const ScenarioManagement: React.FC = () => {
       </section>
 
       {/* Quick wins */}
-      <section className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+      <section className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-neutral-900">Movimientos inmediatos sugeridos</h3>
           <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -260,7 +260,7 @@ const ScenarioManagement: React.FC = () => {
                 className={`flex h-full flex-col rounded border p-4 text-left transition shadow-sm ${
                   isSelected
                     ? 'border-primary-600 bg-white ring-2 ring-primary-200'
-                    : 'border-[#D7DEE7] bg-white hover:-translate-y-0.5 hover:shadow-md'
+                    : 'border-hz-neutral-300 bg-white hover:-translate-y-0.5 hover:shadow-md'
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -330,7 +330,7 @@ const ScenarioManagement: React.FC = () => {
       {/* Selected scenario detail */}
       {selectedScenario && (
         <section className="space-y-6">
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium uppercase tracking-wide text-primary-700">
@@ -356,7 +356,7 @@ const ScenarioManagement: React.FC = () => {
 
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               {selectedScenario.detail.keyMetrics.map((metric) => (
-                <div key={metric.id} className="rounded border border-[#D7DEE7] bg-[#F8F9FA] p-4">
+                <div key={metric.id} className="rounded border border-hz-neutral-300 bg-hz-neutral-100 p-4">
                   <p className="text-xs uppercase tracking-wide text-gray-500">{metric.label}</p>
                   <p className="mt-2 text-xl font-semibold text-neutral-900">{metric.value}</p>
                   <p
@@ -378,7 +378,7 @@ const ScenarioManagement: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2 space-y-6">
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-lg font-semibold text-neutral-900">Plan paso a paso</h4>
@@ -389,7 +389,7 @@ const ScenarioManagement: React.FC = () => {
                 <div className="mt-4 overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead>
-                      <tr className="bg-[#F8F9FA] text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                      <tr className="bg-hz-neutral-100 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                         <th className="px-4 py-3">Acción</th>
                         <th className="px-4 py-3">Ventana</th>
                         <th className="px-4 py-3">Inversión</th>
@@ -422,7 +422,7 @@ const ScenarioManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-lg font-semibold text-neutral-900">Stress tests y mitigaciones</h4>
@@ -432,7 +432,7 @@ const ScenarioManagement: React.FC = () => {
                 </div>
                 <div className="mt-4 space-y-4">
                   {selectedScenario.detail.stressTests.map((stress) => (
-                    <div key={stress.id} className="rounded border border-[#D7DEE7] bg-[#F8F9FA] p-4">
+                    <div key={stress.id} className="rounded border border-hz-neutral-300 bg-hz-neutral-100 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-neutral-900">{stress.label}</p>
                         <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskStyles[stress.riskLevel]}`}>
@@ -460,14 +460,14 @@ const ScenarioManagement: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-neutral-900">Guardarraíles clave</h4>
                   <ShieldCheck className="h-5 w-5 text-primary-600" />
                 </div>
                 <ul className="mt-4 space-y-3 text-sm text-gray-600">
                   {selectedScenario.detail.guardrails.map((guardrail) => (
-                    <li key={guardrail.id} className="rounded border border-[#D7DEE7] bg-[#F8F9FA] p-3">
+                    <li key={guardrail.id} className="rounded border border-hz-neutral-300 bg-hz-neutral-100 p-3">
                       <p className="font-medium text-neutral-900">{guardrail.title}</p>
                       <p className="text-xs text-gray-500">{guardrail.description}</p>
                     </li>
@@ -475,14 +475,14 @@ const ScenarioManagement: React.FC = () => {
                 </ul>
               </div>
 
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-neutral-900">Hitos y seguimiento</h4>
                   <CalendarDays className="h-5 w-5 text-primary-600" />
                 </div>
                 <div className="mt-4 space-y-4">
                   {selectedScenario.detail.timeline.map((milestone) => (
-                    <div key={milestone.id} className="rounded border border-[#D7DEE7] bg-[#F8F9FA] p-4">
+                    <div key={milestone.id} className="rounded border border-hz-neutral-300 bg-hz-neutral-100 p-4">
                       <p className="text-sm font-semibold text-neutral-900">{milestone.period}</p>
                       <p className="mt-1 text-xs text-gray-500">{milestone.summary}</p>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -500,7 +500,7 @@ const ScenarioManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <h4 className="text-lg font-semibold text-neutral-900">Cómo puedes usar este escenario</h4>
                   <Lightbulb className="h-5 w-5 text-primary-600" />
@@ -523,7 +523,7 @@ const ScenarioManagement: React.FC = () => {
 };
 
 const MetricBadge: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded border border-gray-200 bg-[#F8F9FA] px-3 py-2 text-left">
+  <div className="rounded border border-gray-200 bg-hz-neutral-100 px-3 py-2 text-left">
     <p className="text-xs text-gray-500">{label}</p>
     <p className="text-sm font-semibold text-neutral-900">{value}</p>
   </div>
@@ -533,7 +533,7 @@ const QuickWinCard: React.FC<{ win: QuickWin }> = ({ win }) => {
   const Icon = quickWinIcons[win.icon];
 
   return (
-    <div className="flex h-full flex-col rounded border border-[#D7DEE7] bg-white p-4 shadow-sm">
+    <div className="flex h-full flex-col rounded border border-hz-neutral-300 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="rounded-full bg-primary-50 p-2 text-primary-700">
           <Icon className="h-5 w-5" />

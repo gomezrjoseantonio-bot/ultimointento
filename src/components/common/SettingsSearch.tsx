@@ -136,7 +136,7 @@ const SettingsSearch: React.FC<SettingsSearchProps> = ({ onNavigate }) => {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Buscar ajustes... (ej: 'proveedores', 'tema', 'exportar')"
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-atlas-blue-500 focus:border-atlas-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
             aria-label="Buscar configuración"
           />
         </div>

@@ -268,7 +268,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
           {!isEditing && (
             <button
               onClick={() => startEditing(fieldDef.field)}
-              className="text-blue-600 hover:text-blue-800 p-1"
+              className="text-atlas-blue hover:text-primary-800 p-1"
               title="Editar campo"
             >
               <Edit3 className="w-4 h-4" strokeWidth={1.5} />
@@ -286,7 +286,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
                     ? 'border-red-300 focus:ring-red-500' 
-                    : 'border-gray-300 focus:ring-blue-500'
+                    : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
               />
@@ -301,7 +301,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
                     ? 'border-red-300 focus:ring-red-500' 
-                    : 'border-gray-300 focus:ring-blue-500'
+                    : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
               />
@@ -315,7 +315,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
                     ? 'border-red-300 focus:ring-red-500' 
-                    : 'border-gray-300 focus:ring-blue-500'
+                    : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
               />
@@ -328,7 +328,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
                     ? 'border-red-300 focus:ring-red-500' 
-                    : 'border-gray-300 focus:ring-blue-500'
+                    : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
@@ -379,8 +379,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg border ${className}`} style={{ 
-      borderColor: '#DEE2E6',
+    <div className={`bg-white rounded-lg border border-hz-neutral-300 ${className}`} style={{
       fontFamily: 'Inter, sans-serif'
     }}>
       {/* Header */}

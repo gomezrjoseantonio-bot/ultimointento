@@ -11,7 +11,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property, isSelected, onSel
   return (
     <div 
       className={`bg-white p-4 rounded-lg shadow border hover:shadow-md cursor-pointer transition-shadow ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
+        isSelected ? 'ring-2 ring-atlas-blue' : ''
       }`}
       onClick={onSelect}
     >

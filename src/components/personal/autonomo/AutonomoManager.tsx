@@ -276,7 +276,7 @@ const AutonomoManager: React.FC = () => {
                       <p className="text-sm text-gray-600">
                         {formatDate(ingreso.fecha)} • {formatCurrency(ingreso.importe)}
                         {ingreso.conIva && ingreso.tipoIva && (
-                          <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-blue-800 px-2 py-1 rounded">
+                          <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-primary-800 px-2 py-1 rounded">
                             IVA {ingreso.tipoIva}%
                           </span>
                         )}
@@ -416,7 +416,7 @@ const AutonomoManager: React.FC = () => {
                     )}
                     <button
                       onClick={() => handleEditAutonomo(autonomo)}
-                      className="p-2 text-gray-400 hover:text-blue-600"
+                      className="p-2 text-gray-400 hover:text-atlas-blue"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>

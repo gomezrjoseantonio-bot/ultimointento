@@ -102,7 +102,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
             <button
               type="button"
               onClick={() => setIsExpanded(true)}
-              className="text-atlas-blue hover:text-[#033A73] text-sm font-medium"
+              className="text-atlas-blue hover:text-primary-800 text-sm font-medium"
             >
               Editar
             </button>
@@ -120,7 +120,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
   }
 
   return (
-    <div className="border border-gray-300 rounded-lg p-4 bg-[#F9FAFB]">
+    <div className="border border-gray-300 rounded-lg p-4 bg-hz-neutral-100">
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-medium text-gray-700">
           {bonification.nombre || 'Nueva bonificación'}
@@ -144,7 +144,7 @@ const BonificationForm: React.FC<BonificationFormProps> = ({ bonification, onCha
                 key={index}
                 type="button"
                 onClick={() => applyPreset(preset)}
-                className="text-left p-2 text-sm border rounded hover:bg-[#F3F4F6] transition-colors"
+                className="text-left p-2 text-sm border rounded hover:bg-hz-neutral-200 transition-colors"
               >
                 <div className="font-medium">{preset.nombre}</div>
                 <div className="text-gray-500 text-xs mb-1">

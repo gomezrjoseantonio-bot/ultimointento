@@ -455,7 +455,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                       ))}
                     </div>
                     {(bonificacion.graciaMeses || 0) > 0 && (
-                      <p className="text-xs text-blue-600 mt-2">
+                      <p className="text-xs text-atlas-blue mt-2">
                         Durante la promo, el descuento se aplica aunque aún no verifiquemos el cumplimiento.
                       </p>
                     )}
@@ -520,8 +520,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
           {/* Next change information */}
           {calculoLive?.proximoCambio && (
             <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mt-4 p-3 ">
-              <h5 className="font-medium text-blue-700 mb-1">Próximo cambio</h5>
-              <p className="text-sm text-blue-600">
+              <h5 className="font-medium text-primary-700 mb-1">Próximo cambio</h5>
+              <p className="text-sm text-atlas-blue">
                 <strong>{new Date(calculoLive.proximoCambio.fecha).toLocaleDateString('es-ES')}</strong>
                 {' — '}
                 {calculoLive.proximoCambio.descripcion}

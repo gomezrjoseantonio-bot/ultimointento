@@ -40,7 +40,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
   // Get movement status display
   const getMovementStatus = (movement: Movement) => {
     if (movement.state === 'reconciled') {
-      return { label: 'Conciliado', color: 'bg-blue-100 text-blue-800' };
+      return { label: 'Conciliado', color: 'bg-primary-100 text-primary-800' };
     }
     
     if (movement.state === 'pending' || !movement.state) {
@@ -144,7 +144,7 @@ const DayMovementsModal: React.FC<DayMovementsModalProps> = ({
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => onMovementAction(movement, 'edit')}
-                            className="p-1 text-gray-400 hover:text-blue-600"
+                            className="p-1 text-gray-400 hover:text-atlas-blue"
                             title="Editar"
                           >
                             <Edit2 className="h-4 w-4" />

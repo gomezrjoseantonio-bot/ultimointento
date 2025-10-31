@@ -450,10 +450,7 @@ const InboxPageV2: React.FC = () => {
             />
             <label
               htmlFor="file-upload"
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
-              style={{ backgroundColor: 'var(--atlas-blue)' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0C356B'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--atlas-blue)'}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-atlas-blue hover:bg-primary-900 text-white rounded-lg cursor-pointer transition-colors text-sm sm:text-base"
             >
               <Upload className="w-4 h-4" />
               Subir documentos
@@ -600,9 +597,8 @@ const InboxPageV2: React.FC = () => {
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       {doc.destino ? (
-                        <span 
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer"
-                          style={{ backgroundColor: '#EAF1F8', color: 'var(--atlas-blue)' }}
+                        <span
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer bg-primary-50 text-atlas-blue"
                         >
                           {doc.destino}
                         </span>

@@ -203,7 +203,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                       onClick={() => setSelectedAccountId(account.id!)}
                       className={`w-full text-left p-4 border-2 transition-all ${
                         selectedAccountId === account.id
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-primary-600 bg-primary-50'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
                       }`}
                       style={{ 
@@ -244,7 +244,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <h4 className={`text-sm font-medium ${
-                              selectedAccountId === account.id ? 'text-blue-900' : 'text-gray-900'
+                              selectedAccountId === account.id ? 'text-primary-900' : 'text-gray-900'
                             }`}>
                               {account.name || `${account.bank} ${formatIBAN(account.iban)}`}
                             </h4>
@@ -254,18 +254,18 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
                           </div>
                           <div className="mt-1 space-y-1">
                             <p className={`text-xs ${
-                              selectedAccountId === account.id ? 'text-blue-700' : 'text-gray-600'
+                              selectedAccountId === account.id ? 'text-primary-700' : 'text-gray-600'
                             }`}>
                               {account.bank}
                             </p>
                             <p className={`text-xs font-mono ${
-                              selectedAccountId === account.id ? 'text-blue-700' : 'text-gray-500'
+                              selectedAccountId === account.id ? 'text-primary-700' : 'text-gray-500'
                             }`}>
                               IBAN: {formatIBAN(account.iban)}
                             </p>
                             {account.balance !== undefined && (
                               <p className={`text-xs ${
-                                selectedAccountId === account.id ? 'text-blue-700' : 'text-gray-500'
+                                selectedAccountId === account.id ? 'text-primary-700' : 'text-gray-500'
                               }`}>
                                 Saldo: {account.balance.toLocaleString('es-ES', { 
                                   minimumFractionDigits: 2,

@@ -76,7 +76,7 @@ const PresupuestoResumen: React.FC<PresupuestoResumenProps> = ({
         </div>
 
         {/* Neto */}
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
+        <div className="bg-gradient-to-r from-primary-50 to-primary-100 p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-primary-600">Resultado Neto</p>

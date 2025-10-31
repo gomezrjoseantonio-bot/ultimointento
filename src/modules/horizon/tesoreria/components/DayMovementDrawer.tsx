@@ -50,9 +50,9 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     
     if (movement.status === 'conciliado' || movement.unifiedStatus === 'conciliado') {
       return {
-        bg: 'bg-blue-50',
+        bg: 'bg-primary-50',
         text: 'text-hz-info',
-        border: 'border-blue-200'
+        border: 'border-primary-200'
       };
     }
     
@@ -308,7 +308,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             {movement.status !== 'conciliado' && movement.unifiedStatus !== 'conciliado' && (
                               <button
                                 onClick={() => handleConciliar(movement)}
-                                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-blue-700 rounded"
+                                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-primary-700 rounded"
                               >
                                 <Check size={14} />
                                 Conciliar

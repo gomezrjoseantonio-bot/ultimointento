@@ -140,10 +140,10 @@ const IncomeExpensesSection: React.FC<IncomeExpensesSectionProps> = ({ filters }
             />
             <Bar dataKey="income" fill="var(--ok)" radius={[2, 2, 0, 0]} />
             <Bar dataKey="expenses" fill="var(--error)" radius={[2, 2, 0, 0]} />
-            <Line 
-              type="monotone" 
-              dataKey="netBalance" 
-              stroke="#0A3D62" 
+            <Line
+              type="monotone"
+              dataKey="netBalance"
+              stroke="var(--atlas-blue)"
               strokeWidth={2}
               dot={false}
             />

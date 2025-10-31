@@ -27,12 +27,16 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
 
   const monthDetail = data.monthlyDetails[month - 1];
   
-  const getDeviationColor = (status: 'green' | 'amber' | 'red') => {
+  const getDeviationClasses = (status: 'green' | 'amber' | 'red') => {
     switch (status) {
-      case 'green': return '#16A34A';
-      case 'amber': return 'var(--warn)';
-      case 'red': return 'var(--error)';
-      default: return 'var(--text-gray)';
+      case 'green':
+        return 'bg-success-50 text-success-600';
+      case 'amber':
+        return 'bg-warning-50 text-warning-700';
+      case 'red':
+        return 'bg-error-50 text-error-600';
+      default:
+        return 'bg-hz-neutral-100 text-hz-neutral-600';
     }
   };
 
@@ -47,7 +51,7 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
     isIncome: boolean;
   }> = ({ title, categories, isIncome }) => (
     <div className="mb-6">
-      <h4 className={`text-md font-semibold mb-3 ${isIncome ? 'text-success-900' : 'text-error-900'}`}>
+      <h4 className={`text-md font-semibold mb-3 ${isIncome ? 'text-success-700' : 'text-error-700'}`}>
         {title}
       </h4>
       <div className="overflow-x-auto">
@@ -75,12 +79,8 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
                   {category.actual !== 0 ? formatEuro(category.actual) : '—'}
                 </td>
                 <td className="py-2 px-2 text-center">
-                  <span 
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                    style={{ 
-                      backgroundColor: `${getDeviationColor(category.deviationStatus)}20`,
-                      color: getDeviationColor(category.deviationStatus)
-                    }}
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getDeviationClasses(category.deviationStatus)}`}
                   >
                     {category.budget !== 0 ? formatDeviation(category.deviation) : '—'}
                   </span>
@@ -143,7 +143,7 @@ const MonthlyDetailModal: React.FC<MonthlyDetailModalProps> = ({
         <div className="flex justify-end p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm bg-[#0B2B5C] text-white rounded-lg hover:bg-[#0A2449] transition-colors"
+            className="px-4 py-2 text-sm bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition-colors"
           >
             Cerrar
           </button>

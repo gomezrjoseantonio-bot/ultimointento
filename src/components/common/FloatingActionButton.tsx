@@ -29,7 +29,7 @@ const FloatingActionButton: React.FC = () => {
         navigate('/portfolio?action=new');
         setIsOpen(false);
       },
-      color: 'bg-atlas-blue-600 hover:bg-atlas-blue-700',
+      color: 'bg-atlas-blue hover:bg-primary-800',
     },
     {
       id: 'upload-document',
@@ -110,7 +110,7 @@ const FloatingActionButton: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center justify-center w-14 h-14
-          bg-atlas-blue-600 hover:bg-atlas-blue-700
+          bg-atlas-blue hover:bg-primary-800
           text-white rounded-full shadow-lg
           transition-all duration-200
           ${isOpen ? 'rotate-45' : 'rotate-0'}

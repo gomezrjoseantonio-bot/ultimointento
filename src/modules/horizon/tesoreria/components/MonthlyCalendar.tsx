@@ -213,7 +213,7 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
             >
               {/* Day Number and Balance */}
               <div className="flex justify-between items-start mb-1">
-                <span className={`text-sm font-medium ${today ? 'text-blue-600' : 'text-gray-900'}`}>
+                <span className={`text-sm font-medium ${today ? 'text-atlas-blue' : 'text-gray-900'}`}>
                   {day}
                 </span>
                 {dayBalance !== 0 && (

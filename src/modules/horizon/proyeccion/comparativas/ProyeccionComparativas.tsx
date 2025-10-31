@@ -122,7 +122,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* Empty State */}
-        <div className="bg-white border border-[#D7DEE7] p-12 shadow-sm text-center">
+        <div className="bg-white border border-hz-neutral-300 p-12 shadow-sm text-center">
           <TrendingUp className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-4">
             No hay escenarios para comparar
@@ -170,7 +170,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Scenario Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {markedScenarios.map((scenario, index) => (
-            <div key={scenario.id} className="bg-white border border-[#D7DEE7] p-4 shadow-sm">
+            <div key={scenario.id} className="bg-white border border-hz-neutral-300 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="font-semibold text-neutral-900">{scenario.name}</h3>
@@ -214,11 +214,11 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cashflow Comparison Chart */}
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Flujo Neto
             </h3>
-            <div className="h-64 bg-[#F8F9FA] flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
+            <div className="h-64 bg-hz-neutral-100 flex items-center justify-center border-2 border-dashed border-hz-neutral-300">
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500">Gráfico de flujo neto superpuesto</p>
@@ -228,11 +228,11 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
           </div>
 
           {/* Net Worth Comparison Chart */}
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Comparativa de Patrimonio Neto
             </h3>
-            <div className="h-64 bg-[#F8F9FA] flex items-center justify-center border-2 border-dashed border-[#D7DEE7]">
+            <div className="h-64 bg-hz-neutral-100 flex items-center justify-center border-2 border-dashed border-hz-neutral-300">
               <div className="text-center">
                 <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500">Gráfico de patrimonio superpuesto</p>
@@ -243,14 +243,14 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* KPI Comparison Table */}
-        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Tabla KPI Comparativa
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#D7DEE7]">
+                <tr className="border-b border-hz-neutral-300">
                   <th className="text-left text-sm font-medium text-gray-500 py-3 px-4">KPI</th>
                   {markedScenarios.map((scenario, index) => (
                     <th key={scenario.id} className="text-center text-sm font-medium text-gray-500 py-3 px-4">
@@ -260,7 +260,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">Cashflow 5a</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -268,7 +268,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">Cashflow 20a</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -276,7 +276,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">Patrimonio 20a</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -284,7 +284,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">DSCR mínimo</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -292,7 +292,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">% vacancia asumida</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -300,7 +300,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">% revalorización</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -308,7 +308,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
                     </td>
                   ))}
                 </tr>
-                <tr className="border-b border-[#F3F4F6]">
+                <tr className="border-b border-hz-neutral-200">
                   <td className="py-3 px-4 text-sm font-medium text-gray-700">% rentas</td>
                   {markedScenarios.map(scenario => (
                     <td key={scenario.id} className="py-3 px-4 text-center text-sm text-neutral-900 tabular-nums">
@@ -330,7 +330,7 @@ const ProyeccionComparativas: React.FC<ProyeccionComparativasProps> = ({ isEmbed
         </div>
 
         {/* Additional Actions */}
-        <div className="bg-[#F8F9FA] p-4 border border-[#D7DEE7]">
+        <div className="bg-hz-neutral-100 p-4 border border-hz-neutral-300">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-700">

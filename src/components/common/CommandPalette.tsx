@@ -315,7 +315,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
                       ${isSelected 
-                        ? 'bg-atlas-blue-50 border-l-4 border-atlas-blue-600' 
+                        ? 'bg-primary-50 border-l-4 border-primary-700' 
                         : 'hover:bg-gray-50'
                       }
                     `}
@@ -323,11 +323,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                     aria-selected={isSelected}
                   >
                     <Icon className={`w-5 h-5 flex-shrink-0 ${
-                      isSelected ? 'text-atlas-blue-600' : 'text-gray-400'
+                      isSelected ? 'text-primary-700' : 'text-gray-400'
                     }`} />
                     <div className="flex-1 min-w-0">
                       <div className={`font-medium ${
-                        isSelected ? 'text-atlas-blue-900' : 'text-gray-900'
+                        isSelected ? 'text-primary-900' : 'text-gray-900'
                       }`}>
                         {command.label}
                       </div>

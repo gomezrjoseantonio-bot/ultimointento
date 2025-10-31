@@ -341,7 +341,7 @@ const FEINDemoPage: React.FC = () => {
 
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center gap-3">
-              <FileText className="h-8 w-8 text-blue-600" />
+              <FileText className="h-8 w-8 text-atlas-blue" />
               <div>
                 <h3 className="font-semibold text-gray-900">FEIN Mixta</h3>
                 <p className="text-sm text-gray-600">Préstamo mixto complejo</p>

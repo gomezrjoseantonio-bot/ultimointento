@@ -158,7 +158,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               {/* Fixed */}
               {feinData.prestamo.fijo && (
                 <div className="atlas-atlas-atlas-atlas-btn-primary mb-3 p-3 rounded">
-                  <h4 className="font-medium text-blue-800">Tramo Fijo</h4>
+                  <h4 className="font-medium text-primary-800">Tramo Fijo</h4>
                   <p>TIN: {formatPercentage(feinData.prestamo.fijo.tinFijoPrc)}</p>
                 </div>
               )}
@@ -180,7 +180,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
               {feinData.prestamo.mixto && (
                 <div className="space-y-3">
                   <div className="atlas-atlas-atlas-atlas-btn-primary p-3 rounded">
-                    <h4 className="font-medium text-blue-800">Período Fijo Initial</h4>
+                    <h4 className="font-medium text-primary-800">Período Fijo Initial</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>Duración: {feinData.prestamo.mixto.tramoFijoAnios} años</div>
                       <div>TIN: {formatPercentage(feinData.prestamo.mixto.tinFijoTramoPrc)}</div>
@@ -258,7 +258,7 @@ const FEINExtractionDrawer: React.FC<FEINExtractionDrawerProps> = ({
                   {feinData.prestamo.complementos.taeAproxPrc && (
                     <div>
                       <span className="font-medium" style={{ color: 'var(--text-gray)' }}>TAE Aproximada:</span>
-                      <p className="font-medium text-blue-600">{formatPercentage(feinData.prestamo.complementos.taeAproxPrc)}</p>
+                      <p className="font-medium text-atlas-blue">{formatPercentage(feinData.prestamo.complementos.taeAproxPrc)}</p>
                     </div>
                   )}
                   {feinData.prestamo.complementos.cuotaEstim && (

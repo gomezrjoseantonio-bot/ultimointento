@@ -351,7 +351,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+      <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <Calculator className="h-6 w-6 text-atlas-blue" />
@@ -370,7 +370,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <button 
             type="button"
             onClick={() => toggleSection('basic')}
@@ -512,7 +512,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         </div>
 
         {/* Interest Type */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <button 
             type="button"
             onClick={() => toggleSection('interest')}
@@ -547,7 +547,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       }}
                       className={`p-3 rounded-lg border-2 text-center transition-colors ${
                         tipo === tipoOption
-                          ? 'border-atlas-blue bg-[#F8F9FA] text-atlas-blue'
+                          ? 'border-atlas-blue bg-hz-neutral-100 text-atlas-blue'
                           : 'border-gray-300 hover:border-gray-400 text-gray-500'
                       }`}
                     >
@@ -764,7 +764,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         </div>
 
         {/* Irregular Payments */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <button 
             type="button"
             onClick={() => toggleSection('payments')}
@@ -875,7 +875,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         </div>
 
         {/* Costs */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <button 
             type="button"
             onClick={() => toggleSection('costs')}
@@ -970,7 +970,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         </div>
 
         {/* Bonifications */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <button 
             type="button"
             onClick={() => toggleSection('bonifications')}
@@ -1130,7 +1130,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
                       };
                       setBonificaciones([...bonificaciones, newBonif]);
                     }}
-                    className="px-3 py-1 text-sm bg-atlas-blue text-white rounded-md hover:bg-[#033A73] transition-colors"
+                    className="px-3 py-1 text-sm bg-atlas-blue text-white rounded-md hover:bg-primary-800 transition-colors"
                   >
                     + Personalizada
                   </button>
@@ -1171,7 +1171,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
 
         {/* Estimated Payment Preview */}
         {estimatedPayment && (
-          <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-lg p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Eye className="h-5 w-5 text-atlas-blue" />
               <h3 className="font-medium text-atlas-blue">Vista previa</h3>
@@ -1198,7 +1198,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         )}
 
         {/* Actions */}
-        <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -1212,7 +1212,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

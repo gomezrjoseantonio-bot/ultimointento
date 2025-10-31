@@ -45,6 +45,14 @@
   --hz-neutral-100: var(--bg);             /* #F8F9FA - Light backgrounds */
   --hz-card-bg: #FFFFFF;                   /* White cards */
   --atlas-line: #DEE2E6;                   /* Separator lines */
+  --hz-success-soft: #EAF7EE;
+  --hz-warning-soft: #FFF7E6;
+  --hz-error-soft: #FDECEC;
+  --hz-info-soft: #E8F0FF;
+  --hz-success-strong: #1C7C5A;
+  --hz-warning-strong: #935E00;
+  --hz-error-strong: #8D2C2C;
+  --hz-info-strong: #126579;
   
   /* Movement States - EXACT per specification */
   --movement-previsto-ingreso: var(--ok);  /* Green for expected income */
@@ -478,22 +486,22 @@ table td,
 
 .badge-success { 
   background: rgba(46,175,125,.12); 
-  color: #1C7C5A; 
+  color: var(--hz-success-strong);
 }
 
 .badge-warning { 
   background: rgba(240,162,2,.14); 
-  color: #935E00; 
+  color: var(--hz-warning-strong);
 }
 
 .badge-danger { 
   background: rgba(227,93,93,.12); 
-  color: #8D2C2C; 
+  color: var(--hz-error-strong);
 }
 
 .badge-info { 
   background: rgba(46,176,203,.12); 
-  color: #126579; 
+  color: var(--hz-info-strong);
 }
 
 .chip { 
@@ -647,23 +655,23 @@ table td,
   
   /* Horizon Badge System - Official Design Tokens */
   .horizon-badge-success {
-    background-color: #EAF7EE;  /* Success background per specification */
+    background-color: var(--hz-success-soft);  /* Success background per specification */
     color: var(--hz-success);
   }
   
   .horizon-badge-warning {
-    background-color: #FFF7E6;  /* Warning background per specification */
-    color: #B45309;             /* Warning text per specification */
+    background-color: var(--hz-warning-soft);  /* Warning background per specification */
+    color: var(--hz-warning-strong);             /* Warning text per specification */
   }
   
   .horizon-badge-error {
-    background-color: #FDECEC;  /* Error background per specification */
-    color: #B91C1C;             /* Error text per specification */
+    background-color: var(--hz-error-soft);  /* Error background per specification */
+    color: var(--hz-error-strong);             /* Error text per specification */
   }
   
   .horizon-badge-info {
-    background-color: #E8F0FF;  /* Info background per specification */
-    color: #1D4ED8;             /* Info text per specification */
+    background-color: var(--hz-info-soft);  /* Info background per specification */
+    color: var(--hz-info-strong);             /* Info text per specification */
   }
   
   /* Screen reader only content */

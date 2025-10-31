@@ -92,7 +92,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 step="0.1"
                 value={formData.rentGrowth}
                 onChange={(e) => handleInputChange('rentGrowth', parseFloat(e.target.value))}
-                className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
+                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${formData.rentGrowth * 10}%, var(--bg) ${formData.rentGrowth * 10}%, var(--bg) 100%)`
                 }}
@@ -115,7 +115,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 step="0.1"
                 value={formData.expenseInflation}
                 onChange={(e) => handleInputChange('expenseInflation', parseFloat(e.target.value))}
-                className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
+                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.expenseInflation / 8) * 100}%, var(--bg) ${(formData.expenseInflation / 8) * 100}%, var(--bg) 100%)`
                 }}
@@ -138,7 +138,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 step="0.1"
                 value={formData.propertyAppreciation}
                 onChange={(e) => handleInputChange('propertyAppreciation', parseFloat(e.target.value))}
-                className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
+                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) ${(formData.propertyAppreciation / 12) * 100}%, var(--bg) 100%)`
                 }}
@@ -161,7 +161,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 step="0.5"
                 value={formData.vacancyRate}
                 onChange={(e) => handleInputChange('vacancyRate', parseFloat(e.target.value))}
-                className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
+                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.vacancyRate / 20) * 100}%, var(--bg) ${(formData.vacancyRate / 20) * 100}%, var(--bg) 100%)`
                 }}
@@ -184,7 +184,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
                 step="0.1"
                 value={formData.referenceRate}
                 onChange={(e) => handleInputChange('referenceRate', parseFloat(e.target.value))}
-                className="w-full h-2 bg-[#F8F9FA] appearance-none cursor-pointer"
+                className="w-full h-2 bg-hz-neutral-100 appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--atlas-blue) 0%, var(--atlas-blue) ${(formData.referenceRate / 15) * 100}%, var(--bg) ${(formData.referenceRate / 15) * 100}%, var(--bg) 100%)`
                 }}
@@ -199,7 +199,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
             </div>
 
             {/* Reset to Defaults */}
-            <div className="pt-4 border-t border-[#D7DEE7]">
+            <div className="pt-4 border-t border-hz-neutral-300">
               <button
                 onClick={resetToDefaults}
                 className="flex items-center space-x-2 text-sm text-gray-500 hover:text-primary-700"
@@ -211,7 +211,7 @@ const AdjustAssumptionsModal: React.FC<AdjustAssumptionsModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-[#D7DEE7]">
+          <div className="flex items-center justify-end space-x-3 mt-8 pt-6 border-t border-hz-neutral-300">
             <button
               onClick={hasChanges ? handleReset : onClose}
               className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-primary-700"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -29,20 +29,47 @@ interface ProjectionChartProps {
   data: YearlyProjectionData[];
 }
 
+const cssVar = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable);
+  return value?.trim() || fallback;
+};
+
+const hexToRgba = (hex: string, alpha: number): string => {
+  const sanitized = hex.replace('#', '');
+  if (sanitized.length !== 6) {
+    return hex;
+  }
+  const intVal = parseInt(sanitized, 16);
+  const r = (intVal >> 16) & 255;
+  const g = (intVal >> 8) & 255;
+  const b = intVal & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const [timeHorizon, setTimeHorizon] = useState<5 | 10 | 20>(20);
 
   // Filter data based on selected time horizon
   const filteredData = data.slice(0, timeHorizon + 1);
-  
+
+  const palette = useMemo(() => ({
+    success: cssVar('--ok', '#28A745'),
+    error: cssVar('--error', '#DC3545'),
+    warning: cssVar('--warn', '#FFC107'),
+    primary: cssVar('--atlas-blue', '#042C5E'),
+    text: cssVar('--text-gray', '#6C757D'),
+    neutral100: cssVar('--hz-neutral-100', '#F8F9FA'),
+  }), []);
+
   const chartData = {
     labels: filteredData.map(d => d.year.toString()),
     datasets: [
       {
         label: 'Ingresos de alquiler (netos)',
         data: filteredData.map(d => d.rentalIncome),
-        borderColor: '#059669', // Horizon success color
-        backgroundColor: 'rgba(5, 150, 105, 0.1)',
+        borderColor: palette.success,
+        backgroundColor: hexToRgba(palette.success, 0.15),
         fill: false,
         tension: 0.2,
         borderWidth: 2,
@@ -52,8 +79,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Gastos (operativos + impuestos + seguros + comunidad)',
         data: filteredData.map(d => -d.operatingExpenses), // Negative for visualization
-        borderColor: 'var(--error)', // Horizon error color
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderColor: palette.error,
+        backgroundColor: hexToRgba(palette.error, 0.15),
         fill: false,
         tension: 0.2,
         borderWidth: 2,
@@ -63,8 +90,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Servicio de deuda',
         data: filteredData.map(d => -d.debtService), // Negative for visualization
-        borderColor: 'var(--warn)', // Horizon warning color
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderColor: palette.warning,
+        backgroundColor: hexToRgba(palette.warning, 0.15),
         fill: false,
         tension: 0.2,
         borderWidth: 2,
@@ -74,8 +101,8 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {
         label: 'Flujo neto',
         data: filteredData.map(d => d.netCashflow),
-        borderColor: '#0F2C5C', // Official Horizon primary
-        backgroundColor: 'rgba(15, 44, 92, 0.1)',
+        borderColor: palette.primary,
+        backgroundColor: hexToRgba(palette.primary, 0.15),
         fill: false,
         tension: 0.2,
         borderWidth: 3,
@@ -108,10 +135,10 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
         }
       },
       tooltip: {
-        backgroundColor: 'rgba(156, 163, 175, 0.1)',
+        backgroundColor: 'rgba(48, 58, 76, 0.92)',
         titleColor: '#FFFFFF',
         bodyColor: '#FFFFFF',
-        borderColor: '#0F2C5C', // Official Horizon primary
+        borderColor: palette.primary,
         borderWidth: 1,
         cornerRadius: 8,
         displayColors: true,
@@ -133,7 +160,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
           display: false
         },
         ticks: {
-          color: 'var(--text-gray)',
+          color: palette.text,
           font: {
             family: 'Inter',
             size: 11
@@ -142,14 +169,14 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       },
       y: {
         grid: {
-          color: 'var(--hz-neutral-100)',
+          color: palette.neutral100,
           borderDash: [2, 2]
         },
         border: {
           display: false
         },
         ticks: {
-          color: 'var(--text-gray)',
+          color: palette.text,
           font: {
             family: 'Inter',
             size: 11
@@ -176,7 +203,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   timeHorizon === years
                     ? 'bg-primary-700 text-white'
-                    : 'bg-[#F8F9FA] text-gray-500 hover:bg-[#E5E7EB]'
+                    : 'bg-hz-neutral-100 text-gray-500 hover:bg-hz-neutral-300'
                 }`}
               >
                 {years} años

@@ -109,7 +109,7 @@ const PlanesManager: React.FC = () => {
 
   const getTitularidadColor = (titularidad: PlanPensionInversion['titularidad']) => {
     switch (titularidad) {
-      case 'yo': return 'text-blue-600';
+      case 'yo': return 'text-atlas-blue';
       case 'pareja': return 'text-red-600';
       case 'ambos': return 'text-purple-600';
       default: return 'text-gray-600';
@@ -311,7 +311,7 @@ const PlanesManager: React.FC = () => {
                       </div>
 
                       {!plan.esHistorico && plan.aportacionPeriodica?.activa && (
-                        <div className="mt-2 text-sm text-blue-600">
+                        <div className="mt-2 text-sm text-atlas-blue">
                           <p>
                             Aportación {plan.aportacionPeriodica.frecuencia}: {formatCurrency(plan.aportacionPeriodica.importe)}
                             {taxInfo.deducibleAnual > 0 && (
@@ -327,7 +327,7 @@ const PlanesManager: React.FC = () => {
                     <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => handleEditPlan(plan)}
-                        className="p-2 text-gray-400 hover:text-blue-600"
+                        className="p-2 text-gray-400 hover:text-atlas-blue"
                         title="Editar plan"
                       >
                         <Edit2 className="w-4 h-4" />
