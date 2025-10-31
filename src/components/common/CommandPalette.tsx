@@ -338,10 +338,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                       )}
                     </div>
                     {category === 'favorite' && (
-                      <StarIcon className="w-4 h-4 text-yellow-500 fill-current" />
+                      <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
                     )}
                     {category === 'recent' && (
-                      <ClockIcon className="w-4 h-4 text-gray-400" />
+                      <Clock className="w-4 h-4 text-gray-400" />
                     )}
                   </button>
                 );
