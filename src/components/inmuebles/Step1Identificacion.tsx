@@ -6,6 +6,7 @@ import { MapPin, Building2, Hash } from 'lucide-react';
 import { InmuebleStep1, EstadoInmueble, ComunidadAutonoma } from '../../types/inmueble';
 import { getLocationFromPostalCode, validatePostalCode } from '../../utils/locationUtils';
 import { validateStep1 } from '../../utils/inmuebleUtils';
+import { Tooltip } from '../common/Tooltip';
 
 interface Step1IdentificacionProps {
   data: InmuebleStep1;
@@ -76,7 +77,9 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <Building2 className="w-4 h-4 inline mr-2"  />
-            Alias *
+            <Tooltip content="Nombre corto para identificar fácilmente el inmueble en el sistema" showIcon>
+              <span>Alias *</span>
+            </Tooltip>
           </label>
           <input
             type="text"
@@ -184,7 +187,9 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         {/* Código Postal */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Código Postal *
+            <Tooltip content="El código postal se usa para autocompletar el municipio, provincia y comunidad autónoma" showIcon>
+              <span>Código Postal *</span>
+            </Tooltip>
           </label>
           <div className="relative">
             <input
@@ -275,7 +280,9 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <Hash className="w-4 h-4 inline mr-2" size={24}  />
-            Referencia Catastral
+            <Tooltip content="Identificador único del inmueble en el catastro. Se utiliza para cálculos fiscales y validaciones oficiales" showIcon>
+              <span>Referencia Catastral</span>
+            </Tooltip>
           </label>
           <input
             type="text"

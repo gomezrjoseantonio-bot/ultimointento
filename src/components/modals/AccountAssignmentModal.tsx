@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Building, CreditCard } from 'lucide-react';
 import { ProcessedDocument } from '../../services/unifiedDocumentProcessor';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface AccountAssignmentModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
   const [iban, setIban] = useState('');
   const [bankName, setBankName] = useState('');
   const [assignmentType, setAssignmentType] = useState<'iban' | 'account'>('iban');
+  const containerRef = useFocusTrap(isOpen);
 
   if (!isOpen) return null;
 
@@ -66,10 +68,10 @@ const AccountAssignmentModal: React.FC<AccountAssignmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div ref={containerRef} className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Asignar cuenta bancaria</h3>
+          <h3 id="modal-title" className="text-lg font-medium text-gray-900">Asignar cuenta bancaria</h3>
           <button
             onClick={handleCancel}
             className="text-gray-400 hover:text-gray-600"
