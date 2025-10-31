@@ -23,10 +23,9 @@ const ProgressiveDisclosure: React.FC<ProgressiveDisclosureProps> = ({
   description,
   isSimpleMode = false
 }) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  // In simple mode, start collapsed unless defaultExpanded is true
+  // In simple mode, start collapsed unless defaultExpanded is explicitly true
   const initialExpanded = isSimpleMode ? defaultExpanded : true;
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
   return (
     <div className="border border-gray-700 rounded-lg overflow-hidden bg-gray-800/30">

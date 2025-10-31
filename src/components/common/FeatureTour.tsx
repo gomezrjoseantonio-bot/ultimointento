@@ -38,6 +38,12 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === steps.length - 1;
 
+  // Get target element for highlighting - memoized to avoid repeated DOM queries
+  const targetElement = React.useMemo(
+    () => document.querySelector(currentStepData.target),
+    [currentStepData.target]
+  );
+
   // Calculate position of tooltip based on target element
   useEffect(() => {
     const updatePosition = () => {
@@ -127,8 +133,29 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
     onSkip();
   };
 
-  // Get target element for highlighting
-  const targetElement = document.querySelector(currentStepData.target);
+  // Memoize spotlight mask to avoid recalculation on every render
+  const spotlightMask = React.useMemo(() => {
+    if (!targetElement) return null;
+    const rect = targetElement.getBoundingClientRect();
+    return {
+      x: rect.left - 8,
+      y: rect.top - 8,
+      width: rect.width + 16,
+      height: rect.height + 16
+    };
+  }, [targetElement]);
+
+  // Memoize highlight border to avoid recalculation on every render
+  const highlightBorder = React.useMemo(() => {
+    if (!targetElement) return null;
+    const rect = targetElement.getBoundingClientRect();
+    return {
+      top: rect.top - 8,
+      left: rect.left - 8,
+      width: rect.width + 16,
+      height: rect.height + 16
+    };
+  }, [targetElement]);
 
   return (
     <>
@@ -138,19 +165,16 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
           <defs>
             <mask id="spotlight-mask">
               <rect x="0" y="0" width="100%" height="100%" fill="white" />
-              {targetElement && (() => {
-                const rect = targetElement.getBoundingClientRect();
-                return (
-                  <rect
-                    x={rect.left - 8}
-                    y={rect.top - 8}
-                    width={rect.width + 16}
-                    height={rect.height + 16}
-                    fill="black"
-                    rx="8"
-                  />
-                );
-              })()}
+              {spotlightMask && (
+                <rect
+                  x={spotlightMask.x}
+                  y={spotlightMask.y}
+                  width={spotlightMask.width}
+                  height={spotlightMask.height}
+                  fill="black"
+                  rx="8"
+                />
+              )}
             </mask>
           </defs>
           <rect
@@ -165,22 +189,19 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
       </div>
 
       {/* Highlight border around target */}
-      {targetElement && (() => {
-        const rect = targetElement.getBoundingClientRect();
-        return (
-          <div
-            className="fixed z-40 pointer-events-none rounded-lg"
-            style={{
-              top: rect.top - 8,
-              left: rect.left - 8,
-              width: rect.width + 16,
-              height: rect.height + 16,
-              border: '3px solid var(--atlas-blue)',
-              boxShadow: '0 0 0 4px rgba(4, 44, 94, 0.2)',
-            }}
-          />
-        );
-      })()}
+      {highlightBorder && (
+        <div
+          className="fixed z-40 pointer-events-none rounded-lg"
+          style={{
+            top: highlightBorder.top,
+            left: highlightBorder.left,
+            width: highlightBorder.width,
+            height: highlightBorder.height,
+            border: '3px solid var(--atlas-blue)',
+            boxShadow: '0 0 0 4px rgba(4, 44, 94, 0.2)',
+          }}
+        />
+      )}
 
       {/* Tooltip */}
       <div

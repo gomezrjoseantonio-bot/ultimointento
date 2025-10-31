@@ -30,7 +30,8 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
   // If a tour is active, render it
   if (activeTourId) {
     const tour = AVAILABLE_TOURS[activeTourId as keyof typeof AVAILABLE_TOURS];
-    if (tour) {
+    // Runtime check for safety
+    if (tour && tour.id === activeTourId) {
       return (
         <FeatureTour
           steps={tour.steps}
@@ -40,6 +41,8 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
         />
       );
     }
+    // Invalid tour ID - close the manager
+    setActiveTourId(null);
   }
 
   // Otherwise, show tour selection modal
