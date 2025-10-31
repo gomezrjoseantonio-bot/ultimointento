@@ -19,6 +19,7 @@ interface InmuebleWizardLayoutProps {
   onStepClick: (step: number) => void;
   children: React.ReactNode;
   title?: string;
+  headerControls?: React.ReactNode;
 }
 
 const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
@@ -26,16 +27,22 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
   steps,
   onStepClick,
   children,
-  title = 'Alta de Inmueble'
+  title = 'Alta de Inmueble',
+  headerControls
 }) => {
   return (
     <div className="min-h-screen bg-hz-bg">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-hz-text font-inter">
             {title}
           </h1>
+          {headerControls && (
+            <div className="flex items-center gap-4">
+              {headerControls}
+            </div>
+          )}
         </div>
       </div>
 
