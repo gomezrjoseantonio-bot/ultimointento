@@ -24,6 +24,10 @@ interface FeatureTourProps {
  * Provides guided tours for key features with step-by-step instructions
  * Highlights specific UI elements and provides contextual help
  */
+
+// Padding around highlighted elements (in pixels)
+const HIGHLIGHT_PADDING = 8;
+
 const FeatureTour: React.FC<FeatureTourProps> = ({ 
   steps, 
   onComplete, 
@@ -131,17 +135,26 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
         return;
       }
       const rect = targetElement.getBoundingClientRect();
+      
+      // Calculate adjusted dimensions once for both spotlight and highlight
+      const adjustedRect = {
+        x: rect.left - HIGHLIGHT_PADDING,
+        y: rect.top - HIGHLIGHT_PADDING,
+        width: rect.width + HIGHLIGHT_PADDING * 2,
+        height: rect.height + HIGHLIGHT_PADDING * 2
+      };
+      
       setSpotlightMask({
-        x: rect.left - 8,
-        y: rect.top - 8,
-        width: rect.width + 16,
-        height: rect.height + 16
+        x: adjustedRect.x,
+        y: adjustedRect.y,
+        width: adjustedRect.width,
+        height: adjustedRect.height
       });
       setHighlightBorder({
-        top: rect.top - 8,
-        left: rect.left - 8,
-        width: rect.width + 16,
-        height: rect.height + 16
+        top: adjustedRect.y,
+        left: adjustedRect.x,
+        width: adjustedRect.width,
+        height: adjustedRect.height
       });
     }
 

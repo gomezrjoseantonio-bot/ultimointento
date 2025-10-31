@@ -11,6 +11,13 @@ interface TourManagerProps {
  * Sprint 4: Tour Manager Component
  * Central hub for accessing all available feature tours
  */
+
+// Helper function to get a tour by ID with type safety
+const getTourById = (tourId: string | null) => {
+  if (!tourId) return null;
+  return AVAILABLE_TOURS[tourId as keyof typeof AVAILABLE_TOURS] || null;
+};
+
 const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
   const [activeTourId, setActiveTourId] = useState<string | null>(null);
 
@@ -30,7 +37,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
   // Validate active tour ID and reset if invalid
   useEffect(() => {
     if (activeTourId) {
-      const tour = AVAILABLE_TOURS[activeTourId as keyof typeof AVAILABLE_TOURS];
+      const tour = getTourById(activeTourId);
       // If tour is invalid, reset the state
       if (!tour || tour.id !== activeTourId) {
         setActiveTourId(null);
@@ -40,7 +47,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
 
   // If a tour is active, render it
   if (activeTourId) {
-    const tour = AVAILABLE_TOURS[activeTourId as keyof typeof AVAILABLE_TOURS];
+    const tour = getTourById(activeTourId);
     // Runtime check for safety
     if (tour && tour.id === activeTourId) {
       return (
