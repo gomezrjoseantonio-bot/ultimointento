@@ -8,12 +8,28 @@ const MainLayout: React.FC = () => {
   
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Skip Link - Sprint 3: Accessibility improvement */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:font-medium focus:shadow-lg"
+        style={{
+          backgroundColor: 'var(--hz-primary)',
+          color: 'white',
+        }}
+      >
+        Saltar a contenido principal
+      </a>
+      
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         <Header setSidebarOpen={setSidebarOpen} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0">
+        <main 
+          id="main-content"
+          className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
+          tabIndex={-1}
+        >
           <div className="container mx-auto h-full max-w-7xl">
             <Outlet />
           </div>

@@ -1,4 +1,4 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText } from 'lucide-react';
+import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText, Book } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -121,6 +121,15 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Calculator, module: 'shared' },
       { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: Users, module: 'shared' },
     ]
+  },
+  
+  // GLOSARIO - Sprint 3: Accessible technical terms
+  {
+    name: 'Glosario',
+    href: '/glosario',
+    icon: Book,
+    module: 'shared',
+    section: 'documentation'
   },
 ];
 
