@@ -28,10 +28,10 @@ const ProgressiveDisclosure: React.FC<ProgressiveDisclosureProps> = ({
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
   return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden bg-gray-800/30">
+    <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50/30">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
         aria-expanded={isExpanded}
         aria-controls={`disclosure-${title.replace(/\s+/g, '-').toLowerCase()}`}
       >
@@ -62,7 +62,7 @@ const ProgressiveDisclosure: React.FC<ProgressiveDisclosureProps> = ({
       {isExpanded && (
         <div
           id={`disclosure-${title.replace(/\s+/g, '-').toLowerCase()}`}
-          className="px-4 py-4 border-t border-gray-700"
+          className="px-4 py-4 border-t border-gray-200"
         >
           {children}
         </div>

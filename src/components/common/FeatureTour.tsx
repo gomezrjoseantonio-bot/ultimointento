@@ -221,7 +221,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
             y="0"
             width="100%"
             height="100%"
-            fill="rgba(0, 0, 0, 0.7)"
+            fill="rgba(255, 255, 255, 0.8)"
             mask="url(#spotlight-mask)"
           />
         </svg>
@@ -245,7 +245,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
       {/* Tooltip */}
       <div
         ref={tooltipRef}
-        className="fixed z-50 bg-gray-900 rounded-xl shadow-2xl max-w-md border border-gray-700"
+        className="fixed z-50 bg-white rounded-xl shadow-2xl max-w-md border border-gray-200"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
@@ -289,7 +289,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
               {!isFirstStep && (
                 <button
                   onClick={handlePrevious}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-white text-sm font-medium transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Atrás

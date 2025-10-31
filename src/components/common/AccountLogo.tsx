@@ -46,7 +46,7 @@ const AccountLogo: React.FC<AccountLogoProps> = ({ account, size = 'md', classNa
   return (
     <div 
       className={`${sizeClasses[size]} rounded flex items-center justify-center font-medium text-white ${className}`}
-      style={{ backgroundColor: 'var(--atlas-navy-2, #142C50)' }}
+      style={{ backgroundColor: 'var(--atlas-navy-2)' }}
       title={`${account.name} (${account.bank})`}
     >
       {initials}

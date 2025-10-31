@@ -374,7 +374,7 @@ const PandaDocTemplateBuilder: React.FC = () => {
 
           {copyError && <p className="mt-2 text-sm text-red-600">{copyError}</p>}
 
-          <pre className="mt-4 max-h-80 overflow-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-xs text-teal-100">
+          <pre className="mt-4 max-h-80 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
             {JSON.stringify(templateDefinition, null, 2)}
           </pre>
         </section>

@@ -207,7 +207,7 @@ const PlanFacturacion: React.FC = () => {
                   isCurrentPlan
                     ? 'bg-hz-neutral-300 text-hz-neutral-700 cursor-not-allowed'
                     : isUpgrade
-                    ? 'bg-atlas-blue text-white hover:bg-opacity-90'
+                    ? 'bg-atlas-blue text-white hover:opacity-90'
                     : 'bg-hz-neutral-100 text-atlas-navy-1 hover:bg-hz-neutral-300'
                 } disabled:opacity-50`}
               >

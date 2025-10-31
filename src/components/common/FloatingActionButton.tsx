@@ -130,7 +130,7 @@ const FloatingActionButton: React.FC = () => {
       {!isOpen && (
         <div className="
           absolute bottom-full right-0 mb-2
-          px-3 py-1.5 bg-gray-900 text-white text-sm
+          px-3 py-1.5 bg-white text-white text-sm
           rounded-lg whitespace-nowrap
           opacity-0 group-hover:opacity-100
           transition-opacity pointer-events-none

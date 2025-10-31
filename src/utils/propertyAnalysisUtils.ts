@@ -172,13 +172,13 @@ export function getRecommendationText(
 export function getTrafficLightColor(conclusion: RecommendationStatus): string {
   switch (conclusion) {
     case 'MANTENER':
-      return '#10B981'; // Green
+      return 'var(--ok)'; // Green - Success
     case 'REVISAR':
-      return '#9CA3AF'; // Gray
+      return 'var(--text-gray)'; // Gray - Neutral
     case 'VENDER':
-      return '#EF4444'; // Red
+      return 'var(--error)'; // Red - Error
     default:
-      return '#9CA3AF';
+      return 'var(--text-gray)';
   }
 }
 

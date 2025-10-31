@@ -66,20 +66,20 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
   // Otherwise, show tour selection modal
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-      <div className="bg-gray-900 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-700">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-900/40 to-teal-900/40 px-6 py-4 border-b border-gray-700">
+        <div className="bg-gradient-to-r from-blue-50 to-teal-100 px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <HelpCircle className="w-8 h-8 text-blue-400" />
+              <HelpCircle className="w-8 h-8 text-atlas-blue" />
               <div>
                 <h2 className="text-xl font-bold text-white">Tours Guiados</h2>
-                <p className="text-sm text-gray-400">Aprende a usar las funcionalidades de ATLAS</p>
+                <p className="text-sm text-gray-600">Aprende a usar las funcionalidades de ATLAS</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-600 hover:text-white transition-colors"
               aria-label="Cerrar"
             >
               <X className="w-6 h-6" />
@@ -96,10 +96,10 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
               return (
                 <div
                   key={tour.id}
-                  className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-blue-500 transition-colors"
+                  className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-blue-500 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    <BookOpen className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <BookOpen className="w-5 h-5 text-atlas-blue flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-white font-semibold">{tour.name}</h3>
@@ -109,7 +109,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-400 mb-3">{tour.description}</p>
+                      <p className="text-sm text-gray-600 mb-3">{tour.description}</p>
                       <div className="text-xs text-gray-500 mb-3">
                         {tour.steps.length} pasos
                       </div>
@@ -128,8 +128,8 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-800/50 px-6 py-4 border-t border-gray-700">
-          <div className="text-sm text-gray-400">
+        <div className="bg-gray-50/50 px-6 py-4 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
             💡 Consejo: Puedes volver a ver cualquier tour en cualquier momento desde este menú
           </div>
         </div>
