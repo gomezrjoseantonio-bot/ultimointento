@@ -94,7 +94,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       >
         <div
           className={`h-full rounded-full transition-all duration-300 ease-out ${
-            indeterminate ? 'animate-pulse' : ''
+            indeterminate ? 'animate-pulse motion-reduce:animate-none' : ''
           }`}
           style={{
             width: indeterminate ? '100%' : `${clampedProgress}%`,

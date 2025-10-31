@@ -149,12 +149,8 @@ export const Glossary: React.FC<GlossaryProps> = ({
                 selectedTerm === term ? 'ring-2' : ''
               }`}
               style={{ 
-                borderColor: 'var(--hz-neutral-300)',
-                backgroundColor: selectedTerm === term ? 'var(--hz-bg)' : 'white',
-                ...(selectedTerm === term && { 
-                  borderColor: 'var(--hz-primary)',
-                  backgroundColor: 'color-mix(in srgb, var(--hz-primary) 5%, white)'
-                })
+                borderColor: selectedTerm === term ? 'var(--hz-primary)' : 'var(--hz-neutral-300)',
+                backgroundColor: selectedTerm === term ? 'rgba(4, 44, 94, 0.05)' : 'white',
               }}
             >
               <div className="flex items-start justify-between">

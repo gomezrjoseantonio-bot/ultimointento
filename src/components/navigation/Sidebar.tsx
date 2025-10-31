@@ -77,12 +77,15 @@ const SeparatorOverline: React.FC<SeparatorOverlineProps> = ({
                 onClick={() => setShowTooltip(!showTooltip)}
                 className="text-gray-400 hover:text-gray-300 transition-colors"
                 aria-label={`Ver información sobre ${label}`}
+                aria-describedby={showTooltip ? `tooltip-${label}` : undefined}
+                aria-expanded={showTooltip}
                 type="button"
               >
                 <Info size={14} />
               </button>
               {showTooltip && (
                 <div 
+                  id={`tooltip-${label}`}
                   className="absolute left-0 top-6 bg-gray-800 text-white text-xs rounded-lg px-3 py-2 z-50 whitespace-normal max-w-xs shadow-lg border border-gray-700"
                   role="tooltip"
                 >
