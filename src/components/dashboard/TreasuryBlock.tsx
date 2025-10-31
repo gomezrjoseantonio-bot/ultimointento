@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Banknote } from 'lucide-react';
 import DashboardBlockBase, { DashboardBlockProps, DashboardBlockData } from './DashboardBlockBase';
 import { TreasuryBlockOptions } from '../../services/dashboardService';
+import { Tooltip } from '../common/Tooltip';
 
 const TreasuryBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const [data, setData] = useState<DashboardBlockData>({
@@ -93,11 +94,15 @@ const TreasuryBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, clas
       {/* Treasury specific content */}
       <div className="mt-3 text-xs text-neutral-500">
         <div className="flex justify-between">
-          <span>Saldo hoy</span>
+          <Tooltip content="Saldo actual sumando todas las cuentas bancarias incluidas">
+            <span>Saldo hoy</span>
+          </Tooltip>
           <span className="font-medium">{balanceLabel}</span>
         </div>
         <div className="flex justify-between mt-1">
-          <span>Proyección +{options.horizon}d</span>
+          <Tooltip content="Estimación de ingresos y gastos futuros basada en datos históricos y expectativas">
+            <span>Proyección +{options.horizon}d</span>
+          </Tooltip>
           <span className={`font-medium ${data.trend === 'up' ? 'text-success-600' : 'text-error-600'}`}>
             {projectionLabel}
           </span>
