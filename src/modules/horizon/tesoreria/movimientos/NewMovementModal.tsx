@@ -3,6 +3,7 @@ import { X, Plus, Minus } from 'lucide-react';
 import { Account, MovementType, MovementState } from '../../../../services/db';
 import { showSuccess, showError } from '../../../../services/toastService';
 import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
+import { useFocusTrap } from '../../../../hooks/useFocusTrap';
 
 interface NewMovementModalProps {
   isOpen: boolean;
@@ -61,6 +62,7 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
   });
 
   const [saving, setSaving] = useState(false);
+  const containerRef = useFocusTrap(isOpen);
 
   const handleInputChange = (field: keyof NewMovementForm, value: string) => {
     setForm(prev => ({
@@ -263,12 +265,12 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="new-movement-title">
+      <div ref={containerRef} className="bg-white rounded-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-hz-text">Nuevo movimiento</h3>
+            <h3 id="new-movement-title" className="text-lg font-semibold text-hz-text">Nuevo movimiento</h3>
             <button
               onClick={handleClose}
               className="text-hz-neutral-500 hover:text-hz-text"

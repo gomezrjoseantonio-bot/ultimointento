@@ -6,6 +6,7 @@ import { Home, Calendar } from 'lucide-react';
 import { Square, Bed, Bath } from 'lucide-react';
 import { InmuebleStep2 } from '../../types/inmueble';
 import { validateStep2 } from '../../utils/inmuebleUtils';
+import { Tooltip } from '../common/Tooltip';
 
 interface Step2CaracteristicasProps {
   data: InmuebleStep2;
@@ -63,7 +64,9 @@ const Step2Caracteristicas: React.FC<Step2CaracteristicasProps> = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Metros cuadrados *
+                <Tooltip content="Superficie útil del inmueble, sin contar zonas comunes" showIcon>
+                  <span>Metros cuadrados *</span>
+                </Tooltip>
               </label>
               <div className="relative">
                 <input

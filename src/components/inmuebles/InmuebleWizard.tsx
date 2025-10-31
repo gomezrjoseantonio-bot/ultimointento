@@ -11,6 +11,7 @@ import Step2Caracteristicas from './Step2Caracteristicas';
 import Step3Coste from './Step3Coste';
 import Step4Fiscalidad from './Step4Fiscalidad';
 import InmuebleResumen from './InmuebleResumen';
+import FormErrorSummary from '../common/FormErrorSummary';
 
 import { 
   Inmueble, 
@@ -22,8 +23,9 @@ import {
   ComplecionStatus
 } from '../../types/inmueble';
 import { initDB, Property } from '../../services/db';
-import { calculateCompletionStatus, validateForSave } from '../../utils/inmuebleUtils';
+import { calculateCompletionStatus, validateForSave, validateStep1, validateStep2, validateStep3, validateStep4 } from '../../utils/inmuebleUtils';
 import { mapInmuebleToProperty, mapPropertyToInmueble } from '../../utils/propertyMapper';
+import { ValidationErrors } from '../../utils/formValidation';
 
 interface InmuebleWizardProps {
   mode: 'create' | 'edit' | 'duplicate';
@@ -36,6 +38,7 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(mode === 'edit' && !!id);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
   // Form data state
   const [step1Data, setStep1Data] = useState<InmuebleStep1>({
@@ -336,37 +339,125 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
     navigate('/inmuebles/cartera');
   };
 
+  // Validate current step in real-time
+  const validateCurrentStep = () => {
+    const errors: ValidationErrors = {};
+    
+    switch (currentStep) {
+      case 1: {
+        const validation = validateStep1(step1Data);
+        if (!validation.isValid) {
+          validation.errors.forEach((error) => {
+            // Use error message as key to avoid index-based fragility
+            const errorKey = `step1_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
+          });
+        }
+        break;
+      }
+      case 2: {
+        const validation = validateStep2(step2Data);
+        if (!validation.isValid) {
+          validation.errors.forEach((error) => {
+            const errorKey = `step2_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
+          });
+        }
+        break;
+      }
+      case 3: {
+        const validation = validateStep3(step3Data);
+        if (!validation.isValid) {
+          validation.errors.forEach((error) => {
+            const errorKey = `step3_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
+          });
+        }
+        break;
+      }
+      case 4: {
+        const validation = validateStep4(step4Data);
+        if (!validation.isValid) {
+          validation.errors.forEach((error) => {
+            const errorKey = `step4_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
+          });
+        }
+        break;
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validate on step change
+  useEffect(() => {
+    if (currentStep < 5) {
+      validateCurrentStep();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, step1Data, step2Data, step3Data, step4Data]);
+
   // Render current step content
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
         return (
-          <Step1Identificacion 
-            data={step1Data}
-            onChange={setStep1Data}
-          />
+          <>
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="p-6 pb-0">
+                <FormErrorSummary errors={validationErrors} />
+              </div>
+            )}
+            <Step1Identificacion 
+              data={step1Data}
+              onChange={setStep1Data}
+            />
+          </>
         );
       case 2:
         return (
-          <Step2Caracteristicas 
-            data={step2Data}
-            onChange={setStep2Data}
-          />
+          <>
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="p-6 pb-0">
+                <FormErrorSummary errors={validationErrors} />
+              </div>
+            )}
+            <Step2Caracteristicas 
+              data={step2Data}
+              onChange={setStep2Data}
+            />
+          </>
         );
       case 3:
         return (
-          <Step3Coste 
-            data={step3Data}
-            onChange={setStep3Data}
-            direccionCp={step1Data.direccion?.cp}
-          />
+          <>
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="p-6 pb-0">
+                <FormErrorSummary errors={validationErrors} />
+              </div>
+            )}
+            <Step3Coste 
+              data={step3Data}
+              onChange={setStep3Data}
+              direccionCp={step1Data.direccion?.cp}
+            />
+          </>
         );
       case 4:
         return (
-          <Step4Fiscalidad 
-            data={step4Data}
-            onChange={setStep4Data}
-          />
+          <>
+            {Object.keys(validationErrors).length > 0 && (
+              <div className="p-6 pb-0">
+                <FormErrorSummary errors={validationErrors} />
+              </div>
+            )}
+            <Step4Fiscalidad 
+              data={step4Data}
+              onChange={setStep4Data}
+            />
+          </>
         );
       case 5:
         return (

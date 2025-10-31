@@ -11,6 +11,7 @@ import {
 } from '../services/providerDirectoryService';
 import { getAutoSaveConfig, setAutoSaveConfig, toggleAutoSave } from '../services/autoSaveService';
 import { confirmDelete } from '../services/confirmationService';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 
 const SettingsPage: React.FC = () => {
   const [providers, setProviders] = useState<ProviderDirectoryEntry[]>([]);
@@ -23,6 +24,10 @@ const SettingsPage: React.FC = () => {
     nif: '',
     aliases: ''
   });
+  // Confirmation modal state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [providerToDelete, setProviderToDelete] = useState<{ id: number; name: string } | null>(null);
+  
   // H3: Auto-save configuration state
   const [autoSaveConfig, setAutoSaveConfigState] = useState(getAutoSaveConfig());
 
@@ -95,15 +100,22 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteProvider = async (id: number, name: string) => {
-    const confirmed = await confirmDelete(name);
-    if (!confirmed) return;
+    setProviderToDelete({ id, name });
+    setShowDeleteConfirmation(true);
+  };
 
+  const confirmDeleteProvider = async () => {
+    if (!providerToDelete) return;
+    
     try {
-      await deleteProvider(id);
+      await deleteProvider(providerToDelete.id);
       toast.success('Proveedor eliminado');
       loadProviders();
     } catch (error) {
       toast.error('Error al eliminar proveedor');
+    } finally {
+      setShowDeleteConfirmation(false);
+      setProviderToDelete(null);
     }
   };
 
@@ -516,6 +528,21 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
+          setShowDeleteConfirmation(false);
+          setProviderToDelete(null);
+        }}
+        onConfirm={confirmDeleteProvider}
+        title="Eliminar proveedor"
+        message={`¿Estás seguro de que deseas eliminar "${providerToDelete?.name}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 };

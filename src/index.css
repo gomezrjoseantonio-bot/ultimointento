@@ -719,4 +719,54 @@ table td,
     padding: 0.5rem 0;
   }
 }
+
+/* Sprint 2 UX Improvements - Enhanced Mobile Form Experience */
+@media (max-width: 768px) {
+  /* Better form spacing on mobile */
+  form {
+    padding: 1rem;
+  }
+
+  /* Stack form grids on mobile */
+  .grid.grid-cols-2,
+  .grid.grid-cols-3,
+  .grid.md\\:grid-cols-2,
+  .grid.md\\:grid-cols-3 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Improve modal readability on mobile */
+  .fixed.inset-0 > div {
+    max-width: 100%;
+    margin: 0.5rem;
+  }
+
+  /* Make form labels more prominent on mobile */
+  label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
+  /* Improve select dropdowns on mobile */
+  select {
+    font-size: max(16px, 1rem); /* Prevents zoom on iOS while respecting user preferences */
+  }
+
+  /* Improve input focus states on mobile */
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: 2px solid var(--hz-primary);
+    outline-offset: 2px;
+  }
+
+  /* Better error message visibility on mobile */
+  .text-red-500,
+  .text-red-600,
+  .text-red-700 {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, AlertCircle } from 'lucide-react';
 import { Account } from '../../services/db';
 import { getAvailableAccountsForImport } from '../../services/enhancedTreasuryCreationService';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface AccountSelectionModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [accounts, setAccounts] = useState<Account[]>(providedAccounts || []);
   const [loading, setLoading] = useState(!providedAccounts);
+  const containerRef = useFocusTrap(isOpen);
 
   useEffect(() => {
     if (isOpen && !providedAccounts) {
@@ -83,12 +85,12 @@ const AccountSelectionModal: React.FC<AccountSelectionModalProps> = ({
         />
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div ref={containerRef} className="inline-block align-bottom bg-white text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full" role="dialog" aria-modal="true" aria-labelledby="modal-title">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold" style={{ 
+                <h3 id="modal-title" className="text-lg font-semibold" style={{ 
                   color: 'var(--atlas-navy-1)',
                   fontFamily: 'Inter, sans-serif'
                 }}>
