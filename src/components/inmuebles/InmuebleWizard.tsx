@@ -12,6 +12,7 @@ import Step3Coste from './Step3Coste';
 import Step4Fiscalidad from './Step4Fiscalidad';
 import InmuebleResumen from './InmuebleResumen';
 import FormErrorSummary from '../common/FormErrorSummary';
+import ViewModeToggle from '../common/ViewModeToggle';
 
 import { 
   Inmueble, 
@@ -39,6 +40,9 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(mode === 'edit' && !!id);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  
+  // Sprint 4: View mode state for simple/advanced toggle
+  const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple');
 
   // Form data state
   const [step1Data, setStep1Data] = useState<InmuebleStep1>({
@@ -504,6 +508,14 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       steps={getWizardSteps()}
       onStepClick={goToStep}
       title={getTitle()}
+      headerControls={
+        currentStep < 5 && (
+          <ViewModeToggle 
+            mode={viewMode} 
+            onModeChange={setViewMode}
+          />
+        )
+      }
     >
       {renderStepContent()}
       

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, UserCircle, ChevronDown, LogOut, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import TourManager from '../tours/TourManager';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -11,6 +12,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [showTourManager, setShowTourManager] = useState(false);
 
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
@@ -23,7 +25,13 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-hz-neutral-300">
+    <>
+      {/* Sprint 4: Tour Manager Modal */}
+      {showTourManager && (
+        <TourManager onClose={() => setShowTourManager(false)} />
+      )}
+      
+      <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-hz-neutral-300">
       <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
@@ -48,6 +56,16 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         </div>
         
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Sprint 4: Help/Tours button */}
+          <button
+            onClick={() => setShowTourManager(true)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Ver tours guiados"
+            title="Tours guiados"
+          >
+            <HelpCircle className="h-5 w-5 text-hz-neutral-700" />
+          </button>
+          
           {/* User Plan Badge */}
           {user && (
             <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium bg-atlas-blue bg-opacity-10 text-atlas-blue">
@@ -131,6 +149,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         </div>
       </div>
     </header>
+    </>
   );
 };
 
