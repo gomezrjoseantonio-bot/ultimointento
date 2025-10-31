@@ -139,7 +139,7 @@ const ExportModal: React.FC<ExportModalProps> = ({
 
           {exporting && (
             <div className="flex items-center justify-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0B2B5C]"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-atlas-blue"></div>
               <span className="ml-2 text-sm text-gray-600">Generando archivo...</span>
             </div>
           )}

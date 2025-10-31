@@ -50,7 +50,7 @@ const ProyeccionComparativa: React.FC = () => {
     return (
       <PageLayout title="Comparativa Anual" subtitle="Cargando datos...">
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B2B5C]"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-atlas-blue"></div>
         </div>
       </PageLayout>
     );
@@ -86,7 +86,7 @@ const ProyeccionComparativa: React.FC = () => {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="rounded-lg border-gray-300 text-sm focus:ring-[#0B2B5C] focus:border-[#0B2B5C]"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
               >
                 {availableYears.map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -103,7 +103,7 @@ const ProyeccionComparativa: React.FC = () => {
                   setSelectedScope(e.target.value as 'consolidado' | 'inmueble');
                   setSelectedPropertyId(null);
                 }}
-                className="rounded-lg border-gray-300 text-sm focus:ring-[#0B2B5C] focus:border-[#0B2B5C]"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
               >
                 <option value="consolidado">Consolidado</option>
                 <option value="inmueble">Por inmueble</option>
@@ -115,7 +115,7 @@ const ProyeccionComparativa: React.FC = () => {
               <select
                 value={selectedPropertyId || ''}
                 onChange={(e) => setSelectedPropertyId(Number(e.target.value))}
-                className="rounded-lg border-gray-300 text-sm focus:ring-[#0B2B5C] focus:border-[#0B2B5C]"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
               >
                 <option value="">Seleccionar inmueble</option>
                 {data.availableProperties.map(property => (
@@ -129,7 +129,7 @@ const ProyeccionComparativa: React.FC = () => {
             {/* Export Button */}
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center space-x-2 bg-[#0B2B5C] text-white px-4 py-2 rounded-lg hover:bg-[#0A2449] transition-colors"
+              className="flex items-center space-x-2 bg-primary-800 text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition-colors"
             >
               <Download className="h-4 w-4" />
               <span>Exportar</span>
@@ -140,7 +140,7 @@ const ProyeccionComparativa: React.FC = () => {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Ingresos YTD */}
-          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[#0B2B5C]">
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-atlas-blue">
             <p className="text-sm font-medium text-gray-600">Ingresos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">
@@ -159,7 +159,7 @@ const ProyeccionComparativa: React.FC = () => {
           </div>
           
           {/* Gastos YTD */}
-          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[#0B2B5C]">
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-atlas-blue">
             <p className="text-sm font-medium text-gray-600">Gastos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">

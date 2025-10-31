@@ -53,10 +53,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     },
     info: {
       icon: AlertTriangle,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-      buttonClass: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+      iconColor: 'text-atlas-blue',
+      bgColor: 'bg-primary-50',
+      borderColor: 'border-primary-200',
+      buttonClass: 'bg-atlas-blue hover:bg-primary-800 focus:ring-atlas-blue'
     }
   };
 

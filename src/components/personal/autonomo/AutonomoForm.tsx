@@ -290,7 +290,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
 
         {/* Information Note */}
         <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-primary-700">
             <strong>Nota:</strong> Esta configuración te permitirá registrar ingresos y gastos asociados a tu actividad como autónomo. 
             Los cálculos automáticos incluirán las deducciones por cuota de autónomos y gastos deducibles.
           </p>

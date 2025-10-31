@@ -106,9 +106,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Cashflow neto anual actual */}
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA]">
+              <div className="p-2 bg-hz-neutral-100">
                 <TrendingUp className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -121,9 +121,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
 
           {/* Patrimonio neto estimado a 20 años */}
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA]">
+              <div className="p-2 bg-hz-neutral-100">
                 <PiggyBank className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -136,9 +136,9 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
           </div>
 
           {/* DSCR actual */}
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="p-2 bg-[#F8F9FA]">
+              <div className="p-2 bg-hz-neutral-100">
                 <Target className="h-5 w-5 text-primary-700" strokeWidth={1.5} />
               </div>
               <div>
@@ -152,7 +152,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         </div>
 
         {/* Main Chart */}
-        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-6">
             Proyección a 20 años
           </h3>
@@ -160,7 +160,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
         </div>
 
         {/* Assumptions Summary */}
-        <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+        <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-neutral-900 mb-4">
             Supuestos base
           </h3>
@@ -200,7 +200,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
 
         {/* Top Impacts */}
         {projection.upcomingImpacts.length > 0 && (
-          <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+          <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-neutral-900 mb-4">
               Top impactos próximos 90 días
             </h3>
@@ -208,7 +208,7 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
               {projection.upcomingImpacts.map((impact, index) => (
                 <div
                   key={index}
-                  className="inline-flex items-center px-3 py-1 text-sm bg-[#F8F9FA] text-primary-700 border border-[#D7DEE7]"
+                  className="inline-flex items-center px-3 py-1 text-sm bg-hz-neutral-100 text-primary-700 border border-hz-neutral-300"
                 >
                   {impact.description}
                 </div>

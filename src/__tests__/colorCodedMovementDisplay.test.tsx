@@ -20,8 +20,8 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
-      expect(chip).toHaveClass('bg-red-500');
+      const chip = container.querySelector('span') as HTMLElement;
+      expect(chip).toHaveClass('bg-error-500');
       // Should NOT contain text labels
       expect(chip).not.toHaveTextContent('Previsto');
       expect(chip).not.toHaveTextContent('Gasto');
@@ -35,8 +35,8 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
-      expect(chip).toHaveClass('bg-green-500');
+      const chip = container.querySelector('span') as HTMLElement;
+      expect(chip).toHaveClass('bg-success-500');
       // Should NOT contain text labels
       expect(chip).not.toHaveTextContent('Previsto');
       expect(chip).not.toHaveTextContent('Ingreso');
@@ -50,8 +50,8 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
-      expect(chip).toHaveClass('bg-blue-500');
+      const chip = container.querySelector('span') as HTMLElement;
+      expect(chip).toHaveClass('bg-primary-600');
       // Should NOT contain text labels
       expect(chip).not.toHaveTextContent('Confirmado');
     });
@@ -64,7 +64,7 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
+      const chip = container.querySelector('span') as HTMLElement;
       expect(chip).toHaveClass('bg-gray-500');
       // Should NOT contain text labels
       expect(chip).not.toHaveTextContent('No planificado');
@@ -78,8 +78,8 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
-      expect(chip).toHaveClass('bg-blue-500');
+      const chip = container.querySelector('span') as HTMLElement;
+      expect(chip).toHaveClass('bg-primary-600');
       // Should NOT contain text labels
       expect(chip).not.toHaveTextContent('Conciliado');
     });
@@ -92,7 +92,7 @@ describe('Color-Coded Movement Display Requirements', () => {
         />
       );
       
-      const chip = container.firstChild as HTMLElement;
+      const chip = container.querySelector('span') as HTMLElement;
       expect(chip).toHaveAttribute('title', 'confirmado');
     });
   });

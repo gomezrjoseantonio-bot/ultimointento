@@ -228,10 +228,10 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center">
-              <Activity className="h-8 w-8 text-blue-600" />
+              <Activity className="h-8 w-8 text-atlas-blue" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-blue-600">Total Movimientos</p>
-                <p className="text-2xl font-bold text-blue-900">{totalStats.totalMovements}</p>
+                <p className="text-sm font-medium text-atlas-blue">Total Movimientos</p>
+                <p className="text-2xl font-bold text-primary-900">{totalStats.totalMovements}</p>
               </div>
             </div>
           </div>
@@ -280,7 +280,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
                     {getUsageLabel(stat.usageFrequency)}
                   </span>
                   {stat.account.isDefault && (
-                    <span className="atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs font-medium text-blue-800">
+                    <span className="atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs font-medium text-primary-800">
                       Por defecto
                     </span>
                   )}

@@ -150,7 +150,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     // Check movement state/status first
     if (movement.state === 'reconciled') {
       // Conciliado - Blue
-      return `${baseStyle} bg-blue-500`;
+      return `${baseStyle} bg-primary-600`;
     }
     
     if (movement.state === 'pending' || !movement.state) {
@@ -166,10 +166,10 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     // Fallback to amount-based colors
     if (movement.amount >= 0) {
       // Ingreso - Green
-      return `${baseStyle} bg-green-500`;
+      return `${baseStyle} bg-success-500`;
     } else {
       // Gasto - Red
-      return `${baseStyle} bg-red-500`;
+      return `${baseStyle} bg-error-500`;
     }
   };
 
@@ -179,7 +179,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     // ingreso: verde, gasto: rojo, conciliado: azul, sin match: gris
     
     if (movement.state === 'reconciled') {
-      return 'bg-blue-500'; // conciliado: azul
+      return 'bg-primary-600'; // conciliado: azul
     }
     
     if (movement.state === 'pending' || movement.state === 'ignored' || !movement.state) {
@@ -187,7 +187,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     }
     
     // Based on amount: ingreso = verde, gasto = rojo
-    return movement.amount >= 0 ? 'bg-green-500' : 'bg-red-500';
+    return movement.amount >= 0 ? 'bg-success-500' : 'bg-error-500';
   };
 
   // Calculate daily net amount with proper sign and color
@@ -302,7 +302,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
             title={localExcludePersonal ? 'Mostrar movimientos personales' : 'Ocultar movimientos personales'}
           >
             {localExcludePersonal ? (
-              <ToggleRight className="h-4 w-4 text-blue-600" />
+              <ToggleRight className="h-4 w-4 text-atlas-blue" />
             ) : (
               <ToggleLeft className="h-4 w-4" />
             )}
@@ -404,7 +404,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
                           // Open day movements modal - to be implemented
                           console.log('Show all movements for day:', day.dateStr);
                         }}
-                        className="text-xs text-blue-600 hover:text-blue-800 w-full text-center py-1"
+                        className="text-xs text-atlas-blue hover:text-primary-800 w-full text-center py-1"
                       >
                         Ver {day.movements.length - 2} más
                       </button>

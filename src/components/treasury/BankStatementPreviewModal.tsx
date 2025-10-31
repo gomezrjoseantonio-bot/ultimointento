@@ -342,7 +342,7 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <FileText className="h-6 w-6 text-blue-600" />
+            <FileText className="h-6 w-6 text-atlas-blue" />
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Vista previa del extracto
@@ -477,8 +477,8 @@ const BankStatementPreviewModal: React.FC<BankStatementPreviewModalProps> = ({
                       </p>
                     </div>
                     <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary p-4 ">
-                      <p className="text-sm text-blue-600">No planificados</p>
-                      <p className="text-2xl font-bold text-blue-700">
+                      <p className="text-sm text-atlas-blue">No planificados</p>
+                      <p className="text-2xl font-bold text-primary-700">
                         {previewResult.previewMovements.filter(m => m.status !== 'valid').length}
                       </p>
                     </div>

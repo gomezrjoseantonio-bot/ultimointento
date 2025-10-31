@@ -248,7 +248,7 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             </div>
           ) : (
             <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-primary-700">
                 💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
               </p>
             </div>

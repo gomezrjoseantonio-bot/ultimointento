@@ -264,7 +264,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     const estado = (contract.firma.estado || 'borrador') as SignatureStatus;
     const badgeConfig: Record<SignatureStatus, { bg: string; text: string; label: string }> = {
       borrador: { bg: 'bg-neutral-100', text: 'text-neutral-700', label: 'Borrador' },
-      preparado: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Preparado' },
+      preparado: { bg: 'bg-primary-100', text: 'text-primary-800', label: 'Preparado' },
       enviado: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Enviado' },
       firmado: { bg: 'bg-green-100', text: 'text-green-800', label: 'Firmado' },
       rechazado: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rechazado' },
@@ -283,7 +283,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     if (indexacion === 'none') return null;
     
     const config = {
-      ipc: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'IPC' },
+      ipc: { bg: 'bg-primary-100', text: 'text-primary-800', label: 'IPC' },
       irav: { bg: 'bg-green-100', text: 'text-green-800', label: 'IRAV' },
       otros: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Otros' }
     };
@@ -626,7 +626,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                         )}
                         <button
                           onClick={() => onEditContract(contract)}
-                          className="text-atlas-blue hover:text-blue-800"
+                          className="text-atlas-blue hover:text-primary-800"
                           title="Editar contrato"
                         >
                           <Edit2 className="h-4 w-4" />

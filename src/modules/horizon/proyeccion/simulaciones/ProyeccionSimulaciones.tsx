@@ -111,10 +111,10 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           {/* DIY Mode */}
           <div 
             onClick={() => handleCreateScenario('diy')}
-            className="bg-white border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+            className="bg-white border border-hz-neutral-300 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
           >
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-[#F8F9FA] group-hover:bg-[#E5E7EB]">
+              <div className="p-3 bg-hz-neutral-100 group-hover:bg-hz-neutral-300">
                 <Settings className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
               <h3 className="text-lg font-semibold text-neutral-900">Configurar yo mismo</h3>
@@ -129,10 +129,10 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           {/* Strategies Mode */}
           <div 
             onClick={() => handleCreateScenario('strategies')}
-            className="bg-white border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+            className="bg-white border border-hz-neutral-300 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
           >
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-[#F8F9FA] group-hover:bg-[#E5E7EB]">
+              <div className="p-3 bg-hz-neutral-100 group-hover:bg-hz-neutral-300">
                 <Star className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
               <h3 className="text-lg font-semibold text-neutral-900">Estrategias predefinidas</h3>
@@ -147,10 +147,10 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           {/* Objectives Mode */}
           <div 
             onClick={() => handleCreateScenario('objectives')}
-            className="bg-white border border-[#D7DEE7] p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+            className="bg-white border border-hz-neutral-300 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
           >
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-3 bg-[#F8F9FA] group-hover:bg-[#E5E7EB]">
+              <div className="p-3 bg-hz-neutral-100 group-hover:bg-hz-neutral-300">
                 <Plus className="h-6 w-6 text-primary-700" strokeWidth={1.5} />
               </div>
               <h3 className="text-lg font-semibold text-neutral-900">Objetivos</h3>
@@ -236,7 +236,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Sidebar - Scenarios List */}
           <div className="lg:col-span-1">
-            <div className="bg-white border border-[#D7DEE7] p-4 shadow-sm">
+            <div className="bg-white border border-hz-neutral-300 p-4 shadow-sm">
               <h3 className="text-lg font-semibold text-neutral-900 mb-4">
                 Escenarios guardados
               </h3>
@@ -248,7 +248,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     className={`p-3 border cursor-pointer ${
                       selectedScenario?.id === scenario.id
                         ? 'border-primary-700 bg-primary-50 text-primary-700'
-                        : 'border-[#D7DEE7] hover:border-gray-400 text-gray-700'
+                        : 'border-hz-neutral-300 hover:border-gray-400 text-gray-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -275,7 +275,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
           {/* Main Content - Scenario Detail */}
           <div className="lg:col-span-3">
             {selectedScenario ? (
-              <div className="bg-white border border-[#D7DEE7] p-6 shadow-sm">
+              <div className="bg-white border border-hz-neutral-300 p-6 shadow-sm">
                 {/* Scenario Header */}
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -292,7 +292,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                       className={`flex items-center space-x-2 px-3 py-2 text-sm ${
                         selectedScenario.markedForComparison
                           ? 'bg-primary-700'
-                          : 'bg-[#F8F9FA] text-gray-500'                      }`}
+                          : 'bg-hz-neutral-100 text-gray-500'                      }`}
                     >
                       {selectedScenario.markedForComparison ? (
                         <StarOff className="h-4 w-4" />
@@ -305,14 +305,14 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                     </button>
                     <button
                       onClick={() => handleDuplicateScenario(selectedScenario)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-[#F8F9FA] text-gray-500 text-sm"
+                      className="flex items-center space-x-2 px-3 py-2 bg-hz-neutral-100 text-gray-500 text-sm"
                     >
                       <Copy className="h-4 w-4" />
                       <span>Duplicar</span>
                     </button>
                     <button
                       onClick={() => handleDeleteScenario(selectedScenario)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-[#FEF2F2] text-error-500 text-sm"
+                      className="flex items-center space-x-2 px-3 py-2 bg-error-50 text-error-500 text-sm"
                     >
                       <Trash2 className="h-4 w-4" />
                       <span>Eliminar</span>
@@ -322,26 +322,26 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
 
                 {/* KPI Preview */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-[#F8F9FA]">
+                  <div className="text-center p-4 bg-hz-neutral-100">
                     <div className="text-2xl font-bold text-primary-700">{formatEuro(15600)}</div>
                     <div className="text-sm text-gray-500">Cashflow 5a</div>
                   </div>
-                  <div className="text-center p-4 bg-[#F8F9FA]">
+                  <div className="text-center p-4 bg-hz-neutral-100">
                     <div className="text-2xl font-bold text-primary-700">{formatEuro(48000)}</div>
                     <div className="text-sm text-gray-500">Cashflow 20a</div>
                   </div>
-                  <div className="text-center p-4 bg-[#F8F9FA]">
+                  <div className="text-center p-4 bg-hz-neutral-100">
                     <div className="text-2xl font-bold text-primary-700">{formatEuro(650000)}</div>
                     <div className="text-sm text-gray-500">Patrimonio 20a</div>
                   </div>
-                  <div className="text-center p-4 bg-[#F8F9FA]">
+                  <div className="text-center p-4 bg-hz-neutral-100">
                     <div className="text-2xl font-bold text-primary-700">1,85 x</div>
                     <div className="text-sm text-gray-500">DSCR medio</div>
                   </div>
                 </div>
 
                 {/* Chart Placeholder */}
-                <div className="h-64 bg-[#F8F9FA] flex items-center justify-center border-2 border-dashed border-[#D7DEE7] mb-6">
+                <div className="h-64 bg-hz-neutral-100 flex items-center justify-center border-2 border-dashed border-hz-neutral-300 mb-6">
                   <div className="text-center">
                     <Settings className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                     <p className="text-gray-500">Gráfico de proyección 20 años</p>
@@ -350,7 +350,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                 </div>
 
                 {/* Actions Assumed */}
-                <div className="bg-[#F8F9FA] p-4">
+                <div className="bg-hz-neutral-100 p-4">
                   <h4 className="font-medium text-neutral-900 mb-3">Acciones asumidas</h4>
                   <div className="space-y-2 text-sm text-gray-500">
                     <div>• Crecimiento rentas: 3,5% anual</div>
@@ -367,7 +367,7 @@ const ProyeccionSimulaciones: React.FC<ProyeccionSimulacionesProps> = ({ isEmbed
                 </div>
               </div>
             ) : (
-              <div className="bg-white border border-[#D7DEE7] p-12 shadow-sm text-center">
+              <div className="bg-white border border-hz-neutral-300 p-12 shadow-sm text-center">
                 <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">
                   Selecciona un escenario

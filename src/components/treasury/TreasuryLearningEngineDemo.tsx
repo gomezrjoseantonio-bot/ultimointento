@@ -249,7 +249,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="bg-white shadow-sm border p-6">
         <div className="flex items-center gap-3 mb-6">
-          <Brain className="h-8 w-8 text-blue-600" />
+          <Brain className="h-8 w-8 text-atlas-blue" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Motor de Aprendizaje - Treasury v1.1</h1>
             <p className="text-gray-600">Demostración de reglas implícitas y backfill automático</p>
@@ -260,10 +260,10 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-blue-600" />
-              <span className="font-medium text-blue-900">Reglas Creadas</span>
+              <Database className="h-5 w-5 text-atlas-blue" />
+              <span className="font-medium text-primary-900">Reglas Creadas</span>
             </div>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{stats.totalRules}</p>
+            <p className="text-2xl font-bold text-atlas-blue mt-1">{stats.totalRules}</p>
           </div>
           <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center gap-2">
@@ -314,8 +314,8 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
         {message && (
           <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-blue-600" />
-              <span className="text-blue-800">{message}</span>
+              <AlertCircle className="h-5 w-5 text-atlas-blue" />
+              <span className="text-primary-800">{message}</span>
             </div>
           </div>
         )}
@@ -352,7 +352,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
                       {movement.statusConciliacion === 'sin_match' && 'Sin clasificar'}
                     </p>
                     {movement.categoria && (
-                      <p className="text-xs text-blue-600">{movement.categoria}</p>
+                      <p className="text-xs text-atlas-blue">{movement.categoria}</p>
                     )}
                     {movement.ambito === 'INMUEBLE' && movement.inmuebleId && (
                       <p className="text-xs text-purple-600">{movement.inmuebleId}</p>
@@ -373,7 +373,7 @@ export const TreasuryLearningEngineDemo: React.FC = () => {
                 <div key={index} className="text-xs text-gray-600 font-mono">
                   <span className="text-gray-400">{new Date(log.ts).toLocaleTimeString()}</span> - 
                   <span className="font-medium ml-1">{log.action}</span> - 
-                  <span className="text-blue-600 ml-1">{log.categoria}</span>
+                  <span className="text-atlas-blue ml-1">{log.categoria}</span>
                   {log.ambito === 'INMUEBLE' && (
                     <span className="text-purple-600 ml-1">({log.inmuebleId})</span>
                   )}

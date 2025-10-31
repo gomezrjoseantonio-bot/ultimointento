@@ -332,7 +332,7 @@ const Radar: React.FC = () => {
                           {account.ibanMasked}
                         </span>
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          account.usage === 'Personal' ? 'bg-blue-100 text-blue-800' :
+                          account.usage === 'Personal' ? 'bg-primary-100 text-primary-800' :
                           account.usage === 'Inmuebles' ? 'bg-primary-100 text-primary-800' :
                           'bg-info-100 text-info-800'
                         }`}>

@@ -25,7 +25,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
   // If no bonifications, show empty state
   if (!prestamo.bonificaciones || prestamo.bonificaciones.length === 0) {
     return (
-      <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+      <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
         <h2 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-2">
           <CreditCard className="h-5 w-5 text-atlas-blue" />
           <span>Bonificaciones</span>
@@ -59,25 +59,25 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CUMPLIDA':
-        return 'text-success-600 bg-[#D1FAE5]';
+        return 'text-success-600 bg-success-100';
       case 'EN_RIESGO':
         return 'text-warning-600 bg-warning-100';
       case 'PERDIDA':
-        return 'text-error-500 bg-[#FEE2E2]';
+        return 'text-error-500 bg-error-100';
       default:
-        return 'text-gray-500 bg-[#F3F4F6]';
+        return 'text-gray-500 bg-hz-neutral-200';
     }
   };
 
   return (
-    <div className="bg-white rounded-lg border border-[#D7DEE7] p-6">
+    <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
       <h2 className="text-lg font-semibold text-neutral-900 mb-6 flex items-center space-x-2">
         <CreditCard className="h-5 w-5 text-atlas-blue" />
         <span>Bonificaciones y Ahorro</span>
       </h2>
 
       {/* Transparency section - Base vs Bonified rates */}
-      <div className="bg-[#F8F9FA] rounded-lg p-4 mb-6">
+      <div className="bg-hz-neutral-100 rounded-lg p-4 mb-6">
         <h3 className="font-medium text-neutral-900 mb-4">Transparencia de cuotas</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -108,7 +108,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
           </div>
 
           {/* Total savings */}
-          <div className="text-center p-4 bg-[#D1FAE5] rounded-lg">
+          <div className="text-center p-4 bg-success-100 rounded-lg">
             <div className="text-lg font-bold text-success-600">
               {formatEuro(savings.totalSavingsPerMonth)}
             </div>
@@ -128,7 +128,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
         
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#F8F9FA]">
+            <thead className="bg-hz-neutral-100">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                   Bonificación
@@ -150,13 +150,13 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F3F4F6]">
+            <tbody className="divide-y divide-hz-neutral-200">
               {prestamo.bonificaciones.map((bonif) => {
                 const bonifSavings = savings.bonificationBreakdown.find(b => b.bonificationId === bonif.id);
                 const status = evaluation.bonificationStatus.find(s => s.bonificationId === bonif.id);
                 
                 return (
-                  <tr key={bonif.id} className="hover:bg-[#F8F9FA]">
+                  <tr key={bonif.id} className="hover:bg-hz-neutral-100">
                     <td className="px-3 py-3">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(bonif.estado)}
@@ -216,7 +216,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
       {/* Alerts section */}
       {evaluation.upcomingAlerts.length > 0 && (
         <div className="bg-warning-100 border border-warning-500 rounded-lg p-4">
-          <h3 className="font-medium text-[#92400E] mb-3 flex items-center space-x-2">
+          <h3 className="font-medium text-warning-700 mb-3 flex items-center space-x-2">
             <AlertTriangle className="h-5 w-5" />
             <span>Alertas de bonificaciones</span>
           </h3>
@@ -226,7 +226,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
               <div key={index} className="bg-white rounded-lg p-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="font-medium text-[#92400E] text-sm">
+                    <div className="font-medium text-warning-700 text-sm">
                       {alert.alertType} - {alert.message}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
@@ -250,7 +250,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
 
       {/* Next evaluation info */}
       {prestamo.fechaEvaluacion && (
-        <div className="mt-4 p-3 bg-[#F0F9FF] border border-[#BAE6FD] rounded-lg">
+        <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
           <div className="flex items-center space-x-2 text-sm text-info-700">
             <Calendar className="h-4 w-4" />
             <span>

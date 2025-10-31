@@ -129,7 +129,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
-            <FileText className="w-6 h-6 text-blue-600" />
+            <FileText className="w-6 h-6 text-atlas-blue" />
             <div>
               <h2 className="text-xl font-semibold">Asistente de Mapeo Bancario</h2>
               <p className="text-sm text-gray-600">
@@ -294,7 +294,7 @@ export const BankMappingAssistant: React.FC<BankMappingAssistantProps> = ({
             disabled={!isValid}
             className={`px-6 py-2 font-medium ${
               isValid 
-                ? "bg-blue-600 text-white hover:bg-blue-700" 
+                ? "bg-atlas-blue text-white hover:bg-primary-800" 
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >

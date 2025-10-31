@@ -94,7 +94,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
         
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
           {/* Header */}
-          <div className="bg-white px-6 py-4 border-b border-[#F3F4F6]">
+          <div className="bg-white px-6 py-4 border-b border-hz-neutral-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Calculator className="h-6 w-6 text-atlas-blue" />
@@ -115,7 +115,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
           <div className="bg-white px-6 py-6 space-y-6">
             
             {/* Current loan info */}
-            <div className="bg-[#F8F9FA] rounded-lg p-4">
+            <div className="bg-hz-neutral-100 rounded-lg p-4">
               <h4 className="font-medium text-neutral-900 mb-2">Situación actual</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -178,7 +178,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   onClick={() => setModo('REDUCIR_PLAZO')}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
                     modo === 'REDUCIR_PLAZO'
-                      ? 'border-atlas-blue bg-[#F8F9FA]'
+                      ? 'border-atlas-blue bg-hz-neutral-100'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
@@ -195,7 +195,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                   onClick={() => setModo('REDUCIR_CUOTA')}
                   className={`p-4 rounded-lg border-2 text-left transition-colors ${
                     modo === 'REDUCIR_CUOTA'
-                      ? 'border-atlas-blue bg-[#F8F9FA]'
+                      ? 'border-atlas-blue bg-hz-neutral-100'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
@@ -228,7 +228,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
             {/* Results */}
             {calculo && !loading && (
               <div className="space-y-4">
-                <div className="bg-[#F0F9FF] border border-[#BAE6FD] rounded-lg p-4">
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <h4 className="font-medium text-neutral-900 mb-3 flex items-center space-x-2">
                     <CheckCircle className="h-5 w-5 text-success-600" />
                     <span>Resultado de la simulación</span>
@@ -280,7 +280,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                 </div>
 
                 {/* Summary */}
-                <div className="bg-[#F8F9FA] rounded-lg p-4">
+                <div className="bg-hz-neutral-100 rounded-lg p-4">
                   <h5 className="font-medium text-gray-700 mb-2">Resumen</h5>
                   <p className="text-sm text-gray-500">
                     Amortizando <strong>{formatEuro(calculo.importeAmortizar)}</strong> el {formatDate(calculo.fechaAmortizacion)}, 
@@ -296,7 +296,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="bg-[#F8F9FA] px-6 py-4 flex items-center justify-between">
+          <div className="bg-hz-neutral-100 px-6 py-4 flex items-center justify-between">
             <button
               onClick={onClose}
               className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
@@ -313,7 +313,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
               <button
                 onClick={handleApply}
                 disabled={!calculo || !isValidAmount()}
-                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-[#033A73] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Aplicar amortización
               </button>

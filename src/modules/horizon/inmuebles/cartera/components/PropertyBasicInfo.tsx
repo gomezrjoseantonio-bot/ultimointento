@@ -49,7 +49,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             type="text"
             value={formData.alias}
             onChange={(e) => updateFormData('alias', e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.alias ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="ej. Piso Centro Madrid"
@@ -84,7 +84,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             type="text"
             value={formData.address}
             onChange={(e) => updateFormData('address', e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.address ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="ej. Calle Mayor 123, 2º A"
@@ -101,7 +101,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             type="text"
             value={formData.postalCode}
             onChange={(e) => handlePostalCodeChange(e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.postalCode ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="ej. 28013"
@@ -119,7 +119,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             type="text"
             value={formData.municipality}
             onChange={(e) => updateFormData('municipality', e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.municipality ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="ej. Madrid"
@@ -136,7 +136,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
             type="text"
             value={formData.province}
             onChange={(e) => updateFormData('province', e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.province ? 'border-red-500' : 'border-gray-300'
             }`}
             placeholder="ej. Madrid"
@@ -152,7 +152,7 @@ const PropertyBasicInfo: React.FC<PropertyBasicInfoProps> = ({
           <select
             value={formData.ccaa}
             onChange={(e) => updateFormData('ccaa', e.target.value)}
-            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 border focus:ring-2 focus:ring-atlas-blue focus:border-primary-600 ${
               errors.ccaa ? 'border-red-500' : 'border-gray-300'
             }`}
           >

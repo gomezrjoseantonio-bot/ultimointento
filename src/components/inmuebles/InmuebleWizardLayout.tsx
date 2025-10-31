@@ -59,11 +59,11 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                       onClick={() => onStepClick(step.id)}
                       className={`
                         flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors text-xs font-medium
-                        ${step.isActive 
-                          ? 'border-[#042C5E] bg-[#042C5E] text-white' 
+                        ${step.isActive
+                          ? 'border-atlas-blue bg-atlas-blue text-white'
                           : step.status === 'COMPLETO'
-                            ? 'border-[#042C5E] bg-[#042C5E] text-white'
-                            : 'border-gray-300 bg-white text-gray-500 hover:border-[#042C5E]'
+                            ? 'border-atlas-blue bg-atlas-blue text-white'
+                            : 'border-gray-300 bg-white text-gray-500 hover:border-atlas-blue'
                         }
                       `}
                     >
@@ -77,7 +77,7 @@ const InmuebleWizardLayout: React.FC<InmuebleWizardLayoutProps> = ({
                     {/* Step Title - Compact */}
                     <div className="ml-2 min-w-0 flex-1">
                       <p className={`text-sm font-medium truncate ${
-                        step.isActive ? 'text-[#042C5E]' : 'text-gray-700'
+                        step.isActive ? 'text-atlas-blue' : 'text-gray-700'
                       }`}>
                         {step.title}
                       </p>

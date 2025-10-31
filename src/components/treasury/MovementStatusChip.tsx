@@ -44,14 +44,14 @@ export const MovementStatusChip: React.FC<StatusChipProps> = ({
         // Green for income, red for expenses per requirements
         if (movementType === 'Ingreso') {
           return {
-            bgColor: 'bg-green-500', // Green for income
+            bgColor: 'bg-success-500', // Green for income
             size: 'w-3 h-3',
             icon: null
           };
         } else if (movementType === 'Gasto') {
           return {
-            bgColor: 'bg-red-500', // Red for expenses
-            size: 'w-3 h-3', 
+            bgColor: 'bg-error-500', // Red for expenses
+            size: 'w-3 h-3',
             icon: null
           };
         } else {
@@ -65,13 +65,13 @@ export const MovementStatusChip: React.FC<StatusChipProps> = ({
       case 'confirmado':
       case 'conciliado':
         return {
-          bgColor: 'bg-blue-500', // Blue for confirmed/realized
+          bgColor: 'bg-primary-600', // Blue for confirmed/realized
           size: 'w-3 h-3',
           icon: null
         };
       case 'vencido':
         return {
-          bgColor: 'bg-yellow-500', // Yellow for overdue
+          bgColor: 'bg-warning-500', // Yellow for overdue
           size: 'w-3 h-3',
           icon: <AlertTriangle className="w-2 h-2" />
         };
@@ -109,7 +109,7 @@ export const MovementStatusChip: React.FC<StatusChipProps> = ({
       
       {shouldShowAutoFlag && (
         <span 
-          className="btn-primary-horizon inline-flex items-center justify-center w-4 h-4 text-blue-600 rounded text-xs font-medium"
+          className="btn-primary-horizon inline-flex items-center justify-center w-4 h-4 text-atlas-blue rounded text-xs font-medium"
           title="Clasificado automáticamente por regla de aprendizaje"
         >
           <Bot className="w-2.5 h-2.5" />

@@ -74,7 +74,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
         />
         {/* V1.1: Auto chip for auto-categorized movements */}
         {movement.categoria && status === 'sin_match' && (
-          <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
+          <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-primary-700">
             <Sparkles className="w-3 h-3" />
             auto
           </span>
@@ -303,7 +303,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                    movement.statusConciliacion === 'match_manual' ? 'Conciliado manualmente' : 'Sin conciliar'}
                 </p>
                 {movement.statusConciliacion === 'match_automatico' && (
-                  <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-700">
+                  <span className="atlas-atlas-atlas-atlas-btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs text-primary-700">
                     <Sparkles className="w-3 h-3" />
                     auto
                   </span>
@@ -314,7 +314,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
             {/* V1.1: Reconciliation modal */}
             {isReconciling && (
               <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
-                <h4 className="font-medium text-blue-900 flex items-center gap-2">
+                <h4 className="font-medium text-primary-900 flex items-center gap-2">
                   <Target className="w-4 h-4" />
                   Conciliación Manual
                 </h4>

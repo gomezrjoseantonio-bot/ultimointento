@@ -20,7 +20,7 @@ interface DocumentEditPanelProps {
 // Atlas Horizon color scheme (ATLAS palette exact colors)
 const colors = {
   primary: 'var(--atlas-blue)',    // Exact ATLAS primary
-  accent: '#0B5FFF',     // Acento
+  accent: 'var(--atlas-teal)',     // Secondary accent within ATLAS palette
   success: 'var(--ok)',    // Exact ATLAS success (status badge green)
   warning: 'var(--warn)',    // Exact ATLAS warning (status badge yellow)
   error: 'var(--error)',      // Exact ATLAS error (status badge red)
@@ -30,10 +30,10 @@ const colors = {
   gray300: 'var(--hz-neutral-300)',
   gray400: 'var(--text-gray)',
   gray500: 'var(--text-gray)',
-  gray600: '#4B5563',
-  gray700: '#374151',
-  gray800: '#1F2937',
-  gray900: '#111827'
+  gray600: 'var(--hz-neutral-500)',
+  gray700: 'var(--hz-neutral-700)',
+  gray800: 'var(--atlas-navy-1)',
+  gray900: 'var(--atlas-navy-2)'
 };
 
 const DocumentEditPanel: React.FC<DocumentEditPanelProps> = ({

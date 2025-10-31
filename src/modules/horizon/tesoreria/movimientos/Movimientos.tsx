@@ -254,7 +254,7 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
             <nav className="flex items-center space-x-2 text-sm">
               <button
                 onClick={handleBreadcrumbClick}
-                className="text-blue-600 hover:text-blue-800 font-medium"
+                className="text-atlas-blue hover:text-primary-800 font-medium"
               >
                 Tesorería
               </button>
@@ -367,13 +367,13 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
             <div className="flex items-center border border-gray-300">
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`px-3 py-2 text-sm ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'}`}
+                className={`px-3 py-2 text-sm ${viewMode === 'calendar' ? 'bg-primary-100 text-primary-700' : 'text-gray-600'}`}
               >
                 <Calendar className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-2 text-sm ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-600'}`}
+                className={`px-3 py-2 text-sm ${viewMode === 'list' ? 'bg-primary-100 text-primary-700' : 'text-gray-600'}`}
               >
                 Lista
               </button>

@@ -360,7 +360,7 @@ export const TreasuryEmptyState: React.FC<{
         };
       default:
         return {
-          icon: <Info className="w-12 h-12 text-blue-400" />,
+          icon: <Info className="w-12 h-12 text-primary-400" />,
           title: 'No hay movimientos disponibles',
           description: 'Importa extractos bancarios para comenzar la reconciliación automática.',
           buttonText: 'Importar extractos',

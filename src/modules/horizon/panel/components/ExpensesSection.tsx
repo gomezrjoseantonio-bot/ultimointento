@@ -48,7 +48,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
       budget: 250,
       deviation: -10,
       deviationPercent: -4.0,
-      color: '#0A3D62'
+      color: 'var(--atlas-teal)'
     },
     {
       name: 'Seguros',
@@ -56,7 +56,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
       budget: 180,
       deviation: 0,
       deviationPercent: 0,
-      color: 'var(--text-gray)'
+      color: 'var(--hz-neutral-500)'
     },
     {
       name: 'Hipoteca',
@@ -64,7 +64,7 @@ const ExpensesSection: React.FC<ExpensesSectionProps> = ({ filters }) => {
       budget: 1600,
       deviation: 0,
       deviationPercent: 0,
-      color: '#374151'
+      color: 'var(--hz-neutral-700)'
     },
     {
       name: 'Otros',

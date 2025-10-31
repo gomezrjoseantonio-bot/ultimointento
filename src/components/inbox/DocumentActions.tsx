@@ -128,7 +128,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({
           {/* Ver campos FEIN */}
           <button
             onClick={handleViewFEINFields}
-            className="atlas-atlas-atlas-atlas-btn-primary p-1.5 text-blue-600 hover:text-blue-800 hover:"
+            className="atlas-atlas-atlas-atlas-btn-primary p-1.5 text-atlas-blue hover:text-primary-800 hover:"
             title="Ver campos extraídos de la FEIN"
           >
             <FileText className="w-4 h-4" />

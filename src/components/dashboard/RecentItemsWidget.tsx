@@ -181,7 +181,7 @@ const RecentItemsWidget: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-atlas-blue-600" />
+          <Clock className="w-5 h-5 text-primary-700" />
           <h3 className="text-lg font-semibold text-gray-900">
             Recientes
           </h3>
@@ -208,8 +208,8 @@ const RecentItemsWidget: React.FC = () => {
               className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
             >
               <div className="flex-shrink-0">
-                <div className="w-10 h-10 rounded-lg bg-atlas-blue-50 flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-atlas-blue-600" />
+                <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center">
+                  <Icon className="w-5 h-5 text-primary-700" />
                 </div>
               </div>
               

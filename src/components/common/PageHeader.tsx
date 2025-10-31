@@ -49,7 +49,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                   className={`text-sm ${
                     index === breadcrumb.length - 1
                       ? 'text-gray-500'
-                      : 'text-atlas-blue hover:text-atlas-blue-dark'
+                      : 'text-atlas-blue hover:text-primary-800'
                   }`}
                 >
                   {item.name}

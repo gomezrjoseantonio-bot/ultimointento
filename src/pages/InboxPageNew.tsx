@@ -441,7 +441,7 @@ const InboxPageNew: React.FC = () => {
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
             <button
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
               style={{ 
                 backgroundColor: 'var(--atlas-blue)'
               }}

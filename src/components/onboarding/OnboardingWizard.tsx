@@ -71,7 +71,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
       icon: Sunrise,
       content: (
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+          <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg p-6 border border-primary-200">
             <div className="flex items-center gap-3 mb-3">
               <Sunrise className="w-8 h-8 text-atlas-blue" />
               <h3 className="text-xl font-bold text-white">Horizon</h3>
@@ -161,28 +161,28 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             <h4 className="text-white font-semibold mb-3">Proceso de creación (4 pasos):</h4>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <div className="bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">1</div>
+                <div className="bg-atlas-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">1</div>
                 <div>
                   <div className="text-white font-medium">Identificación</div>
                   <div className="text-sm text-gray-600">Alias, dirección y referencia catastral</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">2</div>
+                <div className="bg-atlas-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">2</div>
                 <div>
                   <div className="text-white font-medium">Características</div>
                   <div className="text-sm text-gray-600">Metros cuadrados, habitaciones, baños</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">3</div>
+                <div className="bg-atlas-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">3</div>
                 <div>
                   <div className="text-white font-medium">Costes</div>
                   <div className="text-sm text-gray-600">Precio de compra y gastos asociados</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">4</div>
+                <div className="bg-atlas-blue rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 text-white text-sm font-bold">4</div>
                 <div>
                   <div className="text-white font-medium">Fiscalidad</div>
                   <div className="text-sm text-gray-600">Información fiscal y amortización</div>
@@ -191,8 +191,8 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             </div>
           </div>
           
-          <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-200">
-            <p className="text-blue-200 text-sm">
+          <div className="bg-primary-900/20 rounded-lg p-4 border border-primary-200">
+            <p className="text-primary-200 text-sm">
               💡 <strong>Consejo:</strong> No te preocupes si no tienes todos los datos ahora. 
               Puedes guardar y completar la información más adelante.
             </p>
@@ -213,7 +213,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             Has completado el tour inicial. Ahora puedes explorar todas las funcionalidades de ATLAS.
           </p>
           
-          <div className="bg-gradient-to-br from-blue-50 to-teal-100 rounded-lg p-6 border border-blue-200">
+          <div className="bg-gradient-to-br from-primary-50 to-atlas-teal/20 rounded-lg p-6 border border-primary-200">
             <h4 className="text-white font-semibold mb-3 text-lg">Recursos Útiles:</h4>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
@@ -286,7 +286,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-teal-100 px-6 py-4 border-b border-gray-200">
+        <div className="bg-gradient-to-r from-primary-50 to-atlas-teal/20 px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Icon className="w-8 h-8 text-atlas-blue" />
@@ -312,7 +312,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
               <div
                 key={step.id}
                 className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                  index <= currentStep ? 'bg-blue-500' : 'bg-gray-700'
+                  index <= currentStep ? 'bg-primary-600' : 'bg-gray-700'
                 }`}
               />
             ))}

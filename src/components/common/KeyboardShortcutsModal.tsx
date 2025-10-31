@@ -111,7 +111,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ isOpen,
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <Command className="w-6 h-6 text-atlas-blue-600" />
+            <Command className="w-6 h-6 text-primary-700" />
             <h2 id="shortcuts-title" className="text-xl font-semibold text-gray-900">
               Atajos de Teclado
             </h2>

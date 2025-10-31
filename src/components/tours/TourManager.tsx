@@ -68,7 +68,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-teal-100 px-6 py-4 border-b border-gray-200">
+        <div className="bg-gradient-to-r from-primary-50 to-atlas-teal/20 px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <HelpCircle className="w-8 h-8 text-atlas-blue" />
@@ -96,7 +96,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
               return (
                 <div
                   key={tour.id}
-                  className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-blue-500 transition-colors"
+                  className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-primary-600 transition-colors"
                 >
                   <div className="flex items-start gap-3">
                     <BookOpen className="w-5 h-5 text-atlas-blue flex-shrink-0 mt-0.5" />
@@ -115,7 +115,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
                       </div>
                       <button
                         onClick={() => handleStartTour(tour.id)}
-                        className="w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+                        className="w-full px-4 py-2 rounded-lg bg-atlas-blue hover:bg-primary-800 text-white text-sm font-medium transition-colors"
                       >
                         {isCompleted ? 'Ver de nuevo' : 'Iniciar tour'}
                       </button>

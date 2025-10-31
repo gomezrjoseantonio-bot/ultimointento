@@ -78,7 +78,7 @@ const OtrosIngresosManager: React.FC = () => {
 
   const getTitularidadColor = (titularidad: OtrosIngresos['titularidad']) => {
     switch (titularidad) {
-      case 'yo': return 'text-blue-600';
+      case 'yo': return 'text-atlas-blue';
       case 'pareja': return 'text-red-600';
       case 'ambos': return 'text-purple-600';
       default: return 'text-gray-600';
@@ -254,7 +254,7 @@ const OtrosIngresosManager: React.FC = () => {
                     <div className="flex items-center space-x-2 ml-4">
                       <button
                         onClick={() => toast('Edición de ingresos - En desarrollo', { icon: 'ℹ️' })}
-                        className="p-2 text-gray-400 hover:text-blue-600"
+                        className="p-2 text-gray-400 hover:text-atlas-blue"
                         title="Editar ingreso"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -277,7 +277,7 @@ const OtrosIngresosManager: React.FC = () => {
 
       {/* Integration Info */}
       <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
-        <p className="text-sm text-blue-700">
+        <p className="text-sm text-primary-700">
           <strong>Integración automática:</strong> Los ingresos recurrentes configurados se integrarán automáticamente 
           con el módulo de Tesorería para el seguimiento de flujos de caja y con Proyecciones para la planificación financiera.
           La información fiscal se marcará automáticamente para facilitar la declaración de impuestos.

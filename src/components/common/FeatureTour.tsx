@@ -255,7 +255,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-blue-400" />
+              <Target className="w-5 h-5 text-primary-400" />
               <h3 className="text-lg font-bold text-white">{currentStepData.title}</h3>
             </div>
             <button
@@ -274,7 +274,7 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
           {currentStepData.action && (
             <button
               onClick={currentStepData.action.onClick}
-              className="w-full mb-3 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+              className="w-full mb-3 px-4 py-2 rounded-lg bg-atlas-blue hover:bg-primary-800 text-white font-medium transition-colors"
             >
               {currentStepData.action.label}
             </button>

@@ -386,7 +386,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
-                          prestamo.tipo === 'FIJO' ? 'bg-blue-100 text-blue-800' :
+                          prestamo.tipo === 'FIJO' ? 'bg-primary-100 text-primary-800' :
                           prestamo.tipo === 'VARIABLE' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-purple-100 text-purple-800'
                         }`}>

@@ -618,9 +618,9 @@ const InboxPage: React.FC = () => {
           duration: 8000,
           position: 'top-center',
           style: {
-            background: '#fee2e2',
-            color: 'var(--error)',
-            border: '1px solid #fca5a5',
+            background: 'var(--hz-error-soft)',
+            color: 'var(--hz-error-strong)',
+            border: '1px solid var(--hz-error-soft)',
           },
         });
       } else {
