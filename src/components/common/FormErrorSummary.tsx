@@ -33,7 +33,9 @@ const FormErrorSummary: React.FC<FormErrorSummaryProps> = ({
       onErrorClick(fieldName);
     } else {
       // Default behavior: try to focus the field
-      const element = document.querySelector(`[name="${fieldName}"]`) as HTMLElement;
+      // Sanitize fieldName to prevent CSS injection
+      const sanitizedName = fieldName.replace(/[^\w-]/g, '');
+      const element = document.querySelector(`[name="${sanitizedName}"]`) as HTMLElement;
       if (element) {
         element.focus();
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });

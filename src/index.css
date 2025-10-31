@@ -750,7 +750,7 @@ table td,
 
   /* Improve select dropdowns on mobile */
   select {
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: max(16px, 1rem); /* Prevents zoom on iOS while respecting user preferences */
   }
 
   /* Improve input focus states on mobile */

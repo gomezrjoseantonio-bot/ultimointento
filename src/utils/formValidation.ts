@@ -105,7 +105,9 @@ export function validateForm(
  * Common validation patterns
  */
 export const ValidationPatterns = {
-  email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  // More comprehensive email validation
+  email: /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
+  // Spanish phone: mobile (6,7) and landline (8,9)
   phone: /^(\+34|0034|34)?[6789]\d{8}$/,
   postalCode: /^\d{5}$/,
   iban: /^ES\d{22}$/,

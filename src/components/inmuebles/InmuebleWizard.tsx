@@ -347,8 +347,10 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       case 1: {
         const validation = validateStep1(step1Data);
         if (!validation.isValid) {
-          validation.errors.forEach((error, index) => {
-            errors[`step1_${index}`] = error;
+          validation.errors.forEach((error) => {
+            // Use error message as key to avoid index-based fragility
+            const errorKey = `step1_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
           });
         }
         break;
@@ -356,8 +358,9 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       case 2: {
         const validation = validateStep2(step2Data);
         if (!validation.isValid) {
-          validation.errors.forEach((error, index) => {
-            errors[`step2_${index}`] = error;
+          validation.errors.forEach((error) => {
+            const errorKey = `step2_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
           });
         }
         break;
@@ -365,8 +368,9 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       case 3: {
         const validation = validateStep3(step3Data);
         if (!validation.isValid) {
-          validation.errors.forEach((error, index) => {
-            errors[`step3_${index}`] = error;
+          validation.errors.forEach((error) => {
+            const errorKey = `step3_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
           });
         }
         break;
@@ -374,8 +378,9 @@ const InmuebleWizard: React.FC<InmuebleWizardProps> = ({ mode }) => {
       case 4: {
         const validation = validateStep4(step4Data);
         if (!validation.isValid) {
-          validation.errors.forEach((error, index) => {
-            errors[`step4_${index}`] = error;
+          validation.errors.forEach((error) => {
+            const errorKey = `step4_${error.replace(/\s+/g, '_').substring(0, 50)}`;
+            errors[errorKey] = error;
           });
         }
         break;

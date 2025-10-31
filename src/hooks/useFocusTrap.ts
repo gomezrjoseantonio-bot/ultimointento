@@ -23,7 +23,12 @@ export function useFocusTrap(isActive: boolean = true) {
         'textarea:not([disabled])',
         'input:not([disabled])',
         'select:not([disabled])',
-        '[tabindex]:not([tabindex="-1"])'
+        '[tabindex]:not([tabindex="-1"])',
+        '[contenteditable]:not([contenteditable="false"])',
+        'audio[controls]',
+        'video[controls]',
+        'details > summary',
+        'iframe'
       ].join(', ');
 
       return Array.from(
