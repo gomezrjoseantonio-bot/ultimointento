@@ -15,6 +15,7 @@ import { confirmDelete } from '../services/confirmationService';
 const SettingsPage: React.FC = () => {
   const [providers, setProviders] = useState<ProviderDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ProviderDirectoryEntry | null>(null);
   const [formData, setFormData] = useState({
@@ -66,6 +67,7 @@ const SettingsPage: React.FC = () => {
       return;
     }
 
+    setSaving(true);
     try {
       const providerData = {
         canonicalName: formData.canonicalName.trim(),
@@ -75,16 +77,20 @@ const SettingsPage: React.FC = () => {
 
       if (editingProvider) {
         await updateProvider(editingProvider.id!, providerData);
-        toast.success('Proveedor actualizado');
+        toast.success('Proveedor actualizado correctamente');
       } else {
         await saveProvider(providerData);
-        toast.success('Proveedor añadido');
+        toast.success('Proveedor añadido correctamente');
       }
 
       setShowAddModal(false);
       loadProviders();
     } catch (error) {
-      toast.error(editingProvider ? 'Error al actualizar proveedor' : 'Error al añadir proveedor');
+      const errorMessage = error instanceof Error ? error.message : 
+        (editingProvider ? 'Error al actualizar proveedor' : 'Error al añadir proveedor');
+      toast.error(errorMessage);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -273,10 +279,20 @@ const SettingsPage: React.FC = () => {
             <div className="p-4 border-t flex gap-3">
               <button
                 onClick={handleSaveProvider}
-                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
+                disabled={saving}
+                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-4 h-4" />
-                {editingProvider ? 'Actualizar' : 'Guardar'}
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    {editingProvider ? 'Actualizar' : 'Guardar'}
+                  </>
+                )}
               </button>
               <button
                 onClick={() => setShowAddModal(false)}

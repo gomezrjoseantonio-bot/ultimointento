@@ -530,12 +530,22 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
 
         <div className="flex flex-col space-y-2 ml-4">
-          <button className="atlas-atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onSelect(document)} title="Ver detalles">
+          <button 
+            className="atlas-atlas-atlas-atlas-atlas-btn-ghost" 
+            onClick={() => onSelect(document)} 
+            title="Ver detalles"
+            aria-label="Ver detalles del documento"
+          >
             <Eye className="h-4 w-4" />
           </button>
 
           {document.documentType === 'factura' && (
-            <button className="atlas-atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onReprocessOCR(document.id)} title="Reprocesar OCR">
+            <button 
+              className="atlas-atlas-atlas-atlas-atlas-btn-ghost" 
+              onClick={() => onReprocessOCR(document.id)} 
+              title="Reprocesar OCR"
+              aria-label="Reprocesar OCR del documento"
+            >
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
@@ -544,7 +554,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           {document.documentType === 'extracto_bancario' &&
            document.status === 'revision_requerida' &&
            document.blockingReasons?.some(reason => reason.includes('cuenta')) && (
-            <button className="atlas-atlas-atlas-atlas-atlas-btn-ghost" onClick={() => onAssignAccount(document)} title="Asignar cuenta bancaria" style={{ color: 'var(--atlas-blue)' }}>
+            <button 
+              className="atlas-atlas-atlas-atlas-atlas-btn-ghost" 
+              onClick={() => onAssignAccount(document)} 
+              title="Asignar cuenta bancaria"
+              aria-label="Asignar cuenta bancaria al documento"
+              style={{ color: 'var(--atlas-blue)' }}
+            >
               <CreditCard className="h-4 w-4" />
             </button>
           )}

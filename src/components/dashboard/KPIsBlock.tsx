@@ -4,6 +4,7 @@ import DashboardBlockBase, { DashboardBlockProps, DashboardBlockData } from './D
 import { KPIsBlockOptions } from '../../services/dashboardService';
 import { kpiService } from '../../services/kpiService';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Tooltip } from '../common/Tooltip';
 
 const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const { currentModule } = useTheme();
@@ -181,6 +182,16 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
     return `${kpiValues.length} métricas activas del KPI Builder`;
   };
 
+  // Tooltip definitions for common KPIs
+  const kpiTooltips: Record<string, string> = {
+    'Rentabilidad neta': 'Porcentaje de ganancia obtenida sobre la inversión inicial. Se calcula dividiendo beneficio neto entre inversión.',
+    'Rentabilidad bruta': 'Ingresos totales divididos por la inversión, sin descontar gastos.',
+    'Cashflow mensual': 'Diferencia entre ingresos y gastos mensuales. Indica liquidez disponible.',
+    'Ocupación': 'Porcentaje de tiempo que los inmuebles están alquilados vs. vacíos.',
+    'Cap Rate': 'Tasa de capitalización. Ingresos netos anuales divididos por valor del inmueble.',
+    'Cash-on-Cash': 'Retorno sobre el efectivo invertido, considerando financiación.',
+  };
+
   return (
     <DashboardBlockBase
       title="KPIs"
@@ -195,7 +206,13 @@ const KPIsBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, classNam
       <div className="mt-3 space-y-2">
         {kpiValues.slice(0, 3).map((kpi, index) => (
           <div key={index} className="flex justify-between items-center text-xs">
-            <span className="text-neutral-500 truncate">{kpi.name}</span>
+            {kpiTooltips[kpi.name] ? (
+              <Tooltip content={kpiTooltips[kpi.name]} showIcon>
+                <span className="text-neutral-500 truncate">{kpi.name}</span>
+              </Tooltip>
+            ) : (
+              <span className="text-neutral-500 truncate">{kpi.name}</span>
+            )}
             <div className="flex items-center space-x-1">
               <span className="font-medium text-neutral-900">{kpi.value}</span>
               {kpi.trend && kpi.trend !== 'neutral' && (

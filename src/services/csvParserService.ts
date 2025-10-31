@@ -20,7 +20,7 @@ class EnhancedCSVParser {
   async parseFile(file: File): Promise<ParseResult> {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      throw new Error(`Archivo demasiado grande. Máximo permitido: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+      throw new Error(`Archivo demasiado grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo permitido: ${MAX_FILE_SIZE / 1024 / 1024}MB. Intenta dividir el archivo o contacta soporte.`);
     }
 
     const fileName = file.name;
@@ -62,7 +62,7 @@ class EnhancedCSVParser {
   }): Promise<ParseResult> {
     
     if (data.length === 0) {
-      throw new Error('El archivo está vacío');
+      throw new Error('El archivo está vacío. Asegúrate de subir un extracto bancario válido con movimientos.');
     }
 
     // Validate row count
@@ -74,7 +74,7 @@ class EnhancedCSVParser {
     // Step 1: Find real headers (anti-logo/header detection)
     const headerResult = this.findRealHeaders(data);
     if (!headerResult) {
-      throw new Error('No se pudieron detectar cabeceras válidas en el archivo');
+      throw new Error('No se pudieron detectar cabeceras válidas. Verifica que el archivo sea un extracto bancario con columnas de Fecha, Concepto e Importe.');
     }
 
     const { headerRow, headers } = headerResult;
@@ -83,7 +83,7 @@ class EnhancedCSVParser {
     const detectedBank = await bankProfilesService.detectBank(headers);
     
     if (!detectedBank && !(import.meta as any).env?.DEV) {
-      throw new Error('Banco no soportado aún. Añade perfil al registro global.');
+      throw new Error('Banco no reconocido automáticamente. Por favor, selecciona manualmente tu banco en la configuración o contacta soporte para añadir el perfil.');
     }
 
     // Step 3: Use detected profile or fallback to generic
@@ -92,7 +92,7 @@ class EnhancedCSVParser {
 
     // Validate required fields
     if (!headerMapping.date || !headerMapping.amount) {
-      throw new Error('No se encontraron las columnas requeridas (fecha y importe)');
+      throw new Error('No se encontraron las columnas requeridas (Fecha e Importe). Verifica que el archivo tenga estas columnas claramente identificadas.');
     }
 
     // Step 4: Clean and parse data rows
