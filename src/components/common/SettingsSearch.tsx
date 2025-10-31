@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MagnifyingGlassIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { Search, Settings } from 'lucide-react';
 
 interface SettingItem {
   id: string;
@@ -130,7 +130,7 @@ const SettingsSearch: React.FC<SettingsSearchProps> = ({ onNavigate }) => {
       {/* Search Input */}
       <div className="p-4 border-b border-gray-200">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             value={query}
@@ -147,7 +147,7 @@ const SettingsSearch: React.FC<SettingsSearchProps> = ({ onNavigate }) => {
         <div className="p-2">
           {Object.keys(groupedSettings).length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <Cog6ToothIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <Settings className="w-12 h-12 mx-auto mb-2 text-gray-300" />
               <p className="text-sm">No se encontraron ajustes para "{query}"</p>
             </div>
           ) : (

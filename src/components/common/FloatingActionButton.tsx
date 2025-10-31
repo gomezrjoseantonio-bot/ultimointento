@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
-  PlusIcon,
-  BuildingOfficeIcon,
-  DocumentTextIcon,
-  BanknotesIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline';
+  Plus,
+  Building,
+  FileText,
+  Banknote,
+  X,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface QuickAction {
@@ -24,7 +24,7 @@ const FloatingActionButton: React.FC = () => {
     {
       id: 'new-property',
       label: 'Nuevo Inmueble',
-      icon: BuildingOfficeIcon,
+      icon: Building,
       action: () => {
         navigate('/portfolio?action=new');
         setIsOpen(false);
@@ -34,7 +34,7 @@ const FloatingActionButton: React.FC = () => {
     {
       id: 'upload-document',
       label: 'Subir Documento',
-      icon: DocumentTextIcon,
+      icon: FileText,
       action: () => {
         navigate('/inbox?action=upload');
         setIsOpen(false);
@@ -44,7 +44,7 @@ const FloatingActionButton: React.FC = () => {
     {
       id: 'import-movements',
       label: 'Importar Movimientos',
-      icon: BanknotesIcon,
+      icon: Banknote,
       action: () => {
         navigate('/treasury?action=import');
         setIsOpen(false);
@@ -120,9 +120,9 @@ const FloatingActionButton: React.FC = () => {
         aria-haspopup="true"
       >
         {isOpen ? (
-          <XMarkIcon className="w-7 h-7" />
+          <X className="w-7 h-7" />
         ) : (
-          <PlusIcon className="w-7 h-7" />
+          <Plus className="w-7 h-7" />
         )}
       </button>
 
