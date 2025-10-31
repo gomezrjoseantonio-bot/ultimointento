@@ -44,7 +44,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             ATLAS te ayuda a gestionar tu cartera de inmuebles de forma profesional, 
             combinando supervisión financiera con gestión operativa diaria.
           </p>
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-200">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h4 className="text-white font-semibold mb-2">¿Qué vas a descubrir?</h4>
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start gap-2">
@@ -84,19 +84,19 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
           <div className="space-y-3">
             <h4 className="text-white font-semibold">Funcionalidades principales:</h4>
             <div className="grid grid-cols-1 gap-3">
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">📊 Panel de Control</div>
                 <div className="text-sm text-gray-600">Dashboard con métricas financieras en tiempo real</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">🏘️ Cartera de Inmuebles</div>
                 <div className="text-sm text-gray-600">Gestión completa de propiedades y análisis</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">💰 Tesorería</div>
                 <div className="text-sm text-gray-600">Control de liquidez y conciliación bancaria</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">📈 Proyecciones</div>
                 <div className="text-sm text-gray-600">Análisis predictivo y escenarios financieros</div>
               </div>
@@ -125,19 +125,19 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
           <div className="space-y-3">
             <h4 className="text-white font-semibold">Funcionalidades principales:</h4>
             <div className="grid grid-cols-1 gap-3">
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">📄 Contratos</div>
                 <div className="text-sm text-gray-600">Gestión de contratos de alquiler y documentos</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">✍️ Firmas Digitales</div>
                 <div className="text-sm text-gray-600">Proceso de firma electrónica de documentos</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">💳 Cobros</div>
                 <div className="text-sm text-gray-600">Seguimiento de pagos y recibos</div>
               </div>
-              <div className="bg-gray-800 rounded-lg p-3 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                 <div className="font-medium text-white mb-1">⚡ Automatizaciones</div>
                 <div className="text-sm text-gray-600">Automatiza tareas repetitivas</div>
               </div>
@@ -157,7 +157,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             El primer paso es añadir una propiedad a tu cartera. El proceso es simple y guiado.
           </p>
           
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-200">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h4 className="text-white font-semibold mb-3">Proceso de creación (4 pasos):</h4>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
@@ -284,7 +284,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-      <div className="bg-gray-900 rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-50 to-teal-100 px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -328,7 +328,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-800/50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div className="bg-gray-50/50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <button
             onClick={handleSkip}
             className="text-gray-600 hover:text-white transition-colors text-sm font-medium"

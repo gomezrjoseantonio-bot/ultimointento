@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           
           {/* User Plan Badge */}
           {user && (
-            <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium bg-atlas-blue bg-opacity-10 text-atlas-blue">
+            <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium text-atlas-blue" style={{ backgroundColor: 'rgba(4, 44, 94, 0.1)' }}>
               Plan {user.subscriptionPlan.toUpperCase()}
             </div>
           )}

@@ -143,7 +143,7 @@ const PlanFacturacion: React.FC = () => {
           </div>
           <div className="text-right">
             <p className="text-sm text-hz-neutral-700">Estado</p>
-            <span className="inline-block px-3 py-1 bg-ok bg-opacity-10 text-ok rounded-full text-sm font-medium mt-1">
+            <span className="inline-block px-3 py-1 text-ok rounded-full text-sm font-medium mt-1" style={{ backgroundColor: 'rgba(40, 167, 69, 0.1)' }}>
               {user?.subscriptionStatus === 'active' ? 'Activo' : 
                user?.subscriptionStatus === 'trial' ? 'Prueba' : 'Cancelado'}
             </span>
