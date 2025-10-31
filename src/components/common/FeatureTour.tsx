@@ -34,6 +34,20 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+  // State for spotlight mask and highlight border
+  const [spotlightMask, setSpotlightMask] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [highlightBorder, setHighlightBorder] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
   const currentStepData = steps[currentStep];
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === steps.length - 1;
@@ -108,6 +122,42 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
     };
   }, [currentStep, currentStepData.target, currentStepData.placement]);
 
+  // Update spotlight mask and highlight border on scroll, resize, or targetElement change
+  useEffect(() => {
+    function updateRects() {
+      if (!targetElement) {
+        setSpotlightMask(null);
+        setHighlightBorder(null);
+        return;
+      }
+      const rect = targetElement.getBoundingClientRect();
+      setSpotlightMask({
+        x: rect.left - 8,
+        y: rect.top - 8,
+        width: rect.width + 16,
+        height: rect.height + 16
+      });
+      setHighlightBorder({
+        top: rect.top - 8,
+        left: rect.left - 8,
+        width: rect.width + 16,
+        height: rect.height + 16
+      });
+    }
+
+    // Initial update
+    updateRects();
+
+    // Update on scroll and resize
+    window.addEventListener('scroll', updateRects, true);
+    window.addEventListener('resize', updateRects);
+
+    return () => {
+      window.removeEventListener('scroll', updateRects, true);
+      window.removeEventListener('resize', updateRects);
+    };
+  }, [targetElement]);
+
   const handleNext = () => {
     if (isLastStep) {
       handleComplete();
@@ -132,30 +182,6 @@ const FeatureTour: React.FC<FeatureTourProps> = ({
     localStorage.setItem(`atlas_tour_${tourId}_skipped`, 'true');
     onSkip();
   };
-
-  // Memoize spotlight mask to avoid recalculation on every render
-  const spotlightMask = React.useMemo(() => {
-    if (!targetElement) return null;
-    const rect = targetElement.getBoundingClientRect();
-    return {
-      x: rect.left - 8,
-      y: rect.top - 8,
-      width: rect.width + 16,
-      height: rect.height + 16
-    };
-  }, [targetElement]);
-
-  // Memoize highlight border to avoid recalculation on every render
-  const highlightBorder = React.useMemo(() => {
-    if (!targetElement) return null;
-    const rect = targetElement.getBoundingClientRect();
-    return {
-      top: rect.top - 8,
-      left: rect.left - 8,
-      width: rect.width + 16,
-      height: rect.height + 16
-    };
-  }, [targetElement]);
 
   return (
     <>

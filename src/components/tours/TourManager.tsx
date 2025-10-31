@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HelpCircle, BookOpen, X } from 'lucide-react';
 import FeatureTour from '../common/FeatureTour';
 import { AVAILABLE_TOURS, isTourCompleted, startTour } from '../../config/tours';
@@ -27,6 +27,17 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
     setActiveTourId(null);
   };
 
+  // Validate active tour ID and reset if invalid
+  useEffect(() => {
+    if (activeTourId) {
+      const tour = AVAILABLE_TOURS[activeTourId as keyof typeof AVAILABLE_TOURS];
+      // If tour is invalid, reset the state
+      if (!tour || tour.id !== activeTourId) {
+        setActiveTourId(null);
+      }
+    }
+  }, [activeTourId]);
+
   // If a tour is active, render it
   if (activeTourId) {
     const tour = AVAILABLE_TOURS[activeTourId as keyof typeof AVAILABLE_TOURS];
@@ -41,8 +52,8 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
         />
       );
     }
-    // Invalid tour ID - close the manager
-    setActiveTourId(null);
+    // Return null while useEffect resets the invalid tour ID
+    return null;
   }
 
   // Otherwise, show tour selection modal
