@@ -485,22 +485,22 @@ table td,
 }
 
 .badge-success { 
-  background: rgba(46,175,125,.12); 
+  background: var(--hz-success-soft); 
   color: var(--hz-success-strong);
 }
 
 .badge-warning { 
-  background: rgba(240,162,2,.14); 
+  background: var(--hz-warning-soft); 
   color: var(--hz-warning-strong);
 }
 
 .badge-danger { 
-  background: rgba(227,93,93,.12); 
+  background: var(--hz-error-soft); 
   color: var(--hz-error-strong);
 }
 
 .badge-info { 
-  background: rgba(46,176,203,.12); 
+  background: var(--hz-info-soft); 
   color: var(--hz-info-strong);
 }
 
