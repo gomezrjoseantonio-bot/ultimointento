@@ -512,7 +512,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       </span>
                     )}
                     {!ccaaInfo?.isKnown && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-yellow-800">
                         ITP (8%*)
                       </span>
                     )}
@@ -547,7 +547,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                   )}
                   
                   {!ccaaInfo?.isKnown && (
-                    <p className="text-xs text-orange-600 mt-1">
+                    <p className="text-xs text-warning-600 mt-1">
                       * CCAA no detectada automáticamente. Se aplica tipo general 8%.
                     </p>
                   )}
@@ -561,7 +561,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       IVA *
                     </label>
                     {data.compra.impuestos?.iva_porcentaje_info && (
-                      <span className="btn-accent-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
+                      <span className="btn-accent-horizon inline-flex items-center px-2 py-1 text-xs font-medium text-success-800">
                         IVA ({formatPercentageChip(data.compra.impuestos.iva_porcentaje_info)})
                       </span>
                     )}
@@ -637,7 +637,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
             
             {/* Special tax warnings */}
             {specialWarning && (
-              <div className="bg-yellow-50 border border-yellow-200 p-3 mt-4">
+              <div className="bg-warning-50 border border-yellow-200 p-3 mt-4">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -645,7 +645,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-yellow-700">{specialWarning}</p>
+                    <p className="text-sm text-warning-700">{specialWarning}</p>
                   </div>
                 </div>
               </div>

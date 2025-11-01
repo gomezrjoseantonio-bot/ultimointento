@@ -42,24 +42,24 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex flex-col items-center justify-center py-12 px-4">
-          <div className="atlas-atlas-atlas-atlas-btn-destructive border border-red-200 p-8 max-w-lg w-full">
+          <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive border border-error-200 p-8 max-w-lg w-full">
             <div className="flex items-center mb-4">
-              <XCircle className="h-8 w-8 text-red-500 mr-3" />
-              <h2 className="text-xl font-semibold text-red-900">
+              <XCircle className="h-8 w-8 text-error-500 mr-3" />
+              <h2 className="text-xl font-semibold text-error-900">
                 Error inesperado
               </h2>
             </div>
             
-            <p className="text-red-700 mb-6">
+            <p className="text-error-700 mb-6">
               Ha ocurrido un error inesperado. Esto puede deberse a un problema temporal.
             </p>
 
             {process.env.NODE_ENV === 'development' && (
               <details className="mb-6">
-                <summary className="text-sm text-red-600 cursor-pointer mb-2">
+                <summary className="text-sm text-error-600 cursor-pointer mb-2">
                   Detalles del error (desarrollo)
                 </summary>
-                <pre className="atlas-atlas-atlas-atlas-btn-destructive text-xs p-3 rounded overflow-auto text-red-800">
+                <pre className="atlas-atlas-atlas-atlas-atlas-btn-destructive text-xs p-3 rounded overflow-auto text-error-800">
                   {this.state.error?.toString()}
                   {this.state.errorInfo?.componentStack}
                 </pre>

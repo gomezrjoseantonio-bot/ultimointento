@@ -232,7 +232,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
     <div className="space-y-6">
       {/* Information text with icon */}
       <div className="flex items-center space-x-2 text-sm text-text-gray">
-        <div className="atlas-atlas-atlas-atlas-btn-primary flex-shrink-0 w-4 h-4 flex items-center justify-center">
+        <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex-shrink-0 w-4 h-4 flex items-center justify-center">
           <span className="text-xs font-medium text-atlas-blue">i</span>
         </div>
         <span>Gestione sus préstamos hipotecarios y personales. Puede ordenar las columnas haciendo clic en los encabezados.</span>
@@ -387,7 +387,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
                           prestamo.tipo === 'FIJO' ? 'bg-primary-100 text-primary-800' :
-                          prestamo.tipo === 'VARIABLE' ? 'bg-yellow-100 text-yellow-800' :
+                          prestamo.tipo === 'VARIABLE' ? 'bg-warning-100 text-yellow-800' :
                           'bg-purple-100 text-purple-800'
                         }`}>
                           {prestamo.tipo}

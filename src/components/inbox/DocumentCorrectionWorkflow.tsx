@@ -257,9 +257,9 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
     return (
       <div key={fieldDef.field} className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className={`text-sm font-medium ${hasError ? 'text-red-600' : 'text-gray-700'}`}>
+          <label className={`text-sm font-medium ${hasError ? 'text-error-600' : 'text-gray-700'}`}>
             {fieldDef.label}
-            {fieldDef.required && <span className="text-red-500 ml-1">*</span>}
+            {fieldDef.required && <span className="text-error-500 ml-1">*</span>}
             {isBlocking && (
               <AlertTriangle className="inline w-4 h-4 text-amber-500 ml-2" strokeWidth={1.5} />
             )}
@@ -285,7 +285,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
-                    ? 'border-red-300 focus:ring-red-500' 
+                    ? 'border-error-300 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
@@ -300,7 +300,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 onChange={(e) => handleFieldChange(fieldDef.field, parseFloat(e.target.value) || undefined)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
-                    ? 'border-red-300 focus:ring-red-500' 
+                    ? 'border-error-300 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
@@ -314,7 +314,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
-                    ? 'border-red-300 focus:ring-red-500' 
+                    ? 'border-error-300 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
@@ -327,7 +327,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
                 onChange={(e) => handleFieldChange(fieldDef.field, e.target.value)}
                 className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                   hasError 
-                    ? 'border-red-300 focus:ring-red-500' 
+                    ? 'border-error-300 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-atlas-blue'
                 }`}
                 style={{ fontFamily: 'Inter, sans-serif' }}
@@ -354,7 +354,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
 
             <button
               onClick={() => stopEditing(fieldDef.field)}
-              className="text-green-600 hover:text-green-800 p-1"
+              className="text-success-600 hover:text-success-800 p-1"
               title="Confirmar cambio"
             >
               <Check className="w-4 h-4" strokeWidth={1.5} />
@@ -362,7 +362,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
           </div>
         ) : (
           <div className={`px-3 py-2 bg-gray-50 rounded-md text-sm ${
-            hasError ? 'border border-red-300' : 'border border-gray-200'
+            hasError ? 'border border-error-300' : 'border border-gray-200'
           }`}>
             {fieldDef.type === 'boolean' 
               ? (value ? 'Sí' : 'No')
@@ -372,7 +372,7 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
         )}
 
         {hasError && (
-          <p className="text-red-600 text-xs">{hasError}</p>
+          <p className="text-error-600 text-xs">{hasError}</p>
         )}
       </div>
     );

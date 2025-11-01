@@ -287,14 +287,14 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowNewMovementModal(true)}
-              className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+              className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
               >
               <Plus className="h-4 w-4" />
               <span>Nuevo movimiento</span>
             </button>
             <button
               onClick={() => setShowImportModal(true)}
-              className="atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+              className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
               >
               <Upload className="h-4 w-4" />
               <span>Importar extracto</span>
@@ -307,27 +307,27 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
           <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gray-50 p-3">
               <p className="text-sm text-gray-500">Saldo actual</p>
-              <p className={`text-lg font-semibold ${(selectedAccount.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-lg font-semibold ${(selectedAccount.balance || 0) >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                 {formatEuro(selectedAccount.balance || 0)}
               </p>
             </div>
-            <div className="atlas-atlas-atlas-atlas-btn-primary p-3">
-              <p className="text-sm text-green-600">Ingresos del mes</p>
-              <p className="text-lg font-semibold text-green-700">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
+              <p className="text-sm text-success-600">Ingresos del mes</p>
+              <p className="text-lg font-semibold text-success-700">
                 {formatEuro(monthlyTotals.ingresos)}
               </p>
             </div>
-            <div className="atlas-atlas-atlas-atlas-btn-destructive p-3">
-              <p className="text-sm text-red-600">Gastos del mes</p>
-              <p className="text-lg font-semibold text-red-700">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive p-3">
+              <p className="text-sm text-error-600">Gastos del mes</p>
+              <p className="text-lg font-semibold text-error-700">
                 {formatEuro(monthlyTotals.gastos)}
               </p>
             </div>
-            <div className={`p-3 ${monthlyTotals.neto >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-              <p className={`text-sm ${monthlyTotals.neto >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`p-3 ${monthlyTotals.neto >= 0 ? 'bg-success-50' : 'bg-error-50'}`}>
+              <p className={`text-sm ${monthlyTotals.neto >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                 Neto del mes
               </p>
-              <p className={`text-lg font-semibold ${monthlyTotals.neto >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              <p className={`text-lg font-semibold ${monthlyTotals.neto >= 0 ? 'text-success-700' : 'text-error-700'}`}>
                 {formatEuro(monthlyTotals.neto)}
               </p>
             </div>

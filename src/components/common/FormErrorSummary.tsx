@@ -45,25 +45,25 @@ const FormErrorSummary: React.FC<FormErrorSummaryProps> = ({
 
   return (
     <div
-      className={`rounded-lg border border-red-200 bg-red-50 p-4 ${className}`}
+      className={`rounded-lg border border-error-200 bg-error-50 p-4 ${className}`}
       role="alert"
       aria-live="polite"
     >
       <div className="flex items-start">
-        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <AlertCircle className="h-5 w-5 text-error-600 flex-shrink-0 mt-0.5" />
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-red-800">
+          <h3 className="text-sm font-medium text-error-800">
             {errorEntries.length === 1
               ? 'Hay 1 error en el formulario'
               : `Hay ${errorEntries.length} errores en el formulario`}
           </h3>
-          <ul className="mt-2 space-y-1 text-sm text-red-700 list-disc list-inside">
+          <ul className="mt-2 space-y-1 text-sm text-error-700 list-disc list-inside">
             {errorEntries.map(([fieldName, errorMessage]) => (
               <li key={fieldName}>
                 <button
                   type="button"
                   onClick={() => handleErrorClick(fieldName)}
-                  className="underline hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
+                  className="underline hover:text-error-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
                 >
                   <strong>{getFieldLabel(fieldName)}:</strong> {errorMessage}
                 </button>

@@ -54,12 +54,12 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const filteredData = data.slice(0, timeHorizon + 1);
 
   const palette = useMemo(() => ({
-    success: cssVar('--ok', '#28A745'),
-    error: cssVar('--error', '#DC3545'),
-    warning: cssVar('--warn', '#FFC107'),
-    primary: cssVar('--atlas-blue', '#042C5E'),
-    text: cssVar('--text-gray', '#6C757D'),
-    neutral100: cssVar('--hz-neutral-100', '#F8F9FA'),
+    success: cssVar('--ok', 'var(--ok)'),
+    error: cssVar('--error', 'var(--error)'),
+    warning: cssVar('--warn', 'var(--warn)'),
+    primary: cssVar('--atlas-blue', 'var(--atlas-blue)'),
+    text: cssVar('--text-gray', 'var(--text-gray)'),
+    neutral100: cssVar('--hz-neutral-100', 'var(--bg)'),
   }), []);
 
   const chartData = {

@@ -158,7 +158,7 @@ function App() {
                 background: 'white',
                 border: '1px solid var(--hz-neutral-300)',
                 borderRadius: '10px',
-                boxShadow: '0 4px 6px rgba(156, 163, 175, 0.1)',
+                boxShadow: '0 2px 4px rgba(156, 163, 175, 0.1)',
               },
               success: {
                 iconTheme: {

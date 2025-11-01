@@ -174,9 +174,9 @@ const WizardStepScopeSelection: React.FC<WizardStepScopeSelectionProps> = ({
 
       {/* Date Range Selection */}
       {isMidYear && (
-        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
           <div className="flex items-center mb-4">
-            <div className="atlas-atlas-atlas-atlas-btn-primary p-2 mr-3">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-2 mr-3">
               <span className="text-primary-600 text-sm font-medium">📅</span>
             </div>
             <h3 className="font-semibold text-primary-900">Período del presupuesto</h3>

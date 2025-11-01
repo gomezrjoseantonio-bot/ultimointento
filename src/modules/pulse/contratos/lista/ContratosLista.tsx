@@ -146,7 +146,7 @@ const ContratosLista: React.FC = () => {
           <div className="bg-white border border-neutral-200 rounded-xl p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-neutral-500">Contratos vacacionales</span>
-              <Building2 className="h-5 w-5 text-orange-600" />
+              <Building2 className="h-5 w-5 text-warning-600" />
             </div>
             <p className="text-3xl font-semibold text-neutral-900 mt-3">
               {loadingOverview ? '—' : vacationalContracts}

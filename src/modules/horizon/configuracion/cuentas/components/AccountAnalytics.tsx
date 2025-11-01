@@ -123,8 +123,8 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
 
   const getUsageColor = (frequency: 'high' | 'medium' | 'low') => {
     switch (frequency) {
-      case 'high': return 'text-green-600 bg-green-50';
-      case 'medium': return 'text-yellow-600 bg-yellow-50';
+      case 'high': return 'text-success-600 bg-success-50';
+      case 'medium': return 'text-warning-600 bg-warning-50';
       case 'low': return 'text-gray-600 bg-gray-50';
     }
   };
@@ -226,7 +226,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
       {/* Summary Stats */}
       <div className="p-6 border-b border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
+          <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-atlas-blue" />
               <div className="ml-3">
@@ -236,22 +236,22 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
             </div>
           </div>
           
-          <div className="atlas-atlas-atlas-atlas-btn-primary p-4">
+          <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-4">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-green-600" />
+              <TrendingUp className="h-8 w-8 text-success-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-green-600">Ingresos</p>
-                <p className="text-2xl font-bold text-green-900">{formatEuro(totalStats.totalInflow)}</p>
+                <p className="text-sm font-medium text-success-600">Ingresos</p>
+                <p className="text-2xl font-bold text-success-900">{formatEuro(totalStats.totalInflow)}</p>
               </div>
             </div>
           </div>
           
-          <div className="atlas-atlas-atlas-atlas-btn-destructive p-4">
+          <div className="atlas-atlas-atlas-atlas-atlas-btn-destructive p-4">
             <div className="flex items-center">
-              <TrendingDown className="h-8 w-8 text-red-600" />
+              <TrendingDown className="h-8 w-8 text-error-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-red-600">Gastos</p>
-                <p className="text-2xl font-bold text-red-900">{formatEuro(totalStats.totalOutflow)}</p>
+                <p className="text-sm font-medium text-error-600">Gastos</p>
+                <p className="text-2xl font-bold text-error-900">{formatEuro(totalStats.totalOutflow)}</p>
               </div>
             </div>
           </div>
@@ -280,7 +280,7 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
                     {getUsageLabel(stat.usageFrequency)}
                   </span>
                   {stat.account.isDefault && (
-                    <span className="atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs font-medium text-primary-800">
+                    <span className="atlas-atlas-atlas-atlas-atlas-btn-primary px-2 py-1 text-xs font-medium text-primary-800">
                       Por defecto
                     </span>
                   )}
@@ -294,11 +294,11 @@ const AccountAnalytics: React.FC<AccountAnalyticsProps> = ({ className = '' }) =
                 </div>
                 <div>
                   <p className="text-gray-500">Ingresos</p>
-                  <p className="font-semibold text-green-600">{formatEuro(stat.totalInflow)}</p>
+                  <p className="font-semibold text-success-600">{formatEuro(stat.totalInflow)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Gastos</p>
-                  <p className="font-semibold text-red-600">{formatEuro(stat.totalOutflow)}</p>
+                  <p className="font-semibold text-error-600">{formatEuro(stat.totalOutflow)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Último movimiento</p>

@@ -186,25 +186,25 @@ const AutonomoManager: React.FC = () => {
 
       {/* Active Autonomo Summary */}
       {activoAutonomo && calculo && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 p-6">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-success-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
-              <Euro className="w-5 h-5 text-green-600" />
-              <h4 className="text-lg font-semibold text-green-900">
+              <Euro className="w-5 h-5 text-success-600" />
+              <h4 className="text-lg font-semibold text-success-900">
                 {activoAutonomo.nombre} (Activo) - {selectedYear}
               </h4>
             </div>
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => setShowIngresoForm(true)}
-                className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-3 py-1 text-sm"
+                className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-3 py-1 text-sm"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Ingreso
               </button>
               <button
                 onClick={() => setShowGastoForm(true)}
-                className="atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-3 py-1 text-sm"
+                className="atlas-atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-3 py-1 text-sm"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Gasto
@@ -214,35 +214,35 @@ const AutonomoManager: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 border border-green-100">
-              <p className="text-sm text-green-600 font-medium">Ingresos Brutos</p>
-              <p className="text-xl font-bold text-green-900">
+              <p className="text-sm text-success-600 font-medium">Ingresos Brutos</p>
+              <p className="text-xl font-bold text-success-900">
                 {formatCurrency(calculo.ingresosBrutos)}
               </p>
             </div>
 
             <div className="bg-white p-4 border border-green-100">
-              <p className="text-sm text-green-600 font-medium">Gastos Deducibles</p>
-              <p className="text-xl font-bold text-green-900">
+              <p className="text-sm text-success-600 font-medium">Gastos Deducibles</p>
+              <p className="text-xl font-bold text-success-900">
                 {formatCurrency(calculo.gastos)}
               </p>
             </div>
 
             <div className="bg-white p-4 border border-green-100">
-              <p className="text-sm text-green-600 font-medium">Cuota Autónomos</p>
-              <p className="text-xl font-bold text-green-900">
+              <p className="text-sm text-success-600 font-medium">Cuota Autónomos</p>
+              <p className="text-xl font-bold text-success-900">
                 {formatCurrency(calculo.cuotaAutonomos)}
               </p>
             </div>
 
             <div className="bg-white p-4 border border-green-100">
-              <p className="text-sm text-green-600 font-medium">Resultado Neto</p>
-              <p className={`text-xl font-bold ${calculo.resultadoAnual >= 0 ? 'text-green-900' : 'text-red-900'}`}>
+              <p className="text-sm text-success-600 font-medium">Resultado Neto</p>
+              <p className={`text-xl font-bold ${calculo.resultadoAnual >= 0 ? 'text-success-900' : 'text-error-900'}`}>
                 {formatCurrency(calculo.resultadoAnual)}
               </p>
             </div>
           </div>
 
-          <div className="mt-4 text-sm text-green-700">
+          <div className="mt-4 text-sm text-success-700">
             <p>
               Resultado neto mensual promedio: <strong>{formatCurrency(calculo.resultadoNetoMensual)}</strong>
             </p>
@@ -257,7 +257,7 @@ const AutonomoManager: React.FC = () => {
           <div className="bg-white border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-medium text-gray-900 flex items-center">
-                <TrendingUp className="w-5 h-5 text-green-600 mr-2" />
+                <TrendingUp className="w-5 h-5 text-success-600 mr-2" />
                 Ingresos {selectedYear}
               </h4>
               <span className="text-sm text-gray-500">
@@ -270,13 +270,13 @@ const AutonomoManager: React.FC = () => {
                 .filter(i => new Date(i.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((ingreso) => (
-                  <div key={ingreso.id} className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center justify-between p-3">
+                  <div key={ingreso.id} className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{ingreso.descripcion}</p>
                       <p className="text-sm text-gray-600">
                         {formatDate(ingreso.fecha)} • {formatCurrency(ingreso.importe)}
                         {ingreso.conIva && ingreso.tipoIva && (
-                          <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-primary-800 px-2 py-1 rounded">
+                          <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-primary-800 px-2 py-1 rounded">
                             IVA {ingreso.tipoIva}%
                           </span>
                         )}
@@ -284,7 +284,7 @@ const AutonomoManager: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleRemoveIngreso(ingreso.id!)}
-                      className="p-1 text-gray-400 hover:text-red-600"
+                      className="p-1 text-gray-400 hover:text-error-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -304,7 +304,7 @@ const AutonomoManager: React.FC = () => {
           <div className="bg-white border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-medium text-gray-900 flex items-center">
-                <TrendingDown className="w-5 h-5 text-red-600 mr-2" />
+                <TrendingDown className="w-5 h-5 text-error-600 mr-2" />
                 Gastos Deducibles {selectedYear}
               </h4>
               <span className="text-sm text-gray-500">
@@ -317,7 +317,7 @@ const AutonomoManager: React.FC = () => {
                 .filter(g => new Date(g.fecha).getFullYear() === selectedYear)
                 .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
                 .map((gasto) => (
-                  <div key={gasto.id} className="atlas-atlas-atlas-atlas-atlas-btn-destructive flex items-center justify-between p-3">
+                  <div key={gasto.id} className="atlas-atlas-atlas-atlas-atlas-atlas-btn-destructive flex items-center justify-between p-3">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{gasto.descripcion}</p>
                       <p className="text-sm text-gray-600">
@@ -329,7 +329,7 @@ const AutonomoManager: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleRemoveGasto(gasto.id!)}
-                      className="p-1 text-gray-400 hover:text-red-600"
+                      className="p-1 text-gray-400 hover:text-error-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -375,18 +375,18 @@ const AutonomoManager: React.FC = () => {
                 key={autonomo.id}
                 className={`border p-4 ${
                   autonomo.activo 
-                    ? 'border-green-200 bg-green-50' 
+                    ? 'border-success-200 bg-success-50' 
                     : 'border-gray-200 bg-white'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <h5 className={`font-medium ${autonomo.activo ? 'text-green-900' : 'text-gray-900'}`}>
+                      <h5 className={`font-medium ${autonomo.activo ? 'text-success-900' : 'text-gray-900'}`}>
                         {autonomo.nombre}
                       </h5>
                       {autonomo.activo && (
-                        <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-green-800">
+                        <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-success-800">
                           Activo
                         </span>
                       )}
@@ -409,7 +409,7 @@ const AutonomoManager: React.FC = () => {
                     {!autonomo.activo && (
                       <button
                         onClick={() => handleActivateAutonomo(autonomo)}
-                        className="atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-green-600 border border-green-600 rounded hover: "
+                        className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-success-600 border border-green-600 rounded hover: "
                       >
                         Activar
                       </button>
@@ -422,7 +422,7 @@ const AutonomoManager: React.FC = () => {
                     </button>
                     <button
                       onClick={() => handleDeleteAutonomo(autonomo.id!)}
-                      className="p-2 text-gray-400 hover:text-red-600"
+                      className="p-2 text-gray-400 hover:text-error-600"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

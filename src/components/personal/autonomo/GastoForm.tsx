@@ -273,7 +273,7 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
           <button
             type="submit"
             disabled={loading}
-            className="atlas-atlas-atlas-atlas-atlas-btn-destructive px-4 py-2 disabled:opacity-50"
+            className="atlas-atlas-atlas-atlas-atlas-atlas-btn-destructive px-4 py-2 disabled:opacity-50"
           >
             {loading ? 'Añadiendo...' : 'Añadir Gasto'}
           </button>

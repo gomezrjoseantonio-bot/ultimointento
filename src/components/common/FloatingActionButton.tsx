@@ -49,7 +49,7 @@ const FloatingActionButton: React.FC = () => {
         navigate('/treasury?action=import');
         setIsOpen(false);
       },
-      color: 'bg-green-600 hover:bg-green-700',
+      color: 'bg-success-600 hover:bg-success-700',
     },
   ];
 

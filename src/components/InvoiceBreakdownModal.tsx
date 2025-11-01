@@ -477,7 +477,7 @@ const InvoiceBreakdownModal: React.FC<InvoiceBreakdownModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Mejora Column */}
             <div className="border border-gray-200">
-              <div className="atlas-atlas-atlas-atlas-btn-primary px-4 py-3 border-b border-gray-200">
+              <div className="atlas-atlas-atlas-atlas-atlas-btn-primary px-4 py-3 border-b border-gray-200">
                 <h3 className="font-semibold text-primary-900">Mejora</h3>
                 <p className="text-sm text-primary-700">Incrementa valor construcción</p>
                 <div className="mt-2 text-lg font-bold text-primary-900">

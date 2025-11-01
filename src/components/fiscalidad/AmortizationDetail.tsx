@@ -130,7 +130,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
       </div>
 
       {/* Días de alquiler */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary mb-6 p-4 ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary mb-6 p-4 ">
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-neutral-700">
             Días de arrendamiento en {exerciseYear}
@@ -235,7 +235,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
           </div>
 
           {calculation.improvementsAmortization > 0 && (
-            <div className="atlas-atlas-atlas-atlas-btn-primary flex justify-between items-center p-3">
+            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex justify-between items-center p-3">
               <div>
                 <span className="text-sm font-medium text-neutral-900">Mejoras del año</span>
                 <div className="text-xs text-neutral-600">Amortización prorrateada</div>

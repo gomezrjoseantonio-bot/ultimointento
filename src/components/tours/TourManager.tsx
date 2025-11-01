@@ -104,7 +104,7 @@ const TourManager: React.FC<TourManagerProps> = ({ onClose }) => {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-white font-semibold">{tour.name}</h3>
                         {isCompleted && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-900/30 text-green-300 border border-green-700/30">
+                          <span className="atlas-btn-success atlas-btn-sm inline-flex items-center text-xs text-green-300 border">
                             ✓ Completado
                           </span>
                         )}

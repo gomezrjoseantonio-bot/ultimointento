@@ -269,7 +269,7 @@ const TreasuryMainView: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2"
+                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2"
               >
                 <Upload size={16} />
                 Importar extracto
@@ -291,20 +291,20 @@ const TreasuryMainView: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="text-sm text-hz-neutral-600">Ingresos del Mes</div>
-              <div className="text-xl font-semibold text-green-600">
+              <div className="text-xl font-semibold text-success-600">
                 {formatEuro(globalTotals.periodIncome)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-hz-neutral-600">Gastos del Mes</div>
-              <div className="text-xl font-semibold text-red-600">
+              <div className="text-xl font-semibold text-error-600">
                 {formatEuro(globalTotals.periodExpenses)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-hz-neutral-600">Flujo Neto</div>
               <div className={`text-xl font-semibold ${
-                globalTotals.netFlow >= 0 ? 'text-green-600' : 'text-red-600'
+                globalTotals.netFlow >= 0 ? 'text-success-600' : 'text-error-600'
               }`}>
                 {formatEuro(globalTotals.netFlow)}
               </div>
@@ -422,13 +422,13 @@ const TreasuryMainView: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <div className="text-hz-neutral-600">Entradas</div>
-                      <div className="font-medium text-green-600">
+                      <div className="font-medium text-success-600">
                         {formatEuro(account.monthlyIncome)}
                       </div>
                     </div>
                     <div>
                       <div className="text-hz-neutral-600">Salidas</div>
-                      <div className="font-medium text-red-600">
+                      <div className="font-medium text-error-600">
                         {formatEuro(account.monthlyExpenses)}
                       </div>
                     </div>

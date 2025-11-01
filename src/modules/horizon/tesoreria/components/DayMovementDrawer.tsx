@@ -58,17 +58,17 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
     
     if (movement.amount > 0) {
       return {
-        bg: 'bg-green-50',
+        bg: 'bg-success-50',
         text: 'text-hz-success', 
-        border: 'border-green-200'
+        border: 'border-success-200'
       };
     }
     
     if (movement.amount < 0) {
       return {
-        bg: 'bg-red-50',
+        bg: 'bg-error-50',
         text: 'text-hz-error',
-        border: 'border-red-200'
+        border: 'border-error-200'
       };
     }
     
@@ -290,7 +290,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                           <>
                             <button
                               onClick={handleSaveEdit}
-                              className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-green-700 rounded"
+                              className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-success-700 rounded"
                             >
                               <Check size={14} />
                               Guardar
@@ -308,7 +308,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             {movement.status !== 'conciliado' && movement.unifiedStatus !== 'conciliado' && (
                               <button
                                 onClick={() => handleConciliar(movement)}
-                                className="atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-primary-700 rounded"
+                                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-1 px-3 py-1 text-sm text-primary-700 rounded"
                               >
                                 <Check size={14} />
                                 Conciliar
@@ -325,7 +325,7 @@ const MovementDrawer: React.FC<MovementDrawerProps> = ({
                             
                             <button
                               onClick={() => handleIgnore(movement)}
-                              className="flex items-center gap-1 px-3 py-1 text-sm text-orange-700 bg-orange-100 rounded"
+                              className="flex items-center gap-1 px-3 py-1 text-sm text-orange-700 bg-warning-100 rounded"
                             >
                               <EyeOff size={14} />
                               Ignorar

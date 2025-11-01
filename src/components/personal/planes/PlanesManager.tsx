@@ -110,7 +110,7 @@ const PlanesManager: React.FC = () => {
   const getTitularidadColor = (titularidad: PlanPensionInversion['titularidad']) => {
     switch (titularidad) {
       case 'yo': return 'text-atlas-blue';
-      case 'pareja': return 'text-red-600';
+      case 'pareja': return 'text-error-600';
       case 'ambos': return 'text-purple-600';
       default: return 'text-gray-600';
     }
@@ -188,14 +188,14 @@ const PlanesManager: React.FC = () => {
 
             <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Plusvalías/Pérdidas</p>
-              <p className={`text-xl font-bold ${portfolioSummary.plusvaliasMinusvalias >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-xl font-bold ${portfolioSummary.plusvaliasMinusvalias >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                 {formatCurrency(portfolioSummary.plusvaliasMinusvalias)}
               </p>
             </div>
 
             <div className="bg-white p-4 border border-indigo-100">
               <p className="text-sm text-indigo-600 font-medium">Rentabilidad</p>
-              <p className={`text-xl font-bold ${portfolioSummary.rentabilidadPromedio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-xl font-bold ${portfolioSummary.rentabilidadPromedio >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                 {formatPercentage(portfolioSummary.rentabilidadPromedio)}
               </p>
             </div>
@@ -277,7 +277,7 @@ const PlanesManager: React.FC = () => {
                           </span>
                         </div>
                         {plan.esHistorico && (
-                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-yellow-800">
                             Solo seguimiento
                           </span>
                         )}
@@ -294,7 +294,7 @@ const PlanesManager: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-gray-600">P&L</p>
-                          <p className={`font-medium flex items-center space-x-1 ${calculo.plusvaliaMinusvalia >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`font-medium flex items-center space-x-1 ${calculo.plusvaliaMinusvalia >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                             {calculo.plusvaliaMinusvalia >= 0 ? 
                               <TrendingUp className="w-3 h-3" /> : 
                               <TrendingDown className="w-3 h-3" />
@@ -304,7 +304,7 @@ const PlanesManager: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-gray-600">Rentabilidad</p>
-                          <p className={`font-medium ${calculo.porcentajeRentabilidad >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <p className={`font-medium ${calculo.porcentajeRentabilidad >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                             {formatPercentage(calculo.porcentajeRentabilidad)}
                           </p>
                         </div>
@@ -315,7 +315,7 @@ const PlanesManager: React.FC = () => {
                           <p>
                             Aportación {plan.aportacionPeriodica.frecuencia}: {formatCurrency(plan.aportacionPeriodica.importe)}
                             {taxInfo.deducibleAnual > 0 && (
-                              <span className="atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-green-800 px-2 py-1 rounded">
+                              <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary ml-2 text-xs text-success-800 px-2 py-1 rounded">
                                 Deducible: {formatCurrency(taxInfo.deducibleAnual)}/año
                               </span>
                             )}
@@ -334,7 +334,7 @@ const PlanesManager: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleDeletePlan(plan.id!)}
-                        className="p-2 text-gray-400 hover:text-red-600"
+                        className="p-2 text-gray-400 hover:text-error-600"
                         title="Eliminar plan"
                       >
                         <Trash2 className="w-4 h-4" />

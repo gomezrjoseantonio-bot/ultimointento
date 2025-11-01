@@ -79,7 +79,7 @@ const OtrosIngresosManager: React.FC = () => {
   const getTitularidadColor = (titularidad: OtrosIngresos['titularidad']) => {
     switch (titularidad) {
       case 'yo': return 'text-atlas-blue';
-      case 'pareja': return 'text-red-600';
+      case 'pareja': return 'text-error-600';
       case 'ambos': return 'text-purple-600';
       default: return 'text-gray-600';
     }
@@ -207,7 +207,7 @@ const OtrosIngresosManager: React.FC = () => {
                           </span>
                         </div>
                         {!ingreso.activo && (
-                          <span className="atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-2 py-1 text-xs font-medium text-red-800">
+                          <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-destructive inline-flex items-center px-2 py-1 text-xs font-medium text-error-800">
                             Inactivo
                           </span>
                         )}
@@ -238,11 +238,11 @@ const OtrosIngresosManager: React.FC = () => {
                       </div>
 
                       {taxInfo.retencion > 0 && (
-                        <div className="mt-2 text-sm text-orange-600">
+                        <div className="mt-2 text-sm text-warning-600">
                           <p>
                             Retención estimada: {taxInfo.retencion}%
                             {taxInfo.declaracionAnual && (
-                              <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                              <span className="ml-2 text-xs bg-warning-100 text-orange-800 px-2 py-1 rounded">
                                 Declaración anual
                               </span>
                             )}
@@ -261,7 +261,7 @@ const OtrosIngresosManager: React.FC = () => {
                       </button>
                       <button
                         onClick={() => toast('Eliminación de ingresos - En desarrollo', { icon: 'ℹ️' })}
-                        className="p-2 text-gray-400 hover:text-red-600"
+                        className="p-2 text-gray-400 hover:text-error-600"
                         title="Eliminar ingreso"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -276,7 +276,7 @@ const OtrosIngresosManager: React.FC = () => {
       </div>
 
       {/* Integration Info */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary ">
         <p className="text-sm text-primary-700">
           <strong>Integración automática:</strong> Los ingresos recurrentes configurados se integrarán automáticamente 
           con el módulo de Tesorería para el seguimiento de flujos de caja y con Proyecciones para la planificación financiera.

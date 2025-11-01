@@ -346,7 +346,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       {renderTableSection('Costes', expenseLines, monthlyExpenseTotals)}
       
       {/* Net Totals */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-btn-primary ">
+      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
         <h3 className="text-lg font-semibold text-primary-900 mb-4">Resumen Neto</h3>
         
         <div className="overflow-x-auto">

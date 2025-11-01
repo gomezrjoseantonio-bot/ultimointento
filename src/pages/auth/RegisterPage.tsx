@@ -53,8 +53,8 @@ const RegisterPage: React.FC = () => {
         </div>
 
         {/* Alert - Demo mode */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-green-800">
+        <div className="atlas-btn-success border p-4 mb-6">
+          <p className="text-sm text-success-800">
             <strong>🎁 14 días de prueba gratis</strong><br />
             Prueba todas las funcionalidades sin compromiso
           </p>
@@ -62,8 +62,8 @@ const RegisterPage: React.FC = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-red-800">{error}</p>
+          <div className="atlas-btn-destructive border p-3 mb-4">
+            <p className="text-sm text-error-800">{error}</p>
           </div>
         )}
 
