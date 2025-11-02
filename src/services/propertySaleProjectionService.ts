@@ -131,7 +131,7 @@ const isLoanActiveInMonth = (loan: LoanRecord, month: string): boolean => {
 };
 
 export const applySale = (context: SaleContext, input: SaleApplicationInput): SaleContext => {
-  const month = normaliseMonth(input.month);
+  const month = normalizeMonth(input.month);
   const agencia = input.agenciaFija ?? 0;
   const otrosCostes = input.otrosCostes ?? 0;
   const penalizacion = input.penalizacion ?? 0;
@@ -155,7 +155,7 @@ export const applySale = (context: SaleContext, input: SaleApplicationInput): Sa
   ];
 
   if (input.irpf) {
-    const accrualMonth = normaliseMonth(input.irpfAccrualMonth ?? month);
+    const accrualMonth = normalizeMonth(input.irpfAccrualMonth ?? month);
     ledgerUpdates.push({
       month: accrualMonth,
       account: ACCOUNT_IRPF_DEVENGADO,
@@ -206,7 +206,7 @@ export const buildMonthlyRow = (
   monthInput: string,
   previousDebt: number
 ): MonthlyRow => {
-  const month = normaliseMonth(monthInput);
+  const month = normalizeMonth(monthInput);
 
   let mtg = 0;
   let principalPaid = 0;
@@ -246,7 +246,7 @@ export const buildIrpfPaymentRow = (
   context: SaleContext,
   monthInput: string
 ): { month: string; 'PER/OPS': number } => {
-  const month = normaliseMonth(monthInput);
+  const month = normalizeMonth(monthInput);
   return {
     month,
     'PER/OPS': sumEventsForAccount(context.ledger, month, ACCOUNT_PER_OPS)
