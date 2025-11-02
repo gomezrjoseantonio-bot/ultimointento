@@ -66,7 +66,7 @@ const ACCOUNT_IRPF_DEVENGADO = 'IRPF_DEVENGADO';
 
 const monthRegex = /^\d{4}-\d{2}$/;
 
-const normaliseMonth = (month: string): string => {
+const normalizeMonth = (month: string): string => {
   if (!monthRegex.test(month)) {
     const [rawYear, rawMonth] = month.split('-');
     const year = Number(rawYear);
