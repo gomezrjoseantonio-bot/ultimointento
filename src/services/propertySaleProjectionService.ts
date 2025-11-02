@@ -132,13 +132,12 @@ const isLoanActiveInMonth = (loan: LoanRecord, month: string): boolean => {
 
 export const applySale = (context: SaleContext, input: SaleApplicationInput): SaleContext => {
   const month = normaliseMonth(input.month);
-  const price = input.price;
   const agencia = input.agenciaFija ?? 0;
   const otrosCostes = input.otrosCostes ?? 0;
   const penalizacion = input.penalizacion ?? 0;
   const deudaPendiente = input.deudaPendiente;
 
-  const neto = price - agencia - otrosCostes - penalizacion - deudaPendiente;
+  const neto = input.price - agencia - otrosCostes - penalizacion - deudaPendiente;
 
   const ledgerUpdates: LedgerEvent[] = [
     {
