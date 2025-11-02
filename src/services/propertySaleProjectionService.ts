@@ -154,7 +154,7 @@ export const applySale = (context: SaleContext, input: SaleApplicationInput): Sa
     }
   ];
 
-  if (input.irpf && input.irpf !== 0) {
+  if (input.irpf) {
     const accrualMonth = normaliseMonth(input.irpfAccrualMonth ?? month);
     ledgerUpdates.push({
       month: accrualMonth,
