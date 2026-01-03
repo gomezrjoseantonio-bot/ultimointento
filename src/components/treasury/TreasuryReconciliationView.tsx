@@ -389,8 +389,18 @@ const TreasuryReconciliationView: React.FC = () => {
           real={globalTotals.financiacion.real}
           variant="financing"
           detalles={[
-            { icon: Building, label: 'Cuotas hipotecas', previsto: 800, real: 800 },
-            { icon: CreditCard, label: 'Cuotas préstamos', previsto: 200, real: 200 }
+            {
+              icon: Building,
+              label: 'Cuotas hipotecas',
+              previsto: globalTotals.financiacion.previsto * 0.8,
+              real: globalTotals.financiacion.real * 0.8
+            },
+            {
+              icon: CreditCard,
+              label: 'Cuotas préstamos',
+              previsto: globalTotals.financiacion.previsto * 0.2,
+              real: globalTotals.financiacion.real * 0.2
+            }
           ]}
         />
         <SummaryFlipCard
