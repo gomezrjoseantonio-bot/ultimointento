@@ -27,7 +27,7 @@ import IncomeExpensesBlock from '../components/dashboard/IncomeExpensesBlock';
 import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
-import InvestorDashboard from '../components/dashboard/InvestorDashboard';
+import InvestorDashboardV2 from '../components/dashboard/InvestorDashboardV2';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
 
 type ModuleInfo = {
@@ -823,7 +823,7 @@ const PanelPage: React.FC = () => {
     );
   }
 
-  // Render InvestorDashboard or full PulsePanelContent based on viewMode
+  // Render InvestorDashboardV2 or full PulsePanelContent based on viewMode
   return (
     <div className="space-y-6">
       {/* View Toggle */}
@@ -868,20 +868,8 @@ const PanelPage: React.FC = () => {
 
       {/* Conditional rendering based on viewMode */}
       {viewMode === 'investor' ? (
-        <InvestorDashboard
-          onRegisterPayment={() => navigate('/tesoreria')}
-          onUploadDocument={() => navigate('/inbox')}
-          onViewAll={() => setViewMode('full')}
-          onAlertClick={(alert) => {
-            // Navigate to appropriate page based on alert type
-            if (alert.type === 'rent-pending') {
-              navigate('/tesoreria');
-            } else if (alert.type === 'document-unclassified') {
-              navigate('/inbox');
-            } else if (alert.type === 'contract-review') {
-              navigate('/contratos');
-            }
-          }}
+        <InvestorDashboardV2
+          onNavigate={handleNavigate}
         />
       ) : (
         <PulsePanelContent
