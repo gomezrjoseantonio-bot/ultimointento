@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Home, X } from 'lucide-react';
 
 import { initDB, Property } from '../../services/db';
 import { getLocationFromPostalCode, calculateITP, calculateIVA } from '../../utils/locationUtils';
+import { AJD_RATE } from '../../utils/inmuebleUtils';
 
 interface InmuebleFormCompactProps {
   mode: 'create' | 'edit';
@@ -191,7 +192,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
       taxAmount = calculateITP(precio, ccaa);
     } else {
       const iva = calculateIVA(precio);
-      const ajd = precio * 0.015; // 1.5% AJD
+      const ajd = precio * (AJD_RATE / 100); // Use imported constant
       taxAmount = iva + ajd;
     }
     
@@ -264,10 +265,12 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   
   // Map form data to Property model
   const mapToProperty = (): Omit<Property, 'id'> => {
+    // Use detected location or fallback to empty values
+    // Madrid is used as fallback for CCAA only when no location is detected
     const location = locationInfo || {
       municipality: '',
       province: '',
-      ccaa: 'Madrid'
+      ccaa: 'Madrid' // Default fallback for CCAA (most common region in Spain)
     };
     
     const property: Omit<Property, 'id'> = {
