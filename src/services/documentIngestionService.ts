@@ -8,7 +8,7 @@
  * - Enhanced with diagnostic events for 5-minute checklist
  */
 
-import { initDB, Document, Gasto, Contract, AEATFiscalType } from './db';
+import { initDB, Document, Gasto, AEATFiscalType } from './db';
 import { telemetry } from './telemetryService';
 import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
 import { FLAGS } from '../config/flags';
@@ -251,8 +251,8 @@ async function processReceipt(document: Document): Promise<DocumentIngestionResu
  * Destino: Inmuebles › Contratos
  */
 async function processContract(document: Document): Promise<DocumentIngestionResult> {
-  const db = await initDB();
-  const metadata = document.metadata || {};
+  // const db = await initDB();
+  // const metadata = document.metadata || {};
 
   // Extract basic contract information from metadata
   // DISABLED: Temporarily disabled while migrating to new Contract interface

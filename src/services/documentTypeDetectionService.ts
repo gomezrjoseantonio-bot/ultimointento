@@ -35,6 +35,7 @@ export interface DetectionResult {
 }
 
 // Utility function to convert legacy tipo to documentType
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const mapTipoToDocumentType = (tipo: string): 'factura' | 'recibo_sepa' | 'extracto_banco' | 'otros' => {
   switch (tipo.toLowerCase()) {
     case 'bank_statement':
@@ -346,6 +347,7 @@ const analyzePDFContent = async (file: File): Promise<DetectionResult> => {
 };
 
 // H8: Filename and MIME type based detection
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const detectByFilenameAndMime = (fileName: string, mimeType: string): DetectionResult => {
   // Invoice patterns
   const invoicePatterns = [

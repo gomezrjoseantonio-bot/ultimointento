@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import ContractsNuevo from '../../../horizon/inmuebles/contratos/components/ContractsNuevo';
 import { Contract } from '../../../../services/db';
-import { getContract } from '../../../../services/contractServiceNew';
+import { getContract } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 
 const ContratosNuevoPage: React.FC = () => {

@@ -12,7 +12,7 @@ import ContractsListaEnhanced from '../modules/horizon/inmuebles/contratos/compo
 import { Contract } from '../services/db';
 
 // Mock the dependencies
-jest.mock('../services/contractServiceNew', () => ({
+jest.mock('../services/contractService', () => ({
   getAllContracts: jest.fn().mockResolvedValue([]),
   deleteContract: jest.fn(),
   rescindContract: jest.fn(),
@@ -49,7 +49,7 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
 
   it('should handle contracts array with undefined elements', async () => {
     // Mock getAllContracts to return an array with undefined values
-    const { getAllContracts } = require('../services/contractServiceNew');
+    const { getAllContracts } = require('../services/contractService');
     const contractsWithUndefined = [
       undefined,
       {
@@ -100,7 +100,7 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
   });
 
   it('should handle contracts with missing inquilino property', async () => {
-    const { getAllContracts } = require('../services/contractServiceNew');
+    const { getAllContracts } = require('../services/contractService');
     const contractsWithMissingInquilino = [
       {
         id: 1,
@@ -171,7 +171,7 @@ describe('ContractsListaEnhanced undefined contract handling', () => {
   });
 
   it('should handle empty contracts array gracefully', async () => {
-    const { getAllContracts } = require('../services/contractServiceNew');
+    const { getAllContracts } = require('../services/contractService');
     getAllContracts.mockResolvedValue([]);
 
     render(<ContractsListaEnhanced onEditContract={mockOnEditContract} />);
