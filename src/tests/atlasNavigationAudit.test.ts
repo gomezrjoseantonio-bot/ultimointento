@@ -2,7 +2,7 @@
  * ATLAS Navigation Audit Test
  * 
  * This test validates the ATLAS navigation requirements:
- * 1. Exactly 9 navigation entries
+ * 1. Exactly 10 navigation entries (including Glosario)
  * 2. Correct separators: "Horizon — Supervisión", "Pulse — Gestión", "Documentación"
  * 3. Configuración and Tareas are NOT in the sidebar
  * 4. Correct order of items
@@ -13,7 +13,7 @@ import { navigationConfig, getNavigationForModule } from '../config/navigation';
 describe('ATLAS Navigation Audit', () => {
   const navigation = getNavigationForModule();
 
-  test('should have exactly 9 navigation entries', () => {
+  test('should have exactly 10 navigation entries', () => {
     expect(navigation).toHaveLength(10);
   });
 
