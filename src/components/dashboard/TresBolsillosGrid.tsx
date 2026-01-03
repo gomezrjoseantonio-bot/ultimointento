@@ -53,9 +53,8 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
-        padding: '24px',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px',
         fontFamily: 'var(--font-inter)'
       }}
     >

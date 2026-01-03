@@ -6,10 +6,15 @@
  * - Single-screen layout (NO scroll)
  * - Responsive grid layout
  * - Inter font family
+ * 
+ * Layout breakdown for single-screen fit:
+ * - Header (PatrimonioHeader): ~80px
+ * - 3 Bolsillos: ~120px
+ * - Bottom sections (Liquidez + Alertas): flex (remaining space)
  */
 
 .investor-dashboard {
-  height: calc(100vh - 64px); /* Full viewport minus header */
+  height: calc(100vh - 64px); /* Full viewport minus topbar */
   overflow: hidden; /* NO scroll */
   display: flex;
   flex-direction: column;
@@ -17,19 +22,19 @@
   font-family: var(--font-inter);
 }
 
-/* Bolsillos Grid - Fixed height */
+/* Bolsillos Grid - Fixed height, equal 3 columns */
 .investor-dashboard .bolsillos-grid {
   height: 120px;
-  padding: 0 24px;
+  padding: 0 24px 16px 24px;
   flex-shrink: 0;
 }
 
-/* Bottom sections - Liquidez + Alertas */
+/* Bottom sections - Liquidez + Alertas side by side */
 .investor-dashboard .bottom-sections {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  padding: 24px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 24px 24px 24px;
   flex: 1;
   overflow: hidden;
   min-height: 0; /* Important for flex children */
@@ -41,7 +46,7 @@
 }
 
 /* Responsive: Stack on smaller screens */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .investor-dashboard {
     height: auto;
     overflow-y: auto;
