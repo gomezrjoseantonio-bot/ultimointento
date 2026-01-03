@@ -1,8 +1,9 @@
 import { openDB, IDBPDatabase } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
+import { PosicionInversion } from '../types/inversiones';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 16; // V1.2: Added Personal V1 module data stores
+const DB_VERSION = 17; // V1.3: Added Inversiones (Investments) module
 
 export interface Property {
   id?: number;
@@ -1276,6 +1277,7 @@ interface AtlasHorizonDB {
   reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
+  inversiones: PosicionInversion; // V1.3: Investment positions
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1616,6 +1618,14 @@ export const initDB = async () => {
           movimientosPersonalesStore.createIndex('fecha', 'fecha', { unique: false });
           movimientosPersonalesStore.createIndex('cuenta', 'cuenta', { unique: false });
           movimientosPersonalesStore.createIndex('esRecurrente', 'esRecurrente', { unique: false });
+        }
+
+        // V1.3: Inversiones (Investment positions) store
+        if (!db.objectStoreNames.contains('inversiones')) {
+          const inversionesStore = db.createObjectStore('inversiones', { keyPath: 'id', autoIncrement: true });
+          inversionesStore.createIndex('tipo', 'tipo', { unique: false });
+          inversionesStore.createIndex('activo', 'activo', { unique: false });
+          inversionesStore.createIndex('entidad', 'entidad', { unique: false });
         }
 
         // General key-value store for application configuration

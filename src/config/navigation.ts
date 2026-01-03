@@ -49,6 +49,13 @@ export const navigationConfig: NavigationItem[] = [
     ]
   },
   {
+    name: 'Inversiones',
+    href: '/inversiones',
+    icon: TrendingUp,
+    module: 'horizon',
+    section: 'horizon'
+  },
+  {
     name: 'Tesorería',
     href: '/tesoreria',
     icon: Banknote,
