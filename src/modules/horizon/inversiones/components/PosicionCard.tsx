@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Investment position card component
 
 import React from 'react';
-import { TrendingUp, Eye } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { PosicionInversion } from '../../../../types/inversiones';
 
 interface PosicionCardProps {

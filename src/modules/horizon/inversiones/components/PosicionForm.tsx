@@ -1,7 +1,7 @@
 // PosicionForm.tsx
 // ATLAS HORIZON: Investment position form (add/edit modal)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { PosicionInversion, TipoPosicion } from '../../../../types/inversiones';
 

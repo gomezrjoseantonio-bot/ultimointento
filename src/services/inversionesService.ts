@@ -34,7 +34,8 @@ export const inversionesService = {
       created_at: now,
       updated_at: now,
     };
-    return db.add('inversiones', newPosicion as PosicionInversion);
+    const id = await db.add('inversiones', newPosicion as PosicionInversion);
+    return id as number;
   },
 
   // Actualizar posición
