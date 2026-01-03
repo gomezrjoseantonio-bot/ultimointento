@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, Clock, FileText, FileCheck } from 'lucide-react';
 
 export interface Alert {
@@ -25,6 +25,7 @@ const InvestorAlertsCard: React.FC<InvestorAlertsCardProps> = ({
   alerts,
   onAlertClick
 }) => {
+  const [hoveredAlertId, setHoveredAlertId] = useState<string | null>(null);
   const getAlertIcon = (type: Alert['type']) => {
     switch (type) {
       case 'rent-pending':
@@ -119,24 +120,20 @@ const InvestorAlertsCard: React.FC<InvestorAlertsCardProps> = ({
             <div
               key={alert.id}
               onClick={() => onAlertClick?.(alert)}
+              onMouseEnter={() => setHoveredAlertId(alert.id)}
+              onMouseLeave={() => setHoveredAlertId(null)}
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '12px',
                 padding: '12px',
-                backgroundColor: 'var(--hz-warning-soft)',
+                backgroundColor: hoveredAlertId === alert.id && onAlertClick 
+                  ? 'rgba(255, 193, 7, 0.15)' 
+                  : 'var(--hz-warning-soft)',
                 borderLeft: `3px solid ${getPriorityColor(alert.priority)}`,
                 borderRadius: '8px',
                 cursor: onAlertClick ? 'pointer' : 'default',
                 transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                if (onAlertClick) {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 193, 7, 0.15)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--hz-warning-soft)';
               }}
               role={onAlertClick ? 'button' : undefined}
               tabIndex={onAlertClick ? 0 : undefined}

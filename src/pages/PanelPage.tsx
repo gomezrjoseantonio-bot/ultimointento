@@ -672,9 +672,13 @@ const PanelPage: React.FC = () => {
       setPropertyCount(propCount);
       setExcludePersonal(dashboardConfig.preferences?.excludePersonalFromAnalytics ?? false);
       
-      // Auto-select investor view for portfolios with ≤3 properties
-      if (propCount <= 3 && propCount > 0) {
+      // Auto-select view mode based on portfolio size
+      // Investor view for small portfolios (≤3 properties)
+      // Full view for larger portfolios (>3 properties)
+      if (propCount > 0 && propCount <= 3) {
         setViewMode('investor');
+      } else if (propCount > 3) {
+        setViewMode('full');
       }
     } catch (error) {
       console.error('Error loading dashboard config:', error);

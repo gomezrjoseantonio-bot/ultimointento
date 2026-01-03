@@ -41,9 +41,14 @@ interface InvestorDashboardProps {
  * - Formato ES-ES (1.234,56 €)
  * - Espaciado grid 4px
  * - Botones ATLAS
+ * 
+ * @note Los valores por defecto permiten que el componente funcione standalone
+ * para demostración y testing. En producción, estos valores deben ser proporcionados
+ * por el componente padre basándose en datos reales de la API.
  */
 const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
-  // Valores por defecto con datos de ejemplo
+  // Valores por defecto con datos de ejemplo para demostración
+  // TODO: En producción, estos valores deben venir de la API
   currentBalance = 45230.00,
   projection7d = -2100.00,
   projection30d = 8500.00,
@@ -52,6 +57,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   monthlyCashflow = 1850.00,
   occupancy = 92,
   alerts = [
+    // Ejemplo de alertas - reemplazar con datos reales de la API
     {
       id: '1',
       type: 'rent-pending',
