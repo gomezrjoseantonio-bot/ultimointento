@@ -28,10 +28,8 @@ const LoadingSpinner = () => (
 // Core dashboard with charts - lazy load to reduce main bundle
 const PanelPage = React.lazy(() => import('./pages/PanelPage'));
 
-// Inbox pages - lazy load to reduce main bundle
-const InboxAtlasHorizon = React.lazy(() => import('./pages/InboxAtlasHorizon'));
-const UnicornioInboxPrompt = React.lazy(() => import('./pages/UnicornioInboxPrompt'));
-const UnifiedInboxPage = React.lazy(() => import('./pages/UnifiedInboxPage'));
+// Inbox page - lazy load to reduce main bundle
+const InboxPage = React.lazy(() => import('./pages/InboxPage'));
 
 // Horizon (Investment) Module Components
 const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
@@ -201,17 +199,17 @@ function App() {
             } />
             <Route path="inbox" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <UnicornioInboxPrompt />
+                <InboxPage />
               </React.Suspense>
             } />
             <Route path="inbox-unified" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <UnifiedInboxPage />
+                <InboxPage />
               </React.Suspense>
             } />
             <Route path="inbox-legacy" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <InboxAtlasHorizon />
+                <InboxPage />
               </React.Suspense>
             } />
             
@@ -470,34 +468,6 @@ function App() {
               } />
             </Route>
 
-            {/* Legacy Personal Routes - Keep for backward compatibility */}
-            <Route path="ingresos">
-              <Route index element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="lista" element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="nuevo" element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="importar" element={<Navigate to="/personal/resumen" replace />} />
-            </Route>
-            
-            <Route path="gastos">
-              <Route index element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="lista" element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="nuevo" element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="reglas" element={<Navigate to="/personal/reglas" replace />} />
-            </Route>
-            
-            <Route path="tesoreria-personal">
-              <Route index element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="radar" element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="movimientos" element={<Navigate to="/personal/movimientos" replace />} />
-              <Route path="alertas" element={<Navigate to="/personal/reglas" replace />} />
-            </Route>
-            
-            <Route path="proyeccion-personal">
-              <Route index element={<Navigate to="/personal/presupuesto" replace />} />
-              <Route path="presupuesto" element={<Navigate to="/personal/presupuesto" replace />} />
-              <Route path="escenarios" element={<Navigate to="/personal/presupuesto" replace />} />
-            </Route>
-            
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
               <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
@@ -539,12 +509,6 @@ function App() {
                   <Cuentas />
                 </React.Suspense>
               } />
-            </Route>
-
-            {/* Mi Cuenta Routes - Redirect to new location */}
-            <Route path="mi-cuenta">
-              <Route index element={<Navigate to="/cuenta/cuentas" replace />} />
-              <Route path="cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
             </Route>
             
             {/* Development only routes */}

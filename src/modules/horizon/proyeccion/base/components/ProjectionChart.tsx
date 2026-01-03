@@ -1,29 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { YearlyProjectionData } from '../services/proyeccionService';
 import { formatEuro } from '../../../../../utils/formatUtils';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 interface ProjectionChartProps {
   data: YearlyProjectionData[];
@@ -35,18 +13,6 @@ const cssVar = (variable: string, fallback: string): string => {
   return value?.trim() || fallback;
 };
 
-const hexToRgba = (hex: string, alpha: number): string => {
-  const sanitized = hex.replace('#', '');
-  if (sanitized.length !== 6) {
-    return hex;
-  }
-  const intVal = parseInt(sanitized, 16);
-  const r = (intVal >> 16) & 255;
-  const g = (intVal >> 8) & 255;
-  const b = intVal & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
 const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const [timeHorizon, setTimeHorizon] = useState<5 | 10 | 20>(20);
 
@@ -54,139 +20,38 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const filteredData = data.slice(0, timeHorizon + 1);
 
   const palette = useMemo(() => ({
-    success: cssVar('--ok', 'var(--ok)'),
-    error: cssVar('--error', 'var(--error)'),
-    warning: cssVar('--warn', 'var(--warn)'),
-    primary: cssVar('--atlas-blue', 'var(--atlas-blue)'),
-    text: cssVar('--text-gray', 'var(--text-gray)'),
-    neutral100: cssVar('--hz-neutral-100', 'var(--bg)'),
+    success: cssVar('--ok', '#10b981'),
+    error: cssVar('--error', '#ef4444'),
+    warning: cssVar('--warn', '#f59e0b'),
+    primary: cssVar('--atlas-blue', '#3b82f6'),
+    text: cssVar('--text-gray', '#6b7280'),
+    neutral100: cssVar('--hz-neutral-100', '#f3f4f6'),
   }), []);
 
-  const chartData = {
-    labels: filteredData.map(d => d.year.toString()),
-    datasets: [
-      {
-        label: 'Ingresos de alquiler (netos)',
-        data: filteredData.map(d => d.rentalIncome),
-        borderColor: palette.success,
-        backgroundColor: hexToRgba(palette.success, 0.15),
-        fill: false,
-        tension: 0.2,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      },
-      {
-        label: 'Gastos (operativos + impuestos + seguros + comunidad)',
-        data: filteredData.map(d => -d.operatingExpenses), // Negative for visualization
-        borderColor: palette.error,
-        backgroundColor: hexToRgba(palette.error, 0.15),
-        fill: false,
-        tension: 0.2,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      },
-      {
-        label: 'Servicio de deuda',
-        data: filteredData.map(d => -d.debtService), // Negative for visualization
-        borderColor: palette.warning,
-        backgroundColor: hexToRgba(palette.warning, 0.15),
-        fill: false,
-        tension: 0.2,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      },
-      {
-        label: 'Flujo neto',
-        data: filteredData.map(d => d.netCashflow),
-        borderColor: palette.primary,
-        backgroundColor: hexToRgba(palette.primary, 0.15),
-        fill: false,
-        tension: 0.2,
-        borderWidth: 3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      }
-    ]
-  };
+  // Transform data for recharts format
+  const chartData = filteredData.map(d => ({
+    year: d.year.toString(),
+    'Ingresos de alquiler (netos)': d.rentalIncome,
+    'Gastos (operativos + impuestos + seguros + comunidad)': -d.operatingExpenses,
+    'Servicio de deuda': -d.debtService,
+    'Flujo neto': d.netCashflow,
+  }));
 
-  const options = {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      mode: 'index' as const,
-    },
-    plugins: {
-      title: {
-        display: false
-      },
-      legend: {
-        position: 'bottom' as const,
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            family: 'Inter',
-            size: 12
-          }
-        }
-      },
-      tooltip: {
-        backgroundColor: 'rgba(48, 58, 76, 0.92)',
-        titleColor: '#FFFFFF',
-        bodyColor: '#FFFFFF',
-        borderColor: palette.primary,
-        borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: true,
-        callbacks: {
-          label: function(context: any) {
-            const label = context.dataset.label || '';
-            const value = context.parsed.y;
-            return `${label}: ${formatEuro(Math.abs(value))}`;
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: {
-          display: false
-        },
-        border: {
-          display: false
-        },
-        ticks: {
-          color: palette.text,
-          font: {
-            family: 'Inter',
-            size: 11
-          }
-        }
-      },
-      y: {
-        grid: {
-          color: palette.neutral100,
-          borderDash: [2, 2]
-        },
-        border: {
-          display: false
-        },
-        ticks: {
-          color: palette.text,
-          font: {
-            family: 'Inter',
-            size: 11
-          },
-          callback: function(value: any) {
-            return formatEuro(value);
-          }
-        }
-      }
+  // Custom tooltip
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-gray-800 text-white p-3 rounded-lg border border-gray-600 shadow-lg">
+          <p className="font-semibold mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ color: entry.color }}>
+              {entry.name}: {formatEuro(Math.abs(entry.value))}
+            </p>
+          ))}
+        </div>
+      );
     }
+    return null;
   };
 
   return (
@@ -215,7 +80,58 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
 
       {/* Chart */}
       <div className="h-96">
-        <Line data={chartData} options={options} />
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={palette.neutral100} />
+            <XAxis 
+              dataKey="year" 
+              stroke={palette.text}
+              style={{ fontFamily: 'Inter', fontSize: 11 }}
+            />
+            <YAxis 
+              stroke={palette.text}
+              style={{ fontFamily: 'Inter', fontSize: 11 }}
+              tickFormatter={(value) => formatEuro(value)}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend 
+              wrapperStyle={{ fontFamily: 'Inter', fontSize: 12 }} 
+              iconType="circle"
+            />
+            <Line 
+              type="monotone" 
+              dataKey="Ingresos de alquiler (netos)" 
+              stroke={palette.success} 
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="Gastos (operativos + impuestos + seguros + comunidad)" 
+              stroke={palette.error} 
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="Servicio de deuda" 
+              stroke={palette.warning} 
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              activeDot={{ r: 5 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="Flujo neto" 
+              stroke={palette.primary} 
+              strokeWidth={3}
+              dot={{ r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Chart Legend Description */}
