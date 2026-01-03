@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface Alerta {
   id: string;

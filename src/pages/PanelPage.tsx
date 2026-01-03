@@ -27,7 +27,6 @@ import IncomeExpensesBlock from '../components/dashboard/IncomeExpensesBlock';
 import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
-import InvestorDashboard from '../components/dashboard/InvestorDashboard';
 import InvestorDashboardV2 from '../components/dashboard/InvestorDashboardV2';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
 
