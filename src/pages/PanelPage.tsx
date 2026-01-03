@@ -9,7 +9,9 @@ import {
   CalendarClock,
   Compass,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  LayoutGrid,
+  Gauge
 } from 'lucide-react';
 import {
   dashboardService,
@@ -25,6 +27,7 @@ import IncomeExpensesBlock from '../components/dashboard/IncomeExpensesBlock';
 import KPIsBlock from '../components/dashboard/KPIsBlock';
 import TaxBlock from '../components/dashboard/TaxBlock';
 import AlertsBlock from '../components/dashboard/AlertsBlock';
+import InvestorDashboard from '../components/dashboard/InvestorDashboard';
 import HorizonVisualPanel from '../modules/horizon/panel/components/HorizonVisualPanel';
 
 type ModuleInfo = {
@@ -651,6 +654,7 @@ const PanelPage: React.FC = () => {
   const [isResettingPreset, setIsResettingPreset] = useState(false);
   const [excludePersonal, setExcludePersonal] = useState(false);
   const [isUpdatingPersonalPreference, setIsUpdatingPersonalPreference] = useState(false);
+  const [viewMode, setViewMode] = useState<'investor' | 'full'>('investor');
 
   useEffect(() => {
     loadDashboardConfig();
@@ -667,6 +671,15 @@ const PanelPage: React.FC = () => {
       setConfig(dashboardConfig);
       setPropertyCount(propCount);
       setExcludePersonal(dashboardConfig.preferences?.excludePersonalFromAnalytics ?? false);
+      
+      // Auto-select view mode based on portfolio size
+      // Investor view for small portfolios (≤3 properties)
+      // Full view for larger portfolios (>3 properties)
+      if (propCount > 0 && propCount <= 3) {
+        setViewMode('investor');
+      } else if (propCount > 3) {
+        setViewMode('full');
+      }
     } catch (error) {
       console.error('Error loading dashboard config:', error);
     } finally {
@@ -810,22 +823,84 @@ const PanelPage: React.FC = () => {
     );
   }
 
+  // Render InvestorDashboard or full PulsePanelContent based on viewMode
   return (
-    <PulsePanelContent
-      moduleInfo={moduleInfo}
-      config={config}
-      propertyCount={propertyCount}
-      presetLabel={presetCopy.label}
-      presetDescription={presetCopy.description}
-      lastUpdatedLabel={lastUpdatedLabel}
-      excludePersonal={excludePersonal}
-      onConfigure={handleConfigureClick}
-      onResetPreset={handleResetPreset}
-      isResettingPreset={isResettingPreset}
-      onToggleExcludePersonal={handleToggleExcludePersonal}
-      isUpdatingPersonalPreference={isUpdatingPersonalPreference}
-      onNavigate={handleNavigate}
-    />
+    <div className="space-y-6">
+      {/* View Toggle */}
+      <div 
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: '8px',
+          padding: '16px',
+          backgroundColor: 'var(--bg)'
+        }}
+      >
+        <button
+          onClick={() => setViewMode('investor')}
+          className={viewMode === 'investor' ? 'atlas-btn-primary' : 'atlas-btn-secondary'}
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            fontFamily: 'var(--font-inter)'
+          }}
+          aria-label="Vista inversor simplificada"
+        >
+          <Gauge size={16} strokeWidth={2} />
+          Vista Inversor
+        </button>
+        <button
+          onClick={() => setViewMode('full')}
+          className={viewMode === 'full' ? 'atlas-btn-primary' : 'atlas-btn-secondary'}
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            fontFamily: 'var(--font-inter)'
+          }}
+          aria-label="Vista completa con todos los bloques"
+        >
+          <LayoutGrid size={16} strokeWidth={2} />
+          Vista Completa
+        </button>
+      </div>
+
+      {/* Conditional rendering based on viewMode */}
+      {viewMode === 'investor' ? (
+        <InvestorDashboard
+          onRegisterPayment={() => navigate('/tesoreria')}
+          onUploadDocument={() => navigate('/inbox')}
+          onViewAll={() => setViewMode('full')}
+          onAlertClick={(alert) => {
+            // Navigate to appropriate page based on alert type
+            if (alert.type === 'rent-pending') {
+              navigate('/tesoreria');
+            } else if (alert.type === 'document-unclassified') {
+              navigate('/inbox');
+            } else if (alert.type === 'contract-review') {
+              navigate('/contratos');
+            }
+          }}
+        />
+      ) : (
+        <PulsePanelContent
+          moduleInfo={moduleInfo}
+          config={config}
+          propertyCount={propertyCount}
+          presetLabel={presetCopy.label}
+          presetDescription={presetCopy.description}
+          lastUpdatedLabel={lastUpdatedLabel}
+          excludePersonal={excludePersonal}
+          onConfigure={handleConfigureClick}
+          onResetPreset={handleResetPreset}
+          isResettingPreset={isResettingPreset}
+          onToggleExcludePersonal={handleToggleExcludePersonal}
+          isUpdatingPersonalPreference={isUpdatingPersonalPreference}
+          onNavigate={handleNavigate}
+        />
+      )}
+    </div>
   );
 };
 
