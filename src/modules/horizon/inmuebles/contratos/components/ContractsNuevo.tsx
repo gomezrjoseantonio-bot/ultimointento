@@ -9,7 +9,7 @@ import {
   calculateRentPeriodsNew,
   RentPeriodNew,
   SignatureStatus
-} from '../../../../../services/contractServiceNew';
+} from '../../../../../services/contractService';
 import { parseEuroInput, formatEuro } from '../../../../../utils/formatUtils';
 import { cuentasService } from '../../../../../services/cuentasService';
 import AccountOption from '../../../../../components/common/AccountOption';

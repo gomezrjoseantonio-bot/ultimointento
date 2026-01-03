@@ -6,7 +6,7 @@ import {
   getAllContracts,
   calculateRentPeriodsFromContract,
   getContractStatus
-} from '../../../../services/contractServiceNew';
+} from '../../../../services/contractService';
 import { formatEuro } from '../../../../utils/formatUtils';
 import ContractsListaEnhanced from '../../../horizon/inmuebles/contratos/components/ContractsListaEnhanced';
 import { Users, TrendingUp, Signature, Calendar, Building2 } from 'lucide-react';

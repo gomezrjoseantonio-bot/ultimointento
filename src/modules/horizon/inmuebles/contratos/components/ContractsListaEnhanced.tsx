@@ -9,7 +9,7 @@ import {
   sendContractForSignature,
   markContractAsSigned,
   SignatureStatus
-} from '../../../../../services/contractServiceNew';
+} from '../../../../../services/contractService';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';

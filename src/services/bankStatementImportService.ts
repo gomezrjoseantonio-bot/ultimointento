@@ -15,7 +15,7 @@ import { FLAGS } from '../config/flags';
 import { safeMatch } from '../utils/safe';
 import toast from 'react-hot-toast';
 import { applyLearningRulesToNewMovements } from './movementLearningService';
-import { reclassifyMovementsOnBudgetUpdate } from './budgetReclassificationService';
+// import { reclassifyMovementsOnBudgetUpdate } from './budgetReclassificationService'; // unused
 import { parseAmountToCents } from './universalBankImporter/localeAmount';
 
 // Logging prefix as specified in requirements
