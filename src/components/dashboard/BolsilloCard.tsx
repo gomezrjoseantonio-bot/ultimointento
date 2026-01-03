@@ -58,7 +58,7 @@ const BolsilloCard: React.FC<BolsilloCardProps> = ({
         display: 'flex',
         flexDirection: 'column',
         padding: '24px',
-        backgroundColor: 'white',
+        backgroundColor: 'var(--hz-card-bg)',
         border: '1px solid var(--border)',
         borderRadius: '12px',
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
