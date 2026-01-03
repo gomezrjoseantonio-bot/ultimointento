@@ -302,23 +302,23 @@ const TreasuryReconciliationView: React.FC = () => {
   const selectedAccountData = accounts.find(a => a.id === selectedAccount);
 
   return (
-    <div className="treasury-view">
-      {/* Header */}
-      <div className="treasury-header">
-        <h1 className="treasury-header__title">Tesorería</h1>
-        <div className="treasury-header__month-nav">
+    <div className="treasury-view-decision">
+      {/* Header con título y navegación de mes */}
+      <div className="treasury-decision-header">
+        <h1 className="treasury-decision-title">Conciliación mensual</h1>
+        <div className="treasury-decision-controls">
           <button 
-            className="treasury-header__nav-button"
+            className="treasury-decision-nav-button"
             onClick={handlePrevMonth}
             aria-label="Mes anterior"
           >
             <ChevronLeft size={20} />
           </button>
-          <span className="treasury-header__month-text">
+          <span className="treasury-decision-month-text">
             {formatMonthYear(currentMonth)}
           </span>
           <button 
-            className="treasury-header__nav-button"
+            className="treasury-decision-nav-button"
             onClick={handleNextMonth}
             aria-label="Mes siguiente"
           >
@@ -327,8 +327,8 @@ const TreasuryReconciliationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Row */}
-      <div className="summary-row">
+      {/* Solo las 4 tarjetas de resumen - SIN grid de cuentas bancarias */}
+      <div className="summary-cards-decision">
         <SummaryFlipCard
           title="Ingresos"
           icon={TrendingUp}
@@ -377,18 +377,7 @@ const TreasuryReconciliationView: React.FC = () => {
         />
       </div>
 
-      {/* Accounts Grid */}
-      <div className="accounts-grid">
-        {accounts.map((account) => (
-          <AccountCard
-            key={account.id}
-            account={account}
-            stats={account.stats}
-            onClick={() => handleAccountClick(account.id)}
-            disabled={account.stats.reconciled === account.stats.total && account.stats.total > 0}
-          />
-        ))}
-      </div>
+      {/* NO bank account grid - Decision-Maker no muestra cuentas bancarias en esta vista */}
 
       {/* Reconciliation Modal */}
       {selectedAccount && selectedAccountData && (

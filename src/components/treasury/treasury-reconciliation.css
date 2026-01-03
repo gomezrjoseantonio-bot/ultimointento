@@ -1,82 +1,215 @@
 /* ATLAS HORIZON - Treasury Reconciliation View */
 /* Following ATLAS Design Bible - Only CSS variables, no hardcoded colors */
 
-/* ===== LAYOUT PRINCIPAL ===== */
+/* ===== DECISION-MAKER LAYOUT ===== */
 
-.treasury-view {
-  height: calc(100vh - 64px);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 8px;
+.treasury-view-decision {
+  min-height: calc(100vh - 64px);
+  padding: 32px 64px;
+  background: #f8f9fa;
 }
 
-.treasury-header {
-  flex-shrink: 0;
-  height: 36px;
+.treasury-decision-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 48px;
 }
 
-.treasury-header__title {
-  font-size: 1.5rem;
-  font-weight: var(--font-semibold);
+.treasury-decision-title {
+  font-size: 2rem;
+  font-weight: 600;
   color: var(--atlas-navy-1);
+  margin: 0;
 }
 
-.treasury-header__month-nav {
+.treasury-decision-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
-.treasury-header__month-text {
-  font-size: 1rem;
-  font-weight: var(--font-medium);
-  color: var(--atlas-navy-1);
-  min-width: 100px;
-  text-align: center;
-}
-
-.treasury-header__nav-button {
-  background: var(--bg-card);
-  border: 1px solid var(--hz-neutral-200);
-  border-radius: 6px;
-  padding: 6px;
+.treasury-decision-nav-button {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
-.treasury-header__nav-button:hover {
+.treasury-decision-nav-button:hover {
   border-color: var(--atlas-blue);
+  background: #f5f5f5;
 }
 
-.treasury-header__nav-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.treasury-decision-month-text {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+  min-width: 140px;
+  text-align: center;
 }
 
-.summary-row {
+.treasury-decision-control-btn {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.treasury-decision-control-btn:hover {
+  background: #f5f5f5;
+}
+
+/* Grid de 4 tarjetas de resumen - SIN cuentas bancarias */
+.summary-cards-decision {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1400px;
+}
+
+/* ===== SUMMARY FLIP CARD - DECISION STYLE ===== */
+
+.summary-flip-card-decision {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  perspective: 1000px;
+  position: relative;
+  transition: all 0.2s;
+  min-height: 200px;
+}
+
+.summary-flip-card-decision:hover {
+  border-color: #c0c0c0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.summary-flip-card__inner {
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.summary-flip-card--flipped .summary-flip-card__inner {
+  transform: rotateY(180deg);
+}
+
+.summary-flip-card__front,
+.summary-flip-card__back {
+  backface-visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-flip-card__back {
+  transform: rotateY(180deg);
+}
+
+.summary-flip-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.summary-flip-card__icon {
+  width: 24px;
+  height: 24px;
+  color: var(--atlas-blue);
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  height: 80px;
 }
 
-.accounts-grid {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+.summary-flip-card__title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+}
+
+.summary-flip-card__title-back {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+}
+
+.summary-flip-card__value-decision {
+  font-family: var(--font-inter);
+  font-feature-settings: 'tnum';
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  margin-bottom: 8px;
+}
+
+.summary-flip-card__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-flip-card__detail-list-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.summary-flip-card__detail-item-decision {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  min-height: 0;
-  overflow: hidden;
+  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.summary-flip-card__detail-item-decision:last-child {
+  border-bottom: none;
+}
+
+.summary-flip-card__detail-icon {
+  color: var(--atlas-blue);
+  opacity: 0.7;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.summary-flip-card__detail-label {
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+  flex: 1;
+  min-width: 120px;
+}
+
+.summary-flip-card__detail-value {
+  font-feature-settings: 'tnum';
+  font-weight: 400;
+  color: #666;
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* ===== SUMMARY FLIP CARD ===== */

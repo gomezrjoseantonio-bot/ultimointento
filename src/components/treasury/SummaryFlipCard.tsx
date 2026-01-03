@@ -48,17 +48,17 @@ const SummaryFlipCard: React.FC<SummaryFlipCardProps> = ({
 
   return (
     <div 
-      className={`summary-flip-card ${isFlipped ? 'summary-flip-card--flipped' : ''}`}
+      className={`summary-flip-card-decision ${isFlipped ? 'summary-flip-card--flipped' : ''}`}
       onClick={handleClick}
     >
       <div className="summary-flip-card__inner">
         {/* FRENTE */}
         <div className="summary-flip-card__front">
           <div className="summary-flip-card__header">
-            <Icon className="summary-flip-card__icon" size={20} />
+            <Icon className="summary-flip-card__icon" size={24} />
             <span className="summary-flip-card__title">{title}</span>
           </div>
-          <div className="summary-flip-card__value">
+          <div className="summary-flip-card__value-decision">
             {formatCompact(previsto)} / {formatCompact(real)}
           </div>
           <div className="summary-flip-card__label">PREV. / REAL</div>
@@ -67,16 +67,16 @@ const SummaryFlipCard: React.FC<SummaryFlipCardProps> = ({
         {/* DORSO */}
         <div className="summary-flip-card__back">
           <div className="summary-flip-card__header">
-            <Icon className="summary-flip-card__icon" size={16} />
+            <Icon className="summary-flip-card__icon" size={20} />
             <span className="summary-flip-card__title-back">{title}</span>
           </div>
           {detalles && detalles.length > 0 ? (
-            <div className="summary-flip-card__detail-list">
+            <div className="summary-flip-card__detail-list-decision">
               {detalles.map((detalle, index) => {
                 const DetailIcon = detalle.icon;
                 return (
-                  <div key={index} className="summary-flip-card__detail-item">
-                    <DetailIcon size={14} className="summary-flip-card__detail-icon" />
+                  <div key={index} className="summary-flip-card__detail-item-decision">
+                    <DetailIcon size={16} className="summary-flip-card__detail-icon" />
                     <span className="summary-flip-card__detail-label">{detalle.label}</span>
                     <span className="summary-flip-card__detail-value">
                       {formatCompact(detalle.previsto)} / {formatCompact(detalle.real)}
