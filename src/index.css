@@ -42,8 +42,10 @@
   --hz-neutral-700: var(--text-gray);      /* #6C757D - Secondary text */
   --hz-neutral-500: var(--text-gray);      /* #6C757D - Muted text */
   --hz-neutral-300: #DEE2E6;               /* Light borders */
+  --hz-neutral-200: #E2E8F0;               /* Light borders for cards */
   --hz-neutral-100: var(--bg);             /* #F8F9FA - Light backgrounds */
   --hz-card-bg: #FFFFFF;                   /* White cards */
+  --bg-card: #FFFFFF;                      /* Alias for card backgrounds */
   --atlas-line: #DEE2E6;                   /* Separator lines */
   --hz-success-soft: #EAF7EE;
   --hz-warning-soft: #FFF7E6;
