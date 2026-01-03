@@ -589,7 +589,7 @@ const Detalle: React.FC = () => {
   };
 
   return (
-    <PageLayout title="Detalle" subtitle="Detalle de ingresos, gastos, amortizaciones y arrastres.">
+    <PageLayout title="Por inmueble" subtitle="Detalle de ingresos, gastos, amortizaciones y arrastres.">
       <div className="space-y-6">
         {/* Section Tabs */}
         <div className="bg-white border border-gray-200 p-1">

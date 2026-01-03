@@ -23,8 +23,8 @@ describe('ATLAS Navigation Audit', () => {
       'Personal',
       'Inmuebles', 
       'Tesorería',
-      'Proyecciones',
-      'Fiscalidad',
+      'Previsiones',
+      'Impuestos',
       'Financiación',
       'Alquileres',
       'Documentación'
@@ -75,8 +75,8 @@ describe('ATLAS Navigation Audit', () => {
       'Personal', 
       'Inmuebles',
       'Tesorería',
-      'Proyecciones',
-      'Fiscalidad',
+      'Previsiones',
+      'Impuestos',
       'Financiación'
     ];
     
@@ -96,13 +96,13 @@ describe('ATLAS Navigation Audit', () => {
     expect(documentationItems[0].name).toBe('Documentación');
   });
 
-  test('should have Tesorería with Cobros/Pagos and Importar subtabs', () => {
+  test('should have Tesorería with Movimientos and Importar subtabs', () => {
     const tesoreria = navigation.find(item => item.name === 'Tesorería');
     expect(tesoreria).toBeDefined();
     expect(tesoreria?.subTabs).toBeDefined();
     
     const subtabNames = tesoreria?.subTabs?.map(subtab => subtab.name) || [];
-    expect(subtabNames).toContain('Cobros/Pagos');
+    expect(subtabNames).toContain('Movimientos');
     expect(subtabNames).toContain('Importar');
   });
 

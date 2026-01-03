@@ -203,8 +203,17 @@ Sin espacios entre número y símbolo
 - Personal → "Personal" 
 - Inmuebles → "Inmuebles"
 - Tesorería → "Tesorería"
-- Proyecciones → "Proyecciones"
-- Fiscalidad → "Fiscalidad"
+  - Resumen (antes "Radar")
+  - Movimientos (antes "Cobros/Pagos")
+  - Importar
+- Previsiones (antes "Proyecciones")
+  - Presupuesto
+  - Real vs Previsto (antes "Desviaciones")
+  - Escenarios (antes "Horizontes")
+- Impuestos (antes "Fiscalidad")
+  - Resumen
+  - Por inmueble (antes "Detalle")
+  - Declaraciones
 - Financiación → "Financiación"
 - Alquileres → "Alquileres"
 - Documentación → "Documentación"
