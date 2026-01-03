@@ -443,12 +443,18 @@ class DashboardService {
       }, 0);
       
       // Calculate debt (sum of active loans/mortgages)
-      // For now, we'll estimate from property acquisition with mortgage assumption
-      // In a real implementation, this should come from a loans/prestamos table
-      const deudaViva = 0; // TODO: Implement when loans module exists
+      // TODO: Implement when loans/prestamos table exists. Expected fields:
+      // - capitalPendiente: number (outstanding principal)
+      // - estado: 'activo' | 'pagado' | 'cancelado'
+      // Calculation: Sum of capitalPendiente for all active loans
+      const deudaViva = 0;
       
       // Inversiones (investments) - placeholder for future module
-      const valorInversiones = 0; // TODO: Implement when investments module exists
+      // TODO: Implement when investments module exists. Expected data:
+      // - Investment positions with current market value
+      // - Asset type, quantity, purchase price, current price
+      // Calculation: Sum of (quantity * currentPrice) for all positions
+      const valorInversiones = 0;
       
       // Calculate total net worth
       const total = valorInmuebles + valorInversiones + saldoCuentas - deudaViva;
@@ -561,15 +567,15 @@ class DashboardService {
       return {
         trabajo: {
           mensual: trabajoMensual,
-          tendencia: 'stable' // TODO: Calculate trend based on historical data
+          tendencia: 'stable' // TODO: Calculate trend based on previous 3 months average. Up if >5% increase, down if >5% decrease
         },
         inmuebles: {
           cashflow: cashflowInmuebles,
-          tendencia: 'stable' // TODO: Calculate trend based on historical data
+          tendencia: 'stable' // TODO: Calculate trend based on previous 3 months average. Up if >5% increase, down if >5% decrease
         },
         inversiones: {
           dividendos: dividendos,
-          tendencia: 'stable' // TODO: Calculate trend when module exists
+          tendencia: 'stable' // TODO: Calculate trend when investments module exists. Compare to previous 3 months average
         }
       };
     } catch (error) {

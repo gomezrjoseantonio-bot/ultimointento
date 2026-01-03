@@ -353,13 +353,9 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
         onRegistrarIngreso={() => onNavigate('/tesoreria')}
         onAñadirGasto={() => onNavigate('/inmuebles/gastos-capex')}
         onVerTodo={() => {
-          // This will be handled by the parent to switch to full view
-          if (window.history.state?.viewMode) {
-            window.history.replaceState(
-              { ...window.history.state, viewMode: 'full' },
-              ''
-            );
-          }
+          // Navigate to a route that will trigger the parent to switch to full view
+          // The parent component will handle the view mode switch
+          onNavigate('/panel?view=full');
         }}
       />
     </div>
