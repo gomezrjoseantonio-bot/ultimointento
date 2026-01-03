@@ -124,10 +124,11 @@ export const roundCurrency = (amount: number): number => {
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 };
 
-// Format compact for treasury view (2.5k, 150k, etc.)
-export const formatCompact = (value: number): string => {
-  if (Math.abs(value) >= 1000) {
-    return `${(value / 1000).toFixed(1)}k`;
+// Format numbers for treasury view - NO abbreviations, full numbers with Spanish locale
+// Examples: 2500 → "2.500", 15800 → "15.800", 1234567 → "1.234.567"
+export const formatCompact = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '—';
   }
   return value.toLocaleString('es-ES', { maximumFractionDigits: 0 });
 };

@@ -1,7 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, CreditCard, Activity } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  TrendingUp, 
+  TrendingDown, 
+  CreditCard, 
+  Activity,
+  Briefcase,
+  Zap,
+  Home,
+  LineChart,
+  Building2,
+  Settings,
+  User,
+  Package,
+  FileText,
+  Receipt,
+  Building
+} from 'lucide-react';
 import SummaryFlipCard from './SummaryFlipCard';
-import AccountCard from './AccountCard';
 import ReconciliationModal from './ReconciliationModal';
 import toast from 'react-hot-toast';
 import './treasury-reconciliation.css';
@@ -38,9 +55,10 @@ interface Movement {
  * Vista principal de conciliación de tesorería con:
  * - 0 scroll (todo en 1 pantalla)
  * - 8 cuentas bancarias en grid 4x2
- * - Tarjetas resumen con flip
- * - Solo iconos Lucide
- * - Colores ATLAS Design Bible
+ * - Tarjetas resumen con flip detallado
+ * - Solo iconos Lucide en AZUL ATLAS
+ * - Colores ATLAS Design Bible (NO verde/rojo en valores)
+ * - Números completos sin abreviaciones "k"
  */
 const TreasuryReconciliationView: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
@@ -218,46 +236,6 @@ const TreasuryReconciliationView: React.FC = () => {
     }
   );
 
-  const handleAccountClick = (accountId: string) => {
-    setSelectedAccount(accountId);
-    // Load movements for this account
-    loadMovements(accountId);
-  };
-
-  const loadMovements = (accountId: string) => {
-    // Mock movements
-    const mockMovements: Movement[] = [
-      {
-        id: '1',
-        concept: 'Alquiler - Propiedad 1',
-        amount: 850,
-        date: `${currentMonth}-05`,
-        type: 'income',
-        status: 'previsto',
-        category: 'Alquiler'
-      },
-      {
-        id: '2',
-        concept: 'Cuota préstamo hipotecario',
-        amount: -450,
-        date: `${currentMonth}-10`,
-        type: 'financing',
-        status: 'previsto',
-        category: 'Financiación'
-      },
-      {
-        id: '3',
-        concept: 'Comunidad Propiedad 2',
-        amount: -120,
-        date: `${currentMonth}-15`,
-        type: 'expense',
-        status: 'confirmado',
-        category: 'Gastos'
-      }
-    ];
-    setMovements(mockMovements);
-  };
-
   const handleConfirmMovement = (movementId: string, realAmount?: number) => {
     setMovements(prev =>
       prev.map(m => m.id === movementId ? { ...m, status: 'confirmado' as const } : m)
@@ -283,23 +261,23 @@ const TreasuryReconciliationView: React.FC = () => {
   const selectedAccountData = accounts.find(a => a.id === selectedAccount);
 
   return (
-    <div className="treasury-view">
-      {/* Header */}
-      <div className="treasury-header">
-        <h1 className="treasury-header__title">Tesorería</h1>
-        <div className="treasury-header__month-nav">
+    <div className="treasury-view-decision">
+      {/* Header con título y navegación de mes */}
+      <div className="treasury-decision-header">
+        <h1 className="treasury-decision-title">Conciliación mensual</h1>
+        <div className="treasury-decision-controls">
           <button 
-            className="treasury-header__nav-button"
+            className="treasury-decision-nav-button"
             onClick={handlePrevMonth}
             aria-label="Mes anterior"
           >
             <ChevronLeft size={20} />
           </button>
-          <span className="treasury-header__month-text">
+          <span className="treasury-decision-month-text">
             {formatMonthYear(currentMonth)}
           </span>
           <button 
-            className="treasury-header__nav-button"
+            className="treasury-decision-nav-button"
             onClick={handleNextMonth}
             aria-label="Mes siguiente"
           >
@@ -308,17 +286,44 @@ const TreasuryReconciliationView: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Row */}
-      <div className="summary-row">
+      {/* Solo las 4 tarjetas de resumen - SIN grid de cuentas bancarias */}
+      <div className="summary-cards-decision">
         <SummaryFlipCard
           title="Ingresos"
           icon={TrendingUp}
           previsto={globalTotals.ingresos.previsto}
           real={globalTotals.ingresos.real}
-          variant="income"
           detalles={[
-            { label: 'Alquileres', valor: globalTotals.ingresos.real * 0.8 },
-            { label: 'Otros', valor: globalTotals.ingresos.real * 0.2 }
+            {
+              icon: Briefcase,
+              label: 'Nómina',
+              previsto: globalTotals.ingresos.previsto * 0.388,
+              real: globalTotals.ingresos.real * 0.4
+            },
+            {
+              icon: Zap,
+              label: 'Servicios Freelance',
+              previsto: globalTotals.ingresos.previsto * 0.124,
+              real: globalTotals.ingresos.real * 0.114
+            },
+            {
+              icon: Home,
+              label: 'Rentas de alquiler',
+              previsto: globalTotals.ingresos.previsto * 0.287,
+              real: globalTotals.ingresos.real * 0.352
+            },
+            {
+              icon: LineChart,
+              label: 'Intereses posiciones',
+              previsto: globalTotals.ingresos.previsto * 0.019,
+              real: globalTotals.ingresos.real * 0.023
+            },
+            {
+              icon: Building2,
+              label: 'Venta de activos',
+              previsto: globalTotals.ingresos.previsto * 0.182,
+              real: globalTotals.ingresos.real * 0.111
+            }
           ]}
         />
         <SummaryFlipCard
@@ -326,11 +331,37 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={TrendingDown}
           previsto={globalTotals.gastos.previsto}
           real={globalTotals.gastos.real}
-          variant="expense"
           detalles={[
-            { label: 'Comunidad', valor: globalTotals.gastos.real * 0.4 },
-            { label: 'IBI', valor: globalTotals.gastos.real * 0.3 },
-            { label: 'Otros', valor: globalTotals.gastos.real * 0.3 }
+            {
+              icon: Settings,
+              label: 'Gastos operativos',
+              previsto: globalTotals.gastos.previsto * (400 / 1800),
+              real: globalTotals.gastos.real * (350 / 1600)
+            },
+            {
+              icon: User,
+              label: 'Gastos personales',
+              previsto: globalTotals.gastos.previsto * (1200 / 1800),
+              real: globalTotals.gastos.real * (1100 / 1600)
+            },
+            {
+              icon: Package,
+              label: 'Gastos Freelance',
+              previsto: globalTotals.gastos.previsto * (200 / 1800),
+              real: globalTotals.gastos.real * (150 / 1600)
+            },
+            {
+              icon: FileText,
+              label: 'Gastos venta activos',
+              previsto: globalTotals.gastos.previsto * (0 / 1800),
+              real: globalTotals.gastos.real * (0 / 1600)
+            },
+            {
+              icon: Receipt,
+              label: 'IRPF a pagar',
+              previsto: globalTotals.gastos.previsto * (0 / 1800),
+              real: globalTotals.gastos.real * (0 / 1600)
+            }
           ]}
         />
         <SummaryFlipCard
@@ -338,9 +369,19 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={CreditCard}
           previsto={globalTotals.financiacion.previsto}
           real={globalTotals.financiacion.real}
-          variant="financing"
           detalles={[
-            { label: 'Hipotecas', valor: globalTotals.financiacion.real }
+            {
+              icon: Building,
+              label: 'Cuotas hipotecas',
+              previsto: globalTotals.financiacion.previsto * 0.8,
+              real: globalTotals.financiacion.real * 0.8
+            },
+            {
+              icon: CreditCard,
+              label: 'Cuotas préstamos',
+              previsto: globalTotals.financiacion.previsto * 0.2,
+              real: globalTotals.financiacion.real * 0.2
+            }
           ]}
         />
         <SummaryFlipCard
@@ -348,22 +389,10 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={Activity}
           previsto={globalTotals.cashflow.previsto}
           real={globalTotals.cashflow.real}
-          variant="cashflow"
         />
       </div>
 
-      {/* Accounts Grid */}
-      <div className="accounts-grid">
-        {accounts.map((account) => (
-          <AccountCard
-            key={account.id}
-            account={account}
-            stats={account.stats}
-            onClick={() => handleAccountClick(account.id)}
-            disabled={account.stats.reconciled === account.stats.total && account.stats.total > 0}
-          />
-        ))}
-      </div>
+      {/* NO bank account grid - Decision-Maker no muestra cuentas bancarias en esta vista */}
 
       {/* Reconciliation Modal */}
       {selectedAccount && selectedAccountData && (
