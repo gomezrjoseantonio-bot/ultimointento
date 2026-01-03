@@ -1,4 +1,5 @@
 import React from 'react';
+import { Briefcase, Building2, TrendingUp } from 'lucide-react';
 import BolsilloCard from './BolsilloCard';
 
 interface TresBolsillosGridProps {
@@ -21,13 +22,13 @@ interface TresBolsillosGridProps {
  * TresBolsillosGrid - Grid displaying the 3 main income sources
  * 
  * Shows the investor's 3 "pockets":
- * 1. 💼 TRABAJO - Net personal income
- * 2. 🏢 INMUEBLES - Real estate cashflow
- * 3. 📈 INVERSIONES - Investment dividends
+ * 1. TRABAJO - Net personal income (Briefcase icon)
+ * 2. INMUEBLES - Real estate cashflow (Building2 icon)
+ * 3. INVERSIONES - Investment dividends (TrendingUp icon)
  * 
  * Responsive grid: 3 columns on desktop, 1 column on mobile
  * 
- * 100% ATLAS Design Bible compliant
+ * 100% ATLAS Design Bible compliant (Lucide icons, NO emojis)
  */
 const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
   trabajo,
@@ -52,15 +53,14 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
-        padding: '24px',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px',
         fontFamily: 'var(--font-inter)'
       }}
     >
       {/* Trabajo Card */}
       <BolsilloCard
-        icono="💼"
+        icono={Briefcase}
         titulo="TRABAJO"
         cantidad={formatAmount(trabajo.mensual)}
         subtitulo="Neto trabajo"
@@ -71,7 +71,7 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
 
       {/* Inmuebles Card */}
       <BolsilloCard
-        icono="🏢"
+        icono={Building2}
         titulo="INMUEBLES"
         cantidad={formatAmount(inmuebles.cashflow)}
         subtitulo="Cashflow"
@@ -82,7 +82,7 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
 
       {/* Inversiones Card */}
       <BolsilloCard
-        icono="📈"
+        icono={TrendingUp}
         titulo="INVERSIONES"
         cantidad={formatAmount(inversiones.dividendos)}
         subtitulo="Dividendos"
