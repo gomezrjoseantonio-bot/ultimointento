@@ -334,13 +334,37 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={TrendingUp}
           previsto={globalTotals.ingresos.previsto}
           real={globalTotals.ingresos.real}
-          variant="income"
           detalles={[
-            { icon: Briefcase, label: 'Nómina', previsto: 2500, real: 2100 },
-            { icon: Zap, label: 'Servicios Freelance', previsto: 800, real: 600 },
-            { icon: Home, label: 'Rentas de alquiler', previsto: 1850, real: 1850 },
-            { icon: LineChart, label: 'Intereses posiciones', previsto: 120, real: 120 },
-            { icon: Building2, label: 'Venta de activos', previsto: 0, real: 0 }
+            {
+              icon: Briefcase,
+              label: 'Nómina',
+              previsto: globalTotals.ingresos.previsto * 0.388,
+              real: globalTotals.ingresos.real * 0.4
+            },
+            {
+              icon: Zap,
+              label: 'Servicios Freelance',
+              previsto: globalTotals.ingresos.previsto * 0.124,
+              real: globalTotals.ingresos.real * 0.114
+            },
+            {
+              icon: Home,
+              label: 'Rentas de alquiler',
+              previsto: globalTotals.ingresos.previsto * 0.287,
+              real: globalTotals.ingresos.real * 0.352
+            },
+            {
+              icon: LineChart,
+              label: 'Intereses posiciones',
+              previsto: globalTotals.ingresos.previsto * 0.019,
+              real: globalTotals.ingresos.real * 0.023
+            },
+            {
+              icon: Building2,
+              label: 'Venta de activos',
+              previsto: globalTotals.ingresos.previsto * 0.182,
+              real: globalTotals.ingresos.real * 0.111
+            }
           ]}
         />
         <SummaryFlipCard
@@ -348,7 +372,6 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={TrendingDown}
           previsto={globalTotals.gastos.previsto}
           real={globalTotals.gastos.real}
-          variant="expense"
           detalles={[
             {
               icon: Settings,
@@ -387,7 +410,6 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={CreditCard}
           previsto={globalTotals.financiacion.previsto}
           real={globalTotals.financiacion.real}
-          variant="financing"
           detalles={[
             {
               icon: Building,
@@ -408,7 +430,6 @@ const TreasuryReconciliationView: React.FC = () => {
           icon={Activity}
           previsto={globalTotals.cashflow.previsto}
           real={globalTotals.cashflow.real}
-          variant="cashflow"
         />
       </div>
 

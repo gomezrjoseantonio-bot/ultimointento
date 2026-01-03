@@ -16,7 +16,6 @@ interface SummaryFlipCardProps {
   previsto: number;
   real: number;
   detalles?: DetailItem[];
-  variant?: 'income' | 'expense' | 'financing' | 'cashflow';
 }
 
 /**
@@ -35,13 +34,20 @@ const SummaryFlipCard: React.FC<SummaryFlipCardProps> = ({
   icon: Icon,
   previsto,
   real,
-  detalles,
-  variant = 'income'
+  detalles
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const hasDetails = detalles && detalles.length > 0;
 
   const handleClick = () => {
-    if (detalles && detalles.length > 0) {
+    if (hasDetails) {
+      setIsFlipped(!isFlipped);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (hasDetails && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
       setIsFlipped(!isFlipped);
     }
   };
@@ -50,6 +56,11 @@ const SummaryFlipCard: React.FC<SummaryFlipCardProps> = ({
     <div 
       className={`summary-flip-card-decision ${isFlipped ? 'summary-flip-card--flipped' : ''}`}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={hasDetails ? 0 : undefined}
+      aria-label={hasDetails ? `${title}: ${formatCompact(previsto)} / ${formatCompact(real)}. Click para ver desglose` : `${title}: ${formatCompact(previsto)} / ${formatCompact(real)}`}
+      aria-expanded={hasDetails ? isFlipped : undefined}
     >
       <div className="summary-flip-card__inner">
         {/* FRENTE */}
@@ -72,10 +83,10 @@ const SummaryFlipCard: React.FC<SummaryFlipCardProps> = ({
           </div>
           {detalles && detalles.length > 0 ? (
             <div className="summary-flip-card__detail-list-decision">
-              {detalles.map((detalle, index) => {
+              {detalles.map((detalle) => {
                 const DetailIcon = detalle.icon;
                 return (
-                  <div key={index} className="summary-flip-card__detail-item-decision">
+                  <div key={detalle.label} className="summary-flip-card__detail-item-decision">
                     <DetailIcon size={16} className="summary-flip-card__detail-icon" />
                     <span className="summary-flip-card__detail-label">{detalle.label}</span>
                     <span className="summary-flip-card__detail-value">
