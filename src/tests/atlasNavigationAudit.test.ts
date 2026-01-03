@@ -2,7 +2,7 @@
  * ATLAS Navigation Audit Test
  * 
  * This test validates the ATLAS navigation requirements:
- * 1. Exactly 9 navigation entries
+ * 1. Exactly 10 navigation entries (including Glosario)
  * 2. Correct separators: "Horizon — Supervisión", "Pulse — Gestión", "Documentación"
  * 3. Configuración and Tareas are NOT in the sidebar
  * 4. Correct order of items
@@ -13,8 +13,8 @@ import { navigationConfig, getNavigationForModule } from '../config/navigation';
 describe('ATLAS Navigation Audit', () => {
   const navigation = getNavigationForModule();
 
-  test('should have exactly 9 navigation entries', () => {
-    expect(navigation).toHaveLength(9);
+  test('should have exactly 10 navigation entries', () => {
+    expect(navigation).toHaveLength(10);
   });
 
   test('should have correct navigation items in exact order', () => {
@@ -23,11 +23,12 @@ describe('ATLAS Navigation Audit', () => {
       'Personal',
       'Inmuebles', 
       'Tesorería',
-      'Proyecciones',
-      'Fiscalidad',
+      'Previsiones',
+      'Impuestos',
       'Financiación',
       'Alquileres',
-      'Documentación'
+      'Documentación',
+      'Glosario'
     ];
 
     const actualItems = navigation.map(item => item.name);
@@ -45,8 +46,8 @@ describe('ATLAS Navigation Audit', () => {
     // PULSE — Gestión should have 1 item
     expect(pulseItems).toHaveLength(1);
     
-    // DOCUMENTACIÓN should have 1 item
-    expect(documentationItems).toHaveLength(1);
+    // DOCUMENTACIÓN should have 2 items
+    expect(documentationItems).toHaveLength(2);
   });
 
   test('should not include Configuración in sidebar navigation', () => {
@@ -75,8 +76,8 @@ describe('ATLAS Navigation Audit', () => {
       'Personal', 
       'Inmuebles',
       'Tesorería',
-      'Proyecciones',
-      'Fiscalidad',
+      'Previsiones',
+      'Impuestos',
       'Financiación'
     ];
     
@@ -92,17 +93,18 @@ describe('ATLAS Navigation Audit', () => {
 
   test('should have correct Documentation section items', () => {
     const documentationItems = navigation.filter(item => item.section === 'documentation');
-    expect(documentationItems).toHaveLength(1);
-    expect(documentationItems[0].name).toBe('Documentación');
+    expect(documentationItems).toHaveLength(2);
+    expect(documentationItems.some(item => item.name === 'Documentación')).toBe(true);
+    expect(documentationItems.some(item => item.name === 'Glosario')).toBe(true);
   });
 
-  test('should have Tesorería with Cobros/Pagos and Importar subtabs', () => {
+  test('should have Tesorería with Movimientos and Importar subtabs', () => {
     const tesoreria = navigation.find(item => item.name === 'Tesorería');
     expect(tesoreria).toBeDefined();
     expect(tesoreria?.subTabs).toBeDefined();
     
     const subtabNames = tesoreria?.subTabs?.map(subtab => subtab.name) || [];
-    expect(subtabNames).toContain('Cobros/Pagos');
+    expect(subtabNames).toContain('Movimientos');
     expect(subtabNames).toContain('Importar');
   });
 

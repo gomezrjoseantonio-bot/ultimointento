@@ -21,13 +21,13 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
     { label: 'Resumen', path: '/fiscalidad/resumen' },
-    { label: 'Detalle', path: '/fiscalidad/detalle' },
+    { label: 'Por inmueble', path: '/fiscalidad/detalle' },
     { label: 'Declaraciones', path: '/fiscalidad/declaraciones' },
   ],
   proyeccion: [
     { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
-    { label: 'Desviaciones', path: '/proyeccion/comparativa' },
-    { label: 'Horizontes', path: '/proyeccion/escenarios' },
+    { label: 'Real vs Previsto', path: '/proyeccion/comparativa' },
+    { label: 'Escenarios', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
     { label: 'Usuarios y roles', path: '/configuracion/usuarios-roles' },

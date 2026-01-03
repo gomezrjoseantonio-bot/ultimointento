@@ -225,7 +225,7 @@ const RadarPanel: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-brand-navy">Radar Tesorería</h2>
+        <h2 className="text-xl font-semibold text-brand-navy">Resumen Tesorería</h2>
         <p className="text-sm text-gray-600 mt-1">
           Vista general del estado financiero y proyecciones
         </p>

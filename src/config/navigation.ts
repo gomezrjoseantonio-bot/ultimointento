@@ -55,32 +55,32 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Radar', href: '/tesoreria', icon: Banknote, module: 'horizon' },
-      { name: 'Cobros/Pagos', href: '/tesoreria/cobros-pagos', icon: DollarSign, module: 'horizon' },
+      { name: 'Resumen', href: '/tesoreria', icon: Banknote, module: 'horizon' },
+      { name: 'Movimientos', href: '/tesoreria/cobros-pagos', icon: DollarSign, module: 'horizon' },
       { name: 'Importar', href: '/tesoreria/importar', icon: Inbox, module: 'horizon' },
     ]
   },
   {
-    name: 'Proyecciones',
+    name: 'Previsiones',
     href: '/proyeccion',
     icon: TrendingUp,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
       { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
-      { name: 'Desviaciones', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
-      { name: 'Horizontes', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
+      { name: 'Real vs Previsto', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
+      { name: 'Escenarios', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
     ]
   },
   {
-    name: 'Fiscalidad',
+    name: 'Impuestos',
     href: '/fiscalidad',
     icon: Calculator,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/fiscalidad/resumen', icon: Calculator, module: 'horizon' },
-      { name: 'Detalle', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
+      { name: 'Por inmueble', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
       { name: 'Declaraciones', href: '/fiscalidad/declaraciones', icon: Settings, module: 'horizon' },
     ]
   },

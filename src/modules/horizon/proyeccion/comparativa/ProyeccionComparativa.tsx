@@ -48,7 +48,7 @@ const ProyeccionComparativa: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout title="Comparativa Anual" subtitle="Cargando datos...">
+      <PageLayout title="Real vs Previsto" subtitle="Cargando datos...">
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-atlas-blue"></div>
         </div>
@@ -58,7 +58,7 @@ const ProyeccionComparativa: React.FC = () => {
 
   if (!data) {
     return (
-      <PageLayout title="Comparativa Anual" subtitle="No hay datos disponibles">
+      <PageLayout title="Real vs Previsto" subtitle="No hay datos disponibles">
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -73,11 +73,11 @@ const ProyeccionComparativa: React.FC = () => {
   }
 
   return (
-    <PageLayout title="Comparativa Anual" subtitle="Budget vs Forecast vs Actual">
+    <PageLayout title="Real vs Previsto" subtitle="Budget vs Forecast vs Actual">
       <div className="space-y-6">
         {/* Header Controls */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Comparativa anual</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Real vs Previsto</h1>
           
           <div className="flex items-center space-x-4">
             {/* Year Selector */}
