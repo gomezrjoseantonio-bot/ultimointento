@@ -14,7 +14,7 @@ describe('ATLAS Navigation Audit', () => {
   const navigation = getNavigationForModule();
 
   test('should have exactly 9 navigation entries', () => {
-    expect(navigation).toHaveLength(9);
+    expect(navigation).toHaveLength(10);
   });
 
   test('should have correct navigation items in exact order', () => {
@@ -27,7 +27,8 @@ describe('ATLAS Navigation Audit', () => {
       'Impuestos',
       'Financiación',
       'Alquileres',
-      'Documentación'
+      'Documentación',
+      'Glosario'
     ];
 
     const actualItems = navigation.map(item => item.name);
@@ -45,8 +46,8 @@ describe('ATLAS Navigation Audit', () => {
     // PULSE — Gestión should have 1 item
     expect(pulseItems).toHaveLength(1);
     
-    // DOCUMENTACIÓN should have 1 item
-    expect(documentationItems).toHaveLength(1);
+    // DOCUMENTACIÓN should have 2 items
+    expect(documentationItems).toHaveLength(2);
   });
 
   test('should not include Configuración in sidebar navigation', () => {
@@ -92,8 +93,9 @@ describe('ATLAS Navigation Audit', () => {
 
   test('should have correct Documentation section items', () => {
     const documentationItems = navigation.filter(item => item.section === 'documentation');
-    expect(documentationItems).toHaveLength(1);
-    expect(documentationItems[0].name).toBe('Documentación');
+    expect(documentationItems).toHaveLength(2);
+    expect(documentationItems.some(item => item.name === 'Documentación')).toBe(true);
+    expect(documentationItems.some(item => item.name === 'Glosario')).toBe(true);
   });
 
   test('should have Tesorería with Movimientos and Importar subtabs', () => {
