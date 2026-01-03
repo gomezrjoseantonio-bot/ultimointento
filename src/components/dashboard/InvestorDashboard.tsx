@@ -112,7 +112,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
               style={{
                 height: '32px',
                 width: '300px',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'var(--hz-neutral-300)',
                 borderRadius: '4px',
                 marginBottom: '16px'
               }}
@@ -121,7 +121,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
               style={{
                 height: '48px',
                 width: '400px',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'var(--hz-neutral-300)',
                 borderRadius: '4px'
               }}
             />
@@ -134,7 +134,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
                 key={i}
                 style={{
                   height: '120px',
-                  backgroundColor: '#e0e0e0',
+                  backgroundColor: 'var(--hz-neutral-300)',
                   borderRadius: '12px'
                 }}
               />
@@ -146,14 +146,14 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
             <div
               style={{
                 height: '140px',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'var(--hz-neutral-300)',
                 borderRadius: '12px'
               }}
             />
             <div
               style={{
                 height: '140px',
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'var(--hz-neutral-300)',
                 borderRadius: '12px'
               }}
             />
