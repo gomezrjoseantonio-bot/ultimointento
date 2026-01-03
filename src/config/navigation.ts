@@ -56,7 +56,7 @@ export const navigationConfig: NavigationItem[] = [
     section: 'horizon',
     subTabs: [
       { name: 'Resumen', href: '/tesoreria', icon: Banknote, module: 'horizon' },
-      { name: 'Movimientos', href: '/tesoreria/movimientos', icon: DollarSign, module: 'horizon' },
+      { name: 'Movimientos', href: '/tesoreria/cobros-pagos', icon: DollarSign, module: 'horizon' },
       { name: 'Importar', href: '/tesoreria/importar', icon: Inbox, module: 'horizon' },
     ]
   },
