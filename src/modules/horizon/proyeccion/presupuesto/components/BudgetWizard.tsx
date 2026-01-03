@@ -43,12 +43,6 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
     }
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
   const handleStepComplete = (stepData?: any) => {
     if (currentStep === 1) {
       // Scope selection step
@@ -212,32 +206,6 @@ const BudgetWizard: React.FC<BudgetWizardProps> = ({ year, onComplete, onCancel 
       {/* Step Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderStep()}
-      </div>
-
-      {/* Navigation Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between">
-            <button
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentStep === 1
-                  ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-700 bg-gray-100 hover:bg-gray-200'
-              }`}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Anterior
-            </button>
-            
-            <div className="text-sm text-gray-500">
-              Paso {currentStep} de {steps.length}
-            </div>
-            
-            <div className="w-24"></div> {/* Spacer for symmetry */}
-          </div>
-        </div>
       </div>
     </div>
   );
