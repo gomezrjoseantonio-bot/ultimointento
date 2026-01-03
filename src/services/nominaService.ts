@@ -53,14 +53,23 @@ class NominaService {
   async saveNomina(nomina: Omit<Nomina, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): Promise<Nomina> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readwrite');
-      const store = transaction.objectStore('nominas');
+      const tx = db.transaction(['nominas'], 'readwrite');
+      const store = tx.objectStore('nominas');
       
       const now = new Date().toISOString();
       
-      // If setting as active, deactivate other nominas for the same personalDataId
+      // Desactivar otras nóminas EN LA MISMA TRANSACCIÓN (no llamar a otro método)
       if (nomina.activa) {
-        await this.deactivateOtherNominas(nomina.personalDataId, undefined);
+        const index = store.index('personalDataId');
+        const existingNominas = await index.getAll(nomina.personalDataId);
+        
+        for (const existing of existingNominas) {
+          if (existing.activa) {
+            existing.activa = false;
+            existing.fechaActualizacion = now;
+            await store.put(existing);
+          }
+        }
       }
       
       const newNomina: Nomina = {
@@ -70,11 +79,12 @@ class NominaService {
       };
 
       const result = await store.add(newNomina);
-      newNomina.id = result;
+      newNomina.id = result as number;
       
-      await transaction.complete;
+      await tx.done;
       return newNomina;
     } catch (error) {
+      this.db = null;
       console.error('Error saving nomina:', error);
       throw error;
     }
@@ -86,30 +96,42 @@ class NominaService {
   async updateNomina(id: number, updates: Partial<Nomina>): Promise<Nomina> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readwrite');
-      const store = transaction.objectStore('nominas');
+      const tx = db.transaction(['nominas'], 'readwrite');
+      const store = tx.objectStore('nominas');
       
       const existing = await store.get(id);
       if (!existing) {
         throw new Error('Nomina not found');
       }
 
-      // If setting as active, deactivate other nominas for the same personalDataId
+      const now = new Date().toISOString();
+
+      // Desactivar otras nóminas EN LA MISMA TRANSACCIÓN
       if (updates.activa) {
-        await this.deactivateOtherNominas(existing.personalDataId, id);
+        const index = store.index('personalDataId');
+        const allNominas = await index.getAll(existing.personalDataId);
+        
+        for (const nomina of allNominas) {
+          if (nomina.id !== id && nomina.activa) {
+            nomina.activa = false;
+            nomina.fechaActualizacion = now;
+            await store.put(nomina);
+          }
+        }
       }
 
       const updated: Nomina = {
         ...existing,
         ...updates,
-        fechaActualizacion: new Date().toISOString()
+        fechaActualizacion: now
       };
 
       await store.put(updated);
-      await transaction.complete;
+      await tx.done;
       
       return updated;
     } catch (error) {
+      this.db = null;
       console.error('Error updating nomina:', error);
       throw error;
     }
@@ -121,37 +143,14 @@ class NominaService {
   async deleteNomina(id: number): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readwrite');
-      const store = transaction.objectStore('nominas');
+      const tx = db.transaction(['nominas'], 'readwrite');
+      const store = tx.objectStore('nominas');
       
       await store.delete(id);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error deleting nomina:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Deactivate other nominas for the same personal data ID
-   */
-  private async deactivateOtherNominas(personalDataId: number, excludeId?: number): Promise<void> {
-    try {
-      const nominas = await this.getNominas(personalDataId);
-      const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readwrite');
-      const store = transaction.objectStore('nominas');
-
-      for (const nomina of nominas) {
-        if (nomina.id !== excludeId && nomina.activa) {
-          const updated = { ...nomina, activa: false, fechaActualizacion: new Date().toISOString() };
-          await store.put(updated);
-        }
-      }
-
-      await transaction.complete;
-    } catch (error) {
-      console.error('Error deactivating other nominas:', error);
       throw error;
     }
   }

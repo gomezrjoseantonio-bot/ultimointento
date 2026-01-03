@@ -109,7 +109,8 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       onClose();
     } catch (error) {
       console.error('Error saving autonomo:', error);
-      toast.error('Error al guardar la configuración');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al guardar la configuración: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
