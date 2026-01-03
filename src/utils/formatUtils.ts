@@ -123,3 +123,11 @@ export const multiplyCurrency = (amount: number, factor: number): number => {
 export const roundCurrency = (amount: number): number => {
   return Math.round((amount + Number.EPSILON) * 100) / 100;
 };
+
+// Format compact for treasury view (2.5k, 150k, etc.)
+export const formatCompact = (value: number): string => {
+  if (Math.abs(value) >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  }
+  return value.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+};
