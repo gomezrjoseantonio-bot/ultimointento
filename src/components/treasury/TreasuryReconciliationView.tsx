@@ -350,11 +350,36 @@ const TreasuryReconciliationView: React.FC = () => {
           real={globalTotals.gastos.real}
           variant="expense"
           detalles={[
-            { icon: Settings, label: 'Gastos operativos', previsto: 400, real: 350 },
-            { icon: User, label: 'Gastos personales', previsto: 1200, real: 1100 },
-            { icon: Package, label: 'Gastos Freelance', previsto: 200, real: 150 },
-            { icon: FileText, label: 'Gastos venta activos', previsto: 0, real: 0 },
-            { icon: Receipt, label: 'IRPF a pagar', previsto: 0, real: 0 }
+            {
+              icon: Settings,
+              label: 'Gastos operativos',
+              previsto: globalTotals.gastos.previsto * (400 / 1800),
+              real: globalTotals.gastos.real * (350 / 1600)
+            },
+            {
+              icon: User,
+              label: 'Gastos personales',
+              previsto: globalTotals.gastos.previsto * (1200 / 1800),
+              real: globalTotals.gastos.real * (1100 / 1600)
+            },
+            {
+              icon: Package,
+              label: 'Gastos Freelance',
+              previsto: globalTotals.gastos.previsto * (200 / 1800),
+              real: globalTotals.gastos.real * (150 / 1600)
+            },
+            {
+              icon: FileText,
+              label: 'Gastos venta activos',
+              previsto: globalTotals.gastos.previsto * (0 / 1800),
+              real: globalTotals.gastos.real * (0 / 1600)
+            },
+            {
+              icon: Receipt,
+              label: 'IRPF a pagar',
+              previsto: globalTotals.gastos.previsto * (0 / 1800),
+              real: globalTotals.gastos.real * (0 / 1600)
+            }
           ]}
         />
         <SummaryFlipCard
