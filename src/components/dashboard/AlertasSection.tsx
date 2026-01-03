@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, AlertTriangle, Briefcase, Building2, TrendingUp, Home } from 'lucide-react';
 
 interface Alerta {
   id: string;
@@ -24,29 +24,32 @@ interface AlertasSectionProps {
  * - Low priority (blue)
  * 
  * Each alert shows:
- * - Type icon (💼 work, 🏢 real estate, 📈 investments, 🏠 personal)
+ * - Type icon: Briefcase (trabajo), Building2 (inmuebles), TrendingUp (inversiones), Home (personal)
  * - Message
  * - Click to navigate to detail
  * 
- * 100% ATLAS Design Bible compliant
+ * 100% ATLAS Design Bible compliant (Lucide icons, NO emojis)
  */
 const AlertasSection: React.FC<AlertasSectionProps> = ({
   alertas,
   onAlertClick
 }) => {
   // Get icon based on alert type
-  const getIcono = (tipo: string): string => {
+  const getIcono = (tipo: string) => {
+    const iconSize = 16;
+    const iconStyle = { color: 'var(--atlas-blue)' };
+    
     switch (tipo) {
       case 'trabajo':
-        return '💼';
+        return <Briefcase size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
       case 'inmuebles':
-        return '🏢';
+        return <Building2 size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
       case 'inversiones':
-        return '📈';
+        return <TrendingUp size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
       case 'personal':
-        return '🏠';
+        return <Home size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
       default:
-        return '📌';
+        return <AlertTriangle size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
     }
   };
 
@@ -100,13 +103,12 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
             marginBottom: '16px'
           }}
         >
-          <span
-            role="img"
-            aria-label="Alertas"
-            style={{ fontSize: '1.25rem' }}
-          >
-            ⚠️
-          </span>
+          <AlertTriangle
+            size={24}
+            strokeWidth={1.5}
+            style={{ color: 'var(--warn)' }}
+            aria-hidden="true"
+          />
           <h2
             style={{
               fontSize: '1.125rem',
@@ -128,7 +130,7 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
           }}
         >
           <p style={{ margin: 0, fontSize: '0.875rem' }}>
-            ✅ Todo en orden. No hay alertas pendientes.
+            Todo en orden. No hay alertas pendientes.
           </p>
         </div>
       </div>
@@ -155,13 +157,12 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
           marginBottom: '16px'
         }}
       >
-        <span
-          role="img"
-          aria-label="Alertas"
-          style={{ fontSize: '1.25rem' }}
-        >
-          ⚠️
-        </span>
+        <AlertTriangle
+          size={24}
+          strokeWidth={1.5}
+          style={{ color: 'var(--warn)' }}
+          aria-hidden="true"
+        />
         <h2
           style={{
             fontSize: '1.125rem',
@@ -216,16 +217,9 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
               }}
             >
               {/* Alert icon based on type */}
-              <span
-                style={{
-                  fontSize: '1.25rem',
-                  flexShrink: 0
-                }}
-                role="img"
-                aria-label={alerta.tipo}
-              >
+              <div style={{ flexShrink: 0, marginTop: '2px' }}>
                 {getIcono(alerta.tipo)}
-              </span>
+              </div>
 
               {/* Alert message */}
               <div

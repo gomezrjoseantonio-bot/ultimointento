@@ -1,0 +1,72 @@
+/**
+ * InvestorDashboard Styles
+ * 
+ * 100% ATLAS Design Bible compliant:
+ * - CSS tokens only (NO hardcoded colors)
+ * - Single-screen layout (NO scroll)
+ * - Responsive grid layout
+ * - Inter font family
+ */
+
+.investor-dashboard {
+  height: calc(100vh - 64px); /* Full viewport minus header */
+  overflow: hidden; /* NO scroll */
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg);
+  font-family: var(--font-inter);
+}
+
+/* Bolsillos Grid - Fixed height */
+.investor-dashboard .bolsillos-grid {
+  height: 120px;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+/* Bottom sections - Liquidez + Alertas */
+.investor-dashboard .bottom-sections {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  padding: 24px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0; /* Important for flex children */
+}
+
+.investor-dashboard .bottom-sections > * {
+  min-height: 0; /* Allow children to shrink */
+  overflow-y: auto; /* Allow scroll within section if needed */
+}
+
+/* Responsive: Stack on smaller screens */
+@media (max-width: 768px) {
+  .investor-dashboard {
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .investor-dashboard .bolsillos-grid {
+    height: auto;
+  }
+  
+  .investor-dashboard .bottom-sections {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+/* Animation for skeleton loader */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

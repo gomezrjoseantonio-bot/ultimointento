@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Landmark } from 'lucide-react';
 
 interface PatrimonioHeaderProps {
   patrimonioNeto: number;
@@ -82,7 +82,7 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
             gap: '8px'
           }}
         >
-          <span role="img" aria-label="Gráfico">📊</span>
+          <Landmark size={24} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} aria-hidden="true" />
           MI PATRIMONIO
         </h1>
         <span

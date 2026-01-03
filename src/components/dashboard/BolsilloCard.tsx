@@ -1,8 +1,8 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LucideIcon } from 'lucide-react';
 
 interface BolsilloCardProps {
-  icono: string; // Emoji icon
+  icono: LucideIcon; // Lucide icon component
   titulo: string; // Card title (e.g., "TRABAJO", "INMUEBLES", "INVERSIONES")
   cantidad: string; // Formatted amount (e.g., "+€3.200/mes")
   subtitulo: string; // Subtitle (e.g., "Neto trabajo", "Cashflow")
@@ -15,13 +15,14 @@ interface BolsilloCardProps {
  * BolsilloCard - Individual card for each "bolsillo" (pocket)
  * 
  * Displays one of the 3 main income sources:
- * - 💼 TRABAJO (Work/Personal income)
- * - 🏢 INMUEBLES (Real estate cashflow)
- * - 📈 INVERSIONES (Investment dividends)
+ * - TRABAJO (Work/Personal income) - Briefcase icon
+ * - INMUEBLES (Real estate cashflow) - Building2 icon
+ * - INVERSIONES (Investment dividends) - TrendingUp icon
  * 
  * 100% ATLAS Design Bible compliant:
  * - Inter font with tabular-nums
  * - CSS tokens only
+ * - Lucide icons (NO emojis)
  * - Hover states with smooth transitions
  * - Accessible with ARIA labels
  */
@@ -89,16 +90,12 @@ const BolsilloCard: React.FC<BolsilloCardProps> = ({
           marginBottom: '16px'
         }}
       >
-        <span
-          style={{
-            fontSize: '1.5rem',
-            lineHeight: 1
-          }}
-          role="img"
-          aria-label={titulo}
-        >
-          {icono}
-        </span>
+        {React.createElement(icono, {
+          size: 24,
+          strokeWidth: 1.5,
+          style: { color: 'var(--atlas-blue)' },
+          'aria-hidden': 'true'
+        })}
         <h3
           style={{
             fontSize: '0.875rem',

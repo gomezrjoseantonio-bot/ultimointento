@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 
 interface LiquidezSectionProps {
   disponibleHoy: number;
@@ -21,6 +21,7 @@ interface LiquidezSectionProps {
  * - Inter font with tabular-nums
  * - Spanish locale formatting
  * - CSS tokens only
+ * - Lucide icons (NO emojis)
  */
 const LiquidezSection: React.FC<LiquidezSectionProps> = ({
   disponibleHoy,
@@ -60,13 +61,12 @@ const LiquidezSection: React.FC<LiquidezSectionProps> = ({
           marginBottom: '20px'
         }}
       >
-        <span
-          role="img"
-          aria-label="Liquidez"
-          style={{ fontSize: '1.25rem' }}
-        >
-          💰
-        </span>
+        <Wallet
+          size={24}
+          strokeWidth={1.5}
+          style={{ color: 'var(--atlas-blue)' }}
+          aria-hidden="true"
+        />
         <h2
           style={{
             fontSize: '1.125rem',
@@ -77,7 +77,7 @@ const LiquidezSection: React.FC<LiquidezSectionProps> = ({
             letterSpacing: '0.05em'
           }}
         >
-          LIQUIDEZ TOTAL
+          LIQUIDEZ
         </h2>
       </div>
 
