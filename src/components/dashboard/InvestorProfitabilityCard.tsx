@@ -54,7 +54,7 @@ const InvestorProfitabilityCard: React.FC<InvestorProfitabilityCardProps> = ({
         border: '1px solid var(--hz-neutral-300)',
         borderRadius: '12px',
         padding: '24px',
-        boxShadow: '0 1px 2px rgba(15, 61, 98, .06), 0 4px 12px rgba(15, 61, 98, .04)'
+        boxShadow: 'var(--shadow-1)'
       }}
     >
       {/* Título con icono */}

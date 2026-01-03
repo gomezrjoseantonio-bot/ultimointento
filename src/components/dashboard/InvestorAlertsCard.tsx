@@ -63,7 +63,7 @@ const InvestorAlertsCard: React.FC<InvestorAlertsCardProps> = ({
         border: '1px solid var(--hz-neutral-300)',
         borderRadius: '12px',
         padding: '24px',
-        boxShadow: '0 1px 2px rgba(15, 61, 98, .06), 0 4px 12px rgba(15, 61, 98, .04)'
+        boxShadow: 'var(--shadow-1)'
       }}
     >
       {/* Título */}
@@ -132,7 +132,7 @@ const InvestorAlertsCard: React.FC<InvestorAlertsCardProps> = ({
               }}
               onMouseEnter={(e) => {
                 if (onAlertClick) {
-                  e.currentTarget.style.backgroundColor = '#FFF3DC';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 193, 7, 0.15)';
                 }
               }}
               onMouseLeave={(e) => {
