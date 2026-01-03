@@ -88,7 +88,8 @@ const GastoForm: React.FC<GastoFormProps> = ({ isOpen, onClose, autonomoId, onSa
       onClose();
     } catch (error) {
       console.error('Error adding gasto:', error);
-      toast.error('Error al añadir el gasto');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al añadir el gasto: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

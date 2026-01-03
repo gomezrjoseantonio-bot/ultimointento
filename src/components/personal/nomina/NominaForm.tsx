@@ -104,7 +104,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
       onClose();
     } catch (error) {
       console.error('Error saving nomina:', error);
-      toast.error('Error al guardar la nómina');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al guardar la nómina: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

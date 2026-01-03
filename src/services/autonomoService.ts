@@ -52,14 +52,23 @@ class AutonomoService {
   async saveAutonomo(autonomo: Omit<Autonomo, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): Promise<Autonomo> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const now = new Date().toISOString();
       
-      // If setting as active, deactivate other autonomos for the same personalDataId
+      // Desactivar otros autónomos EN LA MISMA TRANSACCIÓN
       if (autonomo.activo) {
-        await this.deactivateOtherAutonomos(autonomo.personalDataId, undefined);
+        const index = store.index('personalDataId');
+        const existingAutonomos = await index.getAll(autonomo.personalDataId);
+        
+        for (const existing of existingAutonomos) {
+          if (existing.activo) {
+            existing.activo = false;
+            existing.fechaActualizacion = now;
+            await store.put(existing);
+          }
+        }
       }
       
       const newAutonomo: Autonomo = {
@@ -69,11 +78,12 @@ class AutonomoService {
       };
 
       const result = await store.add(newAutonomo);
-      newAutonomo.id = result;
+      newAutonomo.id = result as number;
       
-      await transaction.complete;
+      await tx.done;
       return newAutonomo;
     } catch (error) {
+      this.db = null;
       console.error('Error saving autonomo:', error);
       throw error;
     }
@@ -85,30 +95,42 @@ class AutonomoService {
   async updateAutonomo(id: number, updates: Partial<Autonomo>): Promise<Autonomo> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const existing = await store.get(id);
       if (!existing) {
         throw new Error('Autonomo not found');
       }
 
-      // If setting as active, deactivate other autonomos for the same personalDataId
+      const now = new Date().toISOString();
+
+      // Desactivar otros autónomos EN LA MISMA TRANSACCIÓN
       if (updates.activo) {
-        await this.deactivateOtherAutonomos(existing.personalDataId, id);
+        const index = store.index('personalDataId');
+        const allAutonomos = await index.getAll(existing.personalDataId);
+        
+        for (const autonomo of allAutonomos) {
+          if (autonomo.id !== id && autonomo.activo) {
+            autonomo.activo = false;
+            autonomo.fechaActualizacion = now;
+            await store.put(autonomo);
+          }
+        }
       }
 
       const updated: Autonomo = {
         ...existing,
         ...updates,
-        fechaActualizacion: new Date().toISOString()
+        fechaActualizacion: now
       };
 
       await store.put(updated);
-      await transaction.complete;
+      await tx.done;
       
       return updated;
     } catch (error) {
+      this.db = null;
       console.error('Error updating autonomo:', error);
       throw error;
     }
@@ -120,37 +142,14 @@ class AutonomoService {
   async deleteAutonomo(id: number): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       await store.delete(id);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error deleting autonomo:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Deactivate other autonomos for the same personal data ID
-   */
-  private async deactivateOtherAutonomos(personalDataId: number, excludeId?: number): Promise<void> {
-    try {
-      const autonomos = await this.getAutonomos(personalDataId);
-      const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
-
-      for (const autonomo of autonomos) {
-        if (autonomo.id !== excludeId && autonomo.activo) {
-          const updated = { ...autonomo, activo: false, fechaActualizacion: new Date().toISOString() };
-          await store.put(updated);
-        }
-      }
-
-      await transaction.complete;
-    } catch (error) {
-      console.error('Error deactivating other autonomos:', error);
       throw error;
     }
   }
@@ -209,8 +208,8 @@ class AutonomoService {
   async addIngreso(autonomoId: number, ingreso: Omit<IngresosAutonomo, 'id'>): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const autonomo = await store.get(autonomoId);
       if (!autonomo) {
@@ -226,8 +225,9 @@ class AutonomoService {
       autonomo.fechaActualizacion = new Date().toISOString();
 
       await store.put(autonomo);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error adding ingreso:', error);
       throw error;
     }
@@ -239,8 +239,8 @@ class AutonomoService {
   async addGasto(autonomoId: number, gasto: Omit<GastoDeducible, 'id'>): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const autonomo = await store.get(autonomoId);
       if (!autonomo) {
@@ -256,8 +256,9 @@ class AutonomoService {
       autonomo.fechaActualizacion = new Date().toISOString();
 
       await store.put(autonomo);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error adding gasto:', error);
       throw error;
     }
@@ -269,8 +270,8 @@ class AutonomoService {
   async removeIngreso(autonomoId: number, ingresoId: string): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const autonomo = await store.get(autonomoId);
       if (!autonomo) {
@@ -281,8 +282,9 @@ class AutonomoService {
       autonomo.fechaActualizacion = new Date().toISOString();
 
       await store.put(autonomo);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error removing ingreso:', error);
       throw error;
     }
@@ -294,8 +296,8 @@ class AutonomoService {
   async removeGasto(autonomoId: number, gastoId: string): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['autonomos'], 'readwrite');
-      const store = transaction.objectStore('autonomos');
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
       
       const autonomo = await store.get(autonomoId);
       if (!autonomo) {
@@ -306,8 +308,9 @@ class AutonomoService {
       autonomo.fechaActualizacion = new Date().toISOString();
 
       await store.put(autonomo);
-      await transaction.complete;
+      await tx.done;
     } catch (error) {
+      this.db = null;
       console.error('Error removing gasto:', error);
       throw error;
     }

@@ -67,7 +67,8 @@ const IngresoForm: React.FC<IngresoFormProps> = ({ isOpen, onClose, autonomoId, 
       onClose();
     } catch (error) {
       console.error('Error adding ingreso:', error);
-      toast.error('Error al añadir el ingreso');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      toast.error(`Error al añadir el ingreso: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
