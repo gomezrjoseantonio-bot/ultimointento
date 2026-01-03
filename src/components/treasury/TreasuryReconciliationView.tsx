@@ -19,7 +19,6 @@ import {
   Building
 } from 'lucide-react';
 import SummaryFlipCard from './SummaryFlipCard';
-import AccountCard from './AccountCard';
 import ReconciliationModal from './ReconciliationModal';
 import toast from 'react-hot-toast';
 import './treasury-reconciliation.css';
@@ -236,46 +235,6 @@ const TreasuryReconciliationView: React.FC = () => {
       cashflow: { previsto: 0, real: 0 }
     }
   );
-
-  const handleAccountClick = (accountId: string) => {
-    setSelectedAccount(accountId);
-    // Load movements for this account
-    loadMovements(accountId);
-  };
-
-  const loadMovements = (accountId: string) => {
-    // Mock movements
-    const mockMovements: Movement[] = [
-      {
-        id: '1',
-        concept: 'Alquiler - Propiedad 1',
-        amount: 850,
-        date: `${currentMonth}-05`,
-        type: 'income',
-        status: 'previsto',
-        category: 'Alquiler'
-      },
-      {
-        id: '2',
-        concept: 'Cuota préstamo hipotecario',
-        amount: -450,
-        date: `${currentMonth}-10`,
-        type: 'financing',
-        status: 'previsto',
-        category: 'Financiación'
-      },
-      {
-        id: '3',
-        concept: 'Comunidad Propiedad 2',
-        amount: -120,
-        date: `${currentMonth}-15`,
-        type: 'expense',
-        status: 'confirmado',
-        category: 'Gastos'
-      }
-    ];
-    setMovements(mockMovements);
-  };
 
   const handleConfirmMovement = (movementId: string, realAmount?: number) => {
     setMovements(prev =>
