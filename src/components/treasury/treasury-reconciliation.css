@@ -8,8 +8,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 12px;
+  padding: 12px;
+  gap: 8px;
 }
 
 .treasury-header {
@@ -65,8 +65,8 @@
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  height: 64px;
+  gap: 8px;
+  height: 80px;
 }
 
 .accounts-grid {
@@ -74,8 +74,9 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
+  overflow: hidden;
 }
 
 /* ===== SUMMARY FLIP CARD ===== */
@@ -84,11 +85,12 @@
   background: var(--bg-card);
   border: 1px solid var(--hz-neutral-200);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   cursor: pointer;
   perspective: 1000px;
   position: relative;
   transition: border-color 0.2s;
+  height: 100%;
 }
 
 .summary-flip-card:hover {
@@ -131,14 +133,18 @@
 }
 
 .summary-flip-card__icon {
-  width: 16px;
-  height: 16px;
   color: var(--atlas-blue);
   flex-shrink: 0;
 }
 
 .summary-flip-card__title {
   font-size: 12px;
+  font-weight: var(--font-medium);
+  color: var(--text-gray);
+}
+
+.summary-flip-card__title-back {
+  font-size: 11px;
   font-weight: var(--font-medium);
   color: var(--text-gray);
 }
@@ -160,42 +166,37 @@
 .summary-flip-card__detail-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-top: 2px;
+  gap: 3px;
+  margin-top: 4px;
+  overflow-y: auto;
 }
 
 .summary-flip-card__detail-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 4px;
   font-size: 10px;
 }
 
+.summary-flip-card__detail-icon {
+  color: var(--atlas-blue);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 .summary-flip-card__detail-label {
-  color: var(--text-gray);
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  flex-shrink: 0;
+  min-width: 60px;
 }
 
 .summary-flip-card__detail-value {
   font-feature-settings: 'tnum';
   font-weight: var(--font-medium);
   color: var(--atlas-navy-1);
-}
-
-/* Variant colors */
-.summary-flip-card--income .summary-flip-card__icon {
-  color: var(--ok);
-}
-
-.summary-flip-card--expense .summary-flip-card__icon {
-  color: var(--error);
-}
-
-.summary-flip-card--financing .summary-flip-card__icon {
-  color: var(--atlas-teal);
-}
-
-.summary-flip-card--cashflow .summary-flip-card__icon {
-  color: var(--atlas-blue);
+  margin-left: auto;
+  text-align: right;
 }
 
 /* ===== ACCOUNT CARD ===== */
@@ -204,14 +205,16 @@
   background: var(--bg-card);
   border: 1px solid var(--hz-neutral-200);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   transition: border-color 0.2s;
   min-height: 0;
   overflow: hidden;
+  font-size: 11px;
+  max-height: 150px;
 }
 
 .account-card:hover:not(.account-card--disabled) {
@@ -235,14 +238,12 @@
 }
 
 .account-card__icon {
-  width: 16px;
-  height: 16px;
   color: var(--atlas-blue);
   flex-shrink: 0;
 }
 
 .account-card__name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: var(--font-semibold);
   color: var(--atlas-navy-1);
   white-space: nowrap;
@@ -251,7 +252,7 @@
 }
 
 .account-card__status {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-gray);
   margin-left: auto;
   flex-shrink: 0;
@@ -264,37 +265,44 @@
 .account-card__divider {
   height: 1px;
   background: var(--hz-neutral-200);
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .account-card__row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 4px;
+  font-size: 10px;
 }
 
 .account-card__row-icon {
-  width: 12px;
-  height: 12px;
-  color: var(--text-gray);
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.account-card__row-label {
+  font-size: 9px;
+  font-weight: var(--font-medium);
+  color: var(--atlas-navy-1);
   flex-shrink: 0;
 }
 
 .account-card__row-values {
   font-feature-settings: 'tnum';
   color: var(--atlas-navy-1);
+  margin-left: auto;
+  text-align: right;
 }
 
 .account-card__saldo-label {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-gray);
   text-transform: uppercase;
   margin-top: 2px;
 }
 
 .account-card__saldo-values {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: var(--font-semibold);
   font-feature-settings: 'tnum';
   color: var(--atlas-navy-1);

@@ -1,5 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, CreditCard, Activity } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  TrendingUp, 
+  TrendingDown, 
+  CreditCard, 
+  Activity,
+  Briefcase,
+  Zap,
+  Home,
+  LineChart,
+  Building2,
+  Settings,
+  User,
+  Package,
+  FileText,
+  Receipt,
+  Building
+} from 'lucide-react';
 import SummaryFlipCard from './SummaryFlipCard';
 import AccountCard from './AccountCard';
 import ReconciliationModal from './ReconciliationModal';
@@ -38,9 +56,10 @@ interface Movement {
  * Vista principal de conciliación de tesorería con:
  * - 0 scroll (todo en 1 pantalla)
  * - 8 cuentas bancarias en grid 4x2
- * - Tarjetas resumen con flip
- * - Solo iconos Lucide
- * - Colores ATLAS Design Bible
+ * - Tarjetas resumen con flip detallado
+ * - Solo iconos Lucide en AZUL ATLAS
+ * - Colores ATLAS Design Bible (NO verde/rojo en valores)
+ * - Números completos sin abreviaciones "k"
  */
 const TreasuryReconciliationView: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
@@ -317,8 +336,11 @@ const TreasuryReconciliationView: React.FC = () => {
           real={globalTotals.ingresos.real}
           variant="income"
           detalles={[
-            { label: 'Alquileres', valor: globalTotals.ingresos.real * 0.8 },
-            { label: 'Otros', valor: globalTotals.ingresos.real * 0.2 }
+            { icon: Briefcase, label: 'Nómina', previsto: 2500, real: 2100 },
+            { icon: Zap, label: 'Servicios Freelance', previsto: 800, real: 600 },
+            { icon: Home, label: 'Rentas de alquiler', previsto: 1850, real: 1850 },
+            { icon: LineChart, label: 'Intereses posiciones', previsto: 120, real: 120 },
+            { icon: Building2, label: 'Venta de activos', previsto: 0, real: 0 }
           ]}
         />
         <SummaryFlipCard
@@ -328,9 +350,11 @@ const TreasuryReconciliationView: React.FC = () => {
           real={globalTotals.gastos.real}
           variant="expense"
           detalles={[
-            { label: 'Comunidad', valor: globalTotals.gastos.real * 0.4 },
-            { label: 'IBI', valor: globalTotals.gastos.real * 0.3 },
-            { label: 'Otros', valor: globalTotals.gastos.real * 0.3 }
+            { icon: Settings, label: 'Gastos operativos', previsto: 400, real: 350 },
+            { icon: User, label: 'Gastos personales', previsto: 1200, real: 1100 },
+            { icon: Package, label: 'Gastos Freelance', previsto: 200, real: 150 },
+            { icon: FileText, label: 'Gastos venta activos', previsto: 0, real: 0 },
+            { icon: Receipt, label: 'IRPF a pagar', previsto: 0, real: 0 }
           ]}
         />
         <SummaryFlipCard
@@ -340,7 +364,8 @@ const TreasuryReconciliationView: React.FC = () => {
           real={globalTotals.financiacion.real}
           variant="financing"
           detalles={[
-            { label: 'Hipotecas', valor: globalTotals.financiacion.real }
+            { icon: Building, label: 'Cuotas hipotecas', previsto: 800, real: 800 },
+            { icon: CreditCard, label: 'Cuotas préstamos', previsto: 200, real: 200 }
           ]}
         />
         <SummaryFlipCard

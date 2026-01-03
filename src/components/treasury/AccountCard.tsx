@@ -27,20 +27,22 @@ interface AccountCardProps {
  * Tarjeta por cuenta bancaria, compacta para caber 8 en grid 4x2.
  * 
  * Estructura visual (altura ~130px):
- * - Header: icono + nombre
+ * - Header: icono AZUL + nombre
  * - Status: ratio conciliados/total
  * - Divider
- * - Ingresos: ↑ prev/real
- * - Gastos: ↓ prev/real
- * - Financiación: [CreditCard] prev/real
+ * - INGRESOS: ↑ AZUL + label negro + prev/real negro
+ * - GASTOS: ↓ AZUL + label negro + prev/real negro
+ * - FINANCIACIÓN: [CreditCard] AZUL + label negro + prev/real negro
  * - Divider
  * - Saldo label
- * - Saldo: prev/real (destacado)
+ * - Saldo: prev/real (destacado, negro)
  * 
  * Estados:
  * - Normal: borde var(--hz-neutral-200)
  * - Hover: borde var(--atlas-blue)
  * - Completo (100%): borde var(--ok), fondo sutil verde
+ * 
+ * IMPORTANTE: Iconos SOLO azul ATLAS, texto SOLO negro/navy (NO verde/rojo)
  */
 const AccountCard: React.FC<AccountCardProps> = ({
   account,
@@ -70,7 +72,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
     >
       {/* Header */}
       <div className="account-card__header">
-        <AccountIcon className="account-card__icon" />
+        <AccountIcon className="account-card__icon" size={16} />
         <span className="account-card__name">{account.name}</span>
       </div>
 
@@ -83,7 +85,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* Ingresos */}
       <div className="account-card__row">
-        <TrendingUp className="account-card__row-icon" />
+        <TrendingUp className="account-card__row-icon" size={12} />
+        <span className="account-card__row-label">INGRESOS:</span>
         <span className="account-card__row-values">
           {formatCompact(stats.ingresos.previsto)} / {formatCompact(stats.ingresos.real)}
         </span>
@@ -91,7 +94,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* Gastos */}
       <div className="account-card__row">
-        <TrendingDown className="account-card__row-icon" />
+        <TrendingDown className="account-card__row-icon" size={12} />
+        <span className="account-card__row-label">GASTOS:</span>
         <span className="account-card__row-values">
           {formatCompact(stats.gastos.previsto)} / {formatCompact(stats.gastos.real)}
         </span>
@@ -99,7 +103,8 @@ const AccountCard: React.FC<AccountCardProps> = ({
 
       {/* Financiación */}
       <div className="account-card__row">
-        <CreditCard className="account-card__row-icon" />
+        <CreditCard className="account-card__row-icon" size={12} />
+        <span className="account-card__row-label">FINANCIACIÓN:</span>
         <span className="account-card__row-values">
           {formatCompact(stats.financiacion.previsto)} / {formatCompact(stats.financiacion.real)}
         </span>
@@ -108,7 +113,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
       <div className="account-card__divider" />
 
       {/* Saldo */}
-      <div className="account-card__saldo-label">Saldo</div>
+      <div className="account-card__saldo-label">SALDO</div>
       <div className="account-card__saldo-values">
         {formatCompact(stats.saldo.previsto)} / {formatCompact(stats.saldo.real)}
       </div>
