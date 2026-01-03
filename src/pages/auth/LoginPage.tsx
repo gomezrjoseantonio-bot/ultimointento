@@ -37,15 +37,6 @@ const LoginPage: React.FC = () => {
           <p className="text-neutral-600 mt-2">Horizon & Pulse</p>
         </div>
 
-        {/* Alert - Demo mode */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-amber-800">
-            <strong>🧪 MODO PROTOTIPO</strong><br />
-            Usuario demo: <code className="bg-amber-100 px-2 py-1 rounded">demo@atlas.com</code><br />
-            Contraseña: <code className="bg-amber-100 px-2 py-1 rounded">demo123</code>
-          </p>
-        </div>
-
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
