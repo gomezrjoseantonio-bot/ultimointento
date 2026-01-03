@@ -126,6 +126,9 @@ export const roundCurrency = (amount: number): number => {
 
 // Format numbers for treasury view - NO abbreviations, full numbers with Spanish locale
 // Examples: 2500 → "2.500", 15800 → "15.800", 1234567 → "1.234.567"
-export const formatCompact = (value: number): string => {
+export const formatCompact = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '—';
+  }
   return value.toLocaleString('es-ES', { maximumFractionDigits: 0 });
 };
