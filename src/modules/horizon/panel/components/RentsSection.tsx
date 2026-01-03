@@ -49,55 +49,16 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
     }, 500);
   };
   
+  // TODO: Replace with real data from contracts service
+  // For now, show empty state
   const rentData: RentData = {
     month: currentMonth,
-    collected: 2850,
-    pending: 450,
-    total: 3300
+    collected: 0,
+    pending: 0,
+    total: 0
   };
 
-  const propertiesData: PropertyData[] = [
-    {
-      id: '1',
-      name: 'Piso Centro',
-      expected: 1200,
-      collected: 1200,
-      deviation: 0,
-      deviationPercent: 0
-    },
-    {
-      id: '2',
-      name: 'Apartamento Norte',
-      expected: 950,
-      collected: 950,
-      deviation: 0,
-      deviationPercent: 0
-    },
-    {
-      id: '3',
-      name: 'Estudio Centro',
-      expected: 700,
-      collected: 700,
-      deviation: 0,
-      deviationPercent: 0
-    },
-    {
-      id: '4',
-      name: 'Ático Barrio Sur',
-      expected: 450,
-      collected: 0,
-      deviation: -450,
-      deviationPercent: -100
-    },
-    {
-      id: '5',
-      name: 'Local Comercial',
-      expected: 800,
-      collected: 800,
-      deviation: 0,
-      deviationPercent: 0
-    }
-  ].slice(0, 5); // Top 5 as specified
+  const propertiesData: PropertyData[] = [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -124,7 +85,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
           <p>Sin contratos configurados</p>
           <button 
             onClick={handleConfigureContracts}
-            className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
+            className="mt-4 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-light transition-colors"
           >
             Configurar contratos
           </button>
@@ -139,7 +100,7 @@ const RentsSection: React.FC<RentsSectionProps> = ({ filters }) => {
         <h2 className="text-lg font-semibold text-hz-neutral-900">Rentas</h2>
         <button 
           onClick={handleViewContracts}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary- light transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-hz-primary text-white rounded-lg hover:bg-hz-primary-light transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
           Ver contratos

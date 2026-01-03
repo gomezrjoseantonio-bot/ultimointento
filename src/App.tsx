@@ -80,12 +80,6 @@ const ProfileSeederPage = React.lazy(() =>
 // Image Description page - New feature
 const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPage'));
 
-// Demo page for color-coded movement display requirements
-const ColorCodedMovementDemo = React.lazy(() => import('./pages/ColorCodedMovementDemo'));
-
-// Treasury Learning Engine Demo
-const TreasuryLearningEngineDemo = React.lazy(() => import('./components/treasury/TreasuryLearningEngineDemo'));
-
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
 
@@ -288,11 +282,6 @@ function App() {
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Tesoreria />
-                </React.Suspense>
-              } />
-              <Route path="learning-demo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TreasuryLearningEngineDemo />
                 </React.Suspense>
               } />
               <Route path="cuenta/:id" element={
@@ -529,14 +518,6 @@ function App() {
                   element={
                     <React.Suspense fallback={<div>Cargando...</div>}>
                       <ProfileSeederPage />
-                    </React.Suspense>
-                  } 
-                />
-                <Route 
-                  path="__demo-colors" 
-                  element={
-                    <React.Suspense fallback={<div>Cargando...</div>}>
-                      <ColorCodedMovementDemo />
                     </React.Suspense>
                   } 
                 />

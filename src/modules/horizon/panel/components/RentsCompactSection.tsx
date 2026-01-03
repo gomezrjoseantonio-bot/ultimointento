@@ -25,18 +25,16 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
       navigate('/inmuebles/contratos');
     }, 500);
   };
-  // Mock data - in real implementation would come from contracts service
-  const collected = 2850;
-  const pending = 450;
+
+  // TODO: Replace with real data from contracts service
+  // For now, show empty state
+  const collected = 0;
+  const pending = 0;
   const total = collected + pending;
-  const collectionPercent = Math.round((collected / total) * 100);
+  const collectionPercent = total > 0 ? Math.round((collected / total) * 100) : 0;
 
   // Top 3 properties for compact view
-  const properties: Property[] = [
-    { id: '1', name: 'Piso Centro', collectionPercent: 100 },
-    { id: '2', name: 'Apartamento Norte', collectionPercent: 100 },
-    { id: '3', name: 'Ático Sur', collectionPercent: 0 }
-  ];
+  const properties: Property[] = [];
 
   const doughnutData = [
     { name: 'Cobradas', value: collected, color: 'var(--ok)' },
@@ -52,6 +50,32 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
     }).format(amount);
   };
 
+  // Show empty state if no contracts
+  if (total === 0 || properties.length === 0) {
+    return (
+      <div className="h-full bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-3 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-hz-neutral-900">Rentas del mes</h2>
+          <button 
+            onClick={handleOpenContracts}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-light"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Abrir Contratos
+          </button>
+        </div>
+        
+        {/* Empty State */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-hz-neutral-500">
+            <p className="text-xs">No hay rentas configuradas</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full bg-hz-card-bg rounded-lg border border-hz-neutral-300 p-3 flex flex-col">
       {/* Header */}
@@ -59,7 +83,7 @@ const RentsCompactSection: React.FC<RentsCompactSectionProps> = ({ filters }) =>
         <h2 className="text-sm font-semibold text-hz-neutral-900">Rentas del mes</h2>
         <button 
           onClick={handleOpenContracts}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary- light "
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-hz-primary text-white rounded hover:bg-hz-primary-light"
         >
           <ExternalLink className="w-3 h-3" />
           Abrir Contratos
