@@ -36,6 +36,9 @@ const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Car
 const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
 const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
 
+// Inversiones Module
+const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
+
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
@@ -273,6 +276,13 @@ function App() {
                 </React.Suspense>
               } />
             </Route>
+            
+            {/* Inversiones Module */}
+            <Route path="inversiones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesPage />
+              </React.Suspense>
+            } />
             
             <Route path="tesoreria">
               <Route index element={
