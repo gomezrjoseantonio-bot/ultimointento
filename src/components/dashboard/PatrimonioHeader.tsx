@@ -1,37 +1,45 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Minus, Building2, LineChart, Landmark, CreditCard } from 'lucide-react';
 
 interface PatrimonioHeaderProps {
   patrimonioNeto: number;
   variacionPorcentaje: number;
-  mes?: string; // e.g., "Enero 2026"
+  desglose?: {
+    inmuebles: number;
+    inversiones: number;
+    cuentas: number;
+    deuda: number;
+  };
+  fechaCalculo?: string;
 }
 
 /**
- * PatrimonioHeader - Header showing total net worth and variation
+ * PatrimonioHeader - Header showing total net worth with breakdown
  * 
  * Displays:
- * - Title "MI PATRIMONIO"
- * - Current month/year
+ * - Title "PATRIMONIO NETO"
+ * - Current date
  * - Total net worth with variation percentage and trend indicator
+ * - Breakdown with 4 icons: Inmuebles, Inversiones, Cuentas, Deuda
  * 
  * 100% ATLAS Design Bible compliant:
- * - Inter font with tabular-nums for numbers
- * - CSS tokens only (var(--atlas-blue), var(--ok), var(--error))
+ * - Lucide icons only (NO emojis)
+ * - Monochromatic colors + semantic (green/red for trends)
  * - Spanish locale formatting (1.234,56 €)
  */
 const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
   patrimonioNeto,
   variacionPorcentaje,
-  mes
+  desglose,
+  fechaCalculo
 }) => {
   // Format currency in Spanish locale
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
     }).format(value);
   };
 
@@ -41,99 +49,83 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
     return `${sign}${value.toFixed(1)}%`;
   };
 
-  // Get current month if not provided
-  const getCurrentMonth = (): string => {
-    const now = new Date();
+  // Get current date formatted
+  const getCurrentDate = (): string => {
+    const date = fechaCalculo ? new Date(fechaCalculo) : new Date();
     return new Intl.DateTimeFormat('es-ES', {
-      month: 'long',
+      day: 'numeric',
+      month: 'short',
       year: 'numeric'
-    }).format(now);
+    }).format(date);
   };
 
-  const displayMonth = mes || getCurrentMonth();
-  const isPositive = variacionPorcentaje >= 0;
+  const isPositive = variacionPorcentaje > 0;
+  const isNegative = variacionPorcentaje < 0;
 
   return (
     <div
       style={{
         padding: '24px',
         borderBottom: '1px solid var(--border)',
-        backgroundColor: 'var(--bg)'
+        backgroundColor: 'var(--bg)',
+        fontFamily: 'var(--font-inter)'
       }}
     >
-      {/* Header row with title and month */}
+      {/* Header row with title and date */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '16px',
-          fontFamily: 'var(--font-inter)'
+          marginBottom: '8px'
         }}
       >
         <h1
           style={{
-            fontSize: '1.5rem',
+            fontSize: '0.875rem',
             fontWeight: 600,
-            color: 'var(--atlas-navy-1)',
+            color: 'var(--text-gray)',
             margin: 0,
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
           }}
         >
-          <Landmark size={24} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} aria-hidden="true" />
-          MI PATRIMONIO
+          <Wallet size={18} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} aria-hidden="true" />
+          PATRIMONIO NETO
         </h1>
         <span
           style={{
-            fontSize: '0.875rem',
+            fontSize: '0.75rem',
             color: 'var(--text-gray)',
-            textTransform: 'capitalize'
+            fontWeight: 500
           }}
         >
-          {displayMonth}
+          {getCurrentDate()}
         </span>
       </div>
 
-      {/* Net worth display */}
+      {/* Net worth display with variation */}
       <div
         style={{
           display: 'flex',
           alignItems: 'baseline',
           gap: '16px',
-          fontFamily: 'var(--font-inter)'
+          marginBottom: '16px'
         }}
       >
-        <div
+        <span
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px'
+            fontSize: '2rem',
+            fontWeight: 700,
+            color: 'var(--atlas-navy-1)',
+            fontVariantNumeric: 'tabular-nums'
           }}
         >
-          <span
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 500,
-              color: 'var(--text-gray)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}
-          >
-            Patrimonio neto total
-          </span>
-          <span
-            style={{
-              fontSize: '2rem',
-              fontWeight: 700,
-              color: 'var(--atlas-navy-1)',
-              fontVariantNumeric: 'tabular-nums'
-            }}
-          >
-            {formatCurrency(patrimonioNeto)}
-          </span>
-        </div>
+          {formatCurrency(patrimonioNeto)}
+        </span>
 
         {/* Variation indicator */}
         {variacionPorcentaje !== 0 && (
@@ -142,12 +134,7 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              padding: '4px 12px',
-              borderRadius: '6px',
-              backgroundColor: isPositive
-                ? 'rgba(40, 167, 69, 0.1)'
-                : 'rgba(220, 53, 69, 0.1)',
-              color: isPositive ? 'var(--ok)' : 'var(--error)',
+              color: isPositive ? 'var(--ok)' : isNegative ? 'var(--alert)' : 'var(--text-gray)',
               fontSize: '0.875rem',
               fontWeight: 600,
               fontVariantNumeric: 'tabular-nums'
@@ -155,23 +142,168 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
           >
             {isPositive ? (
               <TrendingUp size={16} strokeWidth={2.5} aria-label="Tendencia positiva" />
-            ) : (
+            ) : isNegative ? (
               <TrendingDown size={16} strokeWidth={2.5} aria-label="Tendencia negativa" />
+            ) : (
+              <Minus size={16} strokeWidth={2.5} aria-label="Sin cambios" />
             )}
             {formatPercentage(variacionPorcentaje)}
-            <span
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 400,
-                marginLeft: '4px',
-                opacity: 0.8
-              }}
-            >
-              vs mes anterior
-            </span>
           </div>
         )}
       </div>
+
+      {/* Breakdown - 4 icons with amounts */}
+      {desglose && (
+        <div
+          style={{
+            display: 'flex',
+            gap: '24px',
+            alignItems: 'center'
+          }}
+        >
+          {/* Inmuebles */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Building2 
+              size={16} 
+              strokeWidth={1.5} 
+              style={{ color: 'var(--atlas-blue)' }} 
+              aria-hidden="true" 
+            />
+            <span
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--atlas-navy-1)',
+                fontVariantNumeric: 'tabular-nums'
+              }}
+            >
+              {formatCurrency(desglose.inmuebles)}
+            </span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-gray)',
+                fontWeight: 400
+              }}
+            >
+              Inmuebles
+            </span>
+          </div>
+
+          {/* Inversiones */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <LineChart 
+              size={16} 
+              strokeWidth={1.5} 
+              style={{ color: 'var(--atlas-blue)' }} 
+              aria-hidden="true" 
+            />
+            <span
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--atlas-navy-1)',
+                fontVariantNumeric: 'tabular-nums'
+              }}
+            >
+              {formatCurrency(desglose.inversiones)}
+            </span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-gray)',
+                fontWeight: 400
+              }}
+            >
+              Inversiones
+            </span>
+          </div>
+
+          {/* Cuentas */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Landmark 
+              size={16} 
+              strokeWidth={1.5} 
+              style={{ color: 'var(--atlas-blue)' }} 
+              aria-hidden="true" 
+            />
+            <span
+              style={{
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--atlas-navy-1)',
+                fontVariantNumeric: 'tabular-nums'
+              }}
+            >
+              {formatCurrency(desglose.cuentas)}
+            </span>
+            <span
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-gray)',
+                fontWeight: 400
+              }}
+            >
+              Cuentas
+            </span>
+          </div>
+
+          {/* Deuda */}
+          {desglose.deuda > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <CreditCard 
+                size={16} 
+                strokeWidth={1.5} 
+                style={{ color: 'var(--alert)' }} 
+                aria-hidden="true" 
+              />
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: 'var(--alert)',
+                  fontVariantNumeric: 'tabular-nums'
+                }}
+              >
+                -{formatCurrency(desglose.deuda)}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-gray)',
+                  fontWeight: 400
+                }}
+              >
+                Deuda
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
