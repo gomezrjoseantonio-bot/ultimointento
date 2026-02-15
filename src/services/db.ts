@@ -3,7 +3,7 @@ import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 17; // V1.3: Added Inversiones (Investments) module
+const DB_VERSION = 18; // V1.4: Added Gastos Personales (Personal Expenses) stores
 
 export interface Property {
   id?: number;
@@ -1278,6 +1278,15 @@ interface AtlasHorizonDB {
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
   inversiones: PosicionInversion; // V1.3: Investment positions
+  personalData: any; // V1.2: Personal data
+  personalModuleConfig: any; // V1.2: Personal module configuration
+  nominas: any; // V1.2: Salary data
+  autonomos: any; // V1.2: Self-employed data
+  planesPensionInversion: any; // V1.2: Pension and investment plans
+  otrosIngresos: any; // V1.2: Other income
+  movimientosPersonales: any; // V1.2: Personal movements
+  gastosRecurrentes: any; // V1.4: Recurring expenses
+  gastosPuntuales: any; // V1.4: One-time expenses
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1626,6 +1635,21 @@ export const initDB = async () => {
           inversionesStore.createIndex('tipo', 'tipo', { unique: false });
           inversionesStore.createIndex('activo', 'activo', { unique: false });
           inversionesStore.createIndex('entidad', 'entidad', { unique: false });
+        }
+
+        // V1.4: Gastos Personales stores
+        if (!db.objectStoreNames.contains('gastosRecurrentes')) {
+          const gastosRecurrentesStore = db.createObjectStore('gastosRecurrentes', { keyPath: 'id', autoIncrement: true });
+          gastosRecurrentesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          gastosRecurrentesStore.createIndex('activo', 'activo', { unique: false });
+          gastosRecurrentesStore.createIndex('categoria', 'categoria', { unique: false });
+        }
+        
+        if (!db.objectStoreNames.contains('gastosPuntuales')) {
+          const gastosPuntualesStore = db.createObjectStore('gastosPuntuales', { keyPath: 'id', autoIncrement: true });
+          gastosPuntualesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          gastosPuntualesStore.createIndex('fecha', 'fecha', { unique: false });
+          gastosPuntualesStore.createIndex('categoria', 'categoria', { unique: false });
         }
 
         // General key-value store for application configuration

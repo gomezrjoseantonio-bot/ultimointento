@@ -161,6 +161,12 @@ class NominaService {
   calculateSalary(nomina: Nomina): CalculoNominaResult {
     const { salarioBrutoAnual, distribucion, variables, bonus } = nomina;
     
+    // Get retention configuration (default values if not provided)
+    const retencion = nomina.retencion || { 
+      irpfPorcentaje: 24, 
+      cotizacionSS: 6.35 
+    };
+    
     // Calculate base monthly salary
     const mesesDistribucion = distribucion.tipo === 'personalizado' ? 
       (distribucion.meses || 12) : 
@@ -208,9 +214,8 @@ class NominaService {
       // Total bruto mensual
       const bruteMensual = salarioBase + variablesDelMes + bonusDelMes;
       
-      // Simplified net calculation (approximation)
-      // In a real implementation, this would include tax calculations
-      const netoMensual = this.calculateNetFromBruto(bruteMensual);
+      // Calculate net using configured retention
+      const netoMensual = this.calculateNetFromBruto(bruteMensual, retencion);
       
       distribuccionMensual.push({
         mes,
@@ -233,14 +238,12 @@ class NominaService {
   }
 
   /**
-   * Simplified net salary calculation
-   * In a real implementation, this would use official tax tables
+   * Calculate net salary from gross amount using configurable retention
    */
-  private calculateNetFromBruto(brutoMensual: number): number {
-    // Simplified calculation assuming ~25% total deductions
-    // This includes IRPF, Social Security, unemployment insurance, etc.
-    const deductionRate = 0.25;
-    return brutoMensual * (1 - deductionRate);
+  private calculateNetFromBruto(brutoMensual: number, retencion: { irpfPorcentaje: number; cotizacionSS: number }): number {
+    const irpf = retencion.irpfPorcentaje / 100;
+    const ss = retencion.cotizacionSS / 100;
+    return brutoMensual * (1 - irpf - ss);
   }
 
   /**

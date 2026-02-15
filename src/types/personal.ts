@@ -29,6 +29,10 @@ export interface Nomina {
   bonus: Bonus[];
   cuentaAbono: number; // ID of the bank account
   reglaCobroDia: ReglaDia;
+  retencion: {
+    irpfPorcentaje: number;      // % IRPF (ej: 24)
+    cotizacionSS: number;        // % SS, default 6.35
+  };
   activa: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
@@ -203,4 +207,65 @@ export interface PersonalModuleConfig {
   integracionProyecciones: boolean;
   integracionFiscalidad: boolean;
   fechaActualizacion: string;
+}
+
+// Categorías de gastos personales
+export type CategoriaGasto = 
+  | 'vivienda'      // Hipoteca, alquiler, comunidad
+  | 'suministros'   // Luz, agua, gas, internet
+  | 'transporte'    // Coche, transporte público
+  | 'seguros'       // Todos los seguros
+  | 'suscripciones' // Netflix, Spotify, gimnasio
+  | 'salud'         // Seguro médico, farmacia
+  | 'educacion'     // Cursos, colegios
+  | 'otros';
+
+// Gasto recurrente (mensual, trimestral, etc.)
+export interface GastoRecurrente {
+  id?: number;
+  personalDataId: number;
+  nombre: string;
+  importe: number;
+  frecuencia: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
+  categoria: CategoriaGasto;
+  cuentaPago?: number;           // ID cuenta bancaria (opcional)
+  diaCobro: number;              // Día del mes (1-31)
+  fechaInicio: string;
+  fechaFin?: string;             // Opcional, para gastos temporales
+  activo: boolean;
+  notas?: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+// Gasto puntual (único)
+export interface GastoPuntual {
+  id?: number;
+  personalDataId: number;
+  descripcion: string;
+  importe: number;
+  fecha: string;
+  categoria: CategoriaGasto;
+  cuentaPago?: number;
+  notas?: string;
+  fechaCreacion: string;
+}
+
+// Resumen mensual calculado
+export interface ResumenPersonalMensual {
+  mes: number;
+  anio: number;
+  ingresos: {
+    nomina: number;
+    autonomo: number;
+    otros: number;
+    total: number;
+  };
+  gastos: {
+    recurrentes: number;
+    puntuales: number;
+    total: number;
+  };
+  ahorro: number;
+  variacionMesAnterior: number;  // % cambio vs mes anterior
 }

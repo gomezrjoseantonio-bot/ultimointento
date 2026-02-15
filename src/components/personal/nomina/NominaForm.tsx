@@ -30,6 +30,10 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
       tipo: 'fijo' as const,
       dia: 25
     } as ReglaDia,
+    retencion: {
+      irpfPorcentaje: 24,
+      cotizacionSS: 6.35
+    },
     activa: true
   });
 
@@ -49,6 +53,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         bonus: nomina.bonus,
         cuentaAbono: nomina.cuentaAbono,
         reglaCobroDia: nomina.reglaCobroDia,
+        retencion: nomina.retencion || { irpfPorcentaje: 24, cotizacionSS: 6.35 },
         activa: nomina.activa
       });
     }
@@ -286,6 +291,65 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 />
               </div>
             )}
+          </div>
+
+          {/* Retención IRPF Section */}
+          <div className="space-y-3 border-t border-neutral-200 pt-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium text-neutral-900">Retención IRPF</h3>
+            </div>
+            
+            <p className="text-sm text-neutral-500">
+              Introduce el porcentaje de retención que aparece en tu nómina. 
+              Puedes consultarlo en el apartado "Deducciones" de tu última nómina.
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  % Retención IRPF
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="50"
+                  value={formData.retencion.irpfPorcentaje}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    retencion: {
+                      ...prev.retencion,
+                      irpfPorcentaje: parseFloat(e.target.value) || 0
+                    }
+                  }))}
+                  className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent px-3 py-2"
+                  placeholder="24"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  % Seguridad Social
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  value={formData.retencion.cotizacionSS}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    retencion: {
+                      ...prev.retencion,
+                      cotizacionSS: parseFloat(e.target.value) || 6.35
+                    }
+                  }))}
+                  className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent px-3 py-2"
+                  placeholder="6.35"
+                />
+                <p className="text-xs text-neutral-400 mt-1">Por defecto: 6,35%</p>
+              </div>
+            </div>
           </div>
 
           {/* Variables Section */}
