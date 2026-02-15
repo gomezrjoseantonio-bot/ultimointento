@@ -47,7 +47,7 @@ const GastoPuntualForm: React.FC<GastoPuntualFormProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Nuevo Gasto Puntual"
-      size="medium"
+      size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Descripción */}

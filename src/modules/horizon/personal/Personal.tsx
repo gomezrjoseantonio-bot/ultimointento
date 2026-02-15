@@ -4,7 +4,6 @@ import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins } from 'lucide-rea
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
 import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
-import PlanesManager from '../../../components/personal/planes/PlanesManager';
 import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import GastosManager from '../../../components/personal/gastos/GastosManager';
 import { personalDataService } from '../../../services/personalDataService';
@@ -16,6 +15,8 @@ const Personal: React.FC = () => {
   const location = useLocation();
   const [config, setConfig] = useState<PersonalModuleConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState<ResumenPersonalMensual | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(true);
   
   // Determine active tab from URL
   const getActiveTab = () => {
@@ -34,6 +35,13 @@ const Personal: React.FC = () => {
     loadConfiguration();
   }, []);
 
+  useEffect(() => {
+    if (config && activeTab === 'resumen') {
+      loadResumen();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, activeTab]);
+
   const loadConfiguration = async () => {
     setLoading(true);
     try {
@@ -43,6 +51,28 @@ const Personal: React.FC = () => {
       console.error('Error loading personal module configuration:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadResumen = async () => {
+    if (!config) return;
+    
+    setResumenLoading(true);
+    const now = new Date();
+    const mes = now.getMonth() + 1;
+    const anio = now.getFullYear();
+    
+    try {
+      const data = await personalResumenService.getResumenMensual(
+        config.personalDataId,
+        mes,
+        anio
+      );
+      setResumen(data);
+    } catch (error) {
+      console.error('Error loading resumen:', error);
+    } finally {
+      setResumenLoading(false);
     }
   };
 
@@ -101,35 +131,7 @@ const Personal: React.FC = () => {
   };
 
   const renderResumenSection = () => {
-    const [resumen, setResumen] = useState<ResumenPersonalMensual | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      loadResumen();
-    }, []);
-
-    const loadResumen = async () => {
-      if (!config) return;
-      
-      const now = new Date();
-      const mes = now.getMonth() + 1;
-      const anio = now.getFullYear();
-      
-      try {
-        const data = await personalResumenService.getResumenMensual(
-          config.personalDataId,
-          mes,
-          anio
-        );
-        setResumen(data);
-      } catch (error) {
-        console.error('Error loading resumen:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (loading) {
+    if (resumenLoading) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent rounded-full"></div>
@@ -231,13 +233,6 @@ const Personal: React.FC = () => {
       <AutonomoManager />
     </div>
   );
-
-  const renderPensionesInversionesSection = () => (
-    <div className="space-y-6">
-      <PlanesManager />
-    </div>
-  );
-
   const renderOtrosIngresosSection = () => (
     <div className="space-y-6">
       <OtrosIngresosManager />

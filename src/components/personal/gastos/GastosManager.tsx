@@ -30,6 +30,7 @@ const GastosManager: React.FC = () => {
     if (personalDataId) {
       loadGastos();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [personalDataId]);
 
   const loadPersonalDataId = async () => {
@@ -90,7 +91,7 @@ const GastosManager: React.FC = () => {
   };
 
   const handleDeleteRecurrente = async (id: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este gasto recurrente?')) {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este gasto recurrente?')) {
       return;
     }
 
@@ -128,7 +129,7 @@ const GastosManager: React.FC = () => {
   };
 
   const handleDeletePuntual = async (id: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este gasto puntual?')) {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este gasto puntual?')) {
       return;
     }
 

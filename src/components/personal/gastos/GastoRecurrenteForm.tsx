@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { GastoRecurrente, CategoriaGasto } from '../../../types/personal';
 import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
@@ -83,7 +82,7 @@ const GastoRecurrenteForm: React.FC<GastoRecurrenteFormProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={gasto ? 'Editar Gasto Recurrente' : 'Nuevo Gasto Recurrente'}
-      size="large"
+      size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Nombre */}

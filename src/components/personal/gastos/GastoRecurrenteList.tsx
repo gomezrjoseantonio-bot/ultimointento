@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pencil, Trash2, Power, PowerOff, Home, Car, Shield, Zap, Tv, Heart, GraduationCap, MoreHorizontal } from 'lucide-react';
-import { GastoRecurrente } from '../../../types/personal';
+import { GastoRecurrente, CategoriaGasto } from '../../../types/personal';
 import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
 
 interface GastoRecurrenteListProps {
@@ -20,7 +20,7 @@ const GastoRecurrenteList: React.FC<GastoRecurrenteListProps> = ({
   onDelete,
   onToggleActivo
 }) => {
-  const getCategoriaIcon = (categoria: string) => {
+  const getCategoriaIcon = (categoria: CategoriaGasto) => {
     const iconName = gastosPersonalesService.getCategoriaIcon(categoria);
     const IconComponent = iconMap[iconName] || MoreHorizontal;
     return IconComponent;

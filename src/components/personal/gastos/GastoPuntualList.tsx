@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trash2, Home, Car, Shield, Zap, Tv, Heart, GraduationCap, MoreHorizontal } from 'lucide-react';
-import { GastoPuntual } from '../../../types/personal';
+import { GastoPuntual, CategoriaGasto } from '../../../types/personal';
 import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
 
 interface GastoPuntualListProps {
@@ -13,7 +13,7 @@ const iconMap: Record<string, any> = {
 };
 
 const GastoPuntualList: React.FC<GastoPuntualListProps> = ({ gastos, onDelete }) => {
-  const getCategoriaIcon = (categoria: string) => {
+  const getCategoriaIcon = (categoria: CategoriaGasto) => {
     const iconName = gastosPersonalesService.getCategoriaIcon(categoria);
     const IconComponent = iconMap[iconName] || MoreHorizontal;
     return IconComponent;
