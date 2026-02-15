@@ -34,7 +34,18 @@ const GastoPuntualList: React.FC<GastoPuntualListProps> = ({ gastos, onDelete })
     <div className="space-y-3">
       {gastos.map((gasto) => {
         const IconComponent = getCategoriaIcon(gasto.categoria);
-        const fecha = new Date(gasto.fecha);
+        const fecha = (() => {
+          if (typeof gasto.fecha === 'string') {
+            const parts = gasto.fecha.split('-').map(Number);
+            if (parts.length === 3 && parts.every((n) => !Number.isNaN(n))) {
+              const [year, month, day] = parts;
+              // Construct Date in local time to avoid UTC interpretation issues
+              return new Date(year, month - 1, day);
+            }
+          }
+          // Fallback to default parsing if format is unexpected or not a string
+          return new Date(gasto.fecha as any);
+        })();
 
         return (
           <div key={gasto.id} className="p-4 border border-gray-200 rounded-lg bg-white">
