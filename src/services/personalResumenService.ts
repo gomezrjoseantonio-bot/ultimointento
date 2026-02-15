@@ -93,7 +93,9 @@ class PersonalResumenService {
       const totalGastos = gastos.total;
       const ahorro = totalIngresos - totalGastos;
 
-      // Calculate variation from previous month (TODO: implement properly)
+      // Calculate variation from previous month
+      // TODO: Implement proper calculation comparing with previous month's data
+      // For now, returning 0 as this requires historical data comparison
       const variacionMesAnterior = 0;
 
       return {
