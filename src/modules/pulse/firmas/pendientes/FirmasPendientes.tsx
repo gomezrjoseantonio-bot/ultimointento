@@ -11,7 +11,13 @@ const FirmasPendientes: React.FC = () => {
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Firmas Pendientes</h3>
-            <button className="px-4 py-2 bg-brand-teal text-white rounded-md hover:bg-teal-600 transition-colors">
+            <button 
+              className="atlas-btn-primary"
+              style={{
+                backgroundColor: 'var(--atlas-teal)',
+                color: 'white'
+              }}
+            >
               Nueva Firma
             </button>
           </div>

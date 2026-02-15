@@ -3,7 +3,7 @@
 // Enhanced with Spanish Euro formatting and improved ITP calculation per requirements
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Euro, Calculator, FileText } from 'lucide-react';
+import { Euro, Calculator, FileText, AlertTriangle } from 'lucide-react';
 import { InmuebleStep3, RegimenCompra } from '../../types/inmueble';
 import { validateStep3, calculateTotalTaxAmount } from '../../utils/inmuebleUtils';
 import { 
@@ -512,7 +512,13 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       </span>
                     )}
                     {!ccaaInfo?.isKnown && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-yellow-800">
+                      <span 
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: 'var(--warn-bg)',
+                          color: 'var(--warn)'
+                        }}
+                      >
                         ITP (8%*)
                       </span>
                     )}
@@ -637,15 +643,23 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
             
             {/* Special tax warnings */}
             {specialWarning && (
-              <div className="bg-warning-50 border border-yellow-200 p-3 mt-4">
+              <div 
+                className="border p-3 mt-4"
+                style={{
+                  backgroundColor: 'var(--warn-bg)',
+                  borderColor: 'var(--warn)'
+                }}
+              >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    <AlertTriangle 
+                      className="h-5 w-5" 
+                      style={{ color: 'var(--warn)' }}
+                      strokeWidth={2}
+                    />
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-warning-700">{specialWarning}</p>
+                    <p className="text-sm" style={{ color: 'var(--atlas-navy-1)' }}>{specialWarning}</p>
                   </div>
                 </div>
               </div>

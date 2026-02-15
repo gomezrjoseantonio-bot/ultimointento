@@ -10,16 +10,20 @@
 :root {
   /* ATLAS HORIZON - Official Color Tokens ONLY */
   --atlas-blue: #042C5E;          /* Horizon primary - ONLY allowed blue */
+  --atlas-blue-dark: #031F47;     /* Hover state for atlas-blue */
   --atlas-navy-1: #303A4C;        /* Neutral dark text */
   --atlas-navy-2: #142C50;        /* Dark backgrounds/sidebar */
   --atlas-teal: #1DA0BA;          /* PULSE accent - chips, gestión tags */
+  --atlas-teal-dark: #178999;     /* Hover state for atlas-teal */
   --bg: #F8F9FA;                   /* Light background */
   --text-gray: #6C757D;            /* Secondary text */
   --font-inter: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   
   /* ATLAS Functional States - EXACT requirements */
   --ok: #28A745;                   /* Success green */
+  --ok-dark: #218838;              /* Hover state for success */
   --warn: #FFC107;                 /* Warning yellow */
+  --warn-bg: rgba(255, 193, 7, 0.1); /* Warning background */
   --error: #DC3545;                /* Error red */
   
   /* PROHIBITED COLORS - DO NOT USE */
