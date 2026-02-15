@@ -14,7 +14,7 @@ import {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 18; // V1.4: Added Gastos Personales (Personal Expenses) stores
+const DB_VERSION = 18; // Dashboard refactor: Added patrimonioSnapshots
 
 export interface Property {
   id?: number;
@@ -1255,6 +1255,18 @@ export interface Budget {
   createdBy?: string; // User identifier
 }
 
+// Patrimonio Snapshots - Historical tracking of net worth
+export interface PatrimonioSnapshot {
+  id?: number;
+  fecha: string; // YYYY-MM format (e.g., "2026-02")
+  total: number;
+  inmuebles: number;
+  inversiones: number;
+  cuentas: number;
+  deuda: number;
+  createdAt: string; // ISO timestamp
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
@@ -1289,15 +1301,7 @@ interface AtlasHorizonDB {
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
   inversiones: PosicionInversion; // V1.3: Investment positions
-  personalData: PersonalData; // V1.2: Personal data
-  personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
-  nominas: Nomina; // V1.2: Salary data
-  autonomos: Autonomo; // V1.2: Self-employed data
-  planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
-  otrosIngresos: OtrosIngresos; // V1.2: Other income
-  movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
-  gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
-  gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
+  patrimonioSnapshots: PatrimonioSnapshot; // Dashboard: Historical net worth tracking
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1648,19 +1652,11 @@ export const initDB = async () => {
           inversionesStore.createIndex('entidad', 'entidad', { unique: false });
         }
 
-        // V1.4: Gastos Personales stores
-        if (!db.objectStoreNames.contains('gastosRecurrentes')) {
-          const gastosRecurrentesStore = db.createObjectStore('gastosRecurrentes', { keyPath: 'id', autoIncrement: true });
-          gastosRecurrentesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          gastosRecurrentesStore.createIndex('activo', 'activo', { unique: false });
-          gastosRecurrentesStore.createIndex('categoria', 'categoria', { unique: false });
-        }
-        
-        if (!db.objectStoreNames.contains('gastosPuntuales')) {
-          const gastosPuntualesStore = db.createObjectStore('gastosPuntuales', { keyPath: 'id', autoIncrement: true });
-          gastosPuntualesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          gastosPuntualesStore.createIndex('fecha', 'fecha', { unique: false });
-          gastosPuntualesStore.createIndex('categoria', 'categoria', { unique: false });
+        // Dashboard refactor: Patrimonio Snapshots for historical tracking
+        if (!db.objectStoreNames.contains('patrimonioSnapshots')) {
+          const snapshotsStore = db.createObjectStore('patrimonioSnapshots', { keyPath: 'id', autoIncrement: true });
+          snapshotsStore.createIndex('fecha', 'fecha', { unique: true });
+          snapshotsStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
         // General key-value store for application configuration

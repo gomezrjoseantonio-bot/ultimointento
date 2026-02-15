@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import PatrimonioHeader from './PatrimonioHeader';
-import TresBolsillosGrid from './TresBolsillosGrid';
-import LiquidezSection from './LiquidezSection';
+import FlujosGrid from './FlujosGrid';
+import SaludFinanciera from './SaludFinanciera';
 import AlertasSection from './AlertasSection';
 import { dashboardService } from '../../services/dashboardService';
+import type { PatrimonioData, FlujosCaja, SaludFinanciera as SaludFinancieraType, Alerta } from '../../types/dashboard';
 import './investor-dashboard.css';
 
 interface InvestorDashboardProps {
@@ -11,32 +12,29 @@ interface InvestorDashboardProps {
 }
 
 /**
- * InvestorDashboard - Investor-focused dashboard view
+ * InvestorDashboard - REFACTORED Dashboard v2.0
  * 
  * Displays complete financial overview in a single screen:
- * 1. MI PATRIMONIO - Total net worth with variation
- * 2. 3 BOLSILLOS - Three income sources (Trabajo, Inmuebles, Inversiones)
- * 3. LIQUIDEZ - Liquidity with 30-day projection breakdown
- * 4. REQUIERE ATENCIÓN - Alerts requiring action
+ * 1. PATRIMONIO NETO - Total net worth with breakdown (4 icons)
+ * 2. FLUJOS DE CAJA - Three cashflow sources with trends and occupancy
+ * 3. SALUD FINANCIERA - Liquidity cushion and 30-day projection
+ * 4. REQUIERE ATENCIÓN - Prioritized alerts with amounts
  * 
  * 100% ATLAS Design Bible compliant:
- * - Inter font with tabular-nums
- * - CSS tokens only (NO hardcoded colors)
- * - Lucide icons (NO emojis)
+ * - Lucide icons ONLY (NO emojis)
+ * - Monochromatic + semantic colors (green/red for states)
  * - Spanish locale formatting
- * - Fits in single screen (NO scroll)
- * - NO action buttons in dashboard
- * 
- * @note This is the corrected version per issue requirements
+ * - Fits in single screen (NO scroll at 1080p)
  */
 const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   onNavigate
 }) => {
   const [loading, setLoading] = useState(true);
-  const [patrimonio, setPatrimonio] = useState({
+  const [patrimonio, setPatrimonio] = useState<PatrimonioData>({
     total: 0,
     variacionMes: 0,
     variacionPorcentaje: 0,
+    fechaCalculo: new Date().toISOString(),
     desglose: {
       inmuebles: 0,
       inversiones: 0,
@@ -44,25 +42,23 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
       deuda: 0
     }
   });
-  const [bolsillos, setBolsillos] = useState({
-    trabajo: { mensual: 0, tendencia: 'stable' as 'up' | 'down' | 'stable' },
-    inmuebles: { cashflow: 0, tendencia: 'stable' as 'up' | 'down' | 'stable' },
-    inversiones: { dividendos: 0, tendencia: 'stable' as 'up' | 'down' | 'stable' }
+  const [flujos, setFlujos] = useState<FlujosCaja>({
+    trabajo: { netoMensual: 0, tendencia: 'stable', variacionPorcentaje: 0 },
+    inmuebles: { cashflow: 0, ocupacion: 0, tendencia: 'stable' },
+    inversiones: { rendimientoMes: 0, dividendosMes: 0, tendencia: 'stable' }
   });
-  const [liquidez, setLiquidez] = useState({
-    disponibleHoy: 0,
-    comprometido30d: 0,
-    ingresos30d: 0,
-    proyeccion30d: 0
+  const [salud, setSalud] = useState<SaludFinancieraType>({
+    liquidezHoy: 0,
+    gastoMedioMensual: 0,
+    colchonMeses: 0,
+    estado: 'critical',
+    proyeccion30d: {
+      estimado: 0,
+      ingresos: 0,
+      gastos: 0
+    }
   });
-  const [alertas, setAlertas] = useState<Array<{
-    id: string;
-    tipo: 'trabajo' | 'inmuebles' | 'inversiones' | 'personal';
-    mensaje: string;
-    urgencia: 'alta' | 'media' | 'baja';
-    link: string;
-    diasHastaVencimiento?: number;
-  }>>([]);
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -73,16 +69,16 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
       setLoading(true);
       
       // Load all dashboard data in parallel
-      const [patrimonioData, bolsillosData, liquidezData, alertasData] = await Promise.all([
+      const [patrimonioData, flujosData, saludData, alertasData] = await Promise.all([
         dashboardService.getPatrimonioNeto(),
-        dashboardService.getTresBolsillos(),
-        dashboardService.getLiquidez(),
+        dashboardService.getFlujosCaja(),
+        dashboardService.getSaludFinanciera(),
         dashboardService.getAlertas()
       ]);
 
       setPatrimonio(patrimonioData);
-      setBolsillos(bolsillosData);
-      setLiquidez(liquidezData);
+      setFlujos(flujosData);
+      setSalud(saludData);
       setAlertas(alertasData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -91,7 +87,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
     }
   };
 
-  const handleAlertClick = (alerta: typeof alertas[0]) => {
+  const handleAlertClick = (alerta: Alerta) => {
     onNavigate(alerta.link);
   };
 
@@ -163,80 +159,33 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
     );
   }
 
-  // Show empty state if no data
-  const hasData = patrimonio.total > 0 || bolsillos.trabajo.mensual > 0 || 
-                  bolsillos.inmuebles.cashflow > 0 || liquidez.disponibleHoy > 0;
-
-  if (!hasData) {
-    return (
-      <div
-        style={{
-          maxWidth: '800px',
-          margin: '0 auto',
-          padding: '48px 24px',
-          textAlign: 'center',
-          fontFamily: 'var(--font-inter)'
-        }}
-      >
-        <div
-          style={{
-            padding: '48px',
-            backgroundColor: 'var(--hz-card-bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 600,
-              color: 'var(--atlas-navy-1)',
-              marginBottom: '8px'
-            }}
-          >
-            Bienvenido a ATLAS
-          </h2>
-          <p
-            style={{
-              fontSize: '1rem',
-              color: 'var(--text-gray)',
-              marginBottom: '32px'
-            }}
-          >
-            Empieza añadiendo tu primera fuente de ingresos
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="investor-dashboard">
-      {/* Header - MI PATRIMONIO */}
+      {/* Header - PATRIMONIO NETO with breakdown */}
       <PatrimonioHeader
         patrimonioNeto={patrimonio.total}
         variacionPorcentaje={patrimonio.variacionPorcentaje}
+        desglose={patrimonio.desglose}
+        fechaCalculo={patrimonio.fechaCalculo}
       />
 
-      {/* Grid - TRES BOLSILLOS */}
-      <div className="bolsillos-grid">
-        <TresBolsillosGrid
-          trabajo={bolsillos.trabajo}
-          inmuebles={bolsillos.inmuebles}
-          inversiones={bolsillos.inversiones}
-          onNavigate={onNavigate}
-        />
-      </div>
+      {/* Grid - FLUJOS DE CAJA (3 cards) */}
+      <FlujosGrid
+        trabajo={flujos.trabajo}
+        inmuebles={flujos.inmuebles}
+        inversiones={flujos.inversiones}
+        onNavigate={onNavigate}
+      />
 
-      {/* Bottom sections: Liquidity + Alerts */}
+      {/* Bottom sections: Salud Financiera + Alerts */}
       <div className="bottom-sections">
-        {/* LIQUIDEZ */}
-        <LiquidezSection
-          disponibleHoy={liquidez.disponibleHoy}
-          comprometido30d={liquidez.comprometido30d}
-          ingresos30d={liquidez.ingresos30d}
-          proyeccion30d={liquidez.proyeccion30d}
+        {/* SALUD FINANCIERA */}
+        <SaludFinanciera
+          liquidezHoy={salud.liquidezHoy}
+          gastoMedioMensual={salud.gastoMedioMensual}
+          colchonMeses={salud.colchonMeses}
+          estado={salud.estado}
+          proyeccion30d={salud.proyeccion30d}
         />
 
         {/* REQUIERE ATENCIÓN */}
