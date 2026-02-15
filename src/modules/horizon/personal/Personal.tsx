@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Banknote, User, PiggyBank, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
 import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
-import PlanesManager from '../../../components/personal/planes/PlanesManager';
 import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
+import GastosManager from '../../../components/personal/gastos/GastosManager';
 import { personalDataService } from '../../../services/personalDataService';
-import { PersonalModuleConfig } from '../../../types/personal';
+import { personalResumenService } from '../../../services/personalResumenService';
+import { PersonalModuleConfig, ResumenPersonalMensual } from '../../../types/personal';
 
 const Personal: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [config, setConfig] = useState<PersonalModuleConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resumen, setResumen] = useState<ResumenPersonalMensual | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(true);
   
   // Determine active tab from URL
   const getActiveTab = () => {
@@ -21,7 +24,7 @@ const Personal: React.FC = () => {
     if (path.includes('/resumen')) return 'resumen';
     if (path.includes('/nomina')) return 'nomina';
     if (path.includes('/autonomo')) return 'autonomo';
-    if (path.includes('/pensiones-inversiones')) return 'pensiones-inversiones';
+    if (path.includes('/gastos')) return 'gastos';
     if (path.includes('/otros-ingresos')) return 'otros-ingresos';
     return 'resumen';
   };
@@ -31,6 +34,13 @@ const Personal: React.FC = () => {
   useEffect(() => {
     loadConfiguration();
   }, []);
+
+  useEffect(() => {
+    if (config && activeTab === 'resumen') {
+      loadResumen();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, activeTab]);
 
   const loadConfiguration = async () => {
     setLoading(true);
@@ -44,13 +54,35 @@ const Personal: React.FC = () => {
     }
   };
 
+  const loadResumen = async () => {
+    if (!config) return;
+    
+    setResumenLoading(true);
+    const now = new Date();
+    const mes = now.getMonth() + 1;
+    const anio = now.getFullYear();
+    
+    try {
+      const data = await personalResumenService.getResumenMensual(
+        config.personalDataId,
+        mes,
+        anio
+      );
+      setResumen(data);
+    } catch (error) {
+      console.error('Error loading resumen:', error);
+    } finally {
+      setResumenLoading(false);
+    }
+  };
+
   // Dynamic tabs based on personal data configuration
   const getAllTabs = () => [
-    { id: 'resumen', name: 'Resumen', icon: Home, href: '/personal/resumen', always: true },
+    { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', always: true },
     { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', condition: config?.seccionesActivas.nomina },
-    { id: 'autonomo', name: 'Autónomo', icon: User, href: '/personal/autonomo', condition: config?.seccionesActivas.autonomo },
-    { id: 'pensiones-inversiones', name: 'Pensiones e Inversiones', icon: PiggyBank, href: '/personal/pensiones-inversiones', condition: config?.seccionesActivas.pensionesInversiones },
-    { id: 'otros-ingresos', name: 'Otros Ingresos', icon: DollarSign, href: '/personal/otros-ingresos', condition: config?.seccionesActivas.otrosIngresos },
+    { id: 'autonomo', name: 'Autónomo', icon: Briefcase, href: '/personal/autonomo', condition: config?.seccionesActivas.autonomo },
+    { id: 'gastos', name: 'Gastos', icon: Receipt, href: '/personal/gastos', always: true },
+    { id: 'otros-ingresos', name: 'Otros Ingresos', icon: Coins, href: '/personal/otros-ingresos', always: true },
   ];
 
   const getActiveTabs = () => {
@@ -89,65 +121,104 @@ const Personal: React.FC = () => {
         return config.seccionesActivas.nomina ? renderNominaSection() : null;
       case 'autonomo':
         return config.seccionesActivas.autonomo ? renderAutonomoSection() : null;
-      case 'pensiones-inversiones':
-        return config.seccionesActivas.pensionesInversiones ? renderPensionesInversionesSection() : null;
+      case 'gastos':
+        return renderGastosSection();
       case 'otros-ingresos':
-        return config.seccionesActivas.otrosIngresos ? renderOtrosIngresosSection() : null;
+        return renderOtrosIngresosSection();
       default:
         return null;
     }
   };
 
-  const renderResumenSection = () => (
-    <div className="space-y-6">
-      <div className="bg-white border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen Personal</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 p-4">
-            <p className="text-sm text-gray-600">Ingresos del mes</p>
-            <p className="text-2xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 p-4">
-            <p className="text-sm text-gray-600">Gastos del mes</p>
-            <p className="text-2xl font-semibold text-gray-900">0,00 €</p>
-          </div>
-          <div className="bg-gray-50 p-4">
-            <p className="text-sm text-gray-600">Balance</p>
-            <p className="text-2xl font-semibold text-gray-900">0,00 €</p>
-          </div>
+  const renderResumenSection = () => {
+    if (resumenLoading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent rounded-full"></div>
+          <span className="ml-2 text-neutral-600">Cargando resumen...</span>
         </div>
-      </div>
+      );
+    }
 
-      {/* Active Sections Summary */}
-      <div className="bg-white border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Secciones Activas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {config?.seccionesActivas.nomina && (
-            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
-              <Banknote className="w-5 h-5 text-atlas-blue" />
-              <span className="text-sm font-medium text-primary-900">Nómina configurada</span>
+    return (
+      <div className="space-y-6">
+        <div className="bg-white border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen Personal</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Ingresos del mes</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(resumen?.ingresos.total || 0)}
+              </p>
+              <div className="mt-2 text-xs text-gray-500 space-y-1">
+                {resumen && resumen.ingresos.nomina > 0 && (
+                  <div>Nómina: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.nomina)}</div>
+                )}
+                {resumen && resumen.ingresos.autonomo > 0 && (
+                  <div>Autónomo: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.autonomo)}</div>
+                )}
+                {resumen && resumen.ingresos.otros > 0 && (
+                  <div>Otros: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.otros)}</div>
+                )}
+              </div>
             </div>
-          )}
-          {config?.seccionesActivas.autonomo && (
-            <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-3 p-3">
-              <User className="w-5 h-5 text-success-600" />
-              <span className="text-sm font-medium text-success-900">Autónomo configurado</span>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Gastos del mes</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(resumen?.gastos.total || 0)}
+              </p>
+              <div className="mt-2 text-xs text-gray-500 space-y-1">
+                {resumen && resumen.gastos.recurrentes > 0 && (
+                  <div>Recurrentes: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.gastos.recurrentes)}</div>
+                )}
+                {resumen && resumen.gastos.puntuales > 0 && (
+                  <div>Puntuales: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.gastos.puntuales)}</div>
+                )}
+              </div>
             </div>
-          )}
-          {config?.seccionesActivas.pensionesInversiones && (
-            <div className="flex items-center space-x-3 p-3 bg-purple-50">
-              <PiggyBank className="w-5 h-5 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">Pensiones e inversiones disponibles</span>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600">Ahorro del mes</p>
+              <p className={`text-2xl font-semibold ${(resumen?.ahorro || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {new Intl.NumberFormat('es-ES', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(resumen?.ahorro || 0)}
+              </p>
             </div>
-          )}
-          {config?.seccionesActivas.otrosIngresos && (
-            <div className="flex items-center space-x-3 p-3 bg-warning-50">
-              <DollarSign className="w-5 h-5 text-warning-600" />
-              <span className="text-sm font-medium text-yellow-900">Otros ingresos disponibles</span>
-            </div>
-          )}
+          </div>
+        </div>
+
+        {/* Active Sections Summary */}
+        <div className="bg-white border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Secciones Activas</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {config?.seccionesActivas.nomina && (
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <Banknote className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-900">Nómina configurada</span>
+              </div>
+            )}
+            {config?.seccionesActivas.autonomo && (
+              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <Briefcase className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-900">Autónomo configurado</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+    );
+  };
+
+  const renderGastosSection = () => (
+    <div className="space-y-6">
+      <GastosManager />
     </div>
   );
 
@@ -162,13 +233,6 @@ const Personal: React.FC = () => {
       <AutonomoManager />
     </div>
   );
-
-  const renderPensionesInversionesSection = () => (
-    <div className="space-y-6">
-      <PlanesManager />
-    </div>
-  );
-
   const renderOtrosIngresosSection = () => (
     <div className="space-y-6">
       <OtrosIngresosManager />

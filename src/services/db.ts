@@ -1,9 +1,20 @@
 import { openDB, IDBPDatabase } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
+import type { 
+  PersonalData, 
+  PersonalModuleConfig, 
+  Nomina, 
+  Autonomo, 
+  PlanPensionInversion, 
+  OtrosIngresos,
+  MovimientoPersonal,
+  GastoRecurrente,
+  GastoPuntual
+} from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 18; // Dashboard refactor: Added patrimonioSnapshots
+const DB_VERSION = 19; // Added gastosRecurrentes & gastosPuntuales stores (and patrimonioSnapshots)
 
 export interface Property {
   id?: number;
@@ -1291,6 +1302,15 @@ interface AtlasHorizonDB {
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
   inversiones: PosicionInversion; // V1.3: Investment positions
   patrimonioSnapshots: PatrimonioSnapshot; // Dashboard: Historical net worth tracking
+  personalData: PersonalData; // V1.2: Personal data
+  personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
+  nominas: Nomina; // V1.2: Salary data
+  autonomos: Autonomo; // V1.2: Self-employed data
+  planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
+  otrosIngresos: OtrosIngresos; // V1.2: Other income
+  movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
+  gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
+  gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
   keyval: any; // General key-value store for application configuration
 }
 
