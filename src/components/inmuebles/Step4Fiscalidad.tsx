@@ -2,7 +2,7 @@
 // Following Horizon design system with automatic calculations
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { BarChart3, Calculator, Info } from 'lucide-react';
+import { BarChart3, Calculator, Info, AlertTriangle } from 'lucide-react';
 import { InmuebleStep4, MetodoAmortizacion } from '../../types/inmueble';
 import { validateStep4, calculateConstructionPercentage, formatEuroAmount } from '../../utils/inmuebleUtils';
 import { Tooltip } from '../common/Tooltip';
@@ -298,11 +298,27 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         </div>
 
         {/* Información de ayuda */}
-        <div className="bg-warning-50 border border-yellow-200 p-4">
-          <h4 className="text-sm font-medium text-yellow-800 mb-2">
-            💡 Información importante
-          </h4>
-          <ul className="text-sm text-warning-700 space-y-1">
+        <div 
+          className="border p-4"
+          style={{
+            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            borderColor: 'var(--warn)'
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle 
+              className="h-5 w-5" 
+              style={{ color: 'var(--warn)' }}
+              strokeWidth={2}
+            />
+            <h4 
+              className="text-sm font-medium" 
+              style={{ color: 'var(--atlas-navy-1)' }}
+            >
+              Información importante
+            </h4>
+          </div>
+          <ul className="text-sm space-y-1" style={{ color: 'var(--text-gray)' }}>
             <li>• Todos los campos de este paso son opcionales</li>
             <li>• Los valores catastrales se pueden obtener de la sede electrónica del Catastro</li>
             <li>• El % de construcción se calcula automáticamente pero puede editarse</li>

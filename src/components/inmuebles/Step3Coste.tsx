@@ -512,7 +512,13 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       </span>
                     )}
                     {!ccaaInfo?.isKnown && (
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-yellow-800">
+                      <span 
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium"
+                        style={{
+                          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                          color: 'var(--warn)'
+                        }}
+                      >
                         ITP (8%*)
                       </span>
                     )}
