@@ -730,7 +730,7 @@ class DashboardService {
         ? cashflowLast3Months.reduce((sum, val) => sum + val, 0) / cashflowLast3Months.length 
         : 0;
       const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / cashflowAvg) * 100 : 0;
-      const inmueblesendencia: 'up' | 'down' | 'stable' = 
+      const inmueblesTendencia: 'up' | 'down' | 'stable' = 
         cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
       
       // INVERSIONES: Get from inversiones table
@@ -758,7 +758,7 @@ class DashboardService {
         inmuebles: {
           cashflow: cashflowInmuebles,
           ocupacion: ocupacion,
-          tendencia: inmueblesendencia
+          tendencia: inmueblesTendencia
         },
         inversiones: {
           rendimientoMes: rendimientoMes,

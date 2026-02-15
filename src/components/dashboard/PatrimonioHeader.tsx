@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, TrendingUp, TrendingDown, Minus, Building2, LineChart, Landmark, CreditCard } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Building2, LineChart, Landmark, CreditCard } from 'lucide-react';
 
 interface PatrimonioHeaderProps {
   patrimonioNeto: number;
@@ -60,7 +60,6 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
   };
 
   const isPositive = variacionPorcentaje > 0;
-  const isNegative = variacionPorcentaje < 0;
 
   return (
     <div
@@ -127,14 +126,14 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
           {formatCurrency(patrimonioNeto)}
         </span>
 
-        {/* Variation indicator */}
+        {/* Variation indicator - only show if not zero */}
         {variacionPorcentaje !== 0 && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              color: isPositive ? 'var(--ok)' : isNegative ? 'var(--alert)' : 'var(--text-gray)',
+              color: isPositive ? 'var(--ok)' : 'var(--alert)',
               fontSize: '0.875rem',
               fontWeight: 600,
               fontVariantNumeric: 'tabular-nums'
@@ -142,10 +141,8 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
           >
             {isPositive ? (
               <TrendingUp size={16} strokeWidth={2.5} aria-label="Tendencia positiva" />
-            ) : isNegative ? (
-              <TrendingDown size={16} strokeWidth={2.5} aria-label="Tendencia negativa" />
             ) : (
-              <Minus size={16} strokeWidth={2.5} aria-label="Sin cambios" />
+              <TrendingDown size={16} strokeWidth={2.5} aria-label="Tendencia negativa" />
             )}
             {formatPercentage(variacionPorcentaje)}
           </div>
