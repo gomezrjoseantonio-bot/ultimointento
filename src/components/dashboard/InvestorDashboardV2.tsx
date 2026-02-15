@@ -5,6 +5,7 @@ import LiquidezSection from './LiquidezSection';
 import AlertasSection from './AlertasSection';
 import QuickActions from './QuickActions';
 import { dashboardService } from '../../services/dashboardService';
+import type { Alerta } from '../../types/dashboard';
 
 interface InvestorDashboardV2Props {
   onNavigate: (route: string) => void;
@@ -26,6 +27,8 @@ interface InvestorDashboardV2Props {
  * - Spanish locale formatting
  * - Responsive layout
  * - Accessible with ARIA labels
+ * 
+ * @deprecated Use InvestorDashboard instead
  */
 const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
   onNavigate
@@ -35,6 +38,7 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
     total: 0,
     variacionMes: 0,
     variacionPorcentaje: 0,
+    fechaCalculo: new Date().toISOString(),
     desglose: {
       inmuebles: 0,
       inversiones: 0,
@@ -53,14 +57,7 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
     ingresos30d: 0,
     proyeccion30d: 0
   });
-  const [alertas, setAlertas] = useState<Array<{
-    id: string;
-    tipo: 'trabajo' | 'inmuebles' | 'inversiones' | 'personal';
-    mensaje: string;
-    urgencia: 'alta' | 'media' | 'baja';
-    link: string;
-    diasHastaVencimiento?: number;
-  }>>([]);
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -89,7 +86,7 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
     }
   };
 
-  const handleAlertClick = (alerta: typeof alertas[0]) => {
+  const handleAlertClick = (alerta: Alerta) => {
     onNavigate(alerta.link);
   };
 

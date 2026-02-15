@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, ArrowRight } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 interface SaludFinancieraProps {
   liquidezHoy: number;

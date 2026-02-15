@@ -160,8 +160,8 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   }
 
   // Show empty state if no data
-  const hasData = patrimonio.total > 0 || bolsillos.trabajo.mensual > 0 || 
-                  bolsillos.inmuebles.cashflow > 0 || liquidez.disponibleHoy > 0;
+  const hasData = patrimonio.total > 0 || flujos.trabajo.netoMensual > 0 || 
+                  flujos.inmuebles.cashflow > 0 || salud.liquidezHoy > 0;
 
   if (!hasData) {
     return (
