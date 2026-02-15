@@ -1,13 +1,15 @@
 import React from 'react';
-import { ChevronRight, AlertTriangle, Briefcase, Building2, TrendingUp, Home } from 'lucide-react';
+import { ChevronRight, AlertCircle, Receipt, CalendarDays, FileText, Percent } from 'lucide-react';
 
 interface Alerta {
   id: string;
-  tipo: 'trabajo' | 'inmuebles' | 'inversiones' | 'personal';
-  mensaje: string;
-  urgencia: 'alta' | 'media' | 'baja';
+  tipo: 'cobro' | 'contrato' | 'pago' | 'documento' | 'hipoteca' | 'ipc';
+  titulo: string;
+  descripcion: string;
+  urgencia: 'alta' | 'media';
+  diasVencimiento: number;
+  importe?: number;
   link: string;
-  diasHastaVencimiento?: number;
 }
 
 interface AlertasSectionProps {
@@ -18,67 +20,84 @@ interface AlertasSectionProps {
 /**
  * AlertasSection - Displays alerts requiring attention
  * 
- * Shows up to 5 alerts ordered by urgency:
- * - High priority (red)
- * - Medium priority (amber)
- * - Low priority (blue)
+ * Shows prioritized alerts with:
+ * - Type-specific icons (Receipt, CalendarDays, FileText, Percent)
+ * - Title and description
+ * - Days until/since due date
+ * - Amount when applicable
+ * - Only alta/media urgency (baja filtered out)
  * 
- * Each alert shows:
- * - Type icon: Briefcase (trabajo), Building2 (inmuebles), TrendingUp (inversiones), Home (personal)
- * - Message
- * - Click to navigate to detail
- * 
- * 100% ATLAS Design Bible compliant (Lucide icons, NO emojis)
+ * 100% ATLAS Design Bible compliant:
+ * - Lucide icons only (NO emojis)
+ * - Monochromatic + semantic colors
  */
 const AlertasSection: React.FC<AlertasSectionProps> = ({
   alertas,
   onAlertClick
 }) => {
+  // Format currency
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
   // Get icon based on alert type
   const getIcono = (tipo: string) => {
     const iconSize = 16;
     const iconStyle = { color: 'var(--atlas-blue)' };
     
     switch (tipo) {
-      case 'trabajo':
-        return <Briefcase size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
-      case 'inmuebles':
-        return <Building2 size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
-      case 'inversiones':
-        return <TrendingUp size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
-      case 'personal':
-        return <Home size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
+      case 'cobro':
+      case 'pago':
+        return <Receipt size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
+      case 'contrato':
+        return <CalendarDays size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
+      case 'documento':
+        return <FileText size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
+      case 'hipoteca':
+      case 'ipc':
+        return <Percent size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
       default:
-        return <AlertTriangle size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
+        return <AlertCircle size={iconSize} strokeWidth={1.5} style={iconStyle} aria-hidden="true" />;
     }
   };
 
   // Get color based on urgency
   const getUrgenciaColor = (urgencia: string): {
-    bg: string;
     border: string;
     text: string;
   } => {
     switch (urgencia) {
       case 'alta':
         return {
-          bg: 'rgba(220, 53, 69, 0.05)',
-          border: 'var(--error)',
-          text: 'var(--error)'
+          border: 'var(--alert)',
+          text: 'var(--alert)'
         };
       case 'media':
         return {
-          bg: 'rgba(255, 193, 7, 0.05)',
           border: 'var(--warn)',
           text: 'var(--warn)'
         };
-      case 'baja':
       default:
         return {
-          bg: 'rgba(4, 44, 94, 0.05)',
           border: 'var(--atlas-blue)',
           text: 'var(--atlas-blue)'
         };
+    }
+  };
+
+  // Format days until/since due
+  const formatDiasVencimiento = (dias: number): string => {
+    if (dias < 0) {
+      return `Hace ${Math.abs(dias)}d`;
+    } else if (dias === 0) {
+      return 'Hoy';
+    } else {
+      return `En ${dias}d`;
     }
   };
 
@@ -103,29 +122,29 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
             marginBottom: '16px'
           }}
         >
-          <AlertTriangle
-            size={24}
+          <AlertCircle
+            size={20}
             strokeWidth={1.5}
-            style={{ color: 'var(--warn)' }}
+            style={{ color: 'var(--ok)' }}
             aria-hidden="true"
           />
           <h2
             style={{
-              fontSize: '1.125rem',
+              fontSize: '0.875rem',
               fontWeight: 600,
-              color: 'var(--atlas-navy-1)',
+              color: 'var(--text-gray)',
               margin: 0,
               textTransform: 'uppercase',
               letterSpacing: '0.05em'
             }}
           >
-            REQUIERE ATENCIÓN (0)
+            REQUIERE ATENCIÓN
           </h2>
         </div>
         <div
           style={{
             textAlign: 'center',
-            padding: '32px',
+            padding: '24px',
             color: 'var(--text-gray)'
           }}
         >
@@ -157,17 +176,17 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
           marginBottom: '16px'
         }}
       >
-        <AlertTriangle
-          size={24}
+        <AlertCircle
+          size={20}
           strokeWidth={1.5}
           style={{ color: 'var(--warn)' }}
           aria-hidden="true"
         />
         <h2
           style={{
-            fontSize: '1.125rem',
+            fontSize: '0.875rem',
             fontWeight: 600,
-            color: 'var(--atlas-navy-1)',
+            color: 'var(--text-gray)',
             margin: 0,
             textTransform: 'uppercase',
             letterSpacing: '0.05em'
@@ -182,7 +201,7 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px'
+          gap: '8px'
         }}
       >
         {alertas.map((alerta) => {
@@ -192,13 +211,13 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
             <button
               key={alerta.id}
               onClick={() => onAlertClick?.(alerta)}
-              aria-label={`Ver alerta: ${alerta.mensaje}`}
+              aria-label={`Ver alerta: ${alerta.titulo}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 padding: '12px',
-                backgroundColor: colors.bg,
+                backgroundColor: 'var(--bg)',
                 border: `1px solid ${colors.border}`,
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -217,57 +236,78 @@ const AlertasSection: React.FC<AlertasSectionProps> = ({
               }}
             >
               {/* Alert icon based on type */}
-              <div style={{ flexShrink: 0, marginTop: '2px' }}>
+              <div style={{ flexShrink: 0 }}>
                 {getIcono(alerta.tipo)}
               </div>
 
-              {/* Alert message */}
+              {/* Alert content */}
               <div
                 style={{
                   flex: 1,
                   minWidth: 0
                 }}
               >
-                <p
+                <div
                   style={{
-                    margin: 0,
                     fontSize: '0.875rem',
-                    fontWeight: 500,
+                    fontWeight: 600,
                     color: 'var(--atlas-navy-1)',
+                    marginBottom: '2px'
+                  }}
+                >
+                  {alerta.titulo}
+                </div>
+                <div
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-gray)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  {alerta.mensaje}
-                </p>
+                  {alerta.descripcion}
+                </div>
               </div>
 
-              {/* Days until due (if applicable) */}
-              {alerta.diasHastaVencimiento !== undefined && (
-                <span
+              {/* Amount (if applicable) */}
+              {alerta.importe !== undefined && (
+                <div
                   style={{
-                    fontSize: '0.75rem',
+                    fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: colors.text,
-                    padding: '2px 8px',
-                    backgroundColor: 'var(--hz-card-bg)',
-                    borderRadius: '4px',
+                    color: 'var(--atlas-navy-1)',
+                    fontVariantNumeric: 'tabular-nums',
                     flexShrink: 0
                   }}
                 >
-                  {alerta.diasHastaVencimiento > 0
-                    ? `${alerta.diasHastaVencimiento}d`
-                    : `${Math.abs(alerta.diasHastaVencimiento)}d vencido`}
-                </span>
+                  {formatCurrency(alerta.importe)}
+                </div>
               )}
+
+              {/* Days until/since due */}
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: colors.text,
+                  padding: '4px 8px',
+                  backgroundColor: 'var(--hz-neutral-100)',
+                  borderRadius: '4px',
+                  flexShrink: 0,
+                  minWidth: '60px',
+                  textAlign: 'center'
+                }}
+              >
+                {formatDiasVencimiento(alerta.diasVencimiento)}
+              </div>
 
               {/* Chevron icon */}
               <ChevronRight
                 size={18}
                 strokeWidth={2}
                 style={{
-                  color: colors.text,
+                  color: 'var(--text-gray)',
                   flexShrink: 0
                 }}
               />

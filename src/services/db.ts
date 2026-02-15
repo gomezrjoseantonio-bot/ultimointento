@@ -3,7 +3,7 @@ import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 17; // V1.3: Added Inversiones (Investments) module
+const DB_VERSION = 18; // Dashboard refactor: Added patrimonioSnapshots
 
 export interface Property {
   id?: number;
@@ -1244,6 +1244,18 @@ export interface Budget {
   createdBy?: string; // User identifier
 }
 
+// Patrimonio Snapshots - Historical tracking of net worth
+export interface PatrimonioSnapshot {
+  id?: number;
+  fecha: string; // YYYY-MM format (e.g., "2026-02")
+  total: number;
+  inmuebles: number;
+  inversiones: number;
+  cuentas: number;
+  deuda: number;
+  createdAt: string; // ISO timestamp
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
@@ -1278,6 +1290,7 @@ interface AtlasHorizonDB {
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
   inversiones: PosicionInversion; // V1.3: Investment positions
+  patrimonioSnapshots: PatrimonioSnapshot; // Dashboard: Historical net worth tracking
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1626,6 +1639,13 @@ export const initDB = async () => {
           inversionesStore.createIndex('tipo', 'tipo', { unique: false });
           inversionesStore.createIndex('activo', 'activo', { unique: false });
           inversionesStore.createIndex('entidad', 'entidad', { unique: false });
+        }
+
+        // Dashboard refactor: Patrimonio Snapshots for historical tracking
+        if (!db.objectStoreNames.contains('patrimonioSnapshots')) {
+          const snapshotsStore = db.createObjectStore('patrimonioSnapshots', { keyPath: 'id', autoIncrement: true });
+          snapshotsStore.createIndex('fecha', 'fecha', { unique: true });
+          snapshotsStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
         // General key-value store for application configuration
