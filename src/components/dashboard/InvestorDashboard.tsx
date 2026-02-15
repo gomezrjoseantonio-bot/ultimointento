@@ -159,54 +159,6 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
     );
   }
 
-  // Show empty state if no data
-  const hasData = patrimonio.total > 0 || flujos.trabajo.netoMensual > 0 || 
-                  flujos.inmuebles.cashflow > 0 || salud.liquidezHoy > 0;
-
-  if (!hasData) {
-    return (
-      <div
-        style={{
-          maxWidth: '800px',
-          margin: '0 auto',
-          padding: '48px 24px',
-          textAlign: 'center',
-          fontFamily: 'var(--font-inter)'
-        }}
-      >
-        <div
-          style={{
-            padding: '48px',
-            backgroundColor: 'var(--hz-card-bg)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          <h2
-            style={{
-              fontSize: '1.5rem',
-              fontWeight: 600,
-              color: 'var(--atlas-navy-1)',
-              marginBottom: '8px'
-            }}
-          >
-            Bienvenido a ATLAS
-          </h2>
-          <p
-            style={{
-              fontSize: '1rem',
-              color: 'var(--text-gray)',
-              marginBottom: '32px'
-            }}
-          >
-            Empieza añadiendo tu primera fuente de ingresos
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="investor-dashboard">
       {/* Header - PATRIMONIO NETO with breakdown */}
