@@ -168,7 +168,8 @@ class GastosPersonalesService {
       
       if (mes !== undefined && anio !== undefined) {
         return gastos.filter((g: GastoPuntual) => {
-          const fecha = new Date(g.fecha);
+          const [year, month, day] = g.fecha.split('-').map(Number);
+          const fecha = new Date(year, month - 1, day);
           return fecha.getMonth() + 1 === mes && fecha.getFullYear() === anio;
         });
       }
