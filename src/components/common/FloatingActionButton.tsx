@@ -29,7 +29,7 @@ const FloatingActionButton: React.FC = () => {
         navigate('/portfolio?action=new');
         setIsOpen(false);
       },
-      color: 'bg-atlas-blue hover:bg-primary-800',
+      color: 'atlas-blue',
     },
     {
       id: 'upload-document',
@@ -39,7 +39,7 @@ const FloatingActionButton: React.FC = () => {
         navigate('/inbox?action=upload');
         setIsOpen(false);
       },
-      color: 'bg-atlas-teal-600 hover:bg-atlas-teal-700',
+      color: 'atlas-teal',
     },
     {
       id: 'import-movements',
@@ -49,7 +49,7 @@ const FloatingActionButton: React.FC = () => {
         navigate('/treasury?action=import');
         setIsOpen(false);
       },
-      color: 'bg-success-600 hover:bg-success-700',
+      color: 'ok',
     },
   ];
 
@@ -69,18 +69,46 @@ const FloatingActionButton: React.FC = () => {
           <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
+              const getColorStyles = (colorKey: string) => {
+                const colors = {
+                  'atlas-blue': {
+                    backgroundColor: 'var(--atlas-blue)',
+                    hover: '#031F47'
+                  },
+                  'atlas-teal': {
+                    backgroundColor: 'var(--atlas-teal)',
+                    hover: '#178999'
+                  },
+                  'ok': {
+                    backgroundColor: 'var(--ok)',
+                    hover: '#218838'
+                  }
+                };
+                return colors[colorKey as keyof typeof colors] || colors['atlas-blue'];
+              };
+              
+              const colorStyles = getColorStyles(action.color);
+              
               return (
                 <button
                   key={action.id}
                   onClick={action.action}
-                  className={`
-                    group flex items-center gap-3 ${action.color}
-                    text-white rounded-full shadow-lg
+                  className="
+                    group flex items-center gap-3
+                    rounded-full shadow-lg
                     transition-all duration-200 ease-out
                     animate-fade-in-up
-                  `}
+                  "
                   style={{
+                    backgroundColor: colorStyles.backgroundColor,
+                    color: 'white',
                     animationDelay: `${index * 50}ms`,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = colorStyles.hover;
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = colorStyles.backgroundColor;
                   }}
                   aria-label={action.label}
                 >
@@ -89,8 +117,11 @@ const FloatingActionButton: React.FC = () => {
                     max-w-0 overflow-hidden whitespace-nowrap
                     group-hover:max-w-xs group-hover:pl-4
                     transition-all duration-200 ease-out
-                    text-sm font-medium
-                  ">
+                  "
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500
+                  }}>
                     {action.label}
                   </span>
                   
@@ -110,11 +141,20 @@ const FloatingActionButton: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={`
           flex items-center justify-center w-14 h-14
-          bg-atlas-blue hover:bg-primary-800
-          text-white rounded-full shadow-lg
+          rounded-full shadow-lg
           transition-all duration-200
           ${isOpen ? 'rotate-45' : 'rotate-0'}
         `}
+        style={{
+          backgroundColor: 'var(--atlas-blue)',
+          color: 'white'
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#031F47';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--atlas-blue)';
+        }}
         aria-label={isOpen ? 'Cerrar acciones rápidas' : 'Abrir acciones rápidas'}
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -128,13 +168,19 @@ const FloatingActionButton: React.FC = () => {
 
       {/* Tooltip hint (shown when closed) */}
       {!isOpen && (
-        <div className="
-          absolute bottom-full right-0 mb-2
-          px-3 py-1.5 bg-white text-white text-sm
-          rounded-lg whitespace-nowrap
-          opacity-0 group-hover:opacity-100
-          transition-opacity pointer-events-none
-        ">
+        <div 
+          className="
+            absolute bottom-full right-0 mb-2
+            px-3 py-1.5 rounded-lg whitespace-nowrap
+            opacity-0 group-hover:opacity-100
+            transition-opacity pointer-events-none
+          "
+          style={{
+            backgroundColor: 'var(--atlas-navy-1)',
+            color: 'white',
+            fontSize: '0.875rem'
+          }}
+        >
           Acciones rápidas
         </div>
       )}

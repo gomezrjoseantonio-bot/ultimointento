@@ -46,11 +46,16 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
   const personalToggleLabel = excludePersonal ? 'Sin finanzas personales' : 'Incluye finanzas personales';
 
   return (
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-navy via-primary-600 to-brand-teal text-white shadow-[0_35px_120px_-40px_rgba(4,44,94,0.8)]">
+    <section 
+      className="relative overflow-hidden rounded-3xl text-white shadow-[0_35px_120px_-40px_rgba(4,44,94,0.8)]"
+      style={{
+        background: 'linear-gradient(to bottom right, var(--atlas-navy-2), var(--atlas-blue), var(--atlas-teal))'
+      }}
+    >
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.35),transparent_55%)]" />
         <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-white/15 blur-3xl" />
-        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-brand-teal/40 blur-3xl" />
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(29, 160, 186, 0.4)' }} />
         <div className="absolute inset-0 opacity-30">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0)_40%)]" />
         </div>
@@ -91,7 +96,13 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
               <button
                 type="button"
                 onClick={onConfigure}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-brand-navy shadow-lg shadow-white/20 transition hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-navy focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold shadow-lg shadow-white/20 transition hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                style={{
+                  color: 'var(--atlas-navy-1)'
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.outlineColor = 'var(--atlas-navy-1)';
+                }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Personalizar panel
@@ -152,17 +163,26 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                     aria-checked={excludePersonal}
                     onClick={onToggleExcludePersonal}
                     disabled={!onToggleExcludePersonal || isUpdatingPersonalPreference}
-                    className={`relative inline-flex h-9 w-16 flex-shrink-0 items-center rounded-full border bg-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-navy disabled:cursor-not-allowed ${
-                      excludePersonal
-                        ? 'justify-end border-brand-teal/70 bg-brand-teal/30'
-                        : 'justify-start border-white/30 bg-white/10'
-                    } ${isUpdatingPersonalPreference ? 'opacity-70' : ''}`}
+                    className={`relative inline-flex h-9 w-16 flex-shrink-0 items-center rounded-full border bg-white/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
+                      isUpdatingPersonalPreference ? 'opacity-70' : ''
+                    }`}
+                    style={{
+                      justifyContent: excludePersonal ? 'flex-end' : 'flex-start',
+                      borderColor: excludePersonal ? 'rgba(29, 160, 186, 0.7)' : 'rgba(255, 255, 255, 0.3)',
+                      backgroundColor: excludePersonal ? 'rgba(29, 160, 186, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                      outlineOffset: '2px'
+                    }}
+                    onFocus={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.outlineColor = 'var(--atlas-navy-1)';
+                    }}
                   >
                     <span className="sr-only">{personalToggleLabel}</span>
                     <span
-                      className={`mx-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-brand-navy transition ${
-                        excludePersonal ? 'shadow-[0_0_0_2px_rgba(255,255,255,0.3)]' : 'shadow-[0_0_0_0_rgba(255,255,255,0)]'
-                      }`}
+                      className="mx-1 flex h-7 w-7 items-center justify-center rounded-full bg-white transition"
+                      style={{
+                        color: 'var(--atlas-navy-1)',
+                        boxShadow: excludePersonal ? '0 0 0 2px rgba(255,255,255,0.3)' : '0 0 0 0 rgba(255,255,255,0)'
+                      }}
                     >
                       {isUpdatingPersonalPreference ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
