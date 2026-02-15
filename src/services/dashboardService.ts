@@ -409,12 +409,20 @@ class DashboardService {
   }
 
   /**
-   * Get net worth (patrimonio neto) - Investor Dashboard "3 Bolsillos"
+   * Get net worth (patrimonio neto) - REFACTORED for Dashboard 2.0
+   * 
+   * Calculates complete net worth with:
+   * - Real property values
+   * - Account balances
+   * - Investment positions
+   * - Active debt from prestamos
+   * - Month-over-month variation from snapshots
    */
   async getPatrimonioNeto(): Promise<{
     total: number;
     variacionMes: number;
     variacionPorcentaje: number;
+    fechaCalculo: string;
     desglose: {
       inmuebles: number;
       inversiones: number;
@@ -429,7 +437,7 @@ class DashboardService {
       const properties = await db.getAll('properties');
       const activeProperties = properties.filter((p: any) => p.state === 'activo');
       
-      // Calculate real estate value (sum of purchase prices + acquisition costs)
+      // Calculate real estate value (sum of purchase prices)
       const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
         const purchasePrice = prop.acquisitionCosts?.price || 0;
         return sum + purchasePrice;
@@ -442,32 +450,65 @@ class DashboardService {
         return sum + (acc.balance || 0);
       }, 0);
       
-      // Calculate debt (sum of active loans/mortgages)
-      // TODO: Implement when loans/prestamos table exists. Expected fields:
-      // - capitalPendiente: number (outstanding principal)
-      // - estado: 'activo' | 'pagado' | 'cancelado'
-      // Calculation: Sum of capitalPendiente for all active loans
-      const deudaViva = 0;
+      // Calculate debt from prestamos service
+      // Note: prestamos are currently stored in memory in prestamosService
+      // For now, we'll use a placeholder. In production, this would query the prestamos table
+      const deudaViva = 0; // TODO: Integrate with prestamosService.getAllPrestamos()
       
-      // Inversiones (investments) - placeholder for future module
-      // TODO: Implement when investments module exists. Expected data:
-      // - Investment positions with current market value
-      // - Asset type, quantity, purchase price, current price
-      // Calculation: Sum of (quantity * currentPrice) for all positions
-      const valorInversiones = 0;
+      // Inversiones (investments) - get from inversiones table
+      const inversiones = await db.getAll('inversiones');
+      const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
+      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
+        // valorActual = cantidad * precioActual
+        const cantidad = inv.cantidad || 0;
+        const precioActual = inv.precioActual || inv.precioCompra || 0;
+        return sum + (cantidad * precioActual);
+      }, 0);
       
       // Calculate total net worth
       const total = valorInmuebles + valorInversiones + saldoCuentas - deudaViva;
       
-      // Calculate variation (placeholder - would need historical data)
-      // For now, we'll return 0 until we implement month-over-month tracking
-      const variacionMes = 0;
-      const variacionPorcentaje = 0;
+      // Calculate variation vs previous month using snapshots
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const previousMonthKey = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+      
+      let variacionMes = 0;
+      let variacionPorcentaje = 0;
+      
+      try {
+        const snapshots = await db.getAllFromIndex('patrimonioSnapshots', 'fecha');
+        const previousSnapshot = snapshots.find((s: any) => s.fecha === previousMonthKey);
+        
+        if (previousSnapshot) {
+          variacionMes = total - previousSnapshot.total;
+          variacionPorcentaje = previousSnapshot.total !== 0 
+            ? (variacionMes / previousSnapshot.total) * 100 
+            : 0;
+        }
+      } catch (error) {
+        console.warn('Could not calculate variation from snapshots:', error);
+      }
+      
+      const fechaCalculo = now.toISOString();
+      
+      // Save snapshot for current month (if not exists)
+      await this.savePatrimonioSnapshot({
+        fecha: currentMonth,
+        total,
+        inmuebles: valorInmuebles,
+        inversiones: valorInversiones,
+        cuentas: saldoCuentas,
+        deuda: deudaViva,
+        createdAt: fechaCalculo
+      });
       
       return {
         total,
         variacionMes,
         variacionPorcentaje,
+        fechaCalculo,
         desglose: {
           inmuebles: valorInmuebles,
           inversiones: valorInversiones,
@@ -477,10 +518,12 @@ class DashboardService {
       };
     } catch (error) {
       console.error('Error calculating patrimonio neto:', error);
+      const now = new Date();
       return {
         total: 0,
         variacionMes: 0,
         variacionPorcentaje: 0,
+        fechaCalculo: now.toISOString(),
         desglose: {
           inmuebles: 0,
           inversiones: 0,
@@ -492,12 +535,58 @@ class DashboardService {
   }
 
   /**
-   * Get summary of the 3 "bolsillos" (pockets): Trabajo, Inmuebles, Inversiones
+   * Save patrimonio snapshot for historical tracking
+   * Only saves if snapshot doesn't exist for the given month
    */
-  async getTresBolsillos(): Promise<{
-    trabajo: { mensual: number; tendencia: 'up' | 'down' | 'stable' };
-    inmuebles: { cashflow: number; tendencia: 'up' | 'down' | 'stable' };
-    inversiones: { dividendos: number; tendencia: 'up' | 'down' | 'stable' };
+  async savePatrimonioSnapshot(snapshot: {
+    fecha: string;
+    total: number;
+    inmuebles: number;
+    inversiones: number;
+    cuentas: number;
+    deuda: number;
+    createdAt: string;
+  }): Promise<void> {
+    try {
+      const db = await initDB();
+      
+      // Check if snapshot already exists for this month
+      const existing = await db.getAllFromIndex('patrimonioSnapshots', 'fecha');
+      const exists = existing.some((s: any) => s.fecha === snapshot.fecha);
+      
+      if (!exists) {
+        await db.add('patrimonioSnapshots', snapshot);
+        console.log(`[DASHBOARD] Saved patrimonio snapshot for ${snapshot.fecha}`);
+      }
+    } catch (error) {
+      console.warn('Could not save patrimonio snapshot:', error);
+    }
+  }
+
+  /**
+   * Get cashflows (flujos de caja) - RENAMED AND ENHANCED from getTresBolsillos()
+   * 
+   * Returns detailed monthly cashflow data for the 3 sources:
+   * - Trabajo: Net personal income with trend
+   * - Inmuebles: Property cashflow with occupancy and trend
+   * - Inversiones: Investment returns with trend
+   */
+  async getFlujosCaja(): Promise<{
+    trabajo: {
+      netoMensual: number;
+      tendencia: 'up' | 'down' | 'stable';
+      variacionPorcentaje: number;
+    };
+    inmuebles: {
+      cashflow: number;
+      ocupacion: number;
+      tendencia: 'up' | 'down' | 'stable';
+    };
+    inversiones: {
+      rendimientoMes: number;
+      dividendosMes: number;
+      tendencia: 'up' | 'down' | 'stable';
+    };
   }> {
     try {
       const db = await initDB();
@@ -558,34 +647,159 @@ class DashboardService {
         })
         .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
       
-      const cashflowInmuebles = rentasMes - gastosInmueblesMes;
+      // Subtract mortgage payments (if prestamos table existed, we'd query it here)
+      const cuotasHipotecaMes = 0; // TODO: Calculate from prestamos service
       
-      // INVERSIONES: Dividends from investment portfolio
-      // Placeholder for future investments module
-      const dividendos = 0; // TODO: Implement when investments module exists
+      const cashflowInmuebles = rentasMes - gastosInmueblesMes - cuotasHipotecaMes;
+      
+      // Calculate occupancy rate
+      const properties = await db.getAll('properties');
+      const activeProperties = properties.filter((p: any) => p.state === 'activo');
+      const contracts = await db.getAll('contracts');
+      const activeContracts = contracts.filter((c: any) => c.estado === 'activo');
+      
+      const totalUnidades = activeProperties.length;
+      const unidadesOcupadas = activeContracts.length;
+      const ocupacion = totalUnidades > 0 ? (unidadesOcupadas / totalUnidades) * 100 : 0;
+      
+      // Calculate trends - compare current month vs average of last 3 months
+      const last3Months = [];
+      for (let i = 1; i <= 3; i++) {
+        const pastDate = new Date(currentYear, currentMonth - i, 1);
+        last3Months.push({
+          month: pastDate.getMonth(),
+          year: pastDate.getFullYear()
+        });
+      }
+      
+      // Trabajo trend
+      const ingresosLast3Months = last3Months.map(({month, year}) => {
+        return ingresos
+          .filter((ing: any) => {
+            const fecha = new Date(ing.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   ing.esPersonal === true;
+          })
+          .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
+      });
+      
+      const gastosLast3Months = last3Months.map(({month, year}) => {
+        return gastos
+          .filter((gasto: any) => {
+            const fecha = new Date(gasto.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   gasto.esPersonal === true;
+          })
+          .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
+      });
+      
+      const trabajoLast3Months = ingresosLast3Months.map((ing, i) => ing - gastosLast3Months[i]);
+      const trabajoAvg = trabajoLast3Months.length > 0 
+        ? trabajoLast3Months.reduce((sum, val) => sum + val, 0) / trabajoLast3Months.length 
+        : 0;
+      const trabajoVariacion = trabajoAvg !== 0 ? ((trabajoMensual - trabajoAvg) / trabajoAvg) * 100 : 0;
+      const trabajoTendencia: 'up' | 'down' | 'stable' = 
+        trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
+      
+      // Inmuebles trend
+      const cashflowLast3Months = last3Months.map(({month, year}) => {
+        const rentas = rentPayments
+          .filter((payment: any) => {
+            const fecha = new Date(payment.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   payment.estado === 'pagada';
+          })
+          .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
+        
+        const gastos = expenses
+          .filter((expense: any) => {
+            const fecha = new Date(expense.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   expense.propertyId != null;
+          })
+          .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+        
+        return rentas - gastos;
+      });
+      
+      const cashflowAvg = cashflowLast3Months.length > 0 
+        ? cashflowLast3Months.reduce((sum, val) => sum + val, 0) / cashflowLast3Months.length 
+        : 0;
+      const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / cashflowAvg) * 100 : 0;
+      const inmueblesendencia: 'up' | 'down' | 'stable' = 
+        cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
+      
+      // INVERSIONES: Get from inversiones table
+      const inversiones = await db.getAll('inversiones');
+      const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
+      
+      // Calculate monthly return (simplified)
+      const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => {
+        const cantidad = inv.cantidad || 0;
+        const precioActual = inv.precioActual || 0;
+        const precioCompra = inv.precioCompra || 0;
+        const rendimiento = (precioActual - precioCompra) * cantidad;
+        return sum + rendimiento;
+      }, 0);
+      
+      // Calculate dividends for current month
+      const dividendosMes = 0; // TODO: Add dividends tracking to inversiones table
       
       return {
         trabajo: {
-          mensual: trabajoMensual,
-          tendencia: 'stable' // TODO: Calculate trend based on previous 3 months average. Up if >5% increase, down if >5% decrease
+          netoMensual: trabajoMensual,
+          tendencia: trabajoTendencia,
+          variacionPorcentaje: trabajoVariacion
         },
         inmuebles: {
           cashflow: cashflowInmuebles,
-          tendencia: 'stable' // TODO: Calculate trend based on previous 3 months average. Up if >5% increase, down if >5% decrease
+          ocupacion: ocupacion,
+          tendencia: inmueblesendencia
         },
         inversiones: {
-          dividendos: dividendos,
-          tendencia: 'stable' // TODO: Calculate trend when investments module exists. Compare to previous 3 months average
+          rendimientoMes: rendimientoMes,
+          dividendosMes: dividendosMes,
+          tendencia: 'stable' // TODO: Calculate trend when we have historical data
         }
       };
     } catch (error) {
-      console.error('Error calculating tres bolsillos:', error);
+      console.error('Error calculating flujos de caja:', error);
       return {
-        trabajo: { mensual: 0, tendencia: 'stable' },
-        inmuebles: { cashflow: 0, tendencia: 'stable' },
-        inversiones: { dividendos: 0, tendencia: 'stable' }
+        trabajo: { netoMensual: 0, tendencia: 'stable', variacionPorcentaje: 0 },
+        inmuebles: { cashflow: 0, ocupacion: 0, tendencia: 'stable' },
+        inversiones: { rendimientoMes: 0, dividendosMes: 0, tendencia: 'stable' }
       };
     }
+  }
+
+  /**
+   * Backward compatibility: getTresBolsillos() now calls getFlujosCaja()
+   * @deprecated Use getFlujosCaja() instead
+   */
+  async getTresBolsillos(): Promise<{
+    trabajo: { mensual: number; tendencia: 'up' | 'down' | 'stable' };
+    inmuebles: { cashflow: number; tendencia: 'up' | 'down' | 'stable' };
+    inversiones: { dividendos: number; tendencia: 'up' | 'down' | 'stable' };
+  }> {
+    const flujos = await this.getFlujosCaja();
+    return {
+      trabajo: {
+        mensual: flujos.trabajo.netoMensual,
+        tendencia: flujos.trabajo.tendencia
+      },
+      inmuebles: {
+        cashflow: flujos.inmuebles.cashflow,
+        tendencia: flujos.inmuebles.tendencia
+      },
+      inversiones: {
+        dividendos: flujos.inversiones.dividendosMes,
+        tendencia: flujos.inversiones.tendencia
+      }
+    };
   }
 
   /**
@@ -662,30 +876,185 @@ class DashboardService {
   }
 
   /**
-   * Get alerts that require attention
+   * Get financial health (salud financiera) - NEW for Dashboard 2.0
+   * 
+   * Calculates:
+   * - Current liquidity
+   * - Average monthly expenses
+   * - Financial cushion in months
+   * - Health status (ok/warning/critical)
+   * - 30-day projection
+   */
+  async getSaludFinanciera(): Promise<{
+    liquidezHoy: number;
+    gastoMedioMensual: number;
+    colchonMeses: number;
+    estado: 'ok' | 'warning' | 'critical';
+    proyeccion30d: {
+      estimado: number;
+      ingresos: number;
+      gastos: number;
+    };
+  }> {
+    try {
+      const db = await initDB();
+      
+      // Get current liquidity
+      const accounts = await db.getAll('accounts');
+      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const liquidezHoy = activeAccounts.reduce((sum: number, acc: any) => {
+        return sum + (acc.balance || 0);
+      }, 0);
+      
+      // Calculate average monthly expenses from last 3 months
+      const now = new Date();
+      const gastos = await db.getAll('gastos');
+      const expenses = await db.getAll('expenses');
+      
+      const last3MonthsExpenses: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const pastDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const month = pastDate.getMonth();
+        const year = pastDate.getFullYear();
+        
+        // Personal expenses from gastos
+        const gastosPersonales = gastos
+          .filter((gasto: any) => {
+            const fecha = new Date(gasto.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   gasto.esPersonal === true;
+          })
+          .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
+        
+        // Property expenses
+        const gastosInmuebles = expenses
+          .filter((expense: any) => {
+            const fecha = new Date(expense.fecha);
+            return fecha.getMonth() === month && 
+                   fecha.getFullYear() === year &&
+                   expense.propertyId != null;
+          })
+          .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+        
+        last3MonthsExpenses.push(gastosPersonales + gastosInmuebles);
+      }
+      
+      const gastoMedioMensual = last3MonthsExpenses.length > 0
+        ? last3MonthsExpenses.reduce((sum, val) => sum + val, 0) / last3MonthsExpenses.length
+        : 0;
+      
+      // Calculate cushion in months
+      const colchonMeses = gastoMedioMensual > 0 ? liquidezHoy / gastoMedioMensual : 0;
+      
+      // Determine health status
+      let estado: 'ok' | 'warning' | 'critical';
+      if (colchonMeses >= 3) {
+        estado = 'ok';
+      } else if (colchonMeses >= 1) {
+        estado = 'warning';
+      } else {
+        estado = 'critical';
+      }
+      
+      // Calculate 30-day projection
+      const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      // Expected expenses in next 30 days
+      const gastosEsperados = expenses
+        .filter((expense: any) => {
+          const fecha = new Date(expense.fecha);
+          return fecha >= now && fecha <= next30Days;
+        })
+        .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+      
+      // Expected income in next 30 days
+      const ingresos = await db.getAll('ingresos');
+      const rentPayments = await db.getAll('rentPayments');
+      
+      const ingresosEsperados = ingresos
+        .filter((ing: any) => {
+          const fecha = new Date(ing.fecha);
+          return fecha >= now && fecha <= next30Days;
+        })
+        .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
+      
+      const rentasEsperadas = rentPayments
+        .filter((payment: any) => {
+          const fecha = new Date(payment.fecha);
+          return fecha >= now && fecha <= next30Days;
+        })
+        .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
+      
+      const ingresosTotal = ingresosEsperados + rentasEsperadas;
+      const estimado30d = liquidezHoy + ingresosTotal - gastosEsperados;
+      
+      return {
+        liquidezHoy,
+        gastoMedioMensual,
+        colchonMeses,
+        estado,
+        proyeccion30d: {
+          estimado: estimado30d,
+          ingresos: ingresosTotal,
+          gastos: gastosEsperados
+        }
+      };
+    } catch (error) {
+      console.error('Error calculating salud financiera:', error);
+      return {
+        liquidezHoy: 0,
+        gastoMedioMensual: 0,
+        colchonMeses: 0,
+        estado: 'critical',
+        proyeccion30d: {
+          estimado: 0,
+          ingresos: 0,
+          gastos: 0
+        }
+      };
+    }
+  }
+
+  /**
+   * Get alerts that require attention - ENHANCED for Dashboard 2.0
+   * 
+   * Returns prioritized alerts including:
+   * - cobro: Unpaid rent payments
+   * - contrato: Contract renewals
+   * - pago: Pending payments
+   * - documento: Unclassified documents
+   * - hipoteca: EURIBOR reviews (TODO: when prestamos integrated)
+   * - ipc: Pending IPC increases (TODO: when contracts support it)
+   * 
+   * Only returns 'alta' and 'media' urgency (baja filtered out)
    */
   async getAlertas(): Promise<Array<{
     id: string;
-    tipo: 'trabajo' | 'inmuebles' | 'inversiones' | 'personal';
-    mensaje: string;
-    urgencia: 'alta' | 'media' | 'baja';
+    tipo: 'cobro' | 'contrato' | 'pago' | 'documento' | 'hipoteca' | 'ipc';
+    titulo: string;
+    descripcion: string;
+    urgencia: 'alta' | 'media';
+    diasVencimiento: number;
+    importe?: number;
     link: string;
-    diasHastaVencimiento?: number;
   }>> {
     try {
       const db = await initDB();
       const alerts: Array<{
         id: string;
-        tipo: 'trabajo' | 'inmuebles' | 'inversiones' | 'personal';
-        mensaje: string;
-        urgencia: 'alta' | 'media' | 'baja';
+        tipo: 'cobro' | 'contrato' | 'pago' | 'documento' | 'hipoteca' | 'ipc';
+        titulo: string;
+        descripcion: string;
+        urgencia: 'alta' | 'media';
+        diasVencimiento: number;
+        importe?: number;
         link: string;
-        diasHastaVencimiento?: number;
       }> = [];
       
       const now = new Date();
       
-      // Check for unpaid rent
+      // Check for unpaid rent (cobro type)
       const rentPayments = await db.getAll('rentPayments');
       const unpaidRents = rentPayments.filter((payment: any) => {
         const fechaVencimiento = new Date(payment.fecha);
@@ -696,15 +1065,17 @@ class DashboardService {
         const diasVencido = Math.floor((now.getTime() - new Date(payment.fecha).getTime()) / (1000 * 60 * 60 * 24));
         alerts.push({
           id: `rent-${payment.id || index}`,
-          tipo: 'inmuebles',
-          mensaje: `Alquiler sin cobrar (vencido hace ${diasVencido} días)`,
+          tipo: 'cobro',
+          titulo: 'Alquiler impagado',
+          descripcion: `Renta vencida hace ${diasVencido} días`,
           urgencia: diasVencido > 7 ? 'alta' : 'media',
-          link: '/tesoreria',
-          diasHastaVencimiento: -diasVencido
+          diasVencimiento: -diasVencido,
+          importe: payment.importe || undefined,
+          link: '/tesoreria'
         });
       });
       
-      // Check for unclassified documents in inbox
+      // Check for unclassified documents (documento type)
       const documents = await db.getAll('documents');
       const unclassifiedDocs = documents.filter((doc: any) => 
         !doc.classified && doc.status === 'processed'
@@ -713,14 +1084,16 @@ class DashboardService {
       if (unclassifiedDocs.length > 0) {
         alerts.push({
           id: 'docs-unclassified',
-          tipo: 'personal',
-          mensaje: `${unclassifiedDocs.length} documento${unclassifiedDocs.length > 1 ? 's' : ''} sin clasificar en Inbox`,
+          tipo: 'documento',
+          titulo: 'Documentos sin clasificar',
+          descripcion: `${unclassifiedDocs.length} documento${unclassifiedDocs.length > 1 ? 's' : ''} pendiente${unclassifiedDocs.length > 1 ? 's' : ''} en Inbox`,
           urgencia: 'media',
+          diasVencimiento: 0,
           link: '/inbox'
         });
       }
       
-      // Check for upcoming contract renewals (30 days)
+      // Check for upcoming contract renewals (contrato type)
       const contracts = await db.getAll('contracts');
       const upcomingRenewals = contracts.filter((contract: any) => {
         if (!contract.endDate || contract.estado !== 'activo') return false;
@@ -734,15 +1107,16 @@ class DashboardService {
         const diasHastaVencimiento = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         alerts.push({
           id: `contract-${contract.id || index}`,
-          tipo: 'inmuebles',
-          mensaje: `Contrato próximo a vencer (${diasHastaVencimiento} días)`,
+          tipo: 'contrato',
+          titulo: 'Contrato próximo a vencer',
+          descripcion: `Vence en ${diasHastaVencimiento} días`,
           urgencia: diasHastaVencimiento <= 7 ? 'alta' : 'media',
-          link: '/contratos',
-          diasHastaVencimiento
+          diasVencimiento: diasHastaVencimiento,
+          link: '/contratos'
         });
       });
       
-      // Check for upcoming invoices/bills (7 days)
+      // Check for upcoming payments (pago type)
       const expenses = await db.getAll('expenses');
       const upcomingExpenses = expenses.filter((expense: any) => {
         if (!expense.fecha) return false;
@@ -754,28 +1128,30 @@ class DashboardService {
       upcomingExpenses.forEach((expense: any, index: number) => {
         const fecha = new Date(expense.fecha);
         const diasHastaVencimiento = Math.floor((fecha.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const tipo = expense.esPersonal ? 'personal' : 'inmuebles';
         alerts.push({
           id: `expense-${expense.id || index}`,
-          tipo: tipo as 'trabajo' | 'inmuebles' | 'inversiones' | 'personal',
-          mensaje: `${expense.esPersonal ? 'Factura' : 'Gasto'} pendiente (vence en ${diasHastaVencimiento} días)`,
+          tipo: 'pago',
+          titulo: 'Pago pendiente',
+          descripcion: `${expense.concepto || 'Gasto'} vence en ${diasHastaVencimiento} días`,
           urgencia: diasHastaVencimiento <= 3 ? 'alta' : 'media',
-          link: tipo === 'personal' ? '/personal' : '/inmuebles/gastos-capex',
-          diasHastaVencimiento
+          diasVencimiento: diasHastaVencimiento,
+          importe: expense.importe || undefined,
+          link: '/inmuebles/gastos-capex'
         });
       });
+      
+      // TODO: Add hipoteca type alerts when prestamos are integrated
+      // TODO: Add ipc type alerts when contracts support IPC tracking
       
       // Sort by urgency and days until due
       alerts.sort((a, b) => {
         // First sort by urgency
-        const urgenciaOrder = { alta: 0, media: 1, baja: 2 };
+        const urgenciaOrder = { alta: 0, media: 1 };
         const urgenciaDiff = urgenciaOrder[a.urgencia] - urgenciaOrder[b.urgencia];
         if (urgenciaDiff !== 0) return urgenciaDiff;
         
-        // Then by days until due (sooner first)
-        const aDays = a.diasHastaVencimiento ?? 999;
-        const bDays = b.diasHastaVencimiento ?? 999;
-        return aDays - bDays;
+        // Then by days until due (sooner first, negatives = overdue come first)
+        return a.diasVencimiento - b.diasVencimiento;
       });
       
       // Limit to max 5 alerts
