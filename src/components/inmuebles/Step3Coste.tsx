@@ -515,7 +515,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
                       <span 
                         className="inline-flex items-center px-2 py-1 text-xs font-medium"
                         style={{
-                          backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                          backgroundColor: 'var(--warn-bg)',
                           color: 'var(--warn)'
                         }}
                       >
@@ -646,7 +646,7 @@ const Step3Coste: React.FC<Step3CosteProps> = ({
               <div 
                 className="border p-3 mt-4"
                 style={{
-                  backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                  backgroundColor: 'var(--warn-bg)',
                   borderColor: 'var(--warn)'
                 }}
               >

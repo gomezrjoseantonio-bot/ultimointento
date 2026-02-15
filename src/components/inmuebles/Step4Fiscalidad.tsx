@@ -301,7 +301,7 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
         <div 
           className="border p-4"
           style={{
-            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            backgroundColor: 'var(--warn-bg)',
             borderColor: 'var(--warn)'
           }}
         >

@@ -20,6 +20,25 @@ const FloatingActionButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Color mapping function - defined once outside of render
+  const getColorStyles = (colorKey: string) => {
+    const colors = {
+      'atlas-blue': {
+        backgroundColor: 'var(--atlas-blue)',
+        hover: 'var(--atlas-blue-dark)'
+      },
+      'atlas-teal': {
+        backgroundColor: 'var(--atlas-teal)',
+        hover: 'var(--atlas-teal-dark)'
+      },
+      'ok': {
+        backgroundColor: 'var(--ok)',
+        hover: 'var(--ok-dark)'
+      }
+    };
+    return colors[colorKey as keyof typeof colors] || colors['atlas-blue'];
+  };
+
   const quickActions: QuickAction[] = [
     {
       id: 'new-property',
@@ -69,24 +88,6 @@ const FloatingActionButton: React.FC = () => {
           <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
             {quickActions.map((action, index) => {
               const Icon = action.icon;
-              const getColorStyles = (colorKey: string) => {
-                const colors = {
-                  'atlas-blue': {
-                    backgroundColor: 'var(--atlas-blue)',
-                    hover: '#031F47'
-                  },
-                  'atlas-teal': {
-                    backgroundColor: 'var(--atlas-teal)',
-                    hover: '#178999'
-                  },
-                  'ok': {
-                    backgroundColor: 'var(--ok)',
-                    hover: '#218838'
-                  }
-                };
-                return colors[colorKey as keyof typeof colors] || colors['atlas-blue'];
-              };
-              
               const colorStyles = getColorStyles(action.color);
               
               return (
@@ -150,7 +151,7 @@ const FloatingActionButton: React.FC = () => {
           color: 'white'
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#031F47';
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--atlas-blue-dark)';
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--atlas-blue)';

@@ -55,7 +55,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.35),transparent_55%)]" />
         <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-white/15 blur-3xl" />
-        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(29, 160, 186, 0.4)' }} />
+        <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl" style={{ backgroundColor: 'var(--atlas-teal)', opacity: 0.4 }} />
         <div className="absolute inset-0 opacity-30">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0)_40%)]" />
         </div>
@@ -99,9 +99,6 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold shadow-lg shadow-white/20 transition hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 style={{
                   color: 'var(--atlas-navy-1)'
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.outlineColor = 'var(--atlas-navy-1)';
                 }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
@@ -169,11 +166,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                     style={{
                       justifyContent: excludePersonal ? 'flex-end' : 'flex-start',
                       borderColor: excludePersonal ? 'rgba(29, 160, 186, 0.7)' : 'rgba(255, 255, 255, 0.3)',
-                      backgroundColor: excludePersonal ? 'rgba(29, 160, 186, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                      outlineOffset: '2px'
-                    }}
-                    onFocus={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.outlineColor = 'var(--atlas-navy-1)';
+                      backgroundColor: excludePersonal ? 'rgba(29, 160, 186, 0.3)' : 'rgba(255, 255, 255, 0.1)'
                     }}
                   >
                     <span className="sr-only">{personalToggleLabel}</span>
