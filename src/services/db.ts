@@ -14,7 +14,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 18; // Dashboard refactor: Added patrimonioSnapshots
+const DB_VERSION = 19; // Added gastosRecurrentes & gastosPuntuales stores (and patrimonioSnapshots)
 
 export interface Property {
   id?: number;
