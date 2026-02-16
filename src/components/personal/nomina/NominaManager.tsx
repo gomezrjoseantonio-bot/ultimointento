@@ -3,17 +3,18 @@ import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Nomina, CalculoNominaResult } from '../../../types/personal';
 import NominaForm from './NominaForm';
-import { Plus, Edit2, Trash2, Calculator, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, DollarSign, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
 const NominaManager: React.FC = () => {
   const [nominas, setNominas] = useState<Nomina[]>([]);
-  const [activaNomina, setActivaNomina] = useState<Nomina | null>(null);
-  const [calculo, setCalculo] = useState<CalculoNominaResult | null>(null);
+  const [nominasActivas, setNominasActivas] = useState<Nomina[]>([]);
+  const [calculos, setCalculos] = useState<Map<number, CalculoNominaResult>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
+  const [expandedNomina, setExpandedNomina] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -27,12 +28,19 @@ const NominaManager: React.FC = () => {
         const nominasData = await nominaService.getNominas(personalData.id);
         setNominas(nominasData);
         
-        const activa = nominasData.find(n => n.activa);
-        if (activa) {
-          setActivaNomina(activa);
-          const calculoResult = nominaService.calculateSalary(activa);
-          setCalculo(calculoResult);
-        }
+        // Filter all active nominas
+        const activas = nominasData.filter(n => n.activa);
+        setNominasActivas(activas);
+        
+        // Calculate salary for ALL nominas (not just active ones)
+        const calculosMap = new Map<number, CalculoNominaResult>();
+        nominasData.forEach(nomina => {
+          if (nomina.id) {
+            const calculoResult = nominaService.calculateSalary(nomina);
+            calculosMap.set(nomina.id, calculoResult);
+          }
+        });
+        setCalculos(calculosMap);
       }
     } catch (error) {
       console.error('Error loading nominas:', error);
@@ -79,6 +87,17 @@ const NominaManager: React.FC = () => {
     }
   };
 
+  const handleDeactivateNomina = async (nominaId: number) => {
+    try {
+      await nominaService.updateNomina(nominaId, { activa: false });
+      toast.success('Nómina desactivada correctamente');
+      loadData();
+    } catch (error) {
+      console.error('Error deactivating nomina:', error);
+      toast.error('Error al desactivar la nómina');
+    }
+  };
+
   const handleNominaSaved = () => {
     setShowForm(false);
     setEditingNomina(null);
@@ -88,25 +107,41 @@ const NominaManager: React.FC = () => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'EUR',
+      maximumFractionDigits: 0
     }).format(amount);
   };
 
-  const formatPaymentRule = (regla: Nomina['reglaCobroDia']) => {
-    switch (regla.tipo) {
-      case 'fijo':
-        return `Día ${regla.dia} de cada mes`;
-      case 'ultimo-habil':
-        return 'Último día hábil del mes';
-      case 'n-esimo-habil':
-        const posicion = regla.posicion || -1;
-        if (posicion === -1) return 'Último día hábil';
-        if (posicion === -2) return 'Penúltimo día hábil';
-        if (posicion === -3) return 'Antepenúltimo día hábil';
-        return `${Math.abs(posicion)}º día hábil desde el final`;
-      default:
-        return 'No especificado';
+  const getCombinedTotals = () => {
+    if (nominasActivas.length === 0) {
+      return { brutoAnual: 0, netoMensual: 0, netoAnual: 0 };
     }
+
+    let brutoAnual = 0;
+    let netoAnual = 0;
+
+    nominasActivas.forEach(nomina => {
+      brutoAnual += nomina.salarioBrutoAnual;
+      if (nomina.id) {
+        const calculo = calculos.get(nomina.id);
+        if (calculo) {
+          netoAnual += calculo.totalAnualNeto;
+        }
+      }
+    });
+
+    const netoMensual = netoAnual / 12;
+
+    return { brutoAnual, netoMensual, netoAnual };
+  };
+
+  const getMonthName = (mes: number) => {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return months[mes - 1];
+  };
+
+  const toggleExpanded = (nominaId: number) => {
+    setExpandedNomina(expandedNomina === nominaId ? null : nominaId);
   };
 
   const getNextPaymentDate = (nomina: Nomina) => {
@@ -146,110 +181,45 @@ const NominaManager: React.FC = () => {
         </button>
       </div>
 
-      {/* Active Nomina Summary */}
-      {activaNomina && calculo && (
+      {/* Combined Summary for Active Nominas */}
+      {nominasActivas.length > 0 && (
         <div className="btn-secondary-horizon bg-gradient-to-r from-primary-50 to-primary-100 ">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-atlas-blue" />
               <h4 className="text-lg font-semibold text-primary-900">
-                {activaNomina.nombre} (Activa)
+                Resumen de Ingresos
               </h4>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-primary-700">
-              <Calendar className="w-4 h-4" />
-              <span>Próximo pago: {getNextPaymentDate(activaNomina)}</span>
+              {nominasActivas.length > 1 && (
+                <div className="flex items-center space-x-1 text-sm text-primary-700">
+                  <Users className="w-4 h-4" />
+                  <span>Ingresos combinados de {nominasActivas.length} nóminas</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-atlas-blue font-medium">Salario Bruto Anual</p>
-              <p className="text-xl font-bold text-primary-900">
-                {formatCurrency(activaNomina.salarioBrutoAnual)}
+              <p className="text-xs uppercase text-atlas-blue font-medium">Bruto Anual</p>
+              <p className="text-2xl font-bold text-primary-900">
+                {formatCurrency(getCombinedTotals().brutoAnual)}
+              </p>
+            </div>
+
+            <div className="btn-secondary-horizon bg-white p-4 border-2 border-green-400">
+              <p className="text-xs uppercase text-atlas-blue font-medium">Neto Mensual</p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(getCombinedTotals().netoMensual)}
               </p>
             </div>
 
             <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-atlas-blue font-medium">Neto Mensual Promedio</p>
-              <p className="text-xl font-bold text-primary-900">
-                {formatCurrency(calculo.netoMensual)}
+              <p className="text-xs uppercase text-atlas-blue font-medium">Neto Anual</p>
+              <p className="text-2xl font-bold text-primary-900">
+                {formatCurrency(getCombinedTotals().netoAnual)}
               </p>
             </div>
-
-            <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-atlas-blue font-medium">Total Anual Neto</p>
-              <p className="text-xl font-bold text-primary-900">
-                {formatCurrency(calculo.totalAnualNeto)}
-              </p>
-            </div>
-
-            <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-sm text-atlas-blue font-medium">Variables y Bonus</p>
-              <p className="text-xl font-bold text-primary-900">
-                {activaNomina.variables.length + activaNomina.bonus.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center space-x-4 text-sm text-primary-700">
-            <div className="flex items-center space-x-1">
-              <Calculator className="w-4 h-4" />
-              <span>Distribución: {
-                activaNomina.distribucion.tipo === 'doce' ? '12 meses' :
-                activaNomina.distribucion.tipo === 'catorce' ? '14 meses' :
-                `${activaNomina.distribucion.meses} meses (personalizado)`
-              }</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Calendar className="w-4 h-4" />
-              <span>Regla de pago: {formatPaymentRule(activaNomina.reglaCobroDia)}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Monthly Distribution Details */}
-      {calculo && calculo.distribuccionMensual && (
-        <div className="bg-white border border-gray-200 p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-gray-600" />
-            <h4 className="text-lg font-medium text-gray-900">Distribución Mensual</h4>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 text-sm font-medium text-gray-700">Mes</th>
-                  <th className="text-right py-2 px-3 text-sm font-medium text-gray-700">Salario Base</th>
-                  <th className="text-right py-2 px-3 text-sm font-medium text-gray-700">Variables</th>
-                  <th className="text-right py-2 px-3 text-sm font-medium text-gray-700">Bonus</th>
-                  <th className="text-right py-2 px-3 text-sm font-medium text-gray-700">Neto Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {calculo.distribuccionMensual.map((mes) => (
-                  <tr key={mes.mes} className="hover:bg-gray-50">
-                    <td className="py-2 px-3 text-sm text-gray-900">
-                      {new Date(2024, mes.mes - 1).toLocaleDateString('es-ES', { month: 'long' })}
-                    </td>
-                    <td className="py-2 px-3 text-sm text-gray-900 text-right">
-                      {formatCurrency(mes.salarioBase)}
-                    </td>
-                    <td className="py-2 px-3 text-sm text-gray-900 text-right">
-                      {mes.variables > 0 ? formatCurrency(mes.variables) : '-'}
-                    </td>
-                    <td className="py-2 px-3 text-sm text-gray-900 text-right">
-                      {mes.bonus > 0 ? formatCurrency(mes.bonus) : '-'}
-                    </td>
-                    <td className="py-2 px-3 text-sm font-medium text-gray-900 text-right">
-                      {formatCurrency(mes.netoTotal)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -276,77 +246,152 @@ const NominaManager: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {nominas.map((nomina) => (
-              <div
-                key={nomina.id}
-                className={`border p-4 ${
-                  nomina.activa 
-                    ? 'border-primary-200 bg-primary-50' 
-                    : 'border-gray-200 bg-white'                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <h5 className={`font-medium ${nomina.activa ? 'text-primary-900' : 'text-gray-900'}`}>
-                        {nomina.nombre}
-                      </h5>
-                      {nomina.activa && (
-                        <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-primary-800">
-                          Activa
+          <div className="space-y-3">
+            {nominas.map((nomina) => {
+              const calculo = nomina.id ? calculos.get(nomina.id) : null;
+              const isExpanded = expandedNomina === nomina.id;
+              const hasExtras = nomina.variables.length > 0 || nomina.bonus.length > 0;
+              
+              return (
+                <div
+                  key={nomina.id}
+                  className={`border ${
+                    nomina.activa 
+                      ? 'border-primary-200 bg-primary-50' 
+                      : 'border-gray-200 bg-white'
+                  }`}
+                >
+                  {/* Compact Row */}
+                  <div className="flex items-center px-4 py-3 space-x-4">
+                    {/* Name and Status */}
+                    <div className="flex-shrink-0 w-48">
+                      <div className="flex items-center space-x-2">
+                        <h5 className={`font-medium text-sm ${nomina.activa ? 'text-primary-900' : 'text-gray-900'}`}>
+                          {nomina.nombre}
+                        </h5>
+                        {nomina.activa && (
+                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium text-primary-800 bg-primary-200 rounded">
+                            Activa
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bruto */}
+                    <div className="flex-shrink-0 w-32 text-sm">
+                      <span className="text-gray-900 font-medium">
+                        {formatCurrency(nomina.salarioBrutoAnual)}
+                      </span>
+                    </div>
+
+                    {/* Neto/mes */}
+                    <div className="flex-shrink-0 w-32 text-sm">
+                      <span className="text-gray-600">
+                        {calculo ? formatCurrency(calculo.netoMensual) : '-'}/mes
+                      </span>
+                    </div>
+
+                    {/* Pagas */}
+                    <div className="flex-shrink-0 w-24 text-sm text-gray-600">
+                      {nomina.distribucion.tipo === 'doce' ? '12' :
+                       nomina.distribucion.tipo === 'catorce' ? '14' :
+                       nomina.distribucion.meses} pagas
+                    </div>
+
+                    {/* Extras */}
+                    <div className="flex-shrink-0 w-20 text-sm text-gray-600">
+                      {hasExtras ? (
+                        <span className="text-green-600">
+                          +{nomina.variables.length + nomina.bonus.length}
                         </span>
+                      ) : (
+                        <span>-</span>
                       )}
                     </div>
-                    
-                    <div className="mt-1 flex items-center space-x-4 text-sm text-gray-600">
-                      <span>
-                        Bruto anual: {formatCurrency(nomina.salarioBrutoAnual)}
-                      </span>
-                      <span>
-                        Distribución: {
-                          nomina.distribucion.tipo === 'doce' ? '12 meses' :
-                          nomina.distribucion.tipo === 'catorce' ? '14 meses' :
-                          `${nomina.distribucion.meses} meses`
-                        }
-                      </span>
-                      <span>
-                        Variables: {nomina.variables.length}
-                      </span>
-                      <span>
-                        Bonus: {nomina.bonus.length}
-                      </span>
+
+                    {/* Próximo pago */}
+                    <div className="flex-1 min-w-0 text-sm text-gray-600 flex items-center space-x-1">
+                      <Calendar className="w-3 h-3" />
+                      <span className="truncate">{getNextPaymentDate(nomina)}</span>
                     </div>
-                    
-                    <div className="mt-1 text-sm text-gray-500">
-                      {formatPaymentRule(nomina.reglaCobroDia)}
+
+                    {/* Actions */}
+                    <div className="flex-shrink-0 flex items-center space-x-2">
+                      {calculo && (
+                        <button
+                          onClick={() => toggleExpanded(nomina.id!)}
+                          className="p-2 text-gray-400 hover:text-atlas-blue"
+                          title="Ver distribución mensual"
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                      {nomina.activa ? (
+                        <button
+                          onClick={() => handleDeactivateNomina(nomina.id!)}
+                          className="btn-secondary-horizon px-3 py-1 text-sm text-gray-600"
+                        >
+                          Desactivar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleActivateNomina(nomina)}
+                          className="btn-secondary-horizon px-3 py-1 text-sm text-atlas-blue"
+                        >
+                          Activar
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleEditNomina(nomina)}
+                        className="p-2 text-gray-400 hover:text-atlas-blue"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNomina(nomina.id!)}
+                        className="p-2 text-gray-400 hover:text-error-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    {!nomina.activa && (
-                      <button
-                        onClick={() => handleActivateNomina(nomina)}
-                        className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-atlas-blue "
-                      >
-                        Activar
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleEditNomina(nomina)}
-                      className="p-2 text-gray-400 hover:text-atlas-blue"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteNomina(nomina.id!)}
-                      className="p-2 text-gray-400 hover:text-error-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Expandable Monthly Distribution Grid */}
+                  {isExpanded && calculo && calculo.distribuccionMensual && (
+                    <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
+                      <h5 className="text-sm font-medium text-gray-700 mb-3">Distribución Mensual</h5>
+                      <div className="grid grid-cols-6 gap-2">
+                        {calculo.distribuccionMensual.map((mes) => {
+                          const hasMonthExtras = mes.variables > 0 || mes.bonus > 0;
+                          return (
+                            <div
+                              key={mes.mes}
+                              className={`p-2 rounded text-sm ${
+                                hasMonthExtras ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-200'
+                              }`}
+                            >
+                              <div className="font-medium text-gray-900">{getMonthName(mes.mes)}</div>
+                              <div className="text-xs text-gray-600 font-semibold">
+                                {formatCurrency(mes.netoTotal)}
+                              </div>
+                              {hasMonthExtras && (
+                                <div className="text-xs text-green-600 mt-0.5">
+                                  +extras
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
