@@ -333,14 +333,14 @@ const NominaManager: React.FC = () => {
                       {nomina.activa ? (
                         <button
                           onClick={() => handleDeactivateNomina(nomina.id!)}
-                          className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-gray-600"
+                          className="btn-secondary-horizon px-3 py-1 text-sm text-gray-600"
                         >
                           Desactivar
                         </button>
                       ) : (
                         <button
                           onClick={() => handleActivateNomina(nomina)}
-                          className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary px-3 py-1 text-sm text-atlas-blue"
+                          className="btn-secondary-horizon px-3 py-1 text-sm text-atlas-blue"
                         >
                           Activar
                         </button>
