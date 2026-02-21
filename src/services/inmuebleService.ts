@@ -38,7 +38,6 @@ class InmuebleService {
       estado: property.state === 'activo' ? 'ACTIVO' : 'VENDIDO',
       fecha_alta: property.purchaseDate || new Date().toISOString().split('T')[0],
       caracteristicas: {
-        tipo: 'VIVIENDA',
         m2: property.squareMeters || 0,
         habitaciones: property.bedrooms || 0,
         banos: property.bathrooms || 0
