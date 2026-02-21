@@ -202,9 +202,12 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
         }
         
         // Auto-calculate taxes when CP is available
-        if (formData.precioCompra > 0) {
-          calculateTaxes(formData.precioCompra, formData.tipo, location.ccaa);
-        }
+        setFormData(prevFormData => {
+          if (prevFormData.precioCompra > 0) {
+            calculateTaxes(prevFormData.precioCompra, prevFormData.tipo, location.ccaa);
+          }
+          return prevFormData;
+        });
       } else {
         setLocationInfo(null);
         toast('Código postal no reconocido. Introduce los datos manualmente.');
