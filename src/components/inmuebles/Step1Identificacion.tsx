@@ -70,10 +70,10 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
           ca: locationData.ccaa as ComunidadAutonoma
         };
         if (isInferred) {
-          toast.info(`Ubicación inferida: ${locationData.province}. Puedes editarla manualmente.`);
+          toast(`Ubicación inferida: ${locationData.province}. Puedes editarla manualmente.`);
         }
       } else {
-        toast.warning('Código postal no reconocido. Introduce los datos manualmente.');
+        toast('Código postal no reconocido. Introduce los datos manualmente.');
       }
 
       setIsAutoCompleting(false);

@@ -198,7 +198,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
         });
         
         if (isInferred) {
-          toast.info(`Ubicación inferida: ${location.province}. Puedes editarla manualmente.`);
+          toast(`Ubicación inferida: ${location.province}. Puedes editarla manualmente.`);
         }
         
         // Auto-calculate taxes when CP is available
@@ -207,7 +207,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
         }
       } else {
         setLocationInfo(null);
-        toast.warning('Código postal no reconocido. Introduce los datos manualmente.');
+        toast('Código postal no reconocido. Introduce los datos manualmente.');
       }
     } else {
       setLocationInfo(null);
