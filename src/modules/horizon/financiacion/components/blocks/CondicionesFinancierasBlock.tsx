@@ -56,8 +56,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               }}
               placeholder="0,00"
               min="0"
-              max="999999.99"
-              step="0.01"
+              max="9999999"
               className={`w-full border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
                   ? 'border-error-300 focus:border-error-500' 

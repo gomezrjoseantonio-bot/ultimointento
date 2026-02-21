@@ -14,7 +14,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 19; // Added gastosRecurrentes & gastosPuntuales stores (and patrimonioSnapshots)
+const DB_VERSION = 20; // Added prestamos store for loan persistence
 
 export interface Property {
   id?: number;
@@ -1311,6 +1311,7 @@ interface AtlasHorizonDB {
   movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
   gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
   gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
+  prestamos: any; // Financiacion: Loan records
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1671,6 +1672,14 @@ export const initDB = async () => {
         // General key-value store for application configuration
         if (!db.objectStoreNames.contains('keyval')) {
           db.createObjectStore('keyval');
+        }
+
+        // Financiacion: Prestamos store for loan persistence
+        if (!db.objectStoreNames.contains('prestamos')) {
+          const prestamosStore = db.createObjectStore('prestamos', { keyPath: 'id' });
+          prestamosStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          prestamosStore.createIndex('tipo', 'tipo', { unique: false });
+          prestamosStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       },
       blocked() {

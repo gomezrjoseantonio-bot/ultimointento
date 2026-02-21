@@ -2,29 +2,72 @@
 
 import { Prestamo, PlanPagos } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
+import { initDB } from './db';
 
 export class PrestamosService {
-  private prestamos: Prestamo[] = [];
   private planesGenerados: Map<string, PlanPagos> = new Map();
+  private prestamosCache: Prestamo[] | null = null;
+
+  /**
+   * Load all loans from IndexedDB into the in-memory cache
+   */
+  private async ensureLoaded(): Promise<Prestamo[]> {
+    if (this.prestamosCache !== null) return this.prestamosCache;
+    try {
+      const db = await initDB();
+      this.prestamosCache = await db.getAll('prestamos');
+    } catch (error) {
+      console.error('[PRESTAMOS] Failed to load from IndexedDB:', error);
+      this.prestamosCache = [];
+    }
+    return this.prestamosCache;
+  }
+
+  /**
+   * Persist a single loan to IndexedDB
+   */
+  private async savePrestamo(prestamo: Prestamo): Promise<void> {
+    try {
+      const db = await initDB();
+      await db.put('prestamos', prestamo);
+    } catch (error) {
+      console.error('[PRESTAMOS] Failed to save to IndexedDB:', error);
+    }
+  }
+
+  /**
+   * Delete a single loan from IndexedDB
+   */
+  private async deletePrestamoDB(id: string): Promise<void> {
+    try {
+      const db = await initDB();
+      await db.delete('prestamos', id);
+    } catch (error) {
+      console.error('[PRESTAMOS] Failed to delete from IndexedDB:', error);
+    }
+  }
 
   /**
    * Get all loans for a property
    */
   async getPrestamosByProperty(inmuebleId: string): Promise<Prestamo[]> {
-    return this.prestamos.filter(p => p.inmuebleId === inmuebleId);
+    const prestamos = await this.ensureLoaded();
+    return prestamos.filter(p => p.inmuebleId === inmuebleId);
   }
 
   /**
    * Get loan by ID
    */
   async getPrestamoById(id: string): Promise<Prestamo | null> {
-    return this.prestamos.find(p => p.id === id) || null;
+    const prestamos = await this.ensureLoaded();
+    return prestamos.find(p => p.id === id) || null;
   }
 
   /**
    * Create new loan - ENHANCED to automatically generate amortization schedule
    */
   async createPrestamo(prestamoData: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'>): Promise<Prestamo> {
+    const prestamos = await this.ensureLoaded();
     const prestamo: Prestamo = {
       id: `prestamo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       ...prestamoData,
@@ -32,7 +75,8 @@ export class PrestamosService {
       updatedAt: new Date().toISOString()
     };
 
-    this.prestamos.push(prestamo);
+    await this.savePrestamo(prestamo);
+    prestamos.push(prestamo);
     
     // AUTO-GENERATE AMORTIZATION SCHEDULE ON SAVE
     console.log(`[PRESTAMOS] Auto-generating amortization schedule for loan ${prestamo.id}`);
@@ -52,19 +96,22 @@ export class PrestamosService {
    * Update existing loan - ENHANCED to recalculate amortization schedule when parameters change
    */
   async updatePrestamo(id: string, updates: Partial<Prestamo>): Promise<Prestamo | null> {
-    const index = this.prestamos.findIndex(p => p.id === id);
+    const prestamos = await this.ensureLoaded();
+    const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) return null;
 
-    const originalPrestamo = { ...this.prestamos[index] };
+    const originalPrestamo = { ...prestamos[index] };
     
-    this.prestamos[index] = {
-      ...this.prestamos[index],
+    prestamos[index] = {
+      ...prestamos[index],
       ...updates,
       updatedAt: new Date().toISOString()
     };
 
+    await this.savePrestamo(prestamos[index]);
+
     // Check if parameters that affect amortization schedule changed
-    const parametersChanged = this.hasAmortizationParametersChanged(originalPrestamo, this.prestamos[index]);
+    const parametersChanged = this.hasAmortizationParametersChanged(originalPrestamo, prestamos[index]);
     
     if (parametersChanged) {
       console.log(`[PRESTAMOS] Loan parameters changed, regenerating amortization schedule for ${id}`);
@@ -72,7 +119,7 @@ export class PrestamosService {
       this.planesGenerados.delete(id);
       
       try {
-        const paymentPlan = prestamosCalculationService.generatePaymentSchedule(this.prestamos[index]);
+        const paymentPlan = prestamosCalculationService.generatePaymentSchedule(prestamos[index]);
         this.planesGenerados.set(id, paymentPlan);
         console.log(`[PRESTAMOS] Amortization schedule updated: ${paymentPlan.periodos.length} payments, total interest: €${paymentPlan.resumen.totalIntereses.toFixed(2)}`);
       } catch (error) {
@@ -83,7 +130,7 @@ export class PrestamosService {
       this.planesGenerados.delete(id);
     }
 
-    return this.prestamos[index];
+    return prestamos[index];
   }
 
   /**
@@ -106,10 +153,12 @@ export class PrestamosService {
    * Delete loan
    */
   async deletePrestamo(id: string): Promise<boolean> {
-    const index = this.prestamos.findIndex(p => p.id === id);
+    const prestamos = await this.ensureLoaded();
+    const index = prestamos.findIndex(p => p.id === id);
     if (index === -1) return false;
 
-    this.prestamos.splice(index, 1);
+    await this.deletePrestamoDB(id);
+    prestamos.splice(index, 1);
     this.planesGenerados.delete(id);
     return true;
   }
@@ -220,19 +269,10 @@ export class PrestamosService {
   }
 
   /**
-   * Initialize with empty data for production use
-   */
-  private initializeSampleData(): void {
-    // Production version: no sample data
-    // This method is kept for compatibility but does nothing
-  }
-
-  /**
    * Get all loans (for development/testing)
    */
   async getAllPrestamos(): Promise<Prestamo[]> {
-    // Return loans without initializing sample data
-    return [...this.prestamos];
+    return [...(await this.ensureLoaded())];
   }
 
   /**
@@ -240,6 +280,7 @@ export class PrestamosService {
    */
   clearCache(): void {
     this.planesGenerados.clear();
+    this.prestamosCache = null;
   }
 }
 
