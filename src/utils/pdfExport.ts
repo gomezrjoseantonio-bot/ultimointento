@@ -31,12 +31,11 @@ function generateAmortizationRows(
     const capitalAmort = cuota - intereses;
     capitalPendiente = Math.max(0, capitalPendiente - capitalAmort);
 
-    const fecha = new Date(fechaBase);
-    fecha.setMonth(fecha.getMonth() + i);
+    fechaBase.setMonth(fechaBase.getMonth() + 1);
 
     rows.push([
       String(i),
-      fecha.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }),
+      fechaBase.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }),
       `${fmt(cuota)} €`,
       `${fmt(capitalAmort)} €`,
       `${fmt(intereses)} €`,

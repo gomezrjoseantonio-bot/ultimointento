@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 interface AmortizacionRow {
   periodo: number;
   fecha: string;
+  anio: number;
   cuota: number;
   capital: number;
   intereses: number;
@@ -51,12 +52,12 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
       const capital = cuota - intereses;
       capitalPendiente = Math.max(0, capitalPendiente - capital);
 
-      const fecha = new Date(fechaBase);
-      fecha.setMonth(fecha.getMonth() + i);
+      fechaBase.setMonth(fechaBase.getMonth() + 1);
 
       result.push({
         periodo: i,
-        fecha: fecha.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }),
+        fecha: fechaBase.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }),
+        anio: fechaBase.getFullYear(),
         cuota: Math.round(cuota * 100) / 100,
         capital: Math.round(capital * 100) / 100,
         intereses: Math.round(intereses * 100) / 100,
@@ -70,20 +71,14 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
 
   // Available years for filter
   const years = useMemo(() => {
-    const fechaBase = new Date(fechaInicio);
-    const set = new Set<number>();
-    for (let i = 1; i <= plazoMeses; i++) {
-      const d = new Date(fechaBase);
-      d.setMonth(d.getMonth() + i);
-      set.add(d.getFullYear());
-    }
+    const set = new Set<number>(rows.map(r => r.anio));
     return Array.from(set).sort();
-  }, [fechaInicio, plazoMeses]);
+  }, [rows]);
 
   // Filtered rows
   const filteredRows = useMemo(() => {
     if (!filtroAnio) return rows;
-    return rows.filter(r => r.fecha.endsWith(String(filtroAnio)));
+    return rows.filter(r => r.anio === filtroAnio);
   }, [rows, filtroAnio]);
 
   const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);

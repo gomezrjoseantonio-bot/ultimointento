@@ -450,7 +450,14 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                       min="0"
                       max="5"
                       value={bonificacion.descuentoTIN}
-                      onChange={(e) => updateBonificacionDescuento(bonificacion.id, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === '' || raw === '-') return;
+                        const parsed = parseFloat(raw);
+                        if (!isNaN(parsed)) {
+                          updateBonificacionDescuento(bonificacion.id, parsed);
+                        }
+                      }}
                       disabled={!bonificacion.seleccionado}
                       className="w-20 px-2 py-1 border rounded text-sm border-gray-300 focus:border-atlas-blue focus:ring-atlas-blue disabled:opacity-50 disabled:bg-gray-100"
                     />
@@ -577,7 +584,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-white opacity-90 block">Ahorro mensual</span>
-                  <span className="font-semibold text-ok-300">
+                  <span className="font-semibold text-white">
                     {calculoLive.ahorroMensual.toLocaleString('es-ES', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
@@ -586,7 +593,7 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                 </div>
                 <div>
                   <span className="text-white opacity-90 block">Ahorro anual</span>
-                  <span className="font-semibold text-ok-300">
+                  <span className="font-semibold text-white">
                     {calculoLive.ahorroAnual?.toLocaleString('es-ES', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 

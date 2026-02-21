@@ -139,7 +139,10 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
               <p className="text-sm text-text-gray mb-2">No hay inmuebles disponibles.</p>
               <button
                 type="button"
-                onClick={() => window.open('/inmuebles/nuevo', '_blank')}
+                onClick={() => {
+                  const win = window.open('/inmuebles/nuevo', '_blank');
+                  if (win) win.opener = null;
+                }}
                 className="text-sm text-atlas-blue underline hover:text-atlas-navy-1"
               >
                 Crear inmueble

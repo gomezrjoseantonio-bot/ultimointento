@@ -5,6 +5,11 @@ import { FEINData } from '../types/fein';
 import { CalculoLive, PrestamoFinanciacion } from '../types/financiacion';
 import { bonificacionesService } from './bonificacionesService';
 
+/** Minimum derivative magnitude before stopping Newton-Raphson to avoid division by near-zero */
+const DERIVATIVE_TOLERANCE = 1e-12;
+/** Convergence threshold for Newton-Raphson rate iteration */
+const CONVERGENCE_TOLERANCE = 1e-10;
+
 export class LiveCalculationService {
   /**
    * Calculate live loan metrics from FEIN data
@@ -213,9 +218,9 @@ export class LiveCalculationService {
       const factor = Math.pow(1 + r, plazo);
       const f = capital * r * factor - cuota * (factor - 1);
       const df = capital * (factor + plazo * r * factor / (1 + r)) - cuota * plazo * factor / (1 + r);
-      if (Math.abs(df) < 1e-12) break;
+      if (Math.abs(df) < DERIVATIVE_TOLERANCE) break;
       const rNew = r - f / df;
-      if (Math.abs(rNew - r) < 1e-10) {
+      if (Math.abs(rNew - r) < CONVERGENCE_TOLERANCE) {
         r = rNew;
         break;
       }

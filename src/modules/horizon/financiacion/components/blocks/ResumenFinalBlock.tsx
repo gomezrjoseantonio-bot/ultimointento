@@ -221,7 +221,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <span className="text-white opacity-90 text-sm block">Descuento Total</span>
-                  <span className="text-lg font-semibold text-ok-400">
+                  <span className="text-lg font-semibold text-white">
                     -{formatPercentage(bonificacionesTotales)} p.p.
                   </span>
                 </div>
@@ -229,13 +229,13 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
                   <>
                     <div>
                       <span className="text-white opacity-90 text-sm block">Ahorro Mensual</span>
-                      <span className="text-lg font-semibold text-ok-400">
+                      <span className="text-lg font-semibold text-white">
                         {formatNumber(calculoLive.ahorroMensual)} €
                       </span>
                     </div>
                     <div>
                       <span className="text-white opacity-90 text-sm block">Ahorro Anual</span>
-                      <span className="text-lg font-semibold text-ok-400">
+                      <span className="text-lg font-semibold text-white">
                         {formatNumber(ahorroAnual)} €
                       </span>
                     </div>

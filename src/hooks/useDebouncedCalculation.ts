@@ -15,11 +15,8 @@ export const useDebouncedCalculation = (
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (formData.capitalInicial && formData.plazoTotal && formData.tipo && formData.fechaFirma) {
-        setCalculation(LiveCalculationService.calculateFromPrestamo(formData as PrestamoFinanciacion));
-      } else {
-        setCalculation(null);
-      }
+      // calculateFromPrestamo returns null when required fields are missing
+      setCalculation(LiveCalculationService.calculateFromPrestamo(formData as PrestamoFinanciacion));
     }, delay);
 
     return () => clearTimeout(timer);
