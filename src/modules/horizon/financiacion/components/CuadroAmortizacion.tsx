@@ -129,7 +129,7 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
       {/* Table */}
       <div className="overflow-x-auto border border-gray-200 rounded-atlas">
         <table className="w-full text-sm">
-          <thead className="bg-atlas-navy-1 text-white">
+          <thead className="bg-primary-50 text-atlas-navy-1">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Período</th>
               <th className="px-3 py-2 text-left font-medium">Fecha</th>

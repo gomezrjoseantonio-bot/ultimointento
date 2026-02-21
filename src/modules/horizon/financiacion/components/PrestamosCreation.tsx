@@ -414,9 +414,9 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
               >
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
                   block.isComplete
-                    ? 'bg-ok text-white'
+                    ? 'bg-ok-50 text-ok-700 border-2 border-ok'
                     : visibleBlocks[block.id as keyof typeof visibleBlocks]
-                    ? 'bg-atlas-blue text-white ring-4 ring-primary-100'
+                    ? 'bg-primary-50 border-2 border-atlas-blue text-atlas-blue ring-4 ring-primary-100'
                     : 'bg-gray-200 text-gray-500'
                 }`}>
                   {block.isComplete ? <CheckCircle className="h-5 w-5" /> : idx + 1}

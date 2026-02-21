@@ -117,8 +117,8 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
       {/* Main Summary Panel */}
       <div className="bg-white border border-gray-200 overflow-hidden">
-        <div className="bg-atlas-blue px-6 py-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
+        <div className="bg-primary-50 border-b-2 border-atlas-blue px-6 py-4">
+          <h3 className="text-lg font-semibold text-atlas-blue flex items-center">
             <Calculator className="h-5 w-5 mr-2" />
             Resumen del Préstamo
           </h3>
@@ -217,26 +217,26 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
           {/* Bonifications Summary */}
           {bonificacionesTotales > 0 && (
-            <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 p-4 mb-6">
-              <h4 className="font-medium text-white mb-3">Beneficio de Bonificaciones</h4>
+            <div className="bg-ok-50 border border-ok-200 rounded-atlas p-4 mb-6">
+              <h4 className="font-medium text-ok-700 mb-3">💰 Beneficio de Bonificaciones</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <span className="text-white opacity-90 text-sm block">Descuento Total</span>
-                  <span className="text-lg font-semibold text-white">
+                  <span className="text-text-gray text-sm block">Descuento Total</span>
+                  <span className="text-lg font-semibold text-ok-700">
                     -{formatPercentage(bonificacionesTotales)} p.p.
                   </span>
                 </div>
                 {calculoLive?.ahorroMensual && (
                   <>
                     <div>
-                      <span className="text-white opacity-90 text-sm block">Ahorro Mensual</span>
-                      <span className="text-lg font-semibold text-white">
+                      <span className="text-text-gray text-sm block">Ahorro Mensual</span>
+                      <span className="text-lg font-semibold text-ok-700">
                         {formatNumber(calculoLive.ahorroMensual)} €
                       </span>
                     </div>
                     <div>
-                      <span className="text-white opacity-90 text-sm block">Ahorro Anual</span>
-                      <span className="text-lg font-semibold text-white">
+                      <span className="text-text-gray text-sm block">Ahorro Anual</span>
+                      <span className="text-lg font-semibold text-ok-700">
                         {formatNumber(ahorroAnual)} €
                       </span>
                     </div>
@@ -326,7 +326,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h4 className="font-medium text-atlas-navy-1 mb-3">Cuenta de Cargo</h4>
               <div className="flex items-center p-3 bg-gray-50">
-                <div className="w-10 h-10 bg-atlas-blue flex items-center justify-center text-sm font-bold mr-3">
+                <div className="w-10 h-10 bg-primary-100 border-2 border-atlas-blue rounded-atlas flex items-center justify-center text-atlas-blue text-sm font-bold mr-3">
                   {selectedAccount.entidad.charAt(0)}
                 </div>
                 <div>

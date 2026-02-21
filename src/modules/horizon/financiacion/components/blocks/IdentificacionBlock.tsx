@@ -146,7 +146,7 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
                 <button
                   type="button"
                   onClick={() => navigate('/inmuebles/cartera/nuevo')}
-                  className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-atlas hover:bg-atlas-blue-dark transition-colors text-sm font-medium"
+                  className="inline-flex items-center px-4 py-2 bg-primary-50 border border-atlas-blue text-atlas-blue rounded-atlas hover:bg-primary-100 transition-colors text-sm font-medium"
                 >
                   <Building className="h-4 w-4 mr-2" />
                   Crear primer inmueble
