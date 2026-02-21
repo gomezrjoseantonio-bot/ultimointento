@@ -49,8 +49,21 @@ class InmuebleService {
         total_gastos: 0,
         total_impuestos: 0,
         eur_por_m2: 0,
-        gastos: {},
-        impuestos: null
+        gastos: {
+          notaria: 0,
+          registro: 0,
+          gestoria: 0,
+          tasacion: 0,
+          reforma: 0,
+          otros: 0
+        },
+        impuestos: {
+          iva: 0,
+          itp: 0,
+          ajd: 0,
+          plusvalia: 0,
+          otros: 0
+        }
       },
       fiscalidad: {
         ref_catastral: property.cadastralReference || '',
