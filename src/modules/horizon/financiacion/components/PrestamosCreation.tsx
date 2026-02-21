@@ -321,7 +321,8 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
       title: '1. Identificación & Cuenta de Cargo',
       icon: User,
       isVisible: visibleBlocks.identificacion,
-      isComplete: !!(formData.cuentaCargoId && formData.fechaFirma && formData.fechaPrimerCargo),
+      isComplete: !!(formData.cuentaCargoId && formData.fechaFirma && formData.fechaPrimerCargo &&
+        (formData.ambito !== 'INMUEBLE' || formData.inmuebleId)),
       component: IdentificacionBlock
     },
     {

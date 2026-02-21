@@ -16,14 +16,18 @@ import { getLocationFromPostalCode } from '../utils/locationUtils';
 import { initDB, Property } from './db';
 
 class InmuebleService {
+  private readonly BASE_URL = '/api/inmuebles';
 
   /**
    * Map a Property from IndexedDB to the Inmueble format
    */
   private mapPropertyToInmueble(property: Property): Inmueble {
+    const locationData = property.postalCode ? getLocationFromPostalCode(property.postalCode) : null;
+    const now = new Date().toISOString();
     return {
       id: property.id?.toString() || '',
       alias: property.alias,
+      ref_catastral: property.cadastralReference || undefined,
       direccion: {
         calle: property.address,
         numero: '',
@@ -32,10 +36,10 @@ class InmuebleService {
         cp: property.postalCode,
         municipio: property.municipality,
         provincia: property.province,
-        ca: property.ccaa as any
+        ca: (locationData?.ccaa || property.ccaa) as any
       },
       estado: property.state === 'activo' ? 'ACTIVO' : 'VENDIDO',
-      fecha_alta: property.purchaseDate || new Date().toISOString().split('T')[0],
+      fecha_alta: property.purchaseDate || now.split('T')[0],
       caracteristicas: {
         m2: property.squareMeters || 0,
         habitaciones: property.bedrooms || 0,
@@ -53,23 +57,33 @@ class InmuebleService {
           notaria: 0,
           registro: 0,
           gestoria: 0,
-          tasacion: 0,
-          reforma: 0,
+          inmobiliaria: 0,
+          psi: 0,
           otros: 0
         },
-        impuestos: {
-          iva: 0,
-          itp: 0,
-          ajd: 0,
-          plusvalia: 0,
-          otros: 0
-        }
+        impuestos: {}
       },
       fiscalidad: {
-        ref_catastral: property.cadastralReference || '',
+        valor_catastral_total: 0,
+        valor_catastral_construccion: 0,
+        porcentaje_construccion: 0,
         tipo_adquisicion: 'LUCRATIVA_ONEROSA',
         metodo_amortizacion: 'REGLA_GENERAL_3',
+        amortizacion_anual_base: 0,
         porcentaje_amortizacion_info: 3.0000
+      },
+      relaciones: {
+        contratos_ids: [],
+        prestamos_ids: [],
+        cuentas_bancarias_ids: [],
+        documentos_ids: []
+      },
+      auditoria: {
+        created_at: now,
+        created_by: 'system',
+        updated_at: now,
+        updated_by: 'system',
+        version: 1
       },
       completitud: {
         identificacion_status: 'COMPLETO',
