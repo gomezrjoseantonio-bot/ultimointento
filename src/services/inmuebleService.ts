@@ -13,42 +13,122 @@ import {
   calculateConstructionPercentage
 } from '../utils/inmuebleUtils';
 import { getLocationFromPostalCode } from '../utils/locationUtils';
+import { initDB, Property } from './db';
 
 class InmuebleService {
   private readonly BASE_URL = '/api/inmuebles';
 
   /**
-   * Get all inmuebles
+   * Map a Property from IndexedDB to the Inmueble format
+   */
+  private mapPropertyToInmueble(property: Property): Inmueble {
+    const locationData = property.postalCode ? getLocationFromPostalCode(property.postalCode) : null;
+    const now = new Date().toISOString();
+    return {
+      id: property.id?.toString() || '',
+      alias: property.alias,
+      ref_catastral: property.cadastralReference || undefined,
+      direccion: {
+        calle: property.address,
+        numero: '',
+        piso: '',
+        puerta: '',
+        cp: property.postalCode,
+        municipio: property.municipality,
+        provincia: property.province,
+        ca: (locationData?.ccaa || property.ccaa) as any
+      },
+      estado: property.state === 'activo' ? 'ACTIVO' : 'VENDIDO',
+      fecha_alta: property.purchaseDate || now.split('T')[0],
+      caracteristicas: {
+        m2: property.squareMeters || 0,
+        habitaciones: property.bedrooms || 0,
+        banos: property.bathrooms || 0
+      },
+      compra: {
+        fecha_compra: property.purchaseDate || '',
+        precio_compra: property.acquisitionCosts?.price || 0,
+        regimen: property.transmissionRegime === 'obra-nueva' ? 'NUEVA_IVA_AJD' : 'USADA_ITP',
+        coste_total_compra: property.acquisitionCosts?.price || 0,
+        total_gastos: 0,
+        total_impuestos: 0,
+        eur_por_m2: 0,
+        gastos: {
+          notaria: 0,
+          registro: 0,
+          gestoria: 0,
+          inmobiliaria: 0,
+          psi: 0,
+          otros: 0
+        },
+        impuestos: {}
+      },
+      fiscalidad: {
+        valor_catastral_total: 0,
+        valor_catastral_construccion: 0,
+        porcentaje_construccion: 0,
+        tipo_adquisicion: 'LUCRATIVA_ONEROSA',
+        metodo_amortizacion: 'REGLA_GENERAL_3',
+        amortizacion_anual_base: 0,
+        porcentaje_amortizacion_info: 3.0000
+      },
+      relaciones: {
+        contratos_ids: [],
+        prestamos_ids: [],
+        cuentas_bancarias_ids: [],
+        documentos_ids: []
+      },
+      auditoria: {
+        created_at: now,
+        created_by: 'system',
+        updated_at: now,
+        updated_by: 'system',
+        version: 1
+      },
+      completitud: {
+        identificacion_status: 'COMPLETO',
+        caracteristicas_status: 'COMPLETO',
+        compra_status: 'COMPLETO',
+        fiscalidad_status: 'COMPLETO'
+      }
+    };
+  }
+
+  /**
+   * Get all inmuebles from IndexedDB
    */
   async getAll(): Promise<Inmueble[]> {
     try {
-      const response = await fetch(this.BASE_URL);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch inmuebles: ${response.statusText}`);
-      }
-      return await response.json();
+      const db = await initDB();
+      const properties = await db.getAll('properties');
+      return properties.map(p => this.mapPropertyToInmueble(p));
     } catch (error) {
-      console.error('Error loading inmuebles:', error);
-      // Fallback to empty array for now, but log the error
+      console.error('[INMUEBLE_SERVICE] Error loading from IndexedDB:', error);
       return [];
     }
   }
 
   /**
-   * Get inmueble by ID
+   * Get inmueble by ID from IndexedDB
    */
   async getById(id: string): Promise<Inmueble | null> {
     try {
-      const response = await fetch(`${this.BASE_URL}/${id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(`Failed to fetch inmueble: ${response.statusText}`);
+      const db = await initDB();
+      const propertyId = parseInt(id, 10);
+
+      if (isNaN(propertyId)) {
+        return null;
       }
-      return await response.json();
+
+      const property = await db.get('properties', propertyId);
+
+      if (!property) {
+        return null;
+      }
+
+      return this.mapPropertyToInmueble(property);
     } catch (error) {
-      console.error('Error loading inmueble:', error);
+      console.error('[INMUEBLE_SERVICE] Error loading inmueble by ID:', error);
       return null;
     }
   }
@@ -139,24 +219,37 @@ class InmuebleService {
    * Duplicate inmueble (clone all fields except id, alias, direccion)
    */
   async duplicate(id: string, newAlias: string, newDireccion: any, userId: string = 'system'): Promise<Inmueble> {
-    const original = await this.getById(id);
+    const db = await initDB();
+    const propertyId = parseInt(id, 10);
+    if (isNaN(propertyId)) {
+      throw new Error('Inmueble not found');
+    }
+
+    const original = await db.get('properties', propertyId);
     if (!original) {
       throw new Error('Inmueble not found');
     }
 
-    const duplicateData: NuevoInmueble = {
+    // Build the duplicate property without `id` so IndexedDB auto-assigns one
+    const { id: _omit, ...originalWithoutId } = original;
+    const duplicateProperty = {
+      ...originalWithoutId,
       alias: newAlias,
-      direccion: newDireccion,
-      ref_catastral: original.ref_catastral,
-      estado: 'ACTIVO', // Always start as active
-      fecha_alta: new Date().toISOString().split('T')[0],
-      fecha_venta: undefined,
-      caracteristicas: { ...original.caracteristicas },
-      compra: { ...original.compra },
-      fiscalidad: { ...original.fiscalidad }
+      address: newDireccion.calle || original.address,
+      postalCode: newDireccion.cp || original.postalCode,
+      municipality: newDireccion.municipio || original.municipality,
+      province: newDireccion.provincia || original.province,
+      ccaa: newDireccion.ca || original.ccaa,
+      state: 'activo' as const,
+      purchaseDate: new Date().toISOString().split('T')[0]
     };
 
-    return this.create(duplicateData, userId);
+    const newId = await db.add('properties', duplicateProperty);
+    const saved = await db.get('properties', newId);
+    if (!saved) {
+      throw new Error('Failed to save duplicated inmueble');
+    }
+    return this.mapPropertyToInmueble(saved);
   }
 
   /**

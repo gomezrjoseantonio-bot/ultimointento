@@ -1,5 +1,6 @@
 import React from 'react';
-import { Home, User, Calendar, Clock } from 'lucide-react';
+import { Home, User, Calendar, Clock, Building } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { PrestamoFinanciacion, ValidationError } from '../../../../../types/financiacion';
 import { cuentasService } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
@@ -19,6 +20,7 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
   updateFormData, 
   errors 
 }) => {
+  const navigate = useNavigate();
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [inmuebles, setInmuebles] = React.useState<Inmueble[]>([]);
@@ -135,25 +137,32 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
               Cargando inmuebles...
             </div>
           ) : inmuebles.length === 0 ? (
-            <div className="w-full rounded-atlas border border-gray-300 p-3 bg-gray-50">
-              <p className="text-sm text-text-gray mb-2">No hay inmuebles disponibles.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  const win = window.open('/inmuebles/nuevo', '_blank');
-                  if (win) win.opener = null;
-                }}
-                className="text-sm text-atlas-blue underline hover:text-atlas-navy-1"
-              >
-                Crear inmueble
-              </button>
+            <div className="w-full rounded-atlas border-2 border-dashed border-gray-300 p-4 bg-gray-50">
+              <div className="flex flex-col items-center gap-3">
+                <Building className="h-8 w-8 text-text-gray" />
+                <p className="text-sm text-text-gray text-center">
+                  No hay inmuebles disponibles
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/inmuebles/cartera/nuevo')}
+                  className="inline-flex items-center px-4 py-2 bg-atlas-blue text-white rounded-atlas hover:bg-atlas-blue-dark transition-colors text-sm font-medium"
+                >
+                  <Building className="h-4 w-4 mr-2" />
+                  Crear primer inmueble
+                </button>
+              </div>
             </div>
           ) : (
             <select
               id="inmuebleId"
               value={formData.inmuebleId || ''}
               onChange={(e) => updateFormData({ inmuebleId: e.target.value || undefined })}
-              className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+              className={`w-full rounded-atlas border shadow-sm focus:border-atlas-blue focus:ring-atlas-blue ${
+                getFieldError('inmuebleId')
+                  ? 'border-error-300 focus:border-error-500'
+                  : 'border-gray-300'
+              }`}
             >
               <option value="">Seleccionar inmueble</option>
               {inmuebles.map(inmueble => (
@@ -162,6 +171,9 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
                 </option>
               ))}
             </select>
+          )}
+          {getFieldError('inmuebleId') && (
+            <p className="mt-1 text-sm text-error-600">{getFieldError('inmuebleId')}</p>
           )}
         </div>
       )}
