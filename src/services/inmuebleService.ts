@@ -12,7 +12,7 @@ import {
   calculateTotalTaxAmount,
   calculateConstructionPercentage
 } from '../utils/inmuebleUtils';
-import { getLocationFromPostalCode } from '../utils/locationUtils';
+import { getLocationFromPostalCode, inferLocationFromPostalCodeRange } from '../utils/locationUtils';
 import { initDB, Property } from './db';
 
 class InmuebleService {
@@ -144,7 +144,19 @@ class InmuebleService {
         data.direccion.municipio = data.direccion.municipio || locationData.municipalities[0] || '';
         data.direccion.provincia = data.direccion.provincia || locationData.province;
         data.direccion.ca = data.direccion.ca || locationData.ccaa as any;
+      } else {
+        // Fallback: infer by postal code range
+        const inferredData = inferLocationFromPostalCodeRange(data.direccion.cp);
+        if (inferredData) {
+          data.direccion.provincia = data.direccion.provincia || inferredData.province;
+          data.direccion.ca = data.direccion.ca || inferredData.ccaa as any;
+        }
       }
+    }
+
+    // Validate required location fields for tax calculation
+    if (!data.direccion.provincia || !data.direccion.ca) {
+      throw new Error('La provincia y comunidad autónoma son obligatorias para calcular impuestos');
     }
 
     // Calculate derived values
@@ -189,7 +201,19 @@ class InmuebleService {
         data.direccion.municipio = data.direccion.municipio || locationData.municipalities[0] || '';
         data.direccion.provincia = data.direccion.provincia || locationData.province;
         data.direccion.ca = data.direccion.ca || locationData.ccaa as any;
+      } else {
+        // Fallback: infer by postal code range
+        const inferredData = inferLocationFromPostalCodeRange(data.direccion.cp);
+        if (inferredData) {
+          data.direccion.provincia = data.direccion.provincia || inferredData.province;
+          data.direccion.ca = data.direccion.ca || inferredData.ccaa as any;
+        }
       }
+    }
+
+    // Validate required location fields for tax calculation
+    if (data.direccion && (!data.direccion.provincia || !data.direccion.ca)) {
+      throw new Error('La provincia y comunidad autónoma son obligatorias para calcular impuestos');
     }
 
     // Calculate derived values

@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import { ChevronDown, ChevronUp, Home, X } from 'lucide-react';
 
 import { initDB, Property } from '../../services/db';
-import { getLocationFromPostalCode, calculateITP, calculateIVA } from '../../utils/locationUtils';
+import { getLocationFromPostalCode, inferLocationFromPostalCodeRange, calculateITP, calculateIVA } from '../../utils/locationUtils';
+import { fetchLocationFromAPI } from '../../services/postalCodeApiService';
 import { AJD_RATE } from '../../utils/inmuebleUtils';
 
 interface InmuebleFormCompactProps {
@@ -85,6 +86,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
     municipality: string;
     province: string;
     ccaa: string;
+    isInferred?: boolean;
   } | null>(null);
   
   // Load existing property for edit mode
@@ -158,17 +160,46 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   };
   
   // Handle postal code change and auto-complete location
-  const handleCpChange = (cp: string) => {
+  const handleCpChange = async (cp: string) => {
     setFormData(prev => ({ ...prev, cp }));
     
     if (cp.length === 5 && /^\d{5}$/.test(cp)) {
-      const location = getLocationFromPostalCode(cp);
+      // 1. Try exact match
+      let location = getLocationFromPostalCode(cp);
+      let isInferred = false;
+      
+      // 2. If not found, try external API (future)
+      if (!location) {
+        const apiResult = await fetchLocationFromAPI(cp);
+        if (apiResult) {
+          location = {
+            province: apiResult.province,
+            ccaa: apiResult.ccaa,
+            municipalities: [apiResult.municipality]
+          };
+        }
+      }
+      
+      // 3. If still not found, infer by range
+      if (!location) {
+        const inferred = inferLocationFromPostalCodeRange(cp);
+        if (inferred) {
+          location = inferred;
+          isInferred = true;
+        }
+      }
+      
       if (location) {
         setLocationInfo({
           municipality: location.municipalities[0] || '',
           province: location.province,
-          ccaa: location.ccaa
+          ccaa: location.ccaa,
+          isInferred
         });
+        
+        if (isInferred) {
+          toast.info(`Ubicación inferida: ${location.province}. Puedes editarla manualmente.`);
+        }
         
         // Auto-calculate taxes when CP is available
         if (formData.precioCompra > 0) {
@@ -176,6 +207,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
         }
       } else {
         setLocationInfo(null);
+        toast.warning('Código postal no reconocido. Introduce los datos manualmente.');
       }
     } else {
       setLocationInfo(null);
@@ -450,8 +482,10 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
                   </div>
                   <div className="col-span-3 flex items-end">
                     {locationInfo && (
-                      <span className="text-xs text-gray-600 pb-2">
-                        {locationInfo.municipality}
+                      <span className={`text-xs pb-2 ${locationInfo.isInferred ? 'text-orange-500' : 'text-gray-600'}`}>
+                        <span aria-hidden="true">{locationInfo.isInferred ? '🔍 ' : '🎯 '}</span>
+                        <span>{locationInfo.municipality || locationInfo.province}</span>
+                        {locationInfo.isInferred && <span className="sr-only">(inferido)</span>}
                       </span>
                     )}
                   </div>
