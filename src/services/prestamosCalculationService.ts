@@ -58,6 +58,14 @@ export class PrestamosCalculationService {
   }
 
   /**
+   * Check if a bonification should be applied (active states)
+   */
+  private isActiveBonification(bonif: any): boolean {
+    return bonif.estado === 'CUMPLIDA' || bonif.estado === 'SELECCIONADO' || 
+           bonif.estado === 'ACTIVO_POR_GRACIA' || bonif.seleccionado === true;
+  }
+
+  /**
    * Calculate bonified interest rate (with applied bonifications)
    * @param prestamo Loan data
    * @param currentDate Current date for mixed loan calculations
@@ -70,9 +78,9 @@ export class PrestamosCalculationService {
       return baseRate;
     }
 
-    // Sum up all active bonifications
+    // Sum up all active bonifications (CUMPLIDA, SELECCIONADO, or ACTIVO_POR_GRACIA)
     const totalBonifications = prestamo.bonificaciones
-      .filter(bonif => bonif.estado === 'CUMPLIDA')
+      .filter(bonif => this.isActiveBonification(bonif))
       .reduce((sum, bonif) => sum + bonif.reduccionPuntosPorcentuales, 0);
 
     // Apply bonifications (rate cannot go below 0)
@@ -129,7 +137,7 @@ export class PrestamosCalculationService {
     if (prestamo.bonificaciones) {
       let cumulativeRate = baseRate;
       
-      for (const bonif of prestamo.bonificaciones.filter(b => b.estado === 'CUMPLIDA')) {
+      for (const bonif of prestamo.bonificaciones.filter(b => this.isActiveBonification(b))) {
         const rateBeforeBonif = cumulativeRate;
         const rateAfterBonif = Math.max(0, cumulativeRate - bonif.reduccionPuntosPorcentuales);
         

@@ -185,6 +185,10 @@ export class LiveCalculationService {
     const comisionApertura = prestamo.comisionApertura || 0;
     const comisionMantenimiento = prestamo.comisionMantenimiento || 0;
 
+    if (capital <= 0 || plazoMeses <= 0 || tin <= 0) {
+      return 0;
+    }
+
     // Net capital after opening commission
     const capitalNeto = capital - (capital * comisionApertura / 100);
 
@@ -192,9 +196,12 @@ export class LiveCalculationService {
     const cuotaBase = this.calculateFrenchPayment(capital, tin, plazoMeses);
     const cuotaEfectiva = cuotaBase + comisionMantenimiento;
 
+    // Use tin/12/100 as the initial estimate for the monthly rate (much better than cuota/capital/plazo)
+    const initialRate = tin / 12 / 100;
+
     // Newton-Raphson to find monthly rate r such that:
     // capitalNeto = cuotaEfectiva * (1 - (1+r)^-n) / r
-    const tinMensual = this.calculateMonthlyRate(capitalNeto, cuotaEfectiva, plazoMeses);
+    const tinMensual = this.calculateMonthlyRate(capitalNeto, cuotaEfectiva, plazoMeses, initialRate);
 
     // TAE = (1 + tinMensual)^12 - 1
     const tae = (Math.pow(1 + tinMensual, 12) - 1) * 100;
@@ -207,12 +214,13 @@ export class LiveCalculationService {
   private static calculateMonthlyRate(
     capital: number,
     cuota: number,
-    plazo: number
+    plazo: number,
+    initialEstimate?: number
   ): number {
     if (cuota <= 0 || capital <= 0 || plazo <= 0) return 0;
 
-    // Initial estimate: TIN / 12
-    let r = cuota / capital / plazo;
+    // Use provided initial estimate or fallback to a conservative 0.5% monthly rate (~6% annual)
+    let r = initialEstimate ?? 0.005;
 
     for (let i = 0; i < 100; i++) {
       const factor = Math.pow(1 + r, plazo);

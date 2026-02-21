@@ -218,8 +218,8 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     if (!formData.capitalInicial || formData.capitalInicial < 0) {
       newErrors.push({ field: 'capitalInicial', message: 'El capital inicial es obligatorio y debe ser mayor o igual a 0' });
     }
-    if (formData.capitalInicial && formData.capitalInicial > 999999.99) {
-      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial no puede superar 999.999,99€' });
+    if (formData.capitalInicial && formData.capitalInicial > 9999999) {
+      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial no puede superar 9.999.999€' });
     }
     if (!formData.plazoTotal || formData.plazoTotal <= 0) {
       newErrors.push({ field: 'plazoTotal', message: 'El plazo total es obligatorio y debe ser mayor que 0' });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
@@ -11,10 +11,12 @@ import {
   DollarSign,
   Clock,
   Percent,
-  Info
+  Info,
+  Loader
 } from 'lucide-react';
 import Drawer from '../../../../components/common/Drawer';
-import { Prestamo } from '../../../../types/prestamos';
+import { Prestamo, PlanPagos } from '../../../../types/prestamos';
+import { prestamosService } from '../../../../services/prestamosService';
 
 interface PrestamoDetailDrawerProps {
   prestamo: Prestamo | null;
@@ -72,6 +74,20 @@ const PrestamoDetailDrawer: React.FC<PrestamoDetailDrawerProps> = ({
   onEdit,
   onDelete
 }) => {
+  const [planPagos, setPlanPagos] = useState<PlanPagos | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && prestamo) {
+      setPlanPagos(null);
+      setPlanLoading(true);
+      prestamosService.getPaymentPlan(prestamo.id)
+        .then(plan => setPlanPagos(plan))
+        .catch(err => console.error('[DRAWER] Error loading payment plan:', err))
+        .finally(() => setPlanLoading(false));
+    }
+  }, [isOpen, prestamo]);
+
   if (!prestamo) return null;
 
   const formatNumber = (value: number) => {
@@ -319,15 +335,81 @@ const PrestamoDetailDrawer: React.FC<PrestamoDetailDrawerProps> = ({
           title="Calendario de Pagos" 
           icon={Calendar}
         >
-          <div className="text-center py-8">
-            <Calendar className="h-12 w-12 text-text-gray mx-auto mb-4" />
-            <p className="text-text-gray">
-              El cuadro de amortización detallado se mostrará aquí
-            </p>
-            <p className="text-sm text-text-gray mt-2">
-              Funcionalidad disponible próximamente
-            </p>
-          </div>
+          {planLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader className="h-6 w-6 text-atlas-blue animate-spin mr-3" />
+              <span className="text-text-gray">Generando calendario de pagos...</span>
+            </div>
+          ) : planPagos ? (
+            <div>
+              {/* Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-xs text-text-gray">Total cuotas</p>
+                  <p className="font-semibold text-atlas-navy-1">{planPagos.resumen.totalCuotas}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-gray">Total intereses</p>
+                  <p className="font-semibold text-atlas-navy-1">{formatNumber(planPagos.resumen.totalIntereses)} €</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-gray">Fecha finalización</p>
+                  <p className="font-semibold text-atlas-navy-1">{formatDate(planPagos.resumen.fechaFinalizacion)}</p>
+                </div>
+              </div>
+              {/* Payment table (first 12 periods shown by default) */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-text-gray uppercase">Nº</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-text-gray uppercase">Fecha</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-text-gray uppercase">Cuota</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-text-gray uppercase">Interés</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-text-gray uppercase">Capital</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-text-gray uppercase">Pendiente</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {planPagos.periodos.slice(0, 24).map((periodo) => (
+                      <tr key={periodo.periodo} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 text-text-gray">{periodo.periodo}</td>
+                        <td className="px-3 py-2 text-text-gray">{formatDate(periodo.fechaCargo)}</td>
+                        <td className="px-3 py-2 text-right text-atlas-navy-1">{formatNumber(periodo.cuota)} €</td>
+                        <td className="px-3 py-2 text-right text-text-gray">{formatNumber(periodo.interes)} €</td>
+                        <td className="px-3 py-2 text-right text-text-gray">{formatNumber(periodo.amortizacion)} €</td>
+                        <td className="px-3 py-2 text-right text-atlas-navy-1">{formatNumber(periodo.principalFinal)} €</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {planPagos.periodos.length > 24 && (
+                  <p className="text-xs text-text-gray text-center py-2">
+                    Mostrando las primeras 24 cuotas de {planPagos.periodos.length} totales
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-text-gray mx-auto mb-4" />
+              <p className="text-text-gray">No se pudo generar el calendario de pagos</p>
+              <button
+                onClick={() => {
+                  if (prestamo) {
+                    setPlanLoading(true);
+                    prestamosService.regeneratePaymentPlan(prestamo.id)
+                      .then(plan => setPlanPagos(plan))
+                      .catch(err => console.error('[DRAWER] Error regenerating payment plan:', err))
+                      .finally(() => setPlanLoading(false));
+                  }
+                }}
+                className="mt-3 text-sm text-atlas-blue underline hover:text-primary-800"
+              >
+                Generar calendario
+              </button>
+            </div>
+          )}
         </CollapsibleSection>
       </div>
     </Drawer>
