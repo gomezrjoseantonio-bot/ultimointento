@@ -6,7 +6,7 @@ import {
   Calculator,
   Calendar,
   CreditCard,
-  Building,
+  Home,
   User,
   TrendingUp,
   DollarSign,
@@ -14,9 +14,14 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
+import { cuentasService } from '../../../../services/cuentasService';
+import { inmuebleService } from '../../../../services/inmuebleService';
 import { Prestamo } from '../../../../types/prestamos';
+import { Account } from '../../../../services/db';
+import { Inmueble } from '../../../../types/inmueble';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 import { confirmDelete } from '../../../../services/confirmationService';
+import AccountOption from '../../../../components/common/AccountOption';
 import { AtlasText, AtlasIcon } from '../../../../components/atlas';
 
 interface PrestamosListProps {
@@ -31,6 +36,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('nombre');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
   
   // Detail drawer state
   const [selectedPrestamoForDetail, setSelectedPrestamoForDetail] = useState<Prestamo | null>(null);
@@ -50,7 +57,27 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       }
     };
 
+    const loadAccounts = async () => {
+      try {
+        const accountsList = await cuentasService.list();
+        setAccounts(accountsList);
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+      }
+    };
+
+    const loadInmuebles = async () => {
+      try {
+        const inmueblesList = await inmuebleService.getAll();
+        setInmuebles(inmueblesList);
+      } catch (error) {
+        console.error('Error loading inmuebles:', error);
+      }
+    };
+
     loadPrestamos();
+    loadAccounts();
+    loadInmuebles();
   }, []);
 
   // Format numbers
@@ -215,8 +242,17 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1 transform rotate-180" />;
   };
 
-  // Account data will be loaded from the accounts service when needed
-  // For now, all accounts show as unconfigured
+  // Get account by ID
+  const getAccount = (accountId?: string) => {
+    if (!accountId) return null;
+    return accounts.find(a => a.id?.toString() === accountId) || null;
+  };
+
+  // Get inmueble by ID
+  const getInmueble = (inmuebleId?: string) => {
+    if (!inmuebleId || inmuebleId === 'standalone') return null;
+    return inmuebles.find(i => i.id === inmuebleId) || null;
+  };
 
   if (loading) {
     return (
@@ -361,6 +397,12 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                   const effectiveTIN = calculateEffectiveTIN(prestamo);
                   const monthlyPayment = estimateMonthlyPayment(prestamo);
                   const isPersonal = prestamo.inmuebleId === 'standalone';
+                  const inmueble = getInmueble(prestamo.inmuebleId);
+                  const account = getAccount(prestamo.cuentaCargoId);
+
+                  const displayName = inmueble
+                    ? `${inmueble.alias} – ${inmueble.direccion.calle}, ${inmueble.direccion.municipio}`
+                    : prestamo.nombre;
 
                   return (
                     <tr key={prestamo.id} className="hover:bg-gray-50">
@@ -370,14 +412,14 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                             isPersonal ? 'bg-primary-100' : 'bg-warning-100'
                           }`}>
                             {isPersonal ? (
-                              <User className={`h-4 w-4 ${isPersonal ? 'text-atlas-blue' : 'text-warn'}`} />
+                              <User className="h-4 w-4 text-atlas-blue" />
                             ) : (
-                              <Building className={`h-4 w-4 ${isPersonal ? 'text-atlas-blue' : 'text-warn'}`} />
+                              <Home className="h-4 w-4 text-warn" />
                             )}
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-atlas-navy-1">
-                              {prestamo.nombre}
+                              {displayName}
                             </div>
                             <div className="text-sm text-text-gray">
                               {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')}
@@ -411,7 +453,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                         {formatNumber(monthlyPayment)} €
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-text-gray">
-                        <div className="text-error-500">Sin cuenta configurada</div>
+                        {account ? (
+                          <AccountOption account={account} size="sm" />
+                        ) : (
+                          <div className="text-error-500">Sin cuenta configurada</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">

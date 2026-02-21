@@ -28,6 +28,18 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
 
   const getFieldError = (fieldName: string) => errors.find(e => e.field === fieldName)?.message;
 
+  // Initialize fechaPrimerCargo from fechaFirma only once on mount
+  const initializedPrimerCargo = React.useRef(false);
+  React.useEffect(() => {
+    if (!initializedPrimerCargo.current) {
+      initializedPrimerCargo.current = true;
+      if (!formData.fechaPrimerCargo && formData.fechaFirma) {
+        updateFormData({ fechaPrimerCargo: formData.fechaFirma });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Load accounts on component mount
   React.useEffect(() => {
     const loadAccounts = async () => {
@@ -307,7 +319,7 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
             onChange={(e) => updateFormData({ diaCobroMes: parseInt(e.target.value) })}
             className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
               <option key={day} value={day}>Día {day}</option>
             ))}
           </select>
