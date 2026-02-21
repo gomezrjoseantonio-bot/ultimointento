@@ -201,10 +201,13 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
           toast(`Ubicación inferida: ${location.province}. Puedes editarla manualmente.`);
         }
         
+        // Capture ccaa to ensure it's non-null in the callback
+        const ccaa = location.ccaa;
+
         // Auto-calculate taxes when CP is available
         setFormData(prevFormData => {
           if (prevFormData.precioCompra > 0) {
-            calculateTaxes(prevFormData.precioCompra, prevFormData.tipo, location.ccaa);
+            calculateTaxes(prevFormData.precioCompra, prevFormData.tipo, ccaa);
           }
           return prevFormData;
         });
