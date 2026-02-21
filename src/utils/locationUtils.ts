@@ -355,6 +355,94 @@ const POSTAL_CODE_MAP: Record<string, LocationData> = {
   '52002': { province: 'Melilla', ccaa: 'Melilla', municipalities: ['Melilla'] },
 };
 
+// Map of 2-digit postal code prefixes to province and CCAA
+const PROVINCE_MAP: Record<string, { province: string; ccaa: string }> = {
+  '01': { province: 'Álava', ccaa: 'País Vasco' },
+  '02': { province: 'Albacete', ccaa: 'Castilla-La Mancha' },
+  '03': { province: 'Alicante', ccaa: 'Valencia' },
+  '04': { province: 'Almería', ccaa: 'Andalucía' },
+  '05': { province: 'Ávila', ccaa: 'Castilla y León' },
+  '06': { province: 'Badajoz', ccaa: 'Extremadura' },
+  '07': { province: 'Baleares', ccaa: 'Baleares' },
+  '08': { province: 'Barcelona', ccaa: 'Cataluña' },
+  '09': { province: 'Burgos', ccaa: 'Castilla y León' },
+  '10': { province: 'Cáceres', ccaa: 'Extremadura' },
+  '11': { province: 'Cádiz', ccaa: 'Andalucía' },
+  '12': { province: 'Castellón', ccaa: 'Valencia' },
+  '13': { province: 'Ciudad Real', ccaa: 'Castilla-La Mancha' },
+  '14': { province: 'Córdoba', ccaa: 'Andalucía' },
+  '15': { province: 'A Coruña', ccaa: 'Galicia' },
+  '16': { province: 'Cuenca', ccaa: 'Castilla-La Mancha' },
+  '17': { province: 'Girona', ccaa: 'Cataluña' },
+  '18': { province: 'Granada', ccaa: 'Andalucía' },
+  '19': { province: 'Guadalajara', ccaa: 'Castilla-La Mancha' },
+  '20': { province: 'Gipuzkoa', ccaa: 'País Vasco' },
+  '21': { province: 'Huelva', ccaa: 'Andalucía' },
+  '22': { province: 'Huesca', ccaa: 'Aragón' },
+  '23': { province: 'Jaén', ccaa: 'Andalucía' },
+  '24': { province: 'León', ccaa: 'Castilla y León' },
+  '25': { province: 'Lleida', ccaa: 'Cataluña' },
+  '26': { province: 'La Rioja', ccaa: 'La Rioja' },
+  '27': { province: 'Lugo', ccaa: 'Galicia' },
+  '28': { province: 'Madrid', ccaa: 'Madrid' },
+  '29': { province: 'Málaga', ccaa: 'Andalucía' },
+  '30': { province: 'Murcia', ccaa: 'Murcia' },
+  '31': { province: 'Navarra', ccaa: 'Navarra' },
+  '32': { province: 'Ourense', ccaa: 'Galicia' },
+  '33': { province: 'Asturias', ccaa: 'Asturias' },
+  '34': { province: 'Palencia', ccaa: 'Castilla y León' },
+  '35': { province: 'Las Palmas', ccaa: 'Canarias' },
+  '36': { province: 'Pontevedra', ccaa: 'Galicia' },
+  '37': { province: 'Salamanca', ccaa: 'Castilla y León' },
+  '38': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias' },
+  '39': { province: 'Cantabria', ccaa: 'Cantabria' },
+  '40': { province: 'Segovia', ccaa: 'Castilla y León' },
+  '41': { province: 'Sevilla', ccaa: 'Andalucía' },
+  '42': { province: 'Soria', ccaa: 'Castilla y León' },
+  '43': { province: 'Tarragona', ccaa: 'Cataluña' },
+  '44': { province: 'Teruel', ccaa: 'Aragón' },
+  '45': { province: 'Toledo', ccaa: 'Castilla-La Mancha' },
+  '46': { province: 'Valencia', ccaa: 'Valencia' },
+  '47': { province: 'Valladolid', ccaa: 'Castilla y León' },
+  '48': { province: 'Bizkaia', ccaa: 'País Vasco' },
+  '49': { province: 'Zamora', ccaa: 'Castilla y León' },
+  '50': { province: 'Zaragoza', ccaa: 'Aragón' },
+  '51': { province: 'Ceuta', ccaa: 'Ceuta' },
+  '52': { province: 'Melilla', ccaa: 'Melilla' }
+};
+
+export interface InferredLocationData extends LocationData {
+  isInferred: true;
+}
+
+export const getProvinceFromPostalCode = (postalCode: string): string | null => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) return null;
+  const prefix = cleanCode.substring(0, 2);
+  return PROVINCE_MAP[prefix]?.province || null;
+};
+
+export const getCCAAFromProvince = (province: string): string | null => {
+  const entry = Object.values(PROVINCE_MAP).find(
+    v => v.province.toLowerCase() === province.toLowerCase()
+  );
+  return entry?.ccaa || null;
+};
+
+export const inferLocationFromPostalCodeRange = (postalCode: string): InferredLocationData | null => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) return null;
+  const prefix = cleanCode.substring(0, 2);
+  const entry = PROVINCE_MAP[prefix];
+  if (!entry) return null;
+  return {
+    province: entry.province,
+    ccaa: entry.ccaa,
+    municipalities: [],
+    isInferred: true
+  };
+};
+
 export const getLocationFromPostalCode = (postalCode: string): LocationData | null => {
   const cleanCode = postalCode.replace(/\s/g, '');
   if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) {

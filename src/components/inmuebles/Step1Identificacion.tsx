@@ -3,8 +3,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { MapPin, Building2, Hash } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { InmuebleStep1, EstadoInmueble, ComunidadAutonoma } from '../../types/inmueble';
-import { getLocationFromPostalCode, validatePostalCode } from '../../utils/locationUtils';
+import { getLocationFromPostalCode, inferLocationFromPostalCodeRange, validatePostalCode } from '../../utils/locationUtils';
+import { fetchLocationFromAPI } from '../../services/postalCodeApiService';
 import { validateStep1 } from '../../utils/inmuebleUtils';
 import { Tooltip } from '../common/Tooltip';
 
@@ -34,16 +36,53 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
 
     if (validatePostalCode(cp)) {
       setIsAutoCompleting(true);
-      const locationData = getLocationFromPostalCode(cp);
-      
+
+      // 1. Try exact match
+      let locationData = getLocationFromPostalCode(cp);
+      let isInferred = false;
+
+      // 2. If not found, try external API (future)
+      if (!locationData) {
+        const apiResult = await fetchLocationFromAPI(cp);
+        if (apiResult) {
+          locationData = {
+            province: apiResult.province,
+            ccaa: apiResult.ccaa,
+            municipalities: [apiResult.municipality]
+          };
+        }
+      }
+
+      // 3. If still not found, infer by range
+      if (!locationData) {
+        const inferred = inferLocationFromPostalCodeRange(cp);
+        if (inferred) {
+          locationData = inferred;
+          isInferred = true;
+        }
+      }
+
       if (locationData) {
         newData.direccion = {
           ...newData.direccion,
-          municipio: locationData.municipalities[0] || '',
+          municipio: locationData.municipalities[0] || newData.direccion?.municipio || '',
           provincia: locationData.province,
           ca: locationData.ccaa as ComunidadAutonoma
         };
+        if (isInferred) {
+          toast(`Ubicación inferida: ${locationData.province}. Puedes editarla manualmente.`);
+        }
+      } else {
+        // Clear location fields so the user is forced to enter them manually
+        newData.direccion = {
+          ...newData.direccion,
+          municipio: '',
+          provincia: '',
+          ca: undefined as unknown as ComunidadAutonoma
+        };
+        toast('Código postal no reconocido. Introduce los datos manualmente.');
       }
+
       setIsAutoCompleting(false);
     }
 
