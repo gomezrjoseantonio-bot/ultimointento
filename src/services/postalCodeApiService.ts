@@ -20,5 +20,6 @@ export interface PostalCodeApiResponse {
  */
 export async function fetchLocationFromAPI(postalCode: string): Promise<PostalCodeApiResponse | null> {
   // TODO: Implement external API call
+  void postalCode;
   return null;
 }
