@@ -44,7 +44,7 @@ class InmuebleService {
       compra: {
         fecha_compra: property.purchaseDate || '',
         precio_compra: property.acquisitionCosts?.price || 0,
-        regimen: property.transmissionRegime === 'obra-nueva' ? 'NUEVA_IVA' : 'USADA_ITP',
+        regimen: property.transmissionRegime === 'obra-nueva' ? 'NUEVA_IVA_AJD' : 'USADA_ITP',
         coste_total_compra: property.acquisitionCosts?.price || 0,
         total_gastos: 0,
         total_impuestos: 0,
