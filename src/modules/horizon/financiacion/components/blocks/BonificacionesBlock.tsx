@@ -200,6 +200,17 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
     });
   };
 
+  // Update descuentoTIN for an individual bonification
+  const updateBonificacionDescuento = (id: string, descuentoTIN: number) => {
+    const clamped = Math.min(5, Math.max(0, descuentoTIN));
+    const currentBonifications = formData.bonificaciones || [];
+    updateFormData({
+      bonificaciones: currentBonifications.map(b =>
+        b.id === id ? { ...b, descuentoTIN: clamped, impacto: { puntos: clamped } } : b
+      )
+    });
+  };
+
   // Add standard bonification with new fields
   const addStandardBonification = (template: typeof standardBonifications[0]) => {
     const currentBonifications = formData.bonificaciones || [];
@@ -430,6 +441,21 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   <p className="text-sm text-gray-600">
                     {bonificacion.condicionParametrizable}
                   </p>
+                  {/* Editable descuentoTIN */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-sm text-gray-700">Descuento (p.p.):</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="5"
+                      value={bonificacion.descuentoTIN}
+                      onChange={(e) => updateBonificacionDescuento(bonificacion.id, parseFloat(e.target.value) || 0)}
+                      disabled={!bonificacion.seleccionado}
+                      className="w-20 px-2 py-1 border rounded text-sm border-gray-300 focus:border-atlas-blue focus:ring-atlas-blue disabled:opacity-50 disabled:bg-gray-100"
+                    />
+                    <span className="text-sm text-gray-500">p.p.</span>
+                  </div>
                 </div>
 
                 {/* Grace period selector - only show if selected */}
@@ -491,27 +517,27 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
       {/* Bonifications Summary */}
       {(formData.bonificaciones || []).length > 0 && (
         <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 p-4">
-          <h4 className="font-medium text-atlas-blue mb-3 flex items-center">
+          <h4 className="font-medium text-white mb-3 flex items-center">
             <Calculator className="h-4 w-4 mr-2" />
             Resumen de Bonificaciones
           </h4>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-text-gray block">Bonificaciones seleccionadas</span>
-              <span className="font-semibold text-atlas-navy-1">
+              <span className="text-white opacity-90 block">Bonificaciones seleccionadas</span>
+              <span className="font-semibold text-white">
                 {(formData.bonificaciones || []).filter(b => b.seleccionado).length} de {(formData.bonificaciones || []).length}
               </span>
             </div>
             <div>
-              <span className="text-text-gray block">Descuento aplicado</span>
-              <span className="font-semibold text-atlas-navy-1">
+              <span className="text-white opacity-90 block">Descuento aplicado</span>
+              <span className="font-semibold text-white">
                 -{formatPercentage(calculoLive?.sumaPuntosAplicada || 0)} p.p.
               </span>
             </div>
             <div>
-              <span className="text-text-gray block">Tipo efectivo</span>
-              <span className="font-semibold text-atlas-navy-1">
+              <span className="text-white opacity-90 block">Tipo efectivo</span>
+              <span className="font-semibold text-white">
                 {calculoLive?.tinEfectivo ? formatPercentage(calculoLive.tinEfectivo) : '—'} %
               </span>
             </div>
@@ -546,12 +572,12 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
 
           {/* Savings comparison */}
           {calculoLive && calculoLive.ahorroMensual && calculoLive.ahorroMensual > 0 && (
-            <div className="mt-4 pt-4 border-t border-atlas-blue border-opacity-20">
-              <h5 className="font-medium text-atlas-blue mb-2">Comparativa de Ahorro</h5>
+            <div className="mt-4 pt-4 border-t border-white border-opacity-20">
+              <h5 className="font-medium text-white mb-2">Comparativa de Ahorro</h5>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-text-gray block">Ahorro mensual</span>
-                  <span className="font-semibold text-ok-600">
+                  <span className="text-white opacity-90 block">Ahorro mensual</span>
+                  <span className="font-semibold text-ok-300">
                     {calculoLive.ahorroMensual.toLocaleString('es-ES', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
@@ -559,8 +585,8 @@ const BonificacionesBlock: React.FC<BonificacionesBlockProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-text-gray block">Ahorro anual</span>
-                  <span className="font-semibold text-ok-600">
+                  <span className="text-white opacity-90 block">Ahorro anual</span>
+                  <span className="font-semibold text-ok-300">
                     {calculoLive.ahorroAnual?.toLocaleString('es-ES', { 
                       minimumFractionDigits: 2, 
                       maximumFractionDigits: 2 
