@@ -48,7 +48,12 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               type="text"
               id="capitalInicial"
               value={formData.capitalInicial ? formatNumber(formData.capitalInicial) : ''}
-              onChange={(e) => updateFormData({ capitalInicial: parseNumber(e.target.value) })}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (/^[\d.,\s]*$/.test(value)) {
+                  updateFormData({ capitalInicial: parseNumber(value) });
+                }
+              }}
               placeholder="0,00"
               min="0"
               max="999999.99"
@@ -192,7 +197,12 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 type="text"
                 id="tinFijo"
                 value={formData.tinFijo ? formatPercentage(formData.tinFijo) : ''}
-                onChange={(e) => updateFormData({ tinFijo: parseNumber(e.target.value) })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^[\d.,]*$/.test(value)) {
+                    updateFormData({ tinFijo: parseNumber(value) });
+                  }
+                }}
                 placeholder="3,45"
                 className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                   getFieldError('tinFijo') 
