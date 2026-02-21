@@ -224,5 +224,76 @@ ATLAS Compliance Progress
 
 ---
 
-**Última actualización**: Diciembre 2024  
-**Versión**: 1.0
+**Última actualización**: Febrero 2026  
+**Versión**: 2.0
+
+---
+
+## 🧩 Componentes Atómicos ATLAS
+
+### Importación
+
+```tsx
+import { 
+  AtlasText, 
+  AtlasHeading, 
+  AtlasButton, 
+  AtlasIcon, 
+  AtlasCard,
+  AtlasBadge,
+  AtlasInput 
+} from '@/components/atlas';
+```
+
+### Uso
+
+#### Texto
+```tsx
+<AtlasText variant="caption" color="secondary">Texto secundario</AtlasText>
+<AtlasText variant="kpi" color="success">1.234,56 €</AtlasText>
+```
+
+#### Títulos
+```tsx
+<AtlasHeading level="hero">Título Principal</AtlasHeading>
+<AtlasHeading level="h1">Título Sección</AtlasHeading>
+<AtlasHeading level="h2">Subtítulo</AtlasHeading>
+```
+
+#### Botones
+```tsx
+<AtlasButton variant="primary" size="md">Guardar</AtlasButton>
+<AtlasButton variant="secondary">Cancelar</AtlasButton>
+<AtlasButton variant="danger">Eliminar</AtlasButton>
+<AtlasButton loading>Procesando...</AtlasButton>
+```
+
+#### Íconos
+```tsx
+import { Calculator, User, Home } from 'lucide-react';
+
+<AtlasIcon icon={Calculator} size="lg" color="primary" />
+<AtlasIcon icon={User} size="md" color="secondary" />
+```
+
+#### Tarjetas
+```tsx
+<AtlasCard padding="lg" hoverable>
+  <AtlasHeading level="h2">Título</AtlasHeading>
+  <AtlasText variant="body">Contenido</AtlasText>
+</AtlasCard>
+```
+
+### ⛔ PROHIBIDO
+
+```tsx
+// ❌ NO HACER
+<div className="text-sm text-gray-500">Texto</div>
+<button className="bg-blue-600 text-white px-4 py-2">Botón</button>
+<h1 className="text-2xl font-bold">Título</h1>
+
+// ✅ HACER
+<AtlasText variant="caption" color="secondary">Texto</AtlasText>
+<AtlasButton variant="primary">Botón</AtlasButton>
+<AtlasHeading level="h1">Título</AtlasHeading>
+```
