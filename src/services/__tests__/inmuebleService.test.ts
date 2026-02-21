@@ -58,7 +58,7 @@ describe('InmuebleService - IndexedDB Integration', () => {
     expect(inmueble.caracteristicas.m2).toBe(80);
     expect(inmueble.caracteristicas.habitaciones).toBe(3);
     expect(inmueble.compra.precio_compra).toBe(100000);
-    expect(inmueble.fiscalidad.ref_catastral).toBe('TEST123');
+    expect(inmueble.ref_catastral).toBe('TEST123');
   });
 
   it('debe mapear estado vendido correctamente', async () => {
