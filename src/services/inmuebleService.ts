@@ -72,9 +72,10 @@ class InmuebleService {
         porcentaje_amortizacion_info: 3.0000
       },
       completitud: {
-        identificacion: 'COMPLETO',
-        compra: 'COMPLETO',
-        fiscalidad: 'COMPLETO'
+        identificacion_status: 'COMPLETO',
+        caracteristicas_status: 'COMPLETO',
+        compra_status: 'COMPLETO',
+        fiscalidad_status: 'COMPLETO'
       }
     };
   }
