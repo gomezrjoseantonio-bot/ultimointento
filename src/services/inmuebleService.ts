@@ -219,24 +219,37 @@ class InmuebleService {
    * Duplicate inmueble (clone all fields except id, alias, direccion)
    */
   async duplicate(id: string, newAlias: string, newDireccion: any, userId: string = 'system'): Promise<Inmueble> {
-    const original = await this.getById(id);
+    const db = await initDB();
+    const propertyId = parseInt(id, 10);
+    if (isNaN(propertyId)) {
+      throw new Error('Inmueble not found');
+    }
+
+    const original = await db.get('properties', propertyId);
     if (!original) {
       throw new Error('Inmueble not found');
     }
 
-    const duplicateData: NuevoInmueble = {
+    // Build the duplicate property without `id` so IndexedDB auto-assigns one
+    const { id: _omit, ...originalWithoutId } = original;
+    const duplicateProperty = {
+      ...originalWithoutId,
       alias: newAlias,
-      direccion: newDireccion,
-      ref_catastral: original.ref_catastral,
-      estado: 'ACTIVO', // Always start as active
-      fecha_alta: new Date().toISOString().split('T')[0],
-      fecha_venta: undefined,
-      caracteristicas: { ...original.caracteristicas },
-      compra: { ...original.compra },
-      fiscalidad: { ...original.fiscalidad }
+      address: newDireccion.calle || original.address,
+      postalCode: newDireccion.cp || original.postalCode,
+      municipality: newDireccion.municipio || original.municipality,
+      province: newDireccion.provincia || original.province,
+      ccaa: newDireccion.ca || original.ccaa,
+      state: 'activo' as const,
+      purchaseDate: new Date().toISOString().split('T')[0]
     };
 
-    return this.create(duplicateData, userId);
+    const newId = await db.add('properties', duplicateProperty);
+    const saved = await db.get('properties', newId);
+    if (!saved) {
+      throw new Error('Failed to save duplicated inmueble');
+    }
+    return this.mapPropertyToInmueble(saved);
   }
 
   /**
