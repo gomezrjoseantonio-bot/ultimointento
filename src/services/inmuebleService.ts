@@ -13,42 +13,97 @@ import {
   calculateConstructionPercentage
 } from '../utils/inmuebleUtils';
 import { getLocationFromPostalCode } from '../utils/locationUtils';
+import { initDB, Property } from './db';
 
 class InmuebleService {
   private readonly BASE_URL = '/api/inmuebles';
 
   /**
-   * Get all inmuebles
+   * Map a Property from IndexedDB to the Inmueble format
+   */
+  private mapPropertyToInmueble(property: Property): Inmueble {
+    return {
+      id: property.id?.toString() || '',
+      alias: property.alias,
+      direccion: {
+        calle: property.address,
+        numero: '',
+        piso: '',
+        puerta: '',
+        cp: property.postalCode,
+        municipio: property.municipality,
+        provincia: property.province,
+        ca: property.ccaa as any
+      },
+      estado: property.state === 'activo' ? 'ACTIVO' : 'VENDIDO',
+      fecha_alta: property.purchaseDate || new Date().toISOString().split('T')[0],
+      caracteristicas: {
+        tipo: 'VIVIENDA',
+        m2: property.squareMeters || 0,
+        habitaciones: property.bedrooms || 0,
+        banos: property.bathrooms || 0
+      },
+      compra: {
+        fecha_compra: property.purchaseDate || '',
+        precio_compra: property.acquisitionCosts?.price || 0,
+        regimen: property.transmissionRegime === 'obra-nueva' ? 'NUEVA_IVA' : 'USADA_ITP',
+        coste_total_compra: property.acquisitionCosts?.price || 0,
+        total_gastos: 0,
+        total_impuestos: 0,
+        eur_por_m2: 0,
+        gastos: {},
+        impuestos: null
+      },
+      fiscalidad: {
+        ref_catastral: property.cadastralReference || '',
+        tipo_adquisicion: 'LUCRATIVA_ONEROSA',
+        metodo_amortizacion: 'REGLA_GENERAL_3',
+        porcentaje_amortizacion_info: 3.0000
+      },
+      completitud: {
+        identificacion: 'COMPLETO',
+        compra: 'COMPLETO',
+        fiscalidad: 'COMPLETO'
+      }
+    };
+  }
+
+  /**
+   * Get all inmuebles from IndexedDB
    */
   async getAll(): Promise<Inmueble[]> {
     try {
-      const response = await fetch(this.BASE_URL);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch inmuebles: ${response.statusText}`);
-      }
-      return await response.json();
+      const db = await initDB();
+      const properties = await db.getAll('properties');
+      console.log('[INMUEBLE_SERVICE] Loaded from IndexedDB:', properties.length);
+      return properties.map(p => this.mapPropertyToInmueble(p));
     } catch (error) {
-      console.error('Error loading inmuebles:', error);
-      // Fallback to empty array for now, but log the error
+      console.error('[INMUEBLE_SERVICE] Error loading from IndexedDB:', error);
       return [];
     }
   }
 
   /**
-   * Get inmueble by ID
+   * Get inmueble by ID from IndexedDB
    */
   async getById(id: string): Promise<Inmueble | null> {
     try {
-      const response = await fetch(`${this.BASE_URL}/${id}`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(`Failed to fetch inmueble: ${response.statusText}`);
+      const db = await initDB();
+      const propertyId = parseInt(id, 10);
+
+      if (isNaN(propertyId)) {
+        return null;
       }
-      return await response.json();
+
+      const property = await db.get('properties', propertyId);
+
+      if (!property) {
+        return null;
+      }
+
+      return this.mapPropertyToInmueble(property);
     } catch (error) {
-      console.error('Error loading inmueble:', error);
+      console.error('[INMUEBLE_SERVICE] Error loading inmueble by ID:', error);
       return null;
     }
   }

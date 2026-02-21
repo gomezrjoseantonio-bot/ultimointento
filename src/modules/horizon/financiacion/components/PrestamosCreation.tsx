@@ -204,6 +204,9 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     if (!formData.cuentaCargoId) {
       newErrors.push({ field: 'cuentaCargoId', message: 'La cuenta de cargo es obligatoria' });
     }
+    if (formData.ambito === 'INMUEBLE' && !formData.inmuebleId) {
+      newErrors.push({ field: 'inmuebleId', message: 'Debe seleccionar un inmueble' });
+    }
     if (!formData.fechaFirma) {
       newErrors.push({ field: 'fechaFirma', message: 'La fecha de firma es obligatoria' });
     }
