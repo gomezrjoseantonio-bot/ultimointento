@@ -73,6 +73,13 @@ const Step1Identificacion: React.FC<Step1IdentificacionProps> = ({
           toast(`Ubicación inferida: ${locationData.province}. Puedes editarla manualmente.`);
         }
       } else {
+        // Clear location fields so the user is forced to enter them manually
+        newData.direccion = {
+          ...newData.direccion,
+          municipio: '',
+          provincia: '',
+          ca: undefined as unknown as ComunidadAutonoma
+        };
         toast('Código postal no reconocido. Introduce los datos manualmente.');
       }
 
