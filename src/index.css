@@ -824,3 +824,110 @@ table td,
   padding: 0;
 }
 }
+/* ========================================
+   ATLAS UTILITY CLASSES
+   ======================================== */
+
+/* Typography Scale */
+.atlas-caption {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-body {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-body-strong {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-subtitle {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-h3 {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-h2 {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-h1 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-hero {
+  font-size: 2rem;
+  line-height: 2.5rem;
+  font-weight: 700;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-kpi {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-navy-1);
+}
+
+.atlas-kpi-large {
+  font-size: 1.75rem;
+  line-height: 2.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--atlas-navy-1);
+}
+
+/* Color Utilities */
+.text-secondary {
+  color: var(--text-gray);
+}
+
+.text-success {
+  color: var(--ok);
+}
+
+.text-warning {
+  color: var(--warn);
+}
+
+.text-danger {
+  color: var(--error);
+}
+
+/* Card Utility */
+.atlas-card {
+  background-color: white;
+  border: 1px solid var(--gray-300, #DEE2E6);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.atlas-card-hover {
+  transition: box-shadow 0.2s;
+}
+
+.atlas-card-hover:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.1);
+}

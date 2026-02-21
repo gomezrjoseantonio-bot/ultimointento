@@ -14,6 +14,7 @@ import {
 import { PrestamoFinanciacion, ValidationError } from '../../../../types/financiacion';
 import { prestamosService } from '../../../../services/prestamosService';
 import { useDebouncedCalculation } from '../../../../hooks/useDebouncedCalculation';
+import { AtlasButton } from '../../../../components/atlas';
 
 // Import block components (to be created)
 import IdentificacionBlock from './blocks/IdentificacionBlock';
@@ -483,23 +484,15 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
 
         {/* Save Button at Bottom Right */}
         <div className="flex justify-end">
-          <button
+          <AtlasButton
+            variant="primary"
+            size="lg"
             onClick={handleSave}
-            disabled={loading}
-            className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium bg-atlas-blue hover: focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={loading}
           >
-            {loading ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                Guardando...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Guardar
-              </>
-            )}
-          </button>
+            <Save className="h-4 w-4 mr-2" />
+            Guardar
+          </AtlasButton>
         </div>
       </div>
     </div>

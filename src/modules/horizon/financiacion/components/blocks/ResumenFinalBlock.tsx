@@ -14,6 +14,7 @@ import {
 import { PrestamoFinanciacion, ValidationError, CalculoLive } from '../../../../../types/financiacion';
 import { exportLoanToPDF } from '../../../../../utils/pdfExport';
 import { exportLoanToExcel } from '../../../../../utils/excelExport';
+import { AtlasText, AtlasIcon, AtlasButton } from '../../../../../components/atlas';
 
 interface ResumenFinalBlockProps {
   formData: Partial<PrestamoFinanciacion>;
@@ -128,31 +129,31 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <Euro className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
-                <div className="text-sm text-text-gray">Capital</div>
-                <div className="text-xl font-bold text-atlas-navy-1">
+                <AtlasIcon icon={Euro} size="lg" color="primary" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="secondary">Capital</AtlasText>
+                <AtlasText variant="kpi" color="primary">
                   {formatNumber(capital)} €
-                </div>
+                </AtlasText>
               </div>
             </div>
 
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <Calendar className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
-                <div className="text-sm text-text-gray">Plazo</div>
-                <div className="text-xl font-bold text-atlas-navy-1">
+                <AtlasIcon icon={Calendar} size="lg" color="primary" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="secondary">Plazo</AtlasText>
+                <AtlasText variant="kpi" color="primary">
                   {plazoFormatted}
-                </div>
+                </AtlasText>
               </div>
             </div>
 
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <Percent className="h-6 w-6 text-atlas-blue mx-auto mb-2" />
-                <div className="text-sm text-text-gray">TIN Base</div>
-                <div className="text-xl font-bold text-atlas-navy-1">
+                <AtlasIcon icon={Percent} size="lg" color="primary" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="secondary">TIN Base</AtlasText>
+                <AtlasText variant="kpi" color="primary">
                   {formatPercentage(tinBase)} %
-                </div>
+                </AtlasText>
               </div>
             </div>
 
@@ -357,22 +358,24 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
       {/* Export Buttons */}
       <div className="flex gap-3">
-        <button
+        <AtlasButton
           type="button"
+          variant="secondary"
+          size="md"
           onClick={() => exportLoanToPDF(formData, calculoLive || null)}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium text-atlas-navy-1 bg-white hover:bg-gray-50 rounded-atlas"
         >
           <FileText className="h-4 w-4 mr-2" />
           Exportar PDF
-        </button>
-        <button
+        </AtlasButton>
+        <AtlasButton
           type="button"
+          variant="secondary"
+          size="md"
           onClick={() => exportLoanToExcel(formData, calculoLive || null)}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium text-atlas-navy-1 bg-white hover:bg-gray-50 rounded-atlas"
         >
           <Download className="h-4 w-4 mr-2" />
           Exportar Excel
-        </button>
+        </AtlasButton>
       </div>
 
       {/* Important Notes */}

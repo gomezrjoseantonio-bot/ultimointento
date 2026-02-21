@@ -9,16 +9,33 @@ module.exports = {
       colors: {
         // ATLAS HORIZON - Official Color Tokens ONLY
         'atlas-blue': '#042C5E',     // Horizon primary - ONLY allowed blue
+        'atlas-blue-dark': '#031F47', // Hover state for atlas-blue
         'atlas-navy-1': '#303A4C',   // Neutral dark text
         'atlas-navy-2': '#142C50',   // Dark backgrounds/sidebar
         'atlas-teal': '#1DA0BA',     // PULSE accent - chips, gestión tags
+        'atlas-teal-dark': '#178999', // Hover state for atlas-teal
         'bg': '#F8F9FA',             // Light background
         'text-gray': '#6C757D',      // Secondary text
-        
+
         // ATLAS Functional States - EXACT requirements
         'ok': '#28A745',             // Success green
-        'warn': '#FFC107',           // Warning yellow  
+        'ok-dark': '#218838',        // Hover state for success
+        'ok-50': '#f0fdf4',
+        'ok-200': '#bbf7d0',
+        'ok-700': '#15803d',
+        'warn': '#FFC107',           // Warning yellow
+        'warn-bg': 'rgba(255, 193, 7, 0.1)',
         'error': '#DC3545',          // Error red
+        'error-50': '#fef2f2',
+        'error-200': '#fecaca',
+        'error-500': '#DC3545',
+        'error-600': '#dc2626',
+        'error-700': '#b91c1c',
+
+        // ATLAS Utility Tokens
+        'primary-50': '#f0f4f9',
+        'primary-100': '#d9e2ef',
+        'primary-200': '#b6c7df',
         
         // Legacy brand colors (backward compatibility)
         'brand-navy': '#042C5E',     // Maps to atlas-blue

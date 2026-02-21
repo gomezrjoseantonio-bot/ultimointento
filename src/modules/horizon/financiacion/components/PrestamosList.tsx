@@ -17,6 +17,7 @@ import { prestamosService } from '../../../../services/prestamosService';
 import { Prestamo } from '../../../../types/prestamos';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 import { confirmDelete } from '../../../../services/confirmationService';
+import { AtlasText, AtlasIcon } from '../../../../components/atlas';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
@@ -242,60 +243,60 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
-            <Calculator className="h-8 w-8 text-atlas-blue" />
+            <AtlasIcon icon={Calculator} size="xl" color="primary" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Capital Solicitado</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">
+              <AtlasText variant="caption" color="secondary">Capital Solicitado</AtlasText>
+              <AtlasText variant="kpi" color="primary">
                 {formatNumber(loanStats.capitalSolicitado)} €
-              </p>
+              </AtlasText>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
-            <DollarSign className="h-8 w-8 text-warn" />
+            <AtlasIcon icon={DollarSign} size="xl" color="warning" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Capital Pendiente</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">
+              <AtlasText variant="caption" color="secondary">Capital Pendiente</AtlasText>
+              <AtlasText variant="kpi" color="primary">
                 {formatNumber(loanStats.capitalPendiente)} €
-              </p>
+              </AtlasText>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
-            <TrendingUp className="h-8 w-8 text-ok" />
+            <AtlasIcon icon={TrendingUp} size="xl" color="success" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Intereses Pagados</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">
+              <AtlasText variant="caption" color="secondary">Intereses Pagados</AtlasText>
+              <AtlasText variant="kpi" color="primary">
                 {formatNumber(loanStats.interesesPagados)} €
-              </p>
+              </AtlasText>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
-            <Clock className="h-8 w-8 text-error" />
+            <AtlasIcon icon={Clock} size="xl" color="error" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Intereses Pendientes</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">
+              <AtlasText variant="caption" color="secondary">Intereses Pendientes</AtlasText>
+              <AtlasText variant="kpi" color="primary">
                 {formatNumber(loanStats.interesesPendientes)} €
-              </p>
+              </AtlasText>
             </div>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex items-center">
-            <Calendar className="h-8 w-8 text-atlas-blue" />
+            <AtlasIcon icon={Calendar} size="xl" color="primary" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-text-gray">Cuota Total</p>
-              <p className="text-2xl font-bold text-atlas-navy-1">
+              <AtlasText variant="caption" color="secondary">Cuota Total</AtlasText>
+              <AtlasText variant="kpi" color="primary">
                 {formatNumber(loanStats.cuotaTotal)} €
-              </p>
+              </AtlasText>
             </div>
           </div>
         </div>
