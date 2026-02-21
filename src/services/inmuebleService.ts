@@ -86,7 +86,6 @@ class InmuebleService {
     try {
       const db = await initDB();
       const properties = await db.getAll('properties');
-      console.log('[INMUEBLE_SERVICE] Loaded from IndexedDB:', properties.length);
       return properties.map(p => this.mapPropertyToInmueble(p));
     } catch (error) {
       console.error('[INMUEBLE_SERVICE] Error loading from IndexedDB:', error);
