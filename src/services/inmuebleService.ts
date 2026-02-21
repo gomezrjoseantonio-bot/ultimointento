@@ -16,7 +16,6 @@ import { getLocationFromPostalCode } from '../utils/locationUtils';
 import { initDB, Property } from './db';
 
 class InmuebleService {
-  private readonly BASE_URL = '/api/inmuebles';
 
   /**
    * Map a Property from IndexedDB to the Inmueble format
