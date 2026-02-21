@@ -5,6 +5,11 @@ import { FEINData } from '../types/fein';
 import { CalculoLive, PrestamoFinanciacion } from '../types/financiacion';
 import { bonificacionesService } from './bonificacionesService';
 
+/** Minimum derivative magnitude before stopping Newton-Raphson to avoid division by near-zero */
+const DERIVATIVE_TOLERANCE = 1e-12;
+/** Convergence threshold for Newton-Raphson rate iteration */
+const CONVERGENCE_TOLERANCE = 1e-10;
+
 export class LiveCalculationService {
   /**
    * Calculate live loan metrics from FEIN data
@@ -172,28 +177,57 @@ export class LiveCalculationService {
   }
   
   /**
-   * Calculate approximate APR (TAE)
+   * Calculate approximate APR (TAE) using Newton-Raphson method (Banco de España formula)
    */
   private static calculateApproximateAPR(tin: number, prestamo: PrestamoFinanciacion): number {
-    // Simplified APR calculation including basic commissions
-    let comisiones = 0;
-    
-    // Opening commission
-    if (prestamo.comisionApertura) {
-      comisiones += prestamo.capitalInicial * (prestamo.comisionApertura / 100);
+    const plazoMeses = prestamo.plazoPeriodo === 'AÑOS' ? prestamo.plazoTotal * 12 : prestamo.plazoTotal;
+    const capital = prestamo.capitalInicial;
+    const comisionApertura = prestamo.comisionApertura || 0;
+    const comisionMantenimiento = prestamo.comisionMantenimiento || 0;
+
+    // Net capital after opening commission
+    const capitalNeto = capital - (capital * comisionApertura / 100);
+
+    // Effective monthly payment including maintenance commission
+    const cuotaBase = this.calculateFrenchPayment(capital, tin, plazoMeses);
+    const cuotaEfectiva = cuotaBase + comisionMantenimiento;
+
+    // Newton-Raphson to find monthly rate r such that:
+    // capitalNeto = cuotaEfectiva * (1 - (1+r)^-n) / r
+    const tinMensual = this.calculateMonthlyRate(capitalNeto, cuotaEfectiva, plazoMeses);
+
+    // TAE = (1 + tinMensual)^12 - 1
+    const tae = (Math.pow(1 + tinMensual, 12) - 1) * 100;
+    return Math.max(0, tae);
+  }
+
+  /**
+   * Newton-Raphson iteration to find monthly interest rate
+   */
+  private static calculateMonthlyRate(
+    capital: number,
+    cuota: number,
+    plazo: number
+  ): number {
+    if (cuota <= 0 || capital <= 0 || plazo <= 0) return 0;
+
+    // Initial estimate: TIN / 12
+    let r = cuota / capital / plazo;
+
+    for (let i = 0; i < 100; i++) {
+      const factor = Math.pow(1 + r, plazo);
+      const f = capital * r * factor - cuota * (factor - 1);
+      const df = capital * (factor + plazo * r * factor / (1 + r)) - cuota * plazo * factor / (1 + r);
+      if (Math.abs(df) < DERIVATIVE_TOLERANCE) break;
+      const rNew = r - f / df;
+      if (Math.abs(rNew - r) < CONVERGENCE_TOLERANCE) {
+        r = rNew;
+        break;
+      }
+      r = rNew;
     }
-    
-    // Annual maintenance commission
-    if (prestamo.comisionMantenimiento) {
-      const plazoAnos = prestamo.plazoPeriodo === 'AÑOS' ? prestamo.plazoTotal : prestamo.plazoTotal / 12;
-      comisiones += prestamo.comisionMantenimiento * plazoAnos;
-    }
-    
-    // Simplified APR formula (TIN + commission impact)
-    const comisionImpact = (comisiones / prestamo.capitalInicial) * 100;
-    const plazoAnos = prestamo.plazoPeriodo === 'AÑOS' ? prestamo.plazoTotal : prestamo.plazoTotal / 12;
-    
-    return tin + (comisionImpact / plazoAnos);
+
+    return Math.max(0, r);
   }
 
   /**

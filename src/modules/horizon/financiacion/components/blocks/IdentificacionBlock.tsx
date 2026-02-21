@@ -4,6 +4,8 @@ import { PrestamoFinanciacion, ValidationError } from '../../../../../types/fina
 import { cuentasService } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
 import AccountOption from '../../../../../components/common/AccountOption';
+import { inmuebleService } from '../../../../../services/inmuebleService';
+import { Inmueble } from '../../../../../types/inmueble';
 
 interface IdentificacionBlockProps {
   formData: Partial<PrestamoFinanciacion>;
@@ -19,6 +21,8 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
 }) => {
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [inmuebles, setInmuebles] = React.useState<Inmueble[]>([]);
+  const [inmueblesLoading, setInmueblesLoading] = React.useState(false);
 
   const getFieldError = (fieldName: string) => errors.find(e => e.field === fieldName)?.message;
 
@@ -46,6 +50,31 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
 
     return unsubscribe;
   }, []);
+
+  // Load inmuebles on component mount
+  React.useEffect(() => {
+    const loadInmuebles = async () => {
+      setInmueblesLoading(true);
+      try {
+        const list = await inmuebleService.getAll();
+        const active = list.filter(i => i.estado === 'ACTIVO');
+        setInmuebles(active);
+        // Auto-select if only one inmueble
+        if (active.length === 1 && formData.ambito === 'INMUEBLE' && !formData.inmuebleId) {
+          updateFormData({ inmuebleId: active[0].id });
+        }
+      } catch (error) {
+        console.error('[PRESTAMOS] Failed to load inmuebles:', error);
+      } finally {
+        setInmueblesLoading(false);
+      }
+    };
+
+    if (formData.ambito === 'INMUEBLE') {
+      loadInmuebles();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.ambito]);
 
   const selectedAccount = accounts.find(acc => acc.id?.toString() === formData.cuentaCargoId);
 
@@ -101,17 +130,39 @@ const IdentificacionBlock: React.FC<IdentificacionBlockProps> = ({
           <label htmlFor="inmuebleId" className="block text-sm font-medium text-atlas-navy-1 mb-2">
             Inmueble
           </label>
-          <select
-            id="inmuebleId"
-            value={formData.inmuebleId || ''}
-            onChange={(e) => updateFormData({ inmuebleId: e.target.value || undefined })}
-            className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-          >
-            <option value="">Seleccionar inmueble</option>
-            <option value="prop1">Calle Mayor 123, Madrid</option>
-            <option value="prop2">Avenida Diagonal 456, Barcelona</option>
-            <option value="prop3">Calle Valencia 789, Valencia</option>
-          </select>
+          {inmueblesLoading ? (
+            <div className="w-full rounded-atlas border border-gray-300 p-3 bg-gray-50 text-center text-sm text-text-gray">
+              Cargando inmuebles...
+            </div>
+          ) : inmuebles.length === 0 ? (
+            <div className="w-full rounded-atlas border border-gray-300 p-3 bg-gray-50">
+              <p className="text-sm text-text-gray mb-2">No hay inmuebles disponibles.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  const win = window.open('/inmuebles/nuevo', '_blank');
+                  if (win) win.opener = null;
+                }}
+                className="text-sm text-atlas-blue underline hover:text-atlas-navy-1"
+              >
+                Crear inmueble
+              </button>
+            </div>
+          ) : (
+            <select
+              id="inmuebleId"
+              value={formData.inmuebleId || ''}
+              onChange={(e) => updateFormData({ inmuebleId: e.target.value || undefined })}
+              className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+            >
+              <option value="">Seleccionar inmueble</option>
+              {inmuebles.map(inmueble => (
+                <option key={inmueble.id} value={inmueble.id}>
+                  {inmueble.alias} – {inmueble.direccion.calle}, {inmueble.direccion.municipio}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 

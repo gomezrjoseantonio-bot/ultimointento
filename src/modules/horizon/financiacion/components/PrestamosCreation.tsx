@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Save, 
   X, 
@@ -8,11 +8,12 @@ import {
   CreditCard,
   Calculator,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
-import { PrestamoFinanciacion, CalculoLive, ValidationError } from '../../../../types/financiacion';
+import { PrestamoFinanciacion, ValidationError } from '../../../../types/financiacion';
 import { prestamosService } from '../../../../services/prestamosService';
-import { LiveCalculationService } from '../../../../services/liveCalculationService';
+import { useDebouncedCalculation } from '../../../../hooks/useDebouncedCalculation';
 
 // Import block components (to be created)
 import IdentificacionBlock from './blocks/IdentificacionBlock';
@@ -70,12 +71,18 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     };
   });
 
-  // Live calculation state
-  const [calculoLive, setCalculoLive] = useState<CalculoLive | null>(null);
+  // Live calculation state - moved to useDebouncedCalculation hook below
   
   // Form validation state
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Autosave state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const draftKey = `prestamo_draft_${prestamoId || 'new'}`;
+
+  // Live calculation with debounce (300ms)
+  const calculoLive = useDebouncedCalculation(formData);
 
   const isEditMode = !!prestamoId;
 
@@ -140,6 +147,40 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
       loadPrestamoData();
     }
   }, [prestamoId]);
+
+  // Recover draft on mount (only for new loans)
+  useEffect(() => {
+    if (!prestamoId) {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        try {
+          const { formData: savedData } = JSON.parse(saved);
+          if (window.confirm('¿Recuperar borrador guardado anteriormente?')) {
+            setFormData(savedData);
+          }
+        } catch {
+          // Ignore corrupt drafts
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave every 2 seconds when form data changes
+  useEffect(() => {
+    if (Object.keys(formData).length === 0) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(draftKey, JSON.stringify({ formData, timestamp: Date.now() }));
+      setLastSaved(new Date());
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [formData, draftKey]);
+
+  // Discard draft
+  const discardDraft = useCallback(() => {
+    localStorage.removeItem(draftKey);
+    setLastSaved(null);
+  }, [draftKey]);
 
   // Toggle block visibility
   const toggleBlock = (blockName: keyof typeof visibleBlocks) => {
@@ -207,17 +248,6 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
     setErrors(newErrors);
     return newErrors.length === 0;
   };
-
-  // Calculate live values
-  useEffect(() => {
-    if (formData.capitalInicial && formData.plazoTotal && formData.tipo && formData.fechaFirma) {
-      // Use the enhanced live calculation service
-      const calculo = LiveCalculationService.calculateFromPrestamo(formData as PrestamoFinanciacion);
-      setCalculoLive(calculo);
-    } else {
-      setCalculoLive(null);
-    }
-  }, [formData]);
 
   // Save loan
   const handleSave = async () => {
@@ -352,6 +382,47 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
               </p>
             </div>
           </div>
+          {/* Autosave indicator */}
+          {lastSaved && (
+            <div className="flex items-center gap-2 text-sm text-text-gray">
+              <Clock className="h-4 w-4" />
+              <span>Guardado {lastSaved.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="text-error-500 hover:text-error-700 underline text-xs ml-2"
+              >
+                Descartar borrador
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stepper */}
+        <div className="mt-4 flex items-center justify-between max-w-2xl">
+          {blocks.map((block, idx) => (
+            <React.Fragment key={block.id}>
+              <button
+                type="button"
+                onClick={() => toggleBlock(block.id as keyof typeof visibleBlocks)}
+                className="flex flex-col items-center gap-1"
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  block.isComplete
+                    ? 'bg-ok text-white'
+                    : visibleBlocks[block.id as keyof typeof visibleBlocks]
+                    ? 'bg-atlas-blue text-white ring-4 ring-primary-100'
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {block.isComplete ? <CheckCircle className="h-5 w-5" /> : idx + 1}
+                </div>
+                <span className="text-xs text-text-gray hidden sm:block">{block.title.split('. ')[1]?.split(' ')[0] || block.title}</span>
+              </button>
+              {idx < blocks.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-1 ${block.isComplete ? 'bg-ok' : 'bg-gray-200'}`} />
+              )}
+            </React.Fragment>
+          ))}
         </div>
 
         {/* General errors */}

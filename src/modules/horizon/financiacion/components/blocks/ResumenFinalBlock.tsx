@@ -7,9 +7,13 @@ import {
   Percent, 
   TrendingUp,
   AlertCircle,
-  Info
+  Info,
+  Download,
+  FileText
 } from 'lucide-react';
 import { PrestamoFinanciacion, ValidationError, CalculoLive } from '../../../../../types/financiacion';
+import { exportLoanToPDF } from '../../../../../utils/pdfExport';
+import { exportLoanToExcel } from '../../../../../utils/excelExport';
 
 interface ResumenFinalBlockProps {
   formData: Partial<PrestamoFinanciacion>;
@@ -113,7 +117,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
       {/* Main Summary Panel */}
       <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="bg-atlas-blue px-6 py-4">
-          <h3 className="text-lg font-semibold flex items-center">
+          <h3 className="text-lg font-semibold text-white flex items-center">
             <Calculator className="h-5 w-5 mr-2" />
             Resumen del Préstamo
           </h3>
@@ -213,25 +217,25 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           {/* Bonifications Summary */}
           {bonificacionesTotales > 0 && (
             <div className="bg-atlas-blue border border-atlas-blue border-opacity-20 p-4 mb-6">
-              <h4 className="font-medium text-atlas-blue mb-3">Beneficio de Bonificaciones</h4>
+              <h4 className="font-medium text-white mb-3">Beneficio de Bonificaciones</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <span className="text-text-gray text-sm block">Descuento Total</span>
-                  <span className="text-lg font-semibold text-ok-600">
+                  <span className="text-white opacity-90 text-sm block">Descuento Total</span>
+                  <span className="text-lg font-semibold text-white">
                     -{formatPercentage(bonificacionesTotales)} p.p.
                   </span>
                 </div>
                 {calculoLive?.ahorroMensual && (
                   <>
                     <div>
-                      <span className="text-text-gray text-sm block">Ahorro Mensual</span>
-                      <span className="text-lg font-semibold text-ok-600">
+                      <span className="text-white opacity-90 text-sm block">Ahorro Mensual</span>
+                      <span className="text-lg font-semibold text-white">
                         {formatNumber(calculoLive.ahorroMensual)} €
                       </span>
                     </div>
                     <div>
-                      <span className="text-text-gray text-sm block">Ahorro Anual</span>
-                      <span className="text-lg font-semibold text-ok-600">
+                      <span className="text-white opacity-90 text-sm block">Ahorro Anual</span>
+                      <span className="text-lg font-semibold text-white">
                         {formatNumber(ahorroAnual)} €
                       </span>
                     </div>
@@ -349,6 +353,26 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Export Buttons */}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => exportLoanToPDF(formData, calculoLive || null)}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium text-atlas-navy-1 bg-white hover:bg-gray-50 rounded-atlas"
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Exportar PDF
+        </button>
+        <button
+          type="button"
+          onClick={() => exportLoanToExcel(formData, calculoLive || null)}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium text-atlas-navy-1 bg-white hover:bg-gray-50 rounded-atlas"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Exportar Excel
+        </button>
       </div>
 
       {/* Important Notes */}
