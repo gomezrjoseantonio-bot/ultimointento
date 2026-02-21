@@ -1,9 +1,6 @@
 import * as XLSX from 'xlsx';
 import { PrestamoFinanciacion, CalculoLive } from '../types/financiacion';
 
-const fmt = (v: number) =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 /**
  * Generate amortization schedule rows (French system)
  */
