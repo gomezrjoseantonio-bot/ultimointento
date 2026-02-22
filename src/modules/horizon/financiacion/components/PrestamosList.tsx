@@ -277,63 +277,78 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Capital Solicitado */}
         <div className="bg-white border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AtlasIcon icon={Calculator} size="xl" color="primary" />
-            <div className="ml-4">
-              <AtlasText variant="caption" color="secondary">Capital Solicitado</AtlasText>
-              <AtlasText variant="kpi" color="primary">
-                {formatNumber(loanStats.capitalSolicitado)} €
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3">
+              <AtlasIcon icon={Calculator} size="xl" color="primary" />
+              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
+                Capital Solicitado
               </AtlasText>
             </div>
+            <AtlasText variant="kpi" color="primary" className="text-right">
+              {formatNumber(loanStats.capitalSolicitado)} €
+            </AtlasText>
           </div>
         </div>
 
+        {/* Capital Pendiente */}
         <div className="bg-white border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AtlasIcon icon={DollarSign} size="xl" color="warning" />
-            <div className="ml-4">
-              <AtlasText variant="caption" color="secondary">Capital Pendiente</AtlasText>
-              <AtlasText variant="kpi" color="primary">
-                {formatNumber(loanStats.capitalPendiente)} €
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3">
+              <AtlasIcon icon={DollarSign} size="xl" color="warning" />
+              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
+                Capital Pendiente
               </AtlasText>
             </div>
+            <AtlasText variant="kpi" color="primary" className="text-right">
+              {formatNumber(loanStats.capitalPendiente)} €
+            </AtlasText>
           </div>
         </div>
 
+        {/* Intereses Pagados */}
         <div className="bg-white border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AtlasIcon icon={TrendingUp} size="xl" color="success" />
-            <div className="ml-4">
-              <AtlasText variant="caption" color="secondary">Intereses Pagados</AtlasText>
-              <AtlasText variant="kpi" color="primary">
-                {formatNumber(loanStats.interesesPagados)} €
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3">
+              <AtlasIcon icon={TrendingUp} size="xl" color="success" />
+              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
+                Intereses Pagados
               </AtlasText>
             </div>
+            <AtlasText variant="kpi" color="primary" className="text-right">
+              {formatNumber(loanStats.interesesPagados)} €
+            </AtlasText>
           </div>
         </div>
 
+        {/* Intereses Pendientes */}
         <div className="bg-white border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AtlasIcon icon={Clock} size="xl" color="error" />
-            <div className="ml-4">
-              <AtlasText variant="caption" color="secondary">Intereses Pendientes</AtlasText>
-              <AtlasText variant="kpi" color="primary">
-                {formatNumber(loanStats.interesesPendientes)} €
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3">
+              <AtlasIcon icon={Clock} size="xl" color="error" />
+              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
+                Intereses Pendientes
               </AtlasText>
             </div>
+            <AtlasText variant="kpi" color="primary" className="text-right">
+              {formatNumber(loanStats.interesesPendientes)} €
+            </AtlasText>
           </div>
         </div>
 
+        {/* Cuota Total */}
         <div className="bg-white border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AtlasIcon icon={Calendar} size="xl" color="primary" />
-            <div className="ml-4">
-              <AtlasText variant="caption" color="secondary">Cuota Total</AtlasText>
-              <AtlasText variant="kpi" color="primary">
-                {formatNumber(loanStats.cuotaTotal)} €
+          <div className="flex flex-col">
+            <div className="flex items-center mb-3">
+              <AtlasIcon icon={Calendar} size="xl" color="primary" />
+              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
+                Cuota Total
               </AtlasText>
             </div>
+            <AtlasText variant="kpi" color="primary" className="text-right">
+              {formatNumber(loanStats.cuotaTotal)} €
+            </AtlasText>
           </div>
         </div>
       </div>
