@@ -2,14 +2,22 @@
 // ATLAS HORIZON: Investment positions types
 
 export type TipoPosicion = 
-  | 'fondo_inversion'
+  // Rendimiento periódico
+  | 'cuenta_remunerada'
+  | 'prestamo_p2p'
+  | 'deposito_plazo'
+  // Dividendos
   | 'accion'
   | 'etf'
+  | 'reit'
+  // Valoración simple
+  | 'fondo_inversion'
   | 'plan_pensiones'
   | 'plan_empleo'
   | 'crypto'
-  | 'deposito'
-  | 'otro';
+  | 'otro'
+  // Legacy (backward compatibility)
+  | 'deposito';
 
 export interface Aportacion {
   id: number;
