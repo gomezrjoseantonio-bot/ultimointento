@@ -200,69 +200,8 @@ const InversionesPage: React.FC = () => {
         valorTotal={resumen.valor_total}
         rentabilidadEuros={resumen.rentabilidad_euros}
         rentabilidadPorcentaje={resumen.rentabilidad_porcentaje}
-        numPosiciones={resumen.num_posiciones}
+        porTipo={resumen.por_tipo}
       />
-
-      {/* Distribución por tipo */}
-      {Object.keys(resumen.por_tipo).length > 0 && (
-        <div style={{
-          background: 'var(--hz-card-bg)',
-          border: '1px solid var(--hz-neutral-300)',
-          borderRadius: '12px',
-          padding: '1.5rem',
-          marginBottom: '2rem',
-        }}>
-          <h2 style={{
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-h2)',
-            fontWeight: 600,
-            color: 'var(--atlas-navy-1)',
-            margin: '0 0 1rem 0',
-          }}>
-            Distribución por tipo
-          </h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-          }}>
-            {Object.entries(resumen.por_tipo).map(([tipo, valor]) => {
-              const porcentaje = resumen.valor_total > 0 ? (valor / resumen.valor_total) * 100 : 0;
-              const tipoLabels: Record<string, string> = {
-                fondo_inversion: 'Fondos',
-                accion: 'Acciones',
-                etf: 'ETFs',
-                plan_pensiones: 'Pensiones',
-                plan_empleo: 'Plan empleo',
-                crypto: 'Crypto',
-                deposito: 'Depósitos',
-                otro: 'Otros',
-              };
-              return (
-                <div key={tipo} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}>
-                  <div style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    background: 'var(--atlas-blue)',
-                  }} />
-                  <span style={{
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: 'var(--text-caption)',
-                    color: 'var(--atlas-navy-1)',
-                  }}>
-                    {tipoLabels[tipo] || tipo}: {porcentaje.toFixed(1)}%
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Título de sección */}
       <h2 style={{
@@ -335,7 +274,11 @@ const InversionesPage: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '1rem',
+        }}>
           {posiciones.map(posicion => (
             <PosicionCard
               key={posicion.id}
