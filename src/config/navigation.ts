@@ -77,6 +77,7 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
       { name: 'Real vs Previsto', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
       { name: 'Escenarios', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
+      { name: 'Valoraciones', href: '/proyeccion/valoraciones', icon: TrendingUp, module: 'horizon' },
     ]
   },
   {
