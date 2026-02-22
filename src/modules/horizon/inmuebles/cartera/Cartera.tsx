@@ -334,15 +334,6 @@ const Cartera: React.FC = () => {
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('alias')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Alias</span>
-                        <span className="text-neutral-400">{getSortIcon('alias')}</span>
-                      </div>
-                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Dirección
                     </th>
@@ -365,7 +356,7 @@ const Cartera: React.FC = () => {
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Habitaciones
+                      Hab.
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Baños
@@ -383,7 +374,7 @@ const Cartera: React.FC = () => {
                       €/m²
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      CAPEX (acumulado)
+                      CAPEX
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Estado
@@ -400,9 +391,6 @@ const Cartera: React.FC = () => {
                     
                     return (
                       <tr key={property.id} className="hover:bg-neutral-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-neutral-900">{property.alias}</div>
-                        </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-neutral-900">{property.address}</div>
                           <div className="text-sm text-neutral-500">{property.municipality}, {property.province}</div>
