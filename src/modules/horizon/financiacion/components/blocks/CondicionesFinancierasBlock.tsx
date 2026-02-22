@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, Clock, Euro, Percent } from 'lucide-react';
 import { PrestamoFinanciacion, ValidationError, CalculoLive } from '../../../../../types/financiacion';
 
@@ -59,6 +59,23 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
     updateFormData({ [updateField]: raw ? parsed : undefined } as Partial<PrestamoFinanciacion>);
   };
 
+  // Sync local inputs when formData changes externally (e.g., edit mode data load)
+  useEffect(() => {
+    setLocalInputs({
+      capitalInicial: formData.capitalInicial ? formatNumber(formData.capitalInicial) : '',
+      tinFijo: formData.tinFijo ? formatPercentage(formData.tinFijo) : '',
+      valorIndice: formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : '',
+      diferencial: formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : '',
+      tinTramoFijo: formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : '',
+      comisionApertura: formData.comisionApertura ? formatPercentage(formData.comisionApertura) : '',
+      comisionMantenimiento: formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : '',
+      comisionAmortizacionAnticipada: formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : '',
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.capitalInicial, formData.tinFijo, formData.valorIndice, formData.diferencial,
+      formData.tinTramoFijo, formData.comisionApertura, formData.comisionMantenimiento,
+      formData.comisionAmortizacionAnticipada]);
+
   return (
     <div className="space-y-6">
       {/* Capital and Term */}
@@ -75,12 +92,7 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               id="capitalInicial"
               value={localInputs.capitalInicial}
               onChange={(e) => handleInputChange('capitalInicial', e.target.value, /^[\d.,\s]*$/)}
-              onBlur={() => {
-                const parsed = parseNumber(localInputs.capitalInicial);
-                const formatted = localInputs.capitalInicial ? formatNumber(parsed) : '';
-                setLocalInputs(prev => ({ ...prev, capitalInicial: formatted }));
-                updateFormData({ capitalInicial: localInputs.capitalInicial ? parsed : undefined });
-              }}
+              onBlur={() => handleInputBlur('capitalInicial', 'capitalInicial', true)}
               placeholder="150.000,00"
               className={`w-full border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
