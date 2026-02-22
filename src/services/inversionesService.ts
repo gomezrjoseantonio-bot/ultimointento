@@ -31,7 +31,8 @@ export const inversionesService = {
       notas: 'Aportación inicial',
     };
     const aportaciones = posicion.aportaciones?.length ? posicion.aportaciones : [aportacionInicial];
-    const newPosicion: Omit<PosicionInversion, 'id'> = {
+    const posicionAny = posicion as any;
+    const newPosicion: any = {
       nombre: posicion.nombre,
       tipo: posicion.tipo,
       entidad: posicion.entidad,
@@ -49,6 +50,11 @@ export const inversionesService = {
       activo: true,
       created_at: now,
       updated_at: now,
+      // Extended fields
+      ...(posicionAny.rendimiento !== undefined && { rendimiento: posicionAny.rendimiento }),
+      ...(posicionAny.numero_participaciones !== undefined && { numero_participaciones: posicionAny.numero_participaciones }),
+      ...(posicionAny.precio_medio_compra !== undefined && { precio_medio_compra: posicionAny.precio_medio_compra }),
+      ...(posicionAny.dividendos !== undefined && { dividendos: posicionAny.dividendos }),
     };
     const id = await db.add('inversiones', newPosicion as PosicionInversion);
     return id as number;
@@ -130,5 +136,11 @@ export const inversionesService = {
       num_posiciones: posiciones.length,
       por_tipo,
     };
+  },
+
+  // Generar rendimientos pendientes (delegado a rendimientosService)
+  async generarRendimientos(): Promise<void> {
+    const { rendimientosService } = await import('./rendimientosService');
+    await rendimientosService.generarRendimientosPendientes();
   },
 };
