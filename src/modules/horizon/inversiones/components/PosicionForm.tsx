@@ -18,6 +18,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     entidad: posicion?.entidad || '',
     isin: posicion?.isin || '',
     ticker: posicion?.ticker || '',
+    importe_inicial: posicion?.total_aportado || 0,
     valor_actual: posicion?.valor_actual || 0,
     fecha_valoracion: posicion?.fecha_valoracion?.split('T')[0] || new Date().toISOString().split('T')[0],
     notas: posicion?.notas || '',
@@ -34,6 +35,9 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     if (!formData.entidad.trim()) {
       newErrors.entidad = 'La entidad es obligatoria';
     }
+    if (!posicion && formData.importe_inicial <= 0) {
+      newErrors.importe_inicial = 'El importe inicial debe ser mayor que 0';
+    }
     if (formData.valor_actual <= 0) {
       newErrors.valor_actual = 'El valor debe ser mayor que 0';
     }
@@ -49,10 +53,21 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       return;
     }
 
-    const dataToSave = {
-      ...formData,
+    const dataToSave: Partial<PosicionInversion> & { importe_inicial?: number } = {
+      nombre: formData.nombre,
+      tipo: formData.tipo,
+      entidad: formData.entidad,
+      isin: formData.isin,
+      ticker: formData.ticker,
+      valor_actual: formData.valor_actual,
       fecha_valoracion: new Date(formData.fecha_valoracion).toISOString(),
+      notas: formData.notas,
     };
+
+    if (!posicion) {
+      dataToSave.importe_inicial = formData.importe_inicial;
+      dataToSave.total_aportado = formData.importe_inicial;
+    }
 
     onSave(dataToSave);
   };
@@ -279,8 +294,42 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
               </div>
             </div>
 
-            {/* Valor actual & Fecha */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            {/* Importe inicial & Valor actual (only show importe_inicial for new positions) */}
+            <div style={{ display: 'grid', gridTemplateColumns: posicion ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+              {!posicion && (
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: 'var(--text-caption)',
+                    fontWeight: 500,
+                    color: 'var(--atlas-navy-1)',
+                    marginBottom: '0.5rem',
+                  }}>
+                    Importe aportado inicial * (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.importe_inicial}
+                    onChange={(e) => setFormData({ ...formData, importe_inicial: parseFloat(e.target.value) || 0 })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `1px solid ${errors.importe_inicial ? 'var(--error)' : 'var(--hz-neutral-300)'}`,
+                      borderRadius: '8px',
+                      fontFamily: 'var(--font-inter)',
+                      fontSize: '1rem',
+                    }}
+                    placeholder="1000.00"
+                  />
+                  {errors.importe_inicial && (
+                    <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
+                      {errors.importe_inicial}
+                    </span>
+                  )}
+                </div>
+              )}
               <div>
                 <label style={{
                   display: 'block',
@@ -313,31 +362,33 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
                   </span>
                 )}
               </div>
-              <div>
-                <label style={{
-                  display: 'block',
+            </div>
+
+            {/* Fecha valoración */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontFamily: 'var(--font-inter)',
+                fontSize: 'var(--text-caption)',
+                fontWeight: 500,
+                color: 'var(--atlas-navy-1)',
+                marginBottom: '0.5rem',
+              }}>
+                Fecha valoración *
+              </label>
+              <input
+                type="date"
+                value={formData.fecha_valoracion}
+                onChange={(e) => setFormData({ ...formData, fecha_valoracion: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid var(--hz-neutral-300)',
+                  borderRadius: '8px',
                   fontFamily: 'var(--font-inter)',
-                  fontSize: 'var(--text-caption)',
-                  fontWeight: 500,
-                  color: 'var(--atlas-navy-1)',
-                  marginBottom: '0.5rem',
-                }}>
-                  Fecha valoración *
-                </label>
-                <input
-                  type="date"
-                  value={formData.fecha_valoracion}
-                  onChange={(e) => setFormData({ ...formData, fecha_valoracion: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '1px solid var(--hz-neutral-300)',
-                    borderRadius: '8px',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '1rem',
-                  }}
-                />
-              </div>
+                  fontSize: '1rem',
+                }}
+              />
             </div>
 
             {/* Notas */}

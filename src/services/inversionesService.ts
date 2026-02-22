@@ -19,17 +19,33 @@ export const inversionesService = {
   },
 
   // Crear nueva posición
-  async createPosicion(posicion: Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
+  async createPosicion(posicion: Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & { importe_inicial?: number }): Promise<number> {
     const db = await initDB();
     const now = new Date().toISOString();
+    const totalAportado = posicion.total_aportado ?? posicion.importe_inicial ?? posicion.valor_actual;
+    const aportacionInicial: Aportacion = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      fecha: posicion.fecha_valoracion,
+      importe: totalAportado,
+      tipo: 'aportacion',
+      notas: 'Aportación inicial',
+    };
+    const aportaciones = posicion.aportaciones?.length ? posicion.aportaciones : [aportacionInicial];
     const newPosicion: Omit<PosicionInversion, 'id'> = {
-      ...posicion,
-      aportaciones: posicion.aportaciones || [],
-      total_aportado: posicion.total_aportado || posicion.valor_actual,
-      rentabilidad_euros: posicion.valor_actual - (posicion.total_aportado || posicion.valor_actual),
-      rentabilidad_porcentaje: (posicion.total_aportado || posicion.valor_actual) > 0 
-        ? ((posicion.valor_actual - (posicion.total_aportado || posicion.valor_actual)) / (posicion.total_aportado || posicion.valor_actual)) * 100 
+      nombre: posicion.nombre,
+      tipo: posicion.tipo,
+      entidad: posicion.entidad,
+      isin: posicion.isin,
+      ticker: posicion.ticker,
+      valor_actual: posicion.valor_actual,
+      fecha_valoracion: posicion.fecha_valoracion,
+      aportaciones,
+      total_aportado: totalAportado,
+      rentabilidad_euros: posicion.valor_actual - totalAportado,
+      rentabilidad_porcentaje: totalAportado > 0
+        ? ((posicion.valor_actual - totalAportado) / totalAportado) * 100
         : 0,
+      notas: posicion.notas,
       activo: true,
       created_at: now,
       updated_at: now,
@@ -64,7 +80,7 @@ export const inversionesService = {
     if (posicion) {
       const newAportacion: Aportacion = {
         ...aportacion,
-        id: Date.now(),
+        id: Date.now() + Math.floor(Math.random() * 1000),
       };
       const aportaciones = [...posicion.aportaciones, newAportacion];
       
