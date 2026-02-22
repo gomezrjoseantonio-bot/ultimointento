@@ -174,7 +174,7 @@ const NominaManager: React.FC = () => {
         </div>
         <button
           onClick={handleCreateNomina}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+          className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Nómina
@@ -183,7 +183,7 @@ const NominaManager: React.FC = () => {
 
       {/* Combined Summary for Active Nominas */}
       {nominasActivas.length > 0 && (
-        <div className="btn-secondary-horizon bg-gradient-to-r from-primary-50 to-primary-100 ">
+        <div className="rounded-lg border border-neutral-200 bg-gradient-to-r from-primary-50 to-primary-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="w-5 h-5 text-atlas-blue" />
@@ -200,23 +200,24 @@ const NominaManager: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-xs uppercase text-atlas-blue font-medium">Bruto Anual</p>
-              <p className="text-2xl font-bold text-primary-900">
+            <div className="rounded-md bg-white p-4 shadow-sm border border-neutral-100">
+              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Bruto Anual</p>
+              <p className="text-2xl font-bold text-primary-900 mt-1">
                 {formatCurrency(getCombinedTotals().brutoAnual)}
               </p>
             </div>
 
-            <div className="btn-secondary-horizon bg-white p-4 border-2 border-green-400">
-              <p className="text-xs uppercase text-atlas-blue font-medium">Neto Mensual</p>
-              <p className="text-2xl font-bold text-green-600">
+            <div className="rounded-md bg-white p-4 shadow-sm border-2 border-green-400">
+              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Neto Mensual Promedio</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">
                 {formatCurrency(getCombinedTotals().netoMensual)}
               </p>
+              <p className="text-xs text-neutral-500 mt-1">Total anual neto / 12</p>
             </div>
 
-            <div className="btn-secondary-horizon bg-white p-4 ">
-              <p className="text-xs uppercase text-atlas-blue font-medium">Neto Anual</p>
-              <p className="text-2xl font-bold text-primary-900">
+            <div className="rounded-md bg-white p-4 shadow-sm border border-neutral-100">
+              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Neto Anual</p>
+              <p className="text-2xl font-bold text-primary-900 mt-1">
                 {formatCurrency(getCombinedTotals().netoAnual)}
               </p>
             </div>
@@ -238,7 +239,7 @@ const NominaManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={handleCreateNomina}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear Primera Nómina
@@ -363,7 +364,14 @@ const NominaManager: React.FC = () => {
                   {/* Expandable Monthly Distribution Grid */}
                   {isExpanded && calculo && calculo.distribuccionMensual && (
                     <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-                      <h5 className="text-sm font-medium text-gray-700 mb-3">Distribución Mensual</h5>
+                      <div className="flex items-center space-x-4 mb-3">
+                        <h5 className="text-sm font-medium text-gray-700">Distribución Mensual</h5>
+                        <div className="flex items-center space-x-3 text-xs text-gray-500">
+                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-gray-200 border border-gray-300"></span><span>Base</span></span>
+                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-blue-200 border border-blue-300"></span><span>Variables</span></span>
+                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-green-200 border border-green-400"></span><span>Bonus/Extra</span></span>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-6 gap-2">
                         {calculo.distribuccionMensual.map((mes) => {
                           const hasMonthExtras = mes.variables > 0 || mes.bonus > 0;
@@ -375,14 +383,18 @@ const NominaManager: React.FC = () => {
                               }`}
                             >
                               <div className="font-medium text-gray-900">{getMonthName(mes.mes)}</div>
-                              <div className="text-xs text-gray-600 font-semibold">
+                              <div className="text-xs font-semibold text-gray-800 mt-0.5">
                                 {formatCurrency(mes.netoTotal)}
                               </div>
-                              {hasMonthExtras && (
-                                <div className="text-xs text-green-600 mt-0.5">
-                                  +extras
-                                </div>
-                              )}
+                              <div className="mt-1 space-y-0.5">
+                                <div className="text-xs text-gray-500">Base: {formatCurrency(mes.salarioBase)}</div>
+                                {mes.variables > 0 && (
+                                  <div className="text-xs text-blue-600">Var: +{formatCurrency(mes.variables)}</div>
+                                )}
+                                {mes.bonus > 0 && (
+                                  <div className="text-xs text-green-600">Bonus: +{formatCurrency(mes.bonus)}</div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
