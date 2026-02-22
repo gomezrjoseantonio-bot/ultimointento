@@ -8,7 +8,7 @@ export class PrestamosCalculationService {
   /**
    * Calculate monthly payment using French amortization system
    * @param principal Principal amount
-   * @param annualRate Annual nominal interest rate (e.g., 0.032 for 3.2%)
+   * @param annualRate Annual nominal interest rate as a percentage (e.g., 3.2 for 3.2%)
    * @param months Remaining months
    * @returns Monthly payment amount
    */
@@ -16,7 +16,7 @@ export class PrestamosCalculationService {
     if (principal <= 0 || months <= 0) return 0;
     if (annualRate === 0) return principal / months;
     
-    const monthlyRate = annualRate / 12;
+    const monthlyRate = annualRate / 100 / 12;
     const payment = principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -months));
     
     return Math.round(payment * 100) / 100; // Round to 2 decimals
@@ -391,9 +391,9 @@ export class PrestamosCalculationService {
       let interes: number;
       if (esProrrateado) {
         const dias = this.getDaysDifference(devengoDesde, devengoHasta) + 1;
-        interes = principalVivo * baseRate / 365 * dias;
+        interes = principalVivo * (baseRate / 100) / 365 * dias;
       } else {
-        interes = principalVivo * baseRate / 12;
+        interes = principalVivo * (baseRate / 100) / 12;
       }
 
       interes = Math.round(interes * 100) / 100;
@@ -546,7 +546,7 @@ export class PrestamosCalculationService {
   private calculateRemainingMonths(principal: number, rate: number, payment: number): number {
     if (rate === 0) return Math.ceil(principal / payment);
     
-    const monthlyRate = rate / 12;
+    const monthlyRate = rate / 100 / 12;
     const months = -Math.log(1 - (principal * monthlyRate) / payment) / Math.log(1 + monthlyRate);
     
     return Math.ceil(months);

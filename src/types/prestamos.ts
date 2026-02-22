@@ -15,7 +15,7 @@ export interface Prestamo {
   tipo: 'FIJO' | 'VARIABLE' | 'MIXTO';
 
   // FIJO
-  tipoNominalAnualFijo?: number; // 0.032 = 3.2%
+  tipoNominalAnualFijo?: number; // 3.2 for 3.2%
 
   // VARIABLE
   indice?: 'EURIBOR' | 'OTRO';
