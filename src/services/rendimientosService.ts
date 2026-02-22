@@ -7,7 +7,6 @@ import {
   PosicionInversionExtendida,
   InversionRendimientoPeriodico,
   PagoRendimiento,
-  RendimientoPeriodico,
   esRendimientoPeriodico,
 } from '../types/inversiones-extended';
 import { PosicionInversion } from '../types/inversiones';
