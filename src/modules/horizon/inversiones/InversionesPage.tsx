@@ -4,10 +4,13 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, TrendingUp } from 'lucide-react';
 import { inversionesService } from '../../../services/inversionesService';
-import { PosicionInversion } from '../../../types/inversiones';
+import { PosicionInversion, Aportacion } from '../../../types/inversiones';
 import CarteraResumen from './components/CarteraResumen';
 import PosicionCard from './components/PosicionCard';
 import PosicionForm from './components/PosicionForm';
+import PosicionDetailModal from './components/PosicionDetailModal';
+import ActualizarValorModal from './components/ActualizarValorModal';
+import AportacionForm from './components/AportacionForm';
 import toast from 'react-hot-toast';
 
 const InversionesPage: React.FC = () => {
@@ -21,6 +24,9 @@ const InversionesPage: React.FC = () => {
     por_tipo: {} as Record<string, number>,
   });
   const [showForm, setShowForm] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showActualizarValor, setShowActualizarValor] = useState(false);
+  const [showAportacionForm, setShowAportacionForm] = useState(false);
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
   const [loading, setLoading] = useState(true);
 
@@ -45,13 +51,13 @@ const InversionesPage: React.FC = () => {
     loadData();
   }, []);
 
-  const handleSavePosicion = async (data: Partial<PosicionInversion>) => {
+  const handleSavePosicion = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
     try {
       if (editingPosicion) {
         await inversionesService.updatePosicion(editingPosicion.id, data);
         toast.success('Posición actualizada correctamente');
       } else {
-        await inversionesService.createPosicion(data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'>);
+        await inversionesService.createPosicion(data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & { importe_inicial?: number });
         toast.success('Posición creada correctamente');
       }
       setShowForm(false);
@@ -67,7 +73,41 @@ const InversionesPage: React.FC = () => {
     const posicion = posiciones.find(p => p.id === id);
     if (posicion) {
       setEditingPosicion(posicion);
-      setShowForm(true);
+      setShowDetail(true);
+    }
+  };
+
+  const handleActualizarValor = async (nuevoValor: number, fechaValoracion: string) => {
+    if (!editingPosicion) return;
+    try {
+      await inversionesService.updatePosicion(editingPosicion.id, {
+        valor_actual: nuevoValor,
+        fecha_valoracion: fechaValoracion,
+      });
+      toast.success('Valor actualizado correctamente');
+      setShowActualizarValor(false);
+      await loadData();
+      // Refresh editingPosicion with updated data
+      const updated = (await inversionesService.getPosicion(editingPosicion.id));
+      setEditingPosicion(updated);
+    } catch (error) {
+      console.error('Error updating valor:', error);
+      toast.error('Error al actualizar el valor');
+    }
+  };
+
+  const handleAddAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
+    if (!editingPosicion) return;
+    try {
+      await inversionesService.addAportacion(editingPosicion.id, aportacion);
+      toast.success('Aportación añadida correctamente');
+      setShowAportacionForm(false);
+      await loadData();
+      const updated = await inversionesService.getPosicion(editingPosicion.id);
+      setEditingPosicion(updated);
+    } catch (error) {
+      console.error('Error adding aportacion:', error);
+      toast.error('Error al añadir la aportación');
     }
   };
 
@@ -306,6 +346,23 @@ const InversionesPage: React.FC = () => {
         </div>
       )}
 
+      {/* Detail Modal */}
+      {showDetail && editingPosicion && (
+        <PosicionDetailModal
+          posicion={editingPosicion}
+          onClose={() => {
+            setShowDetail(false);
+            setEditingPosicion(undefined);
+          }}
+          onAddAportacion={() => setShowAportacionForm(true)}
+          onActualizarValor={() => setShowActualizarValor(true)}
+          onEditarPosicion={() => {
+            setShowDetail(false);
+            setShowForm(true);
+          }}
+        />
+      )}
+
       {/* Form Modal */}
       {showForm && (
         <PosicionForm
@@ -315,6 +372,25 @@ const InversionesPage: React.FC = () => {
             setShowForm(false);
             setEditingPosicion(undefined);
           }}
+        />
+      )}
+
+      {/* Actualizar Valor Modal */}
+      {showActualizarValor && editingPosicion && (
+        <ActualizarValorModal
+          posicionNombre={editingPosicion.nombre}
+          valorActual={editingPosicion.valor_actual}
+          onSave={handleActualizarValor}
+          onClose={() => setShowActualizarValor(false)}
+        />
+      )}
+
+      {/* Aportacion Form Modal */}
+      {showAportacionForm && editingPosicion && (
+        <AportacionForm
+          posicionNombre={editingPosicion.nombre}
+          onSave={handleAddAportacion}
+          onClose={() => setShowAportacionForm(false)}
         />
       )}
     </div>

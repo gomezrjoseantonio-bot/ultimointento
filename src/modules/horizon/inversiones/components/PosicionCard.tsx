@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Investment position card component
 
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, TrendingUp, LineChart, BarChart3, PiggyBank, Briefcase, Coins, Wallet, Package } from 'lucide-react';
 import { PosicionInversion } from '../../../../types/inversiones';
 
 interface PosicionCardProps {
@@ -39,7 +39,18 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
   };
 
   const getTipoIcon = () => {
-    return '📈';
+    const iconProps = { size: 24, style: { color: 'var(--atlas-blue)' } };
+    const icons: Record<string, React.ReactElement> = {
+      fondo_inversion: <TrendingUp {...iconProps} />,
+      accion: <LineChart {...iconProps} />,
+      etf: <BarChart3 {...iconProps} />,
+      plan_pensiones: <PiggyBank {...iconProps} />,
+      plan_empleo: <Briefcase {...iconProps} />,
+      crypto: <Coins {...iconProps} />,
+      deposito: <Wallet {...iconProps} />,
+      otro: <Package {...iconProps} />,
+    };
+    return icons[posicion.tipo] || <TrendingUp {...iconProps} />;
   };
 
   const rentabilidadColor = posicion.rentabilidad_euros >= 0 ? 'var(--ok)' : 'var(--error)';
@@ -66,9 +77,19 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
         <div style={{ flex: 1 }}>
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '1.5rem', marginRight: '0.5rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'var(--hz-info-soft)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: '0.75rem',
+              flexShrink: 0,
+            }}>
               {getTipoIcon()}
-            </span>
+            </div>
             <div>
               <h3 style={{
                 fontFamily: 'var(--font-inter)',
