@@ -58,20 +58,6 @@ class NominaService {
       
       const now = new Date().toISOString();
       
-      // Desactivar otras nóminas EN LA MISMA TRANSACCIÓN (no llamar a otro método)
-      if (nomina.activa) {
-        const index = store.index('personalDataId');
-        const existingNominas = await index.getAll(nomina.personalDataId);
-        
-        for (const existing of existingNominas) {
-          if (existing.activa) {
-            existing.activa = false;
-            existing.fechaActualizacion = now;
-            await store.put(existing);
-          }
-        }
-      }
-      
       const newNomina: Nomina = {
         ...nomina,
         fechaCreacion: now,
@@ -105,20 +91,6 @@ class NominaService {
       }
 
       const now = new Date().toISOString();
-
-      // Desactivar otras nóminas EN LA MISMA TRANSACCIÓN
-      if (updates.activa) {
-        const index = store.index('personalDataId');
-        const allNominas = await index.getAll(existing.personalDataId);
-        
-        for (const nomina of allNominas) {
-          if (nomina.id !== id && nomina.activa) {
-            nomina.activa = false;
-            nomina.fechaActualizacion = now;
-            await store.put(nomina);
-          }
-        }
-      }
 
       const updated: Nomina = {
         ...existing,

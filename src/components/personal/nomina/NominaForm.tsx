@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
+import { cuentasService } from '../../../services/cuentasService';
+import { Account } from '../../../services/db';
 import { Nomina, Variable, Bonus, ReglaDia } from '../../../types/personal';
 import { Plus, X, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,6 +18,7 @@ interface NominaFormProps {
 const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSaved }) => {
   const [loading, setLoading] = useState(false);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [cuentas, setCuentas] = useState<Account[]>([]);
   const [formData, setFormData] = useState({
     nombre: '',
     salarioBrutoAnual: '',
@@ -44,6 +47,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   useEffect(() => {
     loadPersonalDataId();
+    loadCuentas();
     if (nomina) {
       setFormData({
         nombre: nomina.nombre,
@@ -67,6 +71,15 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
       }
     } catch (error) {
       console.error('Error loading personal data ID:', error);
+    }
+  };
+
+  const loadCuentas = async () => {
+    try {
+      const allCuentas = await cuentasService.list();
+      setCuentas(allCuentas.filter(c => c.activa));
+    } catch (error) {
+      console.error('Error loading cuentas:', error);
     }
   };
 
@@ -218,6 +231,28 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 placeholder="50000.00"
                 required
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Cuenta Bancaria de Cobro
+              </label>
+              <select
+                value={formData.cuentaAbono || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, cuentaAbono: parseInt(e.target.value) || 0 }))}
+                className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
+                <option value="">— Sin cuenta asignada —</option>
+                {cuentas.map(cuenta => (
+                  <option key={cuenta.id} value={cuenta.id}>
+                    {cuenta.alias || cuenta.ibanMasked || cuenta.iban}
+                    {cuenta.banco?.name ? ` · ${cuenta.banco.name}` : ''}
+                  </option>
+                ))}
+              </select>
+              {cuentas.length === 0 && (
+                <p className="text-xs text-neutral-400 mt-1">No hay cuentas bancarias configuradas.</p>
+              )}
             </div>
           </div>
 
@@ -538,7 +573,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <span className="text-sm font-medium text-neutral-700">Nómina activa</span>
             </label>
             <p className="text-xs text-neutral-500 mt-1">
-              Solo puede haber una nómina activa a la vez. Al activar esta, se desactivarán las demás.
+              Puedes tener múltiples nóminas activas simultáneamente (varios empleos o ingresos de pareja).
             </p>
           </div>
 
