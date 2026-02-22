@@ -19,6 +19,8 @@ interface PreviewRow {
   valor: number;
 }
 
+const PREVIEW_ROW_LIMIT = 10;
+
 const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('es-ES', {
     style: 'currency',
@@ -373,7 +375,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                 </tr>
               </thead>
               <tbody>
-                {preview.slice(0, 10).map((row, i) => (
+                {preview.slice(0, PREVIEW_ROW_LIMIT).map((row, i) => (
                   <tr
                     key={i}
                     style={{
@@ -406,9 +408,9 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                 ))}
               </tbody>
             </table>
-            {preview.length > 10 && (
+            {preview.length > PREVIEW_ROW_LIMIT && (
               <p style={{ padding: '8px 12px', margin: 0, fontSize: '0.75rem', color: 'var(--text-gray)' }}>
-                ... y {preview.length - 10} filas más
+                ... y {preview.length - PREVIEW_ROW_LIMIT} filas más
               </p>
             )}
           </div>

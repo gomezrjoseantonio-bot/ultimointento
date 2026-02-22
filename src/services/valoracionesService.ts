@@ -145,7 +145,7 @@ export const valoracionesService = {
     const patrimonioTotal = inmueblesTotal + inversionesTotal;
 
     // Calcular variación respecto al mes anterior
-    const anteriorFecha = this._mesAnterior(fecha);
+    const anteriorFecha = this.mesAnterior(fecha);
     const anterior = await this.getSnapshotMensual(anteriorFecha);
     const variacionEuros = anterior
       ? patrimonioTotal - anterior.patrimonio_total
@@ -308,7 +308,7 @@ export const valoracionesService = {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  _mesAnterior(fecha: string): string {
+  mesAnterior(fecha: string): string {
     const [anio, mes] = fecha.split('-').map(Number);
     const d = new Date(anio, mes - 2, 1);
     const y = d.getFullYear();
