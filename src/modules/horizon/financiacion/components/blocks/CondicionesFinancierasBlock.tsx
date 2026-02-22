@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, Clock, Euro, Percent } from 'lucide-react';
 import { PrestamoFinanciacion, ValidationError, CalculoLive } from '../../../../../types/financiacion';
 
@@ -33,6 +33,49 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
     return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  // Local state for text inputs to allow free-form typing without immediate reformatting
+  const [localInputs, setLocalInputs] = useState({
+    capitalInicial: formData.capitalInicial ? formatNumber(formData.capitalInicial) : '',
+    tinFijo: formData.tinFijo ? formatPercentage(formData.tinFijo) : '',
+    valorIndice: formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : '',
+    diferencial: formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : '',
+    tinTramoFijo: formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : '',
+    comisionApertura: formData.comisionApertura ? formatPercentage(formData.comisionApertura) : '',
+    comisionMantenimiento: formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : '',
+    comisionAmortizacionAnticipada: formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : '',
+  });
+
+  const handleInputChange = (field: keyof typeof localInputs, value: string, pattern: RegExp) => {
+    if (pattern.test(value)) {
+      setLocalInputs(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const handleInputBlur = (field: keyof typeof localInputs, updateField: keyof PrestamoFinanciacion, isNumber: boolean) => {
+    const raw = localInputs[field];
+    const parsed = parseNumber(raw);
+    const formatted = isNumber ? formatNumber(parsed) : formatPercentage(parsed);
+    setLocalInputs(prev => ({ ...prev, [field]: raw ? formatted : '' }));
+    updateFormData({ [updateField]: raw ? parsed : undefined } as Partial<PrestamoFinanciacion>);
+  };
+
+  // Sync local inputs when formData changes externally (e.g., edit mode data load)
+  useEffect(() => {
+    setLocalInputs({
+      capitalInicial: formData.capitalInicial ? formatNumber(formData.capitalInicial) : '',
+      tinFijo: formData.tinFijo ? formatPercentage(formData.tinFijo) : '',
+      valorIndice: formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : '',
+      diferencial: formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : '',
+      tinTramoFijo: formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : '',
+      comisionApertura: formData.comisionApertura ? formatPercentage(formData.comisionApertura) : '',
+      comisionMantenimiento: formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : '',
+      comisionAmortizacionAnticipada: formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : '',
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.capitalInicial, formData.tinFijo, formData.valorIndice, formData.diferencial,
+      formData.tinTramoFijo, formData.comisionApertura, formData.comisionMantenimiento,
+      formData.comisionAmortizacionAnticipada]);
+
   return (
     <div className="space-y-6">
       {/* Capital and Term */}
@@ -47,16 +90,10 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
             <input
               type="text"
               id="capitalInicial"
-              value={formData.capitalInicial ? formatNumber(formData.capitalInicial) : ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (/^[\d.,\s]*$/.test(value)) {
-                  updateFormData({ capitalInicial: parseNumber(value) });
-                }
-              }}
-              placeholder="0,00"
-              min="0"
-              max="9999999"
+              value={localInputs.capitalInicial}
+              onChange={(e) => handleInputChange('capitalInicial', e.target.value, /^[\d.,\s]*$/)}
+              onBlur={() => handleInputBlur('capitalInicial', 'capitalInicial', true)}
+              placeholder="150.000,00"
               className={`w-full border shadow-sm focus:ring-atlas-blue pl-3 pr-8 ${
                 getFieldError('capitalInicial') 
                   ? 'border-error-300 focus:border-error-500' 
@@ -195,13 +232,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <input
                 type="text"
                 id="tinFijo"
-                value={formData.tinFijo ? formatPercentage(formData.tinFijo) : ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (/^[\d.,]*$/.test(value)) {
-                    updateFormData({ tinFijo: parseNumber(value) });
-                  }
-                }}
+                value={localInputs.tinFijo}
+                onChange={(e) => handleInputChange('tinFijo', e.target.value, /^[\d.,]*$/)}
+                onBlur={() => handleInputBlur('tinFijo', 'tinFijo', false)}
                 placeholder="3,45"
                 className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                   getFieldError('tinFijo') 
@@ -248,8 +281,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 <input
                   type="text"
                   id="valorIndice"
-                  value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
-                  onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
+                  value={localInputs.valorIndice}
+                  onChange={(e) => handleInputChange('valorIndice', e.target.value, /^[\d.,]*$/)}
+                  onBlur={() => handleInputBlur('valorIndice', 'valorIndice', false)}
                   placeholder="4,20"
                   className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                     getFieldError('valorIndice') 
@@ -274,8 +308,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                 <input
                   type="text"
                   id="diferencial"
-                  value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
-                  onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
+                  value={localInputs.diferencial}
+                  onChange={(e) => handleInputChange('diferencial', e.target.value, /^[\d.,]*$/)}
+                  onBlur={() => handleInputBlur('diferencial', 'diferencial', false)}
                   placeholder="0,85"
                   className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                     getFieldError('diferencial') 
@@ -364,8 +399,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   <input
                     type="text"
                     id="tinTramoFijo"
-                    value={formData.tinTramoFijo ? formatPercentage(formData.tinTramoFijo) : ''}
-                    onChange={(e) => updateFormData({ tinTramoFijo: parseNumber(e.target.value) })}
+                    value={localInputs.tinTramoFijo}
+                    onChange={(e) => handleInputChange('tinTramoFijo', e.target.value, /^[\d.,]*$/)}
+                    onBlur={() => handleInputBlur('tinTramoFijo', 'tinTramoFijo', false)}
                     placeholder="2,95"
                     className={`w-full border shadow-sm focus:ring-atlas-blue pr-8 ${
                       getFieldError('tinTramoFijo') 
@@ -411,8 +447,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   <input
                     type="text"
                     id="valorIndiceMixto"
-                    value={formData.valorIndice !== undefined ? formatPercentage(formData.valorIndice) : ''}
-                    onChange={(e) => updateFormData({ valorIndice: parseNumber(e.target.value) })}
+                    value={localInputs.valorIndice}
+                    onChange={(e) => handleInputChange('valorIndice', e.target.value, /^[\d.,]*$/)}
+                    onBlur={() => handleInputBlur('valorIndice', 'valorIndice', false)}
                     placeholder="4,20"
                     className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
                   />
@@ -430,8 +467,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
                   <input
                     type="text"
                     id="diferencialMixto"
-                    value={formData.diferencial !== undefined ? formatPercentage(formData.diferencial) : ''}
-                    onChange={(e) => updateFormData({ diferencial: parseNumber(e.target.value) })}
+                    value={localInputs.diferencial}
+                    onChange={(e) => handleInputChange('diferencial', e.target.value, /^[\d.,]*$/)}
+                    onBlur={() => handleInputBlur('diferencial', 'diferencial', false)}
                     placeholder="0,85"
                     className="w-full border shadow-sm focus:ring-atlas-blue pr-8 border-gray-300 focus:border-atlas-blue"
                   />
@@ -487,8 +525,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <input
                 type="text"
                 id="comisionApertura"
-                value={formData.comisionApertura ? formatPercentage(formData.comisionApertura) : ''}
-                onChange={(e) => updateFormData({ comisionApertura: parseNumber(e.target.value) || undefined })}
+                value={localInputs.comisionApertura}
+                onChange={(e) => handleInputChange('comisionApertura', e.target.value, /^[\d.,]*$/)}
+                onBlur={() => handleInputBlur('comisionApertura', 'comisionApertura', false)}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />
@@ -506,8 +545,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <input
                 type="text"
                 id="comisionMantenimiento"
-                value={formData.comisionMantenimiento ? formatNumber(formData.comisionMantenimiento) : ''}
-                onChange={(e) => updateFormData({ comisionMantenimiento: parseNumber(e.target.value) || undefined })}
+                value={localInputs.comisionMantenimiento}
+                onChange={(e) => handleInputChange('comisionMantenimiento', e.target.value, /^[\d.,\s]*$/)}
+                onBlur={() => handleInputBlur('comisionMantenimiento', 'comisionMantenimiento', true)}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />
@@ -525,8 +565,9 @@ const CondicionesFinancierasBlock: React.FC<CondicionesFinancierasBlockProps> = 
               <input
                 type="text"
                 id="comisionAmortizacionAnticipada"
-                value={formData.comisionAmortizacionAnticipada ? formatPercentage(formData.comisionAmortizacionAnticipada) : ''}
-                onChange={(e) => updateFormData({ comisionAmortizacionAnticipada: parseNumber(e.target.value) || undefined })}
+                value={localInputs.comisionAmortizacionAnticipada}
+                onChange={(e) => handleInputChange('comisionAmortizacionAnticipada', e.target.value, /^[\d.,]*$/)}
+                onBlur={() => handleInputBlur('comisionAmortizacionAnticipada', 'comisionAmortizacionAnticipada', false)}
                 placeholder="0,00"
                 className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue pr-8"
               />

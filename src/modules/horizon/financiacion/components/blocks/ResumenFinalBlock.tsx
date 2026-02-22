@@ -129,9 +129,9 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <AtlasIcon icon={Euro} size="lg" color="primary" className="mx-auto mb-2" />
-                <AtlasText variant="caption" color="secondary">Capital</AtlasText>
-                <AtlasText variant="kpi" color="primary">
+                <AtlasIcon icon={Euro} size="lg" color="white" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="white">Capital</AtlasText>
+                <AtlasText variant="kpi" color="white">
                   {formatNumber(capital)} €
                 </AtlasText>
               </div>
@@ -139,9 +139,9 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <AtlasIcon icon={Calendar} size="lg" color="primary" className="mx-auto mb-2" />
-                <AtlasText variant="caption" color="secondary">Plazo</AtlasText>
-                <AtlasText variant="kpi" color="primary">
+                <AtlasIcon icon={Calendar} size="lg" color="white" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="white">Plazo</AtlasText>
+                <AtlasText variant="kpi" color="white">
                   {plazoFormatted}
                 </AtlasText>
               </div>
@@ -149,9 +149,9 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
 
             <div className="text-center">
               <div className="btn-primary-horizon p-4">
-                <AtlasIcon icon={Percent} size="lg" color="primary" className="mx-auto mb-2" />
-                <AtlasText variant="caption" color="secondary">TIN Base</AtlasText>
-                <AtlasText variant="kpi" color="primary">
+                <AtlasIcon icon={Percent} size="lg" color="white" className="mx-auto mb-2" />
+                <AtlasText variant="caption" color="white">TIN Base</AtlasText>
+                <AtlasText variant="kpi" color="white">
                   {formatPercentage(tinBase)} %
                 </AtlasText>
               </div>
@@ -178,7 +178,7 @@ const ResumenFinalBlock: React.FC<ResumenFinalBlockProps> = ({
           {calculoLive && (
             <div className="bg-ok-50 border border-ok-200 p-4 mb-6">
               <h4 className="font-medium text-ok-700 mb-3">Cálculo Financiero</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div>
                   <span className="text-text-gray text-sm block">Cuota Estimada</span>
                   <span className="text-lg font-semibold text-atlas-navy-1">

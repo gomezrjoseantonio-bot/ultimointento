@@ -401,7 +401,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
                   const account = getAccount(prestamo.cuentaCargoId);
 
                   const displayName = inmueble
-                    ? `${inmueble.alias} – ${inmueble.direccion.calle}, ${inmueble.direccion.municipio}`
+                    ? inmueble.alias
                     : prestamo.nombre;
 
                   return (
