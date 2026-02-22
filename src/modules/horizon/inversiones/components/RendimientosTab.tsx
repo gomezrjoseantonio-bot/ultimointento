@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { rendimientosService } from '../../../../services/rendimientosService';
 import { PagoRendimiento } from '../../../../types/inversiones-extended';
+import { IRPF_RATE } from '../../../../constants/inversiones';
 import StatusBadge from './StatusBadge';
 
 type RendimientoRow = PagoRendimiento & { posicion_nombre: string; posicion_id: number };
@@ -65,7 +66,7 @@ const RendimientosTab: React.FC = () => {
       }}>
         {[
           { label: 'Total bruto', value: totalBruto, color: 'var(--atlas-navy-1)' },
-          { label: 'IRPF retenido (19%)', value: totalRetencion, color: 'var(--error)' },
+          { label: `IRPF retenido (${IRPF_RATE * 100}%)`, value: totalRetencion, color: 'var(--error)' },
           { label: 'Total neto', value: totalNeto, color: '#15803d' },
         ].map(item => (
           <div key={item.label} style={{
@@ -95,7 +96,7 @@ const RendimientosTab: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)', background: '#f9fafb' }}>
-                {['Fecha', 'Posición', 'Tipo', 'Importe Bruto', 'IRPF (19%)', 'Neto', 'Estado'].map(th => (
+                {['Fecha', 'Posición', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
                   <th key={th} style={{
                     padding: '0.75rem 1rem',
                     textAlign: 'left',

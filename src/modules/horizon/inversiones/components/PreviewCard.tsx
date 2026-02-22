@@ -59,7 +59,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ tasaAnual, capital, frecuenci
         </div>
         <div>
           <div style={{ fontSize: 'var(--text-caption)', color: 'var(--text-gray)' }}>
-            IRPF (19%)
+            IRPF ({IRPF_RATE * 100}%)
           </div>
           <div style={{ fontWeight: 600, color: 'var(--error)', fontFamily: 'var(--font-inter)' }}>
             -{formatEuro(retencion)}

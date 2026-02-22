@@ -150,11 +150,11 @@ export class RendimientosService {
     let proximaFecha = this.calcularProximaFecha(fechaBase, rendimiento.frecuencia_pago);
 
     // Generate all overdue payments (loop to catch multiple missed periods)
-    let iteraciones = 0;
-    while (new Date(proximaFecha) <= hoy && iteraciones < MAX_PAGO_ITERATIONS) {
+    let iterations = 0;
+    while (new Date(proximaFecha) <= hoy && iterations < MAX_PAGO_ITERATIONS) {
       await this.generarPago(posicion, proximaFecha);
       proximaFecha = this.calcularProximaFecha(proximaFecha, rendimiento.frecuencia_pago);
-      iteraciones++;
+      iterations++;
     }
   }
 

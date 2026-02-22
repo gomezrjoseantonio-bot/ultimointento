@@ -1,7 +1,7 @@
 // InversionesPage.tsx
 // ATLAS HORIZON: Investment positions page - Refactored with tabs
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, BarChart3, AlertCircle } from 'lucide-react';
 import { inversionesService } from '../../../services/inversionesService';
 import { rendimientosService } from '../../../services/rendimientosService';
@@ -37,7 +37,7 @@ const InversionesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [pendingRendimientos, setPendingRendimientos] = useState(0);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [posicionesData, resumenData] = await Promise.all([
@@ -57,7 +57,7 @@ const InversionesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -70,10 +70,7 @@ const InversionesPage: React.FC = () => {
       await loadData();
     };
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // Intentionally runs only on mount: loadData is defined inside the component
-    // and recreated on every render, but we only want to initialize once.
-  }, []);
+  }, [loadData]);
 
   const handleSavePosicion = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
     try {
