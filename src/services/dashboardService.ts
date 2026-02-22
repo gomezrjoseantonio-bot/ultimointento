@@ -459,10 +459,7 @@ class DashboardService {
       const inversiones = await db.getAll('inversiones');
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
       const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
-        // valorActual = cantidad * precioActual
-        const cantidad = inv.cantidad || 0;
-        const precioActual = inv.precioActual || inv.precioCompra || 0;
-        return sum + (cantidad * precioActual);
+        return sum + (inv.valor_actual || 0);
       }, 0);
       
       // Calculate total net worth
@@ -739,11 +736,7 @@ class DashboardService {
       
       // Calculate monthly return (simplified)
       const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => {
-        const cantidad = inv.cantidad || 0;
-        const precioActual = inv.precioActual || 0;
-        const precioCompra = inv.precioCompra || 0;
-        const rendimiento = (precioActual - precioCompra) * cantidad;
-        return sum + rendimiento;
+        return sum + (inv.rentabilidad_euros || 0);
       }, 0);
       
       // Calculate dividends for current month
