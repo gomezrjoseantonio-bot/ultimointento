@@ -58,8 +58,8 @@ const loanCreationExample = {
   fechaFirma: '2024-01-15',
   plazoMesesTotal: 300, // 25 years
   tipo: 'VARIABLE',
-  valorIndiceActual: 0.025,
-  diferencial: 0.012,
+  valorIndiceActual: 2.5,
+  diferencial: 1.2,
   
   // Auto-generated results:
   // - 300 payment periods calculated

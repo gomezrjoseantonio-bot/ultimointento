@@ -8,12 +8,23 @@ describe('PrestamosCalculationService', () => {
   describe('calculateFrenchPayment', () => {
     test('calculates correct payment for standard case', () => {
       // 100,000€ at 3.2% for 300 months
-      const payment = prestamosCalculationService.calculateFrenchPayment(100000, 0.032, 300);
+      const payment = prestamosCalculationService.calculateFrenchPayment(100000, 3.2, 300);
       
       // Expected payment should be around 485€ (rough calculation)
       expect(payment).toBeGreaterThan(480);
       expect(payment).toBeLessThan(490);
       expect(payment).toEqual(Math.round(payment * 100) / 100); // Properly rounded
+    });
+
+    test('calculates correct payment for ING loan example', () => {
+      // 47,000€ at 5.49% TIN for 84 months → 675.17€ per French amortization formula
+      const payment = prestamosCalculationService.calculateFrenchPayment(47000, 5.49, 84);
+      expect(payment).toBeCloseTo(675.17, 2);
+
+      // Verify total interest: payment * months - principal > 0
+      const totalInterest = payment * 84 - 47000;
+      expect(totalInterest).toBeGreaterThan(0);
+      expect(totalInterest).toBeCloseTo(675.17 * 84 - 47000, 0);
     });
 
     test('handles zero interest rate', () => {
@@ -22,8 +33,8 @@ describe('PrestamosCalculationService', () => {
     });
 
     test('handles edge cases', () => {
-      expect(prestamosCalculationService.calculateFrenchPayment(0, 0.03, 300)).toBe(0);
-      expect(prestamosCalculationService.calculateFrenchPayment(100000, 0.03, 0)).toBe(0);
+      expect(prestamosCalculationService.calculateFrenchPayment(0, 3.0, 300)).toBe(0);
+      expect(prestamosCalculationService.calculateFrenchPayment(100000, 3.0, 0)).toBe(0);
     });
   });
 
@@ -38,14 +49,14 @@ describe('PrestamosCalculationService', () => {
         fechaFirma: '2024-01-01',
         plazoMesesTotal: 300,
         tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.035,
+        tipoNominalAnualFijo: 3.5,
         cuentaCargoId: 'cuenta1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
 
       const rate = prestamosCalculationService.calculateBaseRate(prestamo);
-      expect(rate).toBe(0.035);
+      expect(rate).toBe(3.5);
     });
 
     test('calculates VARIABLE rate correctly', () => {
@@ -59,15 +70,15 @@ describe('PrestamosCalculationService', () => {
         plazoMesesTotal: 300,
         tipo: 'VARIABLE',
         indice: 'EURIBOR',
-        valorIndiceActual: 0.025,
-        diferencial: 0.012,
+        valorIndiceActual: 2.5,
+        diferencial: 1.2,
         cuentaCargoId: 'cuenta1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
       };
 
       const rate = prestamosCalculationService.calculateBaseRate(prestamo);
-      expect(rate).toBe(0.037); // 0.025 + 0.012
+      expect(rate).toBe(3.7); // 2.5 + 1.2
     });
 
     test('calculates MIXTO rate correctly in fixed period', () => {
@@ -81,10 +92,10 @@ describe('PrestamosCalculationService', () => {
         plazoMesesTotal: 300,
         tipo: 'MIXTO',
         tramoFijoMeses: 60,
-        tipoNominalAnualMixtoFijo: 0.032,
+        tipoNominalAnualMixtoFijo: 3.2,
         indice: 'EURIBOR',
-        valorIndiceActual: 0.025,
-        diferencial: 0.015,
+        valorIndiceActual: 2.5,
+        diferencial: 1.5,
         cuentaCargoId: 'cuenta1',
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z'
@@ -93,12 +104,12 @@ describe('PrestamosCalculationService', () => {
       // Within fixed period (1 year after signing)
       const dateInFixed = new Date('2024-06-01');
       const rate = prestamosCalculationService.calculateBaseRate(prestamo, dateInFixed);
-      expect(rate).toBe(0.032);
+      expect(rate).toBe(3.2);
 
       // After fixed period (6 years after signing)
       const dateAfterFixed = new Date('2029-06-01');
       const rateVariable = prestamosCalculationService.calculateBaseRate(prestamo, dateAfterFixed);
-      expect(rateVariable).toBe(0.04); // 0.025 + 0.015
+      expect(rateVariable).toBe(4.0); // 2.5 + 1.5
     });
   });
 
@@ -113,7 +124,7 @@ describe('PrestamosCalculationService', () => {
         fechaFirma: '2024-08-10',
         plazoMesesTotal: 12, // Short term for testing
         tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.036,
+        tipoNominalAnualFijo: 3.6,
         diaCargoMes: 10,
         cuentaCargoId: 'cuenta1',
         createdAt: '2024-08-10T00:00:00Z',
@@ -149,7 +160,7 @@ describe('PrestamosCalculationService', () => {
         fechaFirma: '2024-08-10',
         plazoMesesTotal: 6,
         tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.036,
+        tipoNominalAnualFijo: 3.6,
         diferirPrimeraCuotaMeses: 2, // Defer 2 months
         diaCargoMes: 10,
         cuentaCargoId: 'cuenta1',
@@ -173,7 +184,7 @@ describe('PrestamosCalculationService', () => {
         fechaFirma: '2024-08-10',
         plazoMesesTotal: 6,
         tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.036,
+        tipoNominalAnualFijo: 3.6,
         mesesSoloIntereses: 2, // First 2 months interest only
         diaCargoMes: 10,
         cuentaCargoId: 'cuenta1',
@@ -204,7 +215,7 @@ describe('PrestamosCalculationService', () => {
         fechaFirma: '2024-08-10',
         plazoMesesTotal: 3,
         tipo: 'FIJO',
-        tipoNominalAnualFijo: 0.036,
+        tipoNominalAnualFijo: 3.6,
         prorratearPrimerPeriodo: true,
         diferirPrimeraCuotaMeses: 1, // Defer to create days difference
         diaCargoMes: 10,
@@ -232,7 +243,7 @@ describe('PrestamosCalculationService', () => {
       fechaFirma: '2023-01-01',
       plazoMesesTotal: 240,
       tipo: 'FIJO',
-      tipoNominalAnualFijo: 0.036,
+      tipoNominalAnualFijo: 3.6,
       comisionAmortizacionParcial: 0.01,
       gastosFijosOperacion: 50,
       diaCargoMes: 10,
