@@ -50,6 +50,7 @@ const PresupuestoScopeView = React.lazy(() => import('./modules/horizon/proyecci
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
+const ProyeccionMensual = React.lazy(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
@@ -349,6 +350,11 @@ function App() {
               <Route path="base" element={<Navigate to="/proyeccion/escenarios" replace />} />
               <Route path="simulaciones" element={<Navigate to="/proyeccion/escenarios" replace />} />
               <Route path="comparativas" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="mensual" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionMensual />
+                </React.Suspense>
+              } />
             </Route>
             
             {/* Personal section (within Horizon) */}

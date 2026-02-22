@@ -1,4 +1,4 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText, Book } from 'lucide-react';
+import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText, Book, Calendar } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -78,6 +78,7 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Real vs Previsto', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
       { name: 'Escenarios', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
       { name: 'Valoraciones', href: '/proyeccion/valoraciones', icon: TrendingUp, module: 'horizon' },
+      { name: 'Proyección Mensual', href: '/proyeccion/mensual', icon: Calendar, module: 'horizon' },
     ]
   },
   {
