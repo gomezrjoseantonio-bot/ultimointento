@@ -3,6 +3,7 @@ import PatrimonioHeader from './PatrimonioHeader';
 import FlujosGrid from './FlujosGrid';
 import SaludFinanciera from './SaludFinanciera';
 import AlertasSection from './AlertasSection';
+import ActualizacionValoresDrawer from './ActualizacionValoresDrawer';
 import { dashboardService } from '../../services/dashboardService';
 import type { PatrimonioData, FlujosCaja, SaludFinanciera as SaludFinancieraType, Alerta } from '../../types/dashboard';
 import './investor-dashboard.css';
@@ -59,6 +60,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
     }
   });
   const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -167,6 +169,14 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
         variacionPorcentaje={patrimonio.variacionPorcentaje}
         desglose={patrimonio.desglose}
         fechaCalculo={patrimonio.fechaCalculo}
+        onActualizarValores={() => setDrawerOpen(true)}
+      />
+
+      {/* Actualizar valores drawer */}
+      <ActualizacionValoresDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSaved={loadDashboardData}
       />
 
       {/* Grid - FLUJOS DE CAJA (3 cards) */}

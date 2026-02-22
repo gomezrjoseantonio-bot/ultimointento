@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet, TrendingUp, TrendingDown, Building2, LineChart, Landmark, CreditCard } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Building2, LineChart, Landmark, CreditCard, Zap } from 'lucide-react';
 
 interface PatrimonioHeaderProps {
   patrimonioNeto: number;
@@ -11,6 +11,7 @@ interface PatrimonioHeaderProps {
     deuda: number;
   };
   fechaCalculo?: string;
+  onActualizarValores?: () => void;
 }
 
 /**
@@ -31,7 +32,8 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
   patrimonioNeto,
   variacionPorcentaje,
   desglose,
-  fechaCalculo
+  fechaCalculo,
+  onActualizarValores,
 }) => {
   // Format currency in Spanish locale
   const formatCurrency = (value: number): string => {
@@ -112,7 +114,7 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
           display: 'flex',
           alignItems: 'baseline',
           gap: '16px',
-          marginBottom: '16px'
+          marginBottom: '12px'
         }}
       >
         <span
@@ -148,6 +150,33 @@ const PatrimonioHeader: React.FC<PatrimonioHeaderProps> = ({
           </div>
         )}
       </div>
+
+      {/* Actualizar valores button */}
+      {onActualizarValores && (
+        <button
+          onClick={onActualizarValores}
+          aria-label="Actualizar valores de activos"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            border: '1px solid var(--atlas-blue)',
+            borderRadius: '8px',
+            backgroundColor: 'transparent',
+            color: 'var(--atlas-blue)',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'var(--font-inter)',
+            marginBottom: '16px',
+            transition: 'background-color 0.2s',
+          }}
+        >
+          <Zap size={14} strokeWidth={2} aria-hidden="true" />
+          Actualizar valores
+        </button>
+      )}
 
       {/* Breakdown - 4 icons with amounts */}
       {desglose && (

@@ -14,7 +14,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 20; // Added prestamos store for loan persistence
+const DB_VERSION = 21; // Added valoraciones stores for monthly valuation system
 
 export interface Property {
   id?: number;
@@ -1312,6 +1312,8 @@ interface AtlasHorizonDB {
   gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
   gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
   prestamos: any; // Financiacion: Loan records
+  valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
+  valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
 }
 
@@ -1680,6 +1682,21 @@ export const initDB = async () => {
           prestamosStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
           prestamosStore.createIndex('tipo', 'tipo', { unique: false });
           prestamosStore.createIndex('createdAt', 'createdAt', { unique: false });
+        }
+
+        // V2.1: Valoraciones historicas store for monthly valuation system
+        if (!db.objectStoreNames.contains('valoraciones_historicas')) {
+          const valoracionesStore = db.createObjectStore('valoraciones_historicas', { keyPath: 'id', autoIncrement: true });
+          valoracionesStore.createIndex('tipo_activo', 'tipo_activo', { unique: false });
+          valoracionesStore.createIndex('activo_id', 'activo_id', { unique: false });
+          valoracionesStore.createIndex('fecha_valoracion', 'fecha_valoracion', { unique: false });
+          valoracionesStore.createIndex('tipo-activo-fecha', ['tipo_activo', 'activo_id', 'fecha_valoracion'], { unique: false });
+        }
+
+        // V2.1: Valoraciones mensuales store for monthly snapshots
+        if (!db.objectStoreNames.contains('valoraciones_mensuales')) {
+          const snapshotsStore = db.createObjectStore('valoraciones_mensuales', { keyPath: 'id', autoIncrement: true });
+          snapshotsStore.createIndex('fecha_cierre', 'fecha_cierre', { unique: true });
         }
       },
       blocked() {

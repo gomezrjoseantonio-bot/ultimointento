@@ -3,11 +3,12 @@ import { useLocation } from 'react-router-dom';
 import PageLayout from '../../components/common/PageLayout';
 import PersonalDataForm from '../../components/personal/PersonalDataForm';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
-import { User, Shield, CreditCard, Database, Settings } from 'lucide-react';
+import MigracionTab from './MigracionTab';
+import { User, Shield, CreditCard, Database, Settings, Upload } from 'lucide-react';
 
 const PandaDocTemplateBuilder = React.lazy(() => import('../../modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 
-type AccountTab = 'perfil' | 'seguridad' | 'plan' | 'privacidad' | 'configuracion';
+type AccountTab = 'perfil' | 'seguridad' | 'plan' | 'privacidad' | 'configuracion' | 'migracion';
 
 const AccountPage: React.FC = () => {
   const location = useLocation();
@@ -17,7 +18,7 @@ const AccountPage: React.FC = () => {
   useEffect(() => {
     const pathSegments = location.pathname.split('/');
     const tabFromPath = pathSegments[2] as AccountTab;
-    if (['perfil', 'seguridad', 'plan', 'privacidad', 'configuracion'].includes(tabFromPath)) {
+    if (['perfil', 'seguridad', 'plan', 'privacidad', 'configuracion', 'migracion'].includes(tabFromPath)) {
       setActiveTab(tabFromPath);
     }
   }, [location.pathname]);
@@ -28,6 +29,7 @@ const AccountPage: React.FC = () => {
     { key: 'plan', label: 'Plan & Facturación', icon: CreditCard },
     { key: 'privacidad', label: 'Privacidad & Datos', icon: Database },
     { key: 'configuracion', label: 'Configuración', icon: Settings },
+    { key: 'migracion', label: 'Migración de Datos', icon: Upload },
   ];
 
   return (
@@ -112,6 +114,10 @@ const AccountPage: React.FC = () => {
         }>
           <PandaDocTemplateBuilder />
         </React.Suspense>
+      )}
+
+      {activeTab === 'migracion' && (
+        <MigracionTab />
       )}
     </PageLayout>
   );
