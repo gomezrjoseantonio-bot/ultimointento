@@ -14,7 +14,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 21; // Added valoraciones stores for monthly valuation system
+const DB_VERSION = 22; // Added opexRules store for OPEX template engine
 
 export interface Property {
   id?: number;
@@ -1267,6 +1267,24 @@ export interface PatrimonioSnapshot {
   createdAt: string; // ISO timestamp
 }
 
+export type OpexCategory = 'impuesto' | 'suministro' | 'comunidad' | 'seguro' | 'servicio' | 'gestion' | 'otro';
+export type OpexFrequency = 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'meses_especificos';
+
+export interface OpexRule {
+  id?: number;
+  propertyId: number;
+  accountId?: number; // Para linkar con Tesorería
+  categoria: OpexCategory;
+  concepto: string; // ej: "IBI", "Netflix", "Property Management"
+  importeEstimado: number; // Por ciclo de cobro
+  frecuencia: OpexFrequency;
+  mesesCobro?: number[]; // [1, 7] para Enero y Julio si es meses_especificos
+  diaCobro?: number; // Día del mes estimado (1-31)
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
@@ -1315,6 +1333,7 @@ interface AtlasHorizonDB {
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
+  opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -1697,6 +1716,12 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('valoraciones_mensuales')) {
           const snapshotsStore = db.createObjectStore('valoraciones_mensuales', { keyPath: 'id', autoIncrement: true });
           snapshotsStore.createIndex('fecha_cierre', 'fecha_cierre', { unique: true });
+        }
+
+        // V2.2: OPEX Rules store for recurring expense templates per property
+        if (!db.objectStoreNames.contains('opexRules')) {
+          const opexStore = db.createObjectStore('opexRules', { keyPath: 'id', autoIncrement: true });
+          opexStore.createIndex('propertyId', 'propertyId', { unique: false });
         }
       },
       blocked() {
