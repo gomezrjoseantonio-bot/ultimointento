@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { initDB, OpexRule } from '../../../../../services/db';
+import { initDB, OpexRule, Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { personalDataService } from '../../../../../services/personalDataService';
@@ -11,12 +11,11 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { GastoRecurrente } from '../../../../../types/personal';
-import { MonthlyProjectionRow, ProyeccionAnual } from '../types/proyeccionMensual';
+import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
   calculateGastosPersonalesForMonth,
-  OpexDetalleItem,
 } from './forecastEngine';
 
 // Fixed growth assumptions for Phase 1
@@ -118,6 +117,61 @@ function calculateLoanPayment(
 }
 
 /**
+ * Check whether a contract is active during a given year/month.
+ * month is 0-indexed (0 = January).
+ */
+function isContractActiveInMonth(contract: Contract, year: number, month: number): boolean {
+  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
+    return false;
+  }
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const fechaInicio = new Date(contract.fechaInicio);
+  const fechaFin = new Date(contract.fechaFin);
+  return monthStart <= fechaFin && monthEnd >= fechaInicio;
+}
+
+interface LoanInfo {
+  principalInicial: number;
+  annualRate: number;
+  plazoMesesTotal: number;
+  isHipoteca: boolean; // true = mortgage, false = personal loan
+  concepto: string;    // loan description for drilldown
+}
+
+interface DeudaState {
+  loans: LoanInfo[];
+}
+
+interface BaseData {
+  // Monthly arrays for base year (index 0 = January, 11 = December)
+  nominaNetaMensual: number[];  // Exact net per month from calculateSalary()
+  rentaMensualPorMes: number[]; // Rental income per month (contract date-filtered)
+
+  // DrillDown arrays (12 entries, one per month)
+  nominaDrillDown: DrillDownItem[][];
+  rentaDrillDown: DrillDownItem[][];
+
+  // Passed to forecastEngine functions
+  /** All OpexRules across all properties */
+  opexRules: OpexRule[];
+  /** Maps property numeric ID → alias for drill-down labels */
+  propertyAliasMap: Map<number, string>;
+  /** Active personal recurring expenses */
+  gastosRecurrentes: GastoRecurrente[];
+
+  // Scalars
+  freelanceMensual: number;
+  gastosAutonomoMensual: number;
+  seguridadSocialMensual: number;
+  otrosIngresosMensual: number;
+  valorInmuebles: number;
+  valorPlanesPension: number;
+  valorOtrasInversiones: number;
+  cajaInicial: number;
+}
+
+/**
  * Build a single monthly projection row for a given absolute month index
  */
 function buildMonthRow(
@@ -131,17 +185,21 @@ function buildMonthRow(
   const month1to12 = monthOfYear + 1;
   const yearsElapsed = absoluteMonthIndex / 12;
   const growthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.salaryGrowth, yearsElapsed);
+  const rentGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, yearsElapsed);
   const expenseGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
 
   // Format month string "YYYY-MM"
   const monthStr = `${year}-${String(month1to12).padStart(2, '0')}`;
 
   // ── INGRESOS ──────────────────────────────────────────────────────────────
-  const nomina = baseData.nominaNeta * growthFactor;
+  // A. Nóminas: use actual monthly distribution from calculateSalary(), scaled by growth
+  const nomina = baseData.nominaNetaMensual[monthOfYear] * growthFactor;
+
   const serviciosFreelance = baseData.freelanceMensual * growthFactor;
-  const rentasAlquiler =
-    baseData.rentaMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, yearsElapsed);
+
+  // B. Rentas: contract date-filtered for base year, then grow with IPC
+  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear] * rentGrowthFactor;
+
   // Dividends grow with investment portfolio value appreciation
   const investmentGrowthFactor = Math.pow(
     1 + FIXED_ASSUMPTIONS.investmentReturn,
@@ -160,18 +218,18 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  // Use forecastEngine for frequency-aware OpexRule calculation
+  // C. OPEX: use forecastEngine for frequency-aware OpexRule calculation
   const baseGastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
   const gastosOperativos = baseGastosOperativos * expenseGrowthFactor;
 
   // Per-property/concept breakdown scaled by the same growth factor
-  const opexDesglose: OpexDetalleItem[] = calculateOpexBreakdownForMonth(
+  const opexDesglose = calculateOpexBreakdownForMonth(
     baseData.opexRules,
     month1to12,
     baseData.propertyAliasMap,
   ).map(item => ({ ...item, importe: item.importe * expenseGrowthFactor }));
 
-  // Use forecastEngine for frequency-aware GastoRecurrente calculation
+  // E. Personal expenses: use forecastEngine for frequency-aware GastoRecurrente calculation
   const baseGastosPersonales = calculateGastosPersonalesForMonth(
     baseData.gastosRecurrentes,
     month1to12,
@@ -203,6 +261,7 @@ function buildMonthRow(
   let cuotasHipotecas = 0;
   let cuotasPrestamos = 0;
   let amortizacionCapital = 0;
+  const prestamosDrillDown: DrillDownItem[] = [];
 
   for (const loan of deudaState.loans) {
     const { cuota, amortizacion } = calculateLoanPayment(
@@ -211,6 +270,9 @@ function buildMonthRow(
       loan.plazoMesesTotal,
       absoluteMonthIndex,
     );
+    if (cuota > 0) {
+      prestamosDrillDown.push({ concepto: loan.concepto, importe: cuota });
+    }
     if (loan.isHipoteca) {
       cuotasHipotecas += cuota;
     } else {
@@ -257,6 +319,16 @@ function buildMonthRow(
   const activos = cajaFinal + inmuebles + planesPension + otrasInversiones;
   const patrimonioNeto = activos - deudaTotal;
 
+  // DrillDown: scale base-year arrays by growth factors for display
+  const scaledNominaDrillDown = baseData.nominaDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * growthFactor,
+  }));
+  const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * rentGrowthFactor,
+  }));
+
   return {
     month: monthStr,
     ingresos: {
@@ -266,6 +338,10 @@ function buildMonthRow(
       dividendosInversiones,
       otrosIngresos: otrosIngresosMensual,
       total: totalIngresos,
+      drillDown: {
+        nomina: scaledNominaDrillDown,
+        rentasAlquiler: scaledRentaDrillDown,
+      },
     },
     gastos: {
       gastosOperativos,
@@ -276,12 +352,22 @@ function buildMonthRow(
       irpfAPagar,
       seguridadSocial,
       total: totalGastos,
+      drillDown: {
+        gastosOperativos: opexDesglose.map(item => ({
+          concepto: item.concepto,
+          importe: item.importe,
+          fuente: item.propertyAlias,
+        })),
+      },
     },
     financiacion: {
       cuotasHipotecas,
       cuotasPrestamos,
       amortizacionCapital,
       total: totalFinanciacion,
+      drillDown: {
+        prestamos: prestamosDrillDown,
+      },
     },
     tesoreria: {
       flujoCajaMes,
@@ -301,70 +387,51 @@ function buildMonthRow(
   };
 }
 
-interface LoanInfo {
-  principalInicial: number;
-  annualRate: number;
-  plazoMesesTotal: number;
-  isHipoteca: boolean; // true = mortgage, false = personal loan
-}
-
-interface DeudaState {
-  loans: LoanInfo[];
-}
-
-interface BaseData {
-  nominaNeta: number;
-  freelanceMensual: number;
-  rentaMensual: number;
-  otrosIngresosMensual: number;
-  /** All OpexRules across all properties – used by forecastEngine */
-  opexRules: OpexRule[];
-  /** Maps property numeric ID → alias for drill-down labels */
-  propertyAliasMap: Map<number, string>;
-  /** Active personal recurring expenses – used by forecastEngine */
-  gastosRecurrentes: GastoRecurrente[];
-  gastosAutonomoMensual: number;
-  seguridadSocialMensual: number;
-  valorInmuebles: number;
-  valorPlanesPension: number;
-  valorOtrasInversiones: number;
-  cajaInicial: number;
-}
-
 /**
  * Load and aggregate all base financial data from the database
  */
 async function loadBaseData(): Promise<BaseData> {
   const db = await initDB();
+  const year = START_YEAR;
 
   // Personal data
   const personalData = await personalDataService.getPersonalData();
   const personalDataId = personalData?.id ?? 1;
 
-  // Nómina
-  let nominaNeta = 0;
+  // ── A. NÓMINAS ────────────────────────────────────────────────────────────
+  // Use calculateSalary() to get the exact monthly net distribution
+  const nominaNetaMensual: number[] = new Array(12).fill(0);
+  const nominaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
   let seguridadSocialMensual = 0;
+
   try {
     const nominas = await nominaService.getNominas(personalDataId);
-    const nominaActiva = nominas.find(n => n.activa);
-    if (nominaActiva) {
-      const brutoMensual =
-        nominaActiva.salarioBrutoAnual / nominaActiva.distribucion.meses;
-      const retencionIRPF =
-        brutoMensual * (nominaActiva.retencion.irpfPorcentaje / 100);
-      const retencionSS =
-        brutoMensual * (nominaActiva.retencion.cotizacionSS / 100);
-      nominaNeta = brutoMensual - retencionIRPF - retencionSS;
-      seguridadSocialMensual = retencionSS;
+    const nominasActivas = nominas.filter(n => n.activa);
+    for (const nomina of nominasActivas) {
+      const calculo = nominaService.calculateSalary(nomina);
+
+      for (const mesData of calculo.distribuccionMensual) {
+        const idx = mesData.mes - 1; // 0-indexed
+        nominaNetaMensual[idx] += mesData.netoTotal;
+        nominaDrillDown[idx].push({
+          concepto: nomina.nombre ?? 'Nómina',
+          importe: mesData.netoTotal,
+          fuente: nomina.nombre,
+        });
+      }
     }
+    // SS contribution: monthly average = annual bruto * SS% / 12
+    seguridadSocialMensual = nominasActivas.reduce((sum, n) => {
+      const ss = n.retencion?.cotizacionSS ?? 6.35;
+      return sum + (n.salarioBrutoAnual / 12) * (ss / 100);
+    }, 0);
   } catch {
     // No nomina data available
   }
 
-  // Autónomo
+  // ── Autónomo ──────────────────────────────────────────────────────────────
   let freelanceMensual = 0;
   let gastosAutonomoMensual = 0;
-  let cuotaAutonomosMensual = 0;
   try {
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomoActivo = autonomos.find(a => a.activo);
@@ -379,22 +446,62 @@ async function loadBaseData(): Promise<BaseData> {
         0,
       );
       gastosAutonomoMensual = gastosAnuales / 12;
-      cuotaAutonomosMensual = autonomoActivo.cuotaAutonomos;
-      seguridadSocialMensual += cuotaAutonomosMensual;
+      seguridadSocialMensual += autonomoActivo.cuotaAutonomos;
     }
   } catch {
     // No autonomo data available
   }
 
-  // Rental income from active contracts
-  let rentaMensual = 0;
+  // ── B. INMUEBLES - INGRESOS (RENTAS) ──────────────────────────────────────
+  // Filter by contract active date range for each month of the projection year
+  const rentaMensualPorMes: number[] = new Array(12).fill(0);
+  const rentaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
+
+  // ── C. INMUEBLES - OPEX + property values ─────────────────────────────────
+  let valorInmuebles = 0;
+  let opexRules: OpexRule[] = [];
+  const propertyAliasMap = new Map<number, string>();
+
   try {
-    const contracts = await getAllContracts();
-    rentaMensual = contracts
-      .filter(c => c.estadoContrato === 'activo')
-      .reduce((sum, c) => sum + (c.rentaMensual || 0), 0);
+    const [contracts, inmuebles] = await Promise.all([
+      getAllContracts(),
+      inmuebleService.getAll(),
+    ]);
+
+    // Build a property alias lookup and total value from all active properties
+    for (const inm of inmuebles) {
+      if (inm.id) {
+        const numId = parseInt(inm.id, 10);
+        if (!isNaN(numId)) propertyAliasMap.set(numId, inm.alias);
+      }
+    }
+    const activeProperties = inmuebles.filter(p => p.estado === 'ACTIVO');
+    valorInmuebles = activeProperties.reduce(
+      (sum, p) => sum + (p.compra?.precio_compra ?? 0),
+      0,
+    );
+
+    // Populate per-month rental income (date-range filtered)
+    for (const contract of contracts) {
+      for (let m = 0; m < 12; m++) {
+        if (isContractActiveInMonth(contract, year, m)) {
+          const renta = contract.rentaMensual ?? 0;
+          rentaMensualPorMes[m] += renta;
+          const propertyAlias = propertyAliasMap.get(contract.inmuebleId) ?? (contract.inmuebleId ? `Inmueble ${contract.inmuebleId}` : 'Inmueble');
+          const inquilino = `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim();
+          rentaDrillDown[m].push({
+            concepto: inquilino || 'Inquilino',
+            importe: renta,
+            fuente: propertyAlias,
+          });
+        }
+      }
+    }
+
+    // Load all OpexRules for use by forecastEngine functions
+    opexRules = await db.getAll('opexRules');
   } catch {
-    // No contracts data available
+    // No property/contract data available
   }
 
   // Investment values
@@ -411,30 +518,6 @@ async function loadBaseData(): Promise<BaseData> {
     }
   } catch {
     // No investment data available
-  }
-
-  // Property values + OpexRules + property alias map
-  let valorInmuebles = 0;
-  let opexRules: OpexRule[] = [];
-  const propertyAliasMap = new Map<number, string>();
-  try {
-    const inmuebles = await inmuebleService.getAll();
-    const active = inmuebles.filter(p => p.estado === 'ACTIVO');
-    valorInmuebles = active.reduce(
-      (sum, p) => sum + (p.compra?.precio_compra ?? 0),
-      0,
-    );
-    // Build alias map for drill-down labels (all properties, not just active)
-    for (const p of inmuebles) {
-      const numericId = parseInt(p.id, 10);
-      if (!isNaN(numericId)) {
-        propertyAliasMap.set(numericId, p.alias);
-      }
-    }
-    // Load all OpexRules from the database
-    opexRules = await db.getAll('opexRules');
-  } catch {
-    // No property data available
   }
 
   // Cash balance from bank accounts
@@ -454,24 +537,27 @@ async function loadBaseData(): Promise<BaseData> {
     // No account data available
   }
 
-  // Personal recurring expenses via gastosPersonalesService
+  // ── E. GASTOS PERSONALES ─────────────────────────────────────────────────
+  // Load via gastosPersonalesService (used by forecastEngine functions)
   let gastosRecurrentes: GastoRecurrente[] = [];
   try {
     gastosRecurrentes = await gastosPersonalesService.getGastosRecurrentesActivos(personalDataId);
   } catch {
-    // Gastos data not available
+    // No personal gastos data available
   }
 
   return {
-    nominaNeta,
-    freelanceMensual,
-    rentaMensual,
-    otrosIngresosMensual: 0,
+    nominaNetaMensual,
+    rentaMensualPorMes,
+    nominaDrillDown,
+    rentaDrillDown,
     opexRules,
     propertyAliasMap,
     gastosRecurrentes,
+    freelanceMensual,
     gastosAutonomoMensual,
     seguridadSocialMensual,
+    otrosIngresosMensual: 0,
     valorInmuebles,
     valorPlanesPension,
     valorOtrasInversiones,
@@ -500,6 +586,7 @@ async function loadDeudaState(): Promise<DeudaState> {
         annualRate,
         plazoMesesTotal: p.plazoMesesTotal,
         isHipoteca: true, // Prestamo from inmuebles is always a mortgage
+        concepto: p.nombre ?? 'Hipoteca/Préstamo',
       });
     }
   } catch {
