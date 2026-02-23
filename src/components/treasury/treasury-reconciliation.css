@@ -830,3 +830,442 @@
   background: #eef3ff;
   color: var(--atlas-blue);
 }
+
+/* ===== STATIC SUMMARY CARD ===== */
+
+.summary-static-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-static-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.summary-static-card__icon {
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.summary-static-card__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+}
+
+.summary-static-card__value {
+  font-family: var(--font-inter);
+  font-feature-settings: 'tnum';
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  margin-bottom: 6px;
+}
+
+.summary-static-card__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-static-card__footer {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.summary-static-card__desglose-btn {
+  font-size: 12px;
+  color: var(--atlas-blue);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.summary-static-card__desglose-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ===== BANK FILTER STRIP MSG ===== */
+
+.bank-filter-strip__msg {
+  font-size: 13px;
+  color: #999;
+  padding: 4px 0;
+}
+
+/* ===== EVENTS PANEL HEADER RIGHT ===== */
+
+.events-panel__header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.events-panel__add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--atlas-blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.2s;
+}
+
+.events-panel__add-btn:hover {
+  opacity: 0.85;
+}
+
+/* ===== INLINE AMOUNT EDITING ===== */
+
+.event-item__amount--editable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 4px;
+  transition: background 0.15s;
+}
+
+.event-item__amount--editable:hover {
+  background: #eef3ff;
+  color: var(--atlas-blue);
+}
+
+.event-item__amount-input {
+  width: 80px;
+  font-size: 14px;
+  font-weight: 600;
+  font-feature-settings: 'tnum';
+  padding: 3px 6px;
+  border: 1px solid var(--atlas-blue);
+  border-radius: 6px;
+  text-align: right;
+  font-family: inherit;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.event-item__inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.event-item__inline-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid var(--atlas-blue);
+  color: var(--atlas-blue);
+  background: white;
+  white-space: nowrap;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.event-item__inline-btn:hover {
+  background: var(--atlas-blue);
+  color: white;
+}
+
+.event-item__inline-btn--pending {
+  border-color: #888;
+  color: #555;
+}
+
+.event-item__inline-btn--pending:hover {
+  background: #555;
+  color: white;
+}
+
+.event-item__inline-btn--cancel {
+  padding: 3px 6px;
+  border-color: #ddd;
+  color: #999;
+}
+
+.event-item__inline-btn--cancel:hover {
+  background: #f0f0f0;
+  color: #555;
+}
+
+/* ===== DESGLOSE MODAL ===== */
+
+.desglose-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.desglose-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.desglose-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.desglose-modal__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desglose-modal__title-icon {
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.desglose-modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.desglose-modal__close:hover {
+  color: var(--atlas-navy-1);
+}
+
+.desglose-modal__subheader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 4px;
+}
+
+.desglose-modal__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 13px;
+}
+
+.desglose-modal__row:last-child {
+  border-bottom: none;
+}
+
+.desglose-modal__row-label {
+  font-weight: 500;
+  color: var(--atlas-navy-1);
+  flex: 1;
+  margin-right: 16px;
+}
+
+.desglose-modal__row-values {
+  font-feature-settings: 'tnum';
+  color: #555;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.desglose-modal__empty {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  padding: 20px 0;
+  margin: 0;
+}
+
+/* ===== ADD MOVEMENT MODAL ===== */
+
+.add-movement-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.add-movement-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.add-movement-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.add-movement-modal__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  margin: 0;
+}
+
+.add-movement-modal__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.add-movement-modal__close:hover {
+  color: var(--atlas-navy-1);
+}
+
+.add-movement-modal__field {
+  margin-bottom: 14px;
+}
+
+.add-movement-modal__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+
+.add-movement-modal__input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.add-movement-modal__input:focus {
+  border-color: var(--atlas-blue);
+}
+
+.add-movement-modal__select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: white;
+  cursor: pointer;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.add-movement-modal__select:focus {
+  border-color: var(--atlas-blue);
+}
+
+.add-movement-modal__footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.add-movement-modal__btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.add-movement-modal__btn--primary {
+  background: var(--atlas-blue);
+  color: white;
+  border: none;
+}
+
+.add-movement-modal__btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.add-movement-modal__btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-movement-modal__btn--secondary {
+  background: white;
+  border: 1px solid #e0e0e0;
+  color: var(--atlas-navy-1);
+}
+
+.add-movement-modal__btn--secondary:hover {
+  border-color: var(--atlas-blue);
+  color: var(--atlas-blue);
+}
