@@ -1,4 +1,4 @@
-import { initDB, TreasuryEvent, Document, Movement, Ingreso, Gasto } from './db';
+import { initDB, TreasuryEvent, Document, Movement } from './db';
 import { isCapexType } from './aeatClassificationService';
 
 /**
