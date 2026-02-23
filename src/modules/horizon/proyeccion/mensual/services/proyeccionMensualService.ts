@@ -49,16 +49,6 @@ function calculateMonthlyIRPF(monthlyIncome: number): number {
 }
 
 /**
- * IRPF is paid quarterly (months 3, 6, 9, 0 = April, July, October, January)
- */
-function calculateIRPFPayment(monthIndex: number, annualDevengado: number): number {
-  if ([3, 6, 9, 0].includes(monthIndex % 12)) {
-    return annualDevengado / 4;
-  }
-  return 0;
-}
-
-/**
  * Calculate outstanding principal at a given month using the French amortization method
  */
 function calculateOutstandingPrincipal(
