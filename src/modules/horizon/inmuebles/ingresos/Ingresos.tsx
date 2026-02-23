@@ -94,7 +94,7 @@ const Ingresos: React.FC = () => {
       
       // Create toast message following the requirement
       const date = new Date(formData.fecha_prevista_cobro).toLocaleDateString('es-ES', { month: 'long' });
-      toast.success(`✓ Guardado en Tesorería > Ingresos: ${formatEuro(formData.importe)} — ${formData.contraparte} / ${date}`);
+      toast.success(`✓ Guardado en Inmuebles > Ingresos: ${formatEuro(formData.importe)} — ${formData.contraparte} / ${date}`);
       
       setShowForm(false);
       resetForm();

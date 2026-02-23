@@ -94,7 +94,7 @@ const Gastos: React.FC = () => {
       
       // Create toast message following the requirement
       const categoryName = formData.categoria_AEAT.charAt(0).toUpperCase() + formData.categoria_AEAT.slice(1);
-      toast.success(`✓ Guardado en Tesorería > Gastos: ${formatEuro(formData.total)} — ${formData.proveedor_nombre} / ${categoryName}`);
+      toast.success(`✓ Guardado en Inmuebles > Gastos: ${formatEuro(formData.total)} — ${formData.proveedor_nombre} / ${categoryName}`);
       
       setShowForm(false);
       resetForm();

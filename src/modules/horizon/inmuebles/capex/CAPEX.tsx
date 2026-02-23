@@ -73,7 +73,7 @@ const CapexComponent: React.FC = () => {
       // Create toast message following the requirement
       const propertyName = properties.find(p => p.id === formData.inmueble_id)?.alias || 'Sin especificar';
       const tipoName = formData.tipo.charAt(0).toUpperCase() + formData.tipo.slice(1);
-      toast.success(`✓ Guardado en Tesorería > CAPEX: ${formatEuro(formData.total)} — ${tipoName} ${propertyName} (${formData.anos_amortizacion} años)`);
+      toast.success(`✓ Guardado en Inmuebles > CAPEX: ${formatEuro(formData.total)} — ${tipoName} ${propertyName} (${formData.anos_amortizacion} años)`);
       
       setShowForm(false);
       resetForm();
