@@ -15,8 +15,11 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   inmuebles: [
     { label: 'Cartera', path: '/inmuebles/cartera' },
     { label: 'Contratos', path: '/inmuebles/contratos' },
-    { label: 'Gastos', path: '/inmuebles/gastos-capex' },
+    { label: 'Gastos & Capex', path: '/inmuebles/gastos-capex' },
     { label: 'Análisis', path: '/inmuebles/analisis' },
+    { label: 'Ingresos', path: '/inmuebles/ingresos' },
+    { label: 'Gastos', path: '/inmuebles/gastos' },
+    { label: 'Capex', path: '/inmuebles/capex' },
   ],
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [

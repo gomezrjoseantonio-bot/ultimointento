@@ -35,6 +35,9 @@ const InboxPage = React.lazy(() => import('./pages/InboxPage'));
 const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
 const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
 const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+const Ingresos = React.lazy(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
+const Gastos = React.lazy(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
+const Capex = React.lazy(() => import('./modules/horizon/inmuebles/capex/CAPEX'));
 
 // Inversiones Module
 const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
@@ -269,6 +272,21 @@ function App() {
               <Route path="analisis" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Analisis />
+                </React.Suspense>
+              } />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Ingresos />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Gastos />
+                </React.Suspense>
+              } />
+              <Route path="capex" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Capex />
                 </React.Suspense>
               } />
             </Route>
