@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, X, DollarSign, Calendar, User, FileText } from 'lucide-react';
 import { initDB, Ingreso, Property, IngresoOrigen, IngresoDestino, IngresoEstado } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
+import { createTreasuryEventFromIngreso } from '../../../../services/treasuryForecastService';
 import toast from 'react-hot-toast';
 
 interface IngresoFormData {
@@ -89,7 +90,8 @@ const IngresosPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      await db.add('ingresos', newIngreso);
+      const newIngresoId = await db.add('ingresos', newIngreso);
+      await createTreasuryEventFromIngreso(newIngresoId as number);
       
       const destinoName = formData.destino === 'personal' ? 'Personal' : 
         properties.find(p => p.id === formData.destino_id)?.alias || 'Inmueble';

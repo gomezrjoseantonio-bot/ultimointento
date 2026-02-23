@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
+import { createTreasuryEventFromGasto } from '../../../../services/treasuryForecastService';
 import toast from 'react-hot-toast';
 import { confirmAction } from '../../../../services/confirmationService';
 
@@ -111,7 +112,8 @@ const GastosPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      await db.add('gastos', newGasto);
+      const newGastoId = await db.add('gastos', newGasto);
+      await createTreasuryEventFromGasto(newGastoId as number);
       
       // Create toast message following the requirement
       const categoryName = formData.categoria_AEAT.charAt(0).toUpperCase() + formData.categoria_AEAT.slice(1);

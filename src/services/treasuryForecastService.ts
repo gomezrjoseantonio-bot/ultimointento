@@ -80,6 +80,102 @@ export const updateTreasuryEventFromDocument = async (document: Document): Promi
 };
 
 /**
+ * Create treasury forecast event from a new Ingreso
+ */
+export const createTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
+  const db = await initDB();
+  const ingreso = await db.get('ingresos', ingresoId);
+  if (!ingreso || ingreso.importe <= 0) return;
+
+  const event: TreasuryEvent = {
+    type: 'income',
+    amount: ingreso.importe,
+    predictedDate: ingreso.fecha_prevista_cobro,
+    description: `Ingreso: ${ingreso.contraparte}`,
+    sourceType: 'ingreso',
+    sourceId: ingresoId,
+    status: 'predicted',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await db.add('treasuryEvents', event);
+};
+
+/**
+ * Update treasury forecast event when an Ingreso is modified
+ */
+export const updateTreasuryEventFromIngreso = async (ingresoId: number): Promise<void> => {
+  const db = await initDB();
+  const ingreso = await db.get('ingresos', ingresoId);
+  if (!ingreso) return;
+
+  const events = await db.getAllFromIndex('treasuryEvents', 'sourceId', ingresoId);
+  const ingresoEvents = events.filter(e => e.sourceType === 'ingreso');
+
+  if (ingresoEvents.length === 0) {
+    await createTreasuryEventFromIngreso(ingresoId);
+    return;
+  }
+
+  const event = ingresoEvents[0];
+  event.amount = ingreso.importe;
+  event.predictedDate = ingreso.fecha_prevista_cobro;
+  event.description = `Ingreso: ${ingreso.contraparte}`;
+  event.updatedAt = new Date().toISOString();
+
+  await db.put('treasuryEvents', event);
+};
+
+/**
+ * Create treasury forecast event from a new Gasto
+ */
+export const createTreasuryEventFromGasto = async (gastoId: number): Promise<void> => {
+  const db = await initDB();
+  const gasto = await db.get('gastos', gastoId);
+  if (!gasto || gasto.total <= 0) return;
+
+  const event: TreasuryEvent = {
+    type: 'expense',
+    amount: gasto.total,
+    predictedDate: gasto.fecha_pago_prevista,
+    description: `Gasto: ${gasto.contraparte_nombre}`,
+    sourceType: 'gasto',
+    sourceId: gastoId,
+    status: 'predicted',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  await db.add('treasuryEvents', event);
+};
+
+/**
+ * Update treasury forecast event when a Gasto is modified
+ */
+export const updateTreasuryEventFromGasto = async (gastoId: number): Promise<void> => {
+  const db = await initDB();
+  const gasto = await db.get('gastos', gastoId);
+  if (!gasto) return;
+
+  const events = await db.getAllFromIndex('treasuryEvents', 'sourceId', gastoId);
+  const gastoEvents = events.filter(e => e.sourceType === 'gasto');
+
+  if (gastoEvents.length === 0) {
+    await createTreasuryEventFromGasto(gastoId);
+    return;
+  }
+
+  const event = gastoEvents[0];
+  event.amount = gasto.total;
+  event.predictedDate = gasto.fecha_pago_prevista;
+  event.description = `Gasto: ${gasto.contraparte_nombre}`;
+  event.updatedAt = new Date().toISOString();
+
+  await db.put('treasuryEvents', event);
+};
+
+/**
  * Get treasury projections for a specific period
  */
 export const getTreasuryProjections = async (
