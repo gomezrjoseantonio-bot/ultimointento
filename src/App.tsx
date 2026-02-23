@@ -49,7 +49,6 @@ const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen
 const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
 const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
 
-const PresupuestoScopeView = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestoScopeView'));
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
@@ -345,7 +344,7 @@ function App() {
               {/* Main proyeccion tabs */}
               <Route path="presupuesto" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PresupuestoScopeView />
+                  <ProyeccionMensual />
                 </React.Suspense>
               } />
               <Route path="comparativa" element={
