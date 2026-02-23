@@ -1,11 +1,11 @@
 // src/modules/horizon/proyeccion/mensual/types/proyeccionMensual.ts
 // ATLAS HORIZON: Monthly financial projection types
 
-/** Single item in a drill-down breakdown, explaining a component of a total. */
-export interface DrillDownItem {
+export interface OpexDetalleItem {
+  propertyId: number;
+  propertyAlias: string;
   concepto: string;
   importe: number;
-  fuente?: string; // e.g. property alias, nomina name
 }
 
 export interface MonthlyProjectionRow {
@@ -26,6 +26,8 @@ export interface MonthlyProjectionRow {
 
   gastos: {
     gastosOperativos: number;
+    /** Per-property/concept breakdown for drill-down (populated by forecastEngine) */
+    opexDesglose: OpexDetalleItem[];
     gastosPersonales: number;
     gastosAutonomo: number;
     irpfDevengado: number;
