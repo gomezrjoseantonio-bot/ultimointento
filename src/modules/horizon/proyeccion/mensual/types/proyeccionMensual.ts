@@ -1,6 +1,13 @@
 // src/modules/horizon/proyeccion/mensual/types/proyeccionMensual.ts
 // ATLAS HORIZON: Monthly financial projection types
 
+/** Single item in a drill-down breakdown, explaining a component of a total. */
+export interface DrillDownItem {
+  concepto: string;
+  importe: number;
+  fuente?: string; // e.g. property alias, nomina name
+}
+
 export interface MonthlyProjectionRow {
   month: string; // "2026-01"
 
@@ -11,6 +18,10 @@ export interface MonthlyProjectionRow {
     dividendosInversiones: number;
     otrosIngresos: number;
     total: number;
+    drillDown?: {
+      nomina?: DrillDownItem[];
+      rentasAlquiler?: DrillDownItem[];
+    };
   };
 
   gastos: {
@@ -21,6 +32,10 @@ export interface MonthlyProjectionRow {
     irpfAPagar: number;
     seguridadSocial: number;
     total: number;
+    drillDown?: {
+      gastosOperativos?: DrillDownItem[];
+      gastosPersonales?: DrillDownItem[];
+    };
   };
 
   financiacion: {
@@ -28,6 +43,9 @@ export interface MonthlyProjectionRow {
     cuotasPrestamos: number;
     amortizacionCapital: number;
     total: number;
+    drillDown?: {
+      prestamos?: DrillDownItem[];
+    };
   };
 
   tesoreria: {

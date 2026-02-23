@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { initDB } from '../../../../../services/db';
+import { initDB, Contract, OpexRule } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { personalDataService } from '../../../../../services/personalDataService';
@@ -9,7 +9,10 @@ import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
-import { MonthlyProjectionRow, ProyeccionAnual } from '../types/proyeccionMensual';
+import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
+import { getOpexRulesForProperty } from '../../../../../services/opexService';
+import { GastoRecurrente } from '../../../../../types/personal';
+import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 
 // Fixed growth assumptions for Phase 1
 const FIXED_ASSUMPTIONS = {
@@ -122,16 +125,21 @@ function buildMonthRow(
   const monthOfYear = absoluteMonthIndex % 12; // 0-11
   const yearsElapsed = absoluteMonthIndex / 12;
   const growthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.salaryGrowth, yearsElapsed);
+  const rentGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, yearsElapsed);
+  const expenseInflationFactor = Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
 
   // Format month string "YYYY-MM"
   const monthStr = `${year}-${String(monthOfYear + 1).padStart(2, '0')}`;
 
   // ── INGRESOS ──────────────────────────────────────────────────────────────
-  const nomina = baseData.nominaNeta * growthFactor;
+  // A. Nóminas: use actual monthly distribution from calculateSalary(), scaled by growth
+  const nomina = baseData.nominaNetaMensual[monthOfYear] * growthFactor;
+
   const serviciosFreelance = baseData.freelanceMensual * growthFactor;
-  const rentasAlquiler =
-    baseData.rentaMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, yearsElapsed);
+
+  // B. Rentas: contract date-filtered for base year, then grow with IPC
+  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear] * rentGrowthFactor;
+
   // Dividends grow with investment portfolio value appreciation
   const investmentGrowthFactor = Math.pow(
     1 + FIXED_ASSUMPTIONS.investmentReturn,
@@ -150,15 +158,15 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  const gastosOperativos =
-    baseData.gastosOperativosMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
-  const gastosPersonales =
-    baseData.gastosPersonalesMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
+  // C. OPEX: use actual OPEX rules for base year, scaled by inflation
+  const gastosOperativos = baseData.opexPorMes[monthOfYear] * expenseInflationFactor;
+
+  // E. Gastos Personales: use GastoRecurrente data, scaled by inflation
+  const gastosPersonales = baseData.gastosPersonalesPorMes[monthOfYear] * expenseInflationFactor;
+
   const gastosAutonomo =
     baseData.gastosAutonomoMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
+    expenseInflationFactor;
 
   const baseIrpf =
     nomina + serviciosFreelance + rentasAlquiler + otrosIngresosMensual;
@@ -181,6 +189,7 @@ function buildMonthRow(
   let cuotasHipotecas = 0;
   let cuotasPrestamos = 0;
   let amortizacionCapital = 0;
+  const prestamosDrillDown: DrillDownItem[] = [];
 
   for (const loan of deudaState.loans) {
     const { cuota, amortizacion } = calculateLoanPayment(
@@ -189,6 +198,9 @@ function buildMonthRow(
       loan.plazoMesesTotal,
       absoluteMonthIndex,
     );
+    if (cuota > 0) {
+      prestamosDrillDown.push({ concepto: loan.concepto, importe: cuota });
+    }
     if (loan.isHipoteca) {
       cuotasHipotecas += cuota;
     } else {
@@ -235,6 +247,24 @@ function buildMonthRow(
   const activos = cajaFinal + inmuebles + planesPension + otrasInversiones;
   const patrimonioNeto = activos - deudaTotal;
 
+  // DrillDown: scale base-year values by growth factors for display
+  const scaledNominaDrillDown = baseData.nominaDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * growthFactor,
+  }));
+  const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * rentGrowthFactor,
+  }));
+  const scaledOpexDrillDown = baseData.opexDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * expenseInflationFactor,
+  }));
+  const scaledGastosPersonalesDrillDown = baseData.gastosPersonalesDrillDown[monthOfYear].map(item => ({
+    ...item,
+    importe: item.importe * expenseInflationFactor,
+  }));
+
   return {
     month: monthStr,
     ingresos: {
@@ -244,6 +274,10 @@ function buildMonthRow(
       dividendosInversiones,
       otrosIngresos: otrosIngresosMensual,
       total: totalIngresos,
+      drillDown: {
+        nomina: scaledNominaDrillDown,
+        rentasAlquiler: scaledRentaDrillDown,
+      },
     },
     gastos: {
       gastosOperativos,
@@ -253,12 +287,19 @@ function buildMonthRow(
       irpfAPagar,
       seguridadSocial,
       total: totalGastos,
+      drillDown: {
+        gastosOperativos: scaledOpexDrillDown,
+        gastosPersonales: scaledGastosPersonalesDrillDown,
+      },
     },
     financiacion: {
       cuotasHipotecas,
       cuotasPrestamos,
       amortizacionCapital,
       total: totalFinanciacion,
+      drillDown: {
+        prestamos: prestamosDrillDown,
+      },
     },
     tesoreria: {
       flujoCajaMes,
@@ -283,6 +324,7 @@ interface LoanInfo {
   annualRate: number;
   plazoMesesTotal: number;
   isHipoteca: boolean; // true = mortgage, false = personal loan
+  concepto: string;    // loan description for drilldown
 }
 
 interface DeudaState {
@@ -290,14 +332,23 @@ interface DeudaState {
 }
 
 interface BaseData {
-  nominaNeta: number;
+  // Monthly arrays for base year (index 0 = January, 11 = December)
+  nominaNetaMensual: number[];          // Exact net per month from calculateSalary()
+  rentaMensualPorMes: number[];         // Rental income per month (contract date-filtered)
+  opexPorMes: number[];                 // OPEX per month from actual OpexRules
+  gastosPersonalesPorMes: number[];     // Personal recurring expenses per month
+
+  // DrillDown arrays (12 entries, one per month)
+  nominaDrillDown: DrillDownItem[][];
+  rentaDrillDown: DrillDownItem[][];
+  opexDrillDown: DrillDownItem[][];
+  gastosPersonalesDrillDown: DrillDownItem[][];
+
+  // Scalars
   freelanceMensual: number;
-  rentaMensual: number;
-  otrosIngresosMensual: number;
-  gastosOperativosMensual: number;
-  gastosPersonalesMensual: number;
   gastosAutonomoMensual: number;
   seguridadSocialMensual: number;
+  otrosIngresosMensual: number;
   valorInmuebles: number;
   valorPlanesPension: number;
   valorOtrasInversiones: number;
@@ -305,39 +356,153 @@ interface BaseData {
 }
 
 /**
+ * Compute the 12-month amount array for an OPEX rule.
+ * Returns an array indexed 0-11 (January=0) with the payment amount for each month.
+ */
+function computeOpexMonthlyAmounts(rule: OpexRule): number[] {
+  const monthly = new Array(12).fill(0) as number[];
+  if (!rule.activo) return monthly;
+
+  const importeEstimado = rule.importeEstimado ?? 0;
+
+  switch (rule.frecuencia) {
+    case 'mensual':
+      for (let m = 0; m < 12; m++) monthly[m] = importeEstimado;
+      break;
+    case 'bimestral': {
+      const start = ((rule.mesInicio ?? 1) - 1 + 12) % 12;
+      for (let m = start; m < 12; m += 2) monthly[m] = importeEstimado;
+      break;
+    }
+    case 'trimestral': {
+      const start = ((rule.mesInicio ?? 1) - 1 + 12) % 12;
+      for (let m = start; m < 12; m += 3) monthly[m] = importeEstimado;
+      break;
+    }
+    case 'semestral': {
+      const start = ((rule.mesInicio ?? 1) - 1 + 12) % 12;
+      for (let m = start; m < 12; m += 6) monthly[m] = importeEstimado;
+      break;
+    }
+    case 'anual': {
+      const mes = ((rule.mesInicio ?? 1) - 1 + 12) % 12;
+      monthly[mes] = importeEstimado;
+      break;
+    }
+    case 'meses_especificos': {
+      if (rule.asymmetricPayments && rule.asymmetricPayments.length > 0) {
+        for (const p of rule.asymmetricPayments) {
+          if (p.mes >= 1 && p.mes <= 12) monthly[p.mes - 1] = p.importe;
+        }
+      } else if (rule.mesesCobro) {
+        for (const mes of rule.mesesCobro) {
+          if (mes >= 1 && mes <= 12) monthly[mes - 1] = importeEstimado;
+        }
+      }
+      break;
+    }
+    case 'semanal':
+      // Approximate: 52 weeks / 12 months
+      for (let m = 0; m < 12; m++) monthly[m] = importeEstimado * (52 / 12);
+      break;
+    default:
+      break;
+  }
+
+  return monthly;
+}
+
+/**
+ * Check whether a contract is active during a given year/month.
+ * month is 0-indexed (0 = January).
+ */
+function isContractActiveInMonth(contract: Contract, year: number, month: number): boolean {
+  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
+    return false;
+  }
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+  const fechaInicio = new Date(contract.fechaInicio);
+  const fechaFin = new Date(contract.fechaFin);
+  return monthStart <= fechaFin && monthEnd >= fechaInicio;
+}
+
+/**
+ * Determine the months a GastoRecurrente should be paid in a given year.
+ * month is 0-indexed.
+ */
+function isGastoActiveInMonth(gasto: GastoRecurrente, year: number, month: number): boolean {
+  if (!gasto.activo) return false;
+
+  const fechaInicio = new Date(gasto.fechaInicio);
+  const fechaFin = gasto.fechaFin ? new Date(gasto.fechaFin) : null;
+
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+
+  if (monthEnd < fechaInicio) return false;
+  if (fechaFin && monthStart > fechaFin) return false;
+
+  const monthsSinceStart =
+    (year - fechaInicio.getFullYear()) * 12 + (month - fechaInicio.getMonth());
+  if (monthsSinceStart < 0) return false;
+
+  const period: Record<string, number> = {
+    mensual: 1,
+    bimestral: 2,
+    trimestral: 3,
+    semestral: 6,
+    anual: 12,
+  };
+  const freq = period[gasto.frecuencia] ?? 1;
+  return monthsSinceStart % freq === 0;
+}
+
+/**
  * Load and aggregate all base financial data from the database
  */
 async function loadBaseData(): Promise<BaseData> {
   const db = await initDB();
+  const year = START_YEAR;
 
   // Personal data
   const personalData = await personalDataService.getPersonalData();
   const personalDataId = personalData?.id ?? 1;
 
-  // Nómina
-  let nominaNeta = 0;
+  // ── A. NÓMINAS ────────────────────────────────────────────────────────────
+  // Use calculateSalary() to get the exact monthly net distribution
+  const nominaNetaMensual: number[] = new Array(12).fill(0);
+  const nominaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
   let seguridadSocialMensual = 0;
+
   try {
     const nominas = await nominaService.getNominas(personalDataId);
-    const nominaActiva = nominas.find(n => n.activa);
-    if (nominaActiva) {
-      const brutoMensual =
-        nominaActiva.salarioBrutoAnual / nominaActiva.distribucion.meses;
-      const retencionIRPF =
-        brutoMensual * (nominaActiva.retencion.irpfPorcentaje / 100);
-      const retencionSS =
-        brutoMensual * (nominaActiva.retencion.cotizacionSS / 100);
-      nominaNeta = brutoMensual - retencionIRPF - retencionSS;
-      seguridadSocialMensual = retencionSS;
+    const nominasActivas = nominas.filter(n => n.activa);
+    for (const nomina of nominasActivas) {
+      const calculo = nominaService.calculateSalary(nomina);
+
+      for (const mesData of calculo.distribuccionMensual) {
+        const idx = mesData.mes - 1; // 0-indexed
+        nominaNetaMensual[idx] += mesData.netoTotal;
+        nominaDrillDown[idx].push({
+          concepto: nomina.nombre ?? 'Nómina',
+          importe: mesData.netoTotal,
+          fuente: nomina.nombre,
+        });
+      }
     }
+    // SS contribution: monthly average = annual bruto * SS% / 12
+    seguridadSocialMensual = nominasActivas.reduce((sum, n) => {
+      const ss = n.retencion?.cotizacionSS ?? 6.35;
+      return sum + (n.salarioBrutoAnual / 12) * (ss / 100);
+    }, 0);
   } catch {
     // No nomina data available
   }
 
-  // Autónomo
+  // ── Autónomo ──────────────────────────────────────────────────────────────
   let freelanceMensual = 0;
   let gastosAutonomoMensual = 0;
-  let cuotaAutonomosMensual = 0;
   try {
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomoActivo = autonomos.find(a => a.activo);
@@ -352,104 +517,186 @@ async function loadBaseData(): Promise<BaseData> {
         0,
       );
       gastosAutonomoMensual = gastosAnuales / 12;
-      cuotaAutonomosMensual = autonomoActivo.cuotaAutonomos;
-      seguridadSocialMensual += cuotaAutonomosMensual;
+      seguridadSocialMensual += autonomoActivo.cuotaAutonomos;
     }
   } catch {
     // No autonomo data available
   }
 
-  // Rental income from active contracts
-  let rentaMensual = 0;
-  try {
-    const contracts = await getAllContracts();
-    rentaMensual = contracts
-      .filter(c => c.estadoContrato === 'activo')
-      .reduce((sum, c) => sum + (c.rentaMensual || 0), 0);
-  } catch {
-    // No contracts data available
-  }
+  // ── B. INMUEBLES - INGRESOS (RENTAS) ──────────────────────────────────────
+  // Filter by contract active date range for each month of the projection year
+  const rentaMensualPorMes: number[] = new Array(12).fill(0);
+  const rentaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
 
-  // Investment values
-  let valorPlanesPension = 0;
-  let valorOtrasInversiones = 0;
+  let valorInmuebles = 0;
   try {
-    const inversiones = await inversionesService.getPosiciones();
-    for (const inv of inversiones) {
-      if (inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo') {
-        valorPlanesPension += inv.valor_actual;
-      } else {
-        valorOtrasInversiones += inv.valor_actual;
+    const [contracts, inmuebles] = await Promise.all([
+      getAllContracts(),
+      inmuebleService.getAll(),
+    ]);
+
+    // Build a quick lookup: inmuebleId (number) → alias
+    const propertyAliasMap = new Map<number, string>();
+    for (const inm of inmuebles) {
+      if (inm.id) {
+        const numId = parseInt(inm.id, 10);
+        if (!isNaN(numId)) propertyAliasMap.set(numId, inm.alias);
       }
     }
-  } catch {
-    // No investment data available
-  }
 
-  // Property values
-  let valorInmuebles = 0;
-  let gastosOperativosMensual = 0;
-  try {
-    const inmuebles = await inmuebleService.getAll();
-    const active = inmuebles.filter(p => p.estado === 'ACTIVO');
-    valorInmuebles = active.reduce(
+    for (const contract of contracts) {
+      for (let m = 0; m < 12; m++) {
+        if (isContractActiveInMonth(contract, year, m)) {
+          const renta = contract.rentaMensual ?? 0;
+          rentaMensualPorMes[m] += renta;
+          const propertyAlias = propertyAliasMap.get(contract.inmuebleId) ?? (contract.inmuebleId ? `Inmueble ${contract.inmuebleId}` : 'Inmueble');
+          const inquilino = `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim();
+          rentaDrillDown[m].push({
+            concepto: inquilino || 'Inquilino',
+            importe: renta,
+            fuente: propertyAlias,
+          });
+        }
+      }
+    }
+
+    // Property total value (for patrimony calculation)
+    const activeProperties = inmuebles.filter(p => p.estado === 'ACTIVO');
+    valorInmuebles = activeProperties.reduce(
       (sum, p) => sum + (p.compra?.precio_compra ?? 0),
       0,
     );
-    // Estimate operating expenses: IBI ~0.5% annually + ~0.5% for insurance/community
-    gastosOperativosMensual = (valorInmuebles * 0.01) / 12;
-  } catch {
-    // No property data available
-  }
 
-  // Cash balance from bank accounts
-  let cajaInicial = 0;
-  try {
-    const accounts = await db.getAll('accounts');
-    cajaInicial = accounts
-      .filter(
-        (a: { status: string; activa: boolean; balance?: number }) =>
-          a.status === 'ACTIVE' || a.activa,
-      )
-      .reduce(
-        (sum: number, a: { balance?: number }) => sum + (a.balance ?? 0),
-        0,
-      );
-  } catch {
-    // No account data available
-  }
+    // ── C. INMUEBLES - GASTOS (OPEX) ────────────────────────────────────────
+    // Load actual OpexRules for each active property
+    const opexPorMes: number[] = new Array(12).fill(0);
+    const opexDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
 
-  // Personal recurring expenses
-  let gastosPersonalesMensual = 0;
-  try {
-    const allGastos = await db.getAll('gastos');
-    gastosPersonalesMensual = allGastos
-      .filter(
-        (g: { destino?: string; importe?: number }) =>
-          g.destino === 'personal',
-      )
-      .reduce(
-        (sum: number, g: { importe?: number }) => sum + (g.importe ?? 0),
-        0,
-      );
-  } catch {
-    // Gastos data not available, use 0
-  }
+    for (const inm of activeProperties) {
+      if (!inm.id) continue;
+      const propertyId = parseInt(inm.id, 10);
+      if (isNaN(propertyId)) continue;
 
-  return {
-    nominaNeta,
-    freelanceMensual,
-    rentaMensual,
-    otrosIngresosMensual: 0,
-    gastosOperativosMensual,
-    gastosPersonalesMensual,
-    gastosAutonomoMensual,
-    seguridadSocialMensual,
-    valorInmuebles,
-    valorPlanesPension,
-    valorOtrasInversiones,
-    cajaInicial,
-  };
+      try {
+        const rules = await getOpexRulesForProperty(propertyId);
+        const propertyAlias = inm.alias;
+
+        for (const rule of rules) {
+          const monthlyAmounts = computeOpexMonthlyAmounts(rule);
+          for (let m = 0; m < 12; m++) {
+            const amount = monthlyAmounts[m];
+            if (amount > 0) {
+              opexPorMes[m] += amount;
+              opexDrillDown[m].push({
+                concepto: rule.concepto,
+                importe: amount,
+                fuente: propertyAlias,
+              });
+            }
+          }
+        }
+      } catch {
+        // Skip properties with OPEX loading errors
+      }
+    }
+
+    // Investment values
+    let valorPlanesPension = 0;
+    let valorOtrasInversiones = 0;
+    try {
+      const inversiones = await inversionesService.getPosiciones();
+      for (const inv of inversiones) {
+        if (inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo') {
+          valorPlanesPension += inv.valor_actual;
+        } else {
+          valorOtrasInversiones += inv.valor_actual;
+        }
+      }
+    } catch {
+      // No investment data available
+    }
+
+    // Cash balance from bank accounts
+    let cajaInicial = 0;
+    try {
+      const accounts = await db.getAll('accounts');
+      cajaInicial = accounts
+        .filter(
+          (a: { status: string; activa: boolean; balance?: number }) =>
+            a.status === 'ACTIVE' || a.activa,
+        )
+        .reduce(
+          (sum: number, a: { balance?: number }) => sum + (a.balance ?? 0),
+          0,
+        );
+    } catch {
+      // No account data available
+    }
+
+    // ── E. GASTOS PERSONALES ─────────────────────────────────────────────────
+    const gastosPersonalesPorMes: number[] = new Array(12).fill(0);
+    const gastosPersonalesDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
+
+    try {
+      const gastosRecurrentes = await gastosPersonalesService.getGastosRecurrentesActivos(personalDataId);
+      for (const gasto of gastosRecurrentes) {
+        for (let m = 0; m < 12; m++) {
+          if (isGastoActiveInMonth(gasto, year, m)) {
+            gastosPersonalesPorMes[m] += gasto.importe;
+            gastosPersonalesDrillDown[m].push({
+              concepto: gasto.nombre,
+              importe: gasto.importe,
+              fuente: gasto.categoria,
+            });
+          }
+        }
+      }
+    } catch {
+      // No personal gastos data available
+    }
+
+    return {
+      nominaNetaMensual,
+      rentaMensualPorMes,
+      opexPorMes,
+      gastosPersonalesPorMes,
+      nominaDrillDown,
+      rentaDrillDown,
+      opexDrillDown,
+      gastosPersonalesDrillDown,
+      freelanceMensual,
+      gastosAutonomoMensual,
+      seguridadSocialMensual,
+      otrosIngresosMensual: 0,
+      valorInmuebles,
+      valorPlanesPension,
+      valorOtrasInversiones,
+      cajaInicial,
+    };
+  } catch (error) {
+    // Fallback: return zeroed data
+    console.error('[forecastEngine] Error loading base data:', error);
+    const zeros12 = () => new Array(12).fill(0) as number[];
+    const empty12 = () => Array.from({ length: 12 }, () => [] as DrillDownItem[]);
+    return {
+      nominaNetaMensual: zeros12(),
+      rentaMensualPorMes: zeros12(),
+      opexPorMes: zeros12(),
+      gastosPersonalesPorMes: zeros12(),
+      nominaDrillDown: empty12(),
+      rentaDrillDown: empty12(),
+      opexDrillDown: empty12(),
+      gastosPersonalesDrillDown: empty12(),
+      freelanceMensual: 0,
+      gastosAutonomoMensual: 0,
+      seguridadSocialMensual: 0,
+      otrosIngresosMensual: 0,
+      valorInmuebles: 0,
+      valorPlanesPension: 0,
+      valorOtrasInversiones: 0,
+      cajaInicial: 0,
+    };
+  }
 }
 
 /**
@@ -473,6 +720,7 @@ async function loadDeudaState(): Promise<DeudaState> {
         annualRate,
         plazoMesesTotal: p.plazoMesesTotal,
         isHipoteca: true, // Prestamo from inmuebles is always a mortgage
+        concepto: p.nombre ?? 'Hipoteca/Préstamo',
       });
     }
   } catch {
