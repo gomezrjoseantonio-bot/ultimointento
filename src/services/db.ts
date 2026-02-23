@@ -841,7 +841,7 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto';
   sourceId?: number; // Document ID or Contract ID
   // Account information
   accountId?: number;
