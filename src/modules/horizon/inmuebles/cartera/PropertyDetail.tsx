@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, FileText, Clipboard } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown } from 'lucide-react';
 import { Property, initDB } from '../../../../services/db';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import toast from 'react-hot-toast';
+import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
+
+type DetailTab = 'resumen' | 'presupuesto';
 
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -117,7 +121,39 @@ const PropertyDetail: React.FC = () => {
         </button>
       </div>
 
-      {/* Resumen */}
+      {/* Tab Navigation */}
+      <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
+        {(
+          [
+            { id: 'resumen', label: 'Resumen', Icon: LayoutList },
+            { id: 'presupuesto', label: 'Presupuesto (OPEX)', Icon: TrendingDown },
+          ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
+        ).map(({ id: tabId, label, Icon }) => {
+          const isActive = activeTab === tabId;
+          return (
+            <button
+              key={tabId}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tabId)}
+              className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'bg-white text-atlas-blue shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${isActive ? 'text-atlas-blue' : 'text-gray-400'}`} />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'presupuesto' ? (
+        <InmueblePresupuestoTab propertyId={property.id!} />
+      ) : (
+        <>
       <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Resumen</h3>
         
@@ -397,6 +433,8 @@ const PropertyDetail: React.FC = () => {
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

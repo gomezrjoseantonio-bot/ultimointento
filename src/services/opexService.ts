@@ -111,3 +111,17 @@ export const deleteOpexRule = async (id: number): Promise<void> => {
   const db = await initDB();
   await db.delete('opexRules', id);
 };
+
+/**
+ * Creates or updates an OPEX rule.
+ * If the rule has an id, it updates the existing rule; otherwise, it creates a new one.
+ */
+export const saveOpexRule = async (rule: OpexRule): Promise<void> => {
+  const db = await initDB();
+  const now = new Date().toISOString();
+  if (rule.id !== undefined) {
+    await db.put('opexRules', { ...rule, updatedAt: now });
+  } else {
+    await db.add('opexRules', { ...rule, createdAt: now, updatedAt: now });
+  }
+};

@@ -1268,7 +1268,13 @@ export interface PatrimonioSnapshot {
 }
 
 export type OpexCategory = 'impuesto' | 'suministro' | 'comunidad' | 'seguro' | 'servicio' | 'gestion' | 'otro';
-export type OpexFrequency = 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'meses_especificos';
+export type OpexFrequency = 'semanal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'meses_especificos';
+export type OpexEstacionalidad = 'plana' | 'invierno' | 'verano';
+
+export interface AsymmetricPayment {
+  mes: number; // 1-12
+  importe: number;
+}
 
 export interface OpexRule {
   id?: number;
@@ -1280,6 +1286,10 @@ export interface OpexRule {
   frecuencia: OpexFrequency;
   mesesCobro?: number[]; // [1, 7] para Enero y Julio si es meses_especificos
   diaCobro?: number; // Día del mes estimado (1-31)
+  diaDeLaSemana?: number; // 0=Lunes ... 6=Domingo, para frecuencia semanal
+  mesInicio?: number; // 1-12, mes de inicio para frecuencias periódicas
+  asymmetricPayments?: AsymmetricPayment[]; // Importes distintos por mes (meses_especificos)
+  estacionalidad?: OpexEstacionalidad; // Para suministros: 'plana' | 'invierno' | 'verano'
   activo: boolean;
   createdAt: string;
   updatedAt: string;
