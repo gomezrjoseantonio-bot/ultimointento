@@ -49,16 +49,6 @@ function calculateMonthlyIRPF(monthlyIncome: number): number {
 }
 
 /**
- * IRPF is paid quarterly (months 3, 6, 9, 0 = April, July, October, January)
- */
-function calculateIRPFPayment(monthIndex: number, annualDevengado: number): number {
-  if ([3, 6, 9, 0].includes(monthIndex % 12)) {
-    return annualDevengado / 4;
-  }
-  return 0;
-}
-
-/**
  * Calculate outstanding principal at a given month using the French amortization method
  */
 function calculateOutstandingPrincipal(
@@ -197,8 +187,10 @@ function buildMonthRow(
 
   const serviciosFreelance = baseData.freelanceMensual * growthFactor;
 
-  // B. Rentas: contract date-filtered for base year, then grow with IPC
-  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear] * rentGrowthFactor;
+  // B. Rentas: flat within each year, grow only at year boundaries (no monthly IPC drip)
+  const rentYearIndex = Math.floor(absoluteMonthIndex / 12);
+  const rentGrowthFactorFlat = Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, rentYearIndex);
+  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear] * rentGrowthFactorFlat;
 
   // Dividends grow with investment portfolio value appreciation
   const investmentGrowthFactor = Math.pow(
@@ -242,11 +234,10 @@ function buildMonthRow(
 
   const baseIrpf =
     nomina + serviciosFreelance + rentasAlquiler + otrosIngresosMensual;
+  // IRPF devengado for informational purposes only.
+  // IRPF payment is forced to 0 until the dedicated tax module is implemented.
   const irpfDevengado = calculateMonthlyIRPF(baseIrpf);
-
-  // Accumulate annual IRPF devengado to spread into quarterly payments
-  // (simplified: use monthly devengado * 3 as quarterly installment)
-  const irpfAPagar = calculateIRPFPayment(monthOfYear, irpfDevengado * 12);
+  const irpfAPagar = 0; // TODO: remove when tax module is ready
 
   const seguridadSocial = baseData.seguridadSocialMensual * growthFactor;
 
@@ -574,7 +565,8 @@ async function loadDeudaState(): Promise<DeudaState> {
   try {
     const prestamos = await prestamosService.getAllPrestamos();
     for (const p of prestamos) {
-      const annualRate =
+      // Rates stored as percentage (e.g. 3.2 = 3.2%); divide by 100 for decimal usage
+      const annualRatePct =
         p.tipo === 'FIJO'
           ? (p.tipoNominalAnualFijo ?? 0)
           : p.tipo === 'VARIABLE'
@@ -583,7 +575,7 @@ async function loadDeudaState(): Promise<DeudaState> {
 
       loans.push({
         principalInicial: p.principalInicial,
-        annualRate,
+        annualRate: annualRatePct / 100,
         plazoMesesTotal: p.plazoMesesTotal,
         isHipoteca: true, // Prestamo from inmuebles is always a mortgage
         concepto: p.nombre ?? 'Hipoteca/Préstamo',
