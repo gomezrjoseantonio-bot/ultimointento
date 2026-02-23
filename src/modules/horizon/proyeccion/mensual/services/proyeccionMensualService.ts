@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { initDB } from '../../../../../services/db';
+import { initDB, OpexRule } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { personalDataService } from '../../../../../services/personalDataService';
@@ -9,7 +9,15 @@ import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
+import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
+import { GastoRecurrente } from '../../../../../types/personal';
 import { MonthlyProjectionRow, ProyeccionAnual } from '../types/proyeccionMensual';
+import {
+  calculateOpexForMonth,
+  calculateOpexBreakdownForMonth,
+  calculateGastosPersonalesForMonth,
+  OpexDetalleItem,
+} from './forecastEngine';
 
 // Fixed growth assumptions for Phase 1
 const FIXED_ASSUMPTIONS = {
@@ -120,11 +128,13 @@ function buildMonthRow(
 ): MonthlyProjectionRow {
   const year = START_YEAR + Math.floor(absoluteMonthIndex / 12);
   const monthOfYear = absoluteMonthIndex % 12; // 0-11
+  const month1to12 = monthOfYear + 1;
   const yearsElapsed = absoluteMonthIndex / 12;
   const growthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.salaryGrowth, yearsElapsed);
+  const expenseGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
 
   // Format month string "YYYY-MM"
-  const monthStr = `${year}-${String(monthOfYear + 1).padStart(2, '0')}`;
+  const monthStr = `${year}-${String(month1to12).padStart(2, '0')}`;
 
   // ── INGRESOS ──────────────────────────────────────────────────────────────
   const nomina = baseData.nominaNeta * growthFactor;
@@ -150,15 +160,27 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  const gastosOperativos =
-    baseData.gastosOperativosMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
-  const gastosPersonales =
-    baseData.gastosPersonalesMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
+  // Use forecastEngine for frequency-aware OpexRule calculation
+  const baseGastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
+  const gastosOperativos = baseGastosOperativos * expenseGrowthFactor;
+
+  // Per-property/concept breakdown scaled by the same growth factor
+  const opexDesglose: OpexDetalleItem[] = calculateOpexBreakdownForMonth(
+    baseData.opexRules,
+    month1to12,
+    baseData.propertyAliasMap,
+  ).map(item => ({ ...item, importe: item.importe * expenseGrowthFactor }));
+
+  // Use forecastEngine for frequency-aware GastoRecurrente calculation
+  const baseGastosPersonales = calculateGastosPersonalesForMonth(
+    baseData.gastosRecurrentes,
+    month1to12,
+  );
+  const gastosPersonales = baseGastosPersonales * expenseGrowthFactor;
+
   const gastosAutonomo =
     baseData.gastosAutonomoMensual *
-    Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
+    expenseGrowthFactor;
 
   const baseIrpf =
     nomina + serviciosFreelance + rentasAlquiler + otrosIngresosMensual;
@@ -247,6 +269,7 @@ function buildMonthRow(
     },
     gastos: {
       gastosOperativos,
+      opexDesglose,
       gastosPersonales,
       gastosAutonomo,
       irpfDevengado,
@@ -294,8 +317,12 @@ interface BaseData {
   freelanceMensual: number;
   rentaMensual: number;
   otrosIngresosMensual: number;
-  gastosOperativosMensual: number;
-  gastosPersonalesMensual: number;
+  /** All OpexRules across all properties – used by forecastEngine */
+  opexRules: OpexRule[];
+  /** Maps property numeric ID → alias for drill-down labels */
+  propertyAliasMap: Map<number, string>;
+  /** Active personal recurring expenses – used by forecastEngine */
+  gastosRecurrentes: GastoRecurrente[];
   gastosAutonomoMensual: number;
   seguridadSocialMensual: number;
   valorInmuebles: number;
@@ -386,9 +413,10 @@ async function loadBaseData(): Promise<BaseData> {
     // No investment data available
   }
 
-  // Property values
+  // Property values + OpexRules + property alias map
   let valorInmuebles = 0;
-  let gastosOperativosMensual = 0;
+  let opexRules: OpexRule[] = [];
+  const propertyAliasMap = new Map<number, string>();
   try {
     const inmuebles = await inmuebleService.getAll();
     const active = inmuebles.filter(p => p.estado === 'ACTIVO');
@@ -396,8 +424,15 @@ async function loadBaseData(): Promise<BaseData> {
       (sum, p) => sum + (p.compra?.precio_compra ?? 0),
       0,
     );
-    // Estimate operating expenses: IBI ~0.5% annually + ~0.5% for insurance/community
-    gastosOperativosMensual = (valorInmuebles * 0.01) / 12;
+    // Build alias map for drill-down labels (all properties, not just active)
+    for (const p of inmuebles) {
+      const numericId = parseInt(p.id, 10);
+      if (!isNaN(numericId)) {
+        propertyAliasMap.set(numericId, p.alias);
+      }
+    }
+    // Load all OpexRules from the database
+    opexRules = await db.getAll('opexRules');
   } catch {
     // No property data available
   }
@@ -419,21 +454,12 @@ async function loadBaseData(): Promise<BaseData> {
     // No account data available
   }
 
-  // Personal recurring expenses
-  let gastosPersonalesMensual = 0;
+  // Personal recurring expenses via gastosPersonalesService
+  let gastosRecurrentes: GastoRecurrente[] = [];
   try {
-    const allGastos = await db.getAll('gastos');
-    gastosPersonalesMensual = allGastos
-      .filter(
-        (g: { destino?: string; importe?: number }) =>
-          g.destino === 'personal',
-      )
-      .reduce(
-        (sum: number, g: { importe?: number }) => sum + (g.importe ?? 0),
-        0,
-      );
+    gastosRecurrentes = await gastosPersonalesService.getGastosRecurrentesActivos(personalDataId);
   } catch {
-    // Gastos data not available, use 0
+    // Gastos data not available
   }
 
   return {
@@ -441,8 +467,9 @@ async function loadBaseData(): Promise<BaseData> {
     freelanceMensual,
     rentaMensual,
     otrosIngresosMensual: 0,
-    gastosOperativosMensual,
-    gastosPersonalesMensual,
+    opexRules,
+    propertyAliasMap,
+    gastosRecurrentes,
     gastosAutonomoMensual,
     seguridadSocialMensual,
     valorInmuebles,

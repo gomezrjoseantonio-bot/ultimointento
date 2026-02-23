@@ -1,6 +1,13 @@
 // src/modules/horizon/proyeccion/mensual/types/proyeccionMensual.ts
 // ATLAS HORIZON: Monthly financial projection types
 
+export interface OpexDetalleItem {
+  propertyId: number;
+  propertyAlias: string;
+  concepto: string;
+  importe: number;
+}
+
 export interface MonthlyProjectionRow {
   month: string; // "2026-01"
 
@@ -15,6 +22,8 @@ export interface MonthlyProjectionRow {
 
   gastos: {
     gastosOperativos: number;
+    /** Per-property/concept breakdown for drill-down (populated by forecastEngine) */
+    opexDesglose: OpexDetalleItem[];
     gastosPersonales: number;
     gastosAutonomo: number;
     irpfDevengado: number;
