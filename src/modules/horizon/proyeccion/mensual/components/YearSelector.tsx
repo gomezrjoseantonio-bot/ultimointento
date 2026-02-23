@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Year selector for monthly projection
 
 import React from 'react';
-import { Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface YearSelectorProps {
   selectedYear: number;
@@ -15,21 +15,31 @@ const YearSelector: React.FC<YearSelectorProps> = ({
   years,
   onChange,
 }) => {
+  const currentIndex = years.indexOf(selectedYear);
+  const canPrev = currentIndex > 0;
+  const canNext = currentIndex < years.length - 1;
+
   return (
-    <div className="flex items-center gap-2">
-      <Calendar className="w-4 h-4 text-gray-500" />
-      <span className="text-sm text-gray-600 font-medium">Año:</span>
-      <select
-        value={selectedYear}
-        onChange={e => onChange(Number(e.target.value))}
-        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => canPrev && onChange(years[currentIndex - 1])}
+        disabled={!canPrev}
+        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Año anterior"
       >
-        {years.map(year => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
+        <ChevronLeft className="w-4 h-4 text-gray-600" />
+      </button>
+      <span className="min-w-[4.5rem] text-center text-sm font-semibold text-gray-700 select-none">
+        {selectedYear}
+      </span>
+      <button
+        onClick={() => canNext && onChange(years[currentIndex + 1])}
+        disabled={!canNext}
+        className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Año siguiente"
+      >
+        <ChevronRight className="w-4 h-4 text-gray-600" />
+      </button>
     </div>
   );
 };

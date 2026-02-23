@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { formatEuro } from '../../../../../utils/formatUtils';
+import { formatInteger } from '../../../../../utils/formatUtils';
 import { ProyeccionAnual, MonthlyProjectionRow } from '../types/proyeccionMensual';
 
 interface MonthlyProjectionTableProps {
@@ -28,38 +28,38 @@ interface SectionConfig {
 const SECTIONS: Record<SectionKey, SectionConfig> = {
   ingresos: {
     label: 'INGRESOS',
-    bg: 'bg-green-50',
-    headerText: 'text-green-900',
-    totalBg: 'bg-green-100',
+    bg: 'bg-gray-50',
+    headerText: 'text-gray-700',
+    totalBg: 'bg-gray-100',
   },
   gastos: {
     label: 'GASTOS',
-    bg: 'bg-red-50',
-    headerText: 'text-red-900',
-    totalBg: 'bg-red-100',
+    bg: 'bg-gray-50',
+    headerText: 'text-gray-700',
+    totalBg: 'bg-gray-100',
   },
   financiacion: {
     label: 'FINANCIACIÓN',
-    bg: 'bg-blue-50',
-    headerText: 'text-blue-900',
-    totalBg: 'bg-blue-100',
+    bg: 'bg-gray-50',
+    headerText: 'text-gray-700',
+    totalBg: 'bg-gray-100',
   },
   tesoreria: {
     label: 'TESORERÍA',
-    bg: 'bg-yellow-50',
-    headerText: 'text-yellow-900',
-    totalBg: 'bg-yellow-100',
+    bg: 'bg-gray-50',
+    headerText: 'text-gray-700',
+    totalBg: 'bg-gray-100',
   },
   patrimonio: {
     label: 'PATRIMONIO',
-    bg: 'bg-purple-50',
-    headerText: 'text-purple-900',
-    totalBg: 'bg-purple-100',
+    bg: 'bg-gray-50',
+    headerText: 'text-gray-700',
+    totalBg: 'bg-gray-100',
   },
 };
 
 function formatValue(value: number, highlight?: 'positive-negative'): React.ReactNode {
-  const formatted = formatEuro(value);
+  const formatted = formatInteger(value);
   if (highlight === 'positive-negative') {
     return (
       <span className={value < 0 ? 'text-red-600' : value > 0 ? 'text-green-700' : ''}>
@@ -134,7 +134,7 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
       label: 'Caja final',
       getValue: m => m.tesoreria.cajaFinal,
       isTotal: true,
-      specialBg: 'bg-yellow-200',
+      specialBg: 'bg-gray-200',
       bold: true,
     },
   ],
@@ -150,7 +150,7 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
       label: 'Patrimonio neto',
       getValue: m => m.patrimonio.patrimonioNeto,
       isTotal: true,
-      specialBg: 'bg-purple-200',
+      specialBg: 'bg-gray-200',
       bold: true,
       highlight: 'positive-negative',
     },
@@ -298,7 +298,7 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                                     key={m.month}
                                     className="px-3 py-1 text-right tabular-nums text-xs text-gray-600"
                                   >
-                                    {formatEuro(getOpexForProperty(m, alias))}
+                                    {formatInteger(getOpexForProperty(m, alias))}
                                   </td>
                                 ))}
                               </tr>

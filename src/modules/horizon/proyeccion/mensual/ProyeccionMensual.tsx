@@ -56,8 +56,8 @@ const ProyeccionMensual: React.FC = () => {
       </div>
 
       {/* Info box */}
-      <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-        <Info className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+      <div className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+        <Info className="w-5 h-5 shrink-0 mt-0.5 text-gray-400" />
         <p>
           Esta proyección utiliza tus datos reales actuales y aplica un crecimiento del{' '}
           <strong>2% anual (IPC)</strong> sobre ingresos, gastos y rentas. Los préstamos
