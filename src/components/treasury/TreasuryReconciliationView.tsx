@@ -14,7 +14,6 @@ import {
   X,
   Plus,
   RefreshCw,
-  Settings,
   User,
   Home,
   Briefcase,
@@ -93,18 +92,6 @@ const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   return 'bank';
 };
 
-const getSourceTypeIcon = (sourceType?: string): React.ElementType => {
-  switch (sourceType) {
-    case 'opex_rule': return Settings;
-    case 'gasto_recurrente': return User;
-    case 'contrato': return Home;
-    case 'nomina': return Briefcase;
-    case 'document': return FileText;
-    case 'ingreso': return TrendingUp;
-    case 'gasto': return TrendingDown;
-    default: return Tag;
-  }
-};
 
 /**
  * ATLAS HORIZON - Treasury Reconciliation View
