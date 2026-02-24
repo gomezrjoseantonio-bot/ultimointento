@@ -19,12 +19,9 @@ import {
   calculateGastosPersonalesForMonth,
 } from './forecastEngine';
 
-// Fixed growth assumptions for Phase 1
+// Fixed assumptions for Phase 1 – all growth rates set to 0 (flat projections)
 const FIXED_ASSUMPTIONS = {
-  salaryGrowth: 0.02,         // 2% annual
-  expenseInflation: 0.02,     // 2% annual
-  investmentReturn: 0.04,     // 4% annual (Phase 1: fixed estimate for pension investments)
-  dividendYield: 0.02,        // 2% annual dividend yield on non-pension investments (Phase 1 estimate)
+  dividendYield: 0.02,        // 2% annual dividend yield on pension investment portfolio (Phase 1 estimate)
 };
 
 const PROJECTION_YEARS = 20;
@@ -244,32 +241,22 @@ function buildMonthRow(
   const year = START_YEAR + Math.floor(absoluteMonthIndex / 12);
   const monthOfYear = absoluteMonthIndex % 12; // 0-11
   const month1to12 = monthOfYear + 1;
-  const yearsElapsed = absoluteMonthIndex / 12;
-  const growthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.salaryGrowth, yearsElapsed);
-  const expenseGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
-
   // Format month string "YYYY-MM"
   const monthStr = `${year}-${String(month1to12).padStart(2, '0')}`;
 
   // ── INGRESOS ──────────────────────────────────────────────────────────────
-  // A. Nóminas: use actual monthly distribution from calculateSalary(), scaled by growth
-  const nomina = baseData.nominaNetaMensual[monthOfYear] * growthFactor;
+  // A. Nóminas: use actual monthly distribution from calculateSalary() — flat, no growth applied
+  const nomina = baseData.nominaNetaMensual[monthOfYear];
 
-  const serviciosFreelance = baseData.freelanceMensual * growthFactor;
+  const serviciosFreelance = baseData.freelanceMensual;
 
   // B. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
   const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
 
-  // Dividends grow with pension investment portfolio value appreciation only
-  const investmentGrowthFactor = Math.pow(
-    1 + FIXED_ASSUMPTIONS.investmentReturn,
-    yearsElapsed,
-  );
+  // Dividends: flat yield on base pension value — no investment return growth applied
   const dividendosInversiones =
-    (baseData.valorPlanesPension * investmentGrowthFactor *
-      FIXED_ASSUMPTIONS.dividendYield) /
-    12;
-  const otrosIngresosMensual = baseData.otrosIngresosMensual * growthFactor;
+    (baseData.valorPlanesPension * FIXED_ASSUMPTIONS.dividendYield) / 12;
+  const otrosIngresosMensual = baseData.otrosIngresosMensual;
   const totalIngresos =
     nomina +
     serviciosFreelance +
@@ -278,27 +265,23 @@ function buildMonthRow(
     otrosIngresosMensual;
 
   // ── GASTOS ────────────────────────────────────────────────────────────────
-  // C. OPEX: use forecastEngine for frequency-aware OpexRule calculation
-  const baseGastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
-  const gastosOperativos = baseGastosOperativos * expenseGrowthFactor;
+  // C. OPEX: use forecastEngine for frequency-aware OpexRule calculation — flat, no inflation applied
+  const gastosOperativos = calculateOpexForMonth(baseData.opexRules, month1to12);
 
-  // Per-property/concept breakdown scaled by the same growth factor
+  // Per-property/concept breakdown — flat, no growth factor applied
   const opexDesglose = calculateOpexBreakdownForMonth(
     baseData.opexRules,
     month1to12,
     baseData.propertyAliasMap,
-  ).map(item => ({ ...item, importe: item.importe * expenseGrowthFactor }));
+  );
 
-  // E. Personal expenses: use forecastEngine for frequency-aware GastoRecurrente calculation
-  const baseGastosPersonales = calculateGastosPersonalesForMonth(
+  // E. Personal expenses: use forecastEngine for frequency-aware GastoRecurrente calculation — flat
+  const gastosPersonales = calculateGastosPersonalesForMonth(
     baseData.gastosRecurrentes,
     month1to12,
   );
-  const gastosPersonales = baseGastosPersonales * expenseGrowthFactor;
 
-  const gastosAutonomo =
-    baseData.gastosAutonomoMensual *
-    expenseGrowthFactor;
+  const gastosAutonomo = baseData.gastosAutonomoMensual;
 
   const baseIrpf =
     nomina + serviciosFreelance + rentasAlquiler + otrosIngresosMensual;
@@ -307,7 +290,7 @@ function buildMonthRow(
   const irpfDevengado = calculateMonthlyIRPF(baseIrpf);
   const irpfAPagar = 0; // TODO: remove when tax module is ready
 
-  const seguridadSocial = baseData.seguridadSocialMensual * growthFactor;
+  const seguridadSocial = baseData.seguridadSocialMensual;
 
   const totalGastos =
     gastosOperativos +
@@ -373,8 +356,7 @@ function buildMonthRow(
   }
   const deudaTotal = deudaInmuebles + deudaPersonal;
 
-  const planesPension =
-    baseData.valorPlanesPension * investmentGrowthFactor;
+  const planesPension = baseData.valorPlanesPension;
   // Otras inversiones: use last known historical valuation; fallback to valor_actual
   const otrasInversiones = sumAssetValuesForMonth(
     baseData.valoracionIndex,
@@ -386,11 +368,8 @@ function buildMonthRow(
   const activos = cajaFinal + inmuebles + planesPension + otrasInversiones;
   const patrimonioNeto = activos - deudaTotal;
 
-  // DrillDown: scale base-year arrays by growth factors for display
-  const scaledNominaDrillDown = baseData.nominaDrillDown[monthOfYear].map(item => ({
-    ...item,
-    importe: item.importe * growthFactor,
-  }));
+  // DrillDown: flat base-year arrays — no growth scaling applied
+  const scaledNominaDrillDown = baseData.nominaDrillDown[monthOfYear];
   // Rent drilldown is flat — no IPC growth applied
   const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear];
 
@@ -665,7 +644,7 @@ async function loadDeudaState(): Promise<DeudaState> {
         principalInicial: p.principalInicial,
         annualRate: annualRatePct / 100,
         plazoMesesTotal: p.plazoMesesTotal,
-        isHipoteca: true, // Prestamo from inmuebles is always a mortgage
+        isHipoteca: p.inmuebleId !== 'standalone', // standalone = personal loan; otherwise mortgage
         concepto: p.nombre ?? 'Hipoteca/Préstamo',
       });
     }
