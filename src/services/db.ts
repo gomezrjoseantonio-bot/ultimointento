@@ -836,12 +836,12 @@ export interface TransferSuggestion {
 }
 export interface TreasuryEvent {
   id?: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'financing';
   amount: number;
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'nomina' | 'contrato' | 'prestamo';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'inversion';
   sourceId?: number; // Document ID or Contract ID
   // Account information
   accountId?: number;

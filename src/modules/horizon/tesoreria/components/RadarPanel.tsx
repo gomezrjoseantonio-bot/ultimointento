@@ -57,7 +57,7 @@ interface TreasuryProjection {
     date: string;
     description: string;
     amount: number;
-    type: 'income' | 'expense';
+    type: 'income' | 'expense' | 'financing';
   }>;
   recommendations: Array<{
     id: string;

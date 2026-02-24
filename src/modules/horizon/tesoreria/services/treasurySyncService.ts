@@ -14,6 +14,8 @@ import { gastosPersonalesService } from '../../../../services/gastosPersonalesSe
 import { nominaService } from '../../../../services/nominaService';
 import { getAllContracts } from '../../../../services/contractService';
 import { prestamosService } from '../../../../services/prestamosService';
+import { autonomoService } from '../../../../services/autonomoService';
+import { inversionesService } from '../../../../services/inversionesService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -22,6 +24,9 @@ import {
   calculateLoanPayment,
   PROJECTION_START_YEAR,
 } from '../../../horizon/proyeccion/mensual/services/proyeccionMensualService';
+
+// Fixed annual dividend yield – mirrors FIXED_ASSUMPTIONS.dividendYield in proyeccionMensualService
+const DIVIDEND_YIELD = 0.02;
 
 /** Result summary returned by generateMonthlyForecasts */
 export interface SyncResult {
@@ -74,7 +79,10 @@ function isContractActiveInMonth(
  *  - GastoRecurrente (personal recurring expenses) → type 'expense', sourceType 'gasto_recurrente'
  *  - Active rental contracts for the month → type 'income', sourceType 'contrato'
  *  - Active nóminas for the month → type 'income', sourceType 'nomina'
- *  - Prestamos (loan quotas) → type 'expense', sourceType 'prestamo'
+ *  - Hipotecas (mortgage quotas) → type 'financing', sourceType 'hipoteca'
+ *  - Préstamos (personal loan quotas) → type 'financing', sourceType 'prestamo'
+ *  - Autónomo deductible expenses → type 'expense', sourceType 'autonomo'
+ *  - Investment interest/dividends → type 'income', sourceType 'inversion'
  *
  * Duplicate prevention: before inserting, we check whether an event with the
  * same sourceType + sourceId already has a predictedDate in the same year-month.
@@ -254,7 +262,7 @@ export async function generateMonthlyForecasts(
     console.error('[TreasurySyncService] Error processing nominas:', err);
   }
 
-  // ── 5. FINANCIACIÓN (Cuotas de Préstamos) ───────────────────────────────
+  // ── 5. FINANCIACIÓN (Cuotas de Hipotecas y Préstamos) ────────────────────
   // Consumes the same data source and formula as the projection engine
   // (prestamosService + calculateLoanPayment) to guarantee amounts match
   // the P&L at the cent.
@@ -263,11 +271,15 @@ export async function generateMonthlyForecasts(
     // absoluteMonthIndex mirrors the index used by buildMonthRow in the projection engine
     const absoluteMonthIndex = (year - PROJECTION_START_YEAR) * 12 + (month - 1);
 
-    // Prestamos use string UUIDs as IDs, which can't be indexed as numeric sourceId.
-    // Build a set of loan descriptions already forecast for this month to avoid duplicates.
-    const existingPrestamoDescriptions = new Set<string>(
+    // Load all existing financing events for the month (hipoteca + prestamo) for duplicate check.
+    // Prestamos use string UUIDs as IDs, so we use description-based deduplication.
+    const existingFinancingDescriptions = new Set<string>(
       (await db.getAll('treasuryEvents'))
-        .filter(e => e.sourceType === 'prestamo' && e.predictedDate.startsWith(monthPrefix))
+        .filter(
+          e =>
+            (e.sourceType === 'hipoteca' || e.sourceType === 'prestamo') &&
+            e.predictedDate.startsWith(monthPrefix),
+        )
         .map(e => e.description),
     );
 
@@ -291,9 +303,15 @@ export async function generateMonthlyForecasts(
 
       if (cuota <= 0) continue;
 
-      const description = `Cuota Préstamo – ${prestamo.nombre ?? 'Financiación'}`;
+      // Differentiate hipotecas (linked to a property) from personal loans.
+      // 'standalone' is the sentinel value used by prestamosService to indicate a personal (non-property) loan.
+      const STANDALONE_LOAN_ID = 'standalone';
+      const isHipoteca = prestamo.inmuebleId !== STANDALONE_LOAN_ID;
+      const sourceType = isHipoteca ? 'hipoteca' as const : 'prestamo' as const;
+      const label = isHipoteca ? 'Hipoteca' : 'Préstamo';
+      const description = `Cuota ${label} – ${prestamo.nombre ?? 'Financiación'}`;
 
-      if (existingPrestamoDescriptions.has(description)) {
+      if (existingFinancingDescriptions.has(description)) {
         skipped++;
         continue;
       }
@@ -304,11 +322,11 @@ export async function generateMonthlyForecasts(
         : undefined;
 
       await insertEvent({
-        type: 'expense' as const,
+        type: 'financing' as const,
         amount: cuota,
         predictedDate: buildDate(year, month, prestamo.diaCargoMes ?? 1),
         description,
-        sourceType: 'prestamo' as const,
+        sourceType,
         sourceId: undefined, // string UUID – incompatible with numeric sourceId field
         accountId,
         status: 'predicted' as const,
@@ -318,6 +336,98 @@ export async function generateMonthlyForecasts(
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing prestamos:', err);
+  }
+
+  // ── 6. AUTÓNOMO – Gastos deducibles (freelance expenses) ─────────────────
+  // Uses the same calculation logic as proyeccionMensualService.loadBaseData()
+  try {
+    const personalData = await personalDataService.getPersonalData();
+    const personalDataId = personalData?.id ?? 1;
+    const autonomos = await autonomoService.getAutonomos(personalDataId);
+    const autonomoActivo = autonomos.find(a => a.activo);
+
+    if (autonomoActivo) {
+      const gastosAnuales = autonomoActivo.gastosDeducibles.reduce(
+        (sum, g) => sum + g.importe,
+        0,
+      );
+      const gastoMensual = gastosAnuales / 12;
+
+      if (gastoMensual > 0) {
+        const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
+
+        const alreadyExists = (await db.getAll('treasuryEvents')).some(
+          e =>
+            e.sourceType === 'autonomo' &&
+            e.description === description &&
+            e.predictedDate.startsWith(monthPrefix),
+        );
+
+        if (alreadyExists) {
+          skipped++;
+        } else {
+          // Use the configured payment day; default to 1st of the month when reglaPagoDia is not set.
+          const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
+          await insertEvent({
+            type: 'expense' as const,
+            amount: gastoMensual,
+            predictedDate: buildDate(year, month, day),
+            description,
+            sourceType: 'autonomo' as const,
+            sourceId: autonomoActivo.id,
+            // cuentaPago is the bank account configured by the user for autonomo payments;
+            // if undefined the event will be created without account linkage.
+            accountId: autonomoActivo.cuentaPago,
+            status: 'predicted' as const,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing autonomo gastos:', err);
+  }
+
+  // ── 7. INVERSIONES – Intereses / Dividendos proyectados ──────────────────
+  // Uses the same calculation as proyeccionMensualService (DIVIDEND_YIELD * valorPlanesPension / 12)
+  try {
+    const posiciones = await inversionesService.getPosiciones();
+    const valorPlanesPension = posiciones
+      .filter(p => p.tipo === 'plan_pensiones' || p.tipo === 'plan_empleo')
+      .reduce((sum, p) => sum + p.valor_actual, 0);
+
+    const dividendosMensual = (valorPlanesPension * DIVIDEND_YIELD) / 12;
+
+    if (dividendosMensual > 0) {
+      const description = 'Intereses / Dividendos – Inversiones';
+
+      const alreadyExists = (await db.getAll('treasuryEvents')).some(
+        e =>
+          e.sourceType === 'inversion' &&
+          e.description === description &&
+          e.predictedDate.startsWith(monthPrefix),
+      );
+
+      if (alreadyExists) {
+        skipped++;
+      } else {
+        await insertEvent({
+          type: 'income' as const,
+          amount: dividendosMensual,
+          predictedDate: buildDate(year, month, 1),
+          description,
+          sourceType: 'inversion' as const,
+          sourceId: undefined,
+          accountId: undefined,
+          status: 'predicted' as const,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing inversiones:', err);
   }
 
   return { created, skipped };
