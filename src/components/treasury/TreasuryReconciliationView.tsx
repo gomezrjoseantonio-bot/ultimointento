@@ -13,11 +13,13 @@ import {
   Circle,
   X,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCompact } from '../../utils/formatUtils';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
+import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import './treasury-reconciliation.css';
 
 /**
@@ -115,6 +117,9 @@ const TreasuryReconciliationView: React.FC = () => {
   const [newMovementForm, setNewMovementForm] = useState<NewMovementForm>(DEFAULT_NEW_MOVEMENT);
   const [savingMovement, setSavingMovement] = useState(false);
 
+  // "Generar Previsiones" sync state
+  const [syncingForecasts, setSyncingForecasts] = useState(false);
+
   // Focus amount input when inline editing starts
   useEffect(() => {
     if (editState && amountInputRef.current) {
@@ -190,6 +195,28 @@ const TreasuryReconciliationView: React.FC = () => {
     const [year, month] = monthStr.split('-');
     const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  /** Generate forecast events for the current month from projection rules */
+  const handleGenerateForecasts = async () => {
+    setSyncingForecasts(true);
+    try {
+      const [year, month] = currentMonth.split('-').map(Number);
+      const result = await generateMonthlyForecasts(year, month);
+      if (result.created > 0) {
+        toast.success(
+          result.created === 1 ? '1 previsión generada' : `${result.created} previsiones generadas`,
+        );
+        await loadData();
+      } else {
+        toast.success('El mes ya está sincronizado');
+      }
+    } catch (err) {
+      console.error('Error generating forecasts:', err);
+      toast.error('Error al generar previsiones');
+    } finally {
+      setSyncingForecasts(false);
+    }
   };
 
   /**
@@ -476,6 +503,16 @@ const TreasuryReconciliationView: React.FC = () => {
             aria-label="Mes siguiente"
           >
             <ChevronRight size={20} />
+          </button>
+          <button
+            className="treasury-decision-sync-button"
+            onClick={handleGenerateForecasts}
+            disabled={syncingForecasts}
+            aria-label="Generar previsiones del mes"
+            title="Sincronizar previsiones del mes desde el motor de proyecciones"
+          >
+            <RefreshCw size={16} className={syncingForecasts ? 'treasury-decision-sync-button__icon--spinning' : ''} />
+            {syncingForecasts ? 'Sincronizando…' : 'Generar previsiones'}
           </button>
         </div>
       </div>
