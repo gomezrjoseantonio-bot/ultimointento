@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sun, Snowflake, Minus } from 'lucide-react';
+import { X, Sun, Snowflake, Minus, Zap, Landmark, Building, Shield, Wrench, Settings, MoreHorizontal } from 'lucide-react';
 import {
   OpexRule,
   OpexCategory,
   OpexFrequency,
   OpexEstacionalidad,
   AsymmetricPayment,
+  Account,
+  initDB,
 } from '../../services/db';
 
 interface OpexRuleFormProps {
@@ -15,15 +17,15 @@ interface OpexRuleFormProps {
   onCancel: () => void;
 }
 
-const CATEGORY_LABELS: Record<OpexCategory, string> = {
-  impuesto: 'Impuesto',
-  suministro: 'Suministro',
-  comunidad: 'Comunidad',
-  seguro: 'Seguro',
-  servicio: 'Servicio',
-  gestion: 'Gestión',
-  otro: 'Otro',
-};
+const CATEGORY_OPTIONS: { value: OpexCategory; label: string; Icon: React.ElementType }[] = [
+  { value: 'impuesto', label: 'Impuesto', Icon: Landmark },
+  { value: 'suministro', label: 'Suministro', Icon: Zap },
+  { value: 'comunidad', label: 'Comunidad', Icon: Building },
+  { value: 'seguro', label: 'Seguro', Icon: Shield },
+  { value: 'servicio', label: 'Servicio', Icon: Wrench },
+  { value: 'gestion', label: 'Gestión', Icon: Settings },
+  { value: 'otro', label: 'Otro', Icon: MoreHorizontal },
+];
 
 const FREQUENCY_LABELS: Record<OpexFrequency, string> = {
   semanal: 'Semanal',
@@ -47,6 +49,7 @@ const defaultRule = (propertyId: number): Omit<OpexRule, 'id' | 'createdAt' | 'u
   concepto: '',
   importeEstimado: 0,
   frecuencia: 'mensual',
+  diaCobro: 1,
   activo: true,
 });
 
@@ -54,6 +57,15 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
   const [form, setForm] = useState<Omit<OpexRule, 'createdAt' | 'updatedAt'>>(
     rule ? { ...rule } : { ...defaultRule(propertyId) }
   );
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    initDB().then((db) => {
+      db.getAll('accounts').then((all) => {
+        setAccounts(all.filter((a) => a.activa && a.status !== 'DELETED'));
+      });
+    });
+  }, []);
 
   // Keep asymmetricPayments in sync with mesesCobro
   const mesesCobro = form.mesesCobro;
@@ -129,15 +141,23 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
           {/* Categoría */}
           <div>
             <label className={labelClass}>Categoría</label>
-            <select
-              className={inputClass}
-              value={form.categoria}
-              onChange={(e) => handleChange('categoria', e.target.value as OpexCategory)}
-            >
-              {(Object.entries(CATEGORY_LABELS) as [OpexCategory, string][]).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+            <div className="grid grid-cols-4 gap-1.5">
+              {CATEGORY_OPTIONS.map(({ value, label, Icon }) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => handleChange('categoria', value)}
+                  className={`flex flex-col items-center gap-1 px-2 py-2 text-xs rounded-md border transition-colors ${
+                    form.categoria === value
+                      ? 'bg-gray-900 text-white border-gray-900'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Importe */}
@@ -150,6 +170,21 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
               min={0}
               step="0.01"
               onChange={(e) => handleChange('importeEstimado', parseFloat(e.target.value) || 0)}
+            />
+          </div>
+
+          {/* Día de cobro */}
+          <div>
+            <label className={labelClass}>Día de cobro</label>
+            <input
+              type="number"
+              className={inputClass}
+              value={form.diaCobro ?? 1}
+              min={1}
+              max={31}
+              onChange={(e) =>
+                handleChange('diaCobro', Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))
+              }
             />
           </div>
 
@@ -309,23 +344,21 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
 
           {/* Cuenta bancaria */}
           <div>
-            <label className={labelClass}>
-              Cuenta bancaria{' '}
-              <span className="font-normal text-gray-500">(ID opcional)</span>
-            </label>
-            <input
-              type="number"
+            <label className={labelClass}>Cuenta bancaria</label>
+            <select
               className={inputClass}
               value={form.accountId ?? ''}
-              min={1}
               onChange={(e) =>
-                handleChange(
-                  'accountId',
-                  e.target.value ? parseInt(e.target.value) : undefined
-                )
+                handleChange('accountId', e.target.value ? parseInt(e.target.value) : undefined)
               }
-              placeholder="Sin vincular"
-            />
+            >
+              <option value="">Sin vincular</option>
+              {accounts.map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.alias ?? acc.banco?.name ?? `Cuenta …${acc.iban.slice(-4)}`} – {acc.ibanMasked ?? acc.iban}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Activo */}
