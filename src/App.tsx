@@ -53,6 +53,7 @@ const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyecc
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
 const ProyeccionMensual = React.lazy(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
+const PresupuestosView = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
@@ -344,7 +345,7 @@ function App() {
               {/* Main proyeccion tabs */}
               <Route path="presupuesto" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ProyeccionMensual />
+                  <PresupuestosView />
                 </React.Suspense>
               } />
               <Route path="comparativa" element={
