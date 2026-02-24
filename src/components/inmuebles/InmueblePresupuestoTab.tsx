@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertCircle, Landmark, Zap, Building, Shield, Wrench, Settings, MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { OpexRule } from '../../services/db';
+import { OpexRule, Account, initDB } from '../../services/db';
 import {
   getOpexRulesForProperty,
   generateBaseOpexForProperty,
@@ -34,14 +34,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   otro: 'Otro',
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  impuesto: 'bg-red-100 text-red-700',
-  suministro: 'bg-blue-100 text-blue-700',
-  comunidad: 'bg-purple-100 text-purple-700',
-  seguro: 'bg-green-100 text-green-700',
-  servicio: 'bg-orange-100 text-orange-700',
-  gestion: 'bg-yellow-100 text-yellow-700',
-  otro: 'bg-gray-100 text-gray-700',
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  impuesto: Landmark,
+  suministro: Zap,
+  comunidad: Building,
+  seguro: Shield,
+  servicio: Wrench,
+  gestion: Settings,
+  otro: MoreHorizontal,
 };
 
 const formatEuroLocal = (amount: number) =>
@@ -52,6 +52,26 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
   const [loading, setLoading] = useState(true);
   const [editingRule, setEditingRule] = useState<OpexRule | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+
+  useEffect(() => {
+    initDB().then((db) => {
+      db.getAll('accounts').then((all) => {
+        setAccounts(all.filter((a) => a.activa && a.status !== 'DELETED'));
+      }).catch((err) => console.error('Error loading accounts:', err));
+    }).catch((err) => console.error('Error initializing DB:', err));
+  }, []);
+
+  const getAccountName = (accountId?: number): string => {
+    if (!accountId) return '—';
+    const acc = accounts.find((a) => a.id === accountId);
+    if (!acc) return '—';
+    if (acc.alias) return acc.alias;
+    const iban = acc.iban ?? '';
+    const last4 = iban.length >= 4 ? iban.slice(-4) : iban;
+    if (acc.banco?.name) return `${acc.banco.name} ···${last4}`;
+    return last4 ? `···${last4}` : '—';
+  };
 
   const loadRules = useCallback(async () => {
     try {
@@ -211,13 +231,15 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">{rule.concepto}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        CATEGORY_COLORS[rule.categoria] ?? 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {CATEGORY_LABELS[rule.categoria] ?? rule.categoria}
-                    </span>
+                    {(() => {
+                      const Icon = CATEGORY_ICONS[rule.categoria] ?? MoreHorizontal;
+                      return (
+                        <span className="inline-flex items-center gap-1.5 text-gray-700">
+                          <Icon className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+                          {CATEGORY_LABELS[rule.categoria] ?? rule.categoria}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-700">
                     {rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments?.length ? (
@@ -234,8 +256,8 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                   <td className="px-4 py-3 text-gray-600">
                     {FREQUENCY_LABELS[rule.frecuencia] ?? rule.frecuencia}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {rule.accountId ? `#${rule.accountId}` : '—'}
+                  <td className="px-4 py-3 text-gray-600 text-sm">
+                    {getAccountName(rule.accountId)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-2">
