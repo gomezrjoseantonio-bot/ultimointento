@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Monthly financial projection page (Phase 1)
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Info, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { generateProyeccionMensual } from './services/proyeccionMensualService';
 import { ProyeccionAnual } from './types/proyeccionMensual';
 import MonthlyProjectionTable from './components/MonthlyProjectionTable';
@@ -52,19 +52,6 @@ const ProyeccionMensual: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Proyección Mensual</h1>
         <p className="mt-1 text-sm text-gray-500">
           Proyección financiera detallada basada en tu situación actual
-        </p>
-      </div>
-
-      {/* Info box */}
-      <div className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-        <Info className="w-5 h-5 shrink-0 mt-0.5 text-gray-400" />
-        <p>
-          Esta proyección utiliza tus datos reales actuales. Las rentas de alquiler se
-          proyectan <strong>planas</strong> según el contrato vigente (sin ajuste IPC). Los
-          salarios y gastos aplican un crecimiento del <strong>2% anual</strong>. Los
-          préstamos se amortizan según el sistema francés. Los valores de inmuebles e
-          inversiones se toman de los <strong>valores históricos registrados</strong> y, si
-          no hay datos, del valor de compra/inicial.
         </p>
       </div>
 
