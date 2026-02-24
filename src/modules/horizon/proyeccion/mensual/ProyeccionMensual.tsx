@@ -59,10 +59,12 @@ const ProyeccionMensual: React.FC = () => {
       <div className="flex gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
         <Info className="w-5 h-5 shrink-0 mt-0.5 text-gray-400" />
         <p>
-          Esta proyección utiliza tus datos reales actuales y aplica un crecimiento del{' '}
-          <strong>2% anual (IPC)</strong> sobre ingresos, gastos y rentas. Los préstamos
-          se amortizan según el sistema francés. Los valores de inmuebles aprecian un 2%
-          anual.
+          Esta proyección utiliza tus datos reales actuales. Las rentas de alquiler se
+          proyectan <strong>planas</strong> según el contrato vigente (sin ajuste IPC). Los
+          salarios y gastos aplican un crecimiento del <strong>2% anual</strong>. Los
+          préstamos se amortizan según el sistema francés. Los valores de inmuebles e
+          inversiones se toman de los <strong>valores históricos registrados</strong> y, si
+          no hay datos, del valor de compra/inicial.
         </p>
       </div>
 
