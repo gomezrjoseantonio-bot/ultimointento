@@ -65,6 +65,7 @@ function isContractActiveInMonth(
  *  - GastoRecurrente (personal recurring expenses) → type 'expense', sourceType 'gasto_recurrente'
  *  - Active rental contracts for the month → type 'income', sourceType 'contrato'
  *  - Active nóminas for the month → type 'income', sourceType 'nomina'
+ *  - Prestamos (loan quotas) → type 'expense', sourceType 'prestamo'
  *
  * Duplicate prevention: before inserting, we check whether an event with the
  * same sourceType + sourceId already has a predictedDate in the same year-month.
@@ -82,7 +83,7 @@ export async function generateMonthlyForecasts(
   let skipped = 0;
 
   // Helper: check if a forecast already exists for this sourceType + sourceId in this month
-  async function isDuplicate(sourceType: string, sourceId: number): Promise<boolean> {
+  async function isDuplicate(sourceType: string, sourceId: number | string): Promise<boolean> {
     const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
     return existing.some(
       e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
@@ -242,6 +243,47 @@ export async function generateMonthlyForecasts(
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing nominas:', err);
+  }
+
+  // ── 5. FINANCIACIÓN (Cuotas de Préstamos) ───────────────────────────────
+  try {
+    const prestamos = await db.getAll('prestamos');
+    
+    for (const prestamo of prestamos) {
+      if (!prestamo.id) continue;
+      
+      if (await isDuplicate('prestamo', prestamo.id)) {
+        skipped++;
+        continue;
+      }
+
+      const tasaMensual = (prestamo.tinFijo || 0) / 100 / 12;
+      const plazoMeses = prestamo.plazoPeriodo === 'AÑOS' ? prestamo.plazoTotal * 12 : prestamo.plazoTotal;
+      let cuota = 0;
+      
+      if (tasaMensual > 0 && plazoMeses > 0) {
+        cuota = prestamo.capitalInicial * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / (Math.pow(1 + tasaMensual, plazoMeses) - 1);
+      } else if (plazoMeses > 0) {
+        cuota = prestamo.capitalInicial / plazoMeses;
+      }
+
+      if (cuota > 0) {
+        await insertEvent({
+          type: 'expense' as const,
+          amount: cuota,
+          predictedDate: buildDate(year, month, prestamo.diaCobroMes || 1),
+          description: `Cuota Préstamo – ${prestamo.alias || 'Financiación'}`,
+          sourceType: 'prestamo' as const,
+          sourceId: prestamo.id,
+          accountId: parseInt(prestamo.cuentaCargoId, 10), // Ensure it's a number if it comes as string
+          status: 'predicted' as const,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing prestamos:', err);
   }
 
   return { created, skipped };
