@@ -234,6 +234,7 @@ export async function generateMonthlyForecasts(
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
         sourceType: 'nomina' as const,
         sourceId: nomina.id,
+        accountId: nomina.cuentaAbono,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
