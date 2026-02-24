@@ -14,6 +14,12 @@ import {
   X,
   Plus,
   RefreshCw,
+  Settings,
+  User,
+  Home,
+  Briefcase,
+  FileText,
+  Tag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCompact } from '../../utils/formatUtils';
@@ -36,6 +42,7 @@ export interface TreasuryEvent {
   date: string;
   type: 'income' | 'expense' | 'financing';
   status: 'previsto' | 'confirmado';
+  sourceType?: string;
   parentId?: string;
 }
 
@@ -50,7 +57,7 @@ interface SimpleAccount {
 interface DesgloseModalData {
   title: string;
   Icon: React.ElementType;
-  items: Array<{ label: string; previsto: number; real: number }>;
+  items: Array<{ label: string; previsto: number; real: number; Icon: React.ElementType }>;
 }
 
 interface NewMovementForm {
@@ -77,6 +84,19 @@ const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   if (name.includes('metal') || name.includes('cash') || name.includes('efectivo')) return 'cash';
   if (name.includes('revolut') || name.includes('wallet') || name.includes('paypal')) return 'wallet';
   return 'bank';
+};
+
+const getSourceTypeIcon = (sourceType?: string): React.ElementType => {
+  switch (sourceType) {
+    case 'opex_rule': return Settings;
+    case 'gasto_recurrente': return User;
+    case 'contrato': return Home;
+    case 'nomina': return Briefcase;
+    case 'document': return FileText;
+    case 'ingreso': return TrendingUp;
+    case 'gasto': return TrendingDown;
+    default: return Tag;
+  }
 };
 
 /**
@@ -163,6 +183,7 @@ const TreasuryReconciliationView: React.FC = () => {
           date: e.predictedDate,
           type: e.type as 'income' | 'expense' | 'financing',
           status: dbStatusToLocal(e.status),
+          sourceType: e.sourceType,
         }));
 
       setAccounts(simpleAccounts);
@@ -469,13 +490,13 @@ const TreasuryReconciliationView: React.FC = () => {
     Icon,
     items: events
       .filter(e => e.type === filterType)
-      .reduce<Array<{ label: string; previsto: number; real: number }>>((acc, ev) => {
+      .reduce<Array<{ label: string; previsto: number; real: number; Icon: React.ElementType }>>((acc, ev) => {
         const existing = acc.find(i => i.label === ev.concept);
         if (existing) {
           existing.previsto += ev.amount;
           if (ev.status === 'confirmado') existing.real += ev.amount;
         } else {
-          acc.push({ label: ev.concept, previsto: ev.amount, real: ev.status === 'confirmado' ? ev.amount : 0 });
+          acc.push({ label: ev.concept, previsto: ev.amount, real: ev.status === 'confirmado' ? ev.amount : 0, Icon: getSourceTypeIcon(ev.sourceType) });
         }
         return acc;
       }, []),
@@ -753,21 +774,29 @@ const TreasuryReconciliationView: React.FC = () => {
                   <X size={18} />
                 </button>
               </div>
-              <div className="desglose-modal__subheader">
-                <span>Concepto</span>
-                <span>Previsto / Real</span>
-              </div>
               {desgloseModal.items.length === 0 ? (
                 <p className="desglose-modal__empty">Sin eventos de este tipo en el periodo</p>
               ) : (
-                desgloseModal.items.map(item => (
-                  <div key={item.label} className="desglose-modal__row">
-                    <span className="desglose-modal__row-label">{item.label}</span>
-                    <span className="desglose-modal__row-values">
-                      {formatCompact(item.previsto)} / {formatCompact(item.real)}
-                    </span>
-                  </div>
-                ))
+                <div className="desglose-modal__list">
+                  {desgloseModal.items.map(item => {
+                    const ItemIcon = item.Icon;
+                    return (
+                      <div key={item.label} className="desglose-modal__row">
+                        <div className="desglose-modal__row-left">
+                          <span className="desglose-modal__row-icon">
+                            <ItemIcon size={16} />
+                          </span>
+                          <span className="desglose-modal__row-label">{item.label}</span>
+                        </div>
+                        <div className="desglose-modal__row-right">
+                          <span className="desglose-modal__row-previsto">{formatCompact(item.previsto)} €</span>
+                          <span className="desglose-modal__row-sep">/</span>
+                          <span className="desglose-modal__row-real">{formatCompact(item.real)} €</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
