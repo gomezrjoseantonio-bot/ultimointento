@@ -43,6 +43,9 @@ function calculateMonthlyIRPF(monthlyIncome: number): number {
   return monthlyIncome * rate;
 }
 
+/** The projection always starts from the current calendar year (constant baseline). */
+export const PROJECTION_START_YEAR = START_YEAR;
+
 /**
  * Calculate outstanding principal at a given month using the French amortization method
  */
@@ -68,7 +71,7 @@ function calculateOutstandingPrincipal(
 /**
  * Calculate monthly loan payment (French amortization system)
  */
-function calculateLoanPayment(
+export function calculateLoanPayment(
   principal: number,
   annualRate: number,
   totalMonths: number,

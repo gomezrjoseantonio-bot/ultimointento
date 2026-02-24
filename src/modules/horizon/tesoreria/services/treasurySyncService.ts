@@ -3,16 +3,25 @@
 // Bridges the forecastEngine with the day-to-day treasury (TreasuryReconciliationView).
 // Generates monthly forecast TreasuryEvents from projection rules so that the
 // "Previsiones" column is populated automatically.
+//
+// IMPORTANT: This service DOES NOT calculate any amounts itself.
+// It consumes the projection engine (proyeccionMensualService) as the single source
+// of truth for all amounts, ensuring the treasury events match the P&L at the cent.
 
 import { initDB } from '../../../../services/db';
 import { personalDataService } from '../../../../services/personalDataService';
 import { gastosPersonalesService } from '../../../../services/gastosPersonalesService';
 import { nominaService } from '../../../../services/nominaService';
 import { getAllContracts } from '../../../../services/contractService';
+import { prestamosService } from '../../../../services/prestamosService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
 } from '../../../horizon/proyeccion/mensual/services/forecastEngine';
+import {
+  calculateLoanPayment,
+  PROJECTION_START_YEAR,
+} from '../../../horizon/proyeccion/mensual/services/proyeccionMensualService';
 
 /** Result summary returned by generateMonthlyForecasts */
 export interface SyncResult {
@@ -246,41 +255,66 @@ export async function generateMonthlyForecasts(
   }
 
   // ── 5. FINANCIACIÓN (Cuotas de Préstamos) ───────────────────────────────
+  // Consumes the same data source and formula as the projection engine
+  // (prestamosService + calculateLoanPayment) to guarantee amounts match
+  // the P&L at the cent.
   try {
-    const prestamos = await db.getAll('prestamos');
-    
+    const prestamos = await prestamosService.getAllPrestamos();
+    // absoluteMonthIndex mirrors the index used by buildMonthRow in the projection engine
+    const absoluteMonthIndex = (year - PROJECTION_START_YEAR) * 12 + (month - 1);
+
+    // Prestamos use string UUIDs as IDs, which can't be indexed as numeric sourceId.
+    // Build a set of loan descriptions already forecast for this month to avoid duplicates.
+    const existingPrestamoDescriptions = new Set<string>(
+      (await db.getAll('treasuryEvents'))
+        .filter(e => e.sourceType === 'prestamo' && e.predictedDate.startsWith(monthPrefix))
+        .map(e => e.description),
+    );
+
     for (const prestamo of prestamos) {
       if (!prestamo.id) continue;
-      
-      if (await isDuplicate('prestamo', prestamo.id)) {
+
+      // Determine the effective annual rate using the same logic as loadDeudaState()
+      const annualRatePct =
+        prestamo.tipo === 'FIJO'
+          ? (prestamo.tipoNominalAnualFijo ?? 0)
+          : prestamo.tipo === 'VARIABLE'
+            ? (prestamo.valorIndiceActual ?? 0) + (prestamo.diferencial ?? 0)
+            : (prestamo.tipoNominalAnualMixtoFijo ?? prestamo.tipoNominalAnualFijo ?? 0);
+
+      const { cuota } = calculateLoanPayment(
+        prestamo.principalInicial,
+        annualRatePct / 100,
+        prestamo.plazoMesesTotal,
+        absoluteMonthIndex,
+      );
+
+      if (cuota <= 0) continue;
+
+      const description = `Cuota Préstamo – ${prestamo.nombre ?? 'Financiación'}`;
+
+      if (existingPrestamoDescriptions.has(description)) {
         skipped++;
         continue;
       }
 
-      const tasaMensual = (prestamo.tinFijo || 0) / 100 / 12;
-      const plazoMeses = prestamo.plazoPeriodo === 'AÑOS' ? prestamo.plazoTotal * 12 : prestamo.plazoTotal;
-      let cuota = 0;
-      
-      if (tasaMensual > 0 && plazoMeses > 0) {
-        cuota = prestamo.capitalInicial * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) / (Math.pow(1 + tasaMensual, plazoMeses) - 1);
-      } else if (plazoMeses > 0) {
-        cuota = prestamo.capitalInicial / plazoMeses;
-      }
+      // cuentaCargoId stores the treasury account's numeric ID as a string
+      const accountId = prestamo.cuentaCargoId
+        ? parseInt(prestamo.cuentaCargoId, 10) || undefined
+        : undefined;
 
-      if (cuota > 0) {
-        await insertEvent({
-          type: 'expense' as const,
-          amount: cuota,
-          predictedDate: buildDate(year, month, prestamo.diaCobroMes || 1),
-          description: `Cuota Préstamo – ${prestamo.alias || 'Financiación'}`,
-          sourceType: 'prestamo' as const,
-          sourceId: prestamo.id,
-          accountId: parseInt(prestamo.cuentaCargoId, 10), // Ensure it's a number if it comes as string
-          status: 'predicted' as const,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
+      await insertEvent({
+        type: 'expense' as const,
+        amount: cuota,
+        predictedDate: buildDate(year, month, prestamo.diaCargoMes ?? 1),
+        description,
+        sourceType: 'prestamo' as const,
+        sourceId: undefined, // string UUID – incompatible with numeric sourceId field
+        accountId,
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing prestamos:', err);
