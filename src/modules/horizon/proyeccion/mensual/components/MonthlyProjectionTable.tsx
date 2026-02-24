@@ -194,19 +194,19 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
 
   return (
     <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
-      <table className="w-full text-sm border-collapse">
+      <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="bg-gray-100 border-b border-gray-300">
             {/* Sticky label column */}
             <th
-              className="sticky left-0 z-20 bg-gray-100 text-left px-3 py-2 font-semibold text-gray-700 border-r border-gray-300 min-w-[200px]"
+              className="sticky left-0 z-20 bg-gray-100 text-left px-2 py-1 font-semibold text-gray-700 border-r border-gray-300 min-w-[140px]"
             >
               ATRIBUTO
             </th>
             {months.map((m, i) => (
               <th
                 key={m.month}
-                className="px-3 py-2 font-semibold text-gray-700 text-right min-w-[100px] whitespace-nowrap"
+                className="px-1 py-1 font-semibold text-gray-700 text-right min-w-[68px] whitespace-nowrap"
               >
                 {MONTH_ABBR[i]}-{String(year).slice(2)}
               </th>
@@ -227,7 +227,7 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                     onClick={() => toggleSection(sectionKey)}
                   >
                     <td
-                      className={`sticky left-0 z-10 ${sectionCfg.bg} px-3 py-2 font-bold uppercase tracking-wide text-xs ${sectionCfg.headerText} border-r border-gray-300`}
+                      className={`sticky left-0 z-10 ${sectionCfg.bg} px-2 py-0.5 font-bold uppercase tracking-wide text-xs ${sectionCfg.headerText} border-r border-gray-300`}
                     >
                       <span className="flex items-center gap-1">
                         {isCollapsed ? (
@@ -239,7 +239,7 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                       </span>
                     </td>
                     {months.map(m => (
-                      <td key={m.month} className={`${sectionCfg.bg} px-3 py-2`} />
+                      <td key={m.month} className={`${sectionCfg.bg} px-1 py-0.5`} />
                     ))}
                   </tr>
 
@@ -259,7 +259,7 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                             onClick={isDrilldownRow ? () => setOpexExpanded(v => !v) : undefined}
                           >
                             <td
-                              className={`sticky left-0 z-10 ${rowBg} px-3 py-1.5 border-r border-gray-200 ${row.bold ? 'font-semibold' : 'text-gray-600'} pl-6`}
+                              className={`sticky left-0 z-10 ${rowBg} px-2 py-0.5 border-r border-gray-200 ${row.bold ? 'font-semibold' : 'text-gray-600'} pl-5`}
                             >
                               <span className="flex items-center gap-1">
                                 {isDrilldownRow && opexPropertyAliases.length > 0 && (
@@ -275,7 +275,7 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                               return (
                                 <td
                                   key={m.month}
-                                  className={`px-3 py-1.5 text-right tabular-nums ${row.bold ? 'font-semibold' : ''}`}
+                                  className={`px-1 py-0.5 text-right tabular-nums ${row.bold ? 'font-semibold' : ''}`}
                                 >
                                   {formatValue(val, row.highlight)}
                                 </td>
@@ -290,13 +290,13 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                                 key={`opex-${alias}`}
                                 className="bg-gray-50 border-b border-gray-100"
                               >
-                                <td className="sticky left-0 z-10 bg-gray-50 pl-10 pr-3 py-1 text-xs text-gray-500 border-r border-gray-200">
+                                <td className="sticky left-0 z-10 bg-gray-50 pl-8 pr-2 py-0.5 text-xs text-gray-500 border-r border-gray-200">
                                   {alias}
                                 </td>
                                 {months.map(m => (
                                   <td
                                     key={m.month}
-                                    className="px-3 py-1 text-right tabular-nums text-xs text-gray-600"
+                                    className="px-1 py-0.5 text-right tabular-nums text-xs text-gray-600"
                                   >
                                     {formatInteger(getOpexForProperty(m, alias))}
                                   </td>

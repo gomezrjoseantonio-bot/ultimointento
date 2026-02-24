@@ -11,6 +11,7 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { GastoRecurrente } from '../../../../../types/personal';
+import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
   calculateOpexForMonth,
@@ -20,12 +21,9 @@ import {
 
 // Fixed growth assumptions for Phase 1
 const FIXED_ASSUMPTIONS = {
-  rentGrowth: 0.02,           // 2% IPC annual
   salaryGrowth: 0.02,         // 2% annual
   expenseInflation: 0.02,     // 2% annual
-  propertyAppreciation: 0.02, // 2% annual
-  vacancyRate: 0.0,           // 0% (100% occupancy)
-  investmentReturn: 0.04,     // 4% annual (Phase 1: fixed estimate for non-pension investments)
+  investmentReturn: 0.04,     // 4% annual (Phase 1: fixed estimate for pension investments)
   dividendYield: 0.02,        // 2% annual dividend yield on non-pension investments (Phase 1 estimate)
 };
 
@@ -133,10 +131,15 @@ interface DeudaState {
   loans: LoanInfo[];
 }
 
+interface AssetInitialValue {
+  id: number;
+  initialValue: number;
+}
+
 interface BaseData {
   // Monthly arrays for base year (index 0 = January, 11 = December)
   nominaNetaMensual: number[];  // Exact net per month from calculateSalary()
-  rentaMensualPorMes: number[]; // Rental income per month (contract date-filtered)
+  rentaMensualPorMes: number[]; // Rental income per month (contract date-filtered, flat)
 
   // DrillDown arrays (12 entries, one per month)
   nominaDrillDown: DrillDownItem[][];
@@ -150,15 +153,83 @@ interface BaseData {
   /** Active personal recurring expenses */
   gastosRecurrentes: GastoRecurrente[];
 
+  // Historical valuations index for real patrimonio calculation (pre-built for performance)
+  valoracionIndex: ValoracionIndex;
+  inmuebleInitialValues: AssetInitialValue[];    // fallback: purchase price
+  inversionInitialValues: AssetInitialValue[];   // fallback: valor_actual
+
   // Scalars
   freelanceMensual: number;
   gastosAutonomoMensual: number;
   seguridadSocialMensual: number;
   otrosIngresosMensual: number;
-  valorInmuebles: number;
   valorPlanesPension: number;
-  valorOtrasInversiones: number;
   cajaInicial: number;
+}
+
+/** Pre-built index for fast historical valuation lookup: key = "tipo_activo|activo_id" → sorted asc array */
+type ValoracionIndex = Map<string, ValoracionHistorica[]>;
+
+/**
+ * Builds a lookup map from a flat list of historical valuations.
+ * Each map key is "{tipo_activo}|{activo_id}" and the value is an array
+ * sorted ascending by fecha_valoracion so binary search is possible.
+ */
+function buildValoracionIndex(history: ValoracionHistorica[]): ValoracionIndex {
+  const index: ValoracionIndex = new Map();
+  for (const v of history) {
+    const key = `${v.tipo_activo}|${v.activo_id}`;
+    const bucket = index.get(key);
+    if (bucket) {
+      bucket.push(v);
+    } else {
+      index.set(key, [v]);
+    }
+  }
+  // Sort each bucket ascending so we can iterate from the end for "latest ≤ month"
+  index.forEach(bucket => {
+    bucket.sort((a: ValoracionHistorica, b: ValoracionHistorica) =>
+      a.fecha_valoracion.localeCompare(b.fecha_valoracion),
+    );
+  });
+  return index;
+}
+
+/**
+ * Returns the last known valuation for an asset at or before a given month (YYYY-MM).
+ * Falls back to the provided initialValue if no historical record exists.
+ */
+function getLastValueForAsset(
+  index: ValoracionIndex,
+  tipo: 'inmueble' | 'inversion',
+  activoId: number,
+  atOrBeforeMonth: string,
+  initialValue: number,
+): number {
+  const bucket = index.get(`${tipo}|${activoId}`);
+  if (!bucket) return initialValue;
+  // Find the last entry with fecha_valoracion <= atOrBeforeMonth
+  let result = initialValue;
+  for (const v of bucket) {
+    if (v.fecha_valoracion <= atOrBeforeMonth) result = v.valor;
+    else break;
+  }
+  return result;
+}
+
+/**
+ * Returns the sum of last-known valuations for all assets of a given type at or before a given month.
+ */
+function sumAssetValuesForMonth(
+  index: ValoracionIndex,
+  tipo: 'inmueble' | 'inversion',
+  assets: AssetInitialValue[],
+  atOrBeforeMonth: string,
+): number {
+  return assets.reduce(
+    (sum, asset) => sum + getLastValueForAsset(index, tipo, asset.id, atOrBeforeMonth, asset.initialValue),
+    0,
+  );
 }
 
 /**
@@ -175,7 +246,6 @@ function buildMonthRow(
   const month1to12 = monthOfYear + 1;
   const yearsElapsed = absoluteMonthIndex / 12;
   const growthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.salaryGrowth, yearsElapsed);
-  const rentGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, yearsElapsed);
   const expenseGrowthFactor = Math.pow(1 + FIXED_ASSUMPTIONS.expenseInflation, yearsElapsed);
 
   // Format month string "YYYY-MM"
@@ -187,18 +257,16 @@ function buildMonthRow(
 
   const serviciosFreelance = baseData.freelanceMensual * growthFactor;
 
-  // B. Rentas: flat within each year, grow only at year boundaries (no monthly IPC drip)
-  const rentYearIndex = Math.floor(absoluteMonthIndex / 12);
-  const rentGrowthFactorFlat = Math.pow(1 + FIXED_ASSUMPTIONS.rentGrowth, rentYearIndex);
-  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear] * rentGrowthFactorFlat;
+  // B. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
+  const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
 
-  // Dividends grow with investment portfolio value appreciation
+  // Dividends grow with pension investment portfolio value appreciation only
   const investmentGrowthFactor = Math.pow(
     1 + FIXED_ASSUMPTIONS.investmentReturn,
     yearsElapsed,
   );
   const dividendosInversiones =
-    (baseData.valorOtrasInversiones * investmentGrowthFactor *
+    (baseData.valorPlanesPension * investmentGrowthFactor *
       FIXED_ASSUMPTIONS.dividendYield) /
     12;
   const otrosIngresosMensual = baseData.otrosIngresosMensual * growthFactor;
@@ -279,10 +347,13 @@ function buildMonthRow(
   const cajaFinal = cajaAnterior + flujoCajaMes;
 
   // ── PATRIMONIO ────────────────────────────────────────────────────────────
-  // Property values appreciate annually
-  const inmuebles =
-    baseData.valorInmuebles *
-    Math.pow(1 + FIXED_ASSUMPTIONS.propertyAppreciation, yearsElapsed);
+  // Inmuebles: use last known historical valuation at or before this month; fallback to purchase price
+  const inmuebles = sumAssetValuesForMonth(
+    baseData.valoracionIndex,
+    'inmueble',
+    baseData.inmuebleInitialValues,
+    monthStr,
+  );
 
   // Remaining debt = initial debt minus cumulative amortization
   let deudaInmuebles = 0;
@@ -304,8 +375,13 @@ function buildMonthRow(
 
   const planesPension =
     baseData.valorPlanesPension * investmentGrowthFactor;
-  const otrasInversiones =
-    baseData.valorOtrasInversiones * investmentGrowthFactor;
+  // Otras inversiones: use last known historical valuation; fallback to valor_actual
+  const otrasInversiones = sumAssetValuesForMonth(
+    baseData.valoracionIndex,
+    'inversion',
+    baseData.inversionInitialValues,
+    monthStr,
+  );
 
   const activos = cajaFinal + inmuebles + planesPension + otrasInversiones;
   const patrimonioNeto = activos - deudaTotal;
@@ -315,10 +391,8 @@ function buildMonthRow(
     ...item,
     importe: item.importe * growthFactor,
   }));
-  const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear].map(item => ({
-    ...item,
-    importe: item.importe * rentGrowthFactor,
-  }));
+  // Rent drilldown is flat — no IPC growth applied
+  const scaledRentaDrillDown = baseData.rentaDrillDown[monthOfYear];
 
   return {
     month: monthStr,
@@ -449,9 +523,9 @@ async function loadBaseData(): Promise<BaseData> {
   const rentaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
 
   // ── C. INMUEBLES - OPEX + property values ─────────────────────────────────
-  let valorInmuebles = 0;
   let opexRules: OpexRule[] = [];
   const propertyAliasMap = new Map<number, string>();
+  const inmuebleInitialValues: AssetInitialValue[] = [];
 
   try {
     const [contracts, inmuebles] = await Promise.all([
@@ -459,18 +533,21 @@ async function loadBaseData(): Promise<BaseData> {
       inmuebleService.getAll(),
     ]);
 
-    // Build a property alias lookup and total value from all active properties
+    // Build a property alias lookup and collect purchase prices as fallback values
     for (const inm of inmuebles) {
       if (inm.id) {
         const numId = parseInt(inm.id, 10);
-        if (!isNaN(numId)) propertyAliasMap.set(numId, inm.alias);
+        if (!isNaN(numId)) {
+          propertyAliasMap.set(numId, inm.alias);
+          if (inm.estado === 'ACTIVO') {
+            inmuebleInitialValues.push({
+              id: numId,
+              initialValue: inm.compra?.precio_compra ?? 0,
+            });
+          }
+        }
       }
     }
-    const activeProperties = inmuebles.filter(p => p.estado === 'ACTIVO');
-    valorInmuebles = activeProperties.reduce(
-      (sum, p) => sum + (p.compra?.precio_compra ?? 0),
-      0,
-    );
 
     // Populate per-month rental income (date-range filtered)
     for (const contract of contracts) {
@@ -497,18 +574,28 @@ async function loadBaseData(): Promise<BaseData> {
 
   // Investment values
   let valorPlanesPension = 0;
-  let valorOtrasInversiones = 0;
+  const inversionInitialValues: AssetInitialValue[] = [];
   try {
     const inversiones = await inversionesService.getPosiciones();
     for (const inv of inversiones) {
       if (inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo') {
         valorPlanesPension += inv.valor_actual;
       } else {
-        valorOtrasInversiones += inv.valor_actual;
+        // Non-pension investments use historical valuations; valor_actual is the fallback
+        inversionInitialValues.push({ id: inv.id, initialValue: inv.valor_actual });
       }
     }
   } catch {
     // No investment data available
+  }
+
+  // Historical valuations — build index for fast per-asset per-month lookups
+  let valoracionIndex: ValoracionIndex = new Map();
+  try {
+    const valoracionesHistoricas: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    valoracionIndex = buildValoracionIndex(valoracionesHistoricas);
+  } catch {
+    // No valuation history available
   }
 
   // Cash balance from bank accounts
@@ -545,13 +632,14 @@ async function loadBaseData(): Promise<BaseData> {
     opexRules,
     propertyAliasMap,
     gastosRecurrentes,
+    valoracionIndex,
+    inmuebleInitialValues,
+    inversionInitialValues,
     freelanceMensual,
     gastosAutonomoMensual,
     seguridadSocialMensual,
     otrosIngresosMensual: 0,
-    valorInmuebles,
     valorPlanesPension,
-    valorOtrasInversiones,
     cajaInicial,
   };
 }
