@@ -1046,7 +1046,114 @@
   color: #555;
 }
 
-/* ===== DESGLOSE MODAL ===== */
+/* ===== DESGLOSE INLINE ===== */
+
+.desglose-inline {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 260px;
+  margin-bottom: 12px;
+}
+
+.desglose-inline__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.desglose-inline__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.desglose-inline__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #888;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.desglose-inline__close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.desglose-inline__groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.desglose-inline__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desglose-inline__group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 2px;
+}
+
+.desglose-inline__group-icon {
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.desglose-inline__group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+}
+
+.desglose-inline__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.desglose-inline__row-icon {
+  color: #888;
+  flex-shrink: 0;
+}
+
+.desglose-inline__row-label {
+  font-size: 12px;
+  color: #444;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desglose-inline__row-values {
+  font-size: 12px;
+  font-feature-settings: 'tnum';
+  color: var(--atlas-navy-1);
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ===== DESGLOSE MODAL (legacy – kept for reference) ===== */
 
 .desglose-modal-overlay {
   position: fixed;

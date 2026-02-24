@@ -14,7 +14,6 @@ import {
   X,
   Plus,
   RefreshCw,
-  Settings,
   User,
   Home,
   Briefcase,
@@ -54,10 +53,17 @@ interface SimpleAccount {
   balance: number;
 }
 
-interface DesgloseModalData {
-  title: string;
+interface DesgloseLine {
+  label: string;
   Icon: React.ElementType;
-  items: Array<{ label: string; previsto: number; real: number; Icon: React.ElementType }>;
+  previsto: number;
+  real: number;
+}
+
+interface GroupedDesglose {
+  ingresos: DesgloseLine[];
+  gastos: DesgloseLine[];
+  financiacion: DesgloseLine[];
 }
 
 interface NewMovementForm {
@@ -86,18 +92,6 @@ const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   return 'bank';
 };
 
-const getSourceTypeIcon = (sourceType?: string): React.ElementType => {
-  switch (sourceType) {
-    case 'opex_rule': return Settings;
-    case 'gasto_recurrente': return User;
-    case 'contrato': return Home;
-    case 'nomina': return Briefcase;
-    case 'document': return FileText;
-    case 'ingreso': return TrendingUp;
-    case 'gasto': return TrendingDown;
-    default: return Tag;
-  }
-};
 
 /**
  * ATLAS HORIZON - Treasury Reconciliation View
@@ -129,8 +123,8 @@ const TreasuryReconciliationView: React.FC = () => {
   const [editState, setEditState] = useState<{ eventId: string; amount: string } | null>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
-  // "Ver desglose" modal
-  const [desgloseModal, setDesgloseModal] = useState<DesgloseModalData | null>(null);
+  // "Ver desglose" inline section
+  const [showDesglose, setShowDesglose] = useState(false);
 
   // "+ Movimiento Directo" modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -484,23 +478,63 @@ const TreasuryReconciliationView: React.FC = () => {
 
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
-  /** Build desglose breakdown for each summary card from live events */
-  const buildDesglose = (filterType: TreasuryEvent['type'], title: string, Icon: React.ElementType): DesgloseModalData => ({
-    title,
-    Icon,
-    items: events
-      .filter(e => e.type === filterType)
-      .reduce<Array<{ label: string; previsto: number; real: number; Icon: React.ElementType }>>((acc, ev) => {
-        const existing = acc.find(i => i.label === ev.concept);
-        if (existing) {
-          existing.previsto += ev.amount;
-          if (ev.status === 'confirmado') existing.real += ev.amount;
-        } else {
-          acc.push({ label: ev.concept, previsto: ev.amount, real: ev.status === 'confirmado' ? ev.amount : 0, Icon: getSourceTypeIcon(ev.sourceType) });
-        }
-        return acc;
-      }, []),
-  });
+  /** Format amount with 2 decimal places in Spanish locale: "1.302,59 €" */
+  const formatDesglose = (v: number): string =>
+    v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+  /** Build desglose breakdown grouped into fixed categories */
+  const buildGroupedDesglose = (evList: TreasuryEvent[]): GroupedDesglose => {
+    const inc: DesgloseLine[] = [
+      { label: 'Nómina', Icon: Briefcase, previsto: 0, real: 0 },
+      { label: 'Servicios Freelance', Icon: User, previsto: 0, real: 0 },
+      { label: 'Rentas de alquiler', Icon: Home, previsto: 0, real: 0 },
+      { label: 'Intereses posiciones', Icon: TrendingUp, previsto: 0, real: 0 },
+      { label: 'Venta de activos', Icon: Banknote, previsto: 0, real: 0 },
+    ];
+    const exp: DesgloseLine[] = [
+      { label: 'Gastos operativos', Icon: Building2, previsto: 0, real: 0 },
+      { label: 'Gastos personales', Icon: User, previsto: 0, real: 0 },
+      { label: 'Gastos Freelance', Icon: Briefcase, previsto: 0, real: 0 },
+      { label: 'Gastos venta activos', Icon: Tag, previsto: 0, real: 0 },
+      { label: 'IRPF a pagar', Icon: FileText, previsto: 0, real: 0 },
+    ];
+    const fin: DesgloseLine[] = [
+      { label: 'Cuotas hipotecas', Icon: Home, previsto: 0, real: 0 },
+      { label: 'Cuotas préstamos', Icon: CreditCard, previsto: 0, real: 0 },
+    ];
+
+    for (const ev of evList) {
+      const isReal = ev.status === 'confirmado';
+      const c = ev.concept.toLowerCase();
+      let line: DesgloseLine | undefined;
+
+      if (ev.type === 'income') {
+        if (ev.sourceType === 'nomina') line = inc[0];
+        // 'contrato' sourceType comes from rental contracts (alquiler)
+        else if (ev.sourceType === 'contrato' || c.includes('renta') || c.includes('alquiler')) line = inc[2];
+        else if (c.includes('inter') || c.includes('cupón') || c.includes('cupon') || c.includes('dividendo')) line = inc[3];
+        else if (c.includes('venta')) line = inc[4];
+        else if (c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = inc[1];
+        else line = inc[0]; // fallback: bucket unclassified income with Nómina
+      } else if (ev.type === 'expense') {
+        if (ev.sourceType === 'opex_rule') line = exp[0];
+        else if (c.includes('irpf') || c.includes('retenci')) line = exp[4];
+        else if (c.includes('venta')) line = exp[3];
+        else if (c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = exp[2];
+        else if (ev.sourceType === 'gasto_recurrente') line = exp[1];
+        else line = exp[1]; // fallback: bucket unclassified expenses with Gastos personales
+      } else if (ev.type === 'financing') {
+        line = c.includes('hipotec') ? fin[0] : fin[1];
+      }
+
+      if (line) {
+        line.previsto += ev.amount;
+        if (isReal) line.real += ev.amount;
+      }
+    }
+
+    return { ingresos: inc, gastos: exp, financiacion: fin };
+  };
 
   return (
     <div className="treasury-view-decision">
@@ -553,9 +587,9 @@ const TreasuryReconciliationView: React.FC = () => {
           <div className="summary-static-card__footer">
             <button
               className="summary-static-card__desglose-btn"
-              onClick={() => setDesgloseModal(buildDesglose('income', 'Ingresos', TrendingUp))}
+              onClick={() => setShowDesglose(p => !p)}
             >
-              Ver desglose
+              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
             </button>
           </div>
         </div>
@@ -573,9 +607,9 @@ const TreasuryReconciliationView: React.FC = () => {
           <div className="summary-static-card__footer">
             <button
               className="summary-static-card__desglose-btn"
-              onClick={() => setDesgloseModal(buildDesglose('expense', 'Gastos', TrendingDown))}
+              onClick={() => setShowDesglose(p => !p)}
             >
-              Ver desglose
+              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
             </button>
           </div>
         </div>
@@ -593,9 +627,9 @@ const TreasuryReconciliationView: React.FC = () => {
           <div className="summary-static-card__footer">
             <button
               className="summary-static-card__desglose-btn"
-              onClick={() => setDesgloseModal(buildDesglose('financing', 'Financiación', CreditCard))}
+              onClick={() => setShowDesglose(p => !p)}
             >
-              Ver desglose
+              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
             </button>
           </div>
         </div>
@@ -613,6 +647,50 @@ const TreasuryReconciliationView: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Desglose inline – agrupado por categorías ─────────────────── */}
+      {showDesglose && (() => {
+        const grouped = buildGroupedDesglose(events);
+        const renderGroup = (title: string, GroupIcon: React.ElementType, lines: DesgloseLine[]) => (
+          <div className="desglose-inline__group">
+            <div className="desglose-inline__group-header">
+              <GroupIcon size={16} className="desglose-inline__group-icon" />
+              <span className="desglose-inline__group-title">{title}</span>
+            </div>
+            {lines.map(line => {
+              const LineIcon = line.Icon;
+              return (
+                <div key={line.label} className="desglose-inline__row">
+                  <LineIcon size={14} className="desglose-inline__row-icon" />
+                  <span className="desglose-inline__row-label">{line.label}</span>
+                  <span className="desglose-inline__row-values">
+                    {formatDesglose(line.previsto)} / {formatDesglose(line.real)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+        return (
+          <div className="desglose-inline">
+            <div className="desglose-inline__header">
+              <span className="desglose-inline__title">Desglose del mes — Previsto / Real</span>
+              <button
+                className="desglose-inline__close"
+                onClick={() => setShowDesglose(false)}
+                aria-label="Cerrar desglose"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="desglose-inline__groups">
+              {renderGroup('Ingresos', TrendingUp, grouped.ingresos)}
+              {renderGroup('Gastos', TrendingDown, grouped.gastos)}
+              {renderGroup('Financiación', CreditCard, grouped.financiacion)}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── NIVEL 2: Selector Rápido de Bancos ────────────────────────── */}
       <div className="bank-filter-strip" role="group" aria-label="Filtro por banco">
         {loading ? (
@@ -623,7 +701,8 @@ const TreasuryReconciliationView: React.FC = () => {
           accounts.map(account => {
             const Icon = getAccountIcon(account.type);
             const isActive = selectedBankFilter === account.id;
-            const acctEvents = events.filter(e => e.accountId === account.id);
+            const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
+            const acctTotal = acctEvents.reduce((sum, e) => sum + e.amount, 0);
             const confirmedCount = acctEvents.filter(e => e.status === 'confirmado').length;
             return (
               <button
@@ -635,7 +714,7 @@ const TreasuryReconciliationView: React.FC = () => {
               >
                 <Icon size={18} className="bank-filter-card__icon" />
                 <span className="bank-filter-card__name">{account.name}</span>
-                <span className="bank-filter-card__saldo">{formatCompact(account.balance)} €</span>
+                <span className="bank-filter-card__saldo">{formatCompact(acctTotal)} €</span>
                 <span className="bank-filter-card__progress">{confirmedCount}/{acctEvents.length}</span>
               </button>
             );
@@ -758,50 +837,6 @@ const TreasuryReconciliationView: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* ── Modal "Ver desglose" ───────────────────────────────────────── */}
-      {desgloseModal && (() => {
-        const DesgloseIcon = desgloseModal.Icon;
-        return (
-          <div className="desglose-modal-overlay" onClick={() => setDesgloseModal(null)}>
-            <div className="desglose-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`Desglose ${desgloseModal.title}`}>
-              <div className="desglose-modal__header">
-                <h3 className="desglose-modal__title">
-                  <DesgloseIcon size={18} className="desglose-modal__title-icon" />
-                  Desglose — {desgloseModal.title}
-                </h3>
-                <button className="desglose-modal__close" onClick={() => setDesgloseModal(null)} aria-label="Cerrar">
-                  <X size={18} />
-                </button>
-              </div>
-              {desgloseModal.items.length === 0 ? (
-                <p className="desglose-modal__empty">Sin eventos de este tipo en el periodo</p>
-              ) : (
-                <div className="desglose-modal__list">
-                  {desgloseModal.items.map(item => {
-                    const ItemIcon = item.Icon;
-                    return (
-                      <div key={item.label} className="desglose-modal__row">
-                        <div className="desglose-modal__row-left">
-                          <span className="desglose-modal__row-icon">
-                            <ItemIcon size={16} />
-                          </span>
-                          <span className="desglose-modal__row-label">{item.label}</span>
-                        </div>
-                        <div className="desglose-modal__row-right">
-                          <span className="desglose-modal__row-previsto">{formatCompact(item.previsto)} €</span>
-                          <span className="desglose-modal__row-sep">/</span>
-                          <span className="desglose-modal__row-real">{formatCompact(item.real)} €</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Modal "+ Movimiento Directo" ───────────────────────────────── */}
       {showAddModal && (
