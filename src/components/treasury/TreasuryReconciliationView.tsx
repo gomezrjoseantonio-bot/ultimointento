@@ -512,7 +512,7 @@ const TreasuryReconciliationView: React.FC = () => {
         if (ev.sourceType === 'nomina') line = inc[0];
         // 'contrato' sourceType comes from rental contracts (alquiler)
         else if (ev.sourceType === 'contrato' || c.includes('renta') || c.includes('alquiler')) line = inc[2];
-        else if (c.includes('inter') || c.includes('cupón') || c.includes('cupon') || c.includes('dividendo')) line = inc[3];
+        else if (ev.sourceType === 'inversion' || c.includes('inter') || c.includes('cupón') || c.includes('cupon') || c.includes('dividendo')) line = inc[3];
         else if (c.includes('venta')) line = inc[4];
         else if (c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = inc[1];
         else line = inc[0]; // fallback: bucket unclassified income with Nómina
@@ -520,11 +520,11 @@ const TreasuryReconciliationView: React.FC = () => {
         if (ev.sourceType === 'opex_rule') line = exp[0];
         else if (c.includes('irpf') || c.includes('retenci')) line = exp[4];
         else if (c.includes('venta')) line = exp[3];
-        else if (c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = exp[2];
+        else if (ev.sourceType === 'autonomo' || c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = exp[2];
         else if (ev.sourceType === 'gasto_recurrente') line = exp[1];
         else line = exp[1]; // fallback: bucket unclassified expenses with Gastos personales
       } else if (ev.type === 'financing') {
-        line = c.includes('hipotec') ? fin[0] : fin[1];
+        line = (ev.sourceType === 'hipoteca' || c.includes('hipotec')) ? fin[0] : fin[1];
       }
 
       if (line) {
