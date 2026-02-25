@@ -16,6 +16,7 @@ import { getAllContracts } from '../../../../services/contractService';
 import { prestamosService } from '../../../../services/prestamosService';
 import { autonomoService } from '../../../../services/autonomoService';
 import { inversionesService } from '../../../../services/inversionesService';
+import { cuentasService } from '../../../../services/cuentasService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -111,6 +112,48 @@ export async function generateMonthlyForecasts(
   async function insertEvent(event: Parameters<typeof db.add>[1]): Promise<void> {
     await db.add('treasuryEvents', event);
     created++;
+  }
+
+  // ── ACCOUNT ID RESOLUTION ─────────────────────────────────────────────────
+  // NominaForm and ContractsNuevo use cuentasService (localStorage) which assigns
+  // timestamp-based IDs (e.g., 1708726312345), while TreasuryReconciliationView
+  // displays accounts by their IndexedDB autoincrement IDs (1, 2, 3, …).
+  // Build an IBAN-keyed lookup so that localStorage account IDs are resolved to
+  // the correct IndexedDB account ID before being injected into TreasuryEvents.
+  const dbAccounts = await db.getAll('accounts');
+  const localToDbAccountId = new Map<number, number>();
+  try {
+    const localAccounts = await cuentasService.list();
+    for (const localAcc of localAccounts) {
+      if (localAcc.id == null || !localAcc.iban) continue;
+      const dbAcc = dbAccounts.find(a => a.iban === localAcc.iban);
+      if (dbAcc?.id != null) {
+        localToDbAccountId.set(localAcc.id, dbAcc.id);
+      }
+    }
+  } catch {
+    // If cuentasService is unavailable the map stays empty; accounts may not
+    // resolve but events are still created (orphaned rather than erroring out).
+  }
+
+  /**
+   * Translates a raw account ID (which may be a localStorage timestamp ID or an
+   * IndexedDB autoincrement ID) to the canonical IndexedDB account ID used by
+   * TreasuryReconciliationView.
+   *
+   * Resolution order:
+   *  1. localStorage ID → IndexedDB ID (via IBAN lookup map)
+   *  2. Already a valid IndexedDB ID (identity, for forms that load from IndexedDB)
+   *  3. undefined (no match – event is created without account linkage)
+   */
+  function resolveAccountId(rawId: number | undefined): number | undefined {
+    if (rawId == null || rawId === 0) return undefined;
+    // Step 1: check localStorage → IndexedDB map
+    const mapped = localToDbAccountId.get(rawId);
+    if (mapped != null) return mapped;
+    // Step 2: rawId might already be a valid IndexedDB account ID
+    const directMatch = dbAccounts.find(acc => acc.id === rawId);
+    return directMatch?.id;
   }
 
   // ── 1. OPEX RULES (property expenses) ─────────────────────────────────────
@@ -216,7 +259,7 @@ export async function generateMonthlyForecasts(
         description: `Renta – ${inquilino}`,
         sourceType: 'contrato' as const,
         sourceId: contract.id,
-        accountId: contract.cuentaCobroId,
+        accountId: resolveAccountId(contract.cuentaCobroId),
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
@@ -252,7 +295,7 @@ export async function generateMonthlyForecasts(
         description: `Nómina – ${nomina.nombre ?? 'Empresa'}`,
         sourceType: 'nomina' as const,
         sourceId: nomina.id,
-        accountId: nomina.cuentaAbono,
+        accountId: resolveAccountId(nomina.cuentaAbono),
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,
@@ -316,10 +359,14 @@ export async function generateMonthlyForecasts(
         continue;
       }
 
-      // cuentaCargoId stores the treasury account's numeric ID as a string
-      const accountId = prestamo.cuentaCargoId
+      // cuentaCargoId stores the account ID either as an IndexedDB autoincrement ID
+      // (when set via PrestamoForm which loads from IndexedDB) or as a string of a
+      // localStorage timestamp ID (when set via IdentificacionBlock which uses cuentasService).
+      // resolveAccountId handles both cases via the IBAN-keyed lookup map.
+      const rawAccountId = prestamo.cuentaCargoId
         ? parseInt(prestamo.cuentaCargoId, 10) || undefined
         : undefined;
+      const accountId = resolveAccountId(rawAccountId);
 
       await insertEvent({
         type: 'financing' as const,
