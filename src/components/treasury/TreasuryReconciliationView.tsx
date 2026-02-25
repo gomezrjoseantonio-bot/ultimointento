@@ -458,8 +458,8 @@ const TreasuryReconciliationView: React.FC = () => {
     return {
       ...base,
       cashflow: {
-        previsto: base.ingresos.previsto - base.gastos.previsto,
-        real: base.ingresos.real - base.gastos.real,
+        previsto: base.ingresos.previsto - base.gastos.previsto - base.financiacion.previsto,
+        real: base.ingresos.real - base.gastos.real - base.financiacion.real,
       },
     };
   }, [events]);
@@ -582,7 +582,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Ingresos</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.ingresos.previsto)} / {formatCompact(globalTotals.ingresos.real)}
+              {formatCompact(globalTotals.ingresos.previsto)} € / {formatCompact(globalTotals.ingresos.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -601,7 +601,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Gastos</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.gastos.previsto)} / {formatCompact(globalTotals.gastos.real)}
+              {formatCompact(globalTotals.gastos.previsto)} € / {formatCompact(globalTotals.gastos.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -620,7 +620,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Financiación</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.financiacion.previsto)} / {formatCompact(globalTotals.financiacion.real)}
+              {formatCompact(globalTotals.financiacion.previsto)} € / {formatCompact(globalTotals.financiacion.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -639,7 +639,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Cashflow</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.cashflow.previsto)} / {formatCompact(globalTotals.cashflow.real)}
+              {formatCompact(globalTotals.cashflow.previsto)} € / {formatCompact(globalTotals.cashflow.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -720,7 +720,6 @@ const TreasuryReconciliationView: React.FC = () => {
             const acctNetReal = acctEvents
               .filter(e => e.status === 'confirmado')
               .reduce((sum, e) => e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
-            const confirmedCount = acctEvents.filter(e => e.status === 'confirmado').length;
             return (
               <button
                 key={account.id}
@@ -731,8 +730,7 @@ const TreasuryReconciliationView: React.FC = () => {
               >
                 <Icon size={18} className="bank-filter-card__icon" />
                 <span className="bank-filter-card__name">{account.name}</span>
-                <span className="bank-filter-card__saldo">{formatCompact(acctNetPrevisto)} / {formatCompact(acctNetReal)} €</span>
-                <span className="bank-filter-card__progress">{confirmedCount}/{acctEvents.length}</span>
+                <span className="bank-filter-card__saldo">{formatCompact(acctNetPrevisto)} € / {formatCompact(acctNetReal)} €</span>
               </button>
             );
           })
