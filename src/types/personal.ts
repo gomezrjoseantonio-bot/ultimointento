@@ -1,6 +1,10 @@
 // Personal V1 Module Types
 // Types for the comprehensive personal finance management system
 
+export type EmploymentStatus = 'employed' | 'self_employed' | 'retired' | 'unemployed';
+export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
+export type HousingType = 'rent' | 'ownership_with_mortgage' | 'ownership_without_mortgage' | 'living_with_parents';
+
 export interface PersonalData {
   id?: number;
   nombre: string;
@@ -9,6 +13,12 @@ export interface PersonalData {
   direccion: string;
   situacionPersonal: 'soltero' | 'casado' | 'pareja-hecho' | 'divorciado';
   situacionLaboral: SituacionLaboral[];
+  // Extended profile fields for dynamic module personalisation
+  employmentStatus?: EmploymentStatus;
+  maritalStatus?: MaritalStatus;
+  housingType?: HousingType;
+  hasVehicle?: boolean;
+  hasChildren?: boolean | number;
   fechaCreacion: string;
   fechaActualizacion: string;
 }
