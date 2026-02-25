@@ -103,15 +103,19 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
   };
 
   const handleSituacionLaboralChange = (situacion: SituacionLaboral, checked: boolean) => {
-    const newSituaciones = checked
-      ? [...formData.situacionLaboral, situacion]
-      : formData.situacionLaboral.filter(s => s !== situacion);
+    let newSituaciones: SituacionLaboral[];
 
-    // Validate the combination
-    const validation = personalDataService.validateSituacionLaboral(newSituaciones);
-    if (!validation.isValid) {
-      toast.error(validation.error!);
-      return;
+    if (!checked) {
+      newSituaciones = formData.situacionLaboral.filter(s => s !== situacion);
+    } else if (situacion === 'desempleado' || situacion === 'jubilado') {
+      // Exclusive statuses: selecting them clears all others
+      newSituaciones = [situacion];
+    } else {
+      // Selecting an active status while an exclusive one is set removes the exclusive one
+      const withoutExclusive = formData.situacionLaboral.filter(
+        s => s !== 'desempleado' && s !== 'jubilado'
+      );
+      newSituaciones = [...withoutExclusive, situacion];
     }
 
     setFormData(prev => ({
