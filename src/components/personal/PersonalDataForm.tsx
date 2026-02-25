@@ -1,11 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { PersonalData, SituacionLaboral, EmploymentStatus, MaritalStatus, HousingType } from '../../types/personal';
+import { PersonalData, SituacionLaboral, MaritalStatus, HousingType } from '../../types/personal';
 import { personalDataService } from '../../services/personalDataService';
 import toast from 'react-hot-toast';
 
 interface PersonalDataFormProps {
   onDataSaved?: (data: PersonalData) => void;
 }
+
+const Toggle: React.FC<{
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+  description?: string;
+}> = ({ checked, onChange, label, description }) => (
+  <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg h-full">
+    <div className="mr-3">
+      <p className="text-sm font-medium text-neutral-800">{label}</p>
+      {description && <p className="text-xs text-neutral-500 mt-0.5">{description}</p>}
+    </div>
+    <button
+      type="button"
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 ${
+        checked ? 'bg-brand-navy' : 'bg-neutral-200'
+      }`}
+      role="switch"
+      aria-checked={checked}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  </div>
+);
 
 const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
   const [loading, setLoading] = useState(false);
@@ -17,7 +46,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     direccion: string;
     situacionPersonal: PersonalData['situacionPersonal'];
     situacionLaboral: SituacionLaboral[];
-    employmentStatus: EmploymentStatus | undefined;
     maritalStatus: MaritalStatus | undefined;
     housingType: HousingType | undefined;
     hasVehicle: boolean;
@@ -29,32 +57,17 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     direccion: '',
     situacionPersonal: 'soltero',
     situacionLaboral: [],
-    employmentStatus: undefined,
     maritalStatus: undefined,
     housingType: undefined,
     hasVehicle: false,
     hasChildren: false
   });
 
-  const situacionPersonalOptions = [
-    { value: 'soltero', label: 'Soltero/a' },
-    { value: 'casado', label: 'Casado/a' },
-    { value: 'pareja-hecho', label: 'Pareja de hecho' },
-    { value: 'divorciado', label: 'Divorciado/a' }
-  ];
-
   const situacionLaboralOptions = [
     { value: 'asalariado', label: 'Asalariado' },
     { value: 'autonomo', label: 'Autónomo' },
     { value: 'desempleado', label: 'Desempleado' },
     { value: 'jubilado', label: 'Jubilado' }
-  ];
-
-  const employmentStatusOptions: { value: EmploymentStatus; label: string }[] = [
-    { value: 'employed', label: 'Asalariado / Por cuenta ajena' },
-    { value: 'self_employed', label: 'Autónomo / Por cuenta propia' },
-    { value: 'retired', label: 'Jubilado / Pensionista' },
-    { value: 'unemployed', label: 'Desempleado / Sin ingresos laborales' }
   ];
 
   const maritalStatusOptions: { value: MaritalStatus; label: string }[] = [
@@ -64,11 +77,11 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     { value: 'widowed', label: 'Viudo/a' }
   ];
 
-  const housingTypeOptions: { value: HousingType; label: string; description: string }[] = [
-    { value: 'rent', label: 'Alquiler', description: 'Pago mensual de arrendamiento' },
-    { value: 'ownership_with_mortgage', label: 'Propiedad con hipoteca', description: 'Vivienda propia con préstamo hipotecario' },
-    { value: 'ownership_without_mortgage', label: 'Propiedad sin hipoteca', description: 'Vivienda propia libre de cargas' },
-    { value: 'living_with_parents', label: 'En casa familiar', description: 'Sin gastos de vivienda principales' }
+  const housingTypeOptions: { value: HousingType; label: string }[] = [
+    { value: 'rent', label: 'Alquiler' },
+    { value: 'ownership_with_mortgage', label: 'Hipoteca' },
+    { value: 'ownership_without_mortgage', label: 'Libre' },
+    { value: 'living_with_parents', label: 'Familiar' }
   ];
 
   useEffect(() => {
@@ -87,7 +100,6 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           direccion: data.direccion,
           situacionPersonal: data.situacionPersonal,
           situacionLaboral: data.situacionLaboral,
-          employmentStatus: data.employmentStatus,
           maritalStatus: data.maritalStatus,
           housingType: data.housingType,
           hasVehicle: data.hasVehicle ?? false,
@@ -108,27 +120,30 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     if (!checked) {
       newSituaciones = formData.situacionLaboral.filter(s => s !== situacion);
     } else if (situacion === 'desempleado' || situacion === 'jubilado') {
-      // Exclusive statuses: selecting them clears all others
       newSituaciones = [situacion];
     } else {
-      // Selecting an active status while an exclusive one is set removes the exclusive one
       const withoutExclusive = formData.situacionLaboral.filter(
         s => s !== 'desempleado' && s !== 'jubilado'
       );
       newSituaciones = [...withoutExclusive, situacion];
     }
 
-    setFormData(prev => ({
-      ...prev,
-      situacionLaboral: newSituaciones
-    }));
+    setFormData(prev => ({ ...prev, situacionLaboral: newSituaciones }));
+  };
+
+  // Maps the new maritalStatus field back to the legacy situacionPersonal field required by the
+  // PersonalData type. 'widowed' has no direct equivalent, so it falls back to 'soltero'.
+  const maritalToSituacionPersonal = (ms: MaritalStatus | undefined): PersonalData['situacionPersonal'] => {
+    if (ms === 'married') return 'casado';
+    if (ms === 'divorced') return 'divorciado';
+    return 'soltero'; // covers 'single', 'widowed', and undefined
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.nombre || !formData.apellidos || !formData.dni) {
-      toast.error('Por favor, completa todos los campos obligatorios');
+
+    if (!formData.nombre || !formData.apellidos) {
+      toast.error('Por favor, completa los campos de nombre y apellidos');
       return;
     }
 
@@ -139,7 +154,11 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
 
     setSaving(true);
     try {
-      const savedData = await personalDataService.savePersonalData(formData);
+      const dataToSave = {
+        ...formData,
+        situacionPersonal: maritalToSituacionPersonal(formData.maritalStatus)
+      };
+      const savedData = await personalDataService.savePersonalData(dataToSave);
       toast.success('Datos personales guardados correctamente');
       onDataSaved?.(savedData);
     } catch (error) {
@@ -152,9 +171,9 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
 
   if (loading) {
     return (
-      <div className="bg-white border border-neutral-200 p-6">
+      <div className="bg-white border border-neutral-200 rounded-lg p-6">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
+          <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent rounded-full"></div>
           <span className="ml-2 text-neutral-600">Cargando datos personales...</span>
         </div>
       </div>
@@ -162,264 +181,150 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
   }
 
   return (
-    <div className="bg-white border border-neutral-200 p-6">
-      <h2 className="text-lg font-semibold text-neutral-900 mb-4">Datos Personales</h2>
-      <p className="text-neutral-600 mb-6">
-        Configura tus datos personales para personalizar el módulo Personal según tu situación.
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-semibold text-neutral-900 mb-1">Perfil de Usuario</h2>
+      <p className="text-sm text-neutral-500 mb-5">
+        Personaliza ATLAS según tu situación personal y laboral.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Personal Information */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Row 1 – Identity */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Nombre *
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Nombre <span className="text-error-500">*</span>
             </label>
             <input
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              placeholder="Tu nombre"
               required
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Apellidos *
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Apellidos <span className="text-error-500">*</span>
             </label>
             <input
               type="text"
               value={formData.apellidos}
               onChange={(e) => setFormData(prev => ({ ...prev, apellidos: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              placeholder="Tus apellidos"
               required
             />
           </div>
         </div>
 
+        {/* Row 2 – Estado Civil + hasChildren */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              DNI *
-            </label>
-            <input
-              type="text"
-              value={formData.dni}
-              onChange={(e) => setFormData(prev => ({ ...prev, dni: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="12345678A"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Situación Personal
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Estado Civil
             </label>
             <select
-              value={formData.situacionPersonal}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                situacionPersonal: e.target.value as PersonalData['situacionPersonal'] 
+              value={formData.maritalStatus ?? ''}
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                maritalStatus: (e.target.value as MaritalStatus) || undefined
               }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
-              {situacionPersonalOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              <option value="">— Selecciona —</option>
+              {maritalStatusOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">
-            Dirección
-          </label>
-          <textarea
-            value={formData.direccion}
-            onChange={(e) => setFormData(prev => ({ ...prev, direccion: e.target.value }))}
-            rows={2}
-            className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            placeholder="Calle, número, ciudad, código postal"
-          />
-        </div>
-
-        {/* Employment Situation */}
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-3">
-            Situación Laboral *
-          </label>
-          <p className="text-sm text-neutral-500 mb-3">
-            Selecciona todas las situaciones que apliquen. Según tu selección, se mostrarán las secciones correspondientes en el módulo Personal.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {situacionLaboralOptions.map(option => (
-              <label key={option.value} className="flex items-center space-x-3 p-3 border border-neutral-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.situacionLaboral.includes(option.value as SituacionLaboral)}
-                  onChange={(e) => handleSituacionLaboralChange(option.value as SituacionLaboral, e.target.checked)}
-                  className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-                />
-                <span className="text-sm font-medium text-neutral-700">{option.label}</span>
-              </label>
-            ))}
+          <div className="flex flex-col justify-end">
+            <Toggle
+              checked={!!formData.hasChildren}
+              onChange={() => setFormData(prev => ({ ...prev, hasChildren: !prev.hasChildren }))}
+              label="¿Hijos o personas a cargo?"
+              description="Activa gastos de colegio y guardería"
+            />
           </div>
-          {formData.situacionLaboral.length > 0 && (
-            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary mt-3 p-3 ">
-              <p className="text-sm text-primary-700">
-                <strong>Secciones que se mostrarán:</strong>
-                {formData.situacionLaboral.includes('asalariado') && ' Nómina,'}
-                {formData.situacionLaboral.includes('autonomo') && ' Autónomo,'}
-                {' Planes de Pensiones e Inversiones, Otros Ingresos'}
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* ── Situación Personal Detallada ── */}
-        <div className="border-t border-neutral-200 pt-6">
-          <h3 className="text-base font-semibold text-neutral-900 mb-1">Situación Personal Detallada</h3>
-          <p className="text-sm text-neutral-500 mb-5">
-            Esta información permite a ATLAS personalizar las plantillas de gastos y secciones del módulo Personal según tu realidad.
-          </p>
+        {/* Row 3 – hasVehicle */}
+        <Toggle
+          checked={!!formData.hasVehicle}
+          onChange={() => setFormData(prev => ({ ...prev, hasVehicle: !prev.hasVehicle }))}
+          label="¿Tienes vehículo propio?"
+          description="Activa gastos de gasolina, seguro y mantenimiento"
+        />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* employmentStatus */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Estado laboral principal
-              </label>
-              <p className="text-xs text-neutral-500 mb-2">Determina qué secciones de ingresos se activan (Nómina, Autónomo, Pensión).</p>
-              <select
-                value={formData.employmentStatus ?? ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  employmentStatus: (e.target.value as EmploymentStatus) || undefined
-                }))}
-                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-                <option value="">— Selecciona —</option>
-                {employmentStatusOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* maritalStatus */}
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Estado civil
-              </label>
-              <p className="text-xs text-neutral-500 mb-2">Se usará en futuras funcionalidades de perfil de cónyuge.</p>
-              <select
-                value={formData.maritalStatus ?? ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  maritalStatus: (e.target.value as MaritalStatus) || undefined
-                }))}
-                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              >
-                <option value="">— Selecciona —</option>
-                {maritalStatusOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
+        {/* Situación Laboral */}
+        <div>
+          <label className="block text-xs font-medium text-neutral-600 mb-2">
+            Situación Laboral <span className="text-error-500">*</span>
+            <span className="text-neutral-400 font-normal ml-1">(selección múltiple)</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {situacionLaboralOptions.map(option => {
+              const isSelected = formData.situacionLaboral.includes(option.value as SituacionLaboral);
+              return (
+                <label
+                  key={option.value}
+                  className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer transition-colors text-sm ${
+                    isSelected
+                      ? 'border-brand-navy bg-primary-50 text-brand-navy font-medium'
+                      : 'border-gray-200 text-neutral-700 hover:border-gray-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => handleSituacionLaboralChange(option.value as SituacionLaboral, e.target.checked)}
+                    className="h-3.5 w-3.5 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
+                  />
+                  {option.label}
+                </label>
+              );
+            })}
           </div>
+        </div>
 
-          {/* housingType */}
-          <div className="mt-5">
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Tipo de vivienda
-            </label>
-            <p className="text-xs text-neutral-500 mb-3">Indica si ATLAS debe incluir gastos de alquiler o hipoteca en tus plantillas.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {housingTypeOptions.map(opt => (
+        {/* Tipo de Vivienda */}
+        <div>
+          <label className="block text-xs font-medium text-neutral-600 mb-2">
+            Tipo de Vivienda
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {housingTypeOptions.map(opt => {
+              const isSelected = formData.housingType === opt.value;
+              return (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                    formData.housingType === opt.value
-                      ? 'border-brand-navy bg-brand-navy/5'
-                      : 'border-neutral-200 hover:border-neutral-400'
+                  className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer transition-colors text-sm ${
+                    isSelected
+                      ? 'border-brand-navy bg-primary-50 text-brand-navy font-medium'
+                      : 'border-gray-200 text-neutral-700 hover:border-gray-400'
                   }`}
                 >
                   <input
                     type="radio"
                     name="housingType"
                     value={opt.value}
-                    checked={formData.housingType === opt.value}
+                    checked={isSelected}
                     onChange={() => setFormData(prev => ({ ...prev, housingType: opt.value as HousingType }))}
-                    className="mt-0.5 h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300"
+                    className="h-3.5 w-3.5 text-brand-navy focus:ring-brand-navy border-neutral-300"
                   />
-                  <div>
-                    <span className="text-sm font-medium text-neutral-800">{opt.label}</span>
-                    <p className="text-xs text-neutral-500 mt-0.5">{opt.description}</p>
-                  </div>
+                  {opt.label}
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {/* hasVehicle & hasChildren toggles */}
-          <div className="mt-5 space-y-4">
-            {/* hasVehicle */}
-            <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-neutral-800">¿Tienes vehículo propio?</p>
-                <p className="text-xs text-neutral-500 mt-0.5">ATLAS incluirá gastos de gasolina, seguro y mantenimiento en tus plantillas.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, hasVehicle: !prev.hasVehicle }))}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 ${
-                  formData.hasVehicle ? 'bg-brand-navy' : 'bg-neutral-200'
-                }`}
-                role="switch"
-                aria-checked={!!formData.hasVehicle}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    formData.hasVehicle ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* hasChildren */}
-            <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-neutral-800">¿Tienes hijos o personas a cargo?</p>
-                <p className="text-xs text-neutral-500 mt-0.5">ATLAS incluirá gastos de colegio, guardería y actividades en tus plantillas.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, hasChildren: !prev.hasChildren }))}
-                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 ${
-                  formData.hasChildren ? 'bg-brand-navy' : 'bg-neutral-200'
-                }`}
-                role="switch"
-                aria-checked={!!formData.hasChildren}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    formData.hasChildren ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end pt-4 border-t border-neutral-200">
+        {/* Submit */}
+        <div className="flex justify-end pt-3 border-t border-gray-200">
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2 bg-brand-navy text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-brand-navy text-white text-sm font-medium rounded-md hover:bg-brand-navy/90 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Guardando...' : 'Guardar Datos Personales'}
           </button>
