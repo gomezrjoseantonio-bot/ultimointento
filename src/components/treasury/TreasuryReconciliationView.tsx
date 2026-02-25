@@ -572,78 +572,91 @@ const TreasuryReconciliationView: React.FC = () => {
         </div>
       </div>
 
-      {/* ── NIVEL 1: Resumen Ejecutivo – tarjetas estáticas ───────────── */}
-      <div className="summary-cards-decision">
-        {/* Ingresos */}
-        <div className="summary-static-card">
-          <div className="summary-static-card__header">
-            <TrendingUp className="summary-static-card__icon" size={22} />
-            <span className="summary-static-card__title">Ingresos</span>
+      {/* ── NIVEL 1: Resumen Ejecutivo – panel unificado compacto ────── */}
+      <div className="summary-panel-unified">
+        <div className="summary-panel-row">
+          {/* Ingresos */}
+          <div className="summary-panel-col">
+            <div className="summary-panel-col__hd">
+              <TrendingUp className="summary-panel-col__icon" size={14} />
+              <span className="summary-panel-col__title">Ingresos</span>
+            </div>
+            <div className="summary-panel-col__val">
+              {formatCompact(globalTotals.ingresos.previsto)} / {formatCompact(globalTotals.ingresos.real)}
+            </div>
+            <div className="summary-panel-col__lbl">PREV. / REAL</div>
+            <div className="summary-panel-col__bar">
+              <div
+                className="summary-panel-col__bar-fill"
+                style={{ width: `${Math.min(100, globalTotals.ingresos.previsto !== 0 ? Math.abs(globalTotals.ingresos.real / globalTotals.ingresos.previsto) * 100 : (globalTotals.ingresos.real !== 0 ? 100 : 0))}%` }}
+              />
+            </div>
           </div>
-          <div className="summary-static-card__value">
-            {formatCompact(globalTotals.ingresos.previsto)} / {formatCompact(globalTotals.ingresos.real)}
+          <div className="summary-panel-sep" />
+
+          {/* Gastos */}
+          <div className="summary-panel-col">
+            <div className="summary-panel-col__hd">
+              <TrendingDown className="summary-panel-col__icon" size={14} />
+              <span className="summary-panel-col__title">Gastos</span>
+            </div>
+            <div className="summary-panel-col__val">
+              {formatCompact(globalTotals.gastos.previsto)} / {formatCompact(globalTotals.gastos.real)}
+            </div>
+            <div className="summary-panel-col__lbl">PREV. / REAL</div>
+            <div className="summary-panel-col__bar">
+              <div
+                className="summary-panel-col__bar-fill"
+                style={{ width: `${Math.min(100, globalTotals.gastos.previsto !== 0 ? Math.abs(globalTotals.gastos.real / globalTotals.gastos.previsto) * 100 : (globalTotals.gastos.real !== 0 ? 100 : 0))}%` }}
+              />
+            </div>
           </div>
-          <div className="summary-static-card__label">PREV. / REAL</div>
-          <div className="summary-static-card__footer">
-            <button
-              className="summary-static-card__desglose-btn"
-              onClick={() => setShowDesglose(p => !p)}
-            >
-              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
-            </button>
+          <div className="summary-panel-sep" />
+
+          {/* Financiación */}
+          <div className="summary-panel-col">
+            <div className="summary-panel-col__hd">
+              <CreditCard className="summary-panel-col__icon" size={14} />
+              <span className="summary-panel-col__title">Financiación</span>
+            </div>
+            <div className="summary-panel-col__val">
+              {formatCompact(globalTotals.financiacion.previsto)} / {formatCompact(globalTotals.financiacion.real)}
+            </div>
+            <div className="summary-panel-col__lbl">PREV. / REAL</div>
+            <div className="summary-panel-col__bar">
+              <div
+                className="summary-panel-col__bar-fill"
+                style={{ width: `${Math.min(100, globalTotals.financiacion.previsto !== 0 ? Math.abs(globalTotals.financiacion.real / globalTotals.financiacion.previsto) * 100 : (globalTotals.financiacion.real !== 0 ? 100 : 0))}%` }}
+              />
+            </div>
+          </div>
+          <div className="summary-panel-sep" />
+
+          {/* Cashflow */}
+          <div className="summary-panel-col">
+            <div className="summary-panel-col__hd">
+              <Activity className="summary-panel-col__icon" size={14} />
+              <span className="summary-panel-col__title">Cashflow</span>
+            </div>
+            <div className="summary-panel-col__val">
+              {formatCompact(globalTotals.cashflow.previsto)} / {formatCompact(globalTotals.cashflow.real)}
+            </div>
+            <div className="summary-panel-col__lbl">PREV. / REAL</div>
+            <div className="summary-panel-col__bar">
+              <div
+                className="summary-panel-col__bar-fill"
+                style={{ width: `${Math.min(100, globalTotals.cashflow.previsto !== 0 ? Math.abs(globalTotals.cashflow.real / globalTotals.cashflow.previsto) * 100 : (globalTotals.cashflow.real !== 0 ? 100 : 0))}%` }}
+              />
+            </div>
           </div>
         </div>
-
-        {/* Gastos */}
-        <div className="summary-static-card">
-          <div className="summary-static-card__header">
-            <TrendingDown className="summary-static-card__icon" size={22} />
-            <span className="summary-static-card__title">Gastos</span>
-          </div>
-          <div className="summary-static-card__value">
-            {formatCompact(globalTotals.gastos.previsto)} / {formatCompact(globalTotals.gastos.real)}
-          </div>
-          <div className="summary-static-card__label">PREV. / REAL</div>
-          <div className="summary-static-card__footer">
-            <button
-              className="summary-static-card__desglose-btn"
-              onClick={() => setShowDesglose(p => !p)}
-            >
-              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
-            </button>
-          </div>
-        </div>
-
-        {/* Financiación */}
-        <div className="summary-static-card">
-          <div className="summary-static-card__header">
-            <CreditCard className="summary-static-card__icon" size={22} />
-            <span className="summary-static-card__title">Financiación</span>
-          </div>
-          <div className="summary-static-card__value">
-            {formatCompact(globalTotals.financiacion.previsto)} / {formatCompact(globalTotals.financiacion.real)}
-          </div>
-          <div className="summary-static-card__label">PREV. / REAL</div>
-          <div className="summary-static-card__footer">
-            <button
-              className="summary-static-card__desglose-btn"
-              onClick={() => setShowDesglose(p => !p)}
-            >
-              {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
-            </button>
-          </div>
-        </div>
-
-        {/* Cashflow */}
-        <div className="summary-static-card">
-          <div className="summary-static-card__header">
-            <Activity className="summary-static-card__icon" size={22} />
-            <span className="summary-static-card__title">Cashflow</span>
-          </div>
-          <div className="summary-static-card__value">
-            {formatCompact(globalTotals.cashflow.previsto)} / {formatCompact(globalTotals.cashflow.real)}
-          </div>
-          <div className="summary-static-card__label">PREV. / REAL</div>
+        <div className="summary-panel-footer">
+          <button
+            className="summary-panel-desglose-btn"
+            onClick={() => setShowDesglose(p => !p)}
+          >
+            {showDesglose ? 'Ocultar desglose' : 'Ver desglose'}
+          </button>
         </div>
       </div>
 
@@ -702,7 +715,11 @@ const TreasuryReconciliationView: React.FC = () => {
             const Icon = getAccountIcon(account.type);
             const isActive = selectedBankFilter === account.id;
             const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
-            const acctTotal = acctEvents.reduce((sum, e) => sum + e.amount, 0);
+            const acctNetPrevisto = acctEvents.reduce((sum, e) =>
+              e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
+            const acctNetReal = acctEvents
+              .filter(e => e.status === 'confirmado')
+              .reduce((sum, e) => e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
             const confirmedCount = acctEvents.filter(e => e.status === 'confirmado').length;
             return (
               <button
@@ -714,7 +731,7 @@ const TreasuryReconciliationView: React.FC = () => {
               >
                 <Icon size={18} className="bank-filter-card__icon" />
                 <span className="bank-filter-card__name">{account.name}</span>
-                <span className="bank-filter-card__saldo">{formatCompact(acctTotal)} €</span>
+                <span className="bank-filter-card__saldo">{formatCompact(acctNetPrevisto)} / {formatCompact(acctNetReal)} €</span>
                 <span className="bank-filter-card__progress">{confirmedCount}/{acctEvents.length}</span>
               </button>
             );

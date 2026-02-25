@@ -108,15 +108,114 @@
   background: #f5f5f5;
 }
 
-/* Grid de 4 tarjetas de resumen */
-.summary-cards-decision {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  max-width: 1400px;
+/* Panel unificado de resumen ejecutivo */
+.summary-panel-unified {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
   flex-shrink: 0;
-  margin-bottom: 16px;
 }
+
+.summary-panel-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.summary-panel-col {
+  flex: 1;
+  padding: 2px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-panel-sep {
+  width: 1px;
+  background: #f0f0f0;
+  flex-shrink: 0;
+  margin: 4px 0;
+}
+
+.summary-panel-col__hd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.summary-panel-col__icon {
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.summary-panel-col__title {
+  font-size: 11px;
+  font-weight: 500;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.summary-panel-col__val {
+  font-family: var(--font-inter);
+  font-feature-settings: 'tnum';
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+}
+
+.summary-panel-col__lbl {
+  font-size: 10px;
+  font-weight: 500;
+  color: #bbb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-panel-col__bar {
+  height: 4px;
+  background: #f0f0f0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.summary-panel-col__bar-fill {
+  height: 100%;
+  background: var(--atlas-blue, #1a4e8f);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.summary-panel-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 5px 20px 7px;
+  border-top: 1px solid #f5f5f5;
+  margin-top: 4px;
+}
+
+.summary-panel-desglose-btn {
+  font-size: 11px;
+  color: var(--atlas-blue);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.summary-panel-desglose-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 
 /* ===== SUMMARY FLIP CARD - DECISION STYLE ===== */
 
@@ -863,76 +962,6 @@
 .event-item__status--confirmed {
   background: #eef3ff;
   color: var(--atlas-blue);
-}
-
-/* ===== STATIC SUMMARY CARD ===== */
-
-.summary-static-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.summary-static-card__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.summary-static-card__icon {
-  color: var(--atlas-blue);
-  flex-shrink: 0;
-}
-
-.summary-static-card__title {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--atlas-navy-1);
-}
-
-.summary-static-card__value {
-  font-family: var(--font-inter);
-  font-feature-settings: 'tnum';
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--atlas-navy-1);
-  margin-bottom: 6px;
-}
-
-.summary-static-card__label {
-  font-size: 11px;
-  font-weight: 500;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.summary-static-card__footer {
-  margin-top: auto;
-  padding-top: 12px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.summary-static-card__desglose-btn {
-  font-size: 12px;
-  color: var(--atlas-blue);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-  font-weight: 500;
-  opacity: 0.85;
-}
-
-.summary-static-card__desglose-btn:hover {
-  opacity: 1;
-  text-decoration: underline;
 }
 
 /* ===== BANK FILTER STRIP MSG ===== */
