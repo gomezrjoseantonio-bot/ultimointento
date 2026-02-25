@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, AlertCircle, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal } from 'lucide-react';
+import { Plus, Pencil, Trash2, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, Info, LayoutTemplate } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
 import { personalExpensesService } from '../../../services/personalExpensesService';
@@ -140,6 +140,18 @@ const GastosManager: React.FC = () => {
     setEditingExpense(undefined);
   };
 
+  const handleLoadTemplate = async () => {
+    if (!personalDataId) return;
+    try {
+      await personalExpensesService.loadTemplateExpenses(personalDataId);
+      toast.success('Plantilla cargada correctamente');
+      await loadExpenses();
+    } catch (error) {
+      console.error('Error loading expense template:', error);
+      toast.error('Error al cargar la plantilla');
+    }
+  };
+
   const monthlyTotal = expenses
     .filter((e) => e.activo)
     .reduce((sum, e) => sum + personalExpensesService.calcularImporteMensual(e), 0);
@@ -154,6 +166,14 @@ const GastosManager: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+        <p>
+          <strong>Importante:</strong> No incluyas aquí las cuotas de tus hipotecas o préstamos.
+          Gestiónalos desde el módulo de <strong>Financiación</strong> para que el Cashflow se calcule correctamente.
+        </p>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">
@@ -172,13 +192,23 @@ const GastosManager: React.FC = () => {
 
       {expenses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-          <AlertCircle className="h-8 w-8 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500">No hay gastos registrados.</p>
+          <LayoutTemplate className="h-10 w-10 text-gray-400 mb-3" />
+          <p className="text-base font-medium text-gray-700 mb-1">No hay gastos registrados</p>
+          <p className="text-sm text-gray-500 mb-5 max-w-xs">
+            Carga una plantilla con los gastos más habituales para empezar rápido, o añade tus gastos manualmente.
+          </p>
+          <button
+            onClick={handleLoadTemplate}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-atlas-blue rounded-md hover:bg-atlas-blue/90"
+          >
+            <LayoutTemplate className="h-4 w-4" />
+            Cargar plantilla de gastos comunes
+          </button>
           <button
             onClick={handleAddNew}
             className="mt-3 text-sm text-atlas-blue hover:underline"
           >
-            Añadir el primer gasto
+            Añadir el primer gasto manualmente
           </button>
         </div>
       ) : (
