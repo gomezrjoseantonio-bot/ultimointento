@@ -1,6 +1,6 @@
 import { nominaService } from './nominaService';
 import { autonomoService } from './autonomoService';
-import { gastosPersonalesService } from './gastosPersonalesService';
+import { personalExpensesService } from './personalExpensesService';
 import { ResumenPersonalMensual, OtrosIngresos } from '../types/personal';
 import { initDB } from './db';
 
@@ -85,12 +85,11 @@ class PersonalResumenService {
         .filter(o => o.activo)
         .reduce((sum, o) => sum + this.calcularIngresoMensual(o), 0);
 
-      // Calculate expenses
-      const gastos = await gastosPersonalesService.calcularTotalGastosMes(personalDataId, mes, anio);
+      // Calculate expenses from personal expenses store
+      const totalGastos = await personalExpensesService.calcularTotalMensual(personalDataId);
 
       // Calculate totals
       const totalIngresos = ingresoNomina + ingresoAutonomo + ingresoOtros;
-      const totalGastos = gastos.total;
       const ahorro = totalIngresos - totalGastos;
 
       // Calculate variation from previous month
@@ -108,8 +107,9 @@ class PersonalResumenService {
           total: totalIngresos
         },
         gastos: {
-          recurrentes: gastos.recurrentes,
-          puntuales: gastos.puntuales,
+          // personalExpenses uses a single model (no separate one-time expenses)
+          recurrentes: totalGastos,
+          puntuales: 0,
           total: totalGastos
         },
         ahorro,

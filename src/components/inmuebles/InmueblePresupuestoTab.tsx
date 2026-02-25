@@ -204,10 +204,10 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Concepto
+                  Categoría
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoría
+                  Concepto
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Importe/ciclo
@@ -229,7 +229,6 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                   key={rule.id}
                   className={`hover:bg-gray-50 transition-colors ${!rule.activo ? 'opacity-50' : ''}`}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{rule.concepto}</td>
                   <td className="px-4 py-3">
                     {(() => {
                       const Icon = CATEGORY_ICONS[rule.categoria] ?? MoreHorizontal;
@@ -241,6 +240,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                       );
                     })()}
                   </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{rule.concepto}</td>
                   <td className="px-4 py-3 text-right text-gray-700">
                     {rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments?.length ? (
                       <span title="Pagos asimétricos por mes">
