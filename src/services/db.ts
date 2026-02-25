@@ -10,11 +10,12 @@ import type {
   OtrosIngresos,
   MovimientoPersonal,
   GastoRecurrente,
-  GastoPuntual
+  GastoPuntual,
+  PersonalExpense
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 22; // Added opexRules store for OPEX template engine
+const DB_VERSION = 23; // V2.3: Added personalExpenses store
 
 export interface Property {
   id?: number;
@@ -1339,6 +1340,7 @@ interface AtlasHorizonDB {
   movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
   gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
   gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
+  personalExpenses: PersonalExpense; // V2.3: OPEX-style personal expenses
   prestamos: any; // Financiacion: Loan records
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
@@ -1732,6 +1734,12 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('opexRules')) {
           const opexStore = db.createObjectStore('opexRules', { keyPath: 'id', autoIncrement: true });
           opexStore.createIndex('propertyId', 'propertyId', { unique: false });
+        }
+
+        // V2.3: Personal Expenses store (OPEX-style recurring expenses for personal finance)
+        if (!db.objectStoreNames.contains('personalExpenses')) {
+          const personalExpensesStore = db.createObjectStore('personalExpenses', { keyPath: 'id', autoIncrement: true });
+          personalExpensesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
         }
       },
       blocked() {

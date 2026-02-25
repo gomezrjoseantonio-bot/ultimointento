@@ -269,3 +269,38 @@ export interface ResumenPersonalMensual {
   ahorro: number;
   variacionMesAnterior: number;  // % cambio vs mes anterior
 }
+
+// ============================================================================
+// Personal Expenses (OPEX-style recurring expenses for personal finance)
+// ============================================================================
+
+export type PersonalExpenseCategory =
+  | 'vivienda'
+  | 'alimentacion'
+  | 'transporte'
+  | 'ocio'
+  | 'salud'
+  | 'seguros'
+  | 'educacion'
+  | 'otros';
+
+export type PersonalExpenseFrequency =
+  | 'semanal'
+  | 'mensual'
+  | 'bimestral'
+  | 'trimestral'
+  | 'semestral'
+  | 'anual';
+
+export interface PersonalExpense {
+  id?: number;
+  personalDataId: number;
+  concepto: string;
+  categoria: PersonalExpenseCategory;
+  importe: number;
+  frecuencia: PersonalExpenseFrequency;
+  accountId?: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -1,265 +1,267 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Receipt, Calendar } from 'lucide-react';
-import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
-import { personalDataService } from '../../../services/personalDataService';
-import { GastoRecurrente, GastoPuntual } from '../../../types/personal';
-import GastoRecurrenteForm from './GastoRecurrenteForm';
-import GastoPuntualForm from './GastoPuntualForm';
-import GastoRecurrenteList from './GastoRecurrenteList';
-import GastoPuntualList from './GastoPuntualList';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Pencil, Trash2, AlertCircle, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
+import { personalExpensesService } from '../../../services/personalExpensesService';
+import { personalDataService } from '../../../services/personalDataService';
+import { Account, initDB } from '../../../services/db';
+import PersonalExpenseForm from './PersonalExpenseForm';
+
+const FREQUENCY_LABELS: Record<PersonalExpenseFrequency, string> = {
+  semanal: 'Semanal',
+  mensual: 'Mensual',
+  bimestral: 'Bimestral',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+};
+
+const CATEGORY_LABELS: Record<PersonalExpenseCategory, string> = {
+  vivienda: 'Vivienda',
+  alimentacion: 'Alimentación',
+  transporte: 'Transporte',
+  ocio: 'Ocio',
+  salud: 'Salud',
+  seguros: 'Seguros',
+  educacion: 'Educación',
+  otros: 'Otros',
+};
+
+const CATEGORY_ICONS: Record<PersonalExpenseCategory, React.ElementType> = {
+  vivienda: Home,
+  alimentacion: ShoppingCart,
+  transporte: Car,
+  ocio: Smile,
+  salud: Heart,
+  seguros: Shield,
+  educacion: GraduationCap,
+  otros: MoreHorizontal,
+};
+
+const formatEuro = (amount: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
 
 const GastosManager: React.FC = () => {
-  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'recurrentes' | 'puntuales'>('recurrentes');
-  const [gastosRecurrentes, setGastosRecurrentes] = useState<GastoRecurrente[]>([]);
-  const [gastosPuntuales, setGastosPuntuales] = useState<GastoPuntual[]>([]);
+  const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalMesActual, setTotalMesActual] = useState(0);
-  
-  // Form modals
-  const [showRecurrenteForm, setShowRecurrenteForm] = useState(false);
-  const [showPuntualForm, setShowPuntualForm] = useState(false);
-  const [editingRecurrente, setEditingRecurrente] = useState<GastoRecurrente | null>(null);
+  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<PersonalExpense | undefined>(undefined);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
   useEffect(() => {
-    loadPersonalDataId();
+    initDB().then((db) => {
+      db.getAll('accounts').then((all) => {
+        setAccounts(all.filter((a) => a.activa && a.status !== 'DELETED'));
+      }).catch((err) => console.error('Error loading accounts:', err));
+    }).catch((err) => console.error('Error initializing DB:', err));
   }, []);
 
   useEffect(() => {
-    if (personalDataId) {
-      loadGastos();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personalDataId]);
+    personalDataService.getPersonalData().then((data) => {
+      if (data?.id) setPersonalDataId(data.id);
+    }).catch((err) => console.error('Error loading personal data:', err));
+  }, []);
 
-  const loadPersonalDataId = async () => {
-    try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        setPersonalDataId(personalData.id);
-      }
-    } catch (error) {
-      console.error('Error loading personal data ID:', error);
-      toast.error('Error al cargar datos personales');
-    }
-  };
-
-  const loadGastos = async () => {
+  const loadExpenses = useCallback(async () => {
     if (!personalDataId) return;
-    
     setLoading(true);
     try {
-      // Load recurring expenses
-      const recurrentes = await gastosPersonalesService.getGastosRecurrentes(personalDataId);
-      setGastosRecurrentes(recurrentes);
-
-      // Load one-time expenses for current month
-      const now = new Date();
-      const mes = now.getMonth() + 1;
-      const anio = now.getFullYear();
-      const puntuales = await gastosPersonalesService.getGastosPuntuales(personalDataId, mes, anio);
-      setGastosPuntuales(puntuales);
-
-      // Calculate total for current month
-      const total = await gastosPersonalesService.calcularTotalGastosMes(personalDataId, mes, anio);
-      setTotalMesActual(total.total);
+      const data = await personalExpensesService.getExpenses(personalDataId);
+      setExpenses(data);
     } catch (error) {
-      console.error('Error loading gastos:', error);
-      toast.error('Error al cargar gastos');
+      console.error('Error loading personal expenses:', error);
+      toast.error('Error al cargar los gastos');
     } finally {
       setLoading(false);
     }
+  }, [personalDataId]);
+
+  useEffect(() => {
+    if (personalDataId !== null) {
+      loadExpenses();
+    }
+  }, [loadExpenses, personalDataId]);
+
+  const getAccountName = (accountId?: number): string => {
+    if (!accountId) return '—';
+    const acc = accounts.find((a) => a.id === accountId);
+    if (!acc) return '—';
+    if (acc.alias) return acc.alias;
+    const iban = acc.iban ?? '';
+    const last4 = iban.length >= 4 ? iban.slice(-4) : iban;
+    if (acc.banco?.name) return `${acc.banco.name} ···${last4}`;
+    return last4 ? `···${last4}` : '—';
   };
 
-  const handleSaveRecurrente = async (gasto: GastoRecurrente) => {
+  const handleAddNew = () => {
+    setEditingExpense(undefined);
+    setShowForm(true);
+  };
+
+  const handleEdit = (expense: PersonalExpense) => {
+    setEditingExpense(expense);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (expense: PersonalExpense) => {
+    if (!expense.id) return;
+    if (!window.confirm(`¿Eliminar el gasto "${expense.concepto}"?`)) return;
     try {
-      if (gasto.id) {
-        await gastosPersonalesService.updateGastoRecurrente(gasto.id, gasto);
-        toast.success('Gasto recurrente actualizado');
+      await personalExpensesService.deleteExpense(expense.id);
+      toast.success('Gasto eliminado');
+      await loadExpenses();
+    } catch {
+      toast.error('Error al eliminar el gasto');
+    }
+  };
+
+  const handleSave = async (
+    formData: Omit<PersonalExpense, 'createdAt' | 'updatedAt'> & { id?: number }
+  ) => {
+    try {
+      if (formData.id) {
+        await personalExpensesService.updateExpense(formData.id, formData);
+        toast.success('Gasto actualizado');
       } else {
-        await gastosPersonalesService.saveGastoRecurrente(gasto);
-        toast.success('Gasto recurrente creado');
+        await personalExpensesService.saveExpense(formData);
+        toast.success('Gasto creado');
       }
-      loadGastos();
-      setShowRecurrenteForm(false);
-      setEditingRecurrente(null);
-    } catch (error) {
-      console.error('Error saving gasto recurrente:', error);
-      toast.error('Error al guardar gasto recurrente');
+      setShowForm(false);
+      setEditingExpense(undefined);
+      await loadExpenses();
+    } catch {
+      toast.error('Error al guardar el gasto');
     }
   };
 
-  const handleDeleteRecurrente = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este gasto recurrente?')) {
-      return;
-    }
-
-    try {
-      await gastosPersonalesService.deleteGastoRecurrente(id);
-      toast.success('Gasto recurrente eliminado');
-      loadGastos();
-    } catch (error) {
-      console.error('Error deleting gasto recurrente:', error);
-      toast.error('Error al eliminar gasto recurrente');
-    }
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingExpense(undefined);
   };
 
-  const handleToggleActivo = async (id: number) => {
-    try {
-      await gastosPersonalesService.toggleGastoRecurrenteActivo(id);
-      toast.success('Estado actualizado');
-      loadGastos();
-    } catch (error) {
-      console.error('Error toggling gasto recurrente:', error);
-      toast.error('Error al actualizar estado');
-    }
-  };
-
-  const handleSavePuntual = async (gasto: GastoPuntual) => {
-    try {
-      await gastosPersonalesService.saveGastoPuntual(gasto);
-      toast.success('Gasto puntual registrado');
-      loadGastos();
-      setShowPuntualForm(false);
-    } catch (error) {
-      console.error('Error saving gasto puntual:', error);
-      toast.error('Error al registrar gasto puntual');
-    }
-  };
-
-  const handleDeletePuntual = async (id: number) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este gasto puntual?')) {
-      return;
-    }
-
-    try {
-      await gastosPersonalesService.deleteGastoPuntual(id);
-      toast.success('Gasto puntual eliminado');
-      loadGastos();
-    } catch (error) {
-      console.error('Error deleting gasto puntual:', error);
-      toast.error('Error al eliminar gasto puntual');
-    }
-  };
-
-  const handleEditRecurrente = (gasto: GastoRecurrente) => {
-    setEditingRecurrente(gasto);
-    setShowRecurrenteForm(true);
-  };
-
-  const handleCloseRecurrenteForm = () => {
-    setShowRecurrenteForm(false);
-    setEditingRecurrente(null);
-  };
+  const monthlyTotal = expenses
+    .filter((e) => e.activo)
+    .reduce((sum, e) => sum + personalExpensesService.calcularImporteMensual(e), 0);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent rounded-full"></div>
-        <span className="ml-2 text-neutral-600">Cargando gastos...</span>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 border-2 border-atlas-blue border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Gastos Personales</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Gestiona tus gastos recurrentes y puntuales
-            </p>
-          </div>
-          <button
-            onClick={() => activeTab === 'recurrentes' ? setShowRecurrenteForm(true) : setShowPuntualForm(true)}
-            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded-md hover:bg-opacity-90"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Gasto
-          </button>
-        </div>
-
-        {/* Total del mes actual */}
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <p className="text-sm text-gray-600">Total mes actual</p>
-          <p className="text-2xl font-semibold text-gray-900">
-            {new Intl.NumberFormat('es-ES', { 
-              style: 'currency', 
-              currency: 'EUR' 
-            }).format(totalMesActual)}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">
+            Gasto mensual estimado:{' '}
+            <span className="font-semibold text-gray-900">{formatEuro(monthlyTotal)}</span>
           </p>
         </div>
+        <button
+          onClick={handleAddNew}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-white bg-atlas-blue rounded-md hover:bg-atlas-blue/90"
+        >
+          <Plus className="h-4 w-4" />
+          Añadir Gasto
+        </button>
       </div>
 
-      {/* Sub-tabs */}
-      <div className="bg-white border border-gray-200">
-        <div className="flex border-b border-gray-200">
+      {expenses.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <AlertCircle className="h-8 w-8 text-gray-400 mb-2" />
+          <p className="text-sm text-gray-500">No hay gastos registrados.</p>
           <button
-            onClick={() => setActiveTab('recurrentes')}
-            className={`flex-1 px-6 py-3 text-sm font-medium ${
-              activeTab === 'recurrentes'
-                ? 'bg-gray-100 text-gray-900 border-b-2 border-gray-500'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            onClick={handleAddNew}
+            className="mt-3 text-sm text-atlas-blue hover:underline"
           >
-            <div className="flex items-center justify-center gap-2">
-              <Receipt className="w-4 h-4" />
-              Recurrentes
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('puntuales')}
-            className={`flex-1 px-6 py-3 text-sm font-medium ${
-              activeTab === 'puntuales'
-                ? 'bg-gray-100 text-gray-900 border-b-2 border-gray-500'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Puntuales
-            </div>
+            Añadir el primer gasto
           </button>
         </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {activeTab === 'recurrentes' ? (
-            <GastoRecurrenteList
-              gastos={gastosRecurrentes}
-              onEdit={handleEditRecurrente}
-              onDelete={handleDeleteRecurrente}
-              onToggleActivo={handleToggleActivo}
-            />
-          ) : (
-            <GastoPuntualList
-              gastos={gastosPuntuales}
-              onDelete={handleDeletePuntual}
-            />
-          )}
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Categoría
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Concepto
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Importe/ciclo
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Frecuencia
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cuenta
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Acciones
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {expenses.map((expense) => {
+                const Icon = CATEGORY_ICONS[expense.categoria] ?? MoreHorizontal;
+                return (
+                  <tr
+                    key={expense.id}
+                    className={`hover:bg-gray-50 transition-colors ${!expense.activo ? 'opacity-50' : ''}`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-gray-700">
+                        <Icon className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+                        {CATEGORY_LABELS[expense.categoria] ?? expense.categoria}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{expense.concepto}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">
+                      {formatEuro(expense.importe)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {FREQUENCY_LABELS[expense.frecuencia] ?? expense.frecuencia}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-sm">
+                      {getAccountName(expense.accountId)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => handleEdit(expense)}
+                          className="p-1 text-gray-400 hover:text-atlas-blue transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(expense)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      {/* Forms */}
-      {showRecurrenteForm && personalDataId && (
-        <GastoRecurrenteForm
-          isOpen={showRecurrenteForm}
-          onClose={handleCloseRecurrenteForm}
-          onSave={handleSaveRecurrente}
-          gasto={editingRecurrente}
-          personalDataId={personalDataId}
-        />
       )}
 
-      {showPuntualForm && personalDataId && (
-        <GastoPuntualForm
-          isOpen={showPuntualForm}
-          onClose={() => setShowPuntualForm(false)}
-          onSave={handleSavePuntual}
+      {showForm && personalDataId && (
+        <PersonalExpenseForm
           personalDataId={personalDataId}
+          expense={editingExpense}
+          onSave={handleSave}
+          onCancel={handleCancel}
         />
       )}
     </div>
