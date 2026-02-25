@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PersonalData, SituacionLaboral } from '../../types/personal';
+import { PersonalData, SituacionLaboral, EmploymentStatus, MaritalStatus, HousingType } from '../../types/personal';
 import { personalDataService } from '../../services/personalDataService';
 import toast from 'react-hot-toast';
 
@@ -10,13 +10,30 @@ interface PersonalDataFormProps {
 const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    nombre: string;
+    apellidos: string;
+    dni: string;
+    direccion: string;
+    situacionPersonal: PersonalData['situacionPersonal'];
+    situacionLaboral: SituacionLaboral[];
+    employmentStatus: EmploymentStatus | undefined;
+    maritalStatus: MaritalStatus | undefined;
+    housingType: HousingType | undefined;
+    hasVehicle: boolean;
+    hasChildren: boolean | number;
+  }>({
     nombre: '',
     apellidos: '',
     dni: '',
     direccion: '',
-    situacionPersonal: 'soltero' as PersonalData['situacionPersonal'],
-    situacionLaboral: [] as SituacionLaboral[]
+    situacionPersonal: 'soltero',
+    situacionLaboral: [],
+    employmentStatus: undefined,
+    maritalStatus: undefined,
+    housingType: undefined,
+    hasVehicle: false,
+    hasChildren: false
   });
 
   const situacionPersonalOptions = [
@@ -31,6 +48,27 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     { value: 'autonomo', label: 'Autónomo' },
     { value: 'desempleado', label: 'Desempleado' },
     { value: 'jubilado', label: 'Jubilado' }
+  ];
+
+  const employmentStatusOptions: { value: EmploymentStatus; label: string }[] = [
+    { value: 'employed', label: 'Asalariado / Por cuenta ajena' },
+    { value: 'self_employed', label: 'Autónomo / Por cuenta propia' },
+    { value: 'retired', label: 'Jubilado / Pensionista' },
+    { value: 'unemployed', label: 'Desempleado / Sin ingresos laborales' }
+  ];
+
+  const maritalStatusOptions: { value: MaritalStatus; label: string }[] = [
+    { value: 'single', label: 'Soltero/a' },
+    { value: 'married', label: 'Casado/a o Pareja de hecho' },
+    { value: 'divorced', label: 'Divorciado/a o Separado/a' },
+    { value: 'widowed', label: 'Viudo/a' }
+  ];
+
+  const housingTypeOptions: { value: HousingType; label: string; description: string }[] = [
+    { value: 'rent', label: 'Alquiler', description: 'Pago mensual de arrendamiento' },
+    { value: 'ownership_with_mortgage', label: 'Propiedad con hipoteca', description: 'Vivienda propia con préstamo hipotecario' },
+    { value: 'ownership_without_mortgage', label: 'Propiedad sin hipoteca', description: 'Vivienda propia libre de cargas' },
+    { value: 'living_with_parents', label: 'En casa familiar', description: 'Sin gastos de vivienda principales' }
   ];
 
   useEffect(() => {
@@ -48,7 +86,12 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           dni: data.dni,
           direccion: data.direccion,
           situacionPersonal: data.situacionPersonal,
-          situacionLaboral: data.situacionLaboral
+          situacionLaboral: data.situacionLaboral,
+          employmentStatus: data.employmentStatus,
+          maritalStatus: data.maritalStatus,
+          housingType: data.housingType,
+          hasVehicle: data.hasVehicle ?? false,
+          hasChildren: data.hasChildren ?? false
         });
       }
     } catch (error) {
@@ -231,6 +274,140 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               </p>
             </div>
           )}
+        </div>
+
+        {/* ── Situación Personal Detallada ── */}
+        <div className="border-t border-neutral-200 pt-6">
+          <h3 className="text-base font-semibold text-neutral-900 mb-1">Situación Personal Detallada</h3>
+          <p className="text-sm text-neutral-500 mb-5">
+            Esta información permite a ATLAS personalizar las plantillas de gastos y secciones del módulo Personal según tu realidad.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* employmentStatus */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Estado laboral principal
+              </label>
+              <p className="text-xs text-neutral-500 mb-2">Determina qué secciones de ingresos se activan (Nómina, Autónomo, Pensión).</p>
+              <select
+                value={formData.employmentStatus ?? ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  employmentStatus: (e.target.value as EmploymentStatus) || undefined
+                }))}
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
+                <option value="">— Selecciona —</option>
+                {employmentStatusOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* maritalStatus */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Estado civil
+              </label>
+              <p className="text-xs text-neutral-500 mb-2">Se usará en futuras funcionalidades de perfil de cónyuge.</p>
+              <select
+                value={formData.maritalStatus ?? ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  maritalStatus: (e.target.value as MaritalStatus) || undefined
+                }))}
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
+                <option value="">— Selecciona —</option>
+                {maritalStatusOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* housingType */}
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Tipo de vivienda
+            </label>
+            <p className="text-xs text-neutral-500 mb-3">Indica si ATLAS debe incluir gastos de alquiler o hipoteca en tus plantillas.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {housingTypeOptions.map(opt => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                    formData.housingType === opt.value
+                      ? 'border-brand-navy bg-brand-navy/5'
+                      : 'border-neutral-200 hover:border-neutral-400'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="housingType"
+                    value={opt.value}
+                    checked={formData.housingType === opt.value}
+                    onChange={() => setFormData(prev => ({ ...prev, housingType: opt.value as HousingType }))}
+                    className="mt-0.5 h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-neutral-800">{opt.label}</span>
+                    <p className="text-xs text-neutral-500 mt-0.5">{opt.description}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* hasVehicle & hasChildren toggles */}
+          <div className="mt-5 space-y-4">
+            {/* hasVehicle */}
+            <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-neutral-800">¿Tienes vehículo propio?</p>
+                <p className="text-xs text-neutral-500 mt-0.5">ATLAS incluirá gastos de gasolina, seguro y mantenimiento en tus plantillas.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, hasVehicle: !prev.hasVehicle }))}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 ${
+                  formData.hasVehicle ? 'bg-brand-navy' : 'bg-neutral-200'
+                }`}
+                role="switch"
+                aria-checked={!!formData.hasVehicle}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    formData.hasVehicle ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* hasChildren */}
+            <div className="flex items-center justify-between p-4 border border-neutral-200 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-neutral-800">¿Tienes hijos o personas a cargo?</p>
+                <p className="text-xs text-neutral-500 mt-0.5">ATLAS incluirá gastos de colegio, guardería y actividades en tus plantillas.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, hasChildren: !prev.hasChildren }))}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-navy focus:ring-offset-2 ${
+                  formData.hasChildren ? 'bg-brand-navy' : 'bg-neutral-200'
+                }`}
+                role="switch"
+                aria-checked={!!formData.hasChildren}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    formData.hasChildren ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Submit Button */}
