@@ -54,6 +54,28 @@ class PersonalExpensesService {
     const expenses = await this.getExpenses(personalDataId);
     return expenses.reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
   }
+
+  async loadTemplateExpenses(personalDataId: number): Promise<void> {
+    const now = new Date().toISOString();
+    const template: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [
+      { personalDataId, concepto: 'Alquiler', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Fibra', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Supermercado', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Restaurantes', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Gasolina', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Transporte Público', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Seguro Coche', categoria: 'transporte', importe: 0, frecuencia: 'anual', activo: true },
+      { personalDataId, concepto: 'Tarifa Móvil', categoria: 'otros', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Suscripciones', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Gimnasio', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Seguro Salud', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+    ];
+    const db = await initDB();
+    for (const item of template) {
+      const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
+      await db.add('personalExpenses', expense);
+    }
+  }
 }
 
 export const personalExpensesService = new PersonalExpensesService();
