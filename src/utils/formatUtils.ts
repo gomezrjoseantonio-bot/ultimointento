@@ -77,6 +77,17 @@ export const formatDateInput = (dateString: string): string => {
   return `${day}/${month}/${year}`;
 };
 
+/**
+ * Convert a YYYY-MM-DD date string to DD/MM/YYYY format.
+ * Timezone-safe: manipulates the string directly without a Date object.
+ */
+export const formatDateDDMMYYYY = (dateStr: string): string => {
+  if (!dateStr) return '—';
+  const [year, month, day] = dateStr.split('-');
+  if (!year || !month || !day) return '—';
+  return `${day}/${month}/${year}`;
+};
+
 export const formatPercentage = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) {
     return '—';

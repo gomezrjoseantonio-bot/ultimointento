@@ -236,10 +236,11 @@ export interface GastoRecurrente {
   personalDataId: number;
   nombre: string;
   importe: number;
-  frecuencia: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
+  frecuencia: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'meses_especificos';
   categoria: CategoriaGasto;
   cuentaPago?: number;           // ID cuenta bancaria (opcional)
   diaCobro: number;              // Día del mes (1-31)
+  mesesCobro?: number[];         // [1,7] para Enero y Julio si es meses_especificos
   fechaInicio: string;
   fechaFin?: string;             // Opcional, para gastos temporales
   activo: boolean;

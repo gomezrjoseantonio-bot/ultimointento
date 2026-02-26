@@ -14,14 +14,9 @@ import {
   X,
   Plus,
   RefreshCw,
-  User,
-  Home,
-  Briefcase,
-  FileText,
-  Tag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatCompact } from '../../utils/formatUtils';
+import { formatCompact, formatDateDDMMYYYY } from '../../utils/formatUtils';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
@@ -55,7 +50,6 @@ interface SimpleAccount {
 
 interface DesgloseLine {
   label: string;
-  Icon: React.ElementType;
   previsto: number;
   real: number;
 }
@@ -90,6 +84,21 @@ const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   if (name.includes('metal') || name.includes('cash') || name.includes('efectivo')) return 'cash';
   if (name.includes('revolut') || name.includes('wallet') || name.includes('paypal')) return 'wallet';
   return 'bank';
+};
+
+/** Inline style for the letter-circle icon in desglose rows */
+const LETTER_ICON_STYLE: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 14,
+  height: 14,
+  borderRadius: '50%',
+  border: '1px solid currentColor',
+  fontSize: 8,
+  fontWeight: 700,
+  lineHeight: 1,
+  flexShrink: 0,
 };
 
 
@@ -464,11 +473,15 @@ const TreasuryReconciliationView: React.FC = () => {
     };
   }, [events]);
 
-  /** Nivel 3 – Eventos filtrados por banco seleccionado */
-  const filteredEvents = useMemo(
-    () => selectedBankFilter ? events.filter(e => e.accountId === selectedBankFilter) : events,
-    [events, selectedBankFilter]
-  );
+  /** Nivel 3 – Eventos filtrados por banco seleccionado, ordenados por fecha y concepto */
+  const filteredEvents = useMemo(() => {
+    const list = selectedBankFilter ? events.filter(e => e.accountId === selectedBankFilter) : events;
+    return [...list].sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.concept.localeCompare(b.concept, 'es');
+    });
+  }, [events, selectedBankFilter]);
 
   const getAccountIcon = (type: SimpleAccount['type']) => {
     if (type === 'cash') return Banknote;
@@ -485,22 +498,22 @@ const TreasuryReconciliationView: React.FC = () => {
   /** Build desglose breakdown grouped into fixed categories */
   const buildGroupedDesglose = (evList: TreasuryEvent[]): GroupedDesglose => {
     const inc: DesgloseLine[] = [
-      { label: 'Nómina', Icon: Briefcase, previsto: 0, real: 0 },
-      { label: 'Servicios Freelance', Icon: User, previsto: 0, real: 0 },
-      { label: 'Rentas de alquiler', Icon: Home, previsto: 0, real: 0 },
-      { label: 'Intereses posiciones', Icon: TrendingUp, previsto: 0, real: 0 },
-      { label: 'Venta de activos', Icon: Banknote, previsto: 0, real: 0 },
+      { label: 'Nómina', previsto: 0, real: 0 },
+      { label: 'Ingresos Autónomo', previsto: 0, real: 0 },
+      { label: 'Rentas de alquiler', previsto: 0, real: 0 },
+      { label: 'Intereses posiciones', previsto: 0, real: 0 },
+      { label: 'Ingresos Activos', previsto: 0, real: 0 },
     ];
     const exp: DesgloseLine[] = [
-      { label: 'Gastos operativos', Icon: Building2, previsto: 0, real: 0 },
-      { label: 'Gastos personales', Icon: User, previsto: 0, real: 0 },
-      { label: 'Gastos Freelance', Icon: Briefcase, previsto: 0, real: 0 },
-      { label: 'Gastos venta activos', Icon: Tag, previsto: 0, real: 0 },
-      { label: 'IRPF a pagar', Icon: FileText, previsto: 0, real: 0 },
+      { label: 'Gastos Alquiler', previsto: 0, real: 0 },
+      { label: 'Gastos personales', previsto: 0, real: 0 },
+      { label: 'Gastos Autónomo', previsto: 0, real: 0 },
+      { label: 'Gastos Activos', previsto: 0, real: 0 },
+      { label: 'IRPF a pagar', previsto: 0, real: 0 },
     ];
     const fin: DesgloseLine[] = [
-      { label: 'Cuotas hipotecas', Icon: Home, previsto: 0, real: 0 },
-      { label: 'Cuotas préstamos', Icon: CreditCard, previsto: 0, real: 0 },
+      { label: 'Cuotas hipotecas', previsto: 0, real: 0 },
+      { label: 'Cuotas préstamos', previsto: 0, real: 0 },
     ];
 
     for (const ev of evList) {
@@ -670,10 +683,14 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="desglose-inline__group-title">{title}</span>
             </div>
             {lines.map(line => {
-              const LineIcon = line.Icon;
               return (
                 <div key={line.label} className="desglose-inline__row">
-                  <LineIcon size={14} className="desglose-inline__row-icon" />
+                  <span
+                    className="desglose-inline__row-icon"
+                    style={LETTER_ICON_STYLE}
+                  >
+                    {line.label.charAt(0).toUpperCase()}
+                  </span>
                   <span className="desglose-inline__row-label">{line.label}</span>
                   <span className="desglose-inline__row-values">
                     {formatDesglose(line.previsto)} / {formatDesglose(line.real)}
@@ -789,7 +806,7 @@ const TreasuryReconciliationView: React.FC = () => {
 
                   <EventTypeIcon size={16} className="event-item__type-icon" />
                   <span className="event-item__concept">{event.concept}</span>
-                  <span className="event-item__date">{event.date}</span>
+                  <span className="event-item__date">{formatDateDDMMYYYY(event.date)}</span>
 
                   {/* Inline amount editing */}
                   {isEditing ? (

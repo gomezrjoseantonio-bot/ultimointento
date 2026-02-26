@@ -144,6 +144,9 @@ export function gastoRecurrenteAppliesToMonth(
     case 'anual':
       return month1to12 === startMonth;
 
+    case 'meses_especificos':
+      return (gasto.mesesCobro ?? []).includes(month1to12);
+
     default:
       return false;
   }
