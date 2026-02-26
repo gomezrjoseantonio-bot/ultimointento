@@ -63,9 +63,7 @@ class PersonalExpensesService {
     return expenses.reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
   }
 
-  async loadTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
-    const now = new Date().toISOString();
-
+  private buildIdealExpenseItems(personalDataId: number, profile?: PersonalData | null): Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] {
     const items: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [];
 
     // Base expenses (always injected)
@@ -119,8 +117,32 @@ class PersonalExpensesService {
       );
     }
 
+    return items;
+  }
+
+  async loadTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
+    const now = new Date().toISOString();
+    const items = this.buildIdealExpenseItems(personalDataId, profile);
+    items.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
+
     const db = await initDB();
     for (const item of items) {
+      const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
+      await db.add('personalExpenses', expense);
+    }
+  }
+
+  async smartMergeTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
+    const now = new Date().toISOString();
+    const idealItems = this.buildIdealExpenseItems(personalDataId, profile);
+    const existing = await this.getExpenses(personalDataId);
+    const existingConcepts = new Set(existing.map(e => e.concepto.toLowerCase()));
+
+    const newItems = idealItems.filter(item => !existingConcepts.has(item.concepto.toLowerCase()));
+    if (newItems.length === 0) return;
+
+    const db = await initDB();
+    for (const item of newItems) {
       const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
       await db.add('personalExpenses', expense);
     }
