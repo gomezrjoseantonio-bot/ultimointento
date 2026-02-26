@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PersonalData, SituacionLaboral, MaritalStatus, HousingType } from '../../types/personal';
 import { personalDataService } from '../../services/personalDataService';
+import { personalExpensesService } from '../../services/personalExpensesService';
 import toast from 'react-hot-toast';
 
 interface PersonalDataFormProps {
@@ -159,6 +160,13 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
         situacionPersonal: maritalToSituacionPersonal(formData.maritalStatus)
       };
       const savedData = await personalDataService.savePersonalData(dataToSave);
+      if (savedData.id) {
+        try {
+          await personalExpensesService.smartMergeTemplateExpenses(savedData.id, savedData);
+        } catch (mergeError) {
+          console.error('Error merging expense template:', mergeError);
+        }
+      }
       toast.success('Datos personales guardados correctamente');
       onDataSaved?.(savedData);
     } catch (error) {
