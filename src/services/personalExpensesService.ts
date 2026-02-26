@@ -125,6 +125,70 @@ class PersonalExpensesService {
       await db.add('personalExpenses', expense);
     }
   }
+
+  async mergeTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
+    const now = new Date().toISOString();
+
+    const items: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [];
+
+    // Base expenses (always included in ideal set)
+    items.push(
+      { personalDataId, concepto: 'Supermercado', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Tarifa Móvil', categoria: 'otros', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Fibra / Internet', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Plataformas (Netflix/Spotify)', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Peluquería / Cuidado Personal', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Farmacia / Salud básica', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+    );
+
+    const housingType = profile?.housingType;
+    if (housingType === 'rent') {
+      items.push(
+        { personalDataId, concepto: 'Alquiler', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Seguro Inquilino', categoria: 'seguros', importe: 0, frecuencia: 'anual', activo: true },
+        { personalDataId, concepto: 'Luz', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Agua', categoria: 'vivienda', importe: 0, frecuencia: 'bimestral', activo: true },
+        { personalDataId, concepto: 'Gas / Climatización', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    } else if (housingType === 'ownership_with_mortgage' || housingType === 'ownership_without_mortgage') {
+      items.push(
+        { personalDataId, concepto: 'Luz', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Agua', categoria: 'vivienda', importe: 0, frecuencia: 'bimestral', activo: true },
+        { personalDataId, concepto: 'Gas / Climatización', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
+
+    if (profile?.hasVehicle === true) {
+      items.push(
+        { personalDataId, concepto: 'Gasolina / Carga Eléctrica', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Seguro Vehículo', categoria: 'seguros', importe: 0, frecuencia: 'anual', activo: true },
+        { personalDataId, concepto: 'Mantenimiento / Taller', categoria: 'transporte', importe: 0, frecuencia: 'anual', activo: true },
+      );
+    } else {
+      items.push(
+        { personalDataId, concepto: 'Abono Transporte Público', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
+
+    if (profile?.hasChildren) {
+      items.push(
+        { personalDataId, concepto: 'Colegio / Guardería', categoria: 'educacion', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Actividades Extraescolares', categoria: 'educacion', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Ropa y Calzado Infantil', categoria: 'educacion', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
+
+    const existing = await this.getExpenses(personalDataId);
+    const existingConcepts = new Set(existing.map((e) => e.concepto));
+
+    const db = await initDB();
+    for (const item of items) {
+      if (!existingConcepts.has(item.concepto)) {
+        const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
+        await db.add('personalExpenses', expense);
+      }
+    }
+  }
 }
 
 export const personalExpensesService = new PersonalExpensesService();
