@@ -147,6 +147,61 @@ class PersonalExpensesService {
       await db.add('personalExpenses', expense);
     }
   }
+
+  async smartSyncTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
+    const now = new Date().toISOString();
+    const idealItems = this.buildIdealExpenseItems(personalDataId, profile);
+    const existing = await this.getExpenses(personalDataId);
+
+    // Determine concepts to delete based on current profile settings
+    const conceptsToDelete = new Set<string>();
+
+    const housingType = profile?.housingType;
+    if (housingType === 'ownership_with_mortgage' || housingType === 'ownership_without_mortgage') {
+      conceptsToDelete.add('alquiler');
+      conceptsToDelete.add('seguro inquilino');
+    } else if (housingType === 'living_with_parents') {
+      conceptsToDelete.add('alquiler');
+      conceptsToDelete.add('seguro inquilino');
+      conceptsToDelete.add('luz');
+      conceptsToDelete.add('agua');
+      conceptsToDelete.add('gas / climatización');
+    }
+
+    if (profile?.hasVehicle === true) {
+      conceptsToDelete.add('abono transporte público');
+    } else {
+      conceptsToDelete.add('gasolina / carga eléctrica');
+      conceptsToDelete.add('seguro vehículo');
+      conceptsToDelete.add('seguro coche');
+      conceptsToDelete.add('mantenimiento / taller');
+    }
+
+    if (!profile?.hasChildren) {
+      conceptsToDelete.add('colegio / guardería');
+      conceptsToDelete.add('actividades extraescolares');
+      conceptsToDelete.add('ropa y calzado infantil');
+    }
+
+    // Delete expenses whose concept matches the deletion list
+    const db = await initDB();
+    for (const expense of existing) {
+      if (expense.id && conceptsToDelete.has(expense.concepto.toLowerCase())) {
+        await db.delete('personalExpenses', expense.id);
+      }
+    }
+
+    // Add missing items
+    const remainingAfterDelete = existing.filter(
+      e => !(e.id && conceptsToDelete.has(e.concepto.toLowerCase()))
+    );
+    const remainingConcepts = new Set(remainingAfterDelete.map(e => e.concepto.toLowerCase()));
+    const newItems = idealItems.filter(item => !remainingConcepts.has(item.concepto.toLowerCase()));
+    for (const item of newItems) {
+      const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
+      await db.add('personalExpenses', expense);
+    }
+  }
 }
 
 export const personalExpensesService = new PersonalExpensesService();
