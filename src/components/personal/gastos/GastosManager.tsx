@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, LayoutTemplate } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PersonalData, PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
@@ -156,6 +156,17 @@ const GastosManager: React.FC = () => {
     }
   };
 
+  const sortedExpenses = useMemo(
+    () =>
+      [...expenses].sort((a, b) =>
+        (CATEGORY_LABELS[a.categoria] ?? a.categoria).localeCompare(
+          CATEGORY_LABELS[b.categoria] ?? b.categoria,
+          'es'
+        )
+      ),
+    [expenses]
+  );
+
   const monthlyTotal = expenses
     .filter((e) => e.activo)
     .reduce((sum, e) => sum + personalExpensesService.calcularImporteMensual(e), 0);
@@ -233,7 +244,7 @@ const GastosManager: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {expenses.map((expense) => {
+              {sortedExpenses.map((expense) => {
                 const Icon = CATEGORY_ICONS[expense.categoria] ?? MoreHorizontal;
                 return (
                   <tr
