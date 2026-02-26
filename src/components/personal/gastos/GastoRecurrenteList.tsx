@@ -46,7 +46,8 @@ const GastoRecurrenteList: React.FC<GastoRecurrenteListProps> = ({
           bimestral: 'bimestre',
           trimestral: 'trimestre',
           semestral: 'semestre',
-          anual: 'año'
+          anual: 'año',
+          meses_especificos: 'meses específicos'
         }[gasto.frecuencia];
 
         return (
