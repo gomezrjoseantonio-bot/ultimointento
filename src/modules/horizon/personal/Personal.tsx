@@ -94,7 +94,15 @@ const Personal: React.FC = () => {
       { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', show: isEmployed },
       { id: 'autonomo', name: 'Autónomo/Freelance', icon: Briefcase, href: '/personal/autonomo', show: isSelfEmployed },
       { id: 'pension', name: 'Pensión', icon: PiggyBank, href: '/personal/pension', show: isRetired },
-      { id: 'gastos', name: 'Gastos', icon: Receipt, href: '/personal/gastos', show: true },
+      {
+        id: 'gastos',
+        name: personalData?.maritalStatus === 'single' && !personalData?.hasChildren
+          ? 'Gastos Personales'
+          : 'Gastos Familiares',
+        icon: Receipt,
+        href: '/personal/gastos',
+        show: true,
+      },
       { id: 'otros-ingresos', name: 'Otros Ingresos', icon: Coins, href: '/personal/otros-ingresos', show: true },
     ];
   };

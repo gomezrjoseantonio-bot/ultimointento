@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal } from 'lucide-react';
-import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
+import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency, AsymmetricPaymentPersonal } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
 interface PersonalExpenseFormProps {
@@ -28,6 +28,12 @@ const FREQUENCY_OPTIONS: { value: PersonalExpenseFrequency; label: string }[] = 
   { value: 'trimestral', label: 'Trimestral' },
   { value: 'semestral', label: 'Semestral' },
   { value: 'anual', label: 'Anual' },
+  { value: 'meses_especificos', label: 'Meses específicos' },
+];
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
 const defaultExpense = (personalDataId: number): Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'> => ({
@@ -36,6 +42,7 @@ const defaultExpense = (personalDataId: number): Omit<PersonalExpense, 'id' | 'c
   categoria: 'otros',
   importe: 0,
   frecuencia: 'mensual',
+  diaPago: 1,
   activo: true,
 });
 
@@ -53,8 +60,38 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
     });
   }, []);
 
+  // Keep asymmetricPayments in sync with mesesCobro
+  const mesesCobro = form.mesesCobro;
+  const frecuencia = form.frecuencia;
+  useEffect(() => {
+    if (frecuencia === 'meses_especificos' && mesesCobro) {
+      setForm((prev) => {
+        const current = prev.asymmetricPayments ?? [];
+        const updated: AsymmetricPaymentPersonal[] = mesesCobro.map((mes) => {
+          const existing = current.find((p) => p.mes === mes);
+          return existing ?? { mes, importe: 0 };
+        });
+        return { ...prev, asymmetricPayments: updated };
+      });
+    }
+  }, [mesesCobro, frecuencia]);
+
   const handleChange = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toggleMes = (mes: number) => {
+    const current = form.mesesCobro ?? [];
+    const next = current.includes(mes)
+      ? current.filter((m) => m !== mes)
+      : [...current, mes].sort((a, b) => a - b);
+    handleChange('mesesCobro', next);
+  };
+
+  const handleAsymmetricChange = (mes: number, importe: number) => {
+    const current = form.asymmetricPayments ?? [];
+    const updated = current.map((p) => (p.mes === mes ? { ...p, importe } : p));
+    handleChange('asymmetricPayments', updated);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -132,13 +169,91 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
             <select
               className={inputClass}
               value={form.frecuencia}
-              onChange={(e) => handleChange('frecuencia', e.target.value as PersonalExpenseFrequency)}
+              onChange={(e) => {
+                handleChange('frecuencia', e.target.value as PersonalExpenseFrequency);
+                handleChange('mesesCobro', undefined);
+                handleChange('asymmetricPayments', undefined);
+              }}
             >
               {FREQUENCY_OPTIONS.map(({ value, label }) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
+
+          {/* Día de pago */}
+          <div>
+            <label className={labelClass}>Día de pago</label>
+            <input
+              type="number"
+              className={inputClass}
+              value={form.diaPago ?? 1}
+              min={1}
+              max={31}
+              onChange={(e) =>
+                handleChange('diaPago', Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))
+              }
+            />
+          </div>
+
+          {/* Meses específicos: checkboxes */}
+          {form.frecuencia === 'meses_especificos' && (
+            <div>
+              <label className={labelClass}>Meses de pago</label>
+              <div className="grid grid-cols-4 gap-2">
+                {MESES.map((mes, idx) => {
+                  const mesNum = idx + 1;
+                  const checked = (form.mesesCobro ?? []).includes(mesNum);
+                  return (
+                    <label
+                      key={idx}
+                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded border cursor-pointer transition-colors ${
+                        checked
+                          ? 'bg-atlas-blue/10 border-atlas-blue text-atlas-blue'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={checked}
+                        onChange={() => toggleMes(mesNum)}
+                      />
+                      {mes.slice(0, 3)}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Pagos asimétricos */}
+          {form.frecuencia === 'meses_especificos' && (form.mesesCobro ?? []).length > 0 && (
+            <div>
+              <label className={labelClass}>
+                Importes por mes{' '}
+                <span className="font-normal text-gray-500">(pagos asimétricos)</span>
+              </label>
+              <div className="space-y-2">
+                {(form.asymmetricPayments ?? []).map((p) => (
+                  <div key={p.mes} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-600 w-24">{MESES[p.mes - 1]}</span>
+                    <input
+                      type="number"
+                      className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      value={p.importe}
+                      min={0}
+                      step="0.01"
+                      onChange={(e) =>
+                        handleAsymmetricChange(p.mes, parseFloat(e.target.value) || 0)
+                      }
+                    />
+                    <span className="text-sm text-gray-500">€</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Cuenta bancaria */}
           <div>

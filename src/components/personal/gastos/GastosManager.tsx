@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, Info, LayoutTemplate } from 'lucide-react';
+import { Plus, Pencil, Trash2, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, LayoutTemplate } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PersonalData, PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
 import { personalExpensesService } from '../../../services/personalExpensesService';
@@ -14,6 +14,7 @@ const FREQUENCY_LABELS: Record<PersonalExpenseFrequency, string> = {
   trimestral: 'Trimestral',
   semestral: 'Semestral',
   anual: 'Anual',
+  meses_especificos: 'Meses específicos',
 };
 
 const CATEGORY_LABELS: Record<PersonalExpenseCategory, string> = {
@@ -168,14 +169,6 @@ const GastosManager: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
-        <p>
-          <strong>Importante:</strong> No incluyas aquí las cuotas de tus hipotecas o préstamos.
-          Gestiónalos desde el módulo de <strong>Financiación</strong> para que el Cashflow se calcule correctamente.
-        </p>
-      </div>
-
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">
