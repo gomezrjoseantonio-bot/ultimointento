@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown } from 'lucide-react';
-import { Property, initDB } from '../../../../services/db';
+import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
+import { Property, Contract, initDB } from '../../../../services/db';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
+import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 
-type DetailTab = 'resumen' | 'presupuesto';
+type DetailTab = 'resumen' | 'contratos' | 'presupuesto';
 
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [property, setProperty] = useState<Property | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
 
@@ -24,6 +26,12 @@ const PropertyDetail: React.FC = () => {
       
       if (prop) {
         setProperty(prop);
+        try {
+          const allContracts = await getAllContracts();
+          setContracts(allContracts.filter(c => c.inmuebleId === propertyId || c.propertyId === propertyId));
+        } catch {
+          setContracts([]);
+        }
       } else {
         toast.error('Inmueble no encontrado');
         navigate('/inmuebles/cartera');
@@ -126,7 +134,8 @@ const PropertyDetail: React.FC = () => {
         {(
           [
             { id: 'resumen', label: 'Resumen', Icon: LayoutList },
-            { id: 'presupuesto', label: 'Presupuesto (OPEX)', Icon: TrendingDown },
+            { id: 'contratos', label: 'Contratos / Ingresos', Icon: Users },
+            { id: 'presupuesto', label: 'Presupuesto (OPEX/CAPEX)', Icon: TrendingDown },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
         ).map(({ id: tabId, label, Icon }) => {
           const isActive = activeTab === tabId;
@@ -152,6 +161,73 @@ const PropertyDetail: React.FC = () => {
       {/* Tab Content */}
       {activeTab === 'presupuesto' ? (
         <InmueblePresupuestoTab propertyId={property.id!} />
+      ) : activeTab === 'contratos' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold text-neutral-900">Contratos / Ingresos</h3>
+            <button
+              onClick={() => navigate('/inmuebles/contratos')}
+              className="text-sm text-brand-navy hover:text-brand-navy/80"
+            >
+              Gestionar todos los contratos →
+            </button>
+          </div>
+          {contracts.length === 0 ? (
+            <div className="bg-white border border-neutral-200 rounded-lg p-8 text-center">
+              <Users className="mx-auto h-8 w-8 text-neutral-300 mb-3" />
+              <p className="text-sm text-neutral-600">No hay contratos registrados para este inmueble.</p>
+            </div>
+          ) : (
+            <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Inquilino</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Inicio</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Fin</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Renta mensual</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-neutral-200">
+                  {contracts.map((contract) => (
+                    <tr key={contract.id} className="hover:bg-neutral-50">
+                      <td className="px-4 py-3 text-sm text-neutral-900">
+                        {contract.inquilino
+                          ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`
+                          : (contract.tenant?.name ?? '—')}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-900">
+                        {formatDate(contract.fechaInicio || contract.startDate || '')}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-900">
+                        {formatDate(contract.fechaFin || contract.endDate || '')}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-900">
+                        {formatEuro(contract.rentaMensual || contract.monthlyRent || 0)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          contract.estadoContrato === 'activo' || contract.status === 'active'
+                            ? 'bg-success-100 text-success-800'
+                            : contract.estadoContrato === 'rescindido' || contract.status === 'terminated'
+                            ? 'bg-error-100 text-error-800'
+                            : 'bg-neutral-100 text-neutral-600'
+                        }`}>
+                          {contract.estadoContrato === 'activo' || contract.status === 'active'
+                            ? 'Activo'
+                            : contract.estadoContrato === 'rescindido' || contract.status === 'terminated'
+                            ? 'Rescindido'
+                            : 'Finalizado'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       ) : (
         <>
       <div className="bg-white border border-neutral-200 p-6">

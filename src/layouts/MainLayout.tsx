@@ -4,7 +4,6 @@ import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
 import OnboardingWizard from '../components/onboarding/OnboardingWizard';
 import CommandPalette from '../components/common/CommandPalette';
-import FloatingActionButton from '../components/common/FloatingActionButton';
 import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -76,9 +75,6 @@ const MainLayout: React.FC = () => {
             <Outlet />
           </div>
         </main>
-        
-        {/* Sprint 5: Floating Action Button for quick actions */}
-        <FloatingActionButton />
       </div>
     </div>
   );

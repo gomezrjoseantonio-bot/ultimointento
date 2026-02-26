@@ -42,10 +42,7 @@ export const navigationConfig: NavigationItem[] = [
     section: 'horizon',
     subTabs: [
       { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
-      { name: 'Contratos', href: '/inmuebles/contratos', icon: Users, module: 'horizon' },
-      { name: 'Gastos', href: '/inmuebles/gastos-capex', icon: Calculator, module: 'horizon' },
       { name: 'Análisis', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
-      { name: 'Tareas', href: '/inmuebles/tareas', icon: Settings, module: 'horizon' }, // Tareas moved here as tab
     ]
   },
   {
