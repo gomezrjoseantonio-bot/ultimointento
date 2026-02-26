@@ -15,7 +15,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 23; // V2.3: Added personalExpenses store
+const DB_VERSION = 24; // V2.4: Added gastosRecurrentes and gastosPuntuales stores
 
 export interface Property {
   id?: number;
@@ -1740,6 +1740,18 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('personalExpenses')) {
           const personalExpensesStore = db.createObjectStore('personalExpenses', { keyPath: 'id', autoIncrement: true });
           personalExpensesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+        }
+
+        // V2.4: Gastos Recurrentes store (recurring personal expenses)
+        if (!db.objectStoreNames.contains('gastosRecurrentes')) {
+          const gastosRecurrentesStore = db.createObjectStore('gastosRecurrentes', { keyPath: 'id', autoIncrement: true });
+          gastosRecurrentesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+        }
+
+        // V2.4: Gastos Puntuales store (one-time personal expenses)
+        if (!db.objectStoreNames.contains('gastosPuntuales')) {
+          const gastosPuntualesStore = db.createObjectStore('gastosPuntuales', { keyPath: 'id', autoIncrement: true });
+          gastosPuntualesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
         }
       },
       blocked() {
