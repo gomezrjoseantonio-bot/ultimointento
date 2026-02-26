@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins } from 'lucide-react';
+import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins, PiggyBank } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
-import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
+import FreelanceTab from '../../../components/personal/FreelanceTab';
+import PensionTab from '../../../components/personal/PensionTab';
 import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import GastosManager from '../../../components/personal/gastos/GastosManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { personalResumenService } from '../../../services/personalResumenService';
-import { PersonalModuleConfig, ResumenPersonalMensual } from '../../../types/personal';
+import { PersonalData, PersonalModuleConfig, ResumenPersonalMensual } from '../../../types/personal';
 
 const Personal: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [config, setConfig] = useState<PersonalModuleConfig | null>(null);
+  const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [resumen, setResumen] = useState<ResumenPersonalMensual | null>(null);
   const [resumenLoading, setResumenLoading] = useState(true);
@@ -24,6 +26,7 @@ const Personal: React.FC = () => {
     if (path.includes('/resumen')) return 'resumen';
     if (path.includes('/nomina')) return 'nomina';
     if (path.includes('/autonomo')) return 'autonomo';
+    if (path.includes('/pension')) return 'pension';
     if (path.includes('/gastos')) return 'gastos';
     if (path.includes('/otros-ingresos')) return 'otros-ingresos';
     return 'resumen';
@@ -45,8 +48,12 @@ const Personal: React.FC = () => {
   const loadConfiguration = async () => {
     setLoading(true);
     try {
-      const moduleConfig = await personalDataService.getModuleConfiguration();
+      const [moduleConfig, profile] = await Promise.all([
+        personalDataService.getModuleConfiguration(),
+        personalDataService.getPersonalData(),
+      ]);
       setConfig(moduleConfig);
+      setPersonalData(profile);
     } catch (error) {
       console.error('Error loading personal module configuration:', error);
     } finally {
@@ -77,16 +84,23 @@ const Personal: React.FC = () => {
   };
 
   // Dynamic tabs based on personal data configuration
-  const getAllTabs = () => [
-    { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', always: true },
-    { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', condition: config?.seccionesActivas.nomina },
-    { id: 'autonomo', name: 'Autónomo', icon: Briefcase, href: '/personal/autonomo', condition: config?.seccionesActivas.autonomo },
-    { id: 'gastos', name: 'Gastos', icon: Receipt, href: '/personal/gastos', always: true },
-    { id: 'otros-ingresos', name: 'Otros Ingresos', icon: Coins, href: '/personal/otros-ingresos', always: true },
-  ];
+  const getAllTabs = () => {
+    const situacion = personalData?.situacionLaboral ?? [];
+    const isEmployed = config?.seccionesActivas.nomina ?? situacion.includes('asalariado');
+    const isSelfEmployed = config?.seccionesActivas.autonomo ?? situacion.includes('autonomo');
+    const isRetired = situacion.includes('jubilado');
+    return [
+      { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', show: true },
+      { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', show: isEmployed },
+      { id: 'autonomo', name: 'Autónomo/Freelance', icon: Briefcase, href: '/personal/autonomo', show: isSelfEmployed },
+      { id: 'pension', name: 'Pensión', icon: PiggyBank, href: '/personal/pension', show: isRetired },
+      { id: 'gastos', name: 'Gastos', icon: Receipt, href: '/personal/gastos', show: true },
+      { id: 'otros-ingresos', name: 'Otros Ingresos', icon: Coins, href: '/personal/otros-ingresos', show: true },
+    ];
+  };
 
   const getActiveTabs = () => {
-    return getAllTabs().filter(tab => tab.always || tab.condition);
+    return getAllTabs().filter(tab => tab.show);
   };
 
   const tabs = getActiveTabs();
@@ -118,9 +132,11 @@ const Personal: React.FC = () => {
       case 'resumen':
         return renderResumenSection();
       case 'nomina':
-        return config.seccionesActivas.nomina ? renderNominaSection() : null;
+        return config?.seccionesActivas.nomina ? renderNominaSection() : null;
       case 'autonomo':
-        return config.seccionesActivas.autonomo ? renderAutonomoSection() : null;
+        return config?.seccionesActivas.autonomo ? renderAutonomoSection() : null;
+      case 'pension':
+        return renderPensionSection();
       case 'gastos':
         return renderGastosSection();
       case 'otros-ingresos':
@@ -230,9 +246,16 @@ const Personal: React.FC = () => {
 
   const renderAutonomoSection = () => (
     <div className="space-y-6">
-      <AutonomoManager />
+      <FreelanceTab />
     </div>
   );
+
+  const renderPensionSection = () => (
+    <div className="space-y-6">
+      <PensionTab />
+    </div>
+  );
+
   const renderOtrosIngresosSection = () => (
     <div className="space-y-6">
       <OtrosIngresosManager />

@@ -393,6 +393,11 @@ function App() {
                   <Personal />
                 </React.Suspense>
               } />
+              <Route path="pension" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
               <Route path="gastos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />

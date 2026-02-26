@@ -1,5 +1,5 @@
 import { initDB } from './db';
-import { PersonalExpense, PersonalExpenseFrequency } from '../types/personal';
+import { PersonalData, PersonalExpense, PersonalExpenseFrequency } from '../types/personal';
 
 class PersonalExpensesService {
   async getExpenses(personalDataId: number): Promise<PersonalExpense[]> {
@@ -55,23 +55,46 @@ class PersonalExpensesService {
     return expenses.reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
   }
 
-  async loadTemplateExpenses(personalDataId: number): Promise<void> {
+  async loadTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
     const now = new Date().toISOString();
-    const template: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [
-      { personalDataId, concepto: 'Alquiler', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Fibra', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+
+    const base: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [
       { personalDataId, concepto: 'Supermercado', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Restaurantes', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Gasolina', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Transporte Público', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Seguro Coche', categoria: 'transporte', importe: 0, frecuencia: 'anual', activo: true },
       { personalDataId, concepto: 'Tarifa Móvil', categoria: 'otros', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Suscripciones', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Gimnasio', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Seguro Salud', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Ocio/Suscripciones', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
+      { personalDataId, concepto: 'Fibra/Internet', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
     ];
+
+    // Housing conditions
+    if (profile?.housingType === 'rent') {
+      base.push(
+        { personalDataId, concepto: 'Alquiler', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Seguro Inquilino', categoria: 'seguros', importe: 0, frecuencia: 'anual', activo: true },
+      );
+    }
+
+    // Vehicle conditions
+    if (profile?.hasVehicle === true) {
+      base.push(
+        { personalDataId, concepto: 'Gasolina', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Seguro Coche', categoria: 'seguros', importe: 0, frecuencia: 'anual', activo: true },
+      );
+    } else if (profile?.hasVehicle === false) {
+      base.push(
+        { personalDataId, concepto: 'Transporte Público', categoria: 'transporte', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
+
+    // Children conditions
+    if (profile?.hasChildren) {
+      base.push(
+        { personalDataId, concepto: 'Colegio / Guardería', categoria: 'educacion', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Actividades Extraescolares', categoria: 'educacion', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
+
     const db = await initDB();
-    for (const item of template) {
+    for (const item of base) {
       const expense: PersonalExpense = { ...item, createdAt: now, updatedAt: now };
       await db.add('personalExpenses', expense);
     }
