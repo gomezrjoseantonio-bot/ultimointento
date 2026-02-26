@@ -300,7 +300,13 @@ export type PersonalExpenseFrequency =
   | 'bimestral'
   | 'trimestral'
   | 'semestral'
-  | 'anual';
+  | 'anual'
+  | 'meses_especificos';
+
+export interface AsymmetricPaymentPersonal {
+  mes: number;
+  importe: number;
+}
 
 export interface PersonalExpense {
   id?: number;
@@ -309,6 +315,9 @@ export interface PersonalExpense {
   categoria: PersonalExpenseCategory;
   importe: number;
   frecuencia: PersonalExpenseFrequency;
+  diaPago?: number;
+  mesesCobro?: number[];
+  asymmetricPayments?: AsymmetricPaymentPersonal[];
   accountId?: number;
   activo: boolean;
   createdAt: string;
