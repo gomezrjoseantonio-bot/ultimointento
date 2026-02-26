@@ -842,7 +842,7 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'inversion';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'inversion';
   sourceId?: number; // Document ID or Contract ID
   // Account information
   accountId?: number;

@@ -10,13 +10,15 @@ import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
-import { GastoRecurrente } from '../../../../../types/personal';
+import { personalExpensesService } from '../../../../../services/personalExpensesService';
+import { GastoRecurrente, PersonalExpense } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
   calculateGastosPersonalesForMonth,
+  calculatePersonalExpensesForMonth,
 } from './forecastEngine';
 
 // Fixed assumptions for Phase 1 – all growth rates set to 0 (flat projections)
@@ -152,6 +154,8 @@ interface BaseData {
   propertyAliasMap: Map<number, string>;
   /** Active personal recurring expenses */
   gastosRecurrentes: GastoRecurrente[];
+  /** Active OPEX-style personal expenses */
+  personalExpenses: PersonalExpense[];
 
   // Historical valuations index for real patrimonio calculation (pre-built for performance)
   valoracionIndex: ValoracionIndex;
@@ -279,10 +283,9 @@ function buildMonthRow(
   );
 
   // E. Personal expenses: use forecastEngine for frequency-aware GastoRecurrente calculation — flat
-  const gastosPersonales = calculateGastosPersonalesForMonth(
-    baseData.gastosRecurrentes,
-    month1to12,
-  );
+  const gastosPersonales =
+    calculateGastosPersonalesForMonth(baseData.gastosRecurrentes, month1to12) +
+    calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12);
 
   const gastosAutonomo = baseData.gastosAutonomoMensual;
 
@@ -606,6 +609,15 @@ async function loadBaseData(): Promise<BaseData> {
     // No personal gastos data available
   }
 
+  // Load OPEX-style PersonalExpense records (new model with advanced frequency fields)
+  let personalExpenses: PersonalExpense[] = [];
+  try {
+    const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
+    personalExpenses = allPersonalExpenses.filter(e => e.activo);
+  } catch {
+    // No PersonalExpense data available
+  }
+
   return {
     nominaNetaMensual,
     rentaMensualPorMes,
@@ -614,6 +626,7 @@ async function loadBaseData(): Promise<BaseData> {
     opexRules,
     propertyAliasMap,
     gastosRecurrentes,
+    personalExpenses,
     valoracionIndex,
     inmuebleInitialValues,
     inversionInitialValues,

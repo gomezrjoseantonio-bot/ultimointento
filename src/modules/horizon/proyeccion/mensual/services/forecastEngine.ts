@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Pure frequency-aware calculation engine for automatic projections
 
 import { OpexRule } from '../../../../../services/db';
-import { GastoRecurrente } from '../../../../../types/personal';
+import { GastoRecurrente, PersonalExpense } from '../../../../../types/personal';
 
 export interface OpexDetalleItem {
   propertyId: number;
@@ -160,4 +160,89 @@ export function calculateGastosPersonalesForMonth(
     if (!gastoRecurrenteAppliesToMonth(gasto, month1to12)) return sum;
     return sum + gasto.importe;
   }, 0);
+}
+
+/**
+ * Determines whether a PersonalExpense (OPEX-style) applies in a given calendar month (1–12).
+ * Handles all supported frequencies: semanal, mensual, bimestral, trimestral,
+ * semestral, anual, and meses_especificos.
+ */
+export function personalExpenseAppliesToMonth(
+  expense: PersonalExpense,
+  month1to12: number,
+): boolean {
+  if (!expense.activo) return false;
+
+  switch (expense.frecuencia) {
+    case 'semanal':
+    case 'mensual':
+      return true;
+
+    case 'bimestral': {
+      const start = expense.mesInicio ?? 1;
+      if (month1to12 < start) return false;
+      return (month1to12 - start) % 2 === 0;
+    }
+
+    case 'trimestral': {
+      const start = expense.mesInicio ?? 1;
+      if (month1to12 < start) return false;
+      return (month1to12 - start) % 3 === 0;
+    }
+
+    case 'semestral': {
+      const start = expense.mesInicio ?? 1;
+      if (month1to12 < start) return false;
+      return (month1to12 - start) % 6 === 0;
+    }
+
+    case 'anual': {
+      const targetMonth = expense.mesInicio ?? 1;
+      return month1to12 === targetMonth;
+    }
+
+    case 'meses_especificos':
+      return (expense.mesesCobro ?? []).includes(month1to12);
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Returns the effective amount of a PersonalExpense for a given calendar month.
+ * Returns 0 if the expense does not apply in that month.
+ * Respects asymmetricPayments overrides and weekly multiplier.
+ */
+export function getPersonalExpenseAmountForMonth(
+  expense: PersonalExpense,
+  month1to12: number,
+): number {
+  if (!personalExpenseAppliesToMonth(expense, month1to12)) return 0;
+
+  // Asymmetric payment override takes precedence
+  if (expense.asymmetricPayments?.length) {
+    const ap = expense.asymmetricPayments.find(p => p.mes === month1to12);
+    if (ap !== undefined) return ap.importe;
+  }
+
+  if (expense.frecuencia === 'semanal') {
+    // 52 weeks / 12 months ≈ 4.33 payments per month
+    return expense.importe * (52 / 12);
+  }
+
+  return expense.importe;
+}
+
+/**
+ * Calculates the total amount across all PersonalExpenses for a given calendar month.
+ */
+export function calculatePersonalExpensesForMonth(
+  expenses: PersonalExpense[],
+  month1to12: number,
+): number {
+  return expenses.reduce(
+    (sum, expense) => sum + getPersonalExpenseAmountForMonth(expense, month1to12),
+    0,
+  );
 }
