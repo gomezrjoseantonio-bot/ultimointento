@@ -11,6 +11,7 @@
 import { initDB } from '../../../../services/db';
 import { personalDataService } from '../../../../services/personalDataService';
 import { gastosPersonalesService } from '../../../../services/gastosPersonalesService';
+import { personalExpensesService } from '../../../../services/personalExpensesService';
 import { nominaService } from '../../../../services/nominaService';
 import { getAllContracts } from '../../../../services/contractService';
 import { prestamosService } from '../../../../services/prestamosService';
@@ -20,6 +21,8 @@ import { cuentasService } from '../../../../services/cuentasService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
+  personalExpenseAppliesToMonth,
+  getPersonalExpenseAmountForMonth,
 } from '../../../horizon/proyeccion/mensual/services/forecastEngine';
 import {
   calculateLoanPayment,
@@ -233,6 +236,42 @@ export async function generateMonthlyForecasts(
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing gastos recurrentes:', err);
+  }
+
+  // ── 2b. PERSONAL EXPENSES (OPEX-style, new model) ────────────────────────
+  try {
+    const personalData = await personalDataService.getPersonalData();
+    const personalDataId = personalData?.id ?? 1;
+    const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
+    const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
+
+    for (const expense of activePersonalExpenses) {
+      if (!personalExpenseAppliesToMonth(expense, month)) continue;
+      if (expense.id == null) continue;
+
+      if (await isDuplicate('personal_expense', expense.id)) {
+        skipped++;
+        continue;
+      }
+
+      const amount = getPersonalExpenseAmountForMonth(expense, month);
+      if (amount <= 0) continue;
+
+      await insertEvent({
+        type: 'expense' as const,
+        amount,
+        predictedDate: buildDate(year, month, expense.diaPago ?? 1),
+        description: expense.concepto,
+        sourceType: 'personal_expense' as const,
+        sourceId: expense.id,
+        accountId: expense.accountId,
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing personal expenses:', err);
   }
 
   // ── 3. CONTRATOS ACTIVOS (rental income) ──────────────────────────────────
