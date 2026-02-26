@@ -14,6 +14,12 @@ import {
   X,
   Plus,
   RefreshCw,
+  Briefcase,
+  Home,
+  User,
+  Coins,
+  BarChart2,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCompact, formatDateDDMMYYYY } from '../../utils/formatUtils';
@@ -86,19 +92,36 @@ const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   return 'bank';
 };
 
-/** Inline style for the letter-circle icon in desglose rows */
+/** Inline style for the letter-circle icon in bank filter pills */
 const LETTER_ICON_STYLE: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 14,
-  height: 14,
+  width: 24,
+  height: 24,
   borderRadius: '50%',
-  border: '1px solid currentColor',
-  fontSize: 8,
+  backgroundColor: '#f3f4f6',
+  color: '#4b5563',
+  fontSize: 11,
   fontWeight: 700,
   lineHeight: 1,
   flexShrink: 0,
+};
+
+/** Semantic icon mapping for each desglose row label */
+const DESGLOSE_ICONS: Record<string, React.ElementType> = {
+  'Nómina': Briefcase,
+  'Ingresos Autónomo': User,
+  'Rentas de alquiler': Home,
+  'Intereses posiciones': Coins,
+  'Ingresos Activos': BarChart2,
+  'Gastos Alquiler': Home,
+  'Gastos personales': User,
+  'Gastos Autónomo': Briefcase,
+  'Gastos Activos': Building2,
+  'IRPF a pagar': FileText,
+  'Cuotas hipotecas': Home,
+  'Cuotas préstamos': CreditCard,
 };
 
 
@@ -683,14 +706,10 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="desglose-inline__group-title">{title}</span>
             </div>
             {lines.map(line => {
+              const RowIcon = DESGLOSE_ICONS[line.label] ?? Activity;
               return (
                 <div key={line.label} className="desglose-inline__row">
-                  <span
-                    className="desglose-inline__row-icon"
-                    style={LETTER_ICON_STYLE}
-                  >
-                    {line.label.charAt(0).toUpperCase()}
-                  </span>
+                  <RowIcon size={14} className="desglose-inline__row-icon" />
                   <span className="desglose-inline__row-label">{line.label}</span>
                   <span className="desglose-inline__row-values">
                     {formatDesglose(line.previsto)} / {formatDesglose(line.real)}
@@ -729,7 +748,6 @@ const TreasuryReconciliationView: React.FC = () => {
           <span className="bank-filter-strip__msg">Sin cuentas configuradas</span>
         ) : (
           accounts.map(account => {
-            const Icon = getAccountIcon(account.type);
             const isActive = selectedBankFilter === account.id;
             const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
             const acctNetPrevisto = acctEvents.reduce((sum, e) =>
@@ -745,7 +763,9 @@ const TreasuryReconciliationView: React.FC = () => {
                 aria-pressed={isActive}
                 title={`Filtrar por ${account.name}`}
               >
-                <Icon size={18} className="bank-filter-card__icon" />
+                <span style={LETTER_ICON_STYLE}>
+                  {account.name.charAt(0).toUpperCase()}
+                </span>
                 <span className="bank-filter-card__name">{account.name}</span>
                 <span className="bank-filter-card__saldo">{formatCompact(acctNetPrevisto)} € / {formatCompact(acctNetReal)} €</span>
               </button>
