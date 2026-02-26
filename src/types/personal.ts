@@ -303,6 +303,8 @@ export type PersonalExpenseFrequency =
   | 'anual'
   | 'meses_especificos';
 
+export type PersonalExpenseEstacionalidad = 'plana' | 'invierno' | 'verano';
+
 export interface AsymmetricPaymentPersonal {
   mes: number;
   importe: number;
@@ -317,7 +319,10 @@ export interface PersonalExpense {
   frecuencia: PersonalExpenseFrequency;
   diaPago?: number;
   mesesCobro?: number[];
+  diaDeLaSemana?: number; // 0=Lunes … 6=Domingo, para frecuencia semanal
+  mesInicio?: number; // 1-12, mes de inicio para frecuencias periódicas
   asymmetricPayments?: AsymmetricPaymentPersonal[];
+  estacionalidad?: PersonalExpenseEstacionalidad;
   accountId?: number;
   activo: boolean;
   createdAt: string;

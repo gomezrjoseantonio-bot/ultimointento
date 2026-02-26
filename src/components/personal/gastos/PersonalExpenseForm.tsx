@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal } from 'lucide-react';
-import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency, AsymmetricPaymentPersonal } from '../../../types/personal';
+import { X, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, Minus, Snowflake, Sun } from 'lucide-react';
+import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency, PersonalExpenseEstacionalidad, AsymmetricPaymentPersonal } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
 interface PersonalExpenseFormProps {
@@ -30,6 +30,8 @@ const FREQUENCY_OPTIONS: { value: PersonalExpenseFrequency; label: string }[] = 
   { value: 'anual', label: 'Anual' },
   { value: 'meses_especificos', label: 'Meses específicos' },
 ];
+
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -172,6 +174,8 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
               onChange={(e) => {
                 handleChange('frecuencia', e.target.value as PersonalExpenseFrequency);
                 handleChange('mesesCobro', undefined);
+                handleChange('diaDeLaSemana', undefined);
+                handleChange('mesInicio', undefined);
                 handleChange('asymmetricPayments', undefined);
               }}
             >
@@ -180,6 +184,48 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
               ))}
             </select>
           </div>
+
+          {/* Semanal: día de la semana */}
+          {form.frecuencia === 'semanal' && (
+            <div>
+              <label className={labelClass}>Día de la semana</label>
+              <div className="flex flex-wrap gap-2">
+                {DIAS_SEMANA.map((dia, idx) => (
+                  <button
+                    type="button"
+                    key={idx}
+                    onClick={() => handleChange('diaDeLaSemana', idx)}
+                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                      form.diaDeLaSemana === idx
+                        ? 'bg-atlas-blue text-white border-atlas-blue'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-atlas-blue'
+                    }`}
+                  >
+                    {dia}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bimestral/Trimestral/Semestral/Anual: mes de inicio */}
+          {(['bimestral', 'trimestral', 'semestral', 'anual'] as PersonalExpenseFrequency[]).includes(form.frecuencia) && (
+            <div>
+              <label className={labelClass}>Mes de inicio</label>
+              <select
+                className={inputClass}
+                value={form.mesInicio ?? ''}
+                onChange={(e) =>
+                  handleChange('mesInicio', e.target.value ? parseInt(e.target.value) : undefined)
+                }
+              >
+                <option value="">Sin especificar</option>
+                {MESES.map((mes, idx) => (
+                  <option key={idx} value={idx + 1}>{mes}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Día de pago */}
           <div>
@@ -254,6 +300,34 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
               </div>
             </div>
           )}
+
+          {/* Estacionalidad */}
+          <div>
+            <label className={labelClass}>Estacionalidad</label>
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: 'plana', label: 'Plana', Icon: Minus },
+                  { value: 'invierno', label: 'Invierno', Icon: Snowflake },
+                  { value: 'verano', label: 'Verano', Icon: Sun },
+                ] as { value: PersonalExpenseEstacionalidad; label: string; Icon: React.ElementType }[]
+              ).map(({ value, label, Icon }) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => handleChange('estacionalidad', value)}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-sm rounded-md border transition-colors ${
+                    (form.estacionalidad ?? 'plana') === value
+                      ? 'bg-atlas-blue text-white border-atlas-blue'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-atlas-blue'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Cuenta bancaria */}
           <div>
