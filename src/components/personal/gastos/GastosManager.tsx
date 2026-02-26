@@ -158,12 +158,13 @@ const GastosManager: React.FC = () => {
 
   const sortedExpenses = useMemo(
     () =>
-      [...expenses].sort((a, b) =>
-        (CATEGORY_LABELS[a.categoria] ?? a.categoria).localeCompare(
-          CATEGORY_LABELS[b.categoria] ?? b.categoria,
-          'es'
-        )
-      ),
+      [...expenses].sort((a, b) => {
+        const catA = CATEGORY_LABELS[a.categoria] ?? a.categoria;
+        const catB = CATEGORY_LABELS[b.categoria] ?? b.categoria;
+        const catCmp = catA.localeCompare(catB, 'es');
+        if (catCmp !== 0) return catCmp;
+        return a.concepto.localeCompare(b.concepto, 'es');
+      }),
     [expenses]
   );
 
