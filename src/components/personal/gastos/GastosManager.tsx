@@ -71,6 +71,7 @@ const GastosManager: React.FC = () => {
     setLoading(true);
     try {
       const data = await personalExpensesService.getExpenses(personalDataId);
+      data.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
       setExpenses(data);
     } catch (error) {
       console.error('Error loading personal expenses:', error);

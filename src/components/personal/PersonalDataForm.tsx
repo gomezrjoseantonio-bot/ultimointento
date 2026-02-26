@@ -161,7 +161,11 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
       };
       const savedData = await personalDataService.savePersonalData(dataToSave);
       if (savedData.id) {
-        await personalExpensesService.mergeTemplateExpenses(savedData.id, savedData);
+        try {
+          await personalExpensesService.smartMergeTemplateExpenses(savedData.id, savedData);
+        } catch (mergeError) {
+          console.error('Error merging expense template:', mergeError);
+        }
       }
       toast.success('Datos personales guardados correctamente');
       onDataSaved?.(savedData);
