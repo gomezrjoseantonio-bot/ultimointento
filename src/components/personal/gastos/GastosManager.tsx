@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Home, ShoppingCart, Car, Smile, Heart, Shield, GraduationCap, MoreHorizontal, Info, LayoutTemplate } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
+import { PersonalData, PersonalExpense, PersonalExpenseCategory, PersonalExpenseFrequency } from '../../../types/personal';
 import { personalExpensesService } from '../../../services/personalExpensesService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Account, initDB } from '../../../services/db';
@@ -45,6 +45,7 @@ const GastosManager: React.FC = () => {
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<PersonalExpense | undefined>(undefined);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -60,6 +61,7 @@ const GastosManager: React.FC = () => {
   useEffect(() => {
     personalDataService.getPersonalData().then((data) => {
       if (data?.id) setPersonalDataId(data.id);
+      setPersonalData(data);
     }).catch((err) => console.error('Error loading personal data:', err));
   }, []);
 
@@ -143,7 +145,7 @@ const GastosManager: React.FC = () => {
   const handleLoadTemplate = async () => {
     if (!personalDataId) return;
     try {
-      await personalExpensesService.loadTemplateExpenses(personalDataId);
+      await personalExpensesService.loadTemplateExpenses(personalDataId, personalData);
       toast.success('Plantilla cargada correctamente');
       await loadExpenses();
     } catch (error) {
