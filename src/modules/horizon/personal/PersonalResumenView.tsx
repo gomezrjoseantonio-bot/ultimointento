@@ -10,6 +10,7 @@ import { ProyeccionAnual, MonthlyProjectionRow } from '../proyeccion/mensual/typ
 import { personalDataService } from '../../../services/personalDataService';
 import { personalExpensesService } from '../../../services/personalExpensesService';
 import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
+import { autonomoService } from '../../../services/autonomoService';
 import {
   getPersonalExpenseAmountForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -253,15 +254,47 @@ interface PersonalResumenViewProps {
   config: PersonalModuleConfig | null;
 }
 
+interface AutonomoAnnualData {
+  rendimientoNeto: number;
+  facturacionBruta: number;
+  totalGastos: number;
+}
+
+interface AutonomoMonthlyData {
+  mes: number;
+  ingresos: number;
+  gastos: number;
+  neto: number;
+}
+
 const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) => {
   const [proyeccion, setProyeccion] = useState<ProyeccionAnual | null>(null);
   const [expenseCategories, setExpenseCategories] = useState<typeof MOCK_EXPENSE_CATEGORIES | null>(null);
+  const [autonomoAnual, setAutonomoAnual] = useState<AutonomoAnnualData | null>(null);
+  const [autonomoMensual, setAutonomoMensual] = useState<AutonomoMonthlyData[] | null>(null);
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
     generateProyeccionMensual()
       .then(data => setProyeccion(data.find(p => p.year === currentYear) ?? null))
       .catch(err => { console.error('[PersonalResumenView] Failed to load projection:', err); });
+  }, []);
+
+  useEffect(() => {
+    async function loadAutonomoData() {
+      try {
+        const personalData = await personalDataService.getPersonalData();
+        const personalDataId = personalData?.id ?? 1;
+        const autonomo = await autonomoService.getActivoAutonomo(personalDataId);
+        if (autonomo) {
+          setAutonomoAnual(autonomoService.calculateEstimatedAnnual(autonomo));
+          setAutonomoMensual(autonomoService.getMonthlyDistribution(autonomo));
+        }
+      } catch (err) {
+        console.error('[PersonalResumenView] Failed to load autonomo data:', err);
+      }
+    }
+    loadAutonomoData();
   }, []);
 
   useEffect(() => {
@@ -310,10 +343,20 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
 
   // Annual totals — strictly personal (no rental income, no property OPEX)
   // Autonomous net = serviciosFreelance - gastosAutonomo (to avoid double-counting in expenses)
+  const autonomoNetInProyeccion = proyeccion
+    ? proyeccion.months.reduce((s, m) => s + m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo, 0)
+    : 0;
+  // Use directly-fetched autonomo net when projection doesn't include it (e.g. new data model not yet
+  // reflected in projection) or when there is no projection at all.
+  const autonomoNetAnual = autonomoNetInProyeccion > 0
+    ? autonomoNetInProyeccion
+    : (autonomoAnual?.rendimientoNeto ?? 0);
+
   const totalIncome = proyeccion
     ? proyeccion.months.reduce((s, m) => s + monthPersonalIncome(m), 0)
+      + (autonomoNetInProyeccion <= 0 ? autonomoNetAnual : 0)
     : resumen && resumen.ingresos.total > 0
-    ? resumen.ingresos.total * 12
+    ? (resumen.ingresos.nomina + resumen.ingresos.otros) * 12 + autonomoNetAnual
     : DEFAULT_ANNUAL_INCOME;
 
   // Personal expenses only: no property OPEX, no gastosAutonomo (already deducted from income above)
@@ -336,6 +379,11 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
           totals.pensiones += m.ingresos.pensiones;
           totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
         }
+        // If projection didn't include autonomo income (new data model not yet in projection),
+        // substitute with the directly-fetched autonomo net income.
+        if (totals.autonomo <= 0 && autonomoAnual && autonomoAnual.rendimientoNeto > 0) {
+          totals.autonomo = autonomoAnual.rendimientoNeto;
+        }
         return [
           { label: 'Nóminas', amount: totals.nomina },
           { label: 'Autónomos (neto)', amount: totals.autonomo },
@@ -346,7 +394,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
     : resumen && resumen.ingresos.total > 0
     ? [
         { label: 'Nómina', amount: resumen.ingresos.nomina * 12 },
-        { label: 'Autónomos', amount: resumen.ingresos.autonomo * 12 },
+        { label: 'Autónomos', amount: autonomoNetAnual },
         { label: 'Otros Ingresos', amount: resumen.ingresos.otros * 12 },
       ].filter(s => s.amount > 0)
     : MOCK_INCOME_SOURCES;
@@ -359,8 +407,17 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   const cashFlowData = proyeccion
     ? proyeccion.months.map((m, i) => ({
         label: MONTH_LABELS[i],
-        income: monthPersonalIncome(m),
+        income: monthPersonalIncome(m)
+          + (autonomoNetInProyeccion <= 0 && autonomoMensual && autonomoMensual[i]
+            ? autonomoMensual[i].neto
+            : 0),
         expenses: monthPersonalExpenses(m),
+      }))
+    : autonomoMensual
+    ? MONTH_LABELS.map((label, i) => ({
+        label,
+        income: autonomoMensual[i]?.neto ?? 0,
+        expenses: 0,
       }))
     : MOCK_MONTHLY_DATA;
 
