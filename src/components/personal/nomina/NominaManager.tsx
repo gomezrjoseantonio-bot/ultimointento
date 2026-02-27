@@ -88,7 +88,7 @@ const NominaManager: React.FC = () => {
   const getPagasCount = (nomina: Nomina): number => {
     if (nomina.distribucion.tipo === 'doce') return 12;
     if (nomina.distribucion.tipo === 'catorce') return 14;
-    return nomina.distribucion.meses ?? 12;
+    return nomina.distribucion.meses;
   };
 
   if (loading) {
