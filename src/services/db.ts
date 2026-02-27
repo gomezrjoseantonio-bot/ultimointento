@@ -11,11 +11,12 @@ import type {
   MovimientoPersonal,
   GastoRecurrente,
   GastoPuntual,
-  PersonalExpense
+  PersonalExpense,
+  PensionIngreso
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 24; // V2.4: Added gastosRecurrentes and gastosPuntuales stores
+const DB_VERSION = 25; // V2.5: Added pensiones store for pension income
 
 export interface Property {
   id?: number;
@@ -1340,6 +1341,7 @@ interface AtlasHorizonDB {
   movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
   gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
   gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
+  pensiones: PensionIngreso; // V2.5: Pension income records
   personalExpenses: PersonalExpense; // V2.3: OPEX-style personal expenses
   prestamos: any; // Financiacion: Loan records
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
@@ -1752,6 +1754,13 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('gastosPuntuales')) {
           const gastosPuntualesStore = db.createObjectStore('gastosPuntuales', { keyPath: 'id', autoIncrement: true });
           gastosPuntualesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+        }
+
+        // V2.5: Pensiones store (pension income records)
+        if (!db.objectStoreNames.contains('pensiones')) {
+          const pensionesStore = db.createObjectStore('pensiones', { keyPath: 'id', autoIncrement: true });
+          pensionesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          pensionesStore.createIndex('activa', 'activa', { unique: false });
         }
       },
       blocked() {

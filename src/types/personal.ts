@@ -132,6 +132,28 @@ export interface GastoDeducible {
   porcentajeDeducible: number; // 0-100, percentage that is deductible
 }
 
+// Pension Income Types
+export type TipoPension = 'jubilacion' | 'viudedad' | 'incapacidad' | 'orfandad';
+
+export interface PensionIngreso {
+  id?: number;
+  personalDataId: number;
+  titular: 'yo' | 'pareja';
+  tipoPension: TipoPension;
+  pensionBrutaAnual: number;
+  numeroPagas: 12 | 14;
+  irpfPorcentaje: number;
+  activa: boolean;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+
+export interface CalculoPensionResult {
+  netoMensual: number;
+  netoAnual: number;
+  retencionAnual: number;
+}
+
 // Calculation Results Types
 export interface PlanPensionInversion {
   id?: number;
