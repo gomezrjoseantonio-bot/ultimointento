@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins, PiggyBank } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
-import FreelanceTab from '../../../components/personal/FreelanceTab';
+import AutonomoView from '../../personal/components/AutonomoView';
 import PensionTab from '../../../components/personal/PensionTab';
 import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import GastosManager from '../../../components/personal/gastos/GastosManager';
@@ -87,7 +87,8 @@ const Personal: React.FC = () => {
   const getAllTabs = () => {
     const situacion = personalData?.situacionLaboral ?? [];
     const isEmployed = config?.seccionesActivas.nomina ?? situacion.includes('asalariado');
-    const isSelfEmployed = config?.seccionesActivas.autonomo ?? situacion.includes('autonomo');
+    const situacionConyugue = personalData?.situacionLaboralConyugue ?? [];
+    const isSelfEmployed = config?.seccionesActivas.autonomo ?? (situacion.includes('autonomo') || situacionConyugue.includes('autonomo'));
     const isRetired = situacion.includes('jubilado');
     return [
       { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', show: true },
@@ -254,7 +255,7 @@ const Personal: React.FC = () => {
 
   const renderAutonomoSection = () => (
     <div className="space-y-6">
-      <FreelanceTab />
+      <AutonomoView />
     </div>
   );
 

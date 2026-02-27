@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
-import { Autonomo } from '../../../types/personal';
+import { Autonomo, PersonalData } from '../../../types/personal';
 import toast from 'react-hot-toast';
 
 interface AutonomoFormProps {
@@ -15,8 +15,10 @@ interface AutonomoFormProps {
 const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, onSaved }) => {
   const [loading, setLoading] = useState(false);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
+    titular: '',
     cuotaAutonomos: '',
     cuentaCobro: 0,
     cuentaPago: 0,
@@ -32,10 +34,14 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
   });
 
   useEffect(() => {
-    loadPersonalDataId();
+    loadPersonalData();
+  }, []);
+
+  useEffect(() => {
     if (autonomo) {
       setFormData({
         nombre: autonomo.nombre,
+        titular: autonomo.titular || '',
         cuotaAutonomos: autonomo.cuotaAutonomos.toString(),
         cuentaCobro: autonomo.cuentaCobro,
         cuentaPago: autonomo.cuentaPago,
@@ -52,15 +58,35 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     }
   }, [autonomo]);
 
-  const loadPersonalDataId = async () => {
+  const loadPersonalData = async () => {
     try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        setPersonalDataId(personalData.id);
+      const data = await personalDataService.getPersonalData();
+      if (data?.id) {
+        setPersonalDataId(data.id);
+        setPersonalData(data);
+        if (!autonomo) {
+          const conyugueEsAutonomo = (data.situacionLaboralConyugue || []).includes('autonomo');
+          const onlyOneTitular = !conyugueEsAutonomo || !data.spouseName;
+          if (onlyOneTitular) {
+            setFormData(prev => ({ ...prev, titular: data.nombre || '' }));
+          }
+        }
       }
     } catch (error) {
-      console.error('Error loading personal data ID:', error);
+      console.error('Error loading personal data:', error);
     }
+  };
+
+  const getTitularOptions = () => {
+    const options: { value: string; label: string }[] = [];
+    if (personalData?.nombre) {
+      options.push({ value: personalData.nombre, label: personalData.nombre });
+    }
+    const conyugueEsAutonomo = (personalData?.situacionLaboralConyugue || []).includes('autonomo');
+    if (conyugueEsAutonomo && personalData?.spouseName) {
+      options.push({ value: personalData.spouseName, label: `${personalData.spouseName} (Cónyuge)` });
+    }
+    return options;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,6 +113,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       const autonomoData = {
         personalDataId,
         nombre: formData.nombre,
+        titular: formData.titular || undefined,
         cuotaAutonomos,
         cuentaCobro: formData.cuentaCobro,
         cuentaPago: formData.cuentaPago,
@@ -94,6 +121,8 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         reglaPagoDia: formData.reglaPagoDia,
         ingresosFacturados: autonomo?.ingresosFacturados || [],
         gastosDeducibles: autonomo?.gastosDeducibles || [],
+        fuentesIngreso: autonomo?.fuentesIngreso || [],
+        gastosRecurrentesActividad: autonomo?.gastosRecurrentesActividad || [],
         activo: formData.activo
       };
 
@@ -115,6 +144,8 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       setLoading(false);
     }
   };
+
+  const titularOptions = getTitularOptions();
 
   return (
     <AtlasModal
@@ -139,6 +170,24 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               required
             />
           </div>
+
+          {titularOptions.length > 0 && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                ¿De quién es esta actividad?
+              </label>
+              <select
+                value={formData.titular}
+                onChange={(e) => setFormData(prev => ({ ...prev, titular: e.target.value }))}
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              >
+                <option value="">Seleccionar titular</option>
+                {titularOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
