@@ -518,6 +518,7 @@ async function loadBaseData(): Promise<BaseData> {
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomosActivos = autonomos.filter(a => a.activo);
     for (const autonomo of autonomosActivos) {
+      const conceptoTitular = (autonomo.titular ?? autonomo.nombre ?? 'Autónomo').toUpperCase();
       const ingresosAnuales = autonomo.ingresosFacturados.reduce(
         (sum, i) => sum + i.importe,
         0,
@@ -525,7 +526,7 @@ async function loadBaseData(): Promise<BaseData> {
       const mensual = ingresosAnuales / 12;
       freelanceMensual += mensual;
       autonomoDrillDown.push({
-        concepto: autonomo.nombre ?? 'Autónomo',
+        concepto: conceptoTitular,
         importe: mensual,
         fuente: autonomo.nombre,
       });
@@ -537,7 +538,7 @@ async function loadBaseData(): Promise<BaseData> {
       const gastosMensual = gastosAnuales / 12;
       gastosAutonomoMensual += gastosMensual;
       gastosAutonomoDrillDown.push({
-        concepto: autonomo.nombre ?? 'Autónomo',
+        concepto: conceptoTitular,
         importe: gastosMensual,
         fuente: autonomo.nombre,
       });
