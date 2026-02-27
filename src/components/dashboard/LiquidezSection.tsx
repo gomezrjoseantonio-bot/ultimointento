@@ -1,11 +1,13 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Shield } from 'lucide-react';
 
 interface LiquidezSectionProps {
   disponibleHoy: number;
   comprometido30d: number;
   ingresos30d: number;
   proyeccion30d: number;
+  colchonMeses?: number;
+  estadoColchon?: 'ok' | 'warning' | 'critical';
 }
 
 /**
@@ -27,7 +29,9 @@ const LiquidezSection: React.FC<LiquidezSectionProps> = ({
   disponibleHoy,
   comprometido30d,
   ingresos30d,
-  proyeccion30d
+  proyeccion30d,
+  colchonMeses,
+  estadoColchon = 'ok'
 }) => {
   // Format currency in Spanish locale
   const formatCurrency = (value: number): string => {
@@ -40,6 +44,30 @@ const LiquidezSection: React.FC<LiquidezSectionProps> = ({
   };
 
   const proyeccionPositiva = proyeccion30d > disponibleHoy;
+
+  // Colchón de Emergencia helpers
+  const getColchonColor = () => {
+    switch (estadoColchon) {
+      case 'ok': return 'var(--ok)';
+      case 'warning': return 'var(--warn)';
+      case 'critical': return 'var(--alert)';
+      default: return 'var(--text-gray)';
+    }
+  };
+
+  const getColchonLabel = () => {
+    switch (estadoColchon) {
+      case 'ok': return 'Seguro';
+      case 'warning': return 'Atención';
+      case 'critical': return 'Crítico';
+      default: return 'Desconocido';
+    }
+  };
+
+  const maxColchonMeses = 6;
+  const colchonProgress = colchonMeses !== undefined
+    ? Math.min((colchonMeses / maxColchonMeses) * 100, 100)
+    : 0;
 
   return (
     <div
@@ -80,6 +108,100 @@ const LiquidezSection: React.FC<LiquidezSectionProps> = ({
           LIQUIDEZ
         </h2>
       </div>
+
+      {/* Colchón de Emergencia - prominently highlighted */}
+      {colchonMeses !== undefined && (
+        <div
+          style={{
+            padding: '16px',
+            marginBottom: '20px',
+            backgroundColor: `${getColchonColor()}10`,
+            border: `2px solid ${getColchonColor()}`,
+            borderRadius: '10px'
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield
+                size={18}
+                strokeWidth={1.5}
+                style={{ color: getColchonColor() }}
+                aria-hidden="true"
+              />
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: 'var(--atlas-navy-1)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                Colchón de Emergencia
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span
+                style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: 'var(--atlas-navy-1)',
+                  fontVariantNumeric: 'tabular-nums'
+                }}
+              >
+                {colchonMeses.toFixed(1)} meses
+              </span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  backgroundColor: `${getColchonColor()}20`,
+                  color: getColchonColor(),
+                  fontSize: '0.75rem',
+                  fontWeight: 600
+                }}
+              >
+                {getColchonLabel()}
+              </span>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: 'var(--hz-neutral-100)',
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              style={{
+                width: `${colchonProgress}%`,
+                height: '100%',
+                backgroundColor: getColchonColor(),
+                transition: 'width 0.3s ease'
+              }}
+            />
+          </div>
+          <div
+            style={{
+              fontSize: '0.7rem',
+              color: 'var(--text-gray)',
+              marginTop: '6px'
+            }}
+          >
+            Objetivo: 6 meses de gastos familiares
+          </div>
+        </div>
+      )}
 
       {/* Liquidity breakdown */}
       <div
