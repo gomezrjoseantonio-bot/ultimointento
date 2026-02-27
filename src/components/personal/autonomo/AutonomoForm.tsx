@@ -20,6 +20,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     nombre: '',
     titular: '',
     cuotaAutonomos: '',
+    irpfRetencionPorcentaje: '15',
     cuentaCobro: 0,
     cuentaPago: 0,
     reglaCobroDia: {
@@ -62,6 +63,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         nombre: autonomo.nombre,
         titular: autonomo.titular || '',
         cuotaAutonomos: autonomo.cuotaAutonomos.toString(),
+        irpfRetencionPorcentaje: (autonomo.irpfRetencionPorcentaje ?? 15).toString(),
         cuentaCobro: autonomo.cuentaCobro,
         cuentaPago: autonomo.cuentaPago,
         reglaCobroDia: {
@@ -108,6 +110,12 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       return;
     }
 
+    const irpfRetencionPorcentaje = parseFloat(formData.irpfRetencionPorcentaje);
+    if (isNaN(irpfRetencionPorcentaje) || irpfRetencionPorcentaje < 0 || irpfRetencionPorcentaje > 100) {
+      toast.error('El porcentaje de retención IRPF debe ser un número entre 0 y 100');
+      return;
+    }
+
     setLoading(true);
     try {
       const autonomoData = {
@@ -115,6 +123,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         nombre: formData.nombre,
         titular: formData.titular || undefined,
         cuotaAutonomos,
+        irpfRetencionPorcentaje,
         cuentaCobro: formData.cuentaCobro,
         cuentaPago: formData.cuentaPago,
         reglaCobroDia: formData.reglaCobroDia,
@@ -202,6 +211,23 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               placeholder="294.00"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Retención IRPF en Facturas (%) *
+            </label>
+            <select
+              value={formData.irpfRetencionPorcentaje}
+              onChange={(e) => setFormData(prev => ({ ...prev, irpfRetencionPorcentaje: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="7">7% (nuevos autónomos y primeros años)</option>
+              <option value="15">15% (tipo general)</option>
+              <option value="19">19%</option>
+              <option value="20">20%</option>
+            </select>
+            <p className="text-xs text-neutral-500 mt-1">Porcentaje de IRPF que aplicas en tus facturas a clientes.</p>
           </div>
 
           <div>

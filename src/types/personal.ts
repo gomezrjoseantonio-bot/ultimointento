@@ -81,7 +81,8 @@ export interface ReglaDia {
 export interface FuenteIngreso {
   id?: string;
   nombre: string; // Client or income source name
-  importeEstimado: number; // Estimated recurring monthly amount
+  importeEstimado: number; // Estimated recurring amount per period
+  frecuencia?: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'; // Payment frequency
 }
 
 export interface GastoRecurrenteActividad {
@@ -101,6 +102,7 @@ export interface Autonomo {
   fuentesIngreso?: FuenteIngreso[]; // Recurring income sources / habitual clients
   gastosRecurrentesActividad?: GastoRecurrenteActividad[]; // Recurring activity expenses
   cuotaAutonomos: number; // Monthly fee
+  irpfRetencionPorcentaje?: number; // % IRPF retention on invoices (e.g. 7 or 15)
   cuentaCobro: number; // ID of the bank account for collecting income
   cuentaPago: number; // ID of the bank account for paying expenses
   reglaCobroDia: ReglaDia; // Rules for collection day

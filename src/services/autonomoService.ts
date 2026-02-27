@@ -443,6 +443,37 @@ class AutonomoService {
       resultadoAnual: resultadoNeto * 4 // Extrapolate to year
     };
   }
+
+  /**
+   * Calculate estimated annual figures based on fuentesIngreso and gastosRecurrentesActividad.
+   * Used for dashboard summary cards.
+   */
+  calculateEstimatedAnnual(autonomo: Autonomo): { facturacionBruta: number; totalGastos: number; rendimientoNeto: number } {
+    const frecuenciaMultiplier: Record<string, number> = {
+      mensual: 12,
+      bimestral: 6,
+      trimestral: 4,
+      semestral: 2,
+      anual: 1,
+    };
+
+    const facturacionBruta = (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
+      const mult = frecuenciaMultiplier[fuente.frecuencia || 'mensual'] ?? 12;
+      return total + fuente.importeEstimado * mult;
+    }, 0);
+
+    const gastosRecurrentes = (autonomo.gastosRecurrentesActividad || []).reduce(
+      (total, gasto) => total + gasto.importe * 12,
+      0
+    );
+    const totalGastos = autonomo.cuotaAutonomos * 12 + gastosRecurrentes;
+
+    return {
+      facturacionBruta,
+      totalGastos,
+      rendimientoNeto: facturacionBruta - totalGastos,
+    };
+  }
 }
 
 export const autonomoService = new AutonomoService();
