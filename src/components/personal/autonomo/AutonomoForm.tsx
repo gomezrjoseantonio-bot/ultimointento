@@ -132,7 +132,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         gastosDeducibles: autonomo?.gastosDeducibles || [],
         fuentesIngreso: autonomo?.fuentesIngreso || [],
         gastosRecurrentesActividad: autonomo?.gastosRecurrentesActividad || [],
-        activo: autonomo?.activo ?? false
+        activo: autonomo?.activo ?? true
       };
 
       let savedAutonomo: Autonomo;

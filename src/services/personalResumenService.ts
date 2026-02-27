@@ -75,8 +75,15 @@ class PersonalResumenService {
       let ingresoAutonomo = 0;
       
       if (autonomoActivo) {
-        const resultado = autonomoService.calculateAutonomoResults(autonomoActivo, anio, mes);
-        ingresoAutonomo = resultado.resultadoNetoMensual;
+        if ((autonomoActivo.fuentesIngreso ?? []).length > 0) {
+          // New model: use estimated annual figures (fuentesIngreso + gastosRecurrentesActividad + cuotaAutonomos)
+          const estimated = autonomoService.calculateEstimatedAnnual(autonomoActivo);
+          ingresoAutonomo = estimated.rendimientoNeto / 12;
+        } else {
+          // Legacy model: use actual invoiced/expense records
+          const resultado = autonomoService.calculateAutonomoResults(autonomoActivo, anio, mes);
+          ingresoAutonomo = resultado.resultadoNetoMensual;
+        }
       }
 
       // Calculate other income
