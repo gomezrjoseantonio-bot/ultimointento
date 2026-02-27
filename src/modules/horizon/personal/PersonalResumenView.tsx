@@ -1,16 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
   PiggyBank,
-  CheckCircle2,
-  CircleDashed,
-  Banknote,
-  Briefcase,
-  Receipt,
-  Coins,
 } from 'lucide-react';
 import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/personal';
+import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyeccionMensualService';
+import { ProyeccionAnual } from '../proyeccion/mensual/types/proyeccionMensual';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,10 +16,10 @@ const fmt = (value: number) =>
 const pct = (value: number) =>
   `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)} %`;
 
-// ─── Fallback / demo values ───────────────────────────────────────────────────
+// ─── Fallback / demo values (annual) ─────────────────────────────────────────
 
-const DEFAULT_MOCK_INCOME = 5403.41;
-const DEFAULT_MOCK_EXPENSES = 3150.0;
+const DEFAULT_ANNUAL_INCOME = 5403.41 * 12;
+const DEFAULT_ANNUAL_EXPENSES = 3150.0 * 12;
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -54,10 +50,10 @@ const MOCK_EXPENSE_CATEGORIES = [
 ];
 
 const MOCK_INCOME_SOURCES = [
-  { label: 'Nómina 1', amount: 2800.0 },
-  { label: 'Nómina 2', amount: 1503.41 },
-  { label: 'Autónomos', amount: 900.0 },
-  { label: 'Otros Ingresos', amount: 200.0 },
+  { label: 'Nómina 1', amount: 2800.0 * 12 },
+  { label: 'Nómina 2', amount: 1503.41 * 12 },
+  { label: 'Autónomos', amount: 900.0 * 12 },
+  { label: 'Otros Ingresos', amount: 200.0 * 12 },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -155,7 +151,7 @@ const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, total }
   <div className="bg-white border border-gray-200 p-6 flex flex-col gap-4">
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Desglose de Gastos</p>
-      <p className="text-sm text-gray-400 mt-0.5">Por categoría</p>
+      <p className="text-sm text-gray-400 mt-0.5">Por categoría — anual</p>
     </div>
     <div className="space-y-3">
       {categories.map(({ label, amount, color }) => {
@@ -188,7 +184,7 @@ const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
   <div className="bg-white border border-gray-200 p-6 flex flex-col gap-4">
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Fuentes de Ingresos</p>
-      <p className="text-sm text-gray-400 mt-0.5">Distribución mensual</p>
+      <p className="text-sm text-gray-400 mt-0.5">Distribución anual</p>
     </div>
     <div className="space-y-3">
       {sources.map(({ label, amount }) => {
@@ -211,68 +207,6 @@ const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
   </div>
 );
 
-interface ConfigStatusProps {
-  config: PersonalModuleConfig | null;
-}
-
-const ConfigStatus: React.FC<ConfigStatusProps> = ({ config }) => {
-  const modules = [
-    {
-      id: 'nomina',
-      label: 'Nóminas',
-      icon: Banknote,
-      active: config?.seccionesActivas.nomina ?? false,
-    },
-    {
-      id: 'autonomo',
-      label: 'Autónomos',
-      icon: Briefcase,
-      active: config?.seccionesActivas.autonomo ?? false,
-    },
-    {
-      id: 'gastos',
-      label: 'Gastos',
-      icon: Receipt,
-      active: true,
-    },
-    {
-      id: 'otros',
-      label: 'Otros Ingresos',
-      icon: Coins,
-      active: config?.seccionesActivas.otrosIngresos ?? false,
-    },
-  ];
-
-  return (
-    <div className="bg-white border border-gray-200 p-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Estado de Configuración</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {modules.map(({ id, label, icon: Icon, active }) => (
-          <div
-            key={id}
-            className={`flex items-center gap-3 px-4 py-3 border rounded-sm ${
-              active ? 'border-blue-900 bg-gray-50' : 'border-gray-200'
-            }`}
-          >
-            <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-blue-900' : 'text-gray-300'}`} />
-            <div className="flex-1 min-w-0">
-              <p className={`text-xs font-medium truncate ${active ? 'text-gray-900' : 'text-gray-400'}`}>{label}</p>
-              <p className={`text-[10px] ${active ? 'text-blue-900' : 'text-gray-400'}`}>
-                {active ? 'Activo' : 'Pendiente'}
-              </p>
-            </div>
-            {active ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-900" />
-            ) : (
-              <CircleDashed className="w-4 h-4 shrink-0 text-gray-300" />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface PersonalResumenViewProps {
@@ -280,22 +214,58 @@ interface PersonalResumenViewProps {
   config: PersonalModuleConfig | null;
 }
 
-const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, config }) => {
-  // Use real data when available, fall back to mock values so the dashboard always looks complete
-  const totalIncome = resumen && resumen.ingresos.total > 0 ? resumen.ingresos.total : DEFAULT_MOCK_INCOME;
-  const totalExpenses = resumen && resumen.gastos.total > 0 ? resumen.gastos.total : DEFAULT_MOCK_EXPENSES;
+const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) => {
+  const [proyeccion, setProyeccion] = useState<ProyeccionAnual | null>(null);
+
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    generateProyeccionMensual()
+      .then(data => setProyeccion(data.find(p => p.year === currentYear) ?? null))
+      .catch(err => { console.error('[PersonalResumenView] Failed to load projection:', err); });
+  }, []);
+
+  // Annual totals: prefer projection data, fall back to resumen×12, then mock
+  const totalIncome = proyeccion
+    ? proyeccion.totalesAnuales.ingresosTotales
+    : resumen && resumen.ingresos.total > 0
+    ? resumen.ingresos.total * 12
+    : DEFAULT_ANNUAL_INCOME;
+
+  const totalExpenses = proyeccion
+    ? proyeccion.totalesAnuales.gastosTotales
+    : resumen && resumen.gastos.total > 0
+    ? resumen.gastos.total * 12
+    : DEFAULT_ANNUAL_EXPENSES;
+
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
-  // Build income sources from real resumen or mock data
-  const incomeSources =
-    resumen && resumen.ingresos.total > 0
-      ? [
-          { label: 'Nómina', amount: resumen.ingresos.nomina },
-          { label: 'Autónomos', amount: resumen.ingresos.autonomo },
-          { label: 'Otros Ingresos', amount: resumen.ingresos.otros },
-        ].filter(s => s.amount > 0)
-      : MOCK_INCOME_SOURCES;
+  // Build annual income sources
+  const incomeSources = proyeccion
+    ? (() => {
+        const totals = { nomina: 0, autonomo: 0, pensiones: 0, rentas: 0, otros: 0 };
+        for (const m of proyeccion.months) {
+          totals.nomina += m.ingresos.nomina;
+          totals.autonomo += m.ingresos.serviciosFreelance;
+          totals.pensiones += m.ingresos.pensiones;
+          totals.rentas += m.ingresos.rentasAlquiler;
+          totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
+        }
+        return [
+          { label: 'Nóminas', amount: totals.nomina },
+          { label: 'Autónomos', amount: totals.autonomo },
+          { label: 'Pensiones', amount: totals.pensiones },
+          { label: 'Rentas alquiler', amount: totals.rentas },
+          { label: 'Otros ingresos', amount: totals.otros },
+        ].filter(s => s.amount > 0);
+      })()
+    : resumen && resumen.ingresos.total > 0
+    ? [
+        { label: 'Nómina', amount: resumen.ingresos.nomina * 12 },
+        { label: 'Autónomos', amount: resumen.ingresos.autonomo * 12 },
+        { label: 'Otros Ingresos', amount: resumen.ingresos.otros * 12 },
+      ].filter(s => s.amount > 0)
+    : MOCK_INCOME_SOURCES;
 
   // Expense categories: use real totalExpenses for proportional bars
   const expenseTotal = totalExpenses > 0 ? totalExpenses : MOCK_EXPENSE_CATEGORIES.reduce((s, c) => s + c.amount, 0);
@@ -305,7 +275,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, conf
       {/* ── Top Row: KPIs ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCard
-          title="Ingresos"
+          title="Ingresos Anuales"
           amount={totalIncome}
           icon={TrendingUp}
           accent="navy"
@@ -316,7 +286,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, conf
           }
         />
         <KpiCard
-          title="Gastos"
+          title="Gastos Anuales"
           amount={totalExpenses}
           icon={TrendingDown}
           accent="default"
@@ -327,7 +297,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, conf
           }
         />
         <KpiCard
-          title="Ahorro Neto"
+          title="Ahorro Neto Anual"
           amount={netSavings}
           icon={PiggyBank}
           accent="teal"
@@ -347,9 +317,6 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, conf
         <ExpenseBreakdown categories={MOCK_EXPENSE_CATEGORIES} total={expenseTotal} />
         <IncomeSources sources={incomeSources} total={totalIncome} />
       </div>
-
-      {/* ── Footer: Configuration Status ─────────────────────────────── */}
-      <ConfigStatus config={config} />
     </div>
   );
 };
