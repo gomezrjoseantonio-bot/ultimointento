@@ -88,7 +88,7 @@ const Personal: React.FC = () => {
     const situacion = personalData?.situacionLaboral ?? [];
     const isEmployed = config?.seccionesActivas.nomina ?? situacion.includes('asalariado');
     const isSelfEmployed = config?.seccionesActivas.autonomo ?? situacion.includes('autonomo');
-    const isRetired = situacion.includes('jubilado');
+    const isRetired = situacion.includes('jubilado') || (personalData?.situacionLaboralConyugue ?? []).includes('jubilado');
     return [
       { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', show: true },
       { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', show: isEmployed },
