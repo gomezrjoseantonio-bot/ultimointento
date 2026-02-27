@@ -17,7 +17,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [formData, setFormData] = useState({
-    nombre: '',
     titular: '',
     cuotaAutonomos: '',
     irpfRetencionPorcentaje: '15',
@@ -31,8 +30,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     reglaPagoDia: {
       tipo: 'fijo' as 'fijo' | 'ultimo-habil' | 'n-esimo-habil',
       dia: 5 as number | undefined
-    },
-    activo: true
+    }
   });
 
   const loadPersonalData = useCallback(async () => {
@@ -61,8 +59,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
   useEffect(() => {
     if (autonomo) {
       setFormData({
-        nombre: autonomo.nombre,
-        titular: autonomo.titular || '',
+        titular: autonomo.titular || autonomo.nombre || '',
         cuotaAutonomos: autonomo.cuotaAutonomos.toString(),
         irpfRetencionPorcentaje: (autonomo.irpfRetencionPorcentaje ?? 15).toString(),
         ivaMedioPorcentaje: (autonomo.ivaMedioPorcentaje ?? 21).toString(),
@@ -75,8 +72,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         reglaPagoDia: {
           tipo: autonomo.reglaPagoDia.tipo,
           dia: autonomo.reglaPagoDia.dia || 5
-        },
-        activo: autonomo.activo
+        }
       });
     }
   }, [autonomo]);
@@ -101,7 +97,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       return;
     }
 
-    if (!formData.nombre || !formData.cuotaAutonomos) {
+    if (!formData.titular || !formData.cuotaAutonomos) {
       toast.error('Por favor, completa todos los campos obligatorios');
       return;
     }
@@ -122,8 +118,8 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     try {
       const autonomoData = {
         personalDataId,
-        nombre: formData.nombre,
-        titular: formData.titular || undefined,
+        nombre: formData.titular,
+        titular: formData.titular,
         cuotaAutonomos,
         irpfRetencionPorcentaje,
         ivaMedioPorcentaje: parseFloat(formData.ivaMedioPorcentaje) || 21,
@@ -135,7 +131,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         gastosDeducibles: autonomo?.gastosDeducibles || [],
         fuentesIngreso: autonomo?.fuentesIngreso || [],
         gastosRecurrentesActividad: autonomo?.gastosRecurrentesActividad || [],
-        activo: formData.activo
+        activo: autonomo?.activo ?? false
       };
 
       let savedAutonomo: Autonomo;
@@ -171,35 +167,31 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Nombre de la Configuración *
+              Titular *
             </label>
-            <input
-              type="text"
-              value={formData.nombre}
-              onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="Ej: Autónomo Principal 2024"
-              required
-            />
-          </div>
-
-          {titularOptions.length > 0 && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                ¿De quién es esta actividad?
-              </label>
+            {titularOptions.length > 0 ? (
               <select
                 value={formData.titular}
                 onChange={(e) => setFormData(prev => ({ ...prev, titular: e.target.value }))}
                 className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                required
               >
                 <option value="">Seleccionar titular</option>
                 {titularOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-            </div>
-          )}
+            ) : (
+              <input
+                type="text"
+                value={formData.titular}
+                onChange={(e) => setFormData(prev => ({ ...prev, titular: e.target.value }))}
+                className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+                placeholder="Nombre del titular de la actividad"
+                required
+              />
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -218,7 +210,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Retención IRPF en Facturas (%) *
+              Retención IRPF en Facturas (%)
             </label>
             <select
               value={formData.irpfRetencionPorcentaje}
@@ -230,7 +222,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               <option value="19">19%</option>
               <option value="20">20%</option>
             </select>
-            <p className="text-xs text-neutral-500 mt-1">Porcentaje de IRPF que aplicas en tus facturas a clientes.</p>
+            <p className="text-xs text-neutral-500 mt-1">El cliente retiene este % en origen; es informativo y no se resta del rendimiento neto.</p>
           </div>
 
           <div>
@@ -368,30 +360,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
           </div>
         </div>
 
-        {/* Active checkbox */}
-        <div>
-          <label className="flex items-center space-x-3">
-            <input
-              type="checkbox"
-              checked={formData.activo}
-              onChange={(e) => setFormData(prev => ({ ...prev, activo: e.target.checked }))}
-              className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-            />
-            <span className="text-sm font-medium text-neutral-700">Configuración activa</span>
-          </label>
-          <p className="text-xs text-neutral-500 mt-1">
-            Solo puede haber una configuración activa a la vez. Al activar esta, se desactivarán las demás.
-          </p>
-        </div>
-
-        {/* Information Note */}
-        <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary ">
-          <p className="text-sm text-primary-700">
-            <strong>Nota:</strong> Esta configuración te permitirá registrar ingresos y gastos asociados a tu actividad como autónomo. 
-            Los cálculos automáticos incluirán las deducciones por cuota de autónomos y gastos deducibles.
-          </p>
-        </div>
-
         {/* Submit buttons */}
         <div className="flex justify-end space-x-3 pt-4 border-t border-neutral-200">
           <button
@@ -404,7 +372,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-brand-navy disabled:opacity-50"
+            className="px-4 py-2 bg-brand-navy text-white disabled:opacity-50"
           >
             {loading ? 'Guardando...' : (autonomo ? 'Actualizar' : 'Crear')} Configuración
           </button>

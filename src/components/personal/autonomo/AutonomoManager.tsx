@@ -3,7 +3,7 @@ import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Autonomo, FuenteIngreso, GastoRecurrenteActividad } from '../../../types/personal';
 import AutonomoForm from './AutonomoForm';
-import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, Repeat, BarChart2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, Repeat, BarChart2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
@@ -55,23 +55,27 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({ selected, onChange }) => 
 
 const AutonomoManager: React.FC = () => {
   const [autonomos, setAutonomos] = useState<Autonomo[]>([]);
-  const [activoAutonomo, setActivoAutonomo] = useState<Autonomo | null>(null);
+  const [selectedAutonomoId, setSelectedAutonomoId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAutonomo, setEditingAutonomo] = useState<Autonomo | null>(null);
 
   // Inline form: fuente de ingreso
   const [showFuenteForm, setShowFuenteForm] = useState(false);
+  const [editingFuenteId, setEditingFuenteId] = useState<string | null>(null);
   const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES as number[] });
 
   // Inline form: gasto recurrente actividad
   const [showGastoRecurrenteForm, setShowGastoRecurrenteForm] = useState(false);
+  const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
   const [gastoRecurrenteFormData, setGastoRecurrenteFormData] = useState({
     descripcion: '',
     importe: '',
     categoria: 'asesoria',
     meses: TODOS_LOS_MESES as number[]
   });
+
+  const selectedAutonomo = autonomos.find(a => a.id === selectedAutonomoId) || null;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -80,8 +84,11 @@ const AutonomoManager: React.FC = () => {
       if (personalData?.id) {
         const autonomosData = await autonomoService.getAutonomos(personalData.id);
         setAutonomos(autonomosData);
-        const activo = autonomosData.find(a => a.activo);
-        setActivoAutonomo(activo || null);
+        setSelectedAutonomoId(prev => {
+          // keep selection if still valid, else pick first
+          if (prev && autonomosData.some(a => a.id === prev)) return prev;
+          return autonomosData[0]?.id ?? null;
+        });
       }
     } catch (error) {
       console.error('Error loading autonomos:', error);
@@ -110,19 +117,21 @@ const AutonomoManager: React.FC = () => {
     }
   };
 
-  const handleActivateAutonomo = async (autonomo: Autonomo) => {
-    try {
-      await autonomoService.updateAutonomo(autonomo.id!, { activo: true });
-      toast.success('Configuración activada correctamente');
-      loadData();
-    } catch (error) {
-      toast.error('Error al activar la configuración');
-    }
+  // ── Fuentes de Ingreso ──────────────────────────────────────────────────────
+
+  const handleEditFuenteIngreso = (fuente: FuenteIngreso) => {
+    setFuenteFormData({
+      nombre: fuente.nombre,
+      importeEstimado: fuente.importeEstimado.toString(),
+      meses: fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES
+    });
+    setEditingFuenteId(fuente.id!);
+    setShowFuenteForm(true);
   };
 
   const handleAddFuenteIngreso = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activoAutonomo) return;
+    if (!selectedAutonomo) return;
     const importe = parseFloat(fuenteFormData.importeEstimado);
     if (!fuenteFormData.nombre || isNaN(importe) || importe <= 0) {
       toast.error('Completa todos los campos del concepto de ingreso');
@@ -138,22 +147,28 @@ const AutonomoManager: React.FC = () => {
         importeEstimado: importe,
         meses: fuenteFormData.meses
       };
-      await autonomoService.addFuenteIngreso(activoAutonomo.id!, fuente);
-      toast.success('Concepto de ingreso añadido');
+      if (editingFuenteId) {
+        await autonomoService.updateFuenteIngreso(selectedAutonomo.id!, editingFuenteId, fuente);
+        toast.success('Concepto de ingreso actualizado');
+      } else {
+        await autonomoService.addFuenteIngreso(selectedAutonomo.id!, fuente);
+        toast.success('Concepto de ingreso añadido');
+      }
       setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES });
+      setEditingFuenteId(null);
       setShowFuenteForm(false);
       loadData();
     } catch (error) {
-      toast.error('Error al añadir concepto de ingreso');
+      toast.error('Error al guardar concepto de ingreso');
     }
   };
 
   const handleRemoveFuenteIngreso = async (fuenteId: string) => {
-    if (!activoAutonomo) return;
+    if (!selectedAutonomo) return;
     const confirmed = await confirmDelete('este concepto de ingreso');
     if (!confirmed) return;
     try {
-      await autonomoService.removeFuenteIngreso(activoAutonomo.id!, fuenteId);
+      await autonomoService.removeFuenteIngreso(selectedAutonomo.id!, fuenteId);
       toast.success('Concepto de ingreso eliminado');
       loadData();
     } catch (error) {
@@ -161,9 +176,28 @@ const AutonomoManager: React.FC = () => {
     }
   };
 
+  const handleCancelFuenteForm = () => {
+    setShowFuenteForm(false);
+    setEditingFuenteId(null);
+    setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES });
+  };
+
+  // ── Gastos Recurrentes ──────────────────────────────────────────────────────
+
+  const handleEditGastoRecurrente = (gasto: GastoRecurrenteActividad) => {
+    setGastoRecurrenteFormData({
+      descripcion: gasto.descripcion,
+      importe: gasto.importe.toString(),
+      categoria: gasto.categoria,
+      meses: gasto.meses?.length ? gasto.meses : TODOS_LOS_MESES
+    });
+    setEditingGastoId(gasto.id!);
+    setShowGastoRecurrenteForm(true);
+  };
+
   const handleAddGastoRecurrente = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activoAutonomo) return;
+    if (!selectedAutonomo) return;
     const importe = parseFloat(gastoRecurrenteFormData.importe);
     if (!gastoRecurrenteFormData.descripcion || isNaN(importe) || importe <= 0) {
       toast.error('Completa todos los campos del concepto de gasto');
@@ -180,22 +214,28 @@ const AutonomoManager: React.FC = () => {
         categoria: gastoRecurrenteFormData.categoria,
         meses: gastoRecurrenteFormData.meses
       };
-      await autonomoService.addGastoRecurrenteActividad(activoAutonomo.id!, gasto);
-      toast.success('Concepto de gasto añadido');
+      if (editingGastoId) {
+        await autonomoService.updateGastoRecurrenteActividad(selectedAutonomo.id!, editingGastoId, gasto);
+        toast.success('Concepto de gasto actualizado');
+      } else {
+        await autonomoService.addGastoRecurrenteActividad(selectedAutonomo.id!, gasto);
+        toast.success('Concepto de gasto añadido');
+      }
       setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES });
+      setEditingGastoId(null);
       setShowGastoRecurrenteForm(false);
       loadData();
     } catch (error) {
-      toast.error('Error al añadir concepto de gasto');
+      toast.error('Error al guardar concepto de gasto');
     }
   };
 
   const handleRemoveGastoRecurrente = async (gastoId: string) => {
-    if (!activoAutonomo) return;
+    if (!selectedAutonomo) return;
     const confirmed = await confirmDelete('este concepto de gasto');
     if (!confirmed) return;
     try {
-      await autonomoService.removeGastoRecurrenteActividad(activoAutonomo.id!, gastoId);
+      await autonomoService.removeGastoRecurrenteActividad(selectedAutonomo.id!, gastoId);
       toast.success('Concepto de gasto eliminado');
       loadData();
     } catch (error) {
@@ -203,8 +243,22 @@ const AutonomoManager: React.FC = () => {
     }
   };
 
+  const handleCancelGastoForm = () => {
+    setShowGastoRecurrenteForm(false);
+    setEditingGastoId(null);
+    setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES });
+  };
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+
+  const formatNetoShort = (neto: number) => {
+    const sign = neto >= 0 ? '+ ' : '- ';
+    const formatted = Math.abs(Math.round(neto)).toLocaleString('es-ES');
+    return `${sign}${formatted}`;
+  };
 
   const renderMesesBadges = (meses: number[]) => {
     if (meses.length === 12) return <span className="text-xs text-neutral-500">Todos los meses</span>;
@@ -224,8 +278,8 @@ const AutonomoManager: React.FC = () => {
     );
   }
 
-  const estimated = activoAutonomo ? autonomoService.calculateEstimatedAnnual(activoAutonomo) : null;
-  const monthlyDist = activoAutonomo ? autonomoService.getMonthlyDistribution(activoAutonomo) : null;
+  const estimated = selectedAutonomo ? autonomoService.calculateEstimatedAnnual(selectedAutonomo) : null;
+  const monthlyDist = selectedAutonomo ? autonomoService.getMonthlyDistribution(selectedAutonomo) : null;
 
   return (
     <div className="space-y-6">
@@ -244,28 +298,82 @@ const AutonomoManager: React.FC = () => {
         </button>
       </div>
 
-      {/* Annual Summary */}
-      {activoAutonomo && estimated && (
-        <div className="bg-white border border-gray-200 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-base font-semibold text-gray-900 flex items-center">
-              <Euro className="w-5 h-5 mr-2 text-gray-500" />
-              {activoAutonomo.nombre}
-              {activoAutonomo.titular && (
-                <span className="ml-2 text-sm font-normal text-gray-500">— {activoAutonomo.titular}</span>
-              )}
-            </h4>
-            <div className="flex items-center space-x-2 text-xs text-gray-500">
-              {activoAutonomo.irpfRetencionPorcentaje !== undefined && (
-                <span className="px-2 py-1 bg-gray-100 rounded">IRPF {activoAutonomo.irpfRetencionPorcentaje}%</span>
-              )}
-              {activoAutonomo.ivaMedioPorcentaje !== undefined && (
-                <span className="px-2 py-1 bg-gray-100 rounded">IVA {activoAutonomo.ivaMedioPorcentaje}%</span>
-              )}
-              <span className="px-2 py-1 bg-gray-100 rounded">SS {formatCurrency(activoAutonomo.cuotaAutonomos)}/mes</span>
-            </div>
+      {/* Empty state */}
+      {autonomos.length === 0 && (
+        <div className="bg-white border border-gray-200 shadow-sm p-12 text-center">
+          <Euro className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay configuraciones de autónomo</h3>
+          <p className="mt-1 text-sm text-gray-500">Crea tu primera configuración para empezar a gestionar tu actividad.</p>
+          <div className="mt-6">
+            <button
+              onClick={handleCreateAutonomo}
+              className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Primera Configuración
+            </button>
           </div>
+        </div>
+      )}
 
+      {/* Profile selector + actions */}
+      {autonomos.length > 0 && (
+        <div className="bg-white border border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            {autonomos.length === 1 ? (
+              <span className="font-medium text-gray-900">
+                {selectedAutonomo?.titular || selectedAutonomo?.nombre}
+              </span>
+            ) : (
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedAutonomoId ?? ''}
+                  onChange={(e) => setSelectedAutonomoId(parseInt(e.target.value))}
+                  className="appearance-none pl-3 pr-8 py-2 border border-neutral-300 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-navy bg-white"
+                >
+                  {autonomos.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.titular || a.nombre}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 w-4 h-4 text-gray-400" />
+              </div>
+            )}
+            {selectedAutonomo && (
+              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                {selectedAutonomo.irpfRetencionPorcentaje !== undefined && (
+                  <span className="px-2 py-1 bg-gray-100 rounded">IRPF {selectedAutonomo.irpfRetencionPorcentaje}%</span>
+                )}
+                {selectedAutonomo.ivaMedioPorcentaje !== undefined && (
+                  <span className="px-2 py-1 bg-gray-100 rounded">IVA {selectedAutonomo.ivaMedioPorcentaje}%</span>
+                )}
+                <span className="px-2 py-1 bg-gray-100 rounded">SS {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center space-x-1">
+            {selectedAutonomo && (
+              <>
+                <button onClick={() => handleEditAutonomo(selectedAutonomo)} className="p-2 text-gray-400 hover:text-gray-700" title="Editar configuración">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => handleDeleteAutonomo(selectedAutonomo.id!)} className="p-2 text-gray-400 hover:text-red-600" title="Eliminar configuración">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Annual Summary */}
+      {selectedAutonomo && estimated && (
+        <div className="bg-white border border-gray-200 shadow-sm p-6">
+          <h4 className="text-sm font-semibold text-gray-900 flex items-center mb-4">
+            <Euro className="w-4 h-4 mr-2 text-gray-500" />
+            Resumen Anual Estimado
+          </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-gray-200 p-4">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Ingresos Previstos Anuales</p>
@@ -277,7 +385,7 @@ const AutonomoManager: React.FC = () => {
             </div>
             <div className="bg-white border border-gray-200 p-4">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Rendimiento Neto Estimado</p>
-              <p className={`text-2xl font-bold ${estimated.rendimientoNeto >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              <p className={`text-2xl font-bold ${estimated.rendimientoNeto >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                 {formatCurrency(estimated.rendimientoNeto)}
               </p>
             </div>
@@ -286,7 +394,7 @@ const AutonomoManager: React.FC = () => {
       )}
 
       {/* Monthly distribution bar */}
-      {activoAutonomo && monthlyDist && (
+      {selectedAutonomo && monthlyDist && (
         <div className="bg-white border border-gray-200 shadow-sm p-6">
           <h4 className="text-sm font-semibold text-gray-900 flex items-center mb-4">
             <BarChart2 className="w-4 h-4 mr-2 text-gray-500" />
@@ -315,8 +423,8 @@ const AutonomoManager: React.FC = () => {
                       />
                     )}
                   </div>
-                  <span className={`text-xs mt-1 font-medium ${neto >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                    {neto >= 0 ? '+' : ''}{Math.round(neto / 1000)}k
+                  <span className={`text-[10px] mt-1 font-medium leading-tight ${neto >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {formatNetoShort(neto)}
                   </span>
                 </div>
               ));
@@ -330,7 +438,7 @@ const AutonomoManager: React.FC = () => {
       )}
 
       {/* Conceptos de Ingreso */}
-      {activoAutonomo && (
+      {selectedAutonomo && (
         <div className="bg-white border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold text-gray-900 flex items-center">
@@ -338,7 +446,7 @@ const AutonomoManager: React.FC = () => {
               Conceptos de Ingreso Previstos
             </h4>
             <button
-              onClick={() => setShowFuenteForm(!showFuenteForm)}
+              onClick={() => { handleCancelFuenteForm(); setShowFuenteForm(!showFuenteForm); }}
               className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -348,6 +456,7 @@ const AutonomoManager: React.FC = () => {
 
           {showFuenteForm && (
             <form onSubmit={handleAddFuenteIngreso} className="mb-4 p-4 border border-gray-200 bg-gray-50 space-y-3">
+              <p className="text-xs font-semibold text-gray-700">{editingFuenteId ? 'Editar concepto de ingreso' : 'Nuevo concepto de ingreso'}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">Concepto / Descripción *</label>
@@ -381,14 +490,16 @@ const AutonomoManager: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => setShowFuenteForm(false)} className="px-3 py-1.5 text-sm text-neutral-700 border border-neutral-300">Cancelar</button>
-                <button type="submit" className="px-3 py-1.5 text-sm bg-brand-navy text-white">Guardar</button>
+                <button type="button" onClick={handleCancelFuenteForm} className="px-3 py-1.5 text-sm text-neutral-700 border border-neutral-300">Cancelar</button>
+                <button type="submit" className="px-3 py-1.5 text-sm bg-brand-navy text-white">
+                  {editingFuenteId ? 'Actualizar' : 'Guardar'}
+                </button>
               </div>
             </form>
           )}
 
           <div className="space-y-2">
-            {(activoAutonomo.fuentesIngreso || []).map((fuente) => {
+            {(selectedAutonomo.fuentesIngreso || []).map((fuente) => {
               const meses = fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES;
               const anual = fuente.importeEstimado * meses.length;
               return (
@@ -403,13 +514,18 @@ const AutonomoManager: React.FC = () => {
                       <span className="text-xs font-medium text-gray-700">Total anual: {formatCurrency(anual)}</span>
                     </div>
                   </div>
-                  <button onClick={() => handleRemoveFuenteIngreso(fuente.id!)} className="p-1 text-gray-400 hover:text-red-600 ml-3 flex-shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center space-x-1 ml-3 flex-shrink-0">
+                    <button onClick={() => handleEditFuenteIngreso(fuente)} className="p-1 text-gray-400 hover:text-gray-700" title="Editar">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleRemoveFuenteIngreso(fuente.id!)} className="p-1 text-gray-400 hover:text-red-600" title="Eliminar">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
-            {(activoAutonomo.fuentesIngreso || []).length === 0 && (
+            {(selectedAutonomo.fuentesIngreso || []).length === 0 && (
               <p className="text-sm text-gray-500 py-4 text-center">No hay conceptos de ingreso registrados</p>
             )}
           </div>
@@ -417,7 +533,7 @@ const AutonomoManager: React.FC = () => {
       )}
 
       {/* Conceptos de Gasto */}
-      {activoAutonomo && (
+      {selectedAutonomo && (
         <div className="bg-white border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-semibold text-gray-900 flex items-center">
@@ -425,7 +541,7 @@ const AutonomoManager: React.FC = () => {
               Conceptos de Gasto de la Actividad
             </h4>
             <button
-              onClick={() => setShowGastoRecurrenteForm(!showGastoRecurrenteForm)}
+              onClick={() => { handleCancelGastoForm(); setShowGastoRecurrenteForm(!showGastoRecurrenteForm); }}
               className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -443,12 +559,13 @@ const AutonomoManager: React.FC = () => {
               <span className="text-xs text-gray-500">Todos los meses</span>
             </div>
             <p className="font-semibold text-gray-900 text-sm">
-              {formatCurrency(activoAutonomo.cuotaAutonomos)}/mes · {formatCurrency(activoAutonomo.cuotaAutonomos * 12)}/año
+              {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes · {formatCurrency(selectedAutonomo.cuotaAutonomos * 12)}/año
             </p>
           </div>
 
           {showGastoRecurrenteForm && (
             <form onSubmit={handleAddGastoRecurrente} className="mb-4 p-4 border border-gray-200 bg-gray-50 space-y-3">
+              <p className="text-xs font-semibold text-gray-700">{editingGastoId ? 'Editar concepto de gasto' : 'Nuevo concepto de gasto'}</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">Descripción *</label>
@@ -497,14 +614,16 @@ const AutonomoManager: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => setShowGastoRecurrenteForm(false)} className="px-3 py-1.5 text-sm text-neutral-700 border border-neutral-300">Cancelar</button>
-                <button type="submit" className="px-3 py-1.5 text-sm bg-brand-navy text-white">Guardar</button>
+                <button type="button" onClick={handleCancelGastoForm} className="px-3 py-1.5 text-sm text-neutral-700 border border-neutral-300">Cancelar</button>
+                <button type="submit" className="px-3 py-1.5 text-sm bg-brand-navy text-white">
+                  {editingGastoId ? 'Actualizar' : 'Guardar'}
+                </button>
               </div>
             </form>
           )}
 
           <div className="space-y-2">
-            {(activoAutonomo.gastosRecurrentesActividad || []).map((gasto) => {
+            {(selectedAutonomo.gastosRecurrentesActividad || []).map((gasto) => {
               const meses = gasto.meses?.length ? gasto.meses : TODOS_LOS_MESES;
               const anual = gasto.importe * meses.length;
               return (
@@ -519,106 +638,30 @@ const AutonomoManager: React.FC = () => {
                       <span className="text-xs font-medium text-gray-700">Total anual: {formatCurrency(anual)}</span>
                     </div>
                   </div>
-                  <button onClick={() => handleRemoveGastoRecurrente(gasto.id!)} className="p-1 text-gray-400 hover:text-red-600 ml-3 flex-shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center space-x-1 ml-3 flex-shrink-0">
+                    <button onClick={() => handleEditGastoRecurrente(gasto)} className="p-1 text-gray-400 hover:text-gray-700" title="Editar">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleRemoveGastoRecurrente(gasto.id!)} className="p-1 text-gray-400 hover:text-red-600" title="Eliminar">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
-            {(activoAutonomo.gastosRecurrentesActividad || []).length === 0 && (
+            {(selectedAutonomo.gastosRecurrentesActividad || []).length === 0 && (
               <p className="text-sm text-gray-500 py-4 text-center">No hay otros conceptos de gasto registrados</p>
             )}
           </div>
         </div>
       )}
 
-      {/* All Configurations List */}
-      <div className="bg-white border border-gray-200 shadow-sm p-6">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">Todas las Configuraciones</h4>
-
-        {autonomos.length === 0 ? (
-          <div className="text-center py-8">
-            <Euro className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay configuraciones de autónomo</h3>
-            <p className="mt-1 text-sm text-gray-500">Crea tu primera configuración para empezar a gestionar tu actividad.</p>
-            <div className="mt-6">
-              <button
-                onClick={handleCreateAutonomo}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Primera Configuración
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {autonomos.map((autonomo) => {
-              const est = autonomoService.calculateEstimatedAnnual(autonomo);
-              return (
-                <div key={autonomo.id} className={`border p-4 ${autonomo.activo ? 'border-gray-400' : 'border-gray-200'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h5 className="font-medium text-gray-900 text-sm">{autonomo.nombre}</h5>
-                        {autonomo.titular && <span className="text-sm text-gray-500">— {autonomo.titular}</span>}
-                        {autonomo.activo && (
-                          <span className="text-xs px-2 py-0.5 bg-gray-900 text-white rounded">Activo</span>
-                        )}
-                      </div>
-                      <div className="mt-2 grid grid-cols-3 gap-2">
-                        <div className="text-center p-2 border border-gray-100">
-                          <p className="text-xs text-gray-500">Ingresos Anuales Est.</p>
-                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(est.facturacionBruta)}</p>
-                        </div>
-                        <div className="text-center p-2 border border-gray-100">
-                          <p className="text-xs text-gray-500">Gastos Anuales Est.</p>
-                          <p className="text-sm font-semibold text-gray-900">{formatCurrency(est.totalGastos)}</p>
-                        </div>
-                        <div className="text-center p-2 border border-gray-100">
-                          <p className="text-xs text-gray-500">Rendimiento Neto Est.</p>
-                          <p className={`text-sm font-semibold ${est.rendimientoNeto >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            {formatCurrency(est.rendimientoNeto)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex items-center space-x-3 text-xs text-gray-500">
-                        <span>Cuota SS: {formatCurrency(autonomo.cuotaAutonomos)}/mes</span>
-                        {autonomo.irpfRetencionPorcentaje !== undefined && <span>IRPF: {autonomo.irpfRetencionPorcentaje}%</span>}
-                        {autonomo.ivaMedioPorcentaje !== undefined && <span>IVA: {autonomo.ivaMedioPorcentaje}%</span>}
-                        <span>{(autonomo.fuentesIngreso || []).length} conceptos de ingreso</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1 ml-4">
-                      {!autonomo.activo && (
-                        <button
-                          onClick={() => handleActivateAutonomo(autonomo)}
-                          className="px-3 py-1 text-xs border border-gray-300 text-gray-700 hover:bg-gray-50"
-                        >
-                          Activar
-                        </button>
-                      )}
-                      <button onClick={() => handleEditAutonomo(autonomo)} className="p-2 text-gray-400 hover:text-gray-700">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDeleteAutonomo(autonomo.id!)} className="p-2 text-gray-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Modal */}
       <AutonomoForm
         isOpen={showForm}
         onClose={() => { setShowForm(false); setEditingAutonomo(null); }}
         autonomo={editingAutonomo}
-        onSaved={() => { setShowForm(false); setEditingAutonomo(null); loadData(); }}
+        onSaved={(saved) => { setShowForm(false); setEditingAutonomo(null); setSelectedAutonomoId(saved.id ?? null); loadData(); }}
       />
     </div>
   );

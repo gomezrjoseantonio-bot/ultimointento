@@ -368,6 +368,58 @@ class AutonomoService {
   }
 
   /**
+   * Update a recurring income source in autonomo
+   */
+  async updateFuenteIngreso(autonomoId: number, fuenteId: string, updates: Omit<FuenteIngreso, 'id'>): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      autonomo.fuentesIngreso = (autonomo.fuentesIngreso || []).map((f: FuenteIngreso) =>
+        f.id === fuenteId ? { ...updates, id: fuenteId } : f
+      );
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error updating fuente de ingreso:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a recurring activity expense in autonomo
+   */
+  async updateGastoRecurrenteActividad(autonomoId: number, gastoId: string, updates: Omit<GastoRecurrenteActividad, 'id'>): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      autonomo.gastosRecurrentesActividad = (autonomo.gastosRecurrentesActividad || []).map((g: GastoRecurrenteActividad) =>
+        g.id === gastoId ? { ...updates, id: gastoId } : g
+      );
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error updating gasto recurrente actividad:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Add a recurring activity expense to autonomo
    */
   async addGastoRecurrenteActividad(autonomoId: number, gasto: Omit<GastoRecurrenteActividad, 'id'>): Promise<void> {
