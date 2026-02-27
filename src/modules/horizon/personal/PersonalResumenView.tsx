@@ -6,7 +6,14 @@ import {
 } from 'lucide-react';
 import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/personal';
 import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyeccionMensualService';
-import { ProyeccionAnual } from '../proyeccion/mensual/types/proyeccionMensual';
+import { ProyeccionAnual, MonthlyProjectionRow } from '../proyeccion/mensual/types/proyeccionMensual';
+import { personalDataService } from '../../../services/personalDataService';
+import { personalExpensesService } from '../../../services/personalExpensesService';
+import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
+import {
+  getPersonalExpenseAmountForMonth,
+  gastoRecurrenteAppliesToMonth,
+} from '../proyeccion/mensual/services/forecastEngine';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -38,15 +45,16 @@ const MOCK_MONTHLY_DATA = [
   { label: 'Dic', income: 6800, expenses: 3900 },
 ];
 
+// Annual amounts (monthly × 12)
 const MOCK_EXPENSE_CATEGORIES = [
-  { label: 'Vivienda', amount: 950, color: 'bg-blue-900' },
-  { label: 'Alimentación', amount: 650, color: 'bg-blue-700' },
-  { label: 'Transporte', amount: 280, color: 'bg-blue-500' },
-  { label: 'Seguros', amount: 180, color: 'bg-blue-400' },
-  { label: 'Suscripciones', amount: 120, color: 'bg-blue-300' },
-  { label: 'Salud', amount: 110, color: 'bg-gray-400' },
-  { label: 'Educación', amount: 90, color: 'bg-gray-300' },
-  { label: 'Otros', amount: 770, color: 'bg-gray-200' },
+  { label: 'Vivienda', amount: 950 * 12, color: 'bg-blue-900' },
+  { label: 'Alimentación', amount: 650 * 12, color: 'bg-blue-700' },
+  { label: 'Transporte', amount: 280 * 12, color: 'bg-blue-500' },
+  { label: 'Seguros', amount: 180 * 12, color: 'bg-blue-400' },
+  { label: 'Suscripciones', amount: 120 * 12, color: 'bg-blue-300' },
+  { label: 'Salud', amount: 110 * 12, color: 'bg-gray-400' },
+  { label: 'Educación', amount: 90 * 12, color: 'bg-gray-300' },
+  { label: 'Otros', amount: 770 * 12, color: 'bg-gray-200' },
 ];
 
 const MOCK_INCOME_SOURCES = [
@@ -55,6 +63,23 @@ const MOCK_INCOME_SOURCES = [
   { label: 'Autónomos', amount: 900.0 * 12 },
   { label: 'Otros Ingresos', amount: 200.0 * 12 },
 ];
+
+// ─── Category config for expense breakdown ────────────────────────────────────
+
+const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+const CATEGORY_CONFIG: Record<string, { label: string; color: string }> = {
+  vivienda:      { label: 'Vivienda',      color: 'bg-blue-900' },
+  alimentacion:  { label: 'Alimentación',  color: 'bg-blue-700' },
+  transporte:    { label: 'Transporte',    color: 'bg-blue-500' },
+  seguros:       { label: 'Seguros',       color: 'bg-blue-400' },
+  suscripciones: { label: 'Suscripciones', color: 'bg-blue-300' },
+  suministros:   { label: 'Suministros',   color: 'bg-blue-200' },
+  ocio:          { label: 'Ocio',          color: 'bg-gray-500' },
+  salud:         { label: 'Salud',         color: 'bg-gray-400' },
+  educacion:     { label: 'Educación',     color: 'bg-gray-300' },
+  otros:         { label: 'Otros',         color: 'bg-gray-200' },
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -207,6 +232,20 @@ const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
   </div>
 );
 
+// ─── Monthly row helpers (personal figures only) ──────────────────────────────
+
+/** Net personal income for a single month (rental income excluded; autonomous shown net). */
+const monthPersonalIncome = (m: MonthlyProjectionRow): number =>
+  m.ingresos.nomina
+    + (m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo)
+    + m.ingresos.pensiones
+    + m.ingresos.dividendosInversiones
+    + m.ingresos.otrosIngresos;
+
+/** Personal expenses for a single month (property OPEX and gastosAutonomo excluded). */
+const monthPersonalExpenses = (m: MonthlyProjectionRow): number =>
+  m.gastos.gastosPersonales + m.gastos.seguridadSocial + m.gastos.irpfAPagar;
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface PersonalResumenViewProps {
@@ -216,6 +255,7 @@ interface PersonalResumenViewProps {
 
 const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) => {
   const [proyeccion, setProyeccion] = useState<ProyeccionAnual | null>(null);
+  const [expenseCategories, setExpenseCategories] = useState<typeof MOCK_EXPENSE_CATEGORIES | null>(null);
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
@@ -224,15 +264,61 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
       .catch(err => { console.error('[PersonalResumenView] Failed to load projection:', err); });
   }, []);
 
-  // Annual totals: prefer projection data, fall back to resumen×12, then mock
+  useEffect(() => {
+    async function loadExpenseCategories() {
+      try {
+        const personalData = await personalDataService.getPersonalData();
+        const personalDataId = personalData?.id ?? 1;
+        const [personalExpenses, gastosRecurrentes] = await Promise.all([
+          personalExpensesService.getExpenses(personalDataId),
+          gastosPersonalesService.getGastosRecurrentesActivos(personalDataId),
+        ]);
+        const activeExpenses = personalExpenses.filter(e => e.activo);
+
+        // Compute annual total per category (frequency-aware)
+        const categoryTotals: Record<string, number> = {};
+        for (let m = 1; m <= 12; m++) {
+          for (const exp of activeExpenses) {
+            const amount = getPersonalExpenseAmountForMonth(exp, m);
+            if (amount > 0) {
+              categoryTotals[exp.categoria] = (categoryTotals[exp.categoria] ?? 0) + amount;
+            }
+          }
+          for (const gasto of gastosRecurrentes) {
+            if (gastoRecurrenteAppliesToMonth(gasto, m)) {
+              categoryTotals[gasto.categoria] = (categoryTotals[gasto.categoria] ?? 0) + gasto.importe;
+            }
+          }
+        }
+
+        const categories = Object.entries(categoryTotals)
+          .filter(([, amount]) => amount > 0)
+          .sort((a, b) => b[1] - a[1])
+          .map(([key, amount]) => ({
+            label: CATEGORY_CONFIG[key]?.label ?? key,
+            amount,
+            color: CATEGORY_CONFIG[key]?.color ?? 'bg-gray-200',
+          }));
+
+        if (categories.length > 0) setExpenseCategories(categories);
+      } catch (err) {
+        console.error('[PersonalResumenView] Failed to load expense categories:', err);
+      }
+    }
+    loadExpenseCategories();
+  }, []);
+
+  // Annual totals — strictly personal (no rental income, no property OPEX)
+  // Autonomous net = serviciosFreelance - gastosAutonomo (to avoid double-counting in expenses)
   const totalIncome = proyeccion
-    ? proyeccion.totalesAnuales.ingresosTotales
+    ? proyeccion.months.reduce((s, m) => s + monthPersonalIncome(m), 0)
     : resumen && resumen.ingresos.total > 0
     ? resumen.ingresos.total * 12
     : DEFAULT_ANNUAL_INCOME;
 
+  // Personal expenses only: no property OPEX, no gastosAutonomo (already deducted from income above)
   const totalExpenses = proyeccion
-    ? proyeccion.totalesAnuales.gastosTotales
+    ? proyeccion.months.reduce((s, m) => s + monthPersonalExpenses(m), 0)
     : resumen && resumen.gastos.total > 0
     ? resumen.gastos.total * 12
     : DEFAULT_ANNUAL_EXPENSES;
@@ -240,22 +326,20 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
-  // Build annual income sources
+  // Build annual income sources — no rental; autonomous shown as net
   const incomeSources = proyeccion
     ? (() => {
-        const totals = { nomina: 0, autonomo: 0, pensiones: 0, rentas: 0, otros: 0 };
+        const totals = { nomina: 0, autonomo: 0, pensiones: 0, otros: 0 };
         for (const m of proyeccion.months) {
           totals.nomina += m.ingresos.nomina;
-          totals.autonomo += m.ingresos.serviciosFreelance;
+          totals.autonomo += m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo;
           totals.pensiones += m.ingresos.pensiones;
-          totals.rentas += m.ingresos.rentasAlquiler;
           totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
         }
         return [
           { label: 'Nóminas', amount: totals.nomina },
-          { label: 'Autónomos', amount: totals.autonomo },
+          { label: 'Autónomos (neto)', amount: totals.autonomo },
           { label: 'Pensiones', amount: totals.pensiones },
-          { label: 'Rentas alquiler', amount: totals.rentas },
           { label: 'Otros ingresos', amount: totals.otros },
         ].filter(s => s.amount > 0);
       })()
@@ -267,8 +351,18 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
       ].filter(s => s.amount > 0)
     : MOCK_INCOME_SOURCES;
 
-  // Expense categories: use real totalExpenses for proportional bars
-  const expenseTotal = totalExpenses > 0 ? totalExpenses : MOCK_EXPENSE_CATEGORIES.reduce((s, c) => s + c.amount, 0);
+  // Expense categories: real data if loaded, else annualised mock
+  const expenseCatsToShow = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
+  const expenseTotal = totalExpenses > 0 ? totalExpenses : expenseCatsToShow.reduce((s, c) => s + c.amount, 0);
+
+  // Monthly cash-flow chart: real personal figures from projection, else mock
+  const cashFlowData = proyeccion
+    ? proyeccion.months.map((m, i) => ({
+        label: MONTH_LABELS[i],
+        income: monthPersonalIncome(m),
+        expenses: monthPersonalExpenses(m),
+      }))
+    : MOCK_MONTHLY_DATA;
 
   return (
     <div className="space-y-4">
@@ -292,7 +386,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
           accent="default"
           sub={
             <span className="text-xs text-gray-400">
-              {MOCK_EXPENSE_CATEGORIES.length} categorías registradas
+              {expenseCatsToShow.length} categorías registradas
             </span>
           }
         />
@@ -310,11 +404,11 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
       </div>
 
       {/* ── Middle Row: Cash Flow Visual ─────────────────────────────── */}
-      <CashFlowChart data={MOCK_MONTHLY_DATA} />
+      <CashFlowChart data={cashFlowData} />
 
       {/* ── Bottom Row: Expense Breakdown + Income Sources ─────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ExpenseBreakdown categories={MOCK_EXPENSE_CATEGORIES} total={expenseTotal} />
+        <ExpenseBreakdown categories={expenseCatsToShow} total={expenseTotal} />
         <IncomeSources sources={incomeSources} total={totalIncome} />
       </div>
     </div>
