@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, Home, PieChart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Home, PieChart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface FlujosGridProps {
   trabajo: {
@@ -24,8 +24,8 @@ interface FlujosGridProps {
  * FlujosGrid - Grid displaying the 3 cashflow sources
  * 
  * Replaces TresBolsillosGrid with enhanced data:
- * 1. TRABAJO - Personal net income with trend (Briefcase icon)
- * 2. INMUEBLES - Property cashflow with occupancy (Home icon)
+ * 1. ECONOMÍA FAMILIAR - Net family income vs expenses (Home icon)
+ * 2. INMUEBLES - Property cashflow with occupancy (Building2 icon)
  * 3. INVERSIONES - Investment returns (PieChart icon)
  * 
  * Responsive grid: 3 columns on desktop
@@ -76,7 +76,7 @@ const FlujosGrid: React.FC<FlujosGridProps> = ({
         fontFamily: 'var(--font-inter)'
       }}
     >
-      {/* TRABAJO Card */}
+      {/* ECONOMÍA FAMILIAR Card */}
       <button
         onClick={() => onNavigate('/personal')}
         style={{
@@ -103,7 +103,7 @@ const FlujosGrid: React.FC<FlujosGridProps> = ({
       >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Briefcase 
+          <Home 
             size={18} 
             strokeWidth={1.5} 
             style={{ color: 'var(--atlas-blue)' }} 
@@ -118,7 +118,7 @@ const FlujosGrid: React.FC<FlujosGridProps> = ({
               letterSpacing: '0.05em'
             }}
           >
-            TRABAJO
+            ECONOMÍA FAMILIAR
           </span>
         </div>
 
@@ -140,7 +140,7 @@ const FlujosGrid: React.FC<FlujosGridProps> = ({
         {/* Subtitle with trend */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-gray)' }}>
-            Neto mensual
+            Ingresos - Gastos
           </span>
           {getTrendIcon(trabajo.tendencia)}
         </div>
