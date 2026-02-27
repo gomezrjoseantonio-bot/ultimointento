@@ -47,10 +47,12 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     direccion: string;
     situacionPersonal: PersonalData['situacionPersonal'];
     situacionLaboral: SituacionLaboral[];
+    situacionLaboralConyugue: SituacionLaboral[];
     maritalStatus: MaritalStatus | undefined;
     housingType: HousingType | undefined;
     hasVehicle: boolean;
     hasChildren: boolean | number;
+    comunidadAutonoma: string;
   }>({
     nombre: '',
     apellidos: '',
@@ -58,17 +60,19 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     direccion: '',
     situacionPersonal: 'soltero',
     situacionLaboral: [],
+    situacionLaboralConyugue: [],
     maritalStatus: undefined,
     housingType: undefined,
     hasVehicle: false,
-    hasChildren: false
+    hasChildren: false,
+    comunidadAutonoma: ''
   });
 
   const situacionLaboralOptions = [
     { value: 'asalariado', label: 'Asalariado' },
     { value: 'autonomo', label: 'Autónomo' },
-    { value: 'desempleado', label: 'Desempleado' },
-    { value: 'jubilado', label: 'Jubilado' }
+    { value: 'jubilado', label: 'Pensionista / Jubilado' },
+    { value: 'desempleado', label: 'Desempleado' }
   ];
 
   const maritalStatusOptions: { value: MaritalStatus; label: string }[] = [
@@ -76,6 +80,26 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     { value: 'married', label: 'Casado/a o Pareja de hecho' },
     { value: 'divorced', label: 'Divorciado/a o Separado/a' },
     { value: 'widowed', label: 'Viudo/a' }
+  ];
+
+  const comunidadesAutonomas = [
+    'Andalucía',
+    'Aragón',
+    'Asturias (Principado de)',
+    'Baleares (Illes)',
+    'Canarias',
+    'Cantabria',
+    'Castilla-La Mancha',
+    'Castilla y León',
+    'Cataluña',
+    'Comunidad Valenciana',
+    'Extremadura',
+    'Galicia',
+    'La Rioja',
+    'Madrid (Comunidad de)',
+    'Murcia (Región de)',
+    'Navarra (Comunidad Foral de)',
+    'País Vasco'
   ];
 
   const housingTypeOptions: { value: HousingType; label: string }[] = [
@@ -101,10 +125,12 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           direccion: data.direccion,
           situacionPersonal: data.situacionPersonal,
           situacionLaboral: data.situacionLaboral,
+          situacionLaboralConyugue: data.situacionLaboralConyugue ?? [],
           maritalStatus: data.maritalStatus,
           housingType: data.housingType,
           hasVehicle: data.hasVehicle ?? false,
-          hasChildren: data.hasChildren ?? false
+          hasChildren: data.hasChildren ?? false,
+          comunidadAutonoma: data.comunidadAutonoma ?? ''
         });
       }
     } catch (error) {
@@ -130,6 +156,23 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
     }
 
     setFormData(prev => ({ ...prev, situacionLaboral: newSituaciones }));
+  };
+
+  const handleSituacionLaboralConyugueChange = (situacion: SituacionLaboral, checked: boolean) => {
+    let newSituaciones: SituacionLaboral[];
+
+    if (!checked) {
+      newSituaciones = formData.situacionLaboralConyugue.filter(s => s !== situacion);
+    } else if (situacion === 'desempleado' || situacion === 'jubilado') {
+      newSituaciones = [situacion];
+    } else {
+      const withoutExclusive = formData.situacionLaboralConyugue.filter(
+        s => s !== 'desempleado' && s !== 'jubilado'
+      );
+      newSituaciones = [...withoutExclusive, situacion];
+    }
+
+    setFormData(prev => ({ ...prev, situacionLaboralConyugue: newSituaciones }));
   };
 
   // Maps the new maritalStatus field back to the legacy situacionPersonal field required by the
@@ -226,7 +269,7 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
           </div>
         </div>
 
-        {/* Row 2 – Estado Civil + hasChildren */}
+        {/* Row 2 – Estado Civil + Comunidad Autónoma */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-neutral-600 mb-1">
@@ -246,6 +289,25 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Comunidad Autónoma
+            </label>
+            <select
+              value={formData.comunidadAutonoma}
+              onChange={(e) => setFormData(prev => ({ ...prev, comunidadAutonoma: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="">— Selecciona —</option>
+              {comunidadesAutonomas.map(ccaa => (
+                <option key={ccaa} value={ccaa}>{ccaa}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Row 3 – hasChildren */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col justify-end">
             <Toggle
               checked={!!formData.hasChildren}
@@ -294,6 +356,39 @@ const PersonalDataForm: React.FC<PersonalDataFormProps> = ({ onDataSaved }) => {
             })}
           </div>
         </div>
+
+        {/* Situación Laboral del Cónyuge/Pareja (condicional) */}
+        {formData.maritalStatus === 'married' && (
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-2">
+              Situación Laboral del Cónyuge/Pareja
+              <span className="text-neutral-400 font-normal ml-1">(selección múltiple)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {situacionLaboralOptions.map(option => {
+                const isSelected = formData.situacionLaboralConyugue.includes(option.value as SituacionLaboral);
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-center gap-2 px-3 py-2 border rounded-md cursor-pointer transition-colors text-sm ${
+                      isSelected
+                        ? 'border-brand-navy bg-primary-50 text-brand-navy font-medium'
+                        : 'border-gray-200 text-neutral-700 hover:border-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => handleSituacionLaboralConyugueChange(option.value as SituacionLaboral, e.target.checked)}
+                      className="h-3.5 w-3.5 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
+                    />
+                    {option.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Tipo de Vivienda */}
         <div>

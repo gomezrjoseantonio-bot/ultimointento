@@ -13,12 +13,14 @@ export interface PersonalData {
   direccion: string;
   situacionPersonal: 'soltero' | 'casado' | 'pareja-hecho' | 'divorciado';
   situacionLaboral: SituacionLaboral[];
+  situacionLaboralConyugue?: SituacionLaboral[];
   // Extended profile fields for dynamic module personalisation
   employmentStatus?: EmploymentStatus;
   maritalStatus?: MaritalStatus;
   housingType?: HousingType;
   hasVehicle?: boolean;
   hasChildren?: boolean | number;
+  comunidadAutonoma?: string;
   fechaCreacion: string;
   fechaActualizacion: string;
 }
