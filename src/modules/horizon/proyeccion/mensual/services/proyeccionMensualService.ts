@@ -13,7 +13,7 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
-import { GastoRecurrente, PersonalExpense } from '../../../../../types/personal';
+import { GastoRecurrente, PersonalExpense, OtrosIngresos } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
@@ -175,7 +175,8 @@ interface BaseData {
   gastosAutonomoMensual: number;
   seguridadSocialMensual: number;
   pensionNetaMensual: number;
-  otrosIngresosMensual: number;
+  /** Individual otros-ingresos items – monthly amount computed per-month to respect fechaFin */
+  otrosIngresosItems: OtrosIngresos[];
   valorPlanesPension: number;
   cajaInicial: number;
 }
@@ -274,7 +275,19 @@ function buildMonthRow(
   // Dividends: flat yield on base pension value — no investment return growth applied
   const dividendosInversiones =
     (baseData.valorPlanesPension * FIXED_ASSUMPTIONS.dividendYield) / 12;
-  const otrosIngresosMensual = baseData.otrosIngresosMensual;
+  // Otros ingresos: compute per-month, respecting fechaFin for each item.
+  // monthStr and fechaFin are both in "YYYY-MM" format, so lexicographic comparison gives correct chronological ordering.
+  const otrosIngresosMensual = baseData.otrosIngresosItems.reduce((sum, otro) => {
+    if (otro.fechaFin && monthStr > otro.fechaFin) return sum;
+    let mensual = 0;
+    switch (otro.frecuencia) {
+      case 'mensual': mensual = otro.importe; break;
+      case 'trimestral': mensual = otro.importe / 3; break;
+      case 'semestral': mensual = otro.importe / 6; break;
+      case 'anual': mensual = otro.importe / 12; break;
+    }
+    return sum + mensual;
+  }, 0);
   const totalIngresos =
     nomina +
     serviciosFreelance +
@@ -555,12 +568,12 @@ async function loadBaseData(): Promise<BaseData> {
   }
 
   // ── Otros Ingresos ────────────────────────────────────────────────────────
-  let otrosIngresosMensual = 0;
+  let otrosIngresosItems: OtrosIngresos[] = [];
   const otrosIngresosDrillDown: DrillDownItem[] = [];
   try {
     const otrosIngresos = await otrosIngresosService.getOtrosIngresos(personalDataId);
-    const otrosActivos = otrosIngresos.filter(o => o.activo && o.frecuencia !== 'unico');
-    for (const otro of otrosActivos) {
+    otrosIngresosItems = otrosIngresos.filter(o => o.activo && o.frecuencia !== 'unico');
+    for (const otro of otrosIngresosItems) {
       let mensual = 0;
       switch (otro.frecuencia) {
         case 'mensual': mensual = otro.importe; break;
@@ -568,7 +581,6 @@ async function loadBaseData(): Promise<BaseData> {
         case 'semestral': mensual = otro.importe / 6; break;
         case 'anual': mensual = otro.importe / 12; break;
       }
-      otrosIngresosMensual += mensual;
       otrosIngresosDrillDown.push({
         concepto: otro.nombre ?? otro.tipo,
         importe: mensual,
@@ -715,7 +727,7 @@ async function loadBaseData(): Promise<BaseData> {
     gastosAutonomoMensual,
     seguridadSocialMensual,
     pensionNetaMensual,
-    otrosIngresosMensual,
+    otrosIngresosItems,
     valorPlanesPension,
     cajaInicial,
   };
