@@ -63,18 +63,20 @@ class PersonalExpensesService {
     return expenses.reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
   }
 
-  private buildIdealExpenseItems(personalDataId: number, profile?: PersonalData | null): Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] {
+  private buildIdealExpenseItems(personalDataId: number, profile?: PersonalData | null, includeBase = true): Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] {
     const items: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] = [];
 
-    // Base expenses (always injected)
-    items.push(
-      { personalDataId, concepto: 'Supermercado', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Tarifa Móvil', categoria: 'otros', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Fibra / Internet', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Plataformas (Netflix/Spotify)', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Peluquería / Cuidado Personal', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
-      { personalDataId, concepto: 'Farmacia / Salud básica', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
-    );
+    // Base expenses – only injected when the caller explicitly requests them (i.e. on first load)
+    if (includeBase) {
+      items.push(
+        { personalDataId, concepto: 'Supermercado', categoria: 'alimentacion', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Tarifa Móvil', categoria: 'otros', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Fibra / Internet', categoria: 'vivienda', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Plataformas (Netflix/Spotify)', categoria: 'ocio', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Peluquería / Cuidado Personal', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+        { personalDataId, concepto: 'Farmacia / Salud básica', categoria: 'salud', importe: 0, frecuencia: 'mensual', activo: true },
+      );
+    }
 
     // Housing-specific expenses
     const housingType = profile?.housingType;
@@ -150,8 +152,13 @@ class PersonalExpensesService {
 
   async smartSyncTemplateExpenses(personalDataId: number, profile?: PersonalData | null): Promise<void> {
     const now = new Date().toISOString();
-    const idealItems = this.buildIdealExpenseItems(personalDataId, profile);
     const existing = await this.getExpenses(personalDataId);
+
+    // Base expenses are only injected when the list is completely empty.
+    // This covers both first-time setup and the case where the user has deleted all expenses.
+    // Once the user has any expenses we never inject base expenses again – they may have been renamed.
+    const includeBase = existing.length === 0;
+    const idealItems = this.buildIdealExpenseItems(personalDataId, profile, includeBase);
 
     // Determine concepts to delete based on current profile settings
     const conceptsToDelete = new Set<string>();
