@@ -13,8 +13,10 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
-import { GastoRecurrente, PersonalExpense, OtrosIngresos } from '../../../../../types/personal';
+import { GastoRecurrente, PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
+import { PeriodoPago } from '../../../../../types/prestamos';
+import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
   calculateOpexForMonth,
@@ -22,11 +24,6 @@ import {
   calculateGastosPersonalesForMonth,
   calculatePersonalExpensesForMonth,
 } from './forecastEngine';
-
-// Fixed assumptions for Phase 1 – all growth rates set to 0 (flat projections)
-const FIXED_ASSUMPTIONS = {
-  dividendYield: 0.02,        // 2% annual dividend yield on pension investment portfolio (Phase 1 estimate)
-};
 
 const PROJECTION_YEARS = 20;
 const START_YEAR = new Date().getFullYear();
@@ -124,11 +121,10 @@ function isContractActiveInMonth(contract: Contract, year: number, month: number
 }
 
 interface LoanInfo {
-  principalInicial: number;
-  annualRate: number;
-  plazoMesesTotal: number;
+  principalInicial: number; // fallback for months before first payment
   isHipoteca: boolean; // true = mortgage, false = personal loan
   concepto: string;    // loan description for drilldown
+  periodos: PeriodoPago[]; // full amortization schedule
 }
 
 interface DeudaState {
@@ -140,6 +136,17 @@ interface AssetInitialValue {
   initialValue: number;
 }
 
+interface AutonomoProjectionData {
+  conceptoTitular: string;
+  nombre: string;
+  fuentesIngreso: FuenteIngreso[];
+  gastosRecurrentesActividad: GastoRecurrenteActividad[];
+  cuotaAutonomos: number;
+  // Old-model fallbacks when arrays are empty
+  ingresosAnualesFallback: number;
+  gastosAnualesFallback: number;
+}
+
 interface BaseData {
   // Monthly arrays for base year (index 0 = January, 11 = December)
   nominaNetaMensual: number[];  // Exact net per month from calculateSalary()
@@ -149,11 +156,11 @@ interface BaseData {
   nominaDrillDown: DrillDownItem[][];
   rentaDrillDown: DrillDownItem[][];
 
+  // Per-autonomo structured data (replaces flat freelanceMensual + gastosAutonomoMensual)
+  autonomosData: AutonomoProjectionData[];
+
   // Flat drill-down arrays (same items every month, amounts are monthly equivalents)
-  autonomoDrillDown: DrillDownItem[];
   pensionDrillDown: DrillDownItem[];
-  otrosIngresosDrillDown: DrillDownItem[];
-  gastosAutonomoDrillDown: DrillDownItem[];
 
   // Passed to forecastEngine functions
   /** All OpexRules across all properties */
@@ -170,10 +177,10 @@ interface BaseData {
   inmuebleInitialValues: AssetInitialValue[];    // fallback: purchase price
   inversionInitialValues: AssetInitialValue[];   // fallback: valor_actual
 
+  // Investment periodic return payments (pagos_generados from cuenta_remunerada, prestamo_p2p, deposito_plazo)
+  pagosRendimiento: PagoRendimiento[];
+
   // Scalars
-  freelanceMensual: number;
-  gastosAutonomoMensual: number;
-  seguridadSocialMensual: number;
   pensionNetaMensual: number;
   /** Individual otros-ingresos items – monthly amount computed per-month to respect fechaFin */
   otrosIngresosItems: OtrosIngresos[];
@@ -265,29 +272,108 @@ function buildMonthRow(
   // A. Nóminas: use actual monthly distribution from calculateSalary() — flat, no growth applied
   const nomina = baseData.nominaNetaMensual[monthOfYear];
 
-  const serviciosFreelance = baseData.freelanceMensual;
+  // B. Autónomo income: exact per-month calculation using fuentesIngreso meses arrays
+  let serviciosFreelance = 0;
+  let serviciosFreelanceNoIrpf = 0; // Portion without IRPF at source — used for IRPF base
+  let gastosAutonomo = 0;
+  const autonomoDrillDown: DrillDownItem[] = [];
+  const gastosAutonomoDrillDown: DrillDownItem[] = [];
+
+  for (const a of baseData.autonomosData) {
+    let ingresosEsteMes = 0;
+    let ingresosNoIrpfEsteMes = 0;
+
+    if (a.fuentesIngreso.length > 0) {
+      for (const f of a.fuentesIngreso) {
+        const appliesToMonth = !f.meses || f.meses.length === 0 || f.meses.includes(month1to12);
+        if (appliesToMonth) {
+          ingresosEsteMes += f.importeEstimado;
+          if (!f.aplIrpf) {
+            ingresosNoIrpfEsteMes += f.importeEstimado;
+          }
+        }
+      }
+    } else {
+      // Old-model fallback: flat monthly average; assume no IRPF retention
+      ingresosEsteMes = a.ingresosAnualesFallback / 12;
+      ingresosNoIrpfEsteMes = ingresosEsteMes;
+    }
+
+    serviciosFreelance += ingresosEsteMes;
+    serviciosFreelanceNoIrpf += ingresosNoIrpfEsteMes;
+    if (ingresosEsteMes > 0) {
+      autonomoDrillDown.push({
+        concepto: a.conceptoTitular,
+        importe: ingresosEsteMes,
+        fuente: a.nombre,
+      });
+    }
+
+    let gastosEsteMes = 0;
+    if (a.gastosRecurrentesActividad.length > 0) {
+      for (const g of a.gastosRecurrentesActividad) {
+        const appliesToMonth = !g.meses || g.meses.length === 0 || g.meses.includes(month1to12);
+        if (appliesToMonth) {
+          gastosEsteMes += g.importe;
+        }
+      }
+    } else {
+      // Old-model fallback: flat monthly average
+      gastosEsteMes = a.gastosAnualesFallback / 12;
+    }
+    // CRITICAL: add cuotaAutonomos (Seguridad Social for self-employed) to activity expenses
+    gastosEsteMes += a.cuotaAutonomos;
+    gastosAutonomo += gastosEsteMes;
+    if (gastosEsteMes > 0) {
+      gastosAutonomoDrillDown.push({
+        concepto: a.conceptoTitular,
+        importe: gastosEsteMes,
+        fuente: a.nombre,
+      });
+    }
+  }
 
   const pensiones = baseData.pensionNetaMensual;
 
-  // B. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
+  // C. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
   const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
 
-  // Dividends: flat yield on base pension value — no investment return growth applied
-  const dividendosInversiones =
-    (baseData.valorPlanesPension * FIXED_ASSUMPTIONS.dividendYield) / 12;
-  // Otros ingresos: compute per-month, respecting fechaFin for each item.
-  // monthStr and fechaFin are both in "YYYY-MM" format, so lexicographic comparison gives correct chronological ordering.
+  // D. Intereses Inversiones: sum pagos_generados whose fecha_pago falls in the current month
+  const dividendosInversiones = baseData.pagosRendimiento
+    .filter(p => p.fecha_pago.startsWith(monthStr))
+    .reduce((sum, p) => sum + p.importe_neto, 0);
+
+  // E. Otros ingresos: exact monthly amount based on frequency — respect actual months, not flat division
   const otrosIngresosMensual = baseData.otrosIngresosItems.reduce((sum, otro) => {
     if (otro.fechaFin && monthStr > otro.fechaFin) return sum;
     let mensual = 0;
     switch (otro.frecuencia) {
       case 'mensual': mensual = otro.importe; break;
-      case 'trimestral': mensual = otro.importe / 3; break;
-      case 'semestral': mensual = otro.importe / 6; break;
-      case 'anual': mensual = otro.importe / 12; break;
+      case 'trimestral': mensual = (month1to12 % 3 === 0) ? otro.importe : 0; break;
+      case 'semestral': mensual = (month1to12 % 6 === 0) ? otro.importe : 0; break;
+      case 'anual': mensual = (month1to12 === 12) ? otro.importe : 0; break;
     }
     return sum + mensual;
   }, 0);
+
+  // Per-month drill-down for otros ingresos
+  const otrosIngresosDrillDown: DrillDownItem[] = baseData.otrosIngresosItems
+    .filter(otro => {
+      if (otro.fechaFin && monthStr > otro.fechaFin) return false;
+      switch (otro.frecuencia) {
+        case 'mensual': return true;
+        case 'trimestral': return month1to12 % 3 === 0;
+        case 'semestral': return month1to12 % 6 === 0;
+        case 'anual': return month1to12 === 12;
+        default: return false;
+      }
+    })
+    .map(otro => ({
+      concepto: otro.nombre ?? otro.tipo,
+      importe: otro.importe,
+      fuente: otro.tipo,
+    }));
+
   const totalIngresos =
     nomina +
     serviciosFreelance +
@@ -312,37 +398,30 @@ function buildMonthRow(
     calculateGastosPersonalesForMonth(baseData.gastosRecurrentes, month1to12) +
     calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12);
 
-  const gastosAutonomo = baseData.gastosAutonomoMensual;
-
-  const baseIrpf =
-    nomina + serviciosFreelance + rentasAlquiler + otrosIngresosMensual;
+  // IRPF devengado: only on income NOT withheld at source.
+  // Exclude nomina (withheld by employer). Include rentasAlquiler.
+  // For serviciosFreelance, only include income where aplIrpf is false.
+  const baseIrpf = serviciosFreelanceNoIrpf + rentasAlquiler + otrosIngresosMensual;
   // IRPF devengado for informational purposes only.
   // IRPF payment is forced to 0 until the dedicated tax module is implemented.
   const irpfDevengado = calculateMonthlyIRPF(baseIrpf);
   const irpfAPagar = 0; // TODO: remove when tax module is ready
 
-  const seguridadSocial = baseData.seguridadSocialMensual;
-
   const totalGastos =
     gastosOperativos +
     gastosPersonales +
     gastosAutonomo +
-    irpfAPagar +
-    seguridadSocial;
+    irpfAPagar;
 
   // ── FINANCIACIÓN ──────────────────────────────────────────────────────────
   let cuotasHipotecas = 0;
   let cuotasPrestamos = 0;
-  let amortizacionCapital = 0;
   const prestamosDrillDown: DrillDownItem[] = [];
 
   for (const loan of deudaState.loans) {
-    const { cuota, amortizacion } = calculateLoanPayment(
-      loan.principalInicial,
-      loan.annualRate,
-      loan.plazoMesesTotal,
-      absoluteMonthIndex,
-    );
+    // Find the period whose fechaCargo falls in the current month
+    const currentPeriodo = loan.periodos.find(p => p.fechaCargo.startsWith(monthStr));
+    const cuota = currentPeriodo?.cuota ?? 0;
     if (cuota > 0) {
       prestamosDrillDown.push({ concepto: loan.concepto, importe: cuota });
     }
@@ -351,7 +430,6 @@ function buildMonthRow(
     } else {
       cuotasPrestamos += cuota;
     }
-    amortizacionCapital += amortizacion;
   }
 
   const totalFinanciacion = cuotasHipotecas + cuotasPrestamos;
@@ -369,16 +447,17 @@ function buildMonthRow(
     monthStr,
   );
 
-  // Remaining debt = initial debt minus cumulative amortization
+  // Remaining debt: use principalFinal from the amortization schedule.
+  // For months before first payment, fall back to principalInicial.
+  // For months after full repayment, principalFinal of the last period (≈ 0).
   let deudaInmuebles = 0;
   let deudaPersonal = 0;
   for (const loan of deudaState.loans) {
-    const outstanding = calculateOutstandingPrincipal(
-      loan.principalInicial,
-      loan.annualRate,
-      loan.plazoMesesTotal,
-      absoluteMonthIndex,
+    const periodsUpToMonth = loan.periodos.filter(
+      p => p.fechaCargo.substring(0, 7) <= monthStr,
     );
+    const lastPeriod = periodsUpToMonth[periodsUpToMonth.length - 1];
+    const outstanding = lastPeriod ? lastPeriod.principalFinal : loan.principalInicial;
     if (loan.isHipoteca) {
       deudaInmuebles += outstanding;
     } else {
@@ -416,10 +495,10 @@ function buildMonthRow(
       total: totalIngresos,
       drillDown: {
         nomina: scaledNominaDrillDown,
-        autonomos: baseData.autonomoDrillDown,
+        autonomos: autonomoDrillDown,
         pensiones: baseData.pensionDrillDown,
         rentasAlquiler: scaledRentaDrillDown,
-        otrosIngresos: baseData.otrosIngresosDrillDown,
+        otrosIngresos: otrosIngresosDrillDown,
       },
     },
     gastos: {
@@ -429,7 +508,6 @@ function buildMonthRow(
       gastosAutonomo,
       irpfDevengado,
       irpfAPagar,
-      seguridadSocial,
       total: totalGastos,
       drillDown: {
         gastosOperativos: opexDesglose.map(item => ({
@@ -437,13 +515,12 @@ function buildMonthRow(
           importe: item.importe,
           fuente: item.propertyAlias,
         })),
-        gastosAutonomo: baseData.gastosAutonomoDrillDown,
+        gastosAutonomo: gastosAutonomoDrillDown,
       },
     },
     financiacion: {
       cuotasHipotecas,
       cuotasPrestamos,
-      amortizacionCapital,
       total: totalFinanciacion,
       drillDown: {
         prestamos: prestamosDrillDown,
@@ -482,7 +559,6 @@ async function loadBaseData(): Promise<BaseData> {
   // Use calculateSalary() to get the exact monthly net distribution
   const nominaNetaMensual: number[] = new Array(12).fill(0);
   const nominaDrillDown: DrillDownItem[][] = Array.from({ length: 12 }, () => []);
-  let seguridadSocialMensual = 0;
 
   try {
     const nominas = await nominaService.getNominas(personalDataId);
@@ -500,64 +576,37 @@ async function loadBaseData(): Promise<BaseData> {
         });
       }
     }
-    // SS contribution: monthly average = annual bruto * SS% / 12
-    seguridadSocialMensual = nominasActivas.reduce((sum, n) => {
-      const ss = n.retencion?.cotizacionSS ?? 6.35;
-      return sum + (n.salarioBrutoAnual / 12) * (ss / 100);
-    }, 0);
   } catch {
     // No nomina data available
   }
 
   // ── Autónomo ──────────────────────────────────────────────────────────────
-  let freelanceMensual = 0;
-  let gastosAutonomoMensual = 0;
-  const autonomoDrillDown: DrillDownItem[] = [];
-  const gastosAutonomoDrillDown: DrillDownItem[] = [];
+  const autonomosData: AutonomoProjectionData[] = [];
   try {
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomosActivos = autonomos.filter(a => a.activo);
     for (const autonomo of autonomosActivos) {
       const conceptoTitular = (autonomo.titular ?? autonomo.nombre ?? 'Autónomo').toUpperCase();
 
-      // Prefer new model (fuentesIngreso); fall back to old model (ingresosFacturados)
-      let ingresosAnuales: number;
-      if ((autonomo.fuentesIngreso ?? []).length > 0) {
-        const freqMultiplier: Record<string, number> = { mensual: 12, bimestral: 6, trimestral: 4, semestral: 2, anual: 1 };
-        ingresosAnuales = (autonomo.fuentesIngreso ?? []).reduce((sum, f) => {
-          const occ = f.meses?.length ? f.meses.length : (freqMultiplier[f.frecuencia ?? 'mensual'] ?? 12);
-          return sum + f.importeEstimado * occ;
-        }, 0);
-      } else {
-        ingresosAnuales = autonomo.ingresosFacturados.reduce((sum, i) => sum + i.importe, 0);
+      // Old-model fallback values (used when fuentesIngreso / gastosRecurrentesActividad are empty)
+      let ingresosAnualesFallback = 0;
+      if ((autonomo.fuentesIngreso ?? []).length === 0) {
+        ingresosAnualesFallback = autonomo.ingresosFacturados.reduce((sum, i) => sum + i.importe, 0);
       }
-      const mensual = ingresosAnuales / 12;
-      freelanceMensual += mensual;
-      autonomoDrillDown.push({
-        concepto: conceptoTitular,
-        importe: mensual,
-        fuente: autonomo.nombre,
-      });
-
-      // Prefer new model (gastosRecurrentesActividad); fall back to old model (gastosDeducibles)
-      let gastosAnuales: number;
-      if ((autonomo.gastosRecurrentesActividad ?? []).length > 0) {
-        gastosAnuales = (autonomo.gastosRecurrentesActividad ?? []).reduce((sum, g) => {
-          const occ = g.meses?.length ? g.meses.length : 12;
-          return sum + g.importe * occ;
-        }, 0);
-      } else {
-        gastosAnuales = autonomo.gastosDeducibles.reduce((sum, g) => sum + g.importe, 0);
+      let gastosAnualesFallback = 0;
+      if ((autonomo.gastosRecurrentesActividad ?? []).length === 0) {
+        gastosAnualesFallback = autonomo.gastosDeducibles.reduce((sum, g) => sum + g.importe, 0);
       }
-      const gastosMensual = gastosAnuales / 12;
-      gastosAutonomoMensual += gastosMensual;
-      gastosAutonomoDrillDown.push({
-        concepto: conceptoTitular,
-        importe: gastosMensual,
-        fuente: autonomo.nombre,
-      });
 
-      seguridadSocialMensual += autonomo.cuotaAutonomos;
+      autonomosData.push({
+        conceptoTitular,
+        nombre: autonomo.nombre ?? 'Autónomo',
+        fuentesIngreso: autonomo.fuentesIngreso ?? [],
+        gastosRecurrentesActividad: autonomo.gastosRecurrentesActividad ?? [],
+        cuotaAutonomos: autonomo.cuotaAutonomos,
+        ingresosAnualesFallback,
+        gastosAnualesFallback,
+      });
     }
   } catch {
     // No autonomo data available
@@ -584,24 +633,9 @@ async function loadBaseData(): Promise<BaseData> {
 
   // ── Otros Ingresos ────────────────────────────────────────────────────────
   let otrosIngresosItems: OtrosIngresos[] = [];
-  const otrosIngresosDrillDown: DrillDownItem[] = [];
   try {
     const otrosIngresos = await otrosIngresosService.getOtrosIngresos(personalDataId);
     otrosIngresosItems = otrosIngresos.filter(o => o.activo && o.frecuencia !== 'unico');
-    for (const otro of otrosIngresosItems) {
-      let mensual = 0;
-      switch (otro.frecuencia) {
-        case 'mensual': mensual = otro.importe; break;
-        case 'trimestral': mensual = otro.importe / 3; break;
-        case 'semestral': mensual = otro.importe / 6; break;
-        case 'anual': mensual = otro.importe / 12; break;
-      }
-      otrosIngresosDrillDown.push({
-        concepto: otro.nombre ?? otro.tipo,
-        importe: mensual,
-        fuente: otro.tipo,
-      });
-    }
   } catch {
     // No otrosIngresos data available
   }
@@ -664,6 +698,7 @@ async function loadBaseData(): Promise<BaseData> {
   // Investment values
   let valorPlanesPension = 0;
   const inversionInitialValues: AssetInitialValue[] = [];
+  const pagosRendimiento: PagoRendimiento[] = [];
   try {
     const inversiones = await inversionesService.getPosiciones();
     for (const inv of inversiones) {
@@ -672,6 +707,13 @@ async function loadBaseData(): Promise<BaseData> {
       } else {
         // Non-pension investments use historical valuations; valor_actual is the fallback
         inversionInitialValues.push({ id: inv.id, initialValue: inv.valor_actual });
+      }
+      // Collect periodic return payments (cuenta_remunerada, prestamo_p2p, deposito_plazo)
+      if (['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(inv.tipo)) {
+        const extInv = inv as unknown as InversionRendimientoPeriodico;
+        if (extInv.rendimiento?.pagos_generados?.length) {
+          pagosRendimiento.push(...extInv.rendimiento.pagos_generados);
+        }
       }
     }
   } catch {
@@ -727,10 +769,8 @@ async function loadBaseData(): Promise<BaseData> {
     rentaMensualPorMes,
     nominaDrillDown,
     rentaDrillDown,
-    autonomoDrillDown,
+    autonomosData,
     pensionDrillDown,
-    otrosIngresosDrillDown,
-    gastosAutonomoDrillDown,
     opexRules,
     propertyAliasMap,
     gastosRecurrentes,
@@ -738,9 +778,7 @@ async function loadBaseData(): Promise<BaseData> {
     valoracionIndex,
     inmuebleInitialValues,
     inversionInitialValues,
-    freelanceMensual,
-    gastosAutonomoMensual,
-    seguridadSocialMensual,
+    pagosRendimiento,
     pensionNetaMensual,
     otrosIngresosItems,
     valorPlanesPension,
@@ -757,20 +795,12 @@ async function loadDeudaState(): Promise<DeudaState> {
   try {
     const prestamos = await prestamosService.getAllPrestamos();
     for (const p of prestamos) {
-      // Rates stored as percentage (e.g. 3.2 = 3.2%); divide by 100 for decimal usage
-      const annualRatePct =
-        p.tipo === 'FIJO'
-          ? (p.tipoNominalAnualFijo ?? 0)
-          : p.tipo === 'VARIABLE'
-            ? (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0)
-            : (p.tipoNominalAnualMixtoFijo ?? p.tipoNominalAnualFijo ?? 0);
-
+      const plan = await prestamosService.getPaymentPlan(p.id);
       loans.push({
         principalInicial: p.principalInicial,
-        annualRate: annualRatePct / 100,
-        plazoMesesTotal: p.plazoMesesTotal,
         isHipoteca: p.inmuebleId !== 'standalone', // standalone = personal loan; otherwise mortgage
         concepto: p.nombre ?? 'Hipoteca/Préstamo',
+        periodos: plan?.periodos ?? [],
       });
     }
   } catch {

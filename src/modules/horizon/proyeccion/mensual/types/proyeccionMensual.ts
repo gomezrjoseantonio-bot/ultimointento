@@ -39,7 +39,6 @@ export interface MonthlyProjectionRow {
     gastosAutonomo: number;
     irpfDevengado: number;
     irpfAPagar: number;
-    seguridadSocial: number;
     total: number;
     drillDown?: {
       gastosOperativos?: DrillDownItem[];
@@ -51,7 +50,6 @@ export interface MonthlyProjectionRow {
   financiacion: {
     cuotasHipotecas: number;
     cuotasPrestamos: number;
-    amortizacionCapital: number;
     total: number;
     drillDown?: {
       prestamos?: DrillDownItem[];

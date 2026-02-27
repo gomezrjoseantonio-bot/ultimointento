@@ -245,7 +245,7 @@ const monthPersonalIncome = (m: MonthlyProjectionRow): number =>
 
 /** Personal expenses for a single month (property OPEX and gastosAutonomo excluded). */
 const monthPersonalExpenses = (m: MonthlyProjectionRow): number =>
-  m.gastos.gastosPersonales + m.gastos.seguridadSocial + m.gastos.irpfAPagar;
+  m.gastos.gastosPersonales + m.gastos.irpfAPagar;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
