@@ -3,18 +3,16 @@ import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Nomina, CalculoNominaResult } from '../../../types/personal';
 import NominaForm from './NominaForm';
-import { Plus, Edit2, Trash2, Calendar, DollarSign, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
 const NominaManager: React.FC = () => {
   const [nominas, setNominas] = useState<Nomina[]>([]);
-  const [nominasActivas, setNominasActivas] = useState<Nomina[]>([]);
   const [calculos, setCalculos] = useState<Map<number, CalculoNominaResult>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
-  const [expandedNomina, setExpandedNomina] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -27,10 +25,6 @@ const NominaManager: React.FC = () => {
       if (personalData?.id) {        
         const nominasData = await nominaService.getNominas(personalData.id);
         setNominas(nominasData);
-        
-        // Filter all active nominas
-        const activas = nominasData.filter(n => n.activa);
-        setNominasActivas(activas);
         
         // Calculate salary for ALL nominas (not just active ones)
         const calculosMap = new Map<number, CalculoNominaResult>();
@@ -76,28 +70,6 @@ const NominaManager: React.FC = () => {
     }
   };
 
-  const handleActivateNomina = async (nomina: Nomina) => {
-    try {
-      await nominaService.updateNomina(nomina.id!, { activa: true });
-      toast.success('Nómina activada correctamente');
-      loadData();
-    } catch (error) {
-      console.error('Error activating nomina:', error);
-      toast.error('Error al activar la nómina');
-    }
-  };
-
-  const handleDeactivateNomina = async (nominaId: number) => {
-    try {
-      await nominaService.updateNomina(nominaId, { activa: false });
-      toast.success('Nómina desactivada correctamente');
-      loadData();
-    } catch (error) {
-      console.error('Error deactivating nomina:', error);
-      toast.error('Error al desactivar la nómina');
-    }
-  };
-
   const handleNominaSaved = () => {
     setShowForm(false);
     setEditingNomina(null);
@@ -108,49 +80,15 @@ const NominaManager: React.FC = () => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
       currency: 'EUR',
-      maximumFractionDigits: 0
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   };
 
-  const getCombinedTotals = () => {
-    if (nominasActivas.length === 0) {
-      return { brutoAnual: 0, netoMensual: 0, netoAnual: 0 };
-    }
-
-    let brutoAnual = 0;
-    let netoAnual = 0;
-
-    nominasActivas.forEach(nomina => {
-      brutoAnual += nomina.salarioBrutoAnual;
-      if (nomina.id) {
-        const calculo = calculos.get(nomina.id);
-        if (calculo) {
-          netoAnual += calculo.totalAnualNeto;
-        }
-      }
-    });
-
-    const netoMensual = netoAnual / 12;
-
-    return { brutoAnual, netoMensual, netoAnual };
-  };
-
-  const getMonthName = (mes: number) => {
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    return months[mes - 1];
-  };
-
-  const toggleExpanded = (nominaId: number) => {
-    setExpandedNomina(expandedNomina === nominaId ? null : nominaId);
-  };
-
-  const getNextPaymentDate = (nomina: Nomina) => {
-    const nextDate = nominaService.getNextPaymentDate(nomina.reglaCobroDia);
-    return nextDate.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+  const getPagasCount = (nomina: Nomina): number => {
+    if (nomina.distribucion.tipo === 'doce') return 12;
+    if (nomina.distribucion.tipo === 'catorce') return 14;
+    return nomina.distribucion.meses ?? 12;
   };
 
   if (loading) {
@@ -167,245 +105,100 @@ const NominaManager: React.FC = () => {
       {/* Header with Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Gestión de Nóminas</h3>
-          <p className="text-gray-500">
+          <h3 className="text-lg font-semibold text-gray-900">Gestión de Nóminas</h3>
+          <p className="text-sm text-gray-500">
             Configura y gestiona tus nóminas con distribución, variables y bonus
           </p>
         </div>
         <button
           onClick={handleCreateNomina}
-          className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
+          className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nueva Nómina
         </button>
       </div>
 
-      {/* Combined Summary for Active Nominas */}
-      {nominasActivas.length > 0 && (
-        <div className="rounded-lg border border-neutral-200 bg-gradient-to-r from-primary-50 to-primary-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-5 h-5 text-atlas-blue" />
-              <h4 className="text-lg font-semibold text-primary-900">
-                Resumen de Ingresos
-              </h4>
-              {nominasActivas.length > 1 && (
-                <div className="flex items-center space-x-1 text-sm text-primary-700">
-                  <Users className="w-4 h-4" />
-                  <span>Ingresos combinados de {nominasActivas.length} nóminas</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-md bg-white p-4 shadow-sm border border-neutral-100">
-              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Bruto Anual</p>
-              <p className="text-2xl font-bold text-primary-900 mt-1">
-                {formatCurrency(getCombinedTotals().brutoAnual)}
-              </p>
-            </div>
-
-            <div className="rounded-md bg-white p-4 shadow-sm border-2 border-green-400">
-              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Neto Mensual Promedio</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
-                {formatCurrency(getCombinedTotals().netoMensual)}
-              </p>
-              <p className="text-xs text-neutral-500 mt-1">Total anual neto / 12</p>
-            </div>
-
-            <div className="rounded-md bg-white p-4 shadow-sm border border-neutral-100">
-              <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Neto Anual</p>
-              <p className="text-2xl font-bold text-primary-900 mt-1">
-                {formatCurrency(getCombinedTotals().netoAnual)}
-              </p>
-            </div>
+      {/* Empty state */}
+      {nominas.length === 0 && (
+        <div className="bg-white border border-gray-200 p-12 text-center">
+          <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay nóminas configuradas</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Crea tu primera nómina para empezar a gestionar tus ingresos salariales.
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={handleCreateNomina}
+              className="inline-flex items-center px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Crear Primera Nómina
+            </button>
           </div>
         </div>
       )}
 
-      {/* All Nominas List */}
-      <div className="bg-white border border-gray-200 p-6">
-        <h4 className="text-lg font-medium text-gray-900 mb-4">Todas las Nóminas</h4>
-        
-        {nominas.length === 0 ? (
-          <div className="text-center py-8">
-            <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay nóminas configuradas</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Crea tu primera nómina para empezar a gestionar tus ingresos salariales.
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={handleCreateNomina}
-                className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Primera Nómina
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {nominas.map((nomina) => {
-              const calculo = nomina.id ? calculos.get(nomina.id) : null;
-              const isExpanded = expandedNomina === nomina.id;
-              const hasExtras = nomina.variables.length > 0 || nomina.bonus.length > 0;
-              
-              return (
-                <div
-                  key={nomina.id}
-                  className={`border ${
-                    nomina.activa 
-                      ? 'border-primary-200 bg-primary-50' 
-                      : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  {/* Compact Row */}
-                  <div className="flex items-center px-4 py-3 space-x-4">
-                    {/* Name and Status */}
-                    <div className="flex-shrink-0 w-48">
-                      <div className="flex items-center space-x-2">
-                        <h5 className={`font-medium text-sm ${nomina.activa ? 'text-primary-900' : 'text-gray-900'}`}>
-                          {nomina.nombre}
-                        </h5>
-                        {nomina.activa && (
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium text-primary-800 bg-primary-200 rounded">
-                            Activa
-                          </span>
-                        )}
-                      </div>
-                    </div>
+      {/* Nominas list */}
+      <div className="space-y-4">
+        {nominas.map((nomina) => {
+          const calculo = nomina.id ? calculos.get(nomina.id) : null;
+          const pagasCount = getPagasCount(nomina);
 
-                    {/* Bruto */}
-                    <div className="flex-shrink-0 w-32 text-sm">
-                      <span className="text-gray-900 font-medium">
-                        {formatCurrency(nomina.salarioBrutoAnual)}
-                      </span>
-                    </div>
-
-                    {/* Neto/mes */}
-                    <div className="flex-shrink-0 w-32 text-sm">
-                      <span className="text-gray-600">
-                        {calculo ? formatCurrency(calculo.netoMensual) : '-'}/mes
-                      </span>
-                    </div>
-
-                    {/* Pagas */}
-                    <div className="flex-shrink-0 w-24 text-sm text-gray-600">
-                      {nomina.distribucion.tipo === 'doce' ? '12' :
-                       nomina.distribucion.tipo === 'catorce' ? '14' :
-                       nomina.distribucion.meses} pagas
-                    </div>
-
-                    {/* Extras */}
-                    <div className="flex-shrink-0 w-20 text-sm text-gray-600">
-                      {hasExtras ? (
-                        <span className="text-green-600">
-                          +{nomina.variables.length + nomina.bonus.length}
-                        </span>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </div>
-
-                    {/* Próximo pago */}
-                    <div className="flex-1 min-w-0 text-sm text-gray-600 flex items-center space-x-1">
-                      <Calendar className="w-3 h-3" />
-                      <span className="truncate">{getNextPaymentDate(nomina)}</span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex-shrink-0 flex items-center space-x-2">
-                      {calculo && (
-                        <button
-                          onClick={() => toggleExpanded(nomina.id!)}
-                          className="p-2 text-gray-400 hover:text-atlas-blue"
-                          title="Ver distribución mensual"
-                        >
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
-                        </button>
-                      )}
-                      {nomina.activa ? (
-                        <button
-                          onClick={() => handleDeactivateNomina(nomina.id!)}
-                          className="btn-secondary-horizon px-3 py-1 text-sm text-gray-600"
-                        >
-                          Desactivar
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleActivateNomina(nomina)}
-                          className="btn-secondary-horizon px-3 py-1 text-sm text-atlas-blue"
-                        >
-                          Activar
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleEditNomina(nomina)}
-                        className="p-2 text-gray-400 hover:text-atlas-blue"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteNomina(nomina.id!)}
-                        className="p-2 text-gray-400 hover:text-error-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expandable Monthly Distribution Grid */}
-                  {isExpanded && calculo && calculo.distribuccionMensual && (
-                    <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-                      <div className="flex items-center space-x-4 mb-3">
-                        <h5 className="text-sm font-medium text-gray-700">Distribución Mensual</h5>
-                        <div className="flex items-center space-x-3 text-xs text-gray-500">
-                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-gray-200 border border-gray-300"></span><span>Base</span></span>
-                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-blue-200 border border-blue-300"></span><span>Variables</span></span>
-                          <span className="flex items-center space-x-1"><span className="inline-block w-2 h-2 rounded-full bg-green-200 border border-green-400"></span><span>Bonus/Extra</span></span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-6 gap-2">
-                        {calculo.distribuccionMensual.map((mes) => {
-                          const hasMonthExtras = mes.variables > 0 || mes.bonus > 0;
-                          return (
-                            <div
-                              key={mes.mes}
-                              className={`p-2 rounded text-sm ${
-                                hasMonthExtras ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-200'
-                              }`}
-                            >
-                              <div className="font-medium text-gray-900">{getMonthName(mes.mes)}</div>
-                              <div className="text-xs font-semibold text-gray-800 mt-0.5">
-                                {formatCurrency(mes.netoTotal)}
-                              </div>
-                              <div className="mt-1 space-y-0.5">
-                                <div className="text-xs text-gray-500">Base: {formatCurrency(mes.salarioBase)}</div>
-                                {mes.variables > 0 && (
-                                  <div className="text-xs text-blue-600">Var: +{formatCurrency(mes.variables)}</div>
-                                )}
-                                {mes.bonus > 0 && (
-                                  <div className="text-xs text-green-600">Bonus: +{formatCurrency(mes.bonus)}</div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+          return (
+            <div key={nomina.id}>
+              {/* Header bar */}
+              <div className="bg-white border border-gray-200 rounded-t-lg px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="font-semibold text-gray-900 tracking-wide uppercase">
+                    {nomina.nombre}
+                  </span>
+                  <span className="px-2 py-0.5 text-xs text-gray-500 bg-gray-100 rounded">
+                    {pagasCount} pagas
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => handleEditNomina(nomina)}
+                    className="p-2 text-gray-400 hover:text-gray-700"
+                    title="Editar nómina"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteNomina(nomina.id!)}
+                    className="p-2 text-gray-400 hover:text-red-600"
+                    title="Eliminar nómina"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary card */}
+              <div className="bg-white border border-gray-200 border-t-0 rounded-b-lg p-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white border border-gray-200 p-4">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Bruto Anual</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(nomina.salarioBrutoAnual)}</p>
+                  </div>
+                  <div className="bg-white border border-gray-200 p-4">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Neto Mensual Promedio</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {calculo ? formatCurrency(calculo.netoMensual) : '-'}
+                    </p>
+                  </div>
+                  <div className="bg-white border border-gray-200 p-4">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Neto Anual</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {calculo ? formatCurrency(calculo.totalAnualNeto) : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Nomina Form Modal */}
