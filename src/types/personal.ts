@@ -17,6 +17,7 @@ export interface PersonalData {
   // Extended profile fields for dynamic module personalisation
   employmentStatus?: EmploymentStatus;
   maritalStatus?: MaritalStatus;
+  spouseName?: string;
   housingType?: HousingType;
   hasVehicle?: boolean;
   hasChildren?: boolean | number;
