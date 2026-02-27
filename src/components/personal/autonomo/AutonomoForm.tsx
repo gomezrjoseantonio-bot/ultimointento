@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
@@ -33,9 +33,28 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     activo: true
   });
 
+  const loadPersonalData = useCallback(async () => {
+    try {
+      const data = await personalDataService.getPersonalData();
+      if (data?.id) {
+        setPersonalDataId(data.id);
+        setPersonalData(data);
+        if (!autonomo) {
+          const conyugueEsAutonomo = (data.situacionLaboralConyugue || []).includes('autonomo');
+          const onlyOneTitular = !conyugueEsAutonomo || !data.spouseName;
+          if (onlyOneTitular) {
+            setFormData(prev => ({ ...prev, titular: data.nombre || '' }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading personal data:', error);
+    }
+  }, [autonomo]);
+
   useEffect(() => {
     loadPersonalData();
-  }, []);
+  }, [loadPersonalData]);
 
   useEffect(() => {
     if (autonomo) {
@@ -57,25 +76,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       });
     }
   }, [autonomo]);
-
-  const loadPersonalData = async () => {
-    try {
-      const data = await personalDataService.getPersonalData();
-      if (data?.id) {
-        setPersonalDataId(data.id);
-        setPersonalData(data);
-        if (!autonomo) {
-          const conyugueEsAutonomo = (data.situacionLaboralConyugue || []).includes('autonomo');
-          const onlyOneTitular = !conyugueEsAutonomo || !data.spouseName;
-          if (onlyOneTitular) {
-            setFormData(prev => ({ ...prev, titular: data.nombre || '' }));
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error loading personal data:', error);
-    }
-  };
 
   const getTitularOptions = () => {
     const options: { value: string; label: string }[] = [];
