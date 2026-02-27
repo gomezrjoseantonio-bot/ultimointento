@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
+import { cuentasService } from '../../../services/cuentasService';
+import { Account } from '../../../services/db';
 import { Autonomo, PersonalData } from '../../../types/personal';
 import toast from 'react-hot-toast';
 
@@ -16,11 +18,10 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
   const [loading, setLoading] = useState(false);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<Account[]>([]);
   const [formData, setFormData] = useState({
     titular: '',
     cuotaAutonomos: '',
-    irpfRetencionPorcentaje: '15',
-    ivaMedioPorcentaje: '21',
     cuentaCobro: 0,
     cuentaPago: 0,
     reglaCobroDia: {
@@ -52,17 +53,25 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
     }
   }, [autonomo]);
 
+  const loadAccounts = useCallback(async () => {
+    try {
+      const accounts = await cuentasService.list();
+      setBankAccounts(accounts.filter(a => a.activa));
+    } catch (error) {
+      console.error('Error loading accounts:', error);
+    }
+  }, []);
+
   useEffect(() => {
     loadPersonalData();
-  }, [loadPersonalData]);
+    loadAccounts();
+  }, [loadPersonalData, loadAccounts]);
 
   useEffect(() => {
     if (autonomo) {
       setFormData({
         titular: autonomo.titular || autonomo.nombre || '',
         cuotaAutonomos: autonomo.cuotaAutonomos.toString(),
-        irpfRetencionPorcentaje: (autonomo.irpfRetencionPorcentaje ?? 15).toString(),
-        ivaMedioPorcentaje: (autonomo.ivaMedioPorcentaje ?? 21).toString(),
         cuentaCobro: autonomo.cuentaCobro,
         cuentaPago: autonomo.cuentaPago,
         reglaCobroDia: {
@@ -108,12 +117,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       return;
     }
 
-    const irpfRetencionPorcentaje = parseFloat(formData.irpfRetencionPorcentaje);
-    if (isNaN(irpfRetencionPorcentaje) || irpfRetencionPorcentaje < 0 || irpfRetencionPorcentaje > 100) {
-      toast.error('El porcentaje de retención IRPF debe ser un número entre 0 y 100');
-      return;
-    }
-
     setLoading(true);
     try {
       const autonomoData = {
@@ -121,8 +124,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         nombre: formData.titular,
         titular: formData.titular,
         cuotaAutonomos,
-        irpfRetencionPorcentaje,
-        ivaMedioPorcentaje: parseFloat(formData.ivaMedioPorcentaje) || 21,
         cuentaCobro: formData.cuentaCobro,
         cuentaPago: formData.cuentaPago,
         reglaCobroDia: formData.reglaCobroDia,
@@ -210,41 +211,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Retención IRPF en Facturas (%)
-            </label>
-            <select
-              value={formData.irpfRetencionPorcentaje}
-              onChange={(e) => setFormData(prev => ({ ...prev, irpfRetencionPorcentaje: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
-              <option value="7">7% (nuevos autónomos y primeros años)</option>
-              <option value="15">15% (tipo general)</option>
-              <option value="19">19%</option>
-              <option value="20">20%</option>
-            </select>
-            <p className="text-xs text-neutral-500 mt-1">El cliente retiene este % en origen; es informativo y no se resta del rendimiento neto.</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              IVA Medio en Facturas (%)
-            </label>
-            <select
-              value={formData.ivaMedioPorcentaje}
-              onChange={(e) => setFormData(prev => ({ ...prev, ivaMedioPorcentaje: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
-              <option value="0">0% (exento de IVA)</option>
-              <option value="4">4%</option>
-              <option value="10">10%</option>
-              <option value="21">21% (tipo general)</option>
-            </select>
-            <p className="text-xs text-neutral-500 mt-1">IVA medio que aplicas en tus facturas (usado para previsiones de tesorería).</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Cuenta de Cobro
+              Cuenta de Cobro de Facturas
             </label>
             <select
               value={formData.cuentaCobro}
@@ -252,9 +219,29 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
               className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
             >
               <option value={0}>Seleccionar cuenta</option>
-              <option value={1}>Cuenta Principal</option>
-              <option value={2}>Cuenta Autónomos</option>
-              <option value={3}>Cuenta Ahorros</option>
+              {bankAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.alias || acc.name || acc.ibanMasked || acc.iban}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Cuenta de Pago de Cuota SS
+            </label>
+            <select
+              value={formData.cuentaPago}
+              onChange={(e) => setFormData(prev => ({ ...prev, cuentaPago: parseInt(e.target.value) }))}
+              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value={0}>Seleccionar cuenta</option>
+              {bankAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.alias || acc.name || acc.ibanMasked || acc.iban}
+                </option>
+              ))}
             </select>
           </div>
         </div>

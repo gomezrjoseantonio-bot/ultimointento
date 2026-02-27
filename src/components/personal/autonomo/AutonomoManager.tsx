@@ -3,7 +3,7 @@ import { autonomoService } from '../../../services/autonomoService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Autonomo, FuenteIngreso, GastoRecurrenteActividad } from '../../../types/personal';
 import AutonomoForm from './AutonomoForm';
-import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, Repeat, BarChart2, ChevronDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Euro, TrendingUp, TrendingDown, BarChart2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
@@ -63,7 +63,7 @@ const AutonomoManager: React.FC = () => {
   // Inline form: fuente de ingreso
   const [showFuenteForm, setShowFuenteForm] = useState(false);
   const [editingFuenteId, setEditingFuenteId] = useState<string | null>(null);
-  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES as number[] });
+  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES as number[], aplIrpf: false, aplIva: false });
 
   // Inline form: gasto recurrente actividad
   const [showGastoRecurrenteForm, setShowGastoRecurrenteForm] = useState(false);
@@ -123,7 +123,9 @@ const AutonomoManager: React.FC = () => {
     setFuenteFormData({
       nombre: fuente.nombre,
       importeEstimado: fuente.importeEstimado.toString(),
-      meses: fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES
+      meses: fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES,
+      aplIrpf: fuente.aplIrpf ?? false,
+      aplIva: fuente.aplIva ?? false
     });
     setEditingFuenteId(fuente.id!);
     setShowFuenteForm(true);
@@ -145,7 +147,9 @@ const AutonomoManager: React.FC = () => {
       const fuente: Omit<FuenteIngreso, 'id'> = {
         nombre: fuenteFormData.nombre,
         importeEstimado: importe,
-        meses: fuenteFormData.meses
+        meses: fuenteFormData.meses,
+        aplIrpf: fuenteFormData.aplIrpf,
+        aplIva: fuenteFormData.aplIva
       };
       if (editingFuenteId) {
         await autonomoService.updateFuenteIngreso(selectedAutonomo.id!, editingFuenteId, fuente);
@@ -154,7 +158,7 @@ const AutonomoManager: React.FC = () => {
         await autonomoService.addFuenteIngreso(selectedAutonomo.id!, fuente);
         toast.success('Concepto de ingreso añadido');
       }
-      setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES });
+      setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, aplIrpf: false, aplIva: false });
       setEditingFuenteId(null);
       setShowFuenteForm(false);
       loadData();
@@ -179,7 +183,7 @@ const AutonomoManager: React.FC = () => {
   const handleCancelFuenteForm = () => {
     setShowFuenteForm(false);
     setEditingFuenteId(null);
-    setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES });
+    setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, aplIrpf: false, aplIva: false });
   };
 
   // ── Gastos Recurrentes ──────────────────────────────────────────────────────
@@ -342,12 +346,6 @@ const AutonomoManager: React.FC = () => {
             )}
             {selectedAutonomo && (
               <div className="flex items-center space-x-2 text-xs text-gray-500">
-                {selectedAutonomo.irpfRetencionPorcentaje !== undefined && (
-                  <span className="px-2 py-1 bg-gray-100 rounded">IRPF {selectedAutonomo.irpfRetencionPorcentaje}%</span>
-                )}
-                {selectedAutonomo.ivaMedioPorcentaje !== undefined && (
-                  <span className="px-2 py-1 bg-gray-100 rounded">IVA {selectedAutonomo.ivaMedioPorcentaje}%</span>
-                )}
                 <span className="px-2 py-1 bg-gray-100 rounded">SS {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes</span>
               </div>
             )}
@@ -489,6 +487,26 @@ const AutonomoManager: React.FC = () => {
                   onChange={(meses) => setFuenteFormData(prev => ({ ...prev, meses }))}
                 />
               </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={fuenteFormData.aplIrpf}
+                    onChange={(e) => setFuenteFormData(prev => ({ ...prev, aplIrpf: e.target.checked }))}
+                    className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
+                  />
+                  <span className="text-xs text-neutral-700">Aplica IRPF (retenido por el cliente)</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={fuenteFormData.aplIva}
+                    onChange={(e) => setFuenteFormData(prev => ({ ...prev, aplIva: e.target.checked }))}
+                    className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
+                  />
+                  <span className="text-xs text-neutral-700">Aplica IVA</span>
+                </label>
+              </div>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={handleCancelFuenteForm} className="px-3 py-1.5 text-sm text-neutral-700 border border-neutral-300">Cancelar</button>
                 <button type="submit" className="px-3 py-1.5 text-sm bg-brand-navy text-white">
@@ -550,17 +568,17 @@ const AutonomoManager: React.FC = () => {
           </div>
 
           {/* Fixed: Cuota Autónomos */}
-          <div className="flex items-center justify-between p-3 border border-gray-200 mb-2 bg-gray-50">
-            <div>
-              <p className="font-medium text-gray-900 text-sm flex items-center">
-                <Repeat className="w-3.5 h-3.5 mr-1.5 text-gray-500" />
-                Cuota de Autónomos (SS)
-              </p>
-              <span className="text-xs text-gray-500">Todos los meses</span>
+          <div className="flex items-center justify-between p-3 border border-gray-200 mb-2">
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 text-sm">Cuota de Autónomos (SS)</p>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                <span className="text-sm text-gray-600">{formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes</span>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs text-neutral-500">Todos los meses</span>
+                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs font-medium text-gray-700">Total anual: {formatCurrency(selectedAutonomo.cuotaAutonomos * 12)}</span>
+              </div>
             </div>
-            <p className="font-semibold text-gray-900 text-sm">
-              {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes · {formatCurrency(selectedAutonomo.cuotaAutonomos * 12)}/año
-            </p>
           </div>
 
           {showGastoRecurrenteForm && (

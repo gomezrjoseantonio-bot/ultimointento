@@ -84,6 +84,8 @@ export interface FuenteIngreso {
   importeEstimado: number; // Amount per occurrence
   meses: number[]; // Months of impact (1=Jan..12=Dec); all 12 means monthly
   frecuencia?: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'; // Legacy – kept for backward compatibility
+  aplIrpf?: boolean; // Whether IRPF is retained by client on this income
+  aplIva?: boolean; // Whether IVA applies to this income
 }
 
 export interface GastoRecurrenteActividad {
