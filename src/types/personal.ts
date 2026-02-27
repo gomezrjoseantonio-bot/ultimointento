@@ -184,13 +184,14 @@ export interface OtrosIngresos {
   id?: number;
   personalDataId: number;
   nombre: string;
-  tipo: 'dividendos' | 'intereses' | 'fondos-indexados' | 'otros';
+  tipo: 'prestacion-desempleo' | 'subsidio-ayuda' | 'pension-alimenticia' | 'devolucion-deuda' | 'otro';
   importe: number;
   frecuencia: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'unico';
   titularidad: 'yo' | 'pareja' | 'ambos';
   cuentaCobro: number;
   reglasDia: ReglaDia;
   activo: boolean;
+  fechaFin?: string;
   fechaCreacion: string;
   fechaActualizacion: string;
 }

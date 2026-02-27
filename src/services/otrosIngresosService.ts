@@ -242,39 +242,46 @@ class OtrosIngresosService {
    * Calculate income summary by type
    */
   getIncomeSummaryByType(ingresos: OtrosIngresos[]): {
-    dividendos: { mensual: number; anual: number; count: number };
-    intereses: { mensual: number; anual: number; count: number };
-    fondosIndexados: { mensual: number; anual: number; count: number };
-    otros: { mensual: number; anual: number; count: number };
+    prestacionDesempleo: { mensual: number; anual: number; count: number };
+    subsidioAyuda: { mensual: number; anual: number; count: number };
+    pensionAlimenticia: { mensual: number; anual: number; count: number };
+    devolucionDeuda: { mensual: number; anual: number; count: number };
+    otro: { mensual: number; anual: number; count: number };
     total: { mensual: number; anual: number; count: number };
   } {
     const activeIngresos = ingresos.filter(i => i.activo);
-    
-    const dividendos = activeIngresos.filter(i => i.tipo === 'dividendos');
-    const intereses = activeIngresos.filter(i => i.tipo === 'intereses');
-    const fondosIndexados = activeIngresos.filter(i => i.tipo === 'fondos-indexados');
-    const otros = activeIngresos.filter(i => i.tipo === 'otros');
-    
+
+    const prestacionDesempleo = activeIngresos.filter(i => i.tipo === 'prestacion-desempleo');
+    const subsidioAyuda = activeIngresos.filter(i => i.tipo === 'subsidio-ayuda');
+    const pensionAlimenticia = activeIngresos.filter(i => i.tipo === 'pension-alimenticia');
+    const devolucionDeuda = activeIngresos.filter(i => i.tipo === 'devolucion-deuda');
+    const otro = activeIngresos.filter(i => i.tipo === 'otro');
+
     return {
-      dividendos: {
-        mensual: this.calculateMonthlyIncome(dividendos),
-        anual: this.calculateAnnualIncome(dividendos),
-        count: dividendos.length
+      prestacionDesempleo: {
+        mensual: this.calculateMonthlyIncome(prestacionDesempleo),
+        anual: this.calculateAnnualIncome(prestacionDesempleo),
+        count: prestacionDesempleo.length
       },
-      intereses: {
-        mensual: this.calculateMonthlyIncome(intereses),
-        anual: this.calculateAnnualIncome(intereses),
-        count: intereses.length
+      subsidioAyuda: {
+        mensual: this.calculateMonthlyIncome(subsidioAyuda),
+        anual: this.calculateAnnualIncome(subsidioAyuda),
+        count: subsidioAyuda.length
       },
-      fondosIndexados: {
-        mensual: this.calculateMonthlyIncome(fondosIndexados),
-        anual: this.calculateAnnualIncome(fondosIndexados),
-        count: fondosIndexados.length
+      pensionAlimenticia: {
+        mensual: this.calculateMonthlyIncome(pensionAlimenticia),
+        anual: this.calculateAnnualIncome(pensionAlimenticia),
+        count: pensionAlimenticia.length
       },
-      otros: {
-        mensual: this.calculateMonthlyIncome(otros),
-        anual: this.calculateAnnualIncome(otros),
-        count: otros.length
+      devolucionDeuda: {
+        mensual: this.calculateMonthlyIncome(devolucionDeuda),
+        anual: this.calculateAnnualIncome(devolucionDeuda),
+        count: devolucionDeuda.length
+      },
+      otro: {
+        mensual: this.calculateMonthlyIncome(otro),
+        anual: this.calculateAnnualIncome(otro),
+        count: otro.length
       },
       total: {
         mensual: this.calculateMonthlyIncome(activeIngresos),
@@ -292,30 +299,35 @@ class OtrosIngresosService {
     declaracionAnual: boolean;
     tipoRendimiento: 'capital-mobiliario' | 'actividades-economicas' | 'otros';
   } {
-    // Simplified tax calculation - in real implementation would be more complex
     switch (ingreso.tipo) {
-      case 'dividendos':
+      case 'prestacion-desempleo':
         return {
-          retencion: 19, // General rate for dividends
+          retencion: 15,
           declaracionAnual: true,
-          tipoRendimiento: 'capital-mobiliario'
+          tipoRendimiento: 'otros'
         };
-      case 'intereses':
+      case 'subsidio-ayuda':
         return {
-          retencion: 19, // General rate for interest
+          retencion: 0,
+          declaracionAnual: false,
+          tipoRendimiento: 'otros'
+        };
+      case 'pension-alimenticia':
+        return {
+          retencion: 0,
           declaracionAnual: true,
-          tipoRendimiento: 'capital-mobiliario'
+          tipoRendimiento: 'otros'
         };
-      case 'fondos-indexados':
+      case 'devolucion-deuda':
         return {
-          retencion: 0, // Usually no withholding until sale
-          declaracionAnual: false, // Unless sold
-          tipoRendimiento: 'capital-mobiliario'
+          retencion: 0,
+          declaracionAnual: false,
+          tipoRendimiento: 'otros'
         };
       default:
         return {
-          retencion: 15, // Conservative estimate
-          declaracionAnual: true,
+          retencion: 0,
+          declaracionAnual: false,
           tipoRendimiento: 'otros'
         };
     }
