@@ -110,7 +110,7 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
       getValue: m => m.ingresos.rentasAlquiler,
       getDrillDownItems: m => m.ingresos.drillDown?.rentasAlquiler ?? [],
     },
-    { label: 'Dividendos / Inversiones', getValue: m => m.ingresos.dividendosInversiones },
+    { label: 'Intereses Inversiones', getValue: m => m.ingresos.dividendosInversiones },
     {
       label: 'Otros ingresos',
       getValue: m => m.ingresos.otrosIngresos,
@@ -125,7 +125,7 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
   ],
   gastos: [
     {
-      label: 'Gastos operativos',
+      label: 'Gastos Alquileres',
       getValue: m => m.gastos.gastosOperativos,
       getDrillDownItems: m => m.gastos.drillDown?.gastosOperativos ?? [],
       drillDownGroupKey: 'fuente',
@@ -138,7 +138,6 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
     },
     { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
     { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
-    { label: 'Seguridad Social', getValue: m => m.gastos.seguridadSocial },
     {
       label: 'Total gastos',
       getValue: m => m.gastos.total,
@@ -149,7 +148,6 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
   financiacion: [
     { label: 'Cuotas hipotecas', getValue: m => m.financiacion.cuotasHipotecas },
     { label: 'Cuotas préstamos', getValue: m => m.financiacion.cuotasPrestamos },
-    { label: 'Amortización capital', getValue: m => m.financiacion.amortizacionCapital },
     {
       label: 'Total financiación',
       getValue: m => m.financiacion.total,
