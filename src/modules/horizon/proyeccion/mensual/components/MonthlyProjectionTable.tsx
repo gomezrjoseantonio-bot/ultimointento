@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { formatInteger } from '../../../../../utils/formatUtils';
-import { ProyeccionAnual, MonthlyProjectionRow } from '../types/proyeccionMensual';
+import { ProyeccionAnual, MonthlyProjectionRow, DrillDownItem } from '../types/proyeccionMensual';
 
 interface MonthlyProjectionTableProps {
   projection: ProyeccionAnual;
@@ -79,17 +79,43 @@ interface RowDef {
   highlight?: 'positive-negative';
   specialBg?: string;
   bold?: boolean;
-  /** When true, the row shows an expand/collapse toggle for drill-down sub-rows */
-  hasDrilldown?: boolean;
+  /**
+   * Returns drill-down items for a given month. Presence enables expand/collapse.
+   * Sub-rows are grouped by the specified key field (default: 'concepto').
+   */
+  getDrillDownItems?: (m: MonthlyProjectionRow) => DrillDownItem[];
+  /** Key field to group sub-rows by. Defaults to 'concepto'. */
+  drillDownGroupKey?: 'concepto' | 'fuente';
 }
 
 const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
   ingresos: [
-    { label: 'Nómina', getValue: m => m.ingresos.nomina },
-    { label: 'Servicios freelance', getValue: m => m.ingresos.serviciosFreelance },
-    { label: 'Rentas alquiler', getValue: m => m.ingresos.rentasAlquiler },
+    {
+      label: 'Nóminas',
+      getValue: m => m.ingresos.nomina,
+      getDrillDownItems: m => m.ingresos.drillDown?.nomina ?? [],
+    },
+    {
+      label: 'Ingresos Autónomos',
+      getValue: m => m.ingresos.serviciosFreelance,
+      getDrillDownItems: m => m.ingresos.drillDown?.autonomos ?? [],
+    },
+    {
+      label: 'Pensiones',
+      getValue: m => m.ingresos.pensiones,
+      getDrillDownItems: m => m.ingresos.drillDown?.pensiones ?? [],
+    },
+    {
+      label: 'Rentas alquiler',
+      getValue: m => m.ingresos.rentasAlquiler,
+      getDrillDownItems: m => m.ingresos.drillDown?.rentasAlquiler ?? [],
+    },
     { label: 'Dividendos / Inversiones', getValue: m => m.ingresos.dividendosInversiones },
-    { label: 'Otros ingresos', getValue: m => m.ingresos.otrosIngresos },
+    {
+      label: 'Otros ingresos',
+      getValue: m => m.ingresos.otrosIngresos,
+      getDrillDownItems: m => m.ingresos.drillDown?.otrosIngresos ?? [],
+    },
     {
       label: 'Total ingresos',
       getValue: m => m.ingresos.total,
@@ -98,9 +124,18 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
     },
   ],
   gastos: [
-    { label: 'Gastos operativos', getValue: m => m.gastos.gastosOperativos, hasDrilldown: true },
+    {
+      label: 'Gastos operativos',
+      getValue: m => m.gastos.gastosOperativos,
+      getDrillDownItems: m => m.gastos.drillDown?.gastosOperativos ?? [],
+      drillDownGroupKey: 'fuente',
+    },
     { label: 'Gastos personales', getValue: m => m.gastos.gastosPersonales },
-    { label: 'Gastos autónomo', getValue: m => m.gastos.gastosAutonomo },
+    {
+      label: 'Gastos autónomo',
+      getValue: m => m.gastos.gastosAutonomo,
+      getDrillDownItems: m => m.gastos.drillDown?.gastosAutonomo ?? [],
+    },
     { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
     { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
     { label: 'Seguridad Social', getValue: m => m.gastos.seguridadSocial },
@@ -167,30 +202,58 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
     tesoreria: false,
     patrimonio: false,
   });
-  const [opexExpanded, setOpexExpanded] = useState(false);
+  // Map of row label → expanded state for drill-down rows
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
   const toggleSection = (section: SectionKey) => {
     setCollapsed(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const toggleRow = (label: string) => {
+    setExpandedRows(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
   const { months, year } = projection;
 
-  // Collect unique property aliases that appear in any month's opex breakdown
-  const opexPropertyAliases = useMemo(() => {
-    const aliases = new Set<string>();
-    for (const m of months) {
-      for (const item of m.gastos.opexDesglose ?? []) {
-        aliases.add(item.propertyAlias);
+  /**
+   * Extracts the grouping key from a DrillDownItem based on the row's drillDownGroupKey.
+   */
+  const getDrillDownItemKey = (item: DrillDownItem, keyField: 'concepto' | 'fuente'): string =>
+    keyField === 'fuente' ? (item.fuente ?? item.concepto) : item.concepto;
+
+  /**
+   * For a given drilldown-capable row, collect the unique sub-row keys
+   * (grouped by drillDownGroupKey) that appear in any month.
+   */
+  const getDrillDownKeys = useMemo(() => {
+    return (row: RowDef): string[] => {
+      if (!row.getDrillDownItems) return [];
+      const keys = new Set<string>();
+      const keyField = row.drillDownGroupKey ?? 'concepto';
+      for (const m of months) {
+        for (const item of row.getDrillDownItems(m)) {
+          const k = getDrillDownItemKey(item, keyField);
+          if (k) keys.add(k);
+        }
       }
-    }
-    return Array.from(aliases).sort();
+      return Array.from(keys).sort();
+    };
   }, [months]);
 
-  // Sum opex for a given property alias in a given month
-  const getOpexForProperty = (m: MonthlyProjectionRow, alias: string): number =>
-    (m.gastos.opexDesglose ?? [])
-      .filter(item => item.propertyAlias === alias)
+  /**
+   * Get the summed value for a specific drill-down key in a given month.
+   */
+  const getDrillDownValue = (
+    m: MonthlyProjectionRow,
+    row: RowDef,
+    key: string,
+  ): number => {
+    if (!row.getDrillDownItems) return 0;
+    const keyField = row.drillDownGroupKey ?? 'concepto';
+    return row.getDrillDownItems(m)
+      .filter(item => getDrillDownItemKey(item, keyField) === key)
       .reduce((sum, item) => sum + item.importe, 0);
+  };
 
   return (
     <div className="overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
@@ -246,24 +309,31 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                   {/* Section detail rows */}
                   {!isCollapsed &&
                     rows.map(row => {
+                      // Hide non-total rows where all months have a zero value
+                      if (!row.isTotal && months.every(m => row.getValue(m) === 0)) {
+                        return null;
+                      }
+
                       const rowBg = row.isTotal
                         ? row.specialBg ?? sectionCfg.totalBg
                         : 'bg-white';
-                      const isDrilldownRow = !!row.hasDrilldown;
-                      const drilldownOpen = isDrilldownRow && opexExpanded && opexPropertyAliases.length > 0;
+
+                      const drillDownKeys = getDrillDownKeys(row);
+                      const hasDrilldown = drillDownKeys.length > 0;
+                      const isExpanded = hasDrilldown && !!expandedRows[row.label];
 
                       return (
                         <React.Fragment key={row.label}>
                           <tr
-                            className={`${rowBg} border-b border-gray-100 hover:bg-gray-50 ${isDrilldownRow ? 'cursor-pointer' : ''}`}
-                            onClick={isDrilldownRow ? () => setOpexExpanded(v => !v) : undefined}
+                            className={`${rowBg} border-b border-gray-100 hover:bg-gray-50 ${hasDrilldown ? 'cursor-pointer' : ''}`}
+                            onClick={hasDrilldown ? () => toggleRow(row.label) : undefined}
                           >
                             <td
                               className={`sticky left-0 z-10 ${rowBg} px-2 py-0.5 border-r border-gray-200 ${row.bold ? 'font-semibold' : 'text-gray-600'} pl-5`}
                             >
                               <span className="flex items-center gap-1">
-                                {isDrilldownRow && opexPropertyAliases.length > 0 && (
-                                  drilldownOpen
+                                {hasDrilldown && (
+                                  isExpanded
                                     ? <ChevronDown className="w-3 h-3 shrink-0 text-gray-400" />
                                     : <ChevronRight className="w-3 h-3 shrink-0 text-gray-400" />
                                 )}
@@ -283,22 +353,22 @@ const MonthlyProjectionTable: React.FC<MonthlyProjectionTableProps> = ({
                             })}
                           </tr>
 
-                          {/* Drill-down: per-property opex sub-rows */}
-                          {drilldownOpen &&
-                            opexPropertyAliases.map(alias => (
+                          {/* Drill-down sub-rows */}
+                          {isExpanded &&
+                            drillDownKeys.map(key => (
                               <tr
-                                key={`opex-${alias}`}
+                                key={`${row.label}-${key}`}
                                 className="bg-gray-50 border-b border-gray-100"
                               >
                                 <td className="sticky left-0 z-10 bg-gray-50 pl-8 pr-2 py-0.5 text-xs text-gray-500 border-r border-gray-200">
-                                  {alias}
+                                  {key}
                                 </td>
                                 {months.map(m => (
                                   <td
                                     key={m.month}
                                     className="px-1 py-0.5 text-right tabular-nums text-xs text-gray-600"
                                   >
-                                    {formatInteger(getOpexForProperty(m, alias))}
+                                    {formatInteger(getDrillDownValue(m, row, key))}
                                   </td>
                                 ))}
                               </tr>
