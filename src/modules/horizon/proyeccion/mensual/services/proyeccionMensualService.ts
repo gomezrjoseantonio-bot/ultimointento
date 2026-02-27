@@ -519,10 +519,18 @@ async function loadBaseData(): Promise<BaseData> {
     const autonomosActivos = autonomos.filter(a => a.activo);
     for (const autonomo of autonomosActivos) {
       const conceptoTitular = (autonomo.titular ?? autonomo.nombre ?? 'Autónomo').toUpperCase();
-      const ingresosAnuales = autonomo.ingresosFacturados.reduce(
-        (sum, i) => sum + i.importe,
-        0,
-      );
+
+      // Prefer new model (fuentesIngreso); fall back to old model (ingresosFacturados)
+      let ingresosAnuales: number;
+      if ((autonomo.fuentesIngreso ?? []).length > 0) {
+        const freqMultiplier: Record<string, number> = { mensual: 12, bimestral: 6, trimestral: 4, semestral: 2, anual: 1 };
+        ingresosAnuales = (autonomo.fuentesIngreso ?? []).reduce((sum, f) => {
+          const occ = f.meses?.length ? f.meses.length : (freqMultiplier[f.frecuencia ?? 'mensual'] ?? 12);
+          return sum + f.importeEstimado * occ;
+        }, 0);
+      } else {
+        ingresosAnuales = autonomo.ingresosFacturados.reduce((sum, i) => sum + i.importe, 0);
+      }
       const mensual = ingresosAnuales / 12;
       freelanceMensual += mensual;
       autonomoDrillDown.push({
@@ -531,10 +539,16 @@ async function loadBaseData(): Promise<BaseData> {
         fuente: autonomo.nombre,
       });
 
-      const gastosAnuales = autonomo.gastosDeducibles.reduce(
-        (sum, g) => sum + g.importe,
-        0,
-      );
+      // Prefer new model (gastosRecurrentesActividad); fall back to old model (gastosDeducibles)
+      let gastosAnuales: number;
+      if ((autonomo.gastosRecurrentesActividad ?? []).length > 0) {
+        gastosAnuales = (autonomo.gastosRecurrentesActividad ?? []).reduce((sum, g) => {
+          const occ = g.meses?.length ? g.meses.length : 12;
+          return sum + g.importe * occ;
+        }, 0);
+      } else {
+        gastosAnuales = autonomo.gastosDeducibles.reduce((sum, g) => sum + g.importe, 0);
+      }
       const gastosMensual = gastosAnuales / 12;
       gastosAutonomoMensual += gastosMensual;
       gastosAutonomoDrillDown.push({
