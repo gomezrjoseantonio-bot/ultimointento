@@ -4,6 +4,8 @@
 import { initDB, OpexRule, Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
+import { pensionService } from '../../../../../services/pensionService';
+import { otrosIngresosService } from '../../../../../services/otrosIngresosService';
 import { personalDataService } from '../../../../../services/personalDataService';
 import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
@@ -147,6 +149,12 @@ interface BaseData {
   nominaDrillDown: DrillDownItem[][];
   rentaDrillDown: DrillDownItem[][];
 
+  // Flat drill-down arrays (same items every month, amounts are monthly equivalents)
+  autonomoDrillDown: DrillDownItem[];
+  pensionDrillDown: DrillDownItem[];
+  otrosIngresosDrillDown: DrillDownItem[];
+  gastosAutonomoDrillDown: DrillDownItem[];
+
   // Passed to forecastEngine functions
   /** All OpexRules across all properties */
   opexRules: OpexRule[];
@@ -166,6 +174,7 @@ interface BaseData {
   freelanceMensual: number;
   gastosAutonomoMensual: number;
   seguridadSocialMensual: number;
+  pensionNetaMensual: number;
   otrosIngresosMensual: number;
   valorPlanesPension: number;
   cajaInicial: number;
@@ -257,6 +266,8 @@ function buildMonthRow(
 
   const serviciosFreelance = baseData.freelanceMensual;
 
+  const pensiones = baseData.pensionNetaMensual;
+
   // B. Rentas: flat — no IPC applied. The contracted rent is what the tenant pays.
   const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
 
@@ -267,6 +278,7 @@ function buildMonthRow(
   const totalIngresos =
     nomina +
     serviciosFreelance +
+    pensiones +
     rentasAlquiler +
     dividendosInversiones +
     otrosIngresosMensual;
@@ -384,13 +396,17 @@ function buildMonthRow(
     ingresos: {
       nomina,
       serviciosFreelance,
+      pensiones,
       rentasAlquiler,
       dividendosInversiones,
       otrosIngresos: otrosIngresosMensual,
       total: totalIngresos,
       drillDown: {
         nomina: scaledNominaDrillDown,
+        autonomos: baseData.autonomoDrillDown,
+        pensiones: baseData.pensionDrillDown,
         rentasAlquiler: scaledRentaDrillDown,
+        otrosIngresos: baseData.otrosIngresosDrillDown,
       },
     },
     gastos: {
@@ -408,6 +424,7 @@ function buildMonthRow(
           importe: item.importe,
           fuente: item.propertyAlias,
         })),
+        gastosAutonomo: baseData.gastosAutonomoDrillDown,
       },
     },
     financiacion: {
@@ -482,24 +499,84 @@ async function loadBaseData(): Promise<BaseData> {
   // ── Autónomo ──────────────────────────────────────────────────────────────
   let freelanceMensual = 0;
   let gastosAutonomoMensual = 0;
+  const autonomoDrillDown: DrillDownItem[] = [];
+  const gastosAutonomoDrillDown: DrillDownItem[] = [];
   try {
     const autonomos = await autonomoService.getAutonomos(personalDataId);
-    const autonomoActivo = autonomos.find(a => a.activo);
-    if (autonomoActivo) {
-      const ingresosAnuales = autonomoActivo.ingresosFacturados.reduce(
+    const autonomosActivos = autonomos.filter(a => a.activo);
+    for (const autonomo of autonomosActivos) {
+      const ingresosAnuales = autonomo.ingresosFacturados.reduce(
         (sum, i) => sum + i.importe,
         0,
       );
-      freelanceMensual = ingresosAnuales / 12;
-      const gastosAnuales = autonomoActivo.gastosDeducibles.reduce(
+      const mensual = ingresosAnuales / 12;
+      freelanceMensual += mensual;
+      autonomoDrillDown.push({
+        concepto: autonomo.nombre ?? 'Autónomo',
+        importe: mensual,
+        fuente: autonomo.nombre,
+      });
+
+      const gastosAnuales = autonomo.gastosDeducibles.reduce(
         (sum, g) => sum + g.importe,
         0,
       );
-      gastosAutonomoMensual = gastosAnuales / 12;
-      seguridadSocialMensual += autonomoActivo.cuotaAutonomos;
+      const gastosMensual = gastosAnuales / 12;
+      gastosAutonomoMensual += gastosMensual;
+      gastosAutonomoDrillDown.push({
+        concepto: autonomo.nombre ?? 'Autónomo',
+        importe: gastosMensual,
+        fuente: autonomo.nombre,
+      });
+
+      seguridadSocialMensual += autonomo.cuotaAutonomos;
     }
   } catch {
     // No autonomo data available
+  }
+
+  // ── Pensiones ─────────────────────────────────────────────────────────────
+  let pensionNetaMensual = 0;
+  const pensionDrillDown: DrillDownItem[] = [];
+  try {
+    const pensiones = await pensionService.getPensiones(personalDataId);
+    const pensionesActivas = pensiones.filter(p => p.activa);
+    for (const pension of pensionesActivas) {
+      const { netoMensual } = pensionService.calculatePension(pension);
+      pensionNetaMensual += netoMensual;
+      pensionDrillDown.push({
+        concepto: pension.tipoPension.charAt(0).toUpperCase() + pension.tipoPension.slice(1),
+        importe: netoMensual,
+        fuente: pension.titular,
+      });
+    }
+  } catch {
+    // No pension data available
+  }
+
+  // ── Otros Ingresos ────────────────────────────────────────────────────────
+  let otrosIngresosMensual = 0;
+  const otrosIngresosDrillDown: DrillDownItem[] = [];
+  try {
+    const otrosIngresos = await otrosIngresosService.getOtrosIngresos(personalDataId);
+    const otrosActivos = otrosIngresos.filter(o => o.activo && o.frecuencia !== 'unico');
+    for (const otro of otrosActivos) {
+      let mensual = 0;
+      switch (otro.frecuencia) {
+        case 'mensual': mensual = otro.importe; break;
+        case 'trimestral': mensual = otro.importe / 3; break;
+        case 'semestral': mensual = otro.importe / 6; break;
+        case 'anual': mensual = otro.importe / 12; break;
+      }
+      otrosIngresosMensual += mensual;
+      otrosIngresosDrillDown.push({
+        concepto: otro.nombre ?? otro.tipo,
+        importe: mensual,
+        fuente: otro.tipo,
+      });
+    }
+  } catch {
+    // No otrosIngresos data available
   }
 
   // ── B. INMUEBLES - INGRESOS (RENTAS) ──────────────────────────────────────
@@ -623,6 +700,10 @@ async function loadBaseData(): Promise<BaseData> {
     rentaMensualPorMes,
     nominaDrillDown,
     rentaDrillDown,
+    autonomoDrillDown,
+    pensionDrillDown,
+    otrosIngresosDrillDown,
+    gastosAutonomoDrillDown,
     opexRules,
     propertyAliasMap,
     gastosRecurrentes,
@@ -633,7 +714,8 @@ async function loadBaseData(): Promise<BaseData> {
     freelanceMensual,
     gastosAutonomoMensual,
     seguridadSocialMensual,
-    otrosIngresosMensual: 0,
+    pensionNetaMensual,
+    otrosIngresosMensual,
     valorPlanesPension,
     cajaInicial,
   };

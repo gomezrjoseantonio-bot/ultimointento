@@ -17,13 +17,17 @@ export interface MonthlyProjectionRow {
   ingresos: {
     nomina: number;
     serviciosFreelance: number;
+    pensiones: number;
     rentasAlquiler: number;
     dividendosInversiones: number;
     otrosIngresos: number;
     total: number;
     drillDown?: {
       nomina?: DrillDownItem[];
+      autonomos?: DrillDownItem[];
+      pensiones?: DrillDownItem[];
       rentasAlquiler?: DrillDownItem[];
+      otrosIngresos?: DrillDownItem[];
     };
   };
 
@@ -40,6 +44,7 @@ export interface MonthlyProjectionRow {
     drillDown?: {
       gastosOperativos?: DrillDownItem[];
       gastosPersonales?: DrillDownItem[];
+      gastosAutonomo?: DrillDownItem[];
     };
   };
 
