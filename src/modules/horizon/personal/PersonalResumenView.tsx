@@ -243,10 +243,9 @@ const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
 
 // ─── Monthly row helpers (personal figures only) ──────────────────────────────
 
-/** Gross personal income for a single month (rental income excluded; autonomous shown gross). */
-const monthPersonalIncome = (m: MonthlyProjectionRow): number =>
+/** Non-autonomo personal income for a single month (rental income excluded; serviciosFreelance excluded — handled separately as net). */
+const monthNonAutonomoIncome = (m: MonthlyProjectionRow): number =>
   m.ingresos.nomina
-    + m.ingresos.serviciosFreelance
     + m.ingresos.pensiones
     + m.ingresos.dividendosInversiones
     + m.ingresos.otrosIngresos;
@@ -350,28 +349,31 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   }, []);
 
   // Annual totals — strictly personal (no rental income, no property OPEX)
-  // Autonomous gross = serviciosFreelance; business expenses shown separately in expense breakdown
   const autonomoGrossInProyeccion = proyeccion
     ? proyeccion.months.reduce((s, m) => s + m.ingresos.serviciosFreelance, 0)
     : 0;
-  // Use directly-fetched autonomo gross billing when projection doesn't include it
-  const autonomoGrossAnual = autonomoGrossInProyeccion > 0
-    ? autonomoGrossInProyeccion
-    : (autonomoAnual?.facturacionBruta ?? 0);
 
-  // Annual gastosAutonomo (business recurring expenses, excl. cuota which is in seguridadSocial)
+  // Annual gastosAutonomo (business recurring expenses, incl. cuota autónomos)
   const gastosAutonomoAnual = proyeccion
     ? proyeccion.months.reduce((s, m) => s + m.gastos.gastosAutonomo, 0)
     : 0;
 
+  // Net annual autonomo income = gross billing minus all business expenses.
+  // Prefer directly-fetched rendimientoNeto (most accurate); fall back to projection-derived net.
+  const autonomoNetAnual = autonomoAnual
+    ? autonomoAnual.rendimientoNeto
+    : autonomoGrossInProyeccion > 0
+    ? autonomoGrossInProyeccion - gastosAutonomoAnual
+    : 0;
+
   const totalIncome = proyeccion
-    ? proyeccion.months.reduce((s, m) => s + monthPersonalIncome(m), 0)
-      + (autonomoGrossInProyeccion <= 0 ? autonomoGrossAnual : 0)
+    // monthNonAutonomoIncome intentionally excludes serviciosFreelance; autonomoNetAnual covers it as net.
+    ? proyeccion.months.reduce((s, m) => s + monthNonAutonomoIncome(m), 0) + autonomoNetAnual
     : resumen && resumen.ingresos.total > 0
-    ? (resumen.ingresos.nomina + resumen.ingresos.otros) * 12 + autonomoGrossAnual
+    ? (resumen.ingresos.nomina + resumen.ingresos.otros) * 12 + autonomoNetAnual
     : DEFAULT_ANNUAL_INCOME;
 
-  // Personal expenses including gastosAutonomo; property OPEX excluded
+  // Personal expenses (property OPEX and autonomo business expenses excluded — those are netted in income)
   const totalExpenses = proyeccion
     ? proyeccion.months.reduce((s, m) => s + monthPersonalExpenses(m), 0)
     : resumen && resumen.gastos.total > 0
@@ -381,23 +383,18 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
-  // Build annual income sources — no rental; autonomous shown as gross billing
+  // Build annual income sources — no rental; autonomous shown as neto anual
   const incomeSources = proyeccion
     ? (() => {
-        const totals = { nomina: 0, autonomo: 0, pensiones: 0, otros: 0 };
+        const totals = { nomina: 0, pensiones: 0, otros: 0 };
         for (const m of proyeccion.months) {
           totals.nomina += m.ingresos.nomina;
-          totals.autonomo += m.ingresos.serviciosFreelance;
           totals.pensiones += m.ingresos.pensiones;
           totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
         }
-        // If projection didn't include autonomo income, substitute with directly-fetched gross billing.
-        if (totals.autonomo <= 0 && autonomoAnual && autonomoAnual.facturacionBruta > 0) {
-          totals.autonomo = autonomoAnual.facturacionBruta;
-        }
         return [
           { label: 'Nóminas', amount: totals.nomina },
-          { label: 'Autónomos', amount: totals.autonomo },
+          { label: 'Autónomos (neto anual)', amount: autonomoNetAnual },
           { label: 'Pensiones', amount: totals.pensiones },
           { label: 'Otros ingresos', amount: totals.otros },
         ].filter(s => s.amount > 0);
@@ -405,35 +402,38 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
     : resumen && resumen.ingresos.total > 0
     ? [
         { label: 'Nómina', amount: resumen.ingresos.nomina * 12 },
-        { label: 'Autónomos', amount: autonomoGrossAnual },
+        { label: 'Autónomos (neto anual)', amount: autonomoNetAnual },
         { label: 'Otros Ingresos', amount: resumen.ingresos.otros * 12 },
       ].filter(s => s.amount > 0)
     : MOCK_INCOME_SOURCES;
 
   // Expense categories: real data if loaded, else annualised mock.
-  // Append 'Gastos Autónomo' (business recurring expenses) when projection has this data.
+  // Gastos Autónomo are already netted from income, so they are excluded here.
   const baseExpenseCats = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
-  const expenseCatsToShow = gastosAutonomoAnual > 0
-    ? [...baseExpenseCats, { label: 'Gastos Autónomo', amount: gastosAutonomoAnual, color: 'bg-purple-600' }]
-    : baseExpenseCats;
+  const expenseCatsToShow = baseExpenseCats;
   // Use the sum of displayed categories as the denominator for percentages and the footer total.
   const expenseCatTotal = expenseCatsToShow.reduce((s, c) => s + c.amount, 0);
 
   // Monthly cash-flow chart: real personal figures from projection, else mock
   const cashFlowData = proyeccion
-    ? proyeccion.months.map((m, i) => ({
-        label: MONTH_LABELS[i],
-        income: monthPersonalIncome(m)
-          + (autonomoGrossInProyeccion <= 0 && autonomoMensual && autonomoMensual[i]
-            ? autonomoMensual[i].ingresos
-            : 0),
-        expenses: monthPersonalExpenses(m),
-      }))
+    ? proyeccion.months.map((m, i) => {
+        // Net autonomo contribution per month: gross income minus business expenses
+        const autonomoMensualNet =
+          autonomoGrossInProyeccion <= 0 && autonomoMensual && autonomoMensual[i]
+            ? autonomoMensual[i].neto
+            : m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo;
+        return {
+          label: MONTH_LABELS[i],
+          income: monthNonAutonomoIncome(m) + autonomoMensualNet,
+          expenses: monthPersonalExpenses(m),
+        };
+      })
     : autonomoMensual
     ? MONTH_LABELS.map((label, i) => ({
         label,
-        income: autonomoMensual[i]?.ingresos ?? 0,
-        expenses: autonomoMensual[i]?.gastos ?? 0,
+        // autonomoMensual[i].neto = ingresos - gastos (already net); expenses=0 keeps bars consistent.
+        income: autonomoMensual[i]?.neto ?? 0,
+        expenses: 0,
       }))
     : MOCK_MONTHLY_DATA;
 
