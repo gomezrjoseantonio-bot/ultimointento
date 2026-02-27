@@ -80,16 +80,18 @@ export interface ReglaDia {
 // Autónomo (Self-Employed) Types
 export interface FuenteIngreso {
   id?: string;
-  nombre: string; // Client or income source name
-  importeEstimado: number; // Estimated recurring amount per period
-  frecuencia?: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'; // Payment frequency
+  nombre: string; // Income concept name
+  importeEstimado: number; // Amount per occurrence
+  meses: number[]; // Months of impact (1=Jan..12=Dec); all 12 means monthly
+  frecuencia?: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'; // Legacy – kept for backward compatibility
 }
 
 export interface GastoRecurrenteActividad {
   id?: string;
   descripcion: string;
-  importe: number; // Monthly amount
+  importe: number; // Amount per occurrence
   categoria: string;
+  meses?: number[]; // Months of impact (1=Jan..12=Dec); undefined/empty means monthly (all 12)
 }
 
 export interface Autonomo {
@@ -99,10 +101,11 @@ export interface Autonomo {
   titular?: string; // Name of the owner of this activity (titular or cónyuge)
   ingresosFacturados: IngresosAutonomo[];
   gastosDeducibles: GastoDeducible[];
-  fuentesIngreso?: FuenteIngreso[]; // Recurring income sources / habitual clients
-  gastosRecurrentesActividad?: GastoRecurrenteActividad[]; // Recurring activity expenses
-  cuotaAutonomos: number; // Monthly fee
+  fuentesIngreso?: FuenteIngreso[]; // Income concepts with temporality
+  gastosRecurrentesActividad?: GastoRecurrenteActividad[]; // Expense concepts with temporality
+  cuotaAutonomos: number; // Monthly fee (Seguridad Social)
   irpfRetencionPorcentaje?: number; // % IRPF retention on invoices (e.g. 7 or 15)
+  ivaMedioPorcentaje?: number; // % average IVA applied to invoices (e.g. 21)
   cuentaCobro: number; // ID of the bank account for collecting income
   cuentaPago: number; // ID of the bank account for paying expenses
   reglaCobroDia: ReglaDia; // Rules for collection day

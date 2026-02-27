@@ -449,23 +449,21 @@ class AutonomoService {
    * Used for dashboard summary cards.
    */
   calculateEstimatedAnnual(autonomo: Autonomo): { facturacionBruta: number; totalGastos: number; rendimientoNeto: number } {
-    const frecuenciaMultiplier: Record<string, number> = {
-      mensual: 12,
-      bimestral: 6,
-      trimestral: 4,
-      semestral: 2,
-      anual: 1,
-    };
-
     const facturacionBruta = (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
-      const mult = frecuenciaMultiplier[fuente.frecuencia || 'mensual'] ?? 12;
-      return total + fuente.importeEstimado * mult;
+      // Use meses array if present; fallback to frecuencia for legacy data
+      const occurrences = fuente.meses?.length
+        ? fuente.meses.length
+        : (() => {
+            const frecuenciaMultiplier: Record<string, number> = { mensual: 12, bimestral: 6, trimestral: 4, semestral: 2, anual: 1 };
+            return frecuenciaMultiplier[fuente.frecuencia || 'mensual'] ?? 12;
+          })();
+      return total + fuente.importeEstimado * occurrences;
     }, 0);
 
-    const gastosRecurrentes = (autonomo.gastosRecurrentesActividad || []).reduce(
-      (total, gasto) => total + gasto.importe * 12,
-      0
-    );
+    const gastosRecurrentes = (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
+      const occurrences = gasto.meses?.length ? gasto.meses.length : 12;
+      return total + gasto.importe * occurrences;
+    }, 0);
     const totalGastos = autonomo.cuotaAutonomos * 12 + gastosRecurrentes;
 
     return {
@@ -473,6 +471,31 @@ class AutonomoService {
       totalGastos,
       rendimientoNeto: facturacionBruta - totalGastos,
     };
+  }
+
+  /**
+   * Returns month-by-month (1–12) distribution of income and expenses for a given year.
+   * Used by the Previsiones / Tesorería modules to project cash flows.
+   */
+  getMonthlyDistribution(autonomo: Autonomo): { mes: number; ingresos: number; gastos: number; neto: number }[] {
+    const todosMeses = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    return Array.from({ length: 12 }, (_, i) => {
+      const mes = i + 1;
+
+      const ingresos = (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
+        const activeMeses = fuente.meses?.length ? fuente.meses : todosMeses;
+        return activeMeses.includes(mes) ? total + fuente.importeEstimado : total;
+      }, 0);
+
+      const gastosConcepto = (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
+        const activeMeses = gasto.meses?.length ? gasto.meses : todosMeses;
+        return activeMeses.includes(mes) ? total + gasto.importe : total;
+      }, 0);
+
+      const gastos = gastosConcepto + autonomo.cuotaAutonomos;
+
+      return { mes, ingresos, gastos, neto: ingresos - gastos };
+    });
   }
 }
 
