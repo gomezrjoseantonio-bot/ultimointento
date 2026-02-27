@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Banknote, Briefcase, Receipt, Coins, PiggyBank } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
-import FreelanceTab from '../../../components/personal/FreelanceTab';
+import AutonomoView from '../../personal/components/AutonomoView';
 import PensionTab from '../../../components/personal/PensionTab';
 import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import GastosManager from '../../../components/personal/gastos/GastosManager';
@@ -254,7 +254,7 @@ const Personal: React.FC = () => {
 
   const renderAutonomoSection = () => (
     <div className="space-y-6">
-      <FreelanceTab />
+      <AutonomoView />
     </div>
   );
 

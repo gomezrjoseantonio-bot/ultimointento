@@ -3,6 +3,8 @@ import {
   Autonomo, 
   IngresosAutonomo, 
   GastoDeducible, 
+  FuenteIngreso,
+  GastoRecurrenteActividad,
   CalculoAutonomoResult 
 } from '../types/personal';
 
@@ -312,6 +314,104 @@ class AutonomoService {
     } catch (error) {
       this.db = null;
       console.error('Error removing gasto:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a recurring income source (fuente de ingreso) to autonomo
+   */
+  async addFuenteIngreso(autonomoId: number, fuente: Omit<FuenteIngreso, 'id'>): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      const newFuente: FuenteIngreso = { ...fuente, id: Date.now().toString() };
+      autonomo.fuentesIngreso = [...(autonomo.fuentesIngreso || []), newFuente];
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error adding fuente de ingreso:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a recurring income source from autonomo
+   */
+  async removeFuenteIngreso(autonomoId: number, fuenteId: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      autonomo.fuentesIngreso = (autonomo.fuentesIngreso || []).filter((f: FuenteIngreso) => f.id !== fuenteId);
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error removing fuente de ingreso:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add a recurring activity expense to autonomo
+   */
+  async addGastoRecurrenteActividad(autonomoId: number, gasto: Omit<GastoRecurrenteActividad, 'id'>): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      const newGasto: GastoRecurrenteActividad = { ...gasto, id: Date.now().toString() };
+      autonomo.gastosRecurrentesActividad = [...(autonomo.gastosRecurrentesActividad || []), newGasto];
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error adding gasto recurrente actividad:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a recurring activity expense from autonomo
+   */
+  async removeGastoRecurrenteActividad(autonomoId: number, gastoId: string): Promise<void> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['autonomos'], 'readwrite');
+      const store = tx.objectStore('autonomos');
+
+      const autonomo = await store.get(autonomoId);
+      if (!autonomo) throw new Error('Autonomo not found');
+
+      autonomo.gastosRecurrentesActividad = (autonomo.gastosRecurrentesActividad || []).filter((g: GastoRecurrenteActividad) => g.id !== gastoId);
+      autonomo.fechaActualizacion = new Date().toISOString();
+
+      await store.put(autonomo);
+      await tx.done;
+    } catch (error) {
+      this.db = null;
+      console.error('Error removing gasto recurrente actividad:', error);
       throw error;
     }
   }

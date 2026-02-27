@@ -78,12 +78,28 @@ export interface ReglaDia {
 }
 
 // Autónomo (Self-Employed) Types
+export interface FuenteIngreso {
+  id?: string;
+  nombre: string; // Client or income source name
+  importeEstimado: number; // Estimated recurring monthly amount
+}
+
+export interface GastoRecurrenteActividad {
+  id?: string;
+  descripcion: string;
+  importe: number; // Monthly amount
+  categoria: string;
+}
+
 export interface Autonomo {
   id?: number;
   personalDataId: number;
   nombre: string;
+  titular?: string; // Name of the owner of this activity (titular or cónyuge)
   ingresosFacturados: IngresosAutonomo[];
   gastosDeducibles: GastoDeducible[];
+  fuentesIngreso?: FuenteIngreso[]; // Recurring income sources / habitual clients
+  gastosRecurrentesActividad?: GastoRecurrenteActividad[]; // Recurring activity expenses
   cuotaAutonomos: number; // Monthly fee
   cuentaCobro: number; // ID of the bank account for collecting income
   cuentaPago: number; // ID of the bank account for paying expenses
