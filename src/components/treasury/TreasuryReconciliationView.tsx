@@ -7,8 +7,6 @@ import {
   CreditCard,
   Activity,
   Building2,
-  Banknote,
-  Wallet,
   CheckCircle2,
   Circle,
   X,
@@ -505,12 +503,6 @@ const TreasuryReconciliationView: React.FC = () => {
       return a.concept.localeCompare(b.concept, 'es');
     });
   }, [events, selectedBankFilter]);
-
-  const getAccountIcon = (type: SimpleAccount['type']) => {
-    if (type === 'cash') return Banknote;
-    if (type === 'wallet') return Wallet;
-    return Building2;
-  };
 
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
