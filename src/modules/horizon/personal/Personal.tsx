@@ -10,6 +10,7 @@ import GastosManager from '../../../components/personal/gastos/GastosManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { personalResumenService } from '../../../services/personalResumenService';
 import { PersonalData, PersonalModuleConfig, ResumenPersonalMensual } from '../../../types/personal';
+import PersonalResumenView from './PersonalResumenView';
 
 const Personal: React.FC = () => {
   const navigate = useNavigate();
@@ -164,80 +165,7 @@ const Personal: React.FC = () => {
       );
     }
 
-    return (
-      <div className="space-y-6">
-        <div className="bg-white border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen Personal</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Ingresos del mes</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: 'EUR'
-                }).format(resumen?.ingresos.total || 0)}
-              </p>
-              <div className="mt-2 text-xs text-gray-500 space-y-1">
-                {resumen && resumen.ingresos.nomina > 0 && (
-                  <div>Nómina: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.nomina)}</div>
-                )}
-                {resumen && resumen.ingresos.autonomo > 0 && (
-                  <div>Autónomo: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.autonomo)}</div>
-                )}
-                {resumen && resumen.ingresos.otros > 0 && (
-                  <div>Otros: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.ingresos.otros)}</div>
-                )}
-              </div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Gastos del mes</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: 'EUR'
-                }).format(resumen?.gastos.total || 0)}
-              </p>
-              <div className="mt-2 text-xs text-gray-500 space-y-1">
-                {resumen && resumen.gastos.recurrentes > 0 && (
-                  <div>Recurrentes: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.gastos.recurrentes)}</div>
-                )}
-                {resumen && resumen.gastos.puntuales > 0 && (
-                  <div>Puntuales: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(resumen.gastos.puntuales)}</div>
-                )}
-              </div>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-600">Ahorro del mes</p>
-              <p className={`text-2xl font-semibold ${(resumen?.ahorro || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {new Intl.NumberFormat('es-ES', {
-                  style: 'currency',
-                  currency: 'EUR'
-                }).format(resumen?.ahorro || 0)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Sections Summary */}
-        <div className="bg-white border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Secciones Activas</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {config?.seccionesActivas.nomina && (
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <Banknote className="w-5 h-5 text-gray-600" />
-                <span className="text-sm font-medium text-gray-900">Nómina configurada</span>
-              </div>
-            )}
-            {config?.seccionesActivas.autonomo && (
-              <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <Briefcase className="w-5 h-5 text-gray-600" />
-                <span className="text-sm font-medium text-gray-900">Autónomo configurado</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    return <PersonalResumenView resumen={resumen} config={config} />;
   };
 
   const renderGastosSection = () => (
