@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { personalDataService } from '../../../services/personalDataService';
 import { OtrosIngresos, PersonalData } from '../../../types/personal';
-import { Plus, Trash2, DollarSign, TrendingUp, Calendar, User, Heart, X } from 'lucide-react';
+import { Plus, Trash2, Pencil, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CATEGORIAS: { value: OtrosIngresos['tipo']; label: string }[] = [
@@ -13,20 +13,23 @@ const CATEGORIAS: { value: OtrosIngresos['tipo']; label: string }[] = [
   { value: 'otro', label: 'Otro' },
 ];
 
+const EMPTY_FORM = {
+  nombre: '',
+  titularidad: 'yo' as OtrosIngresos['titularidad'],
+  tipo: 'prestacion-desempleo' as OtrosIngresos['tipo'],
+  importe: '',
+  frecuencia: 'mensual' as OtrosIngresos['frecuencia'],
+  fechaFin: '',
+};
+
 const OtrosIngresosManager: React.FC = () => {
   const [ingresos, setIngresos] = useState<OtrosIngresos[]>([]);
   const [loading, setLoading] = useState(true);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    nombre: '',
-    titularidad: 'yo' as 'yo' | 'pareja',
-    tipo: 'prestacion-desempleo' as OtrosIngresos['tipo'],
-    importe: '',
-    frecuencia: 'mensual' as OtrosIngresos['frecuencia'],
-    fechaFin: '',
-  });
+  const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,14 @@ const OtrosIngresosManager: React.FC = () => {
     return 'Ambos';
   };
 
+  const formatFechaFin = (fechaFin: string): string => {
+    // fechaFin is stored as "YYYY-MM"
+    const [year, month] = fechaFin.split('-');
+    if (!year || !month) return fechaFin;
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    return date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  };
+
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
@@ -90,7 +101,7 @@ const OtrosIngresosManager: React.FC = () => {
     }
     setSaving(true);
     try {
-      await otrosIngresosService.saveIngreso({
+      const payload = {
         personalDataId: personalData.id,
         nombre: form.nombre,
         titularidad: form.titularidad,
@@ -98,12 +109,19 @@ const OtrosIngresosManager: React.FC = () => {
         importe: parseFloat(form.importe),
         frecuencia: form.frecuencia,
         cuentaCobro: 0,
-        reglasDia: { tipo: 'fijo', dia: 1 },
+        reglasDia: { tipo: 'fijo' as const, dia: 1 },
         activo: true,
-        ...(form.fechaFin ? { fechaFin: form.fechaFin } : {}),
-      });
-      toast.success('Ingreso añadido correctamente');
-      setForm({ nombre: '', titularidad: 'yo', tipo: 'prestacion-desempleo', importe: '', frecuencia: 'mensual', fechaFin: '' });
+        ...(form.fechaFin ? { fechaFin: form.fechaFin } : { fechaFin: undefined }),
+      };
+      if (editingId !== null) {
+        await otrosIngresosService.updateIngreso(editingId, payload);
+        toast.success('Ingreso actualizado correctamente');
+      } else {
+        await otrosIngresosService.saveIngreso(payload);
+        toast.success('Ingreso añadido correctamente');
+      }
+      setForm(EMPTY_FORM);
+      setEditingId(null);
       setShowForm(false);
       loadData();
     } catch (error) {
@@ -112,6 +130,25 @@ const OtrosIngresosManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEdit = (ingreso: OtrosIngresos) => {
+    setForm({
+      nombre: ingreso.nombre,
+      titularidad: ingreso.titularidad,
+      tipo: ingreso.tipo,
+      importe: String(ingreso.importe),
+      frecuencia: ingreso.frecuencia,
+      fechaFin: ingreso.fechaFin ?? '',
+    });
+    setEditingId(ingreso.id ?? null);
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
   };
 
   const handleDelete = async (id: number) => {
@@ -149,20 +186,22 @@ const OtrosIngresosManager: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+          onClick={() => { setShowForm(!showForm); if (showForm) { setEditingId(null); setForm(EMPTY_FORM); } }}
+          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Ingreso
         </button>
       </div>
 
-      {/* New Income Form */}
+      {/* Form (create / edit) */}
       {showForm && (
         <div className="bg-white border border-gray-200 p-6 rounded-lg">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-medium text-gray-900">Nuevo Ingreso</h4>
-            <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
+            <h4 className="text-lg font-medium text-gray-900">
+              {editingId !== null ? 'Editar Ingreso' : 'Nuevo Ingreso'}
+            </h4>
+            <button onClick={handleCloseForm} className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -189,6 +228,7 @@ const OtrosIngresosManager: React.FC = () => {
               >
                 <option value="yo">{personalData?.nombre || 'Yo'}</option>
                 <option value="pareja">{personalData?.spouseName || 'Pareja'}</option>
+                <option value="ambos">Ambos</option>
               </select>
             </div>
             <div>
@@ -246,7 +286,7 @@ const OtrosIngresosManager: React.FC = () => {
             <div className="md:col-span-2 flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={handleCloseForm}
                 className="px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700 rounded hover:bg-gray-50"
               >
                 Cancelar
@@ -256,52 +296,35 @@ const OtrosIngresosManager: React.FC = () => {
                 disabled={saving}
                 className="px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded disabled:opacity-50"
               >
-                {saving ? 'Guardando...' : 'Guardar Ingreso'}
+                {saving ? 'Guardando...' : editingId !== null ? 'Actualizar Ingreso' : 'Guardar Ingreso'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary */}
       {activeIngresos.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
-              <h4 className="text-lg font-semibold text-emerald-900">
-                Resumen de Otros Ingresos
-              </h4>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-emerald-700">
-              <TrendingUp className="w-4 h-4" />
-              <span>{activeIngresos.length} fuentes activas</span>
-            </div>
-          </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white p-4 border border-emerald-100">
-              <p className="text-sm text-emerald-600 font-medium">Ingresos Mensuales</p>
-              <p className="text-xl font-bold text-emerald-900">
-                {formatCurrency(totalMensual)}
-              </p>
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Ingresos Mensuales</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(totalMensual)}</p>
             </div>
-            <div className="bg-white p-4 border border-emerald-100">
-              <p className="text-sm text-emerald-600 font-medium">Ingresos Anuales</p>
-              <p className="text-xl font-bold text-emerald-900">
-                {formatCurrency(totalAnual)}
-              </p>
+            <div>
+              <p className="text-sm text-gray-500 font-medium">Ingresos Anuales</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(totalAnual)}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Income Sources List */}
-      <div className="bg-white border border-gray-200 p-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h4 className="text-lg font-medium text-gray-900 mb-4">Fuentes de Ingresos</h4>
 
         {ingresos.length === 0 ? (
           <div className="text-center py-8">
-            <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No hay otros ingresos configurados</h3>
             <p className="mt-1 text-sm text-gray-500">
               Añade prestaciones por desempleo, subsidios, indemnizaciones u otros ingresos personales.
@@ -309,7 +332,7 @@ const OtrosIngresosManager: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={() => setShowForm(true)}
-                className="inline-flex items-center px-4 py-2 bg-brand-navy text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Añadir Primer Ingreso
@@ -317,75 +340,40 @@ const OtrosIngresosManager: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-gray-100">
             {ingresos.map((ingreso) => (
-              <div key={ingreso.id} className="border p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h5 className="font-medium text-gray-900">{ingreso.nombre}</h5>
-                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800">
-                        {getTipoLabel(ingreso.tipo)}
-                      </span>
-                      <div className={`flex items-center space-x-1 ${ingreso.titularidad === 'yo' ? 'text-atlas-blue' : 'text-error-600'}`}>
-                        {ingreso.titularidad === 'yo' ? <User className="w-4 h-4" /> : <Heart className="w-4 h-4" />}
-                        <span className="text-xs font-medium">{getTitularLabel(ingreso.titularidad)}</span>
-                      </div>
-                      {!ingreso.activo && (
-                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-error-800">
-                          Inactivo
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">Titular</p>
-                        <p className="font-medium">{getTitularLabel(ingreso.titularidad)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Categoría</p>
-                        <p className="font-medium">{getTipoLabel(ingreso.tipo)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Importe</p>
-                        <p className="font-medium">{formatCurrency(ingreso.importe)} / {getFrecuenciaLabel(ingreso.frecuencia)}</p>
-                      </div>
-                      {ingreso.fechaFin && (
-                        <div>
-                          <p className="text-gray-600">Fecha Fin</p>
-                          <p className="font-medium flex items-center space-x-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>{ingreso.fechaFin}</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
+              <div key={ingreso.id} className="flex items-center justify-between py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{ingreso.nombre}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {getTipoLabel(ingreso.tipo)} · {getTitularLabel(ingreso.titularidad)}
+                    {ingreso.fechaFin && ` · Hasta ${formatFechaFin(ingreso.fechaFin)}`}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3 ml-4">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">{formatCurrency(ingreso.importe)}</p>
+                    <p className="text-xs text-gray-500">{getFrecuenciaLabel(ingreso.frecuencia)}</p>
                   </div>
-
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      onClick={() => ingreso.id !== undefined && handleDelete(ingreso.id)}
-                      className="p-2 text-gray-400 hover:text-error-600"
-                      title="Eliminar ingreso"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleEdit(ingreso)}
+                    className="p-2 text-gray-400 hover:text-atlas-blue"
+                    title="Editar ingreso"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => ingreso.id !== undefined && handleDelete(ingreso.id)}
+                    className="p-2 text-gray-400 hover:text-error-600"
+                    title="Eliminar ingreso"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Integration Info */}
-      <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-atlas-btn-primary ">
-        <p className="text-sm text-primary-700">
-          <strong>Integración automática:</strong> Los ingresos recurrentes configurados se integrarán automáticamente
-          con el módulo de Tesorería para el seguimiento de flujos de caja y con Proyecciones para la planificación financiera.
-          La información fiscal se marcará automáticamente para facilitar la declaración de impuestos.
-        </p>
       </div>
     </div>
   );
