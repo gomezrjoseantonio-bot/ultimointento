@@ -5,7 +5,7 @@ import LiquidezSection from './LiquidezSection';
 import AlertasSection from './AlertasSection';
 import QuickActions from './QuickActions';
 import { dashboardService } from '../../services/dashboardService';
-import type { Alerta } from '../../types/dashboard';
+import type { Alerta, SaludFinanciera as SaludFinancieraType } from '../../types/dashboard';
 
 interface InvestorDashboardV2Props {
   onNavigate: (route: string) => void;
@@ -57,6 +57,13 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
     ingresos30d: 0,
     proyeccion30d: 0
   });
+  const [salud, setSalud] = useState<SaludFinancieraType>({
+    liquidezHoy: 0,
+    gastoMedioMensual: 0,
+    colchonMeses: 0,
+    estado: 'critical',
+    proyeccion30d: { estimado: 0, ingresos: 0, gastos: 0 }
+  });
   const [alertas, setAlertas] = useState<Alerta[]>([]);
 
   useEffect(() => {
@@ -68,16 +75,18 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
       setLoading(true);
       
       // Load all dashboard data in parallel
-      const [patrimonioData, bolsillosData, liquidezData, alertasData] = await Promise.all([
+      const [patrimonioData, bolsillosData, liquidezData, saludData, alertasData] = await Promise.all([
         dashboardService.getPatrimonioNeto(),
         dashboardService.getTresBolsillos(),
         dashboardService.getLiquidez(),
+        dashboardService.getSaludFinanciera(),
         dashboardService.getAlertas()
       ]);
 
       setPatrimonio(patrimonioData);
       setBolsillos(bolsillosData);
       setLiquidez(liquidezData);
+      setSalud(saludData);
       setAlertas(alertasData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -336,6 +345,8 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
           comprometido30d={liquidez.comprometido30d}
           ingresos30d={liquidez.ingresos30d}
           proyeccion30d={liquidez.proyeccion30d}
+          colchonMeses={salud.colchonMeses}
+          estadoColchon={salud.estado}
         />
 
         {/* REQUIERE ATENCIÓN */}

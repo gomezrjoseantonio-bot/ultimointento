@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, Building2, TrendingUp } from 'lucide-react';
+import { Home, Building2, TrendingUp } from 'lucide-react';
 import BolsilloCard from './BolsilloCard';
 
 interface TresBolsillosGridProps {
@@ -22,7 +22,7 @@ interface TresBolsillosGridProps {
  * TresBolsillosGrid - Grid displaying the 3 main income sources
  * 
  * Shows the investor's 3 "pockets":
- * 1. TRABAJO - Net personal income (Briefcase icon)
+ * 1. ECONOMÍA FAMILIAR - Net family income vs expenses (Home icon)
  * 2. INMUEBLES - Real estate cashflow (Building2 icon)
  * 3. INVERSIONES - Investment dividends (TrendingUp icon)
  * 
@@ -58,12 +58,12 @@ const TresBolsillosGrid: React.FC<TresBolsillosGridProps> = ({
         fontFamily: 'var(--font-inter)'
       }}
     >
-      {/* Trabajo Card */}
+      {/* Economía Familiar Card */}
       <BolsilloCard
-        icono={Briefcase}
-        titulo="TRABAJO"
+        icono={Home}
+        titulo="ECONOMÍA FAMILIAR"
         cantidad={formatAmount(trabajo.mensual)}
-        subtitulo="Neto trabajo"
+        subtitulo="Ingresos - Gastos"
         link="/personal"
         onClick={() => onNavigate('/personal')}
         tendencia={trabajo.tendencia}
