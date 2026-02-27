@@ -147,7 +147,7 @@ const GastosManager: React.FC = () => {
   const handleLoadTemplate = async () => {
     if (!personalDataId) return;
     try {
-      await personalExpensesService.loadTemplateExpenses(personalDataId, personalData);
+      await personalExpensesService.smartMergeTemplateExpenses(personalDataId, personalData);
       toast.success('Plantilla cargada correctamente');
       await loadExpenses();
     } catch (error) {
