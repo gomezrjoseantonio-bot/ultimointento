@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import PageLayout from '../../components/common/PageLayout';
-import PersonalDataForm from '../../components/personal/PersonalDataForm';
+import ProfileView from '../../modules/personal/components/ProfileView';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import MigracionTab from './MigracionTab';
 import { User, Shield, CreditCard, Database, Settings, Upload } from 'lucide-react';
@@ -59,7 +59,7 @@ const AccountPage: React.FC = () => {
 
       {/* Tab Content */}
       {activeTab === 'perfil' && (
-        <PersonalDataForm />
+        <ProfileView />
       )}
 
       {activeTab === 'seguridad' && (
