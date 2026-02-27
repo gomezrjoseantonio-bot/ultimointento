@@ -135,24 +135,48 @@ const SaludFinanciera: React.FC<SaludFinancieraProps> = ({
         </div>
       </div>
 
-      {/* Cushion indicator */}
-      <div style={{ marginBottom: '20px' }}>
+      {/* Cushion indicator - prominently highlighted */}
+      <div
+        style={{
+          padding: '16px',
+          marginBottom: '20px',
+          backgroundColor: `${getStatusColor()}10`,
+          border: `2px solid ${getStatusColor()}`,
+          borderRadius: '10px'
+        }}
+      >
         <div
           style={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '8px'
+            justifyContent: 'space-between',
+            marginBottom: '10px'
           }}
         >
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-gray)' }}>
-            Colchón
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Shield
+              size={18}
+              strokeWidth={1.5}
+              style={{ color: getStatusColor() }}
+              aria-hidden="true"
+            />
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--atlas-navy-1)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}
+            >
+              Colchón de Emergencia
+            </span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span
               style={{
-                fontSize: '0.875rem',
-                fontWeight: 600,
+                fontSize: '1.25rem',
+                fontWeight: 700,
                 color: 'var(--atlas-navy-1)',
                 fontVariantNumeric: 'tabular-nums'
               }}
@@ -192,6 +216,15 @@ const SaludFinanciera: React.FC<SaludFinancieraProps> = ({
               transition: 'width 0.3s ease'
             }}
           />
+        </div>
+        <div
+          style={{
+            fontSize: '0.7rem',
+            color: 'var(--text-gray)',
+            marginTop: '6px'
+          }}
+        >
+          Objetivo: 6 meses de gastos familiares
         </div>
       </div>
 
