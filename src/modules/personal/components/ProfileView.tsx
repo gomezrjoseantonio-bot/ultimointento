@@ -149,14 +149,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
 
   const handleSituacionLaboralChange = (situacion: SituacionLaboral, checked: boolean) => {
     const newSituaciones = checked
-      ? [...formData.situacionLaboral, situacion]
+      ? formData.situacionLaboral.includes(situacion)
+        ? formData.situacionLaboral
+        : [...formData.situacionLaboral, situacion]
       : formData.situacionLaboral.filter(s => s !== situacion);
     setFormData(prev => ({ ...prev, situacionLaboral: newSituaciones }));
   };
 
   const handleSituacionLaboralConyugueChange = (situacion: SituacionLaboral, checked: boolean) => {
     const newSituaciones = checked
-      ? [...formData.situacionLaboralConyugue, situacion]
+      ? formData.situacionLaboralConyugue.includes(situacion)
+        ? formData.situacionLaboralConyugue
+        : [...formData.situacionLaboralConyugue, situacion]
       : formData.situacionLaboralConyugue.filter(s => s !== situacion);
     setFormData(prev => ({ ...prev, situacionLaboralConyugue: newSituaciones }));
   };
