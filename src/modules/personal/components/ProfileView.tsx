@@ -76,7 +76,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
   const situacionLaboralOptions = [
     { value: 'asalariado', label: 'Asalariado' },
     { value: 'autonomo', label: 'Autónomo' },
-    { value: 'jubilado', label: 'Pensionista/Jubilado' },
+    { value: 'jubilado', label: 'Pensionista' },
     { value: 'desempleado', label: 'Desempleado' },
   ];
 
@@ -148,32 +148,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
   };
 
   const handleSituacionLaboralChange = (situacion: SituacionLaboral, checked: boolean) => {
-    let newSituaciones: SituacionLaboral[];
-    if (!checked) {
-      newSituaciones = formData.situacionLaboral.filter(s => s !== situacion);
-    } else if (situacion === 'desempleado' || situacion === 'jubilado') {
-      newSituaciones = [situacion];
-    } else {
-      const withoutExclusive = formData.situacionLaboral.filter(
-        s => s !== 'desempleado' && s !== 'jubilado'
-      );
-      newSituaciones = [...withoutExclusive, situacion];
-    }
+    const newSituaciones = checked
+      ? formData.situacionLaboral.includes(situacion)
+        ? formData.situacionLaboral
+        : [...formData.situacionLaboral, situacion]
+      : formData.situacionLaboral.filter(s => s !== situacion);
     setFormData(prev => ({ ...prev, situacionLaboral: newSituaciones }));
   };
 
   const handleSituacionLaboralConyugueChange = (situacion: SituacionLaboral, checked: boolean) => {
-    let newSituaciones: SituacionLaboral[];
-    if (!checked) {
-      newSituaciones = formData.situacionLaboralConyugue.filter(s => s !== situacion);
-    } else if (situacion === 'desempleado' || situacion === 'jubilado') {
-      newSituaciones = [situacion];
-    } else {
-      const withoutExclusive = formData.situacionLaboralConyugue.filter(
-        s => s !== 'desempleado' && s !== 'jubilado'
-      );
-      newSituaciones = [...withoutExclusive, situacion];
-    }
+    const newSituaciones = checked
+      ? formData.situacionLaboralConyugue.includes(situacion)
+        ? formData.situacionLaboralConyugue
+        : [...formData.situacionLaboralConyugue, situacion]
+      : formData.situacionLaboralConyugue.filter(s => s !== situacion);
     setFormData(prev => ({ ...prev, situacionLaboralConyugue: newSituaciones }));
   };
 
