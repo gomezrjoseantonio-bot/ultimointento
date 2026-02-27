@@ -92,7 +92,7 @@ const Personal: React.FC = () => {
     return [
       { id: 'resumen', name: 'Resumen', icon: LayoutDashboard, href: '/personal/resumen', show: true },
       { id: 'nomina', name: 'Nómina', icon: Banknote, href: '/personal/nomina', show: isEmployed },
-      { id: 'autonomo', name: 'Autónomo/Freelance', icon: Briefcase, href: '/personal/autonomo', show: isSelfEmployed },
+      { id: 'autonomo', name: 'Autónomos', icon: Briefcase, href: '/personal/autonomo', show: isSelfEmployed },
       { id: 'pension', name: 'Pensión', icon: PiggyBank, href: '/personal/pension', show: isRetired },
       {
         id: 'gastos',

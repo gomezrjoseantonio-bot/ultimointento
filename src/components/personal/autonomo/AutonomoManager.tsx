@@ -22,7 +22,7 @@ const AutonomoManager: React.FC = () => {
 
   // Inline form state for fuentes de ingreso
   const [showFuenteForm, setShowFuenteForm] = useState(false);
-  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '' });
+  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', frecuencia: 'mensual' as 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' });
 
   // Inline form state for gastos recurrentes actividad
   const [showGastoRecurrenteForm, setShowGastoRecurrenteForm] = useState(false);
@@ -153,10 +153,10 @@ const AutonomoManager: React.FC = () => {
       return;
     }
     try {
-      const fuente: Omit<FuenteIngreso, 'id'> = { nombre: fuenteFormData.nombre, importeEstimado: importe };
+      const fuente: Omit<FuenteIngreso, 'id'> = { nombre: fuenteFormData.nombre, importeEstimado: importe, frecuencia: fuenteFormData.frecuencia };
       await autonomoService.addFuenteIngreso(activoAutonomo.id!, fuente);
       toast.success('Fuente de ingreso añadida');
-      setFuenteFormData({ nombre: '', importeEstimado: '' });
+      setFuenteFormData({ nombre: '', importeEstimado: '', frecuencia: 'mensual' });
       setShowFuenteForm(false);
       loadData();
     } catch (error) {
@@ -241,9 +241,9 @@ const AutonomoManager: React.FC = () => {
       {/* Header with Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Gestión de Autónomo</h3>
+          <h3 className="text-lg font-medium text-gray-900">Gestión de Autónomos</h3>
           <p className="text-gray-500">
-            Gestiona tus ingresos facturados, gastos deducibles y cuota de autónomos
+            Gestiona tus actividades autónomas, fuentes de ingreso y gastos deducibles
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -451,7 +451,7 @@ const AutonomoManager: React.FC = () => {
 
           {showFuenteForm && (
             <form onSubmit={handleAddFuenteIngreso} className="mb-4 p-4 bg-blue-50 border border-blue-100 space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">Nombre / Cliente *</label>
                   <input
@@ -464,7 +464,7 @@ const AutonomoManager: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">Importe Estimado Mensual (€) *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Importe Estimado (€) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -474,6 +474,20 @@ const AutonomoManager: React.FC = () => {
                     placeholder="1500.00"
                     required
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 mb-1">Frecuencia</label>
+                  <select
+                    value={fuenteFormData.frecuencia}
+                    onChange={(e) => setFuenteFormData(prev => ({ ...prev, frecuencia: e.target.value as 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' }))}
+                    className="w-full px-3 py-2 border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy"
+                  >
+                    <option value="mensual">Mensual</option>
+                    <option value="bimestral">Bimestral</option>
+                    <option value="trimestral">Trimestral</option>
+                    <option value="semestral">Semestral</option>
+                    <option value="anual">Anual</option>
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
@@ -488,7 +502,9 @@ const AutonomoManager: React.FC = () => {
               <div key={fuente.id} className="flex items-center justify-between p-3 bg-blue-50 border border-blue-100">
                 <div>
                   <p className="font-medium text-gray-900">{fuente.nombre}</p>
-                  <p className="text-sm text-gray-600">{formatCurrency(fuente.importeEstimado)}/mes estimado</p>
+                  <p className="text-sm text-gray-600">
+                    {formatCurrency(fuente.importeEstimado)}/{fuente.frecuencia || 'mensual'} estimado
+                  </p>
                 </div>
                 <button onClick={() => handleRemoveFuenteIngreso(fuente.id!)} className="p-1 text-gray-400 hover:text-red-600">
                   <Trash2 className="w-4 h-4" />
@@ -622,7 +638,9 @@ const AutonomoManager: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {autonomos.map((autonomo) => (
+            {autonomos.map((autonomo) => {
+              const estimated = autonomoService.calculateEstimatedAnnual(autonomo);
+              return (
               <div
                 key={autonomo.id}
                 className={`border p-4 ${
@@ -637,6 +655,9 @@ const AutonomoManager: React.FC = () => {
                       <h5 className={`font-medium ${autonomo.activo ? 'text-success-900' : 'text-gray-900'}`}>
                         {autonomo.nombre}
                       </h5>
+                      {autonomo.titular && (
+                        <span className="text-sm text-gray-500">— {autonomo.titular}</span>
+                      )}
                       {autonomo.activo && (
                         <span className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs font-medium text-success-800">
                           Activo
@@ -644,20 +665,33 @@ const AutonomoManager: React.FC = () => {
                       )}
                     </div>
                     
-                    <div className="mt-1 flex items-center space-x-4 text-sm text-gray-600">
-                      <span>
-                        Cuota: {formatCurrency(autonomo.cuotaAutonomos)}/mes
-                      </span>
-                      <span>
-                        Ingresos: {autonomo.ingresosFacturados.length}
-                      </span>
-                      <span>
-                        Gastos: {autonomo.gastosDeducibles.length}
-                      </span>
+                    <div className="mt-3 grid grid-cols-3 gap-3">
+                      <div className="text-center p-2 bg-white border border-gray-100 rounded">
+                        <p className="text-xs text-gray-500">Facturación Bruta Anual</p>
+                        <p className="text-sm font-semibold text-gray-900">{formatCurrency(estimated.facturacionBruta)}</p>
+                      </div>
+                      <div className="text-center p-2 bg-white border border-gray-100 rounded">
+                        <p className="text-xs text-gray-500">Gastos Deducibles Anuales</p>
+                        <p className="text-sm font-semibold text-error-700">{formatCurrency(estimated.totalGastos)}</p>
+                      </div>
+                      <div className="text-center p-2 bg-white border border-gray-100 rounded">
+                        <p className="text-xs text-gray-500">Rendimiento Neto Est.</p>
+                        <p className={`text-sm font-semibold ${estimated.rendimientoNeto >= 0 ? 'text-success-700' : 'text-error-700'}`}>
+                          {formatCurrency(estimated.rendimientoNeto)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                      <span>Cuota SS: {formatCurrency(autonomo.cuotaAutonomos)}/mes</span>
+                      {autonomo.irpfRetencionPorcentaje !== undefined && (
+                        <span>IRPF: {autonomo.irpfRetencionPorcentaje}%</span>
+                      )}
+                      <span>{(autonomo.fuentesIngreso || []).length} fuentes de ingreso</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 ml-4">
                     {!autonomo.activo && (
                       <button
                         onClick={() => handleActivateAutonomo(autonomo)}
@@ -681,7 +715,8 @@ const AutonomoManager: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
