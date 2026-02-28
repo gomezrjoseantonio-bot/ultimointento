@@ -64,14 +64,14 @@ export interface InversionRendimientoPeriodico extends PosicionInversionBase {
 export interface DividendoConfig {
   paga_dividendos: boolean;
   frecuencia_dividendos?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
-  meses_cobro: number[];                // NUEVO: months in which dividends are paid
-  dia_cobro: number;                    // NUEVO: day of month
-  dividendo_por_accion: number;         // NUEVO: gross dividend per share/unit
+  meses_cobro?: number[];               // NUEVO: months in which dividends are paid (required if paga_dividendos = true)
+  dia_cobro?: number;                   // NUEVO: day of month (required if paga_dividendos = true)
+  dividendo_por_accion?: number;        // NUEVO: gross dividend per share/unit (required if paga_dividendos = true)
   politica_dividendos: 'distribucion' | 'acumulacion';
   cuenta_destino_dividendos_id?: number;
-  retencion_porcentaje: number;         // NUEVO: Spanish withholding %, default 19
-  retencion_origen_porcentaje: number;  // NUEVO: source-country withholding %, default 0
-  dividendos_recibidos: DividendoRecibido[];
+  retencion_porcentaje?: number;        // NUEVO: Spanish withholding %, default 19 (required if paga_dividendos = true)
+  retencion_origen_porcentaje?: number; // NUEVO: source-country withholding %, default 0 (required if paga_dividendos = true)
+  dividendos_recibidos?: DividendoRecibido[];
 }
 
 /** Alias following the naming convention in the problem statement */
