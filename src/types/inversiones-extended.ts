@@ -29,13 +29,13 @@ export interface RendimientoPeriodico {
   tipo_rendimiento: 'interes_fijo' | 'interes_variable';
   tasa_interes_anual: number;           // 10 for 10%
   frecuencia_pago: 'mensual' | 'trimestral' | 'semestral' | 'anual';
-  meses_cobro: number[];                // NUEVO: months in which interest is collected (e.g. [3,6,9,12])
-  dia_cobro: number;                    // NUEVO: day of month on which interest arrives
+  meses_cobro?: number[];               // NUEVO: months in which interest is collected (e.g. [3,6,9,12])
+  dia_cobro?: number;                   // NUEVO: day of month on which interest arrives
   reinvertir: boolean;                  // true = added to capital
   cuenta_destino_id?: number;           // If reinvertir=false
   fecha_inicio_rendimiento: string;
   fecha_fin_rendimiento?: string;       // For term deposits
-  retencion_porcentaje: number;         // NUEVO: withholding tax %, default 19 (Spain)
+  retencion_porcentaje?: number;        // NUEVO: withholding tax %, default 19 (Spain)
   pagos_generados: PagoRendimiento[];
 }
 
