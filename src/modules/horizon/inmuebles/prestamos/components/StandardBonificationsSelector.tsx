@@ -37,12 +37,12 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
     }
   };
 
-  const getCategoryColor = (categoria: StandardBonification['categoria']) => {
+  const getCategoryColor = (categoria: StandardBonification['categoria']): { className: string; style?: React.CSSProperties } => {
     switch (categoria) {
-      case 'ingresos': return 'bg-success-50 border-success-200 text-success-800';
-      case 'productos': return 'bg-primary-50 border-primary-300 text-atlas-blue';
-      case 'servicios': return 'bg-purple-50 border-purple-200 text-purple-800';
-      default: return 'bg-gray-50 border-gray-200 text-gray-800';
+      case 'ingresos': return { className: 'border text-xs px-2 py-1 rounded-full', style: { backgroundColor: 'rgba(40,167,69,0.1)', borderColor: 'rgba(40,167,69,0.3)', color: 'var(--ok)' } };
+      case 'productos': return { className: 'bg-primary-50 border-primary-300 text-atlas-blue border text-xs px-2 py-1 rounded-full' };
+      case 'servicios': return { className: 'border text-xs px-2 py-1 rounded-full', style: { backgroundColor: 'rgba(29,160,186,0.08)', borderColor: 'rgba(29,160,186,0.2)', color: 'var(--atlas-blue, #1DA0BA)' } };
+      default: return { className: 'bg-gray-50 border-gray-200 text-gray-800 border text-xs px-2 py-1 rounded-full' };
     }
   };
 
@@ -101,7 +101,10 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
                   {standard.nombre}
                 </span>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(standard.categoria)}`}>
+              <span
+                  className={getCategoryColor(standard.categoria).className}
+                  style={getCategoryColor(standard.categoria).style}
+                >
                 {standard.categoria}
               </span>
             </div>
@@ -111,11 +114,11 @@ const StandardBonificationsSelector: React.FC<StandardBonificationsProps> = ({
             </p>
             
             <div className="flex items-center justify-between text-xs">
-              <span className="text-success-600 font-medium">
+              <span className="font-medium" style={{ color: 'var(--ok)' }}>
                 -{formatSpanishNumber(standard.reduccionPuntosPorcentuales * 100, 2)}%
               </span>
               {standard.costeAnualEstimado && standard.costeAnualEstimado > 0 && (
-                <span className="text-error-600">
+                <span style={{ color: 'var(--error)' }}>
                   ~{formatSpanishNumber(standard.costeAnualEstimado, 0)}€/año
                 </span>
               )}

@@ -46,6 +46,9 @@ export interface PrestamoFinanciacion {
   // Bonifications (Step 3)
   bonificaciones?: BonificacionFinanciacion[];
 
+  // Import origin (Step 4 — shown when origenCreacion === 'IMPORTACION')
+  origenCreacion?: 'MANUAL' | 'FEIN' | 'IMPORTACION';
+
   // Audit
   createdAt: string;
   updatedAt: string;

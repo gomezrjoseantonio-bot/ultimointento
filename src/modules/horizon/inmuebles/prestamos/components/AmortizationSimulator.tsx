@@ -88,7 +88,8 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <div 
-          className="fixed inset-0 bg-gray-500 transition-opacity"
+          className="fixed inset-0 transition-opacity"
+          style={{ backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(4px)' }}
           onClick={onClose}
         />
         
@@ -230,7 +231,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
               <div className="space-y-4">
                 <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <h4 className="font-medium text-neutral-900 mb-3 flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-success-600" />
+                    <CheckCircle className="h-5 w-5" style={{ color: 'var(--ok)' }} />
                     <span>Resultado de la simulación</span>
                   </h4>
                   
@@ -251,7 +252,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                       <h5 className="font-medium text-gray-700 mb-2">
                         {modo === 'REDUCIR_PLAZO' ? 'Nuevo plazo' : 'Nueva cuota'}
                       </h5>
-                      <div className="text-2xl font-bold text-success-600">
+                      <div className="text-2xl font-bold" style={{ color: 'var(--ok)' }}>
                         {modo === 'REDUCIR_PLAZO' 
                           ? `${calculo.nuevoplazo} meses`
                           : formatEuro(calculo.nuevaCuota || 0)
@@ -267,7 +268,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                     {/* Interest savings */}
                     <div className="bg-white rounded-lg p-3 md:col-span-2">
                       <h5 className="font-medium text-gray-700 mb-2">Intereses ahorrados</h5>
-                      <div className="text-2xl font-bold text-success-600">
+                      <div className="text-2xl font-bold" style={{ color: 'var(--ok)' }}>
                         {formatEuro(calculo.interesesAhorrados)}
                       </div>
                       {calculo.puntoEquilibrio && (

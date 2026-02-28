@@ -9,7 +9,6 @@ import {
   Home,
   User,
   TrendingUp,
-  DollarSign,
   Clock,
   ArrowUpDown
 } from 'lucide-react';
@@ -22,16 +21,17 @@ import { Inmueble } from '../../../../types/inmueble';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 import { confirmDelete } from '../../../../services/confirmationService';
 import AccountOption from '../../../../components/common/AccountOption';
-import { AtlasText, AtlasIcon } from '../../../../components/atlas';
+import { AtlasText } from '../../../../components/atlas';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
+  onViewDetail?: (prestamoId: string) => void;
 }
 
 type SortField = 'nombre' | 'tin' | 'capitalVivo' | 'vencimiento';
 type SortDirection = 'asc' | 'desc';
 
-const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
+const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('nombre');
@@ -175,17 +175,13 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       
       const effectiveTIN = calculateEffectiveTIN(prestamo);
       const monthlyRate = effectiveTIN / 12 / 100;
-      
-      // Estimate interests paid (simplified calculation)
+
       const mesesPagados = Math.min(mesesTranscurridos, prestamo.plazoMesesTotal);
-      
-      // For simplicity, estimate that ~70% of early payments are interest
-      const interesesPorCuota = prestamo.principalVivo * monthlyRate;
-      interesesPagados += interesesPorCuota * mesesPagados * 0.7;
-      
-      // Estimate remaining interests
       const mesesRestantes = Math.max(0, prestamo.plazoMesesTotal - mesesTranscurridos);
-      interesesPendientes += interesesPorCuota * mesesRestantes * 0.5; // Decreasing over time
+
+      const interesesPorCuota = prestamo.principalVivo * monthlyRate;
+      interesesPagados += interesesPorCuota * mesesPagados;
+      interesesPendientes += interesesPorCuota * mesesRestantes;
     });
     
     return {
@@ -201,8 +197,12 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
 
   // Action handlers
   const handleViewDetail = (prestamo: Prestamo) => {
-    setSelectedPrestamoForDetail(prestamo);
-    setIsDetailDrawerOpen(true);
+    if (onViewDetail) {
+      onViewDetail(prestamo.id);
+    } else {
+      setSelectedPrestamoForDetail(prestamo);
+      setIsDetailDrawerOpen(true);
+    }
   };
 
   const handleCloseDetailDrawer = () => {
@@ -281,7 +281,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex flex-col">
             <div className="flex items-center mb-3">
-              <AtlasIcon icon={Calculator} size="xl" color="primary" />
+              <Calculator className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
               <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
                 Capital Solicitado
               </AtlasText>
@@ -296,7 +296,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex flex-col">
             <div className="flex items-center mb-3">
-              <AtlasIcon icon={DollarSign} size="xl" color="warning" />
+              <Calculator className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
               <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
                 Capital Pendiente
               </AtlasText>
@@ -311,7 +311,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex flex-col">
             <div className="flex items-center mb-3">
-              <AtlasIcon icon={TrendingUp} size="xl" color="success" />
+              <TrendingUp className="h-6 w-6" style={{ color: 'var(--ok)' }} />
               <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
                 Intereses Pagados
               </AtlasText>
@@ -326,7 +326,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex flex-col">
             <div className="flex items-center mb-3">
-              <AtlasIcon icon={Clock} size="xl" color="error" />
+              <Clock className="h-6 w-6" style={{ color: 'var(--text-gray)' }} />
               <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
                 Intereses Pendientes
               </AtlasText>
@@ -341,7 +341,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
         <div className="bg-white border border-gray-200 p-4">
           <div className="flex flex-col">
             <div className="flex items-center mb-3">
-              <AtlasIcon icon={Calendar} size="xl" color="primary" />
+              <Calendar className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
               <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
                 Cuota Total
               </AtlasText>
@@ -363,7 +363,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit }) => {
       ) : (
         <div className="bg-white border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200" style={{ fontVariantNumeric: 'tabular-nums' }}>
               <thead className="bg-gray-50">
                 <tr>
                   <th 

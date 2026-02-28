@@ -434,7 +434,8 @@ export class PrestamosCalculationService {
         principalFinal: principalVivo,
         esProrrateado,
         esSoloIntereses,
-        diasDevengo: diasCalculo && diasCalculo > 0 ? diasCalculo : undefined
+        diasDevengo: diasCalculo && diasCalculo > 0 ? diasCalculo : undefined,
+        pagado: false
       });
 
       // Move to next month

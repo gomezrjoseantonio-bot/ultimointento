@@ -46,7 +46,7 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'CUMPLIDA':
-        return <CheckCircle className="h-4 w-4 text-success-600" />;
+        return <CheckCircle className="h-4 w-4" style={{ color: 'var(--ok)' }} />;
       case 'EN_RIESGO':
         return <AlertTriangle className="h-4 w-4 text-warning-600" />;
       case 'PERDIDA':
@@ -56,16 +56,16 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): { className: string; style?: React.CSSProperties } => {
     switch (status) {
       case 'CUMPLIDA':
-        return 'text-success-600 bg-success-100';
+        return { className: '', style: { color: 'var(--ok)', backgroundColor: 'rgba(40,167,69,0.1)' } };
       case 'EN_RIESGO':
-        return 'text-warning-600 bg-warning-100';
+        return { className: 'text-warning-600 bg-warning-100' };
       case 'PERDIDA':
-        return 'text-error-500 bg-error-100';
+        return { className: 'text-error-500 bg-error-100' };
       default:
-        return 'text-gray-500 bg-hz-neutral-200';
+        return { className: 'text-gray-500 bg-hz-neutral-200' };
     }
   };
 
@@ -95,11 +95,11 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
           </div>
 
           {/* Current payment with bonifications */}
-          <div className="text-center p-4 bg-white rounded-lg border border-success-600">
-            <div className="text-lg font-bold text-success-600">
+          <div className="text-center p-4 bg-white rounded-lg border" style={{ borderColor: 'var(--ok)' }}>
+            <div className="text-lg font-bold" style={{ color: 'var(--ok)' }}>
               {formatEuro(savings.bonifiedPayment)}
             </div>
-            <div className="text-sm text-success-600">
+            <div className="text-sm" style={{ color: 'var(--ok)' }}>
               Cuota actual con bonificaciones
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -108,11 +108,11 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
           </div>
 
           {/* Total savings */}
-          <div className="text-center p-4 bg-success-100 rounded-lg">
-            <div className="text-lg font-bold text-success-600">
+          <div className="text-center p-4 rounded-lg" style={{ backgroundColor: 'rgba(40,167,69,0.1)' }}>
+            <div className="text-lg font-bold" style={{ color: 'var(--ok)' }}>
               {formatEuro(savings.totalSavingsPerMonth)}
             </div>
-            <div className="text-sm text-success-600">
+            <div className="text-sm" style={{ color: 'var(--ok)' }}>
               Ahorro total mensual
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -169,7 +169,10 @@ const BonificationPanel: React.FC<BonificationPanelProps> = ({ prestamo }) => {
                       </div>
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(bonif.estado)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(bonif.estado).className}`}
+                        style={getStatusColor(bonif.estado).style}
+                      >
                         {bonif.estado}
                       </span>
                     </td>
