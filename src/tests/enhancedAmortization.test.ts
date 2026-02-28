@@ -7,15 +7,23 @@ import { Prestamo } from '../types/prestamos';
 describe('Enhanced Amortization Schedule Generation', () => {
   
   const mockLoanData: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
+    ambito: 'INMUEBLE',
     inmuebleId: 'property_1',
     nombre: 'Test Loan',
     principalInicial: 200000,
     principalVivo: 200000,
     fechaFirma: '2024-01-01',
+    fechaPrimerCargo: '2024-02-01',
     plazoMesesTotal: 360, // 30 years
+    diaCargoMes: 15,
+    esquemaPrimerRecibo: 'NORMAL',
+    carencia: 'NINGUNA',
+    sistema: 'FRANCES',
+    cuotasPagadas: 0,
+    origenCreacion: 'MANUAL',
+    activo: true,
     tipo: 'FIJO',
     tipoNominalAnualFijo: 0.032, // 3.2%
-    diaCargoMes: 15,
     cuentaCargoId: 'account_1'
   };
 

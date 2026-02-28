@@ -3,16 +3,22 @@
 
 export interface Prestamo {
   id: string;
-  inmuebleId: string;           // mandatory association with property
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;          // optional (required when ambito='INMUEBLE')
   nombre: string;
 
   principalInicial: number;
   principalVivo: number;
 
   fechaFirma: string;           // ISO date (e.g., 2025-08-10)
+  fechaPrimerCargo: string;     // ISO date of first payment charge
   plazoMesesTotal: number;      // original contractual term
 
+  diaCargoMes: number;          // 1-28
+  esquemaPrimerRecibo: 'NORMAL' | 'SOLO_INTERESES' | 'PRORRATA';
+
   tipo: 'FIJO' | 'VARIABLE' | 'MIXTO';
+  sistema: 'FRANCES';
 
   // FIJO
   tipoNominalAnualFijo?: number; // 3.2 for 3.2%
@@ -28,6 +34,10 @@ export interface Prestamo {
   tramoFijoMeses?: number;
   tipoNominalAnualMixtoFijo?: number;
 
+  // Carencia
+  carencia: 'NINGUNA' | 'CAPITAL' | 'TOTAL';
+  carenciaMeses?: number;
+
   // Initial irregularities
   mesesSoloIntereses?: number;  // 0..N (includes possible first month)
   diferirPrimeraCuotaMeses?: number; // 0..N (e.g., 2 → first payment 2 months later)
@@ -35,29 +45,43 @@ export interface Prestamo {
   cobroMesVencido?: boolean;    // true = accrual month t, collection in month t+1
 
   // Collection details
-  diaCargoMes?: number;         // 1..28 (or 30), e.g., 10
   cuentaCargoId: string;        // treasury account id
 
   // Costs/commissions
-  comisionAmortizacionParcial?: number; // % on amortized amount
-  comisionCancelacionTotal?: number;    // % on outstanding balance
-  gastosFijosOperacion?: number;        // €
+  comisionApertura?: number;
+  comisionMantenimiento?: number;
+  comisionAmortizacionAnticipada?: number; // % on amortized amount
+  comisionAmortizacionParcial?: number;    // kept for backwards compatibility
+  comisionCancelacionTotal?: number;       // % on outstanding balance
+  gastosFijosOperacion?: number;           // €
 
   // Bonifications management
   bonificaciones?: Bonificacion[];
   maximoBonificacionPorcentaje?: number;     // maximum total bonification allowed (e.g., 0.006 = 0.60%)
   periodoRevisionBonificacionMeses?: number; // bonification review period: 6 or 12 months
   fechaFinMaximaBonificacion?: string;       // end date for maximum bonification period
-  
+
   // Reglas por defecto de bonificaciones
   topeBonificacionesTotal?: number;          // Tope acumulado de descuentos: -1,00 p.p.
-  tinMin?: number;                          // Suelo TIN para FIJO: 1,00%
-  diferencialMin?: number;                  // Suelo diferencial para VARIABLE: 0,40%
+  tinMin?: number;                           // Suelo TIN para FIJO: 1,00%
+  diferencialMin?: number;                   // Suelo diferencial para VARIABLE: 0,40%
 
   // Bonification evaluation parameters (when bonifications are active)
   fechaFinPeriodo?: string;           // end of evaluation period (ISO date)
   fechaEvaluacion?: string;           // evaluation date (defaults to finPeriodo - 30 days, editable)
   offsetEvaluacionDias?: number;      // default 30 days before end period
+
+  // Estado de pagos
+  cuotasPagadas: number;
+  fechaUltimaCuotaPagada?: string;
+
+  // Importación
+  origenCreacion: 'MANUAL' | 'FEIN' | 'IMPORTACION';
+  cuotasPagadasAlImportar?: number;
+  capitalVivoAlImportar?: number;
+  documentoFEIN?: string;
+
+  activo: boolean;
 
   // Audit
   createdAt: string;
@@ -111,6 +135,9 @@ export interface PeriodoPago {
   esProrrateado?: boolean;       // first period prorated
   esSoloIntereses?: boolean;     // interest-only period
   diasDevengo?: number;          // for prorated calculations
+  pagado: boolean;
+  fechaPagoReal?: string;
+  movimientoTesoreriaId?: string;
 }
 
 export interface PlanPagos {

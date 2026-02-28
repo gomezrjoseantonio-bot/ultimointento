@@ -82,7 +82,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onSelectPrestamo, onEditP
 
   const filteredPrestamos = prestamos.filter(prestamo => {
     const matchesSearch = prestamo.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         prestamo.inmuebleId.toLowerCase().includes(searchTerm.toLowerCase());
+                         (prestamo.inmuebleId ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || prestamo.tipo === typeFilter;
     
     return matchesSearch && matchesType;

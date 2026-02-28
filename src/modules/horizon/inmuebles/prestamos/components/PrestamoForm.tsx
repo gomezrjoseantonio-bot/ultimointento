@@ -148,7 +148,7 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
           if (prestamo) {
             // Load all form fields from existing loan
             setNombre(prestamo.nombre);
-            setInmuebleId(prestamo.inmuebleId);
+            setInmuebleId(prestamo.inmuebleId ?? '');
             setPrincipalInicial(formatSpanishNumber(prestamo.principalInicial, 2));
             setFechaFirma(prestamo.fechaFirma);
             setPlazoMesesTotal(prestamo.plazoMesesTotal.toString());
@@ -274,12 +274,21 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
       setError('');
 
       const prestamoData: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
+        ambito: 'INMUEBLE',
         nombre: nombre.trim(),
         inmuebleId: inmuebleId.trim(),
         principalInicial: parseSpanishNumber(principalInicial),
         principalVivo: parseSpanishNumber(principalInicial),
         fechaFirma,
+        fechaPrimerCargo: fechaFirma,
         plazoMesesTotal: parseInt(plazoMesesTotal),
+        diaCargoMes: parseInt(diaCargoMes) || 1,
+        esquemaPrimerRecibo: 'NORMAL',
+        carencia: 'NINGUNA',
+        sistema: 'FRANCES',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        activo: true,
         tipo,
         
         // Type-specific fields
@@ -307,7 +316,6 @@ const PrestamoForm: React.FC<PrestamoFormProps> = ({ prestamoId, onSuccess, onCa
         cobroMesVencido,
 
         // Collection
-        diaCargoMes: parseInt(diaCargoMes),
         cuentaCargoId: cuentaCargoId.trim(),
 
         // Costs
