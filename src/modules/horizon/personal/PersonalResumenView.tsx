@@ -387,13 +387,8 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
         const totals = { nomina: 0, pensiones: 0, otros: 0 };
         for (const m of proyeccion.months) {
           totals.nomina += m.ingresos.nomina;
-          totals.autonomo += m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo;
           totals.pensiones += m.ingresos.pensiones;
           totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
-        }
-        // If projection didn't include autonomo income, substitute with directly-fetched net rendimiento.
-        if (!proyeccionHasAutonomo && autonomoAnual && autonomoAnual.rendimientoNeto > 0) {
-          totals.autonomo = autonomoAnual.rendimientoNeto;
         }
         return [
           { label: 'Nóminas', amount: totals.nomina },
