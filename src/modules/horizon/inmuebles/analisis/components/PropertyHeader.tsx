@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiscalROI } from '../../../../../types/propertyAnalysis';
 import { getTrafficLightEmoji } from '../../../../../utils/propertyAnalysisUtils';
-import { formatPercentage } from '../../../../../utils/formatUtils';
+import { formatPercentagePoints } from '../../../../../utils/formatUtils';
 
 interface PropertyHeaderProps {
   propertyAlias: string;
@@ -57,7 +57,7 @@ const PropertyHeader: React.FC<PropertyHeaderProps> = ({
             ROI fiscal neto
           </span>
           <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(fiscalROI.roiFiscalNeto)}
+            {formatPercentagePoints(fiscalROI.roiFiscalNeto)}
           </div>
         </div>
       </div>

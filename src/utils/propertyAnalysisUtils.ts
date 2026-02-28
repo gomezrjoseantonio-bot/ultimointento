@@ -35,6 +35,7 @@ export interface PropertyAnalysisInputs {
 export interface PropertyAnalysisInputBuildResult {
   inputs: PropertyAnalysisInputs;
   missingFields: string[];
+  warnings: string[];
 }
 
 interface BuildParams {
@@ -187,6 +188,7 @@ export function buildPropertyAnalysisInputs({
   valoraciones,
 }: BuildParams): PropertyAnalysisInputBuildResult {
   const missingFields: string[] = [];
+  const warnings: string[] = [];
   const propertyId = property.id;
   const safePropertyId = propertyId ?? -1;
 
@@ -210,18 +212,45 @@ export function buildPropertyAnalysisInputs({
     missingFields.push('gastos operativos');
   }
 
-  const propertyPrestamos = prestamos.filter(
-    (prestamo) =>
-      prestamo.ambito === 'INMUEBLE' &&
-      prestamo.activo &&
-      prestamo.inmuebleId &&
-      Number(prestamo.inmuebleId) === safePropertyId
-  );
+  const propertyPrestamos = prestamos.filter((prestamo) => {
+    if (prestamo.ambito !== 'INMUEBLE' || !prestamo.activo) {
+      return false;
+    }
+
+    const linkedId = String((prestamo as Prestamo & { propertyId?: string | number }).inmuebleId ?? (prestamo as Prestamo & { propertyId?: string | number }).propertyId ?? '').trim();
+    if (!linkedId) {
+      return false;
+    }
+
+    const numericLinkedId = Number(linkedId);
+    if (!Number.isNaN(numericLinkedId) && numericLinkedId === safePropertyId) {
+      return true;
+    }
+
+    return property.globalAlias !== undefined && linkedId === property.globalAlias;
+  });
   const deudaPendiente = propertyPrestamos.reduce((sum, prestamo) => sum + (prestamo.principalVivo || 0), 0);
 
+  const prestamosConSaldoInvalido = propertyPrestamos.filter(
+    (prestamo) => prestamo.principalVivo === null || prestamo.principalVivo === undefined || Number.isNaN(Number(prestamo.principalVivo))
+  );
+  if (prestamosConSaldoInvalido.length > 0) {
+    warnings.push('No se ha podido obtener el saldo pendiente de una o más hipotecas.');
+  }
+
+  const prestamosConCuotaIncalculable = propertyPrestamos.filter(
+    (prestamo) => !prestamo.fechaFirma || !prestamo.plazoMesesTotal || prestamo.plazoMesesTotal <= 0
+  );
+  if (prestamosConCuotaIncalculable.length > 0) {
+    warnings.push('No se ha podido calcular la cuota mensual de una o más hipotecas por datos incompletos.');
+  }
+
   const cuotaHipoteca = propertyPrestamos.reduce((sum, prestamo) => {
+    if (!prestamo.fechaFirma || !prestamo.plazoMesesTotal || prestamo.plazoMesesTotal <= 0) {
+      return sum;
+    }
     const monthsElapsed = getMonthsDifference(prestamo.fechaFirma, new Date());
-    const monthsRemaining = Math.max(1, (prestamo.plazoMesesTotal || 0) - monthsElapsed);
+    const monthsRemaining = Math.max(1, prestamo.plazoMesesTotal - monthsElapsed);
     const annualRate = getAnnualRate(prestamo);
     return sum + calculateFrenchPayment(prestamo.principalVivo || 0, annualRate, monthsRemaining);
   }, 0);
@@ -295,6 +324,7 @@ export function buildPropertyAnalysisInputs({
       interesesFuturosEvitados,
     },
     missingFields,
+    warnings,
   };
 }
 
@@ -309,14 +339,14 @@ export function getRecommendationText(
 ): string {
   switch (conclusion) {
     case 'MANTENER':
-      return `Tu ROI fiscal neto (${roiFiscalNeto.toFixed(2)}%) supera el coste de oportunidad (${roiAlternativo.toFixed(2)}%). Este activo trabaja bien.`;
+      return `Tu ROI fiscal neto (${formatPercentagePoint(roiFiscalNeto)}) supera el coste de oportunidad (${formatPercentagePoint(roiAlternativo)}). Este activo trabaja bien.`;
     case 'REVISAR':
-      return `Tu ROI fiscal neto (${roiFiscalNeto.toFixed(2)}%) está en el umbral de rentabilidad esperada. Valora mejoras o refinanciación.`;
+      return `Tu ROI fiscal neto (${formatPercentagePoint(roiFiscalNeto)}) está en el umbral de rentabilidad esperada. Valora mejoras o refinanciación.`;
     case 'VENDER':
       const capitalText = capitalNetoFinal 
         ? ` Liberar ${formatEuro(capitalNetoFinal)} puede mejorar tu posición.`
         : '';
-      return `Tu ROI fiscal neto (${roiFiscalNeto.toFixed(2)}%) está por debajo del coste de oportunidad (${roiAlternativo.toFixed(2)}%).${capitalText}`;
+      return `Tu ROI fiscal neto (${formatPercentagePoint(roiFiscalNeto)}) está por debajo del coste de oportunidad (${formatPercentagePoint(roiAlternativo)}).${capitalText}`;
     default:
       return '';
   }
@@ -364,6 +394,13 @@ function formatEuro(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatPercentagePoint(value: number): string {
+  return `${new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)}%`;
 }
 
 /**

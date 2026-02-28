@@ -96,6 +96,21 @@ export const formatPercentage = (value: number | null | undefined): string => {
   return formatEsPercentage(value);
 };
 
+/**
+ * Format percentage points already in [0..100] scale.
+ * Example: 8.52 -> "8,52 %"
+ */
+export const formatPercentagePoints = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '—';
+  }
+
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value) + ' %';
+};
+
 export const parsePercentageInput = (input: string): number | null => {
   const result = parseEsNumber(input, { allowPercent: true });
   return result.value;

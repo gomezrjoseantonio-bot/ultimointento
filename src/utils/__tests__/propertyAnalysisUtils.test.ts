@@ -152,6 +152,31 @@ describe('Property Analysis Utils', () => {
       expect(result.inputs.precioTotalCompra).toBe(218650);
       expect(result.inputs.revalorizacionAnual).toBe(8000);
       expect(result.missingFields).toEqual([]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('matches mortgages linked through legacy propertyId and reports incomplete mortgage data', () => {
+      const legacyLoan = {
+        ...prestamo,
+        inmuebleId: undefined,
+        propertyId: '10',
+        plazoMesesTotal: 0,
+      } as Prestamo & { propertyId: string };
+
+      const result = buildPropertyAnalysisInputs({
+        property,
+        contracts: [contract],
+        ingresos,
+        gastosOperativosOverride: 140,
+        prestamos: [legacyLoan as Prestamo],
+        valoraciones,
+      });
+
+      expect(result.inputs.deudaPendiente).toBe(155000);
+      expect(result.inputs.cuotaHipoteca).toBe(0);
+      expect(result.warnings).toContain(
+        'No se ha podido calcular la cuota mensual de una o más hipotecas por datos incompletos.'
+      );
     });
 
     it('reports missing required data when records are incomplete', () => {
@@ -219,7 +244,8 @@ describe('Property Analysis Utils', () => {
   describe('getRecommendationText', () => {
     it('should return correct text for VENDER', () => {
       const text = getRecommendationText('VENDER', 5.5, 10, 50000);
-      expect(text).toContain('por debajo del coste de oportunidad');
+      expect(text).toContain('5,50%');
+      expect(text).toContain('10,00%');
     });
   });
 

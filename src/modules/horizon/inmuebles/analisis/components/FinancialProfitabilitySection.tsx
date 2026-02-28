@@ -1,6 +1,6 @@
 import React from 'react';
 import { FinancialProfitability } from '../../../../../types/propertyAnalysis';
-import { formatEuro, formatPercentage } from '../../../../../utils/formatUtils';
+import { formatEuro, formatPercentagePoints } from '../../../../../utils/formatUtils';
 
 interface FinancialProfitabilitySectionProps {
   data: FinancialProfitability;
@@ -46,7 +46,7 @@ const FinancialProfitabilitySection: React.FC<FinancialProfitabilitySectionProps
             Rentabilidad bruta (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.rentabilidadBruta)}
+            {formatPercentagePoints(data.rentabilidadBruta)}
           </div>
         </div>
 
@@ -55,7 +55,7 @@ const FinancialProfitabilitySection: React.FC<FinancialProfitabilitySectionProps
             Rentabilidad neta (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.rentabilidadNeta)}
+            {formatPercentagePoints(data.rentabilidadNeta)}
           </div>
         </div>
 
@@ -64,7 +64,7 @@ const FinancialProfitabilitySection: React.FC<FinancialProfitabilitySectionProps
             ROI equity real (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.roiEquityReal)}
+            {formatPercentagePoints(data.roiEquityReal)}
           </div>
         </div>
 
@@ -73,7 +73,7 @@ const FinancialProfitabilitySection: React.FC<FinancialProfitabilitySectionProps
             ROI total (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.roiTotal)}
+            {formatPercentagePoints(data.roiTotal)}
           </div>
         </div>
       </div>
