@@ -192,8 +192,17 @@ async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTra
     if (!activa) return null;
 
     const bruto = activa.salarioBrutoAnual ?? 0;
-    const porcentajeSS = activa.retencion?.cotizacionSS ?? 6.35;
-    const cotizacionSS = round2(bruto * (porcentajeSS / 100));
+    // Support both old format { cotizacionSS: % } and new format { ss: { ... } }
+    let cotizacionSS: number;
+    if (activa.retencion?.ss) {
+      const ss = activa.retencion.ss;
+      const baseCot = Math.min(ss.baseCotizacionMensual ?? 4909.50, bruto / 12);
+      const pct = ((ss.contingenciasComunes ?? 4.70) + (ss.desempleo ?? 1.55) + (ss.formacionProfesional ?? 0.10) + (ss.mei ?? 0.13)) / 100;
+      cotizacionSS = round2(baseCot * pct * 12 + ((activa.retencion.cuotaSolidaridadMensual ?? 0) * 12));
+    } else {
+      const porcentajeSS = activa.retencion?.cotizacionSS ?? 6.35;
+      cotizacionSS = round2(bruto * (porcentajeSS / 100));
+    }
     const irpfPorcentaje = activa.retencion?.irpfPorcentaje ?? 0;
     const irpfRetenido = round2(bruto * (irpfPorcentaje / 100));
     const rendimientoNeto = round2(bruto - cotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
