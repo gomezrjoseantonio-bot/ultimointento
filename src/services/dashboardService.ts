@@ -1,4 +1,6 @@
 import { initDB } from './db';
+import { autonomoService } from './autonomoService';
+import { personalDataService } from './personalDataService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -617,7 +619,23 @@ class DashboardService {
         })
         .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
       
-      const trabajoMensual = ingresosPersonalMes - gastosPersonalMes;
+      const trabajoBase = ingresosPersonalMes - gastosPersonalMes;
+
+      // Add autonomo net monthly income (rendimientoNeto / 12) to trabajo
+      let autonomoNetoMensual = 0;
+      try {
+        const personalData = await personalDataService.getPersonalData();
+        const personalDataId = personalData?.id ?? 1;
+        const autonomo = await autonomoService.getActivoAutonomo(personalDataId);
+        if (autonomo) {
+          const annual = autonomoService.calculateEstimatedAnnual(autonomo);
+          autonomoNetoMensual = annual.rendimientoNeto / 12;
+        }
+      } catch {
+        // No autonomo data available
+      }
+
+      const trabajoMensual = trabajoBase + autonomoNetoMensual;
       
       // INMUEBLES: Calculate cashflow from properties
       // Income from rents minus expenses and mortgages
