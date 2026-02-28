@@ -21,7 +21,8 @@ export interface MovimientoTesoreria {
   cuentaId: string;
 }
 
-const KEYWORDS = ['hipoteca', 'préstamo', 'prestamo', 'recibo', 'loan'];
+// Keywords indicating a bank movement is related to a loan payment
+const KEYWORDS = ['hipoteca', 'préstamo', 'prestamo', 'recibo'];
 
 function scoreAmount(movImporte: number, cuotaImporte: number): number {
   const absMovimiento = Math.abs(movImporte);
