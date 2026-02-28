@@ -634,7 +634,7 @@ export async function generateMonthlyForecasts(
             ? ALL_MONTHS
             : Array.isArray(planAp.meses) && planAp.meses.length > 0
               ? planAp.meses
-              : ALL_MONTHS;
+              : [];
 
         if (mesesAp.includes(month)) {
           const diaAp = planAp.dia_cargo ?? 1;
