@@ -358,7 +358,7 @@ async function recopilarDatosInversiones(): Promise<{
     const aports: any[] = p.aportaciones ?? [];
     for (const a of aports) {
       if (a.tipo === 'reembolso') {
-        const coste = ((p.total_aportado ?? 0) / (p.valor_actual + a.importe || 1)) * a.importe;
+        const coste = ((p.total_aportado ?? 0) / ((p.valor_actual + a.importe) || 1)) * a.importe;
         const ganancia = a.importe - coste;
         if (ganancia > 0) plusvalias += ganancia;
         else minusvalias += Math.abs(ganancia);

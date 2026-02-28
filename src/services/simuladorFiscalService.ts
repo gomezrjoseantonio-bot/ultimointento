@@ -239,7 +239,7 @@ export async function ejecutarSimulacion(
         sim.baseGeneral.rendimientosInmuebles.splice(idx, 1);
         // Add imputación
         const mesesVacio = parametros.mesesVacio ?? 12;
-        const imputacion = round2((inmueble.ingresosIntegros * 0.0) + (100000 * 0.02 * (mesesVacio * 30 / 365)));
+        const imputacion = round2(100000 * 0.02 * (mesesVacio * 30 / 365));
         sim.baseGeneral.imputacionRentas.push({
           inmuebleId: inmueble.inmuebleId,
           alias: inmueble.alias,
