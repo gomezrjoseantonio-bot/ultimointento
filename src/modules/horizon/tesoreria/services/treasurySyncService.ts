@@ -874,12 +874,6 @@ export async function generateMonthlyForecasts(
 
               // Interests
               if (rend && ['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(pos.tipo)) {
-                const mesesR: number[] =
-                  rend.frecuencia_pago === 'mensual'
-                    ? ALL_MONTHS
-                    : Array.isArray(rend.meses_cobro) && rend.meses_cobro.length > 0
-                      ? rend.meses_cobro
-                      : ALL_MONTHS;
                 const brutoAnual = pos.valor_actual * (rend.tasa_interes_anual / 100);
                 const brutoTotal = brutoAnual;
                 interesesBrutos += brutoTotal;
