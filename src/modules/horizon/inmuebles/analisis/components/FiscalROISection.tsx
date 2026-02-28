@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiscalROI } from '../../../../../types/propertyAnalysis';
-import { formatEuro, formatPercentage } from '../../../../../utils/formatUtils';
+import { formatEuro, formatPercentagePoints } from '../../../../../utils/formatUtils';
 import { getTrafficLightEmoji } from '../../../../../utils/propertyAnalysisUtils';
 
 interface FiscalROISectionProps {
@@ -38,7 +38,7 @@ const FiscalROISection: React.FC<FiscalROISectionProps> = ({ data }) => {
             ROI fiscal neto (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.roiFiscalNeto)}
+            {formatPercentagePoints(data.roiFiscalNeto)}
           </div>
         </div>
 
@@ -47,7 +47,7 @@ const FiscalROISection: React.FC<FiscalROISectionProps> = ({ data }) => {
             ROI alternativo (coste de oportunidad)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.roiAlternativo)}
+            {formatPercentagePoints(data.roiAlternativo)}
           </div>
         </div>
 
@@ -56,7 +56,7 @@ const FiscalROISection: React.FC<FiscalROISectionProps> = ({ data }) => {
             ROI diferencial (%)
           </label>
           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            {formatPercentage(data.roiDiferencial)}
+            {formatPercentagePoints(data.roiDiferencial)}
           </div>
         </div>
 

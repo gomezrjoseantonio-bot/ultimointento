@@ -44,6 +44,7 @@ const Analisis: React.FC = () => {
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
   const [gastosOperativosMensuales, setGastosOperativosMensuales] = useState<number>(0);
   const [expenseWarning, setExpenseWarning] = useState<string | null>(null);
+  const [mortgageWarning, setMortgageWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProperties = useCallback(async () => {
@@ -104,7 +105,7 @@ const Analisis: React.FC = () => {
     setGastosOperativosMensuales(monthlyOpex);
     setExpenseWarning(diagnostics.warning || null);
 
-    const { inputs, missingFields: missingData } = buildPropertyAnalysisInputs({
+    const { inputs, missingFields: missingData, warnings } = buildPropertyAnalysisInputs({
       property,
       contracts,
       ingresos,
@@ -122,6 +123,7 @@ const Analisis: React.FC = () => {
     };
 
     setMissingFields(missingData);
+    setMortgageWarning(warnings.length > 0 ? warnings.join(' ') : null);
 
     // Calculate operational performance
     const operational = calculateOperationalPerformance(
@@ -291,6 +293,15 @@ const Analisis: React.FC = () => {
           <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--bg-secondary)' }}>
             <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
               <strong>Gastos OPEX.</strong> {expenseWarning} (estimado mensual: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(gastosOperativosMensuales)}).
+            </div>
+          </div>
+        )}
+
+
+        {mortgageWarning && (
+          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
+              <strong>Hipoteca.</strong> {mortgageWarning}
             </div>
           </div>
         )}
