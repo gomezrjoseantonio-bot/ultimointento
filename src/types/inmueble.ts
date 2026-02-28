@@ -79,6 +79,7 @@ export interface FiscalidadInmueble {
   metodo_amortizacion: MetodoAmortizacion; // default REGLA_GENERAL_3
   amortizacion_anual_base: number; // ≥0, 2 dec - base sobre la que se aplica %
   porcentaje_amortizacion_info: number; // default 3.0000 - sólo informativo
+  catastro_revisado_post_1994?: boolean; // determines 1.1% vs 2% imputación rentas
   nota?: string; // aclaraciones puntuales (ej.: casos especiales AEAT)
 }
 

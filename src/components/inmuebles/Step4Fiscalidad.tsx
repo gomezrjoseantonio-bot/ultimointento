@@ -224,6 +224,25 @@ const Step4Fiscalidad: React.FC<Step4FiscalidadProps> = ({
               </div>
             </div>
 
+            {/* Catastro revisado post-1994 */}
+            <div className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg">
+              <input
+                type="checkbox"
+                id="catastro_revisado"
+                checked={data.fiscalidad?.catastro_revisado_post_1994 ?? false}
+                onChange={(e) => updateFiscalidad('catastro_revisado_post_1994', e.target.checked)}
+                className="mt-1 h-4 w-4 text-hz-primary border-gray-300 rounded focus:ring-hz-primary"
+              />
+              <div>
+                <label htmlFor="catastro_revisado" className="block text-sm font-medium text-gray-700 cursor-pointer">
+                  ¿El valor catastral ha sido revisado después de 1994?
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Determina el tipo de imputación de rentas: 1,1% (revisado post-1994) o 2% (no revisado) sobre el valor catastral
+                </p>
+              </div>
+            </div>
+
             {/* Método de amortización */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

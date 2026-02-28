@@ -1298,6 +1298,20 @@ export interface OpexRule {
   updatedAt: string;
 }
 
+// V2.6: ConfiguracionFiscal — IRPF fiscal configuration
+export interface ConfiguracionFiscal {
+  id?: number; // always 1 (single record)
+  cuenta_irpf_id?: number;
+  mes_declaracion: number; // default 6 (June)
+  dia_declaracion: number; // default 25
+  incluir_prevision_irpf: boolean;
+  fraccionarPago: boolean;
+  modelo130_pagados: { ejercicio: number; trimestre: number; importe: number; fechaPago: string }[];
+  modelo303_pagados: { ejercicio: number; trimestre: number; importe: number; fechaPago: string }[];
+  minusvalias_pendientes: { anio: number; importe: number }[];
+  updatedAt: string;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   documents: Document;

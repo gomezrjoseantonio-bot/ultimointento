@@ -4,6 +4,21 @@
 export type EmploymentStatus = 'employed' | 'self_employed' | 'retired' | 'unemployed';
 export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
 export type HousingType = 'rent' | 'ownership_with_mortgage' | 'ownership_without_mortgage' | 'living_with_parents';
+export type NivelDiscapacidad = 'ninguna' | 'hasta33' | 'entre33y65' | 'mas65';
+export type TipoTributacion = 'individual' | 'conjunta';
+
+export interface Descendiente {
+  id: string;
+  fechaNacimiento: string; // ISO date
+  discapacidad: NivelDiscapacidad;
+}
+
+export interface Ascendiente {
+  id: string;
+  edad: number;
+  convive: boolean;
+  discapacidad: NivelDiscapacidad;
+}
 
 export interface PersonalData {
   id?: number;
@@ -22,6 +37,11 @@ export interface PersonalData {
   hasVehicle?: boolean;
   hasChildren?: boolean | number;
   comunidadAutonoma?: string;
+  // IRPF personal minimums
+  descendientes?: Descendiente[];
+  ascendientes?: Ascendiente[];
+  discapacidad?: NivelDiscapacidad;
+  tributacion?: TipoTributacion;
   fechaCreacion: string;
   fechaActualizacion: string;
 }
