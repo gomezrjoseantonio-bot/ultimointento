@@ -32,6 +32,9 @@ import {
 // Fixed annual dividend yield – mirrors FIXED_ASSUMPTIONS.dividendYield in proyeccionMensualService
 const DIVIDEND_YIELD = 0.02;
 
+// All months of the year – used as default when a source has no specific month filter
+const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
 /** Result summary returned by generateMonthlyForecasts */
 export interface SyncResult {
   created: number;
@@ -85,7 +88,8 @@ function isContractActiveInMonth(
  *  - Active nóminas for the month → type 'income', sourceType 'nomina'
  *  - Hipotecas (mortgage quotas) → type 'financing', sourceType 'hipoteca'
  *  - Préstamos (personal loan quotas) → type 'financing', sourceType 'prestamo'
- *  - Autónomo deductible expenses → type 'expense', sourceType 'autonomo'
+ *  - Autónomo income (fuentesIngreso) → type 'income', sourceType 'autonomo_ingreso'
+ *  - Autónomo expenses (gastosRecurrentesActividad + cuotaAutonomos) → type 'expense', sourceType 'autonomo'
  *  - Investment interest/dividends → type 'income', sourceType 'inversion'
  *
  * Duplicate prevention: before inserting, we check whether an event with the
@@ -424,8 +428,7 @@ export async function generateMonthlyForecasts(
     console.error('[TreasurySyncService] Error processing prestamos:', err);
   }
 
-  // ── 6. AUTÓNOMO – Gastos deducibles (freelance expenses) ─────────────────
-  // Uses the same calculation logic as proyeccionMensualService.loadBaseData()
+  // ── 6a. AUTÓNOMO – Ingresos facturados (freelance income) ────────────────
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
@@ -433,37 +436,88 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
-      const gastosAnuales = autonomoActivo.gastosDeducibles.reduce(
-        (sum, g) => sum + g.importe,
-        0,
-      );
-      const gastoMensual = gastosAnuales / 12;
+      const ingresosEsteMes = (autonomoActivo.fuentesIngreso || []).reduce((total, fuente) => {
+        const activeMeses = fuente.meses?.length ? fuente.meses : ALL_MONTHS;
+        return activeMeses.includes(month) ? total + fuente.importeEstimado : total;
+      }, 0);
 
-      if (gastoMensual > 0) {
-        const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
+      if (ingresosEsteMes > 0 && autonomoActivo.id != null) {
+        const description = `Ingresos Autónomo – ${autonomoActivo.nombre}`;
 
-        const alreadyExists = (await db.getAll('treasuryEvents')).some(
-          e =>
-            e.sourceType === 'autonomo' &&
-            e.description === description &&
-            e.predictedDate.startsWith(monthPrefix),
-        );
+        const alreadyExists = await isDuplicate('autonomo_ingreso', autonomoActivo.id);
 
         if (alreadyExists) {
           skipped++;
         } else {
-          // Use the configured payment day; default to 1st of the month when reglaPagoDia is not set.
+          const day = autonomoActivo.reglaCobroDia?.dia ?? 15;
+          await insertEvent({
+            type: 'income' as const,
+            amount: ingresosEsteMes,
+            predictedDate: buildDate(year, month, day),
+            description,
+            sourceType: 'autonomo_ingreso' as const,
+            sourceId: autonomoActivo.id,
+            accountId: resolveAccountId(autonomoActivo.cuentaCobro ?? autonomoActivo.cuentaPago),
+            status: 'predicted' as const,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing autonomo ingresos:', err);
+  }
+
+  // ── 6b. AUTÓNOMO – Gastos actividad + Cuota SS (freelance expenses) ───────
+  // Uses the same calculation logic as proyeccionMensualService (new model)
+  try {
+    const personalData = await personalDataService.getPersonalData();
+    const personalDataId = personalData?.id ?? 1;
+    const autonomos = await autonomoService.getAutonomos(personalDataId);
+    const autonomoActivo = autonomos.find(a => a.activo);
+
+    if (autonomoActivo) {
+      const gastosEsteMes = (autonomoActivo.gastosRecurrentesActividad || []).reduce(
+        (total, gasto) => {
+          const activeMeses = gasto.meses?.length ? gasto.meses : ALL_MONTHS;
+          return activeMeses.includes(month) ? total + gasto.importe : total;
+        },
+        0,
+      );
+
+      const cuotaSS = autonomoActivo.cuotaAutonomos || 0;
+      let gastoFinal = gastosEsteMes + cuotaSS;
+
+      // FALLBACK: if new model arrays are empty, try legacy gastosDeducibles
+      const hasNewModel =
+        (autonomoActivo.gastosRecurrentesActividad ?? []).length > 0 ||
+        (autonomoActivo.cuotaAutonomos ?? 0) > 0;
+      if (!hasNewModel) {
+        const gastosAnualesLegacy = (autonomoActivo.gastosDeducibles || []).reduce(
+          (sum, g) => sum + g.importe,
+          0,
+        );
+        gastoFinal = gastosAnualesLegacy / 12;
+      }
+
+      if (gastoFinal > 0 && autonomoActivo.id != null) {
+        const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
+
+        const alreadyExists = await isDuplicate('autonomo', autonomoActivo.id);
+
+        if (alreadyExists) {
+          skipped++;
+        } else {
           const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
           await insertEvent({
             type: 'expense' as const,
-            amount: gastoMensual,
+            amount: gastoFinal,
             predictedDate: buildDate(year, month, day),
             description,
             sourceType: 'autonomo' as const,
             sourceId: autonomoActivo.id,
-            // cuentaPago is the bank account configured by the user for autonomo payments;
-            // if undefined the event will be created without account linkage.
-            accountId: autonomoActivo.cuentaPago,
+            accountId: resolveAccountId(autonomoActivo.cuentaPago),
             status: 'predicted' as const,
             createdAt: now,
             updatedAt: now,
