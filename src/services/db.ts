@@ -748,7 +748,8 @@ export interface Movement {
   inmuebleId?: string; // Required if ambito='INMUEBLE'
   statusConciliacion: 'sin_match' | 'match_automatico' | 'match_manual'; // Reconciliation status
   learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
-  
+  isOpeningBalance?: boolean; // Marks the system-generated opening balance movement
+
   createdAt: string;
   updatedAt: string;
 }

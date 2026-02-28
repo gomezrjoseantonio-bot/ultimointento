@@ -10,6 +10,8 @@ interface AccountFormData {
   iban: string;
   tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA';
   titular: { nombre: string; nif: string; };
+  openingBalance?: string;        // string for input, parse to number on save
+  openingBalanceDate?: string;    // YYYY-MM-DD
 }
 
 /**
@@ -37,7 +39,9 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
     alias: '',
     iban: '',
     tipo: 'CORRIENTE',
-    titular: { nombre: '', nif: '' }
+    titular: { nombre: '', nif: '' },
+    openingBalance: '',
+    openingBalanceDate: new Date().toISOString().split('T')[0]
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -90,7 +94,9 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
       alias: '',
       iban: '',
       tipo: 'CORRIENTE',
-      titular: { nombre: '', nif: '' }
+      titular: { nombre: '', nif: '' },
+      openingBalance: '',
+      openingBalanceDate: new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
     setShowModal(true);
@@ -151,7 +157,9 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
           alias: formData.alias.trim(),
           iban: formData.iban,
           tipo: formData.tipo,
-          titular: formData.titular.nombre || formData.titular.nif ? formData.titular : undefined
+          titular: formData.titular.nombre || formData.titular.nif ? formData.titular : undefined,
+          openingBalance: parseFloat(formData.openingBalance ?? '') || 0,
+          openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : new Date().toISOString()
         };
         await cuentasService.create(createData);
         toast.success('Cuenta creada correctamente');
@@ -497,6 +505,38 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                       </div>
                     </div>
                   </div>
+
+                  {/* Opening Balance (solo en creación) */}
+                  {!editingAccount && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="openingBalance" className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                          Saldo actual (€)
+                        </label>
+                        <input
+                          type="number"
+                          id="openingBalance"
+                          value={formData.openingBalance}
+                          onChange={(e) => setFormData(prev => ({ ...prev, openingBalance: e.target.value }))}
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                          placeholder="0,00"
+                          step="0.01"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="openingBalanceDate" className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                          Fecha del saldo
+                        </label>
+                        <input
+                          type="date"
+                          id="openingBalanceDate"
+                          value={formData.openingBalanceDate}
+                          onChange={(e) => setFormData(prev => ({ ...prev, openingBalanceDate: e.target.value }))}
+                          className="w-full rounded-atlas border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

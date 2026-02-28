@@ -16,6 +16,8 @@ export interface CreateAccountData {
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA';
   titular?: { nombre?: string; nif?: string; };
   logoUser?: string; // User uploaded logo
+  openingBalance?: number;      // Saldo a fecha de referencia (default 0)
+  openingBalanceDate?: string;  // Fecha ISO del saldo (default = now)
 }
 
 export interface UpdateAccountData {
@@ -63,7 +65,7 @@ class CuentasService {
   /**
    * Sync account to IndexedDB (treasury storage)
    */
-  private async syncAccountToIndexedDB(account: Account): Promise<void> {
+  private async syncAccountToIndexedDB(account: Account): Promise<number | undefined> {
     try {
       const db = await initDB();
       
@@ -89,9 +91,9 @@ class CuentasService {
         currency: 'EUR',
         titular: account.titular,
         isDefault: account.isDefault || false,
-        balance: existingAccount?.balance || 0, // Preserve existing balance
-        openingBalance: existingAccount?.openingBalance || 0,
-        openingBalanceDate: existingAccount?.openingBalanceDate || account.createdAt,
+        balance: existingAccount?.balance ?? account.openingBalance ?? account.balance ?? 0,
+        openingBalance: account.openingBalance ?? existingAccount?.openingBalance ?? 0,
+        openingBalanceDate: account.openingBalanceDate ?? existingAccount?.openingBalanceDate ?? account.createdAt,
         includeInConsolidated: true,
         usage_scope: 'mixto',
         deleted_at: account.deleted_at, // Preserve deletion status
@@ -102,21 +104,29 @@ class CuentasService {
       if (existingAccount) {
         // Update existing account
         await db.put('accounts', treasuryAccount);
+        console.info('[ACCOUNTS] Synced to IndexedDB:', { 
+          alias: account.alias || 'Sin alias',
+          iban: account.iban.slice(-4),
+          action: 'updated',
+          deleted: !!account.deleted_at
+        });
+        return existingAccount.id;
       } else {
-        // Create new account
-        delete treasuryAccount.id; // Let IndexedDB assign new ID
-        await db.add('accounts', treasuryAccount);
+        // Create new account - let IndexedDB assign new ID
+        delete treasuryAccount.id;
+        const newId = await db.add('accounts', treasuryAccount);
+        console.info('[ACCOUNTS] Synced to IndexedDB:', { 
+          alias: account.alias || 'Sin alias',
+          iban: account.iban.slice(-4),
+          action: 'created',
+          deleted: !!account.deleted_at
+        });
+        return newId as number;
       }
-      
-      console.info('[ACCOUNTS] Synced to IndexedDB:', { 
-        alias: account.alias || 'Sin alias',
-        iban: account.iban.slice(-4),
-        action: existingAccount ? 'updated' : 'created',
-        deleted: !!account.deleted_at
-      });
     } catch (error) {
       console.error('[ACCOUNTS] Failed to sync to IndexedDB:', error);
       // Don't throw error to avoid breaking the main flow
+      return undefined;
     }
   }
 
@@ -204,6 +214,9 @@ class CuentasService {
       status: 'ACTIVE', // New required field
       activa: true,
       isDefault: false,
+      openingBalance: data.openingBalance ?? 0,
+      balance: data.openingBalance ?? 0,
+      openingBalanceDate: data.openingBalanceDate ?? new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -211,8 +224,48 @@ class CuentasService {
     this.accounts.push(newAccount);
     this.saveAccounts();
 
-    // Sync to IndexedDB (treasury storage)
-    await this.syncAccountToIndexedDB(newAccount);
+    // Sync to IndexedDB (treasury storage) and get the assigned ID
+    const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
+
+    // P1: Create opening balance movement if openingBalance is non-zero
+    const openingBalance = newAccount.openingBalance ?? 0;
+    if (openingBalance !== 0 && dbAccountId != null) {
+      try {
+        const db = await initDB();
+        const openingBalanceDateISO = newAccount.openingBalanceDate!;
+        const openingBalanceDate = openingBalanceDateISO.includes('T')
+          ? openingBalanceDateISO.split('T')[0]
+          : openingBalanceDateISO;
+        const openingMovement = {
+          accountId: dbAccountId,
+          date: openingBalanceDate,
+          amount: openingBalance,
+          description: 'Saldo inicial de apertura',
+          counterparty: 'Sistema',
+          reference: `APERTURA-${dbAccountId}`,
+          balance: openingBalance,
+          status: 'conciliado',
+          state: 'confirmed',
+          type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
+          origin: 'Manual' as const,
+          movementState: 'Confirmado',
+          ambito: 'PERSONAL' as const,
+          statusConciliacion: 'sin_match' as const,
+          currency: 'EUR',
+          saldo: openingBalance,
+          estado_conciliacion: 'conciliado',
+          isOpeningBalance: true,
+          unifiedStatus: 'conciliado',
+          source: 'manual',
+          category: { tipo: 'Saldo Inicial' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        await db.add('movements', openingMovement);
+      } catch (error) {
+        console.warn('[ACCOUNTS] Failed to create opening balance movement:', error);
+      }
+    }
 
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {
