@@ -564,27 +564,29 @@ export async function generateMonthlyForecasts(
 
       // 1a. Compra inicial: if fecha_compra is in this year/month and >= today → expense
       const fechaCompra: string | undefined = posAny.fecha_compra;
-      if (
-        fechaCompra &&
-        fechaCompra >= today &&
-        fechaCompra.startsWith(monthPrefix) &&
-        pos.id != null
-      ) {
-        if (await isDuplicate('inversion_compra', pos.id)) {
-          skipped++;
-        } else {
-          await insertEvent({
-            type: 'expense' as const,
-            amount: pos.total_aportado,
-            predictedDate: fechaCompra.split('T')[0],
-            description: `Compra – ${pos.nombre}`,
-            sourceType: 'inversion_compra' as const,
-            sourceId: pos.id,
-            accountId: resolveAccountId(posAny.cuenta_cargo_id),
-            status: 'predicted' as const,
-            createdAt: now,
-            updatedAt: now,
-          });
+      if (fechaCompra) {
+        const fechaCompraDateOnly = fechaCompra.split('T')[0]; // normalize to YYYY-MM-DD
+        if (
+          fechaCompraDateOnly >= today &&
+          fechaCompraDateOnly.startsWith(monthPrefix) &&
+          pos.id != null
+        ) {
+          if (await isDuplicate('inversion_compra', pos.id)) {
+            skipped++;
+          } else {
+            await insertEvent({
+              type: 'expense' as const,
+              amount: pos.total_aportado,
+              predictedDate: fechaCompraDateOnly,
+              description: `Compra – ${pos.nombre}`,
+              sourceType: 'inversion_compra' as const,
+              sourceId: pos.id,
+              accountId: resolveAccountId(posAny.cuenta_cargo_id),
+              status: 'predicted' as const,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         }
       }
 
