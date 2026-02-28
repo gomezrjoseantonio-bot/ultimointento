@@ -294,21 +294,24 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
         logoUrl = uploadResult.logoUrl;
       }
 
-      const accountData = {
+      const baseAccountData = {
         alias: formData.alias.trim() || undefined,
         bank: formData.bank.trim(),
         iban: formData.iban.replace(/\s/g, '').toUpperCase(),
-        openingBalance: parseFloat(formData.openingBalance) || 0,
-        openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : undefined,
         includeInConsolidated: true,
         logo_url: logoUrl || undefined
       };
 
       if (editingAccount) {
-        await TreasuryAccountsAPI.updateAccount(editingAccount.id!, accountData);
+        await TreasuryAccountsAPI.updateAccount(editingAccount.id!, baseAccountData);
         toast.success('Cuenta actualizada correctamente');
       } else {
-        const newAccount = await TreasuryAccountsAPI.createAccount(accountData);
+        const createData = {
+          ...baseAccountData,
+          openingBalance: parseFloat(formData.openingBalance ?? '') || 0,
+          openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : undefined,
+        };
+        const newAccount = await TreasuryAccountsAPI.createAccount(createData);
         
         // Process logo upload for new account
         if (formData.logoFile && newAccount.id) {
