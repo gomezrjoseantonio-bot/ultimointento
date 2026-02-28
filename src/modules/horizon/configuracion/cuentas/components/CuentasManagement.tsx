@@ -10,8 +10,8 @@ interface AccountFormData {
   iban: string;
   tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA';
   titular: { nombre: string; nif: string; };
-  openingBalance: string;        // string for input, parse to number on save
-  openingBalanceDate: string;    // YYYY-MM-DD
+  openingBalance?: string;        // string for input, parse to number on save
+  openingBalanceDate?: string;    // YYYY-MM-DD
 }
 
 /**
