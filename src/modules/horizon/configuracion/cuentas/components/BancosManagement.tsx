@@ -14,8 +14,8 @@ interface AccountFormData {
   iban: string;
   logoFile: File | null;
   logoUrl: string | null;
-  openingBalance: string;        // string for input, parse to number on save
-  openingBalanceDate: string;    // YYYY-MM-DD
+  openingBalance?: string;        // string for input, parse to number on save
+  openingBalanceDate?: string;    // YYYY-MM-DD
 }
 
 /**
