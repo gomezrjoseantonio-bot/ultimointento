@@ -444,12 +444,7 @@ export async function generateMonthlyForecasts(
       if (ingresosEsteMes > 0) {
         const description = `Ingresos Autónomo – ${autonomoActivo.nombre}`;
 
-        const alreadyExists = (await db.getAll('treasuryEvents')).some(
-          e =>
-            e.sourceType === 'autonomo_ingreso' &&
-            e.description === description &&
-            e.predictedDate.startsWith(monthPrefix),
-        );
+        const alreadyExists = await isDuplicate('autonomo_ingreso', autonomoActivo.id);
 
         if (alreadyExists) {
           skipped++;
@@ -462,7 +457,7 @@ export async function generateMonthlyForecasts(
             description,
             sourceType: 'autonomo_ingreso' as const,
             sourceId: autonomoActivo.id,
-            accountId: autonomoActivo.cuentaCobro ?? autonomoActivo.cuentaPago,
+            accountId: resolveAccountId(autonomoActivo.cuentaCobro ?? autonomoActivo.cuentaPago),
             status: 'predicted' as const,
             createdAt: now,
             updatedAt: now,
@@ -495,7 +490,10 @@ export async function generateMonthlyForecasts(
       let gastoFinal = gastosEsteMes + cuotaSS;
 
       // FALLBACK: if new model arrays are empty, try legacy gastosDeducibles
-      if (gastoFinal <= 0) {
+      const hasNewModel =
+        (autonomoActivo.gastosRecurrentesActividad ?? []).length > 0 ||
+        (autonomoActivo.cuotaAutonomos ?? 0) > 0;
+      if (!hasNewModel) {
         const gastosAnualesLegacy = (autonomoActivo.gastosDeducibles || []).reduce(
           (sum, g) => sum + g.importe,
           0,
@@ -506,12 +504,7 @@ export async function generateMonthlyForecasts(
       if (gastoFinal > 0) {
         const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
 
-        const alreadyExists = (await db.getAll('treasuryEvents')).some(
-          e =>
-            e.sourceType === 'autonomo' &&
-            e.description === description &&
-            e.predictedDate.startsWith(monthPrefix),
-        );
+        const alreadyExists = await isDuplicate('autonomo', autonomoActivo.id);
 
         if (alreadyExists) {
           skipped++;
@@ -524,7 +517,7 @@ export async function generateMonthlyForecasts(
             description,
             sourceType: 'autonomo' as const,
             sourceId: autonomoActivo.id,
-            accountId: autonomoActivo.cuentaPago,
+            accountId: resolveAccountId(autonomoActivo.cuentaPago),
             status: 'predicted' as const,
             createdAt: now,
             updatedAt: now,
