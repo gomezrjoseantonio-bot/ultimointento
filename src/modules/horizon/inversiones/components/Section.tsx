@@ -7,7 +7,7 @@ import { LucideIcon } from 'lucide-react';
 interface SectionProps {
   title: string;
   icon?: LucideIcon;
-  color?: 'green' | 'blue' | 'gray';
+  color?: 'green' | 'blue' | 'gray' | 'orange' | 'purple';
   children: React.ReactNode;
 }
 
@@ -15,6 +15,8 @@ const colorMap = {
   green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d', iconBg: '#dcfce7' },
   blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', iconBg: '#dbeafe' },
   gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)' },
+  orange: { bg: '#fff7ed', border: '#fed7aa', text: '#c2410c', iconBg: '#ffedd5' },
+  purple: { bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce', iconBg: '#f3e8ff' },
 };
 
 const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', children }) => {

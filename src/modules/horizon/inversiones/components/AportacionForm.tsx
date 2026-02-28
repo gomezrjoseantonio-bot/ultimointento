@@ -1,9 +1,11 @@
 // AportacionForm.tsx
 // ATLAS HORIZON: Modal form to add an aportacion or reembolso to a posicion
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Aportacion } from '../../../../types/inversiones';
+import { cuentasService } from '../../../../services/cuentasService';
+import { Account } from '../../../../services/db';
 
 interface AportacionFormProps {
   posicionNombre: string;
@@ -17,8 +19,14 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
     tipo: 'aportacion' as 'aportacion' | 'reembolso',
     importe: 0,
     notas: '',
+    cuenta_cargo_id: '' as string,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [cuentas, setCuentas] = useState<Account[]>([]);
+
+  useEffect(() => {
+    cuentasService.list().then(setCuentas).catch(() => setCuentas([]));
+  }, []);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -40,7 +48,18 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
       tipo: formData.tipo,
       importe: formData.importe,
       notas: formData.notas || undefined,
+      cuenta_cargo_id: formData.cuenta_cargo_id ? Number(formData.cuenta_cargo_id) : undefined,
     });
+  };
+
+  const selectStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '0.75rem',
+    border: '1px solid var(--hz-neutral-300)',
+    borderRadius: '8px',
+    fontFamily: 'var(--font-inter)',
+    fontSize: '1rem',
+    background: 'white',
   };
 
   return (
@@ -143,15 +162,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'aportacion' | 'reembolso' })}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid var(--hz-neutral-300)',
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '1rem',
-                  background: 'white',
-                }}
+                style={selectStyle}
               >
                 <option value="aportacion">Aportación</option>
                 <option value="reembolso">Reembolso</option>
@@ -190,6 +201,30 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
                   {errors.importe}
                 </span>
               )}
+            </div>
+
+            {/* Cuenta cargo */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontFamily: 'var(--font-inter)',
+                fontSize: 'var(--text-caption)',
+                fontWeight: 500,
+                color: 'var(--atlas-navy-1)',
+                marginBottom: '0.5rem',
+              }}>
+                Cuenta de cargo
+              </label>
+              <select
+                value={formData.cuenta_cargo_id}
+                onChange={(e) => setFormData({ ...formData, cuenta_cargo_id: e.target.value })}
+                style={selectStyle}
+              >
+                <option value="">Seleccionar cuenta...</option>
+                {cuentas.map(c => (
+                  <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
+                ))}
+              </select>
             </div>
 
             {/* Notas */}

@@ -25,6 +25,29 @@ export interface Aportacion {
   importe: number;
   tipo: 'aportacion' | 'reembolso' | 'dividendo';
   notas?: string;
+  cuenta_cargo_id?: number; // Account from which the contribution is made
+}
+
+// ── Bloque ①: Plan de Aportaciones Periódicas ──────────────────────────────
+export interface PlanAportaciones {
+  activo: boolean;
+  importe: number;
+  frecuencia: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
+  meses: number[];           // [1,4,7,10] etc.
+  dia_cargo: number;
+  cuenta_cargo_id: number;
+  fecha_inicio: string;      // ISO date
+  fecha_fin?: string;        // ISO date (optional, empty = indefinite)
+}
+
+// ── Bloque ③: Plan de Liquidación ──────────────────────────────────────────
+export interface PlanLiquidacion {
+  activo: boolean;
+  tipo_liquidacion: 'vencimiento' | 'venta' | 'rescate';
+  fecha_estimada: string;    // ISO date
+  liquidacion_total: boolean;
+  importe_estimado: number;
+  cuenta_destino_id: number;
 }
 
 export interface PosicionInversion {
@@ -46,6 +69,19 @@ export interface PosicionInversion {
   // Rentabilidad
   rentabilidad_euros: number; // valor_actual - total_aportado
   rentabilidad_porcentaje: number; // (rentabilidad_euros / total_aportado) * 100
+
+  // ── Bloque ①: Compra / Creación ──────────────────────────────────────────
+  // NOTE: fecha_compra and cuenta_cargo_id are optional here to maintain
+  // backward compatibility with positions persisted before this feature was
+  // introduced. The creation form validates both fields as required for new
+  // positions, so consumers can assume they are always present on records
+  // saved after DB v26. For older records the fields may be absent.
+  fecha_compra?: string;           // ISO date – when was/will be purchased
+  cuenta_cargo_id?: number;        // Account from which the purchase amount was/will be debited
+  plan_aportaciones?: PlanAportaciones; // Scheduled periodic contributions
+
+  // ── Bloque ③: Liquidación ────────────────────────────────────────────────
+  plan_liquidacion?: PlanLiquidacion;
   
   // Metadata
   notas?: string;
