@@ -266,7 +266,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
       const legacyData = {
         ambito: (formData.inmuebleId ? 'INMUEBLE' : 'PERSONAL') as 'PERSONAL' | 'INMUEBLE',
         nombre: formData.alias || `Préstamo ${formData.ambito}`,
-        inmuebleId: formData.inmuebleId || undefined,
+        inmuebleId: formData.inmuebleId ?? undefined,
         principalInicial: formData.capitalInicial!,
         principalVivo: formData.capitalInicial!,
         fechaFirma: formData.fechaFirma!,
