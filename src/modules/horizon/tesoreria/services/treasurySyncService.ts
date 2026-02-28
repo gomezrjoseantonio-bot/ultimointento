@@ -96,6 +96,19 @@ function isContractActiveInMonth(
  * Duplicate prevention: before inserting, we check whether an event with the
  * same sourceType + sourceId already has a predictedDate in the same year-month.
  */
+
+/**
+ * Returns the liquidation amount for a position based on the plan.
+ * If liquidacion_total is true, returns the current position value; otherwise
+ * returns the explicitly set importe_estimado (falling back to valor_actual).
+ */
+function getLiquidationAmount(
+  plan: { liquidacion_total: boolean; importe_estimado?: number },
+  valorActual: number,
+): number {
+  return plan.liquidacion_total ? valorActual : (plan.importe_estimado ?? valorActual);
+}
+
 export async function generateMonthlyForecasts(
   year: number,
   month: number,
@@ -584,7 +597,6 @@ export async function generateMonthlyForecasts(
           fechaAp.startsWith(monthPrefix) &&
           pos.id != null
         ) {
-          const sourceId = `${pos.id}_ap_${aportacion.id}`;
           const alreadyExists = (await db.getAll('treasuryEvents')).some(
             e =>
               e.sourceType === 'inversion_aportacion' &&
@@ -796,7 +808,7 @@ export async function generateMonthlyForecasts(
       if (planLiq?.activo && pos.id != null) {
         const fechaLiq = planLiq.fecha_estimada?.split('T')[0] ?? '';
         if (fechaLiq >= today && fechaLiq.startsWith(monthPrefix)) {
-          const importeLiq = planLiq.liquidacion_total ? pos.valor_actual : (planLiq.importe_estimado ?? pos.valor_actual);
+          const importeLiq = getLiquidationAmount(planLiq, pos.valor_actual);
           const descLiq = `Liquidación – ${pos.nombre}`;
           // Use a composite key to avoid collision with the deposito vencimiento above
           const existsLiq = (await db.getAll('treasuryEvents')).some(
@@ -884,7 +896,7 @@ export async function generateMonthlyForecasts(
                   (!fInicioR || fInicioR.startsWith(añoFiscalStr) || fInicioR < añoFiscalStr + '-01-01') &&
                   (!fFinR || fFinR >= añoFiscalStr + '-01-01');
                 if (activeInFiscalYear) {
-                  retencionesYaPagadas += (retencionAnual / 12) * numPagos;
+                  retencionesYaPagadas += retencionAnual;
                 }
               }
 
@@ -914,7 +926,7 @@ export async function generateMonthlyForecasts(
               if (planLiq?.activo) {
                 const fLiq = planLiq.fecha_estimada?.split('T')[0] ?? '';
                 if (fLiq.startsWith(String(añoFiscal))) {
-                  const importeVenta = planLiq.liquidacion_total ? pos.valor_actual : (planLiq.importe_estimado ?? pos.valor_actual);
+                  const importeVenta = getLiquidationAmount(planLiq, pos.valor_actual);
                   const costeAdquisicion = pos.total_aportado;
                   plusvalias += importeVenta - costeAdquisicion;
                 }

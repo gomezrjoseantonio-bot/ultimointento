@@ -187,7 +187,6 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         cuenta_destino_id: Number(formData.cuenta_destino_id) || prev.cuenta_destino_id,
       }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.tipo, formData.fecha_fin_rendimiento]);
 
   const tipoCategoria = getTipoCategoria(formData.tipo);
@@ -902,7 +901,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
                     <input
                       type="date"
                       value={planAp.fecha_fin || ''}
-                      onChange={(e) => setPlanAp({ ...planAp, fecha_fin: e.target.value || undefined })}
+                      onChange={(e) => setPlanAp({ ...planAp, fecha_fin: e.target.value || '' })}
                       style={inputStyle()}
                     />
                   </FormField>
