@@ -4,6 +4,9 @@ import PageLayout from '../../../../components/common/PageLayout';
 import EmptyState from '../../../../components/common/EmptyState';
 import { BarChart3 } from 'lucide-react';
 import { Property, initDB } from '../../../../services/db';
+import type { Contract, Gasto, Ingreso } from '../../../../services/db';
+import type { Prestamo } from '../../../../types/prestamos';
+import type { ValoracionHistorica } from '../../../../types/valoraciones';
 import { 
   PropertyAnalysis, 
   PropertyDecision,
@@ -14,6 +17,7 @@ import {
   calculateFinancialProfitability,
   calculateFiscalROI,
   calculateSaleSimulation,
+  buildPropertyAnalysisInputs,
 } from '../../../../utils/propertyAnalysisUtils';
 import PropertyHeader from './components/PropertyHeader';
 import OperationalPerformanceSection from './components/OperationalPerformanceSection';
@@ -28,34 +32,41 @@ const Analisis: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<PropertyAnalysis | null>(null);
+  const [saleOverrides, setSaleOverrides] = useState<{ precioVenta: number; comisionVenta: number } | null>(null);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [ingresos, setIngresos] = useState<Ingreso[]>([]);
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
+  const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Mock data for demonstration - In production, this would come from actual property data
-  const [mockInputs, setMockInputs] = useState({
-    ingresosMensuales: 1200,
-    gastosOperativos: 150,
-    cuotaHipoteca: 600,
-    valorActualActivo: 250000,
-    deudaPendiente: 180000,
-    precioTotalCompra: 200000,
-    noi: 12600, // Net Operating Income
-    amortizacionAnual: 3000,
-    revalorizacionAnual: 5000,
-    precioVenta: 260000,
-    comisionVenta: 8000,
-    comisionCancelacion: 1800,
-    itpOIva: 12000,
-    reformaTotal: 5000,
-    gastosCompra: 8000,
-  });
 
   const loadProperties = useCallback(async () => {
     try {
       setLoading(true);
       const db = await initDB();
-      const allProperties = await db.getAll('properties');
+      const [
+        allProperties,
+        contractsData,
+        ingresosData,
+        gastosData,
+        prestamosData,
+        valoracionesData,
+      ] = await Promise.all([
+        db.getAll('properties'),
+        db.getAll('contracts'),
+        db.getAll('ingresos'),
+        db.getAll('gastos'),
+        db.getAll('prestamos'),
+        db.getAll('valoraciones_historicas'),
+      ]);
       const activeProperties = allProperties.filter(p => p.state === 'activo');
       setProperties(activeProperties);
+      setContracts(contractsData);
+      setIngresos(ingresosData);
+      setGastos(gastosData);
+      setPrestamos(prestamosData as Prestamo[]);
+      setValoraciones(valoracionesData as ValoracionHistorica[]);
       
       if (activeProperties.length > 0 && !selectedPropertyId) {
         setSelectedPropertyId(activeProperties[0].id!);
@@ -77,29 +88,48 @@ const Analisis: React.FC = () => {
       calculateAnalysis();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPropertyId, mockInputs, properties]);
+  }, [selectedPropertyId, properties, contracts, ingresos, gastos, prestamos, valoraciones, saleOverrides]);
 
   const calculateAnalysis = () => {
     const property = properties.find(p => p.id === selectedPropertyId);
     if (!property) return;
 
+    const { inputs, missingFields: missingData } = buildPropertyAnalysisInputs({
+      property,
+      contracts,
+      ingresos,
+      gastos,
+      prestamos,
+      valoraciones,
+    });
+
+    const mergedInputs = {
+      ...inputs,
+      ...(saleOverrides ? {
+        precioVenta: saleOverrides.precioVenta,
+        comisionVenta: saleOverrides.comisionVenta,
+      } : {}),
+    };
+
+    setMissingFields(missingData);
+
     // Calculate operational performance
     const operational = calculateOperationalPerformance(
-      mockInputs.ingresosMensuales,
-      mockInputs.gastosOperativos,
-      mockInputs.cuotaHipoteca
+      mergedInputs.ingresosMensuales,
+      mergedInputs.gastosOperativos,
+      mergedInputs.cuotaHipoteca
     );
 
     // Calculate financial profitability
     const financial = calculateFinancialProfitability(
-      mockInputs.valorActualActivo,
-      mockInputs.deudaPendiente,
-      mockInputs.precioTotalCompra,
+      mergedInputs.valorActualActivo,
+      mergedInputs.deudaPendiente,
+      mergedInputs.precioTotalCompra,
       operational.ingresosMensuales * 12,
-      mockInputs.noi,
+      mergedInputs.noi,
       operational.cashflowAnual,
-      mockInputs.amortizacionAnual,
-      mockInputs.revalorizacionAnual
+      mergedInputs.amortizacionAnual,
+      mergedInputs.revalorizacionAnual
     );
 
     // Calculate fiscal ROI
@@ -111,14 +141,14 @@ const Analisis: React.FC = () => {
 
     // Calculate sale simulation
     const saleSimulation = calculateSaleSimulation(
-      mockInputs.precioVenta,
-      mockInputs.comisionVenta,
-      mockInputs.deudaPendiente,
-      mockInputs.comisionCancelacion,
-      mockInputs.precioTotalCompra,
-      mockInputs.itpOIva,
-      mockInputs.reformaTotal,
-      mockInputs.gastosCompra,
+      mergedInputs.precioVenta,
+      mergedInputs.comisionVenta,
+      mergedInputs.deudaPendiente,
+      mergedInputs.comisionCancelacion,
+      mergedInputs.precioTotalCompra,
+      mergedInputs.itpOIva,
+      mergedInputs.reformaTotal,
+      mergedInputs.gastosCompra,
       DEFAULT_ANALYSIS_CONFIG
     );
 
@@ -138,12 +168,22 @@ const Analisis: React.FC = () => {
   };
 
   const handleUpdateSalePrice = (value: number) => {
-    setMockInputs(prev => ({ ...prev, precioVenta: value }));
+    setSaleOverrides(prev => ({
+      precioVenta: value,
+      comisionVenta: prev?.comisionVenta ?? analysis?.saleSimulation.comisionVenta ?? 0,
+    }));
   };
 
   const handleUpdateCommission = (value: number) => {
-    setMockInputs(prev => ({ ...prev, comisionVenta: value }));
+    setSaleOverrides(prev => ({
+      precioVenta: prev?.precioVenta ?? analysis?.saleSimulation.precioVenta ?? 0,
+      comisionVenta: value,
+    }));
   };
+
+  useEffect(() => {
+    setSaleOverrides(null);
+  }, [selectedPropertyId]);
 
   const handleDecision = (decision: PropertyDecision, targetDate?: string) => {
     if (!analysis) return;
@@ -189,6 +229,8 @@ const Analisis: React.FC = () => {
     );
   }
 
+  const hasMissingData = missingFields.length > 0;
+
   if (properties.length === 0) {
     return (
       <PageLayout
@@ -227,6 +269,14 @@ const Analisis: React.FC = () => {
       subtitle="Análisis de rentabilidad y rendimiento con métricas avanzadas"
     >
       <div className="space-y-6">
+        {hasMissingData && (
+          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--error)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
+              <strong>Faltan datos para calcular la rentabilidad.</strong> Completa: {missingFields.join(', ')}.
+            </div>
+          </div>
+        )}
+
         {/* Property selector */}
         {properties.length > 1 && (
           <div>
@@ -257,7 +307,13 @@ const Analisis: React.FC = () => {
         />
 
         {/* BLOQUE 1 - Current Performance and Fiscal ROI */}
-        <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border-color)' }}>
+        <div
+          className="p-6 rounded-lg border"
+          style={{
+            borderColor: 'var(--border-color)',
+            opacity: hasMissingData ? 0.65 : 1,
+          }}
+        >
           <h2 className="text-base font-semibold mb-6" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
             BLOQUE 1 — Rendimiento actual y ROI fiscal
           </h2>
@@ -276,7 +332,13 @@ const Analisis: React.FC = () => {
         </div>
 
         {/* BLOQUE 3 - Sale Simulation + Recommendation + Action */}
-        <div className="p-6 rounded-lg border" style={{ borderColor: 'var(--border-color)' }}>
+        <div
+          className="p-6 rounded-lg border"
+          style={{
+            borderColor: 'var(--border-color)',
+            opacity: hasMissingData ? 0.65 : 1,
+          }}
+        >
           <h2 className="text-base font-semibold mb-6" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
             BLOQUE 3 — Simulación de venta + Recomendación + Acción
           </h2>
@@ -286,6 +348,7 @@ const Analisis: React.FC = () => {
               data={analysis.saleSimulation}
               onUpdateSalePrice={handleUpdateSalePrice}
               onUpdateCommission={handleUpdateCommission}
+              disabled={hasMissingData}
             />
             
             <div className="border-t" style={{ borderColor: 'var(--border-color)' }} />
@@ -294,6 +357,7 @@ const Analisis: React.FC = () => {
               fiscalROI={analysis.fiscal}
               capitalNetoFinal={analysis.saleSimulation.capitalNetoFinal}
               onDecision={handleDecision}
+              disabled={hasMissingData}
             />
           </div>
         </div>
