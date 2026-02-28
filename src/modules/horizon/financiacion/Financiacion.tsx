@@ -3,12 +3,13 @@ import toast from 'react-hot-toast';
 import PageLayout from '../../../components/common/PageLayout';
 import PrestamosWizard from './components/PrestamosWizard';
 import PrestamosList from './components/PrestamosList';
+import PrestamoDetailPage from './components/PrestamoDetailPage';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
 import { FeinLoanDraft } from '../../../types/fein';
 import { PrestamoFinanciacion } from '../../../types/financiacion';
 import { FeinToPrestamoMapper } from '../../../services/fein/feinToPrestamoMapper';
 
-type View = 'list' | 'create' | 'edit' | 'fein-upload';
+type View = 'list' | 'create' | 'edit' | 'fein-upload' | 'detail';
 
 const Financiacion: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('list');
@@ -28,6 +29,11 @@ const Financiacion: React.FC = () => {
     setSelectedPrestamoId(prestamoId);
     setFeinInitialData(null); // Clear FEIN data for edits
     setCurrentView('edit');
+  };
+
+  const handleViewDetail = (prestamoId: string) => {
+    setSelectedPrestamoId(prestamoId);
+    setCurrentView('detail');
   };
 
   const handleBackToList = () => {
@@ -92,18 +98,27 @@ const Financiacion: React.FC = () => {
             onCancel={handleBackToList}
           />
         );
+      case 'detail':
+        return (
+          <PrestamoDetailPage
+            prestamoId={selectedPrestamoId}
+            onBack={handleBackToList}
+            onEdit={handleEdit}
+          />
+        );
       case 'list':
       default:
         return (
           <PrestamosList
             onEdit={handleEdit}
+            onViewDetail={handleViewDetail}
           />
         );
     }
   };
 
-  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload') {
-    // Don't wrap creation/edit/FEIN views in PageLayout since they have their own navigation
+  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload' || currentView === 'detail') {
+    // Don't wrap creation/edit/FEIN/detail views in PageLayout since they have their own navigation
     return <div className="min-h-screen bg-bg">{renderContent()}</div>;
   }
 

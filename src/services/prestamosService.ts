@@ -282,6 +282,92 @@ export class PrestamosService {
     this.planesGenerados.clear();
     this.prestamosCache = null;
   }
+
+  /**
+   * Save payment plan to IndexedDB and in-memory cache
+   */
+  async savePaymentPlan(prestamoId: string, plan: PlanPagos): Promise<void> {
+    try {
+      const db = await initDB();
+      await db.put('keyval', plan, `planpagos_${prestamoId}`);
+    } catch (error) {
+      console.error('[PRESTAMOS] Failed to save payment plan to IndexedDB:', error);
+    }
+    this.planesGenerados.set(prestamoId, plan);
+  }
+
+  /**
+   * Auto-mark installments as paid for dates up to today
+   */
+  async autoMarcarCuotasPagadas(prestamoId: string): Promise<Prestamo | null> {
+    const prestamo = await this.getPrestamoById(prestamoId);
+    if (!prestamo) return null;
+
+    const plan = await this.getPaymentPlan(prestamoId);
+    if (!plan) return null;
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let changed = false;
+    for (const periodo of plan.periodos) {
+      if (!periodo.pagado && new Date(periodo.fechaCargo) <= today) {
+        periodo.pagado = true;
+        periodo.fechaPagoReal = periodo.fechaCargo;
+        changed = true;
+      }
+    }
+
+    if (!changed) return prestamo;
+
+    const pagados = plan.periodos.filter(p => p.pagado);
+    const ultimoPagado = pagados.length > 0 ? pagados[pagados.length - 1] : null;
+    const nuevoPrincipalVivo = ultimoPagado ? ultimoPagado.principalFinal : prestamo.principalVivo;
+
+    const updates: Partial<Prestamo> = {
+      cuotasPagadas: pagados.length,
+      principalVivo: nuevoPrincipalVivo,
+      fechaUltimaCuotaPagada: ultimoPagado?.fechaCargo,
+    };
+
+    await this.savePaymentPlan(prestamoId, plan);
+    return this.updatePrestamo(prestamoId, updates);
+  }
+
+  /**
+   * Manually toggle payment status of a specific installment
+   */
+  async marcarCuotaManual(
+    prestamoId: string,
+    numeroPeriodo: number,
+    opciones: { pagado: boolean; fechaPagoReal?: string; movimientoTesoreriaId?: string }
+  ): Promise<Prestamo | null> {
+    const prestamo = await this.getPrestamoById(prestamoId);
+    if (!prestamo) return null;
+
+    const plan = await this.getPaymentPlan(prestamoId);
+    if (!plan) return null;
+
+    const periodo = plan.periodos.find(p => p.periodo === numeroPeriodo);
+    if (!periodo) return prestamo;
+
+    periodo.pagado = opciones.pagado;
+    if (opciones.fechaPagoReal !== undefined) periodo.fechaPagoReal = opciones.fechaPagoReal;
+    if (opciones.movimientoTesoreriaId !== undefined) periodo.movimientoTesoreriaId = opciones.movimientoTesoreriaId;
+
+    const pagados = plan.periodos.filter(p => p.pagado);
+    const ultimoPagado = pagados.length > 0 ? pagados[pagados.length - 1] : null;
+    const nuevoPrincipalVivo = ultimoPagado ? ultimoPagado.principalFinal : prestamo.principalInicial;
+
+    const updates: Partial<Prestamo> = {
+      cuotasPagadas: pagados.length,
+      principalVivo: nuevoPrincipalVivo,
+      fechaUltimaCuotaPagada: ultimoPagado?.fechaCargo,
+    };
+
+    await this.savePaymentPlan(prestamoId, plan);
+    return this.updatePrestamo(prestamoId, updates);
+  }
 }
 
 export const prestamosService = new PrestamosService();
