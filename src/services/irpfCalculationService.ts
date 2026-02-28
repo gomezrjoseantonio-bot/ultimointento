@@ -4,7 +4,6 @@
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary } from './fiscalSummaryService';
-import { calculateAEATAmortization } from './aeatAmortizationService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 

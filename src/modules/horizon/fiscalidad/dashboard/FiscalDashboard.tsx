@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, TrendingUp, TrendingDown, Calendar, FileText } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { generarEventosFiscales, EventoFiscal } from '../../../../services/fiscalPaymentsService';

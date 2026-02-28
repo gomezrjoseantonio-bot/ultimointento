@@ -45,9 +45,6 @@ const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/I
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
-const FisResumen = React.lazy(() => import('./modules/horizon/fiscalidad/resumen/Resumen'));
-const Detalle = React.lazy(() => import('./modules/horizon/fiscalidad/detalle/Detalle'));
-const Declaraciones = React.lazy(() => import('./modules/horizon/fiscalidad/declaraciones/Declaraciones'));
 const FiscalDashboard = React.lazy(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = React.lazy(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
 const SimuladorPage = React.lazy(() => import('./modules/horizon/fiscalidad/simulador/SimuladorPage'));

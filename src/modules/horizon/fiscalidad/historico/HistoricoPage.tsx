@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
+import { calcularDeclaracionIRPF } from '../../../../services/irpfCalculationService';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+
+const CURRENT_YEAR = new Date().getFullYear();
+const HISTORIC_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3];
 
 interface AnioHistorico {
   ejercicio: number;
@@ -18,14 +21,11 @@ const HistoricoPage: React.FC = () => {
   const [historico, setHistorico] = useState<AnioHistorico[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
-
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const results: AnioHistorico[] = [];
-      for (const year of years) {
+      for (const year of HISTORIC_YEARS) {
         try {
           const decl = await calcularDeclaracionIRPF(year);
           results.push({

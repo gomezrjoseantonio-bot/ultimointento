@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Home, Building, PiggyBank, Briefcase, DollarSign, User, BarChart2 } from 'lucide-react';
+import { TrendingUp, Home, Building, PiggyBank, Briefcase, User, BarChart2 } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
 

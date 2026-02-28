@@ -106,10 +106,8 @@ function recalcularLiquidacion(sim: DeclaracionIRPF): DeclaracionIRPF {
  */
 function tramoActual(base: number): number {
   const tramos = TRAMOS_BASE_GENERAL;
-  let anterior = 0;
   for (const t of tramos) {
     if (base <= t.hasta) return t.tipo * 100;
-    anterior = t.hasta;
   }
   return tramos[tramos.length - 1].tipo * 100;
 }
