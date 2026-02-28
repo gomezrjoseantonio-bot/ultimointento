@@ -184,10 +184,10 @@ class NominaService {
         .reduce((total, b) => total + b.importe, 0);
       
       // Total bruto mensual
-      const bruteMensual = salarioBase + variablesDelMes + bonusDelMes;
+      const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
       
       // Calculate net using configured retention
-      const netoMensual = this.calculateNetFromBruto(bruteMensual, retencion);
+      const netoMensual = this.calculateNetFromBruto(brutoMensual, retencion);
       
       distribuccionMensual.push({
         mes,
