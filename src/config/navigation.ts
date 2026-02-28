@@ -85,9 +85,11 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Resumen', href: '/fiscalidad/resumen', icon: Calculator, module: 'horizon' },
-      { name: 'Por inmueble', href: '/fiscalidad/detalle', icon: TrendingUp, module: 'horizon' },
-      { name: 'Declaraciones', href: '/fiscalidad/declaraciones', icon: Settings, module: 'horizon' },
+      { name: 'Dashboard', href: '/fiscalidad/dashboard', icon: Home, module: 'horizon' },
+      { name: 'Declaración', href: '/fiscalidad/declaracion', icon: FileText, module: 'horizon' },
+      { name: 'Simulador', href: '/fiscalidad/simulador', icon: TrendingUp, module: 'horizon' },
+      { name: 'Pagos', href: '/fiscalidad/pagos', icon: Calendar, module: 'horizon' },
+      { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings, module: 'horizon' },
     ]
   },
   {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PersonalData, SituacionLaboral, MaritalStatus, HousingType } from '../../../types/personal';
+import { PersonalData, SituacionLaboral, MaritalStatus, HousingType, NivelDiscapacidad, TipoTributacion, Descendiente, Ascendiente } from '../../../types/personal';
 import { personalDataService } from '../../../services/personalDataService';
 import { personalExpensesService } from '../../../services/personalExpensesService';
 import toast from 'react-hot-toast';
@@ -57,6 +57,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
     hasVehicle: boolean;
     hasChildren: boolean | number;
     comunidadAutonoma: string;
+    // IRPF personal minimums
+    descendientes: Descendiente[];
+    ascendientes: Ascendiente[];
+    discapacidad: NivelDiscapacidad;
+    tributacion: TipoTributacion;
+    tieneAscendientes: boolean;
   }>({
     nombre: '',
     apellidos: '',
@@ -71,6 +77,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
     hasVehicle: false,
     hasChildren: false,
     comunidadAutonoma: '',
+    descendientes: [],
+    ascendientes: [],
+    discapacidad: 'ninguna',
+    tributacion: 'individual',
+    tieneAscendientes: false,
   });
 
   const situacionLaboralOptions = [
@@ -137,6 +148,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
           hasVehicle: data.hasVehicle ?? false,
           hasChildren: data.hasChildren ?? false,
           comunidadAutonoma: data.comunidadAutonoma ?? '',
+          descendientes: data.descendientes ?? [],
+          ascendientes: data.ascendientes ?? [],
+          discapacidad: data.discapacidad ?? 'ninguna',
+          tributacion: data.tributacion ?? 'individual',
+          tieneAscendientes: (data.ascendientes?.length ?? 0) > 0,
         });
       }
     } catch (error) {
@@ -190,6 +206,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
         ...formData,
         situacionPersonal: maritalToSituacionPersonal(formData.maritalStatus),
         spouseName: isMarried(formData.maritalStatus) ? formData.spouseName : undefined,
+        descendientes: formData.hasChildren ? formData.descendientes : [],
+        ascendientes: formData.tieneAscendientes ? formData.ascendientes : [],
+        discapacidad: formData.discapacidad,
+        tributacion: formData.tributacion,
       };
       const savedData = await personalDataService.savePersonalData(dataToSave);
       if (savedData.id) {
@@ -316,6 +336,66 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
           </div>
         </div>
 
+        {/* Descendientes — expandable when hasChildren is true */}
+        {!!formData.hasChildren && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Descendientes a cargo</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  const newDesc: Descendiente = { id: Date.now().toString(), fechaNacimiento: '', discapacidad: 'ninguna' };
+                  setFormData(prev => ({ ...prev, descendientes: [...prev.descendientes, newDesc] }));
+                }}
+                className="text-xs text-blue-600 hover:underline font-medium"
+              >
+                + Añadir hijo/a
+              </button>
+            </div>
+            {formData.descendientes.map((d, i) => (
+              <div key={d.id} className="grid grid-cols-2 gap-3 items-end border-t border-gray-200 pt-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de nacimiento</label>
+                  <input
+                    type="date"
+                    value={d.fechaNacimiento}
+                    onChange={e => {
+                      const updated = [...formData.descendientes];
+                      updated[i] = { ...d, fechaNacimiento: e.target.value };
+                      setFormData(prev => ({ ...prev, descendientes: updated }));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Discapacidad</label>
+                  <select
+                    value={d.discapacidad}
+                    onChange={e => {
+                      const updated = [...formData.descendientes];
+                      updated[i] = { ...d, discapacidad: e.target.value as NivelDiscapacidad };
+                      setFormData(prev => ({ ...prev, descendientes: updated }));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  >
+                    <option value="ninguna">Sin discapacidad</option>
+                    <option value="hasta33">Hasta 33%</option>
+                    <option value="entre33y65">Entre 33% y 65%</option>
+                    <option value="mas65">Más del 65%</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, descendientes: prev.descendientes.filter((_, j) => j !== i) }))}
+                  className="text-xs text-red-500 hover:underline col-span-2"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Row 3 – Spouse name (conditional) */}
         {married && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -417,6 +497,125 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
               label="¿Tienes vehículo propio?"
               description="Activa gastos de gasolina, seguro y mantenimiento"
             />
+          </div>
+        </div>
+
+        {/* IRPF — Ascendientes a cargo */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col justify-end">
+            <Toggle
+              checked={formData.tieneAscendientes}
+              onChange={() => setFormData(prev => ({ ...prev, tieneAscendientes: !prev.tieneAscendientes }))}
+              label="¿Ascendientes a cargo?"
+              description="Padres/abuelos que conviven contigo (mínimo IRPF)"
+            />
+          </div>
+        </div>
+
+        {formData.tieneAscendientes && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Ascendientes a cargo</h4>
+              <button
+                type="button"
+                onClick={() => {
+                  const newAsc: Ascendiente = { id: Date.now().toString(), edad: 65, convive: true, discapacidad: 'ninguna' };
+                  setFormData(prev => ({ ...prev, ascendientes: [...prev.ascendientes, newAsc] }));
+                }}
+                className="text-xs text-blue-600 hover:underline font-medium"
+              >
+                + Añadir ascendiente
+              </button>
+            </div>
+            {formData.ascendientes.map((a, i) => (
+              <div key={a.id} className="grid grid-cols-3 gap-3 items-end border-t border-gray-200 pt-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Edad</label>
+                  <input
+                    type="number"
+                    value={a.edad}
+                    min={0}
+                    max={120}
+                    onChange={e => {
+                      const updated = [...formData.ascendientes];
+                      updated[i] = { ...a, edad: Number(e.target.value) };
+                      setFormData(prev => ({ ...prev, ascendientes: updated }));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Discapacidad</label>
+                  <select
+                    value={a.discapacidad}
+                    onChange={e => {
+                      const updated = [...formData.ascendientes];
+                      updated[i] = { ...a, discapacidad: e.target.value as NivelDiscapacidad };
+                      setFormData(prev => ({ ...prev, ascendientes: updated }));
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md"
+                  >
+                    <option value="ninguna">Sin discapacidad</option>
+                    <option value="hasta33">Hasta 33%</option>
+                    <option value="entre33y65">Entre 33% y 65%</option>
+                    <option value="mas65">Más del 65%</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pb-1.5">
+                  <input
+                    type="checkbox"
+                    id={`convive-${i}`}
+                    checked={a.convive}
+                    onChange={e => {
+                      const updated = [...formData.ascendientes];
+                      updated[i] = { ...a, convive: e.target.checked };
+                      setFormData(prev => ({ ...prev, ascendientes: updated }));
+                    }}
+                    className="h-3.5 w-3.5 text-brand-navy border-gray-300 rounded"
+                  />
+                  <label htmlFor={`convive-${i}`} className="text-xs text-gray-600">Convive</label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, ascendientes: prev.ascendientes.filter((_, j) => j !== i) }))}
+                  className="text-xs text-red-500 hover:underline col-span-3"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* IRPF — Discapacidad y Tributación */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Discapacidad del contribuyente
+            </label>
+            <select
+              value={formData.discapacidad}
+              onChange={e => setFormData(prev => ({ ...prev, discapacidad: e.target.value as NivelDiscapacidad }))}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="ninguna">Sin discapacidad</option>
+              <option value="hasta33">Hasta 33%</option>
+              <option value="entre33y65">Entre 33% y 65%</option>
+              <option value="mas65">Más del 65%</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">
+              Tributación IRPF
+            </label>
+            <select
+              value={formData.tributacion}
+              onChange={e => setFormData(prev => ({ ...prev, tributacion: e.target.value as TipoTributacion }))}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              <option value="individual">Individual</option>
+              <option value="conjunta">Conjunta</option>
+            </select>
           </div>
         </div>
 

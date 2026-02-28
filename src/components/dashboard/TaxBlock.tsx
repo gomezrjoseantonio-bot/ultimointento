@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FileText } from 'lucide-react';
 import DashboardBlockBase, { DashboardBlockProps, DashboardBlockData } from './DashboardBlockBase';
 import { TaxBlockOptions } from '../../services/dashboardService';
+import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../services/irpfCalculationService';
 
 const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className, excludePersonal }) => {
   const [data, setData] = useState<DashboardBlockData>({
@@ -9,45 +10,27 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
     formattedValue: '0,00 €',
     isLoading: true
   });
+  const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
 
   const options = config.options as TaxBlockOptions;
-  const baseDeductions = 3456.78;
-  const basePending = 789.12;
-  const baseAmortizations = 2890.45;
-  const personalDeductionsShare = 540.32;
-  const personalPendingShare = 120.45;
-  const personalAmortizationsShare = 310.2;
 
   const loadTaxData = useCallback(async () => {
     try {
       setData(prev => ({ ...prev, isLoading: true, error: undefined }));
 
-      // Mock tax data calculation
-      // In real implementation, this would fetch from fiscal summary service
-      const mockDeductions = excludePersonal ? baseDeductions - personalDeductionsShare : baseDeductions;
-      const mockAmortizations = excludePersonal ? baseAmortizations - personalAmortizationsShare : baseAmortizations;
-      const totalTaxBenefit = mockDeductions + (options.showAmortizations ? mockAmortizations : 0);
+      const ejercicio = options.fiscalYear ?? new Date().getFullYear();
+      const decl = await calcularDeclaracionIRPF(ejercicio);
+      setDeclaracion(decl);
 
-      // Apply Spanish formatting
+      const resultado = decl.resultado;
       const formattedTotal = new Intl.NumberFormat('es-ES', {
         style: 'currency',
         currency: 'EUR'
-      }).format(totalTaxBenefit);
-
-      // Mock trend calculation
-      const mockPreviousYear = excludePersonal ? 4987.21 : 5567.89;
-      const trend = totalTaxBenefit > mockPreviousYear ? 'up' : 'down';
-      const trendValue = new Intl.NumberFormat('es-ES', {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1
-      }).format((totalTaxBenefit - mockPreviousYear) / mockPreviousYear);
+      }).format(Math.abs(resultado));
 
       setData({
-        value: totalTaxBenefit,
+        value: resultado,
         formattedValue: formattedTotal,
-        trend,
-        trendValue,
         isLoading: false
       });
 
@@ -59,7 +42,7 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
         error: 'Error al cargar datos fiscales'
       }));
     }
-  }, [options, excludePersonal]);
+  }, [options]);
 
   useEffect(() => {
     loadTaxData();
@@ -67,22 +50,19 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
 
   const handleNavigate = () => {
     if (onNavigate) {
-      // Navigate to fiscal summary with filters
-      onNavigate('/fiscalidad', {
+      onNavigate('/fiscalidad/dashboard', {
         year: options.fiscalYear,
-        showAmortizations: options.showAmortizations
       });
     }
   };
 
   const getSubtitle = () => {
-    const year = options.fiscalYear;
-    const components = ['deducciones'];
-    if (options.showAmortizations) {
-      components.push('amortizaciones');
-    }
-    return `Año ${year}: ${components.join(' + ')}`;
+    const year = options.fiscalYear ?? new Date().getFullYear();
+    return `Estimación IRPF ${year}`;
   };
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
 
   return (
     <DashboardBlockBase
@@ -95,34 +75,34 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
       filterLabel={excludePersonal ? 'Sin finanzas personales' : undefined}
     >
       {/* Tax specific content */}
-      <div className="mt-3 text-xs text-neutral-500">
-        <div className="flex justify-between">
-          <span>Deducciones aplicadas</span>
-          <span className="font-medium text-success-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? baseDeductions - personalDeductionsShare : baseDeductions)}
-          </span>
-        </div>
-        <div className="flex justify-between mt-1">
-          <span>Deducciones pendientes</span>
-          <span className="font-medium text-amber-600">
-            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? basePending - personalPendingShare : basePending)}
-          </span>
-        </div>
-        {options.showAmortizations && (
-          <div className="flex justify-between mt-1">
-            <span>Amortizaciones</span>
-            <span className="font-medium text-primary-600">
-              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(excludePersonal ? baseAmortizations - personalAmortizationsShare : baseAmortizations)}
+      {declaracion && (
+        <div className="mt-3 text-xs text-neutral-500">
+          <div className="flex justify-between">
+            <span>Cuota líquida IRPF</span>
+            <span className="font-medium text-neutral-700">
+              {fmt(declaracion.liquidacion.cuotaLiquida)}
             </span>
           </div>
-        )}
-        <div className="border-t border-neutral-200 mt-2 pt-2 flex justify-between font-medium">
-          <span>Total beneficio fiscal</span>
-          <span className="text-success-700">
-            {data.formattedValue}
-          </span>
+          <div className="flex justify-between mt-1">
+            <span>Retenciones totales</span>
+            <span className="font-medium text-success-600">
+              {fmt(declaracion.retenciones.total)}
+            </span>
+          </div>
+          <div className="flex justify-between mt-1">
+            <span>Tipo efectivo</span>
+            <span className="font-medium text-neutral-700">
+              {declaracion.tipoEfectivo.toFixed(1)}%
+            </span>
+          </div>
+          <div className="border-t border-neutral-200 mt-2 pt-2 flex justify-between font-medium">
+            <span>{declaracion.resultado >= 0 ? 'A pagar' : 'A devolver'}</span>
+            <span className={declaracion.resultado >= 0 ? 'text-error-600' : 'text-success-700'}>
+              {fmt(Math.abs(declaracion.resultado))}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </DashboardBlockBase>
   );
 };

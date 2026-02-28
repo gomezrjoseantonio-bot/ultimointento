@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 25; // V2.5: Added pensiones store for pension income
+const DB_VERSION = 26; // V2.6: Added configuracionFiscal store for IRPF fiscal configuration
 
 export interface Property {
   id?: number;
@@ -1298,6 +1298,20 @@ export interface OpexRule {
   updatedAt: string;
 }
 
+// V2.6: ConfiguracionFiscal — IRPF fiscal configuration
+export interface ConfiguracionFiscal {
+  id?: number; // always 1 (single record)
+  cuenta_irpf_id?: number;
+  mes_declaracion: number; // default 6 (June)
+  dia_declaracion: number; // default 25
+  incluir_prevision_irpf: boolean;
+  fraccionarPago: boolean;
+  modelo130_pagados: { ejercicio: number; trimestre: number; importe: number; fechaPago: string }[];
+  modelo303_pagados: { ejercicio: number; trimestre: number; importe: number; fechaPago: string }[];
+  minusvalias_pendientes: { anio: number; importe: number }[];
+  updatedAt: string;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   documents: Document;
@@ -1349,6 +1363,7 @@ interface AtlasHorizonDB {
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
+  configuracionFiscal: ConfiguracionFiscal; // V2.6: IRPF fiscal configuration
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -1762,6 +1777,11 @@ export const initDB = async () => {
           const pensionesStore = db.createObjectStore('pensiones', { keyPath: 'id', autoIncrement: true });
           pensionesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
           pensionesStore.createIndex('activa', 'activa', { unique: false });
+        }
+
+        // V2.6: ConfiguracionFiscal store (IRPF fiscal settings - single record)
+        if (!db.objectStoreNames.contains('configuracionFiscal')) {
+          db.createObjectStore('configuracionFiscal', { keyPath: 'id', autoIncrement: true });
         }
       },
       blocked() {
