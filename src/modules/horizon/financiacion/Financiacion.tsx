@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import PageLayout from '../../../components/common/PageLayout';
-import PrestamosCreation from './components/PrestamosCreation';
+import PrestamosWizard from './components/PrestamosWizard';
 import PrestamosList from './components/PrestamosList';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
 import { FeinLoanDraft } from '../../../types/fein';
@@ -70,7 +70,7 @@ const Financiacion: React.FC = () => {
     switch (currentView) {
       case 'create':
         return (
-          <PrestamosCreation
+          <PrestamosWizard
             prestamoId={selectedPrestamoId}
             initialData={feinInitialData || undefined} // Pass mapped FEIN data if available
             onSuccess={handleBackToList}
@@ -79,7 +79,7 @@ const Financiacion: React.FC = () => {
         );
       case 'edit':
         return (
-          <PrestamosCreation
+          <PrestamosWizard
             prestamoId={selectedPrestamoId}
             onSuccess={handleBackToList}
             onCancel={handleBackToList}
