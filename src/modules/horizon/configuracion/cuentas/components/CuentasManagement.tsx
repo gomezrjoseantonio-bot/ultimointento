@@ -158,7 +158,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
           iban: formData.iban,
           tipo: formData.tipo,
           titular: formData.titular.nombre || formData.titular.nif ? formData.titular : undefined,
-          openingBalance: parseFloat(formData.openingBalance) || 0,
+          openingBalance: parseFloat(formData.openingBalance ?? '') || 0,
           openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : new Date().toISOString()
         };
         await cuentasService.create(createData);

@@ -65,7 +65,7 @@ class CuentasService {
   /**
    * Sync account to IndexedDB (treasury storage)
    */
-  private async syncAccountToIndexedDB(account: Account): Promise<void> {
+  private async syncAccountToIndexedDB(account: Account): Promise<number | undefined> {
     try {
       const db = await initDB();
       
@@ -104,21 +104,29 @@ class CuentasService {
       if (existingAccount) {
         // Update existing account
         await db.put('accounts', treasuryAccount);
+        console.info('[ACCOUNTS] Synced to IndexedDB:', { 
+          alias: account.alias || 'Sin alias',
+          iban: account.iban.slice(-4),
+          action: 'updated',
+          deleted: !!account.deleted_at
+        });
+        return existingAccount.id;
       } else {
-        // Create new account
-        delete treasuryAccount.id; // Let IndexedDB assign new ID
-        await db.add('accounts', treasuryAccount);
+        // Create new account - let IndexedDB assign new ID
+        delete treasuryAccount.id;
+        const newId = await db.add('accounts', treasuryAccount);
+        console.info('[ACCOUNTS] Synced to IndexedDB:', { 
+          alias: account.alias || 'Sin alias',
+          iban: account.iban.slice(-4),
+          action: 'created',
+          deleted: !!account.deleted_at
+        });
+        return newId as number;
       }
-      
-      console.info('[ACCOUNTS] Synced to IndexedDB:', { 
-        alias: account.alias || 'Sin alias',
-        iban: account.iban.slice(-4),
-        action: existingAccount ? 'updated' : 'created',
-        deleted: !!account.deleted_at
-      });
     } catch (error) {
       console.error('[ACCOUNTS] Failed to sync to IndexedDB:', error);
       // Don't throw error to avoid breaking the main flow
+      return undefined;
     }
   }
 
@@ -216,48 +224,44 @@ class CuentasService {
     this.accounts.push(newAccount);
     this.saveAccounts();
 
-    // Sync to IndexedDB (treasury storage)
-    await this.syncAccountToIndexedDB(newAccount);
+    // Sync to IndexedDB (treasury storage) and get the assigned ID
+    const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
 
     // P1: Create opening balance movement if openingBalance is non-zero
     const openingBalance = newAccount.openingBalance ?? 0;
-    if (openingBalance !== 0) {
+    if (openingBalance !== 0 && dbAccountId != null) {
       try {
         const db = await initDB();
-        const existingAccounts = await db.getAll('accounts');
-        const dbAccount = existingAccounts.find((acc: any) => acc.iban === normalizedIban);
-        if (dbAccount?.id != null) {
-          const openingBalanceDateISO = newAccount.openingBalanceDate!;
-          const openingBalanceDate = openingBalanceDateISO.includes('T')
-            ? openingBalanceDateISO.split('T')[0]
-            : openingBalanceDateISO;
-          const openingMovement = {
-            accountId: dbAccount.id,
-            date: openingBalanceDate,
-            amount: openingBalance,
-            description: 'Saldo inicial de apertura',
-            counterparty: 'Sistema',
-            reference: `APERTURA-${dbAccount.id}`,
-            balance: openingBalance,
-            status: 'conciliado',
-            state: 'confirmed',
-            type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
-            origin: 'Manual' as const,
-            movementState: 'Confirmado',
-            ambito: 'PERSONAL' as const,
-            statusConciliacion: 'sin_match' as const,
-            currency: 'EUR',
-            saldo: openingBalance,
-            estado_conciliacion: 'conciliado',
-            isOpeningBalance: true,
-            unifiedStatus: 'conciliado',
-            source: 'manual',
-            category: { tipo: 'Saldo Inicial' },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          await db.add('movements', openingMovement);
-        }
+        const openingBalanceDateISO = newAccount.openingBalanceDate!;
+        const openingBalanceDate = openingBalanceDateISO.includes('T')
+          ? openingBalanceDateISO.split('T')[0]
+          : openingBalanceDateISO;
+        const openingMovement = {
+          accountId: dbAccountId,
+          date: openingBalanceDate,
+          amount: openingBalance,
+          description: 'Saldo inicial de apertura',
+          counterparty: 'Sistema',
+          reference: `APERTURA-${dbAccountId}`,
+          balance: openingBalance,
+          status: 'conciliado',
+          state: 'confirmed',
+          type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
+          origin: 'Manual' as const,
+          movementState: 'Confirmado',
+          ambito: 'PERSONAL' as const,
+          statusConciliacion: 'sin_match' as const,
+          currency: 'EUR',
+          saldo: openingBalance,
+          estado_conciliacion: 'conciliado',
+          isOpeningBalance: true,
+          unifiedStatus: 'conciliado',
+          source: 'manual',
+          category: { tipo: 'Saldo Inicial' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        await db.add('movements', openingMovement);
       } catch (error) {
         console.warn('[ACCOUNTS] Failed to create opening balance movement:', error);
       }
