@@ -6,12 +6,14 @@ interface RecommendationActionSectionProps {
   fiscalROI: FiscalROI;
   capitalNetoFinal: number;
   onDecision: (decision: PropertyDecision, targetDate?: string) => void;
+  disabled?: boolean;
 }
 
 const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = ({ 
   fiscalROI, 
   capitalNetoFinal,
-  onDecision 
+  onDecision,
+  disabled = false,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [targetDate, setTargetDate] = useState('');
@@ -71,6 +73,7 @@ const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = 
           <div className="flex gap-3">
             <button
               onClick={handleMantener}
+              disabled={disabled}
               className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-success-500 hover:bg-success-600 text-white"
             >
               🟢 Mantener
@@ -78,6 +81,7 @@ const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = 
 
             <button
               onClick={handleRevisar}
+              disabled={disabled}
               className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-hz-neutral-500 hover:bg-hz-neutral-600 text-white"
             >
               ⚪ Revisar
@@ -85,6 +89,7 @@ const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = 
 
             <button
               onClick={handleVender}
+              disabled={disabled}
               className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-error-500 hover:bg-error-600 text-white"
             >
               🔴 Vender
@@ -100,13 +105,14 @@ const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = 
                 type="date"
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
+                disabled={disabled}
                 className="px-3 py-2 border border-hz-neutral-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-hz-primary focus:border-hz-primary"
               />
             </div>
             <div className="flex gap-3">
               <button
                 onClick={confirmVender}
-                disabled={!targetDate}
+                disabled={disabled || !targetDate}
                 className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-error-500 hover:bg-error-600 text-white disabled:opacity-50"
               >
                 Confirmar venta
@@ -116,6 +122,7 @@ const RecommendationActionSection: React.FC<RecommendationActionSectionProps> = 
                   setShowDatePicker(false);
                   setTargetDate('');
                 }}
+                disabled={disabled}
                 className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-hz-neutral-200 hover:bg-hz-neutral-300 text-hz-neutral-800"
               >
                 Cancelar

@@ -6,12 +6,14 @@ interface SaleSimulationSectionProps {
   data: SaleSimulation;
   onUpdateSalePrice: (value: number) => void;
   onUpdateCommission: (value: number) => void;
+  disabled?: boolean;
 }
 
 const SaleSimulationSection: React.FC<SaleSimulationSectionProps> = ({ 
   data, 
   onUpdateSalePrice, 
-  onUpdateCommission 
+  onUpdateCommission,
+  disabled = false,
 }) => {
   return (
     <div className="space-y-4">
@@ -27,6 +29,7 @@ const SaleSimulationSection: React.FC<SaleSimulationSectionProps> = ({
           <input
             type="number"
             value={data.precioVenta}
+            disabled={disabled}
             onChange={(e) => onUpdateSalePrice(parseFloat(e.target.value) || 0)}
             className="w-full px-3 py-2 border rounded-md text-sm"
             style={{ fontSize: '14px' }}
@@ -40,6 +43,7 @@ const SaleSimulationSection: React.FC<SaleSimulationSectionProps> = ({
           <input
             type="number"
             value={data.comisionVenta}
+            disabled={disabled}
             onChange={(e) => onUpdateCommission(parseFloat(e.target.value) || 0)}
             className="w-full px-3 py-2 border rounded-md text-sm"
             style={{ fontSize: '14px' }}
