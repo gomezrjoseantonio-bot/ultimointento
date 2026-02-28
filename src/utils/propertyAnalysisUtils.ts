@@ -9,7 +9,7 @@ import {
   AnalysisConfig,
   DEFAULT_ANALYSIS_CONFIG,
 } from '../types/propertyAnalysis';
-import type { Contract, Gasto, Ingreso, Property } from '../services/db';
+import type { Contract, Ingreso, Property } from '../services/db';
 import type { Prestamo } from '../types/prestamos';
 import type { ValoracionHistorica } from '../types/valoraciones';
 
@@ -41,7 +41,7 @@ interface BuildParams {
   property: Property;
   contracts: Contract[];
   ingresos: Ingreso[];
-  gastos: Gasto[];
+  gastosOperativosOverride?: number;
   prestamos: Prestamo[];
   valoraciones: ValoracionHistorica[];
 }
@@ -182,7 +182,7 @@ export function buildPropertyAnalysisInputs({
   property,
   contracts,
   ingresos,
-  gastos,
+  gastosOperativosOverride,
   prestamos,
   valoraciones,
 }: BuildParams): PropertyAnalysisInputBuildResult {
@@ -205,9 +205,8 @@ export function buildPropertyAnalysisInputs({
     missingFields.push('ingresos mensuales');
   }
 
-  const propertyGastos = gastos.filter((gasto) => gasto.destino === 'inmueble_id' && gasto.destino_id === safePropertyId);
-  const gastosOperativos = getMonthlyAverage(propertyGastos, 'fecha_emision', 'total');
-  if (propertyGastos.length === 0) {
+  const gastosOperativos = gastosOperativosOverride ?? 0;
+  if (gastosOperativos <= 0) {
     missingFields.push('gastos operativos');
   }
 
