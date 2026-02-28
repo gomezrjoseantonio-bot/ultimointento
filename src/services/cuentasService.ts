@@ -239,7 +239,7 @@ class CuentasService {
             counterparty: 'Sistema',
             reference: `APERTURA-${dbAccount.id}`,
             balance: openingBalance,
-            status: 'confirmado',
+            status: 'conciliado',
             state: 'confirmed',
             type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
             origin: 'SYSTEM',
