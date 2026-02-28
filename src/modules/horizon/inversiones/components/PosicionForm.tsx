@@ -221,6 +221,11 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     if (planLiqActivo) {
       if (!planLiq.fecha_estimada) newErrors.planLiq_fecha = 'La fecha estimada es obligatoria';
       if (!planLiq.cuenta_destino_id) newErrors.planLiq_cuenta = 'La cuenta destino es obligatoria';
+      if (planLiq.liquidacion_total === false) {
+        if (!planLiq.importe_estimado || planLiq.importe_estimado <= 0) {
+          newErrors.planLiq_importe = 'El importe estimado debe ser mayor que 0 para una liquidación parcial';
+        }
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
