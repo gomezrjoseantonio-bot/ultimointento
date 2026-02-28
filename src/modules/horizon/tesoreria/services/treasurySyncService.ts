@@ -688,7 +688,7 @@ export async function generateMonthlyForecasts(
             ? ALL_MONTHS
             : Array.isArray(rendimiento.meses_cobro) && rendimiento.meses_cobro.length > 0
               ? rendimiento.meses_cobro
-              : ALL_MONTHS;
+              : [];
 
         if (mesesCobro.includes(month)) {
           const diaCobro = rendimiento.dia_cobro ?? 1;
