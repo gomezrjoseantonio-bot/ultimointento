@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { prestamosService } from '../services/prestamosService';
 
 export function useAutoMarcarCuotas(prestamoIds: string[]) {
   const [status, setStatus] = useState<'idle' | 'syncing' | 'done' | 'error'>('idle');
   // Join to a stable string for primitive comparison - avoids re-runs on array identity changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stableKey = prestamoIds.join(',');
+  const stableKey = useMemo(() => prestamoIds.join(','), [prestamoIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (stableKey === '') return;

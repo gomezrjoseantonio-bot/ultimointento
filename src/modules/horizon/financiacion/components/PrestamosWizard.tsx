@@ -199,9 +199,8 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     setCurrentStep('identificacion');
   }, []);
 
-  // Determine steps based on whether importacion is needed.
-  // showImportacion is a placeholder for future implementation when origen='IMPORTACION' is detected.
-  const [showImportacion] = useState(false);
+  // Determine steps based on whether importacion step is needed (when origen === 'IMPORTACION').
+  const showImportacion = formData.origenCreacion === 'IMPORTACION';
 
   const getSteps = useCallback(() => {
     const base: { id: StepId; label: string }[] = [
