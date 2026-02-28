@@ -742,7 +742,7 @@ export async function generateMonthlyForecasts(
             ? ALL_MONTHS
             : Array.isArray(dividendos.meses_cobro) && dividendos.meses_cobro.length > 0
               ? dividendos.meses_cobro
-              : ALL_MONTHS;
+              : [];
 
         if (mesesDiv.includes(month)) {
           const diaDiv = dividendos.dia_cobro ?? 1;
