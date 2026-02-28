@@ -227,9 +227,13 @@ class CuentasService {
         const existingAccounts = await db.getAll('accounts');
         const dbAccount = existingAccounts.find((acc: any) => acc.iban === normalizedIban);
         if (dbAccount?.id != null) {
+          const openingBalanceDateISO = newAccount.openingBalanceDate!;
+          const openingBalanceDate = openingBalanceDateISO.includes('T')
+            ? openingBalanceDateISO.split('T')[0]
+            : openingBalanceDateISO;
           const openingMovement = {
             accountId: dbAccount.id,
-            date: newAccount.openingBalanceDate!,
+            date: openingBalanceDate,
             amount: openingBalance,
             description: 'Saldo inicial de apertura',
             counterparty: 'Sistema',
