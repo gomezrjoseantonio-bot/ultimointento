@@ -91,10 +91,13 @@ describe('treasurySyncService – deduplication', () => {
 
   it('uses isDuplicate helper for inversion_aportacion deduplication (not getAll scan)', () => {
     expect(source).toContain("isDuplicate('inversion_aportacion', aportacion.id)");
-    // The old full-table scan must have been removed
-    expect(source).not.toContain(
-      "db.getAll('treasuryEvents')).some(\n            e =>\n              e.sourceType === 'inversion_aportacion'",
+    // The old full-table scan (getAll + description match) must have been removed
+    // from the aportaciones puntuales block. Use a regex that is whitespace-tolerant.
+    const aportacionBlock = source.slice(
+      source.indexOf('// 1b. Aportaciones puntuales futuras'),
+      source.indexOf('// 1c. Plan de aportaciones periódicas'),
     );
+    expect(aportacionBlock).not.toMatch(/db\.getAll\(['"]treasuryEvents['"]\)/);
   });
 });
 
