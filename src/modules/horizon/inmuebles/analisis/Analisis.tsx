@@ -4,9 +4,13 @@ import PageLayout from '../../../../components/common/PageLayout';
 import EmptyState from '../../../../components/common/EmptyState';
 import { BarChart3 } from 'lucide-react';
 import { Property, initDB } from '../../../../services/db';
-import type { Contract, Gasto, Ingreso } from '../../../../services/db';
+import type { Contract, Ingreso } from '../../../../services/db';
 import type { Prestamo } from '../../../../types/prestamos';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
+import {
+  getAnnualOpexForProperty,
+  getExpenseDiagnosticsForProperty,
+} from '../../../../services/propertyExpenses';
 import { 
   PropertyAnalysis, 
   PropertyDecision,
@@ -36,9 +40,10 @@ const Analisis: React.FC = () => {
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
-  const [gastos, setGastos] = useState<Gasto[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
+  const [gastosOperativosMensuales, setGastosOperativosMensuales] = useState<number>(0);
+  const [expenseWarning, setExpenseWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProperties = useCallback(async () => {
@@ -49,14 +54,12 @@ const Analisis: React.FC = () => {
         allProperties,
         contractsData,
         ingresosData,
-        gastosData,
         prestamosData,
         valoracionesData,
       ] = await Promise.all([
         db.getAll('properties'),
         db.getAll('contracts'),
         db.getAll('ingresos'),
-        db.getAll('gastos'),
         db.getAll('prestamos'),
         db.getAll('valoraciones_historicas'),
       ]);
@@ -64,7 +67,6 @@ const Analisis: React.FC = () => {
       setProperties(activeProperties);
       setContracts(contractsData);
       setIngresos(ingresosData);
-      setGastos(gastosData);
       setPrestamos(prestamosData as Prestamo[]);
       setValoraciones(valoracionesData as ValoracionHistorica[]);
       
@@ -85,20 +87,28 @@ const Analisis: React.FC = () => {
 
   useEffect(() => {
     if (selectedPropertyId && properties.length > 0) {
-      calculateAnalysis();
+      void calculateAnalysis();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPropertyId, properties, contracts, ingresos, gastos, prestamos, valoraciones, saleOverrides]);
+  }, [selectedPropertyId, properties, contracts, ingresos, prestamos, valoraciones, saleOverrides]);
 
-  const calculateAnalysis = () => {
+  const calculateAnalysis = async () => {
     const property = properties.find(p => p.id === selectedPropertyId);
     if (!property) return;
+
+    const propertyId = property.id!;
+    const annualOpex = await getAnnualOpexForProperty(propertyId);
+    const diagnostics = await getExpenseDiagnosticsForProperty(propertyId);
+    const monthlyOpex = annualOpex / 12;
+
+    setGastosOperativosMensuales(monthlyOpex);
+    setExpenseWarning(diagnostics.warning || null);
 
     const { inputs, missingFields: missingData } = buildPropertyAnalysisInputs({
       property,
       contracts,
       ingresos,
-      gastos,
+      gastosOperativosOverride: monthlyOpex,
       prestamos,
       valoraciones,
     });
@@ -273,6 +283,14 @@ const Analisis: React.FC = () => {
           <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--error)', backgroundColor: 'var(--bg-secondary)' }}>
             <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
               <strong>Faltan datos para calcular la rentabilidad.</strong> Completa: {missingFields.join(', ')}.
+            </div>
+          </div>
+        )}
+
+        {expenseWarning && (
+          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
+              <strong>Gastos OPEX.</strong> {expenseWarning} (estimado mensual: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(gastosOperativosMensuales)}).
             </div>
           </div>
         )}

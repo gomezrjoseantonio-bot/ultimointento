@@ -8,7 +8,7 @@ import {
   getTrafficLightEmoji,
 } from '../propertyAnalysisUtils';
 import { DEFAULT_ANALYSIS_CONFIG } from '../../types/propertyAnalysis';
-import type { Contract, Gasto, Ingreso, Property } from '../../services/db';
+import type { Contract, Ingreso, Property } from '../../services/db';
 import type { Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 
@@ -85,22 +85,6 @@ describe('Property Analysis Utils', () => {
     },
   ];
 
-  const gastos: Gasto[] = [
-    {
-      id: 1,
-      contraparte_nombre: 'Comunidad',
-      fecha_emision: '2025-02-02',
-      fecha_pago_prevista: '2025-02-10',
-      total: 140,
-      categoria_AEAT: 'comunidad',
-      destino: 'inmueble_id',
-      destino_id: 10,
-      estado: 'pagado',
-      createdAt: '2025-02-02T00:00:00.000Z',
-      updatedAt: '2025-02-02T00:00:00.000Z',
-    },
-  ];
-
   const prestamo: Prestamo = {
     id: 'loan-1',
     ambito: 'INMUEBLE',
@@ -156,7 +140,7 @@ describe('Property Analysis Utils', () => {
         property,
         contracts: [contract],
         ingresos,
-        gastos,
+        gastosOperativosOverride: 140,
         prestamos: [prestamo],
         valoraciones,
       });
@@ -175,7 +159,7 @@ describe('Property Analysis Utils', () => {
         property,
         contracts: [],
         ingresos: [],
-        gastos: [],
+        gastosOperativosOverride: 0,
         prestamos: [],
         valoraciones: [],
       });

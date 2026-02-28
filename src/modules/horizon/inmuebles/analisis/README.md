@@ -214,3 +214,19 @@ Para actualizar tipos impositivos o configuración:
 **Versión**: 1.0  
 **Última actualización**: Implementación inicial completa  
 **Autor**: Sistema de análisis fiscal de inmuebles
+
+## Integración de gastos centralizada (OPEX/CAPEX)
+
+Desde esta versión, `Analisis.tsx` consume exclusivamente el servicio `src/services/propertyExpenses.ts` para el cálculo de gastos operativos.
+
+Flujo:
+1. `getAnnualOpexForProperty(propertyId)` obtiene OPEX anual normalizado.
+2. El valor se transforma a mensual para el cálculo del bloque operacional.
+3. `getExpenseDiagnosticsForProperty(propertyId)` muestra alertas de:
+   - ausencia de gastos,
+   - uso de fallback legacy.
+
+Ruta de retirada legacy:
+- Mantener fallback sólo durante migración.
+- Completar reglas `opexRules` en todos los inmuebles.
+- Desactivar fallback en una siguiente versión cuando no haya inmuebles legacy.
