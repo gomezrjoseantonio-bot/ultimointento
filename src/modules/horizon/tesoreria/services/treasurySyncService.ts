@@ -883,7 +883,6 @@ export async function generateMonthlyForecasts(
                     : Array.isArray(rend.meses_cobro) && rend.meses_cobro.length > 0
                       ? rend.meses_cobro
                       : ALL_MONTHS;
-                const numPagos = mesesR.length;
                 const brutoAnual = pos.valor_actual * (rend.tasa_interes_anual / 100);
                 const brutoTotal = brutoAnual;
                 interesesBrutos += brutoTotal;

@@ -187,7 +187,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         cuenta_destino_id: Number(formData.cuenta_destino_id) || prev.cuenta_destino_id,
       }));
     }
-  }, [formData.tipo, formData.fecha_fin_rendimiento]);
+  }, [formData.tipo, formData.fecha_fin_rendimiento, formData.cuenta_destino_id, formData.valor_actual, formData.importe_inicial, existingPlanLiq?.activo]);
 
   const tipoCategoria = getTipoCategoria(formData.tipo);
 
