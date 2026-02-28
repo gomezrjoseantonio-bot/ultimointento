@@ -441,7 +441,7 @@ export async function generateMonthlyForecasts(
         return activeMeses.includes(month) ? total + fuente.importeEstimado : total;
       }, 0);
 
-      if (ingresosEsteMes > 0) {
+      if (ingresosEsteMes > 0 && autonomoActivo.id != null) {
         const description = `Ingresos Autónomo – ${autonomoActivo.nombre}`;
 
         const alreadyExists = await isDuplicate('autonomo_ingreso', autonomoActivo.id);
@@ -501,7 +501,7 @@ export async function generateMonthlyForecasts(
         gastoFinal = gastosAnualesLegacy / 12;
       }
 
-      if (gastoFinal > 0) {
+      if (gastoFinal > 0 && autonomoActivo.id != null) {
         const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
 
         const alreadyExists = await isDuplicate('autonomo', autonomoActivo.id);
