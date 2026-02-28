@@ -175,7 +175,9 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       bank: account.bank || '',
       iban: account.iban || '',
       logoFile: null,
-      logoUrl: account.logo_url || null
+      logoUrl: account.logo_url || null,
+      openingBalance: account.openingBalance?.toString() ?? '',
+      openingBalanceDate: account.openingBalanceDate ? account.openingBalanceDate.split('T')[0] : new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
     setShowModal(true);
