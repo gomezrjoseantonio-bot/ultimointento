@@ -782,8 +782,18 @@ export async function generateMonthlyForecasts(
 
       // ── Bloque ③ LIQUIDACIÓN ────────────────────────────────────────────────
 
-      // 3a. depósito a plazo: capital returned at maturity
-      if (pos.tipo === 'deposito_plazo' && rendimiento?.fecha_fin_rendimiento && pos.id != null) {
+      const planLiq = posAny.plan_liquidacion;
+      // If an active plan_liquidacion of tipo 'vencimiento' exists, block 3b covers the capital
+      // return, so block 3a is skipped to avoid double-counting.
+      const hasVencimientoPlan = planLiq?.activo && planLiq?.tipo_liquidacion === 'vencimiento';
+
+      // 3a. depósito a plazo: capital returned at maturity (skipped when 3b covers it)
+      if (
+        pos.tipo === 'deposito_plazo' &&
+        rendimiento?.fecha_fin_rendimiento &&
+        pos.id != null &&
+        !hasVencimientoPlan
+      ) {
         const fechaVenc = rendimiento.fecha_fin_rendimiento.split('T')[0];
         if (fechaVenc >= today && fechaVenc.startsWith(monthPrefix)) {
           if (await isDuplicate('inversion_liquidacion', pos.id)) {
@@ -805,28 +815,19 @@ export async function generateMonthlyForecasts(
         }
       }
 
-      // 3b. Plan de liquidación
-      const planLiq = posAny.plan_liquidacion;
+      // 3b. Plan de liquidación (handles all positions including deposito_plazo vencimiento)
       if (planLiq?.activo && pos.id != null) {
         const fechaLiq = planLiq.fecha_estimada?.split('T')[0] ?? '';
         if (fechaLiq >= today && fechaLiq.startsWith(monthPrefix)) {
           const importeLiq = getLiquidationAmount(planLiq, pos.valor_actual);
-          const descLiq = `Liquidación – ${pos.nombre}`;
-          // Use a composite key to avoid collision with the deposito vencimiento above
-          const existsLiq = (await db.getAll('treasuryEvents')).some(
-            e =>
-              e.sourceType === 'inversion_liquidacion' &&
-              e.description === descLiq &&
-              e.predictedDate.startsWith(monthPrefix),
-          );
-          if (existsLiq) {
+          if (await isDuplicate('inversion_liquidacion', pos.id)) {
             skipped++;
           } else {
             await insertEvent({
               type: 'income' as const,
               amount: importeLiq,
               predictedDate: fechaLiq,
-              description: descLiq,
+              description: `Liquidación – ${pos.nombre}`,
               sourceType: 'inversion_liquidacion' as const,
               sourceId: pos.id,
               accountId: resolveAccountId(planLiq.cuenta_destino_id),
