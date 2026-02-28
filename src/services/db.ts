@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 25; // V2.5: Added pensiones store for pension income
+const DB_VERSION = 26; // V2.6: Added configuracion_fiscal store for IRPF forecast
 
 export interface Property {
   id?: number;
@@ -844,7 +844,7 @@ export interface TreasuryEvent {
   predictedDate: string;
   description: string;
   // Source tracking
-  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'inversion';
+  sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'inversion' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
   sourceId?: number; // Document ID or Contract ID
   // Account information
   accountId?: number;
@@ -1349,6 +1349,7 @@ interface AtlasHorizonDB {
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
+  configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -1762,6 +1763,11 @@ export const initDB = async () => {
           const pensionesStore = db.createObjectStore('pensiones', { keyPath: 'id', autoIncrement: true });
           pensionesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
           pensionesStore.createIndex('activa', 'activa', { unique: false });
+        }
+
+        // V2.6: Configuración fiscal (IRPF forecast, singleton with id='default')
+        if (!db.objectStoreNames.contains('configuracion_fiscal')) {
+          db.createObjectStore('configuracion_fiscal', { keyPath: 'id' });
         }
       },
       blocked() {

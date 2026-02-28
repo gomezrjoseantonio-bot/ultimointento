@@ -28,9 +28,10 @@ import {
   calculateLoanPayment,
   PROJECTION_START_YEAR,
 } from '../../../horizon/proyeccion/mensual/services/proyeccionMensualService';
-
-// Fixed annual dividend yield – mirrors FIXED_ASSUMPTIONS.dividendYield in proyeccionMensualService
-const DIVIDEND_YIELD = 0.02;
+import {
+  ConfiguracionFiscal,
+  TRAMOS_AHORRO_2026,
+} from '../../../../types/inversiones-extended';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -529,42 +530,439 @@ export async function generateMonthlyForecasts(
     console.error('[TreasurySyncService] Error processing autonomo gastos:', err);
   }
 
-  // ── 7. INVERSIONES – Intereses / Dividendos proyectados ──────────────────
-  // Uses the same calculation as proyeccionMensualService (DIVIDEND_YIELD * valorPlanesPension / 12)
+  // ── 7. INVERSIONES – Ciclo de vida completo (①②③④) ───────────────────────
+  //
+  // Logic: only generate TreasuryEvents for dates >= today.
+  // "Pleistoceno" profile: past dates → no events.
+  // "Previsor" profile: future dates → events are generated.
+  //
+  // Bloque ① CREACIÓN (expense events)
+  // Bloque ② VIDA – rendimientos/dividendos (income events)
+  // Bloque ③ LIQUIDACIÓN (income events)
+  // Bloque ④ FISCALIDAD IRPF (expense/income event, once per fiscal year)
   try {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const posiciones = await inversionesService.getPosiciones();
-    const valorPlanesPension = posiciones
-      .filter(p => p.tipo === 'plan_pensiones' || p.tipo === 'plan_empleo')
-      .reduce((sum, p) => sum + p.valor_actual, 0);
 
-    const dividendosMensual = (valorPlanesPension * DIVIDEND_YIELD) / 12;
+    for (const pos of posiciones) {
+      const posAny = pos as any;
 
-    if (dividendosMensual > 0) {
-      const description = 'Intereses / Dividendos – Inversiones';
+      // ── Bloque ① CREACIÓN ──────────────────────────────────────────────────
 
-      const alreadyExists = (await db.getAll('treasuryEvents')).some(
-        e =>
-          e.sourceType === 'inversion' &&
-          e.description === description &&
-          e.predictedDate.startsWith(monthPrefix),
-      );
-
-      if (alreadyExists) {
-        skipped++;
-      } else {
-        await insertEvent({
-          type: 'income' as const,
-          amount: dividendosMensual,
-          predictedDate: buildDate(year, month, 1),
-          description,
-          sourceType: 'inversion' as const,
-          sourceId: undefined,
-          accountId: undefined,
-          status: 'predicted' as const,
-          createdAt: now,
-          updatedAt: now,
-        });
+      // 1a. Compra inicial: if fecha_compra is in this year/month and >= today → expense
+      const fechaCompra: string | undefined = posAny.fecha_compra;
+      if (
+        fechaCompra &&
+        fechaCompra >= today &&
+        fechaCompra.startsWith(monthPrefix) &&
+        pos.id != null
+      ) {
+        if (await isDuplicate('inversion_compra', pos.id)) {
+          skipped++;
+        } else {
+          await insertEvent({
+            type: 'expense' as const,
+            amount: pos.total_aportado,
+            predictedDate: fechaCompra.split('T')[0],
+            description: `Compra – ${pos.nombre}`,
+            sourceType: 'inversion_compra' as const,
+            sourceId: pos.id,
+            accountId: resolveAccountId(posAny.cuenta_cargo_id),
+            status: 'predicted' as const,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
       }
+
+      // 1b. Aportaciones puntuales futuras in this year/month
+      for (const aportacion of pos.aportaciones) {
+        const fechaAp = aportacion.fecha?.split('T')[0] ?? '';
+        if (
+          aportacion.tipo === 'aportacion' &&
+          fechaAp >= today &&
+          fechaAp.startsWith(monthPrefix) &&
+          pos.id != null
+        ) {
+          const sourceId = `${pos.id}_ap_${aportacion.id}`;
+          const alreadyExists = (await db.getAll('treasuryEvents')).some(
+            e =>
+              e.sourceType === 'inversion_aportacion' &&
+              e.description === `Aportación – ${pos.nombre} (${fechaAp})` &&
+              e.predictedDate.startsWith(monthPrefix),
+          );
+          if (alreadyExists) {
+            skipped++;
+          } else {
+            await insertEvent({
+              type: 'expense' as const,
+              amount: aportacion.importe,
+              predictedDate: fechaAp,
+              description: `Aportación – ${pos.nombre} (${fechaAp})`,
+              sourceType: 'inversion_aportacion' as const,
+              sourceId: pos.id,
+              accountId: resolveAccountId(
+                (aportacion as any).cuenta_cargo_id ?? posAny.cuenta_cargo_id,
+              ),
+              status: 'predicted' as const,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+
+      // 1c. Plan de aportaciones periódicas
+      const planAp = posAny.plan_aportaciones;
+      if (planAp?.activo && pos.id != null) {
+        const mesesAp: number[] =
+          planAp.frecuencia === 'mensual'
+            ? ALL_MONTHS
+            : Array.isArray(planAp.meses) && planAp.meses.length > 0
+              ? planAp.meses
+              : ALL_MONTHS;
+
+        if (mesesAp.includes(month)) {
+          const diaAp = planAp.dia_cargo ?? 1;
+          const fechaPlanAp = buildDate(year, month, diaAp);
+          const fechaInicio: string = planAp.fecha_inicio?.split('T')[0] ?? '';
+          const fechaFin: string | undefined = planAp.fecha_fin?.split('T')[0];
+
+          if (
+            fechaPlanAp >= today &&
+            (!fechaInicio || fechaPlanAp >= fechaInicio) &&
+            (!fechaFin || fechaPlanAp <= fechaFin)
+          ) {
+            const descPlanAp = `Plan aportación – ${pos.nombre} ${year}-${String(month).padStart(2, '0')}`;
+            const alreadyExists = (await db.getAll('treasuryEvents')).some(
+              e =>
+                e.sourceType === 'inversion_aportacion' &&
+                e.description === descPlanAp &&
+                e.predictedDate.startsWith(monthPrefix),
+            );
+            if (alreadyExists) {
+              skipped++;
+            } else {
+              await insertEvent({
+                type: 'expense' as const,
+                amount: planAp.importe,
+                predictedDate: fechaPlanAp,
+                description: descPlanAp,
+                sourceType: 'inversion_aportacion' as const,
+                sourceId: pos.id,
+                accountId: resolveAccountId(planAp.cuenta_cargo_id),
+                status: 'predicted' as const,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+
+      // ── Bloque ② VIDA – Rendimientos e intereses ───────────────────────────
+
+      const rendimiento = posAny.rendimiento;
+      if (
+        rendimiento &&
+        !rendimiento.reinvertir &&
+        ['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(pos.tipo) &&
+        pos.id != null
+      ) {
+        const mesesCobro: number[] =
+          rendimiento.frecuencia_pago === 'mensual'
+            ? ALL_MONTHS
+            : Array.isArray(rendimiento.meses_cobro) && rendimiento.meses_cobro.length > 0
+              ? rendimiento.meses_cobro
+              : ALL_MONTHS;
+
+        if (mesesCobro.includes(month)) {
+          const diaCobro = rendimiento.dia_cobro ?? 1;
+          const fechaRend = buildDate(year, month, diaCobro);
+          const fechaInicioRend: string = rendimiento.fecha_inicio_rendimiento?.split('T')[0] ?? '';
+          const fechaFinRend: string | undefined = rendimiento.fecha_fin_rendimiento?.split('T')[0];
+          const retencion = rendimiento.retencion_porcentaje ?? 19;
+
+          if (
+            fechaRend >= today &&
+            (!fechaInicioRend || fechaRend >= fechaInicioRend) &&
+            (!fechaFinRend || fechaRend <= fechaFinRend)
+          ) {
+            const numPagosAnuales = mesesCobro.length > 0 ? mesesCobro.length : 12;
+            const brutoPorPago =
+              (pos.valor_actual * (rendimiento.tasa_interes_anual / 100)) / numPagosAnuales;
+            const netoPorPago = brutoPorPago * (1 - retencion / 100);
+
+            if (netoPorPago > 0) {
+              if (await isDuplicate('inversion_rendimiento', pos.id)) {
+                skipped++;
+              } else {
+                await insertEvent({
+                  type: 'income' as const,
+                  amount: Math.round(netoPorPago * 100) / 100,
+                  predictedDate: fechaRend,
+                  description: `Intereses netos – ${pos.nombre}`,
+                  sourceType: 'inversion_rendimiento' as const,
+                  sourceId: pos.id,
+                  accountId: resolveAccountId(rendimiento.cuenta_destino_id),
+                  status: 'predicted' as const,
+                  createdAt: now,
+                  updatedAt: now,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // ── Bloque ② VIDA – Dividendos ─────────────────────────────────────────
+
+      const dividendos = posAny.dividendos;
+      if (
+        dividendos?.paga_dividendos &&
+        ['accion', 'etf', 'reit'].includes(pos.tipo) &&
+        pos.id != null
+      ) {
+        const mesesDiv: number[] =
+          dividendos.frecuencia_dividendos === 'mensual'
+            ? ALL_MONTHS
+            : Array.isArray(dividendos.meses_cobro) && dividendos.meses_cobro.length > 0
+              ? dividendos.meses_cobro
+              : ALL_MONTHS;
+
+        if (mesesDiv.includes(month)) {
+          const diaDiv = dividendos.dia_cobro ?? 1;
+          const fechaDiv = buildDate(year, month, diaDiv);
+
+          if (fechaDiv >= today) {
+            const numParticipaciones = posAny.numero_participaciones ?? 0;
+            const dividendoPorAccion = dividendos.dividendo_por_accion ?? 0;
+            const retencionOrigen = dividendos.retencion_origen_porcentaje ?? 0;
+            const retencionEsp = dividendos.retencion_porcentaje ?? 19;
+
+            const brutoPorPago = numParticipaciones * dividendoPorAccion;
+            const trasOrigen = brutoPorPago * (1 - retencionOrigen / 100);
+            const netoPorPago = trasOrigen * (1 - retencionEsp / 100);
+
+            if (netoPorPago > 0) {
+              if (await isDuplicate('inversion_dividendo', pos.id)) {
+                skipped++;
+              } else {
+                await insertEvent({
+                  type: 'income' as const,
+                  amount: Math.round(netoPorPago * 100) / 100,
+                  predictedDate: fechaDiv,
+                  description: `Dividendos netos – ${pos.nombre}`,
+                  sourceType: 'inversion_dividendo' as const,
+                  sourceId: pos.id,
+                  accountId: resolveAccountId(dividendos.cuenta_destino_dividendos_id),
+                  status: 'predicted' as const,
+                  createdAt: now,
+                  updatedAt: now,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // ── Bloque ③ LIQUIDACIÓN ────────────────────────────────────────────────
+
+      // 3a. depósito a plazo: capital returned at maturity
+      if (pos.tipo === 'deposito_plazo' && rendimiento?.fecha_fin_rendimiento && pos.id != null) {
+        const fechaVenc = rendimiento.fecha_fin_rendimiento.split('T')[0];
+        if (fechaVenc >= today && fechaVenc.startsWith(monthPrefix)) {
+          if (await isDuplicate('inversion_liquidacion', pos.id)) {
+            skipped++;
+          } else {
+            await insertEvent({
+              type: 'income' as const,
+              amount: pos.valor_actual,
+              predictedDate: fechaVenc,
+              description: `Vencimiento depósito – ${pos.nombre}`,
+              sourceType: 'inversion_liquidacion' as const,
+              sourceId: pos.id,
+              accountId: resolveAccountId(rendimiento.cuenta_destino_id),
+              status: 'predicted' as const,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+
+      // 3b. Plan de liquidación
+      const planLiq = posAny.plan_liquidacion;
+      if (planLiq?.activo && pos.id != null) {
+        const fechaLiq = planLiq.fecha_estimada?.split('T')[0] ?? '';
+        if (fechaLiq >= today && fechaLiq.startsWith(monthPrefix)) {
+          const importeLiq = planLiq.liquidacion_total ? pos.valor_actual : (planLiq.importe_estimado ?? pos.valor_actual);
+          const descLiq = `Liquidación – ${pos.nombre}`;
+          // Use a composite key to avoid collision with the deposito vencimiento above
+          const existsLiq = (await db.getAll('treasuryEvents')).some(
+            e =>
+              e.sourceType === 'inversion_liquidacion' &&
+              e.description === descLiq &&
+              e.predictedDate.startsWith(monthPrefix),
+          );
+          if (existsLiq) {
+            skipped++;
+          } else {
+            await insertEvent({
+              type: 'income' as const,
+              amount: importeLiq,
+              predictedDate: fechaLiq,
+              description: descLiq,
+              sourceType: 'inversion_liquidacion' as const,
+              sourceId: pos.id,
+              accountId: resolveAccountId(planLiq.cuenta_destino_id),
+              status: 'predicted' as const,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+    }
+
+    // ── Bloque ④ FISCALIDAD IRPF anual ────────────────────────────────────────
+    // Generates a forecast expense/income event for the annual income tax declaration.
+    // Only generated once per fiscal year, in the month of the tax filing.
+    try {
+      const configFiscalRecord = await db.get('configuracion_fiscal', 'default');
+      const configFiscal: ConfiguracionFiscal | undefined = configFiscalRecord;
+
+      if (configFiscal?.incluir_prevision_irpf) {
+        const mesDeclaracion = configFiscal.mes_declaracion ?? 6;
+        const diaDeclaracion = configFiscal.dia_declaracion ?? 25;
+
+        if (month === mesDeclaracion) {
+          // The fiscal year being declared is the previous calendar year
+          const añoFiscal = year - 1;
+          const irpfDescripcion = `Previsión IRPF ${añoFiscal}`;
+
+          const alreadyExistsIrpf = (await db.getAll('treasuryEvents')).some(
+            e =>
+              e.sourceType === 'irpf_prevision' &&
+              e.description === irpfDescripcion &&
+              e.predictedDate.startsWith(monthPrefix),
+          );
+
+          if (alreadyExistsIrpf) {
+            skipped++;
+          } else {
+            // Aggregate bruto incomes for añoFiscal from all active positions
+            const allPosiciones = await inversionesService.getPosiciones();
+            let interesesBrutos = 0;
+            let dividendosBrutos = 0;
+            let plusvalias = 0;
+            let retencionesYaPagadas = 0;
+
+            for (const pos of allPosiciones) {
+              const posAny = pos as any;
+              const rend = posAny.rendimiento;
+              const divs = posAny.dividendos;
+
+              // Interests
+              if (rend && ['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(pos.tipo)) {
+                const mesesR: number[] =
+                  rend.frecuencia_pago === 'mensual'
+                    ? ALL_MONTHS
+                    : Array.isArray(rend.meses_cobro) && rend.meses_cobro.length > 0
+                      ? rend.meses_cobro
+                      : ALL_MONTHS;
+                const numPagos = mesesR.length;
+                const brutoAnual = pos.valor_actual * (rend.tasa_interes_anual / 100);
+                const brutoTotal = brutoAnual;
+                interesesBrutos += brutoTotal;
+                const retencionAnual = brutoTotal * ((rend.retencion_porcentaje ?? 19) / 100);
+                // Only count retenciones that actually applied (within rendimiento dates)
+                const fInicioR = rend.fecha_inicio_rendimiento?.split('T')[0] ?? '';
+                const fFinR = rend.fecha_fin_rendimiento?.split('T')[0] ?? '';
+                const añoFiscalStr = String(añoFiscal);
+                const activeInFiscalYear =
+                  (!fInicioR || fInicioR.startsWith(añoFiscalStr) || fInicioR < añoFiscalStr + '-01-01') &&
+                  (!fFinR || fFinR >= añoFiscalStr + '-01-01');
+                if (activeInFiscalYear) {
+                  retencionesYaPagadas += (retencionAnual / 12) * numPagos;
+                }
+              }
+
+              // Dividends
+              if (divs?.paga_dividendos && ['accion', 'etf', 'reit'].includes(pos.tipo)) {
+                const mesesD: number[] =
+                  divs.frecuencia_dividendos === 'mensual'
+                    ? ALL_MONTHS
+                    : Array.isArray(divs.meses_cobro) && divs.meses_cobro.length > 0
+                      ? divs.meses_cobro
+                      : ALL_MONTHS;
+                const numParticipaciones = posAny.numero_participaciones ?? 0;
+                const divPorAccion = divs.dividendo_por_accion ?? 0;
+                const brutoAnualDiv = numParticipaciones * divPorAccion * mesesD.length;
+                dividendosBrutos += brutoAnualDiv;
+                const retencionOrigenPct = divs.retencion_origen_porcentaje ?? 0;
+                const retencionEspPct = divs.retencion_porcentaje ?? 19;
+                const trasOrigen = brutoAnualDiv * (1 - retencionOrigenPct / 100);
+                // Recoverable source-country withholding capped at 15%
+                const recoverableOrigen = brutoAnualDiv * (Math.min(retencionOrigenPct, 15) / 100);
+                const retencionEsp = trasOrigen * (retencionEspPct / 100);
+                retencionesYaPagadas += retencionEsp + recoverableOrigen;
+              }
+
+              // Plusvalías from liquidations in añoFiscal
+              const planLiq = posAny.plan_liquidacion;
+              if (planLiq?.activo) {
+                const fLiq = planLiq.fecha_estimada?.split('T')[0] ?? '';
+                if (fLiq.startsWith(String(añoFiscal))) {
+                  const importeVenta = planLiq.liquidacion_total ? pos.valor_actual : (planLiq.importe_estimado ?? pos.valor_actual);
+                  const costeAdquisicion = pos.total_aportado;
+                  plusvalias += importeVenta - costeAdquisicion;
+                }
+              }
+            }
+
+            // Subtract pending minusvalías (up to 4 years back)
+            const minusvalias = (configFiscal.minusvalias_pendientes ?? [])
+              .filter(m => m.año >= añoFiscal - 4 && m.año < añoFiscal)
+              .reduce((sum, m) => sum + m.importe, 0);
+
+            const baseAhorro = interesesBrutos + dividendosBrutos + plusvalias - minusvalias;
+
+            // Apply tax brackets
+            let impuestoCalculado = 0;
+            let baseRestante = Math.max(baseAhorro, 0);
+            let baseAcumulada = 0;
+            for (const tramo of TRAMOS_AHORRO_2026) {
+              if (baseRestante <= 0) break;
+              const limiteTramo = tramo.hasta - baseAcumulada;
+              const baseEnTramo = Math.min(baseRestante, limiteTramo);
+              impuestoCalculado += baseEnTramo * tramo.tipo;
+              baseAcumulada += baseEnTramo;
+              baseRestante -= baseEnTramo;
+            }
+
+            const resultado = impuestoCalculado - retencionesYaPagadas;
+
+            if (Math.abs(resultado) > 1) {
+              const fechaDeclaracion = buildDate(year, mesDeclaracion, diaDeclaracion);
+              await insertEvent({
+                type: resultado > 0 ? ('expense' as const) : ('income' as const),
+                amount: Math.round(Math.abs(resultado) * 100) / 100,
+                predictedDate: fechaDeclaracion,
+                description: irpfDescripcion,
+                sourceType: 'irpf_prevision' as const,
+                sourceId: undefined,
+                accountId: resolveAccountId(configFiscal.cuenta_irpf_id),
+                status: 'predicted' as const,
+                createdAt: now,
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+    } catch (irpfErr) {
+      console.error('[TreasurySyncService] Error processing IRPF forecast:', irpfErr);
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing inversiones:', err);

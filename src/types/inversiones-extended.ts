@@ -29,10 +29,13 @@ export interface RendimientoPeriodico {
   tipo_rendimiento: 'interes_fijo' | 'interes_variable';
   tasa_interes_anual: number;           // 10 for 10%
   frecuencia_pago: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+  meses_cobro: number[];                // NUEVO: months in which interest is collected (e.g. [3,6,9,12])
+  dia_cobro: number;                    // NUEVO: day of month on which interest arrives
   reinvertir: boolean;                  // true = added to capital
   cuenta_destino_id?: number;           // If reinvertir=false
   fecha_inicio_rendimiento: string;
   fecha_fin_rendimiento?: string;       // For term deposits
+  retencion_porcentaje: number;         // NUEVO: withholding tax %, default 19 (Spain)
   pagos_generados: PagoRendimiento[];
 }
 
@@ -61,10 +64,18 @@ export interface InversionRendimientoPeriodico extends PosicionInversionBase {
 export interface DividendoConfig {
   paga_dividendos: boolean;
   frecuencia_dividendos?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+  meses_cobro: number[];                // NUEVO: months in which dividends are paid
+  dia_cobro: number;                    // NUEVO: day of month
+  dividendo_por_accion: number;         // NUEVO: gross dividend per share/unit
   politica_dividendos: 'distribucion' | 'acumulacion';
   cuenta_destino_dividendos_id?: number;
+  retencion_porcentaje: number;         // NUEVO: Spanish withholding %, default 19
+  retencion_origen_porcentaje: number;  // NUEVO: source-country withholding %, default 0
   dividendos_recibidos: DividendoRecibido[];
 }
+
+/** Alias following the naming convention in the problem statement */
+export type DividendosConfig = DividendoConfig;
 
 export interface DividendoRecibido {
   id: number;
@@ -122,3 +133,27 @@ export function esConDividendos(pos: PosicionInversionExtendida): pos is Inversi
 export function esValoracionSimple(pos: PosicionInversionExtendida): pos is InversionValoracionSimple {
   return ['fondo_inversion', 'plan_pensiones', 'plan_empleo', 'crypto', 'otro'].includes(pos.tipo);
 }
+
+// ============================================
+// BLOQUE ④: CONFIGURACIÓN FISCAL
+// ============================================
+
+export interface ConfiguracionFiscal {
+  cuenta_irpf_id: number;
+  mes_declaracion: number;    // default 6 (June)
+  dia_declaracion: number;    // default 25
+  incluir_prevision_irpf: boolean;
+  minusvalias_pendientes: {
+    año: number;
+    importe: number;
+  }[];
+}
+
+/** Tax brackets for savings income (base del ahorro) – Spain 2026 */
+export const TRAMOS_AHORRO_2026 = [
+  { hasta: 6000,      tipo: 0.19 },
+  { hasta: 50000,     tipo: 0.21 },
+  { hasta: 200000,    tipo: 0.23 },
+  { hasta: 300000,    tipo: 0.27 },
+  { hasta: Infinity,  tipo: 0.28 },
+];
