@@ -597,15 +597,9 @@ export async function generateMonthlyForecasts(
           aportacion.tipo === 'aportacion' &&
           fechaAp >= today &&
           fechaAp.startsWith(monthPrefix) &&
-          pos.id != null
+          aportacion.id != null
         ) {
-          const alreadyExists = (await db.getAll('treasuryEvents')).some(
-            e =>
-              e.sourceType === 'inversion_aportacion' &&
-              e.description === `Aportación – ${pos.nombre} (${fechaAp})` &&
-              e.predictedDate.startsWith(monthPrefix),
-          );
-          if (alreadyExists) {
+          if (await isDuplicate('inversion_aportacion', aportacion.id)) {
             skipped++;
           } else {
             await insertEvent({
@@ -614,7 +608,7 @@ export async function generateMonthlyForecasts(
               predictedDate: fechaAp,
               description: `Aportación – ${pos.nombre} (${fechaAp})`,
               sourceType: 'inversion_aportacion' as const,
-              sourceId: pos.id,
+              sourceId: aportacion.id,
               accountId: resolveAccountId(
                 (aportacion as any).cuenta_cargo_id ?? posAny.cuenta_cargo_id,
               ),

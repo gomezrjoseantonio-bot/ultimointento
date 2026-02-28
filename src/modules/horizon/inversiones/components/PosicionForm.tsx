@@ -203,9 +203,20 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       if (formData.tasa_interes_anual <= 0) newErrors.tasa_interes_anual = 'La tasa de interés debe ser mayor que 0';
       if (!formData.fecha_inicio_rendimiento) newErrors.fecha_inicio_rendimiento = 'La fecha de inicio es obligatoria';
       if (!formData.reinvertir && !formData.cuenta_destino_id) newErrors.cuenta_destino_id = 'Selecciona una cuenta destino';
+      if (formData.frecuencia_pago !== 'mensual' && formData.meses_cobro_rendimiento.length === 0) {
+        newErrors.meses_cobro_rendimiento = `Selecciona los meses de cobro para frecuencia ${formData.frecuencia_pago}`;
+      }
     }
     if (tipoCategoria === 'dividendos') {
       if (formData.numero_participaciones <= 0) newErrors.numero_participaciones = 'El número de participaciones debe ser mayor que 0';
+      if (formData.paga_dividendos) {
+        if (!formData.dividendo_por_accion || formData.dividendo_por_accion <= 0) {
+          newErrors.dividendo_por_accion = 'El dividendo por acción debe ser mayor que 0';
+        }
+        if (formData.frecuencia_dividendos !== 'mensual' && formData.meses_cobro_dividendos.length === 0) {
+          newErrors.meses_cobro_dividendos = `Selecciona los meses de cobro para frecuencia ${formData.frecuencia_dividendos}`;
+        }
+      }
     }
     if (planApActivo) {
       if (!planAp.importe || planAp.importe <= 0) newErrors.planAp_importe = 'El importe de la aportación debe ser mayor que 0';
@@ -213,8 +224,8 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       if (!planAp.fecha_inicio) newErrors.planAp_fecha_inicio = 'La fecha de inicio es obligatoria';
       if (planAp.frecuencia !== 'mensual') {
         const expected = FRECUENCIA_MESES[planAp.frecuencia] ?? 0;
-        if (expected > 0 && planAp.meses.length === 0) {
-          newErrors.planAp_meses = `Selecciona los meses (${expected} para ${planAp.frecuencia})`;
+        if (expected > 0 && planAp.meses.length !== expected) {
+          newErrors.planAp_meses = `Selecciona exactamente ${expected} mes${expected > 1 ? 'es' : ''} para frecuencia ${planAp.frecuencia}`;
         }
       }
     }
@@ -304,7 +315,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         fecha_fin: planAp.fecha_fin ? new Date(planAp.fecha_fin).toISOString() : undefined,
       } as PlanAportaciones;
     } else {
-      dataToSave.plan_aportaciones = { activo: false } as Partial<PlanAportaciones>;
+      dataToSave.plan_aportaciones = undefined;
     }
 
     if (planLiqActivo) {
@@ -317,7 +328,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         cuenta_destino_id: planLiq.cuenta_destino_id,
       } as PlanLiquidacion;
     } else {
-      dataToSave.plan_liquidacion = { activo: false } as Partial<PlanLiquidacion>;
+      dataToSave.plan_liquidacion = undefined;
     }
 
     onSave(dataToSave);

@@ -71,6 +71,11 @@ export interface PosicionInversion {
   rentabilidad_porcentaje: number; // (rentabilidad_euros / total_aportado) * 100
 
   // ── Bloque ①: Compra / Creación ──────────────────────────────────────────
+  // NOTE: fecha_compra and cuenta_cargo_id are optional here to maintain
+  // backward compatibility with positions persisted before this feature was
+  // introduced. The creation form validates both fields as required for new
+  // positions, so consumers can assume they are always present on records
+  // saved after DB v26. For older records the fields may be absent.
   fecha_compra?: string;           // ISO date – when was/will be purchased
   cuenta_cargo_id?: number;        // Account from which the purchase amount was/will be debited
   plan_aportaciones?: PlanAportaciones; // Scheduled periodic contributions
