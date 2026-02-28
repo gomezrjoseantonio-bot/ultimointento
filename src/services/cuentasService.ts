@@ -16,6 +16,8 @@ export interface CreateAccountData {
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA';
   titular?: { nombre?: string; nif?: string; };
   logoUser?: string; // User uploaded logo
+  openingBalance?: number;      // Saldo a fecha de referencia (default 0)
+  openingBalanceDate?: string;  // Fecha ISO del saldo (default = now)
 }
 
 export interface UpdateAccountData {
@@ -89,9 +91,9 @@ class CuentasService {
         currency: 'EUR',
         titular: account.titular,
         isDefault: account.isDefault || false,
-        balance: existingAccount?.balance || 0, // Preserve existing balance
-        openingBalance: existingAccount?.openingBalance || 0,
-        openingBalanceDate: existingAccount?.openingBalanceDate || account.createdAt,
+        balance: existingAccount?.balance ?? account.openingBalance ?? account.balance ?? 0,
+        openingBalance: account.openingBalance ?? existingAccount?.openingBalance ?? 0,
+        openingBalanceDate: account.openingBalanceDate ?? existingAccount?.openingBalanceDate ?? account.createdAt,
         includeInConsolidated: true,
         usage_scope: 'mixto',
         deleted_at: account.deleted_at, // Preserve deletion status
@@ -204,6 +206,9 @@ class CuentasService {
       status: 'ACTIVE', // New required field
       activa: true,
       isDefault: false,
+      openingBalance: data.openingBalance ?? 0,
+      balance: data.openingBalance ?? 0,
+      openingBalanceDate: data.openingBalanceDate ?? new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -213,6 +218,44 @@ class CuentasService {
 
     // Sync to IndexedDB (treasury storage)
     await this.syncAccountToIndexedDB(newAccount);
+
+    // P1: Create opening balance movement if openingBalance is non-zero
+    const openingBalance = newAccount.openingBalance ?? 0;
+    if (openingBalance !== 0) {
+      try {
+        const db = await initDB();
+        const existingAccounts = await db.getAll('accounts');
+        const dbAccount = existingAccounts.find((acc: any) => acc.iban === normalizedIban);
+        if (dbAccount?.id != null) {
+          const openingMovement = {
+            accountId: dbAccount.id,
+            date: newAccount.openingBalanceDate!,
+            amount: openingBalance,
+            description: 'Saldo inicial de apertura',
+            counterparty: 'Sistema',
+            reference: `APERTURA-${dbAccount.id}`,
+            balance: openingBalance,
+            status: 'confirmado',
+            state: 'confirmed',
+            type: openingBalance >= 0 ? 'Ingreso' : 'Gasto',
+            origin: 'SYSTEM',
+            movementState: 'Confirmado',
+            currency: 'EUR',
+            saldo: openingBalance,
+            estado_conciliacion: 'conciliado',
+            isOpeningBalance: true,
+            unifiedStatus: 'conciliado',
+            source: 'manual',
+            category: { tipo: 'Saldo Inicial' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await db.add('movements', openingMovement);
+        }
+      } catch (error) {
+        console.warn('[ACCOUNTS] Failed to create opening balance movement:', error);
+      }
+    }
 
     // Telemetry (dev-only, no PII)
     if (process.env.NODE_ENV === 'development') {

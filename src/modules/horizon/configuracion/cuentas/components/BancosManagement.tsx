@@ -14,6 +14,8 @@ interface AccountFormData {
   iban: string;
   logoFile: File | null;
   logoUrl: string | null;
+  openingBalance: string;        // string for input, parse to number on save
+  openingBalanceDate: string;    // YYYY-MM-DD
 }
 
 /**
@@ -45,7 +47,9 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
     bank: '',
     iban: '',
     logoFile: null,
-    logoUrl: null
+    logoUrl: null,
+    openingBalance: '',
+    openingBalanceDate: new Date().toISOString().split('T')[0]
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -145,7 +149,9 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       bank: '',
       iban: '',
       logoFile: null,
-      logoUrl: null
+      logoUrl: null,
+      openingBalance: '',
+      openingBalanceDate: new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
     
@@ -290,7 +296,8 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
         alias: formData.alias.trim() || undefined,
         bank: formData.bank.trim(),
         iban: formData.iban.replace(/\s/g, '').toUpperCase(),
-        openingBalance: 0,
+        openingBalance: parseFloat(formData.openingBalance) || 0,
+        openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : undefined,
         includeInConsolidated: true,
         logo_url: logoUrl || undefined
       };
@@ -370,7 +377,9 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
       bank: '',
       iban: '',
       logoFile: null,
-      logoUrl: null
+      logoUrl: null,
+      openingBalance: '',
+      openingBalanceDate: new Date().toISOString().split('T')[0]
     });
     setFormErrors({});
     
@@ -611,6 +620,38 @@ const BancosManagement = React.forwardRef<BancosManagementRef>((props, ref) => {
                   PNG/JPG, máximo 2MB
                 </p>
               </div>
+
+              {/* Opening Balance (solo en creación) */}
+              {!editingAccount && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                      Saldo actual (€)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.openingBalance}
+                      onChange={(e) => setFormData(prev => ({ ...prev, openingBalance: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="0,00"
+                      step="0.01"
+                      disabled={saving}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                      Fecha del saldo
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.openingBalanceDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, openingBalanceDate: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Submit Buttons */}
               <div className="flex justify-end space-x-3 pt-4">
