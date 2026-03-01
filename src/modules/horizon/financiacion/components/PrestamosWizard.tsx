@@ -113,6 +113,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const hasChanges = useRef(false);
   const existingPrincipalVivoRef = useRef<number | undefined>(undefined);
+  const existingCuotasPagadasRef = useRef<number | undefined>(undefined);
 
   const calculoLive = useDebouncedCalculation(formData);
 
@@ -138,6 +139,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       prestamosService.getPrestamoById(prestamoId).then(prestamo => {
         if (prestamo) {
           existingPrincipalVivoRef.current = prestamo.principalVivo;
+          existingCuotasPagadasRef.current = prestamo.cuotasPagadas;
           setFormData({
             id: prestamo.id,
             ambito: prestamo.ambito,
@@ -228,6 +230,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
 
     if (currentStep === 'identificacion') {
       if (!formData.ambito) newErrors.ambito = 'Selecciona el ámbito';
+      if (formData.ambito === 'INMUEBLE' && !formData.inmuebleId) newErrors.inmuebleId = 'Selecciona un inmueble';
       if (!formData.cuentaCargoId) newErrors.cuentaCargoId = 'Selecciona una cuenta de cargo';
       if (!formData.fechaFirma) newErrors.fechaFirma = 'Introduce la fecha de firma';
       if (!formData.fechaPrimerCargo) newErrors.fechaPrimerCargo = 'Introduce la fecha del primer cargo';
@@ -274,9 +277,12 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     try {
       const mapped = mapToStoragePrestamo(formData as PrestamoFinanciacion);
       if (prestamoId) {
-        // Preserve principalVivo for existing loans instead of resetting to capitalInicial
+        // Preserve principalVivo and cuotasPagadas for existing loans instead of resetting
         if (existingPrincipalVivoRef.current !== undefined) {
           mapped.principalVivo = existingPrincipalVivoRef.current;
+        }
+        if (existingCuotasPagadasRef.current !== undefined) {
+          mapped.cuotasPagadas = existingCuotasPagadasRef.current;
         }
         await prestamosService.updatePrestamo(prestamoId, mapped);
       } else {
@@ -342,8 +348,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
               data={formData}
               onChange={handleChange}
               errors={errors}
-              accounts={[]}
-              inmuebles={[]}
             />
           )}
           {currentStep === 'estructura' && (

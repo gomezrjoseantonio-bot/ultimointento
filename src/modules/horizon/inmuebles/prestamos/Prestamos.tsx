@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import PageLayout from '../../../../components/common/PageLayout';
 import PrestamosList from './components/PrestamosList';
 import PrestamoDetail from './components/PrestamoDetail';
-import PrestamoForm from './components/PrestamoForm';
 
-type View = 'list' | 'detail' | 'create' | 'edit';
+type View = 'list' | 'detail';
 
 const Prestamos: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('list');
@@ -17,16 +16,12 @@ const Prestamos: React.FC = () => {
 
   const handleEditPrestamo = (prestamoId: string) => {
     setSelectedPrestamoId(prestamoId);
-    setCurrentView('edit');
+    setCurrentView('detail');
   };
 
   const handleBackToList = () => {
     setCurrentView('list');
     setSelectedPrestamoId('');
-  };
-
-  const handleCreateNew = () => {
-    setCurrentView('create');
   };
 
   const renderContent = () => {
@@ -38,41 +33,20 @@ const Prestamos: React.FC = () => {
             onBack={handleBackToList}
           />
         );
-      case 'create':
-        return (
-          <PrestamoForm
-            onSuccess={(prestamo) => {
-              setSelectedPrestamoId(prestamo.id);
-              setCurrentView('detail');
-            }}
-            onCancel={handleBackToList}
-          />
-        );
-      case 'edit':
-        return (
-          <PrestamoForm
-            prestamoId={selectedPrestamoId}
-            onSuccess={(prestamo) => {
-              setSelectedPrestamoId(prestamo.id);
-              setCurrentView('detail');
-            }}
-            onCancel={handleBackToList}
-          />
-        );
       case 'list':
       default:
         return (
           <PrestamosList
             onSelectPrestamo={handleSelectPrestamo}
             onEditPrestamo={handleEditPrestamo}
-            onCreateNew={handleCreateNew}
+            onCreateNew={() => {}}
           />
         );
     }
   };
 
-  if (currentView === 'detail' || currentView === 'create' || currentView === 'edit') {
-    // Don't wrap detail or create view in PageLayout since they have their own navigation
+  if (currentView === 'detail') {
+    // Don't wrap detail view in PageLayout since it has its own navigation
     return <div className="p-6">{renderContent()}</div>;
   }
 
