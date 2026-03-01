@@ -414,6 +414,7 @@ const InversionesPage: React.FC = () => {
       {showAportacionForm && editingPosicion && (
         <AportacionForm
           posicionNombre={editingPosicion.nombre}
+          posicion={editingPosicion}
           onSave={handleAddAportacion}
           onClose={() => setShowAportacionForm(false)}
         />

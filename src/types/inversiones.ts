@@ -22,10 +22,13 @@ export type TipoPosicion =
 export interface Aportacion {
   id: number;
   fecha: string; // ISO date
-  importe: number;
+  importe: number; // Para aportaciones: importe invertido. Para reembolsos: importe recibido (precio de venta)
   tipo: 'aportacion' | 'reembolso' | 'dividendo';
   notas?: string;
   cuenta_cargo_id?: number; // Account from which the contribution is made
+  unidades_vendidas?: number; // Participaciones/acciones vendidas (si aplica)
+  coste_adquisicion_fifo?: number; // Coste de adquisición calculado por FIFO
+  ganancia_perdida?: number; // importe - coste_adquisicion_fifo
 }
 
 // ── Bloque ①: Plan de Aportaciones Periódicas ──────────────────────────────

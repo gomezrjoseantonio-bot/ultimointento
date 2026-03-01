@@ -3,6 +3,7 @@
 
 import { initDB } from './db';
 import { PosicionInversion, Aportacion } from '../types/inversiones';
+import { calcularGananciaPerdidaFIFO } from './inversionesFiscalService';
 
 export const inversionesService = {
   // Obtener todas las posiciones activas
@@ -84,19 +85,42 @@ export const inversionesService = {
     const db = await initDB();
     const posicion = await db.get('inversiones', posicionId);
     if (posicion) {
-      const newAportacion: Aportacion = {
+      const newAportacionBase: Aportacion = {
         ...aportacion,
         id: Date.now() + Math.floor(Math.random() * 1000),
       };
+
+      const newAportacion = newAportacionBase.tipo === 'reembolso'
+        ? (() => {
+            const { costeAdquisicion, gananciaOPerdida } = calcularGananciaPerdidaFIFO(posicion, newAportacionBase);
+            return {
+              ...newAportacionBase,
+              coste_adquisicion_fifo: costeAdquisicion,
+              ganancia_perdida: gananciaOPerdida,
+            };
+          })()
+        : newAportacionBase;
+
       const aportaciones = [...posicion.aportaciones, newAportacion];
-      
+
       // Recalcular total aportado
       const total_aportado = aportaciones.reduce((sum, a) => {
         if (a.tipo === 'reembolso') return sum - a.importe;
         return sum + a.importe;
       }, 0);
 
-      await this.updatePosicion(posicionId, { aportaciones, total_aportado });
+      const updates: Partial<PosicionInversion> = { aportaciones, total_aportado };
+      if (newAportacion.tipo === 'reembolso' && (newAportacion.unidades_vendidas ?? 0) > 0) {
+        const numeroParticipaciones = (posicion as any).numero_participaciones as number | undefined;
+        if (typeof numeroParticipaciones === 'number') {
+          const restante = numeroParticipaciones - (newAportacion.unidades_vendidas ?? 0);
+          if (restante <= 0) {
+            updates.valor_actual = 0;
+          }
+        }
+      }
+
+      await this.updatePosicion(posicionId, updates);
     }
   },
 

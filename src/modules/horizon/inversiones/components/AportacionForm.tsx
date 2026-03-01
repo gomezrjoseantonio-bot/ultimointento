@@ -1,25 +1,32 @@
 // AportacionForm.tsx
 // ATLAS HORIZON: Modal form to add an aportacion or reembolso to a posicion
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
-import { Aportacion } from '../../../../types/inversiones';
+import { Aportacion, PosicionInversion } from '../../../../types/inversiones';
 import { cuentasService } from '../../../../services/cuentasService';
 import { Account } from '../../../../services/db';
+import { calcularGananciaPerdidaFIFO } from '../../../../services/inversionesFiscalService';
 
 interface AportacionFormProps {
   posicionNombre: string;
+  posicion: PosicionInversion;
   onSave: (aportacion: Omit<Aportacion, 'id'>) => void;
   onClose: () => void;
 }
 
-const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave, onClose }) => {
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicion, onSave, onClose }) => {
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split('T')[0],
     tipo: 'aportacion' as 'aportacion' | 'reembolso',
     importe: 0,
     notas: '',
     cuenta_cargo_id: '' as string,
+    unidades_vendidas: 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [cuentas, setCuentas] = useState<Account[]>([]);
@@ -27,6 +34,22 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
   useEffect(() => {
     cuentasService.list().then(setCuentas).catch(() => setCuentas([]));
   }, []);
+
+  const fifoPreview = useMemo(() => {
+    if (formData.tipo !== 'reembolso' || formData.importe <= 0) {
+      return { costeAdquisicion: 0, gananciaOPerdida: 0 };
+    }
+
+    const reembolsoPreview: Aportacion = {
+      id: -1,
+      fecha: new Date(formData.fecha).toISOString(),
+      tipo: 'reembolso',
+      importe: formData.importe,
+      unidades_vendidas: formData.unidades_vendidas > 0 ? formData.unidades_vendidas : undefined,
+    };
+
+    return calcularGananciaPerdidaFIFO(posicion, reembolsoPreview);
+  }, [formData.fecha, formData.importe, formData.tipo, formData.unidades_vendidas, posicion]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -36,6 +59,9 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
     if (!formData.fecha) {
       newErrors.fecha = 'La fecha es obligatoria';
     }
+    if (formData.tipo === 'reembolso' && formData.unidades_vendidas < 0) {
+      newErrors.unidades_vendidas = 'Las unidades vendidas no pueden ser negativas';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -43,13 +69,24 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSave({
+
+    const payload: Omit<Aportacion, 'id'> = {
       fecha: new Date(formData.fecha).toISOString(),
       tipo: formData.tipo,
       importe: formData.importe,
       notas: formData.notas || undefined,
       cuenta_cargo_id: formData.cuenta_cargo_id ? Number(formData.cuenta_cargo_id) : undefined,
-    });
+      unidades_vendidas: formData.tipo === 'reembolso' && formData.unidades_vendidas > 0
+        ? formData.unidades_vendidas
+        : undefined,
+    };
+
+    if (formData.tipo === 'reembolso') {
+      payload.coste_adquisicion_fifo = round2(fifoPreview.costeAdquisicion);
+      payload.ganancia_perdida = round2(fifoPreview.gananciaOPerdida);
+    }
+
+    onSave(payload);
   };
 
   const selectStyle: React.CSSProperties = {
@@ -117,46 +154,21 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Fecha */}
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                marginBottom: '0.5rem',
-              }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
                 Fecha *
               </label>
               <input
                 type="date"
                 value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: `1px solid ${errors.fecha ? 'var(--error)' : 'var(--hz-neutral-300)'}`,
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '1rem',
-                }}
+                style={{ width: '100%', padding: '0.75rem', border: `1px solid ${errors.fecha ? 'var(--error)' : 'var(--hz-neutral-300)'}`, borderRadius: '8px', fontFamily: 'var(--font-inter)', fontSize: '1rem' }}
               />
-              {errors.fecha && (
-                <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
-                  {errors.fecha}
-                </span>
-              )}
+              {errors.fecha && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>{errors.fecha}</span>}
             </div>
 
             {/* Tipo */}
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                marginBottom: '0.5rem',
-              }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
                 Tipo *
               </label>
               <select
@@ -171,14 +183,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
 
             {/* Importe */}
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                marginBottom: '0.5rem',
-              }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
                 Importe * (€)
               </label>
               <input
@@ -186,40 +191,47 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
                 step="0.01"
                 value={formData.importe}
                 onChange={(e) => setFormData({ ...formData, importe: parseFloat(e.target.value) || 0 })}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: `1px solid ${errors.importe ? 'var(--error)' : 'var(--hz-neutral-300)'}`,
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '1rem',
-                }}
+                style={{ width: '100%', padding: '0.75rem', border: `1px solid ${errors.importe ? 'var(--error)' : 'var(--hz-neutral-300)'}`, borderRadius: '8px', fontFamily: 'var(--font-inter)', fontSize: '1rem' }}
                 placeholder="500.00"
               />
-              {errors.importe && (
-                <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
-                  {errors.importe}
-                </span>
-              )}
+              {errors.importe && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>{errors.importe}</span>}
             </div>
+
+            {formData.tipo === 'reembolso' && (
+              <>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
+                    Unidades vendidas (opcional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    min={0}
+                    value={formData.unidades_vendidas || ''}
+                    onChange={(e) => setFormData({ ...formData, unidades_vendidas: parseFloat(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.75rem', border: `1px solid ${errors.unidades_vendidas ? 'var(--error)' : 'var(--hz-neutral-300)'}`, borderRadius: '8px', fontFamily: 'var(--font-inter)', fontSize: '1rem' }}
+                    placeholder="Ej: 12.5"
+                  />
+                  {errors.unidades_vendidas && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>{errors.unidades_vendidas}</span>}
+                </div>
+
+                <div style={{ background: 'var(--hz-neutral-100)', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', padding: '0.75rem' }}>
+                  <div style={{ fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
+                    Coste de adquisición (FIFO): <strong style={{ color: 'var(--atlas-navy-1)' }}>{fifoPreview.costeAdquisicion.toFixed(2)} €</strong>
+                  </div>
+                  <div style={{ fontSize: 'var(--text-caption)', color: fifoPreview.gananciaOPerdida >= 0 ? '#16a34a' : '#dc2626' }}>
+                    Ganancia/Pérdida estimada: {fifoPreview.gananciaOPerdida >= 0 ? '+' : ''}{fifoPreview.gananciaOPerdida.toFixed(2)} €
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Cuenta cargo */}
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                marginBottom: '0.5rem',
-              }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
                 Cuenta de cargo
               </label>
-              <select
-                value={formData.cuenta_cargo_id}
-                onChange={(e) => setFormData({ ...formData, cuenta_cargo_id: e.target.value })}
-                style={selectStyle}
-              >
+              <select value={formData.cuenta_cargo_id} onChange={(e) => setFormData({ ...formData, cuenta_cargo_id: e.target.value })} style={selectStyle}>
                 <option value="">Seleccionar cuenta...</option>
                 {cuentas.map(c => (
                   <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
@@ -229,29 +241,14 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
 
             {/* Notas */}
             <div>
-              <label style={{
-                display: 'block',
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                marginBottom: '0.5rem',
-              }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
                 Notas
               </label>
               <textarea
                 value={formData.notas}
                 onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
                 rows={2}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid var(--hz-neutral-300)',
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '1rem',
-                  resize: 'vertical',
-                }}
+                style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', fontFamily: 'var(--font-inter)', fontSize: '1rem', resize: 'vertical' }}
                 placeholder="Notas opcionales..."
               />
             </div>
@@ -259,37 +256,10 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, onSave,
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: '1px solid var(--hz-neutral-300)',
-                borderRadius: '8px',
-                background: 'white',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={onClose} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', background: 'white', fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 500, color: 'var(--atlas-navy-1)', cursor: 'pointer' }}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                borderRadius: '8px',
-                background: 'var(--atlas-blue)',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                fontWeight: 500,
-                color: 'white',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="submit" style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '8px', background: 'var(--atlas-blue)', fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 500, color: 'white', cursor: 'pointer' }}>
               Guardar
             </button>
           </div>

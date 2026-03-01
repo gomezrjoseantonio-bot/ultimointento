@@ -319,7 +319,30 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                           {ap.tipo === 'reembolso' ? '-' : '+'}{formatCurrency(ap.importe)}
                         </td>
                         <td style={{ padding: '0.625rem 0.75rem', color: 'var(--text-gray)' }}>
-                          {ap.notas || '-'}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <span>{ap.notas || '-'}</span>
+                            {ap.tipo === 'reembolso' && typeof ap.ganancia_perdida === 'number' && (
+                              <>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    width: 'fit-content',
+                                    padding: '0.125rem 0.5rem',
+                                    borderRadius: '999px',
+                                    background: ap.ganancia_perdida >= 0 ? '#16a34a22' : '#dc262622',
+                                    color: ap.ganancia_perdida >= 0 ? '#16a34a' : '#dc2626',
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem',
+                                  }}
+                                >
+                                  {ap.ganancia_perdida >= 0 ? 'Plusvalía' : 'Minusvalía'} {ap.ganancia_perdida >= 0 ? '+' : ''}{formatCurrency(ap.ganancia_perdida)}
+                                </span>
+                                <span style={{ fontSize: '0.75rem' }}>
+                                  Coste FIFO: {formatCurrency(ap.coste_adquisicion_fifo ?? 0)}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
