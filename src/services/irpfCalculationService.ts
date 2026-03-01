@@ -3,7 +3,8 @@
 
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
-import { calculateFiscalSummary } from './fiscalSummaryService';
+import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
+import { nominaService } from './nominaService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -40,6 +41,8 @@ const CONSTANTES_IRPF = {
   imputacionRentasNoRevisado: 0.02,
   retencionCapitalMobiliario: 0.19,
   maxAportacionPP: 1500,
+  maxAportacionPPEmpresa: 8500,
+  maxAportacionPPTotal: 10000,
   maxCompensacionRCMconPerdidas: 0.25,
   aniosCompensacionPerdidas: 4,
 };
@@ -47,10 +50,14 @@ const CONSTANTES_IRPF = {
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface RendimientosTrabajo {
-  salarioBrutoAnual: number;
+  salarioBrutoAnual: number;      // Dinerario: base + variables + bonus (from calculateSalary)
+  especieAnual: number;           // Retribución en especie que tributa
   cotizacionSS: number;
   irpfRetenido: number;
-  rendimientoNeto: number; // bruto - SS - gastos generales
+  rendimientoNeto: number;        // bruto + especie - SS - gastos generales
+  ppEmpleado: number;             // Aportación empleado PP (limitada a 1.500€)
+  ppEmpresa: number;              // Aportación empresa PP (limitada a 8.500€)
+  ppTotalReduccion: number;       // Total reducción PP (limitada a 10.000€)
 }
 
 export interface RendimientosAutonomo {
@@ -80,14 +87,11 @@ export interface RendimientoInmueble {
   imputacionRenta: number;
   // Total: rendimientoNetoAlquiler + imputacionRenta
   rendimientoNeto: number;
-  // Accesorios vinculados (garaje, trastero, etc.)
-  accesorios?: {
-    inmuebleId: number;
-    alias: string;
-    amortizacion: number;
-    gastos: number;
-    valorCatastral: number;
-  }[];
+  // AEAT art. 23 LIRPF limit tracking for 0105+0106
+  gastosFinanciacionYReparacion?: number; // Original 0105+0106 (prorated)
+  limiteAplicado?: number;               // min(financingRepairs, ingresosIntegros)
+  excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
+  arrastresAplicados?: number;           // Carryforwards applied from previous years
 }
 
 export interface ImputacionRenta {
@@ -158,6 +162,9 @@ export interface DeclaracionIRPF {
   baseGeneral: BaseGeneral;
   baseAhorro: BaseAhorro;
   reducciones: {
+    ppEmpleado: number;
+    ppEmpresa: number;
+    ppIndividual: number;
     planPensiones: number;
     total: number;
   };
@@ -204,58 +211,84 @@ function edadDesde(fechaNacimiento: string, ejercicio: number): number {
 
 async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTrabajo | null> {
   try {
-    const db = await initDB();
-    const allNominas = await db.getAll('nominas');
-    const activas = allNominas.filter((n: any) => n.activa);
+    const activas = await nominaService.getAllActiveNominas();
     if (activas.length === 0) return null;
 
     let totalBruto = 0;
+    let totalEspecie = 0;
     let totalCotizacionSS = 0;
     let totalIRPFRetenido = 0;
+    let totalPPEmpleado = 0;
+    let totalPPEmpresa = 0;
 
     for (const activa of activas) {
-      const bruto = activa.salarioBrutoAnual ?? 0;
+      // Use the calculation engine for accurate totals
+      const calculo = nominaService.calculateSalary(activa);
 
-      // Sum taxable benefits in kind (especie) that increment IRPF base
-      const especieAnual = (activa.beneficiosSociales ?? [])
-        .filter((b: any) => b.incrementaBaseIRPF)
-        .reduce((sum: number, b: any) => sum + (b.importeMensual ?? 0) * 12, 0);
-      totalBruto += bruto + especieAnual;
+      totalBruto += calculo.totalAnualBruto;
+      totalEspecie += calculo.totalAnualEspecie;
 
-      // Support both old format { cotizacionSS: % } and new format { ss: { ... } }
-      let cotizacionSS: number;
-      if (activa.retencion?.ss) {
-        const ss = activa.retencion.ss;
-        const baseCot = Math.min(ss.baseCotizacionMensual ?? 4909.50, bruto / 12);
-        const pct = ((ss.contingenciasComunes ?? 4.70) + (ss.desempleo ?? 1.55) + (ss.formacionProfesional ?? 0.10) + (ss.mei ?? 0.13)) / 100;
-        cotizacionSS = round2(baseCot * pct * 12 + ((activa.retencion.cuotaSolidaridadMensual ?? 0) * 12));
-      } else {
-        const porcentajeSS = activa.retencion?.cotizacionSS ?? 6.35;
-        cotizacionSS = round2(bruto * (porcentajeSS / 100));
+      // Sum SS and IRPF from monthly distribution (accurate per-month calculation)
+      totalCotizacionSS += calculo.distribucionMensual.reduce((s, m) => s + m.ssTotal, 0);
+      totalIRPFRetenido += calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0);
+
+      // PP contributions
+      if (activa.planPensiones) {
+        const ppEmpresa = activa.planPensiones.aportacionEmpresa;
+
+        // Employee PP: always sum from payroll engine monthly distribution
+        totalPPEmpleado += calculo.distribucionMensual.reduce(
+          (s, m) => s + (m.ppEmpleado ?? 0),
+          0,
+        );
+
+        // Employer PP: prefer deriving from payroll engine output
+        const totalPPEmpresaFromDistribucion = calculo.distribucionMensual.reduce(
+          (s, m) => {
+            const totalProducto = (m as any).ppTotalAlProducto;
+            const ppEmpleadoMes = m.ppEmpleado ?? 0;
+            if (typeof totalProducto === 'number') {
+              const ppEmpresaMes = Math.max(0, totalProducto - ppEmpleadoMes);
+              return s + ppEmpresaMes;
+            }
+            return s;
+          },
+          0,
+        );
+
+        if (totalPPEmpresaFromDistribucion > 0) {
+          // Use engine-derived employer PP if available
+          totalPPEmpresa += totalPPEmpresaFromDistribucion;
+        } else if (ppEmpresa?.tipo && ppEmpresa.valor != null) {
+          // Fallback: calculate annual employer PP from plan definition
+          const ppEmpresaAnual =
+            ppEmpresa.tipo === 'porcentaje'
+              ? round2((calculo.totalAnualBruto * ppEmpresa.valor) / 100)
+              : round2(ppEmpresa.valor * 12);
+          totalPPEmpresa += ppEmpresaAnual;
+        }
       }
-      totalCotizacionSS += cotizacionSS;
-
-      const irpfPorcentaje = activa.retencion?.irpfPorcentaje ?? 0;
-      totalIRPFRetenido += round2(bruto * (irpfPorcentaje / 100));
-
-      // Deduct PP employee contributions (capped at legal limit of 1500€/year)
-      const ppEmpleadoAnual = (() => {
-        if (!activa.planPensiones) return 0;
-        const emp = activa.planPensiones.aportacionEmpleado;
-        if (emp.tipo === 'porcentaje') return round2(bruto * emp.valor / 100);
-        return round2(emp.valor * 12);
-      })();
-      const ppReduccion = Math.min(ppEmpleadoAnual, CONSTANTES_IRPF.maxAportacionPP);
-      totalBruto -= ppReduccion;
     }
 
-    const rendimientoNeto = round2(totalBruto - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
+    // Apply PP limits (art. 52 LIRPF)
+    const ppEmpleadoLimitado = Math.min(totalPPEmpleado, CONSTANTES_IRPF.maxAportacionPP);
+    const ppEmpresaLimitado = Math.min(totalPPEmpresa, CONSTANTES_IRPF.maxAportacionPPEmpresa);
+    const ppTotalReduccion = Math.min(ppEmpleadoLimitado + ppEmpresaLimitado, CONSTANTES_IRPF.maxAportacionPPTotal);
+
+    // Rendimiento neto: bruto + especie - SS - gastos generales
+    // PP reduction is applied as a separate reduction in the declaration, NOT subtracted from bruto
+    const baseIRPF = round2(totalBruto + totalEspecie);
+    const rendimientoNeto = round2(baseIRPF - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
 
     return {
       salarioBrutoAnual: round2(totalBruto),
+      especieAnual: round2(totalEspecie),
       cotizacionSS: round2(totalCotizacionSS),
       irpfRetenido: round2(totalIRPFRetenido),
       rendimientoNeto,
+      ppEmpleado: round2(ppEmpleadoLimitado),
+      ppEmpresa: round2(ppEmpresaLimitado),
+      ppTotalReduccion: round2(ppTotalReduccion),
     };
   } catch {
     return null;
@@ -419,44 +452,40 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       // Get fiscal summary and prorate expenses by rental days ratio
       let gastosDeducibles = 0;
       let amortizacion = 0;
-      const accesoriosData: NonNullable<RendimientoInmueble['accesorios']> = [];
+      let gastosFinanciacionYReparacion = 0;
+      let limiteAplicado = 0;
+      let excesoArrastrable = 0;
+      let arrastresAplicados = 0;
       try {
         const summary = await calculateFiscalSummary(prop.id!, ejercicio);
         const ratio = diasAlquilado / diasTotal;
-        gastosDeducibles = round2(
-          ((summary.box0105 ?? 0) + (summary.box0106 ?? 0) + (summary.box0109 ?? 0) +
-          (summary.box0112 ?? 0) + (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
-          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio
-        );
-        amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
 
-        // Aggregate linked accessories
-        const accesorios = accessoryProperties.filter(
-          (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
-        );
-        for (const acc of accesorios) {
-          try {
-            const accSummary = await calculateFiscalSummary(acc.id!, ejercicio);
-            const accAmort = round2((accSummary.annualDepreciation ?? 0) * ratio);
-            const accGastos = round2(
-              ((accSummary.box0105 ?? 0) + (accSummary.box0106 ?? 0) + (accSummary.box0109 ?? 0) +
-              (accSummary.box0112 ?? 0) + (accSummary.box0113 ?? 0) + (accSummary.box0114 ?? 0) +
-              (accSummary.box0115 ?? 0) + (accSummary.box0117 ?? 0)) * ratio
-            );
-            const accVC = acc.fiscalData?.cadastralValue ?? acc.fiscalData?.accessoryData?.cadastralValue ?? 0;
-            amortizacion = round2(amortizacion + accAmort);
-            gastosDeducibles = round2(gastosDeducibles + accGastos);
-            accesoriosData.push({
-              inmuebleId: acc.id!,
-              alias: acc.alias,
-              amortizacion: accAmort,
-              gastos: accGastos,
-              valorCatastral: accVC,
-            });
-          } catch {
-            // ignore individual accessory errors
-          }
+        // AEAT art. 23 LIRPF: financing + repairs cannot exceed ingresos íntegros
+        const financingAndRepairsRaw = ((summary.box0105 ?? 0) + (summary.box0106 ?? 0)) * ratio;
+        const otherExpenses = ((summary.box0109 ?? 0) + (summary.box0112 ?? 0) +
+          (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
+          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio;
+
+        const limitedFinancingRepairs = Math.min(financingAndRepairsRaw, ingresosIntegros);
+
+        // Apply carryforwards from previous years (FIFO, oldest first)
+        // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
+        // which recomputes available amounts from fiscal summaries each time it is called.
+        const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
+        const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
+        let cfApplied = 0;
+        for (const cf of carryForwards) {
+          if (availableForCarryforward - cfApplied <= 0) break;
+          const canApply = Math.min(cf.remainingAmount, availableForCarryforward - cfApplied);
+          cfApplied = round2(cfApplied + canApply);
         }
+
+        gastosDeducibles = round2(limitedFinancingRepairs + cfApplied + otherExpenses);
+        amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
+        gastosFinanciacionYReparacion = round2(financingAndRepairsRaw);
+        limiteAplicado = round2(limitedFinancingRepairs);
+        excesoArrastrable = round2(Math.max(0, financingAndRepairsRaw - limitedFinancingRepairs));
+        arrastresAplicados = round2(cfApplied);
       } catch {
         // ignore
       }
@@ -500,7 +529,10 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         esHabitual,
         imputacionRenta,
         rendimientoNeto: round2(rendimientoNetoAlquiler + imputacionRenta),
-        ...(accesoriosData.length > 0 ? { accesorios: accesoriosData } : {}),
+        gastosFinanciacionYReparacion,
+        limiteAplicado,
+        excesoArrastrable,
+        arrastresAplicados,
       });
     } else {
       // Property is fully vacant — imputación de rentas only
@@ -673,9 +705,19 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
   };
 
   // PASO 4: Reducciones
+  // PP from trabajo (already limited per Art. 52 LIRPF)
+  const ppTrabajo = trabajo?.ppTotalReduccion ?? 0;
+  // PP from inversiones (planes de pensiones individuales), capped by remaining headroom
+  const ppIndividualCapped = Math.max(0, Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPPTotal - ppTrabajo));
+  // Total PP reduction (combined limit 10.000€)
+  const totalPP = round2(ppTrabajo + ppIndividualCapped);
+
   const reducciones = {
-    planPensiones: aportacionPensiones,
-    total: aportacionPensiones,
+    ppEmpleado: trabajo?.ppEmpleado ?? 0,
+    ppEmpresa: trabajo?.ppEmpresa ?? 0,
+    ppIndividual: ppIndividualCapped,
+    planPensiones: totalPP,
+    total: totalPP,
   };
 
   // PASO 5: Mínimos personales
