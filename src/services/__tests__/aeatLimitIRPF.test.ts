@@ -1,5 +1,6 @@
 // Tests for AEAT art. 23 LIRPF limit: casillas 0105+0106 cannot exceed ingresos íntegros
-// Validates Bug 1 fix (fiscalSummaryService) and Bug 2 fix (irpfCalculationService)
+// Covers: calculateAEATLimits utility, getCarryForwardExpirationYear utility, and
+// FIFO carryforward absorption logic (unit-level simulation of irpfCalculationService behavior).
 
 import { calculateAEATLimits, getCarryForwardExpirationYear } from '../../utils/aeatUtils';
 

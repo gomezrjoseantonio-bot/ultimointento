@@ -148,7 +148,9 @@ export const calculateFiscalSummary = async (
   const { applied: limitApplied, excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
   summary.deductibleExcess = excess;
 
-  // Save or upsert AEATCarryForward record when there is excess
+  // Save or upsert AEATCarryForward record when there is excess; delete stale record when excess becomes 0
+  const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+  const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
   if (excess > 0) {
     const cfRecord: Omit<AEATCarryForward, 'id'> = {
       propertyId,
@@ -162,8 +164,6 @@ export const calculateFiscalSummary = async (
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
-    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
     if (existingCf) {
       await db.put('aeatCarryForwards', {
         ...cfRecord,
@@ -174,6 +174,9 @@ export const calculateFiscalSummary = async (
     } else {
       await db.add('aeatCarryForwards', cfRecord);
     }
+  } else if (existingCf) {
+    // Excess was previously recorded but is now zero (e.g. documents reclassified): remove stale record
+    await db.delete('aeatCarryForwards', existingCf.id!);
   }
 
   // Save or update the summary
@@ -296,7 +299,8 @@ export const exportFiscalData = async (
  * Calculate carryforward amounts for deductible excess with proper AEAT 4-year limit
  */
 export const calculateCarryForwards = async (
-  propertyId: number
+  propertyId: number,
+  ejercicio?: number
 ): Promise<Array<{
   exerciseYear: number;
   excessAmount: number;
@@ -306,7 +310,7 @@ export const calculateCarryForwards = async (
   expiresThisYear?: boolean;
 }>> => {
   const summaries = await getPropertyFiscalSummaries(propertyId);
-  const currentYear = new Date().getFullYear();
+  const currentYear = ejercicio ?? new Date().getFullYear();
   
   // Get summaries with deductible excess from last 4 years that haven't expired
   const excessSummaries = summaries
