@@ -248,7 +248,7 @@ const NominaManager: React.FC = () => {
                                 {shortLabel}
                               </span>
                               <div
-                                className={`w-full rounded-t ${hasPagaExtra ? 'bg-teal-400' : 'bg-brand-navy'}`}
+                                className={`w-full rounded-t ${hasPagaExtra ? 'bg-[var(--atlas-teal)]' : 'bg-brand-navy'}`}
                                 style={{ height: `${barHeight}px`, minHeight: '2px' }}
                                 title={formatCurrency(m.netoTotal)}
                               />
