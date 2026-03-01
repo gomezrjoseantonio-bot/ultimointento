@@ -127,14 +127,12 @@ export const calculateFiscalSummary = async (
   const financingAndRepairs = summary.box0105 + summary.box0106;
 
   // Get rental income for this property in this year from contracts
-  const allContracts = await db.getAll('contracts');
-  const propertyContracts = allContracts.filter((c: any) => {
-    if ((c.inmuebleId ?? c.propertyId) !== propertyId) return false;
+  const contractsForProperty = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
+  const propertyContracts = (contractsForProperty as any[]).filter((c: any) => {
     const inicio = new Date(c.fechaInicio ?? c.startDate);
     const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
     return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
   });
-
   let ingresosIntegros = 0;
   for (const contract of propertyContracts) {
     const renta = contract.rentaMensual ?? 0;
