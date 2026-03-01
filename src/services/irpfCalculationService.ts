@@ -229,8 +229,8 @@ async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTra
       totalIRPFRetenido += calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0);
     }
 
-    // Base IRPF = bruto dinerario + especie + aportación empresa PP
-    const baseIRPF = round2(totalBruto + totalEspecie + totalPPEmpresa);
+    // Base IRPF trabajo = bruto dinerario + especie
+    const baseIRPF = round2(totalBruto + totalEspecie);
     const rendimientoNeto = round2(baseIRPF - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
 
     return {
