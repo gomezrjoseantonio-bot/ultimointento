@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CircleDollarSign, HandCoins } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF } from '../../../../services/irpfCalculationService';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -62,13 +72,16 @@ const HistoricoPage: React.FC = () => {
     >
       {loading ? (
         <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+          <div
+            className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent"
+            style={{ borderColor: 'var(--hz-primary)', borderTopColor: 'transparent' }}
+          />
         </div>
       ) : (
         <div className="space-y-6">
           {/* Tabla histórico */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-5 text-xs font-semibold text-gray-600 uppercase tracking-wide bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <div className="bg-[var(--hz-card-bg)] border border-[color:var(--hz-neutral-300)] rounded-lg shadow-sm overflow-hidden">
+            <div className="grid grid-cols-5 text-xs font-semibold text-[var(--hz-neutral-700)] uppercase tracking-wide bg-[var(--hz-neutral-100)] px-4 py-3 border-b border-[color:var(--hz-neutral-300)]">
               <span>Ejercicio</span>
               <span>Cuota líquida</span>
               <span>Retenciones</span>
@@ -76,59 +89,68 @@ const HistoricoPage: React.FC = () => {
               <span>Tipo efectivo</span>
             </div>
             {historico.map(row => (
-              <div key={row.ejercicio} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-gray-100 last:border-0 items-center">
-                <span className="font-semibold text-gray-900">{row.ejercicio}</span>
+              <div key={row.ejercicio} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-[color:var(--hz-neutral-100)] last:border-0 items-center">
+                <span className="font-semibold text-[var(--hz-neutral-900)]">{row.ejercicio}</span>
                 <span>{fmt(row.cuotaLiquida)}</span>
-                <span className="text-green-700">{fmt(row.retenciones)}</span>
-                <span className={`font-medium ${row.resultado > 0 ? 'text-red-600' : row.resultado < 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                <span style={{ color: 'var(--ok)' }}>{fmt(row.retenciones)}</span>
+                <span
+                  className="font-medium"
+                  style={{
+                    color: row.resultado > 0
+                      ? 'var(--error)'
+                      : row.resultado < 0
+                        ? 'var(--ok)'
+                        : 'var(--hz-neutral-500)'
+                  }}
+                >
                   {row.resultado > 0 ? `A pagar: ${fmt(row.resultado)}` : row.resultado < 0 ? `A devolver: ${fmt(Math.abs(row.resultado))}` : '—'}
                 </span>
-                <span className="text-gray-600">{row.tipoEfectivo.toFixed(1)}%</span>
+                <span className="text-[var(--hz-neutral-700)]">{row.tipoEfectivo.toFixed(1)}%</span>
               </div>
             ))}
           </div>
 
-          {/* Evolución visual (simple bar chart) */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Evolución cuota líquida vs retenciones</h3>
-            <div className="space-y-3">
-              {historico.map(row => {
-                const maxVal = Math.max(...historico.map(h => Math.max(h.cuotaLiquida, h.retenciones)), 1);
-                return (
-                  <div key={row.ejercicio}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-700 w-10">{row.ejercicio}</span>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-4 bg-red-400 rounded-sm"
-                            style={{ width: `${(row.cuotaLiquida / maxVal) * 100}%` }}
-                          />
-                          <span className="text-xs text-gray-500">{fmt(row.cuotaLiquida)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-4 bg-green-400 rounded-sm"
-                            style={{ width: `${(row.retenciones / maxVal) * 100}%` }}
-                          />
-                          <span className="text-xs text-gray-500">{fmt(row.retenciones)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="flex items-center gap-4 mt-2">
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-red-400 rounded-sm" /><span className="text-xs text-gray-600">Cuota líquida</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-3 h-3 bg-green-400 rounded-sm" /><span className="text-xs text-gray-600">Retenciones</span></div>
+          {/* Evolución visual */}
+          <div className="bg-[var(--hz-card-bg)] border border-[color:var(--hz-neutral-300)] rounded-lg p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-[var(--hz-neutral-900)] mb-4">Evolución cuota líquida vs retenciones</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[...historico].sort((a, b) => a.ejercicio - b.ejercicio)} margin={{ top: 8, right: 20, left: 20, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(20, 44, 80, 0.12)" />
+                  <XAxis dataKey="ejercicio" tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} axisLine={{ stroke: 'var(--hz-neutral-300)' }} tickLine={{ stroke: 'var(--hz-neutral-300)' }} />
+                  <YAxis
+                    tickFormatter={(value: number) => `${Math.round(value / 1000)}k€`}
+                    tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }}
+                    axisLine={{ stroke: 'var(--hz-neutral-300)' }}
+                    tickLine={{ stroke: 'var(--hz-neutral-300)' }}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => fmt(value)}
+                    labelFormatter={(label) => `Ejercicio ${label}`}
+                  />
+                  <Legend />
+                  <Bar dataKey="cuotaLiquida" name="Cuota líquida" radius={[6, 6, 0, 0]} fill="var(--error)" />
+                  <Bar dataKey="retenciones" name="Retenciones" radius={[6, 6, 0, 0]} fill="var(--ok)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--hz-neutral-700)]">
+                <CircleDollarSign className="w-3.5 h-3.5" style={{ color: 'var(--error)' }} />
+                Cuota líquida
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-[var(--hz-neutral-700)]">
+                <HandCoins className="w-3.5 h-3.5" style={{ color: 'var(--ok)' }} />
+                Retenciones
               </div>
             </div>
           </div>
 
           {/* Note about pending data */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-800">
+          <div className="rounded-lg p-4 flex items-start gap-3" style={{ backgroundColor: 'rgba(4, 44, 94, 0.08)', border: '1px solid rgba(4, 44, 94, 0.25)' }}>
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--atlas-blue)' }} />
+            <p className="text-sm" style={{ color: 'var(--atlas-blue)' }}>
               Los datos históricos se calculan en base a la información disponible en la aplicación. Para ejercicios anteriores es posible que no estén todos los datos introducidos.
             </p>
           </div>
