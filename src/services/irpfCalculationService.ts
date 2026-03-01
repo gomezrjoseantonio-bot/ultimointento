@@ -92,6 +92,7 @@ export interface RendimientoInmueble {
   limiteAplicado?: number;               // min(financingRepairs, ingresosIntegros)
   excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
   arrastresAplicados?: number;           // Carryforwards applied from previous years
+  accesoriosIncluidos?: { id: number; alias: string; amortizacion: number; gastos: number }[];
 }
 
 export interface ImputacionRenta {
@@ -456,9 +457,9 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       let limiteAplicado = 0;
       let excesoArrastrable = 0;
       let arrastresAplicados = 0;
+      const ratio = diasAlquilado / diasTotal;
       try {
         const summary = await calculateFiscalSummary(prop.id!, ejercicio);
-        const ratio = diasAlquilado / diasTotal;
 
         // AEAT art. 23 LIRPF: financing + repairs cannot exceed ingresos íntegros
         const financingAndRepairsRaw = ((summary.box0105 ?? 0) + (summary.box0106 ?? 0)) * ratio;
@@ -491,6 +492,9 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       }
 
       // Sum amortization and expenses from linked accessories
+      const accesorios = accessoryProperties.filter(
+        (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
+      );
       const accesoriosIncluidos: { id: number; alias: string; amortizacion: number; gastos: number }[] = [];
       for (const acc of accesorios) {
         let accAmortizacion = 0;
@@ -537,6 +541,8 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         imputacionRenta = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
       }
 
+      const accesoriosIncluidosData = accesoriosIncluidos.length > 0 ? accesoriosIncluidos : undefined;
+
       inmuebles.push({
         inmuebleId: prop.id!,
         alias: prop.alias,
@@ -556,6 +562,7 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         limiteAplicado,
         excesoArrastrable,
         arrastresAplicados,
+        accesoriosIncluidos: accesoriosIncluidosData,
       });
     } else {
       // Property is fully vacant — imputación de rentas only
