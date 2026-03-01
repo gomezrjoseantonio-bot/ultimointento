@@ -22,6 +22,7 @@ export interface PropertyExpense {
   comments?: string;
   startDate?: string;
   endDate?: string;
+  casillaAEAT?: string; // Override manual de la casilla AEAT
   source: PropertyExpenseSource;
   expenseClass: PropertyExpenseClass;
   isLegacy: boolean;

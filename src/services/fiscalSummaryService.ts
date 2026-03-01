@@ -2,6 +2,7 @@ import { initDB, FiscalSummary, Document } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
 import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
+import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
 
 /**
  * Calculate or update fiscal summary for a property and year
@@ -79,6 +80,26 @@ export const calculateFiscalSummary = async (
 
   // Get property to calculate construction value and depreciation using AEAT rules
   const property = await db.get('properties', propertyId);
+
+  // Add recurring OPEX expenses auto-classified by AEAT box
+  const gastosRecurrentes = await getGastosRecurrentesFiscales(propertyId, exerciseYear);
+  const boxToField: Record<string, keyof typeof summary> = {
+    '0105': 'box0105',
+    '0106': 'box0106',
+    '0109': 'box0109',
+    '0112': 'box0112',
+    '0113': 'box0113',
+    '0114': 'box0114',
+    '0115': 'box0115',
+    '0117': 'box0117',
+  };
+  for (const [box, amount] of Object.entries(gastosRecurrentes)) {
+    const field = boxToField[box];
+    if (field) {
+      (summary[field] as number) += amount;
+    }
+  }
+
   if (property && property.aeatAmortization) {
     // Use AEAT amortization calculation
     const updatedSummary = await updateFiscalSummaryWithAEAT(propertyId, exerciseYear);
