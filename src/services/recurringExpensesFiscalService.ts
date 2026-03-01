@@ -1,6 +1,5 @@
-import { getAllExpensesForProperty, normalizeExpenseToAnnual } from './propertyExpenses';
+import { getAllExpensesForProperty } from './propertyExpenses';
 import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
-import type { AEATBox } from './db';
 
 /**
  * Calcula los gastos recurrentes OPEX de un inmueble que son fiscalmente
