@@ -6,13 +6,11 @@ import { prestamosService } from '../../../../services/prestamosService';
 import { useDebouncedCalculation } from '../../../../hooks/useDebouncedCalculation';
 import Stepper from './Stepper';
 import StepTransition from './StepTransition';
-import AutosaveIndicator from './AutosaveIndicator';
 import LiveCalculationFooter from './LiveCalculationFooter';
 import IdentificacionStep from './steps/IdentificacionStep';
 import EstructuraStep from './steps/EstructuraStep';
 import ConfiguracionStep from './steps/ConfiguracionStep';
 import BonificacionesStep from './steps/BonificacionesStep';
-import ImportacionStep from './steps/ImportacionStep';
 import ResumenStep from './steps/ResumenStep';
 
 interface PrestamosWizardProps {
@@ -22,9 +20,7 @@ interface PrestamosWizardProps {
   onCancel: () => void;
 }
 
-const DRAFT_KEY = 'prestamo_draft';
-
-type StepId = 'identificacion' | 'estructura' | 'configuracion' | 'bonificaciones' | 'importacion' | 'resumen';
+type StepId = 'identificacion' | 'estructura' | 'configuracion' | 'bonificaciones' | 'resumen';
 
 const mapToStoragePrestamo = (data: PrestamoFinanciacion): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> => ({
   ambito: data.ambito,
@@ -75,14 +71,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   onCancel,
 }) => {
   const [formData, setFormData] = useState<Partial<PrestamoFinanciacion>>(() => {
-    // Try to restore draft from localStorage
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (saved && !prestamoId) {
-        return JSON.parse(saved);
-      }
-    } catch {}
-
     if (initialData) {
       return {
         ...initialData,
@@ -110,28 +98,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   const [currentStep, setCurrentStep] = useState<StepId>('identificacion');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const hasChanges = useRef(false);
   const existingPrincipalVivoRef = useRef<number | undefined>(undefined);
   const existingCuotasPagadasRef = useRef<number | undefined>(undefined);
 
   const calculoLive = useDebouncedCalculation(formData);
-
-  // Autosave every 2 seconds when there are changes
-  useEffect(() => {
-    if (!prestamoId) {
-      const interval = setInterval(() => {
-        if (hasChanges.current) {
-          try {
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-            setLastSaved(new Date());
-            hasChanges.current = false;
-          } catch {}
-        }
-      }, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [formData, prestamoId]);
 
   // Load existing prestamo for edit mode
   useEffect(() => {
@@ -176,7 +146,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
 
   const handleChange = useCallback((updates: Partial<PrestamoFinanciacion>) => {
     setFormData(prev => ({ ...prev, ...updates }));
-    hasChanges.current = true;
     // Clear errors for updated fields
     const updatedKeys = Object.keys(updates);
     setErrors(prev => {
@@ -186,26 +155,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     });
   }, []);
 
-  const handleDiscard = useCallback(() => {
-    try { localStorage.removeItem(DRAFT_KEY); } catch {}
-    setLastSaved(null);
-    setFormData({
-      ambito: 'PERSONAL',
-      esquemaPrimerRecibo: 'NORMAL',
-      tipo: 'FIJO',
-      plazoPeriodo: 'AÑOS',
-      carencia: 'NINGUNA',
-      sistema: 'FRANCES',
-      revision: 12,
-      diaCobroMes: 1,
-      bonificaciones: [],
-    });
-    setCurrentStep('identificacion');
-  }, []);
-
-  // Determine steps based on whether importacion step is needed (when origen === 'IMPORTACION').
-  const showImportacion = formData.origenCreacion === 'IMPORTACION';
-
+  // Determine steps (no Importación step - origen is always manual)
   const getSteps = useCallback(() => {
     const base: { id: StepId; label: string }[] = [
       { id: 'identificacion', label: 'Identificación' },
@@ -213,12 +163,9 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       { id: 'configuracion', label: 'Configuración' },
       { id: 'bonificaciones', label: 'Bonificaciones' },
     ];
-    if (showImportacion) {
-      base.push({ id: 'importacion', label: 'Importar' });
-    }
     base.push({ id: 'resumen', label: 'Resumen' });
     return base;
-  }, [showImportacion]);
+  }, []);
 
   const allSteps = getSteps();
 
@@ -294,7 +241,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
           await prestamosService.autoMarcarCuotasPagadas(created.id);
         }
       }
-      try { localStorage.removeItem(DRAFT_KEY); } catch {}
       onSuccess();
     } catch (err) {
       console.error('[PrestamosWizard] Submit error:', err);
@@ -332,7 +278,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
               {prestamoId ? 'Editar préstamo' : 'Nuevo préstamo'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <AutosaveIndicator lastSaved={lastSaved} onDiscard={handleDiscard} />
               <button
                 onClick={onCancel}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
@@ -347,7 +292,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, padding: '24px 24px 120px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, padding: '24px 24px 24px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <StepTransition stepKey={currentStep}>
           {currentStep === 'identificacion' && (
             <IdentificacionStep
@@ -377,13 +322,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
               errors={errors}
             />
           )}
-          {currentStep === 'importacion' && (
-            <ImportacionStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
-          )}
           {currentStep === 'resumen' && (
             <ResumenStep
               data={formData}
@@ -395,23 +333,22 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         </StepTransition>
       </div>
 
-      {/* Sticky footer */}
+      {/* Sticky footer — inside content flow to avoid covering sidebar */}
       <div style={{
-        position: 'fixed',
+        position: 'sticky',
         bottom: 0,
-        left: 0,
-        right: 0,
         zIndex: 100,
         backgroundColor: 'var(--bg)',
         borderTop: '1px solid #eee',
         padding: '12px 24px',
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
       }}>
         <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <LiveCalculationFooter
             cuotaMensual={calculoLive?.cuotaEstimada ?? null}
             tae={calculoLive?.taeAproximada ?? null}
             tinEfectivo={calculoLive?.tinEfectivo ?? null}
-            isVisible={currentIndex >= 1}
+            isVisible={!isLastStep && calculoLive !== null}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
