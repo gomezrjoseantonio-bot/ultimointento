@@ -15,7 +15,7 @@ import {
   DeduccionNomina,
 } from '../../../types/personal';
 import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
-import { Plus, X, Settings } from 'lucide-react';
+import { Plus, X, Settings, ArrowLeft, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface NominaFormProps {
@@ -268,74 +268,71 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   const stepLabels = ['Retribución', 'Retención y Deducciones', 'Cobro y Resumen'];
 
-  const renderNavButtons = () => {
-    if (step === 1) {
-      return (
-        <div className="flex justify-end">
-          <button type="button" onClick={() => setStep(2)} className="atlas-btn-primary rounded-md">Siguiente →</button>
-        </div>
-      );
-    }
-    if (step === 2) {
-      return (
-        <div className="flex justify-between">
-          <button type="button" onClick={() => setStep(1)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
-          <button type="button" onClick={() => setStep(3)} className="atlas-btn-primary rounded-md">Siguiente →</button>
-        </div>
-      );
-    }
-    return (
-      <div className="flex justify-between">
-        <button type="button" onClick={() => setStep(2)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
-        <div className="flex space-x-3">
-          <button type="button" onClick={onClose} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">Cancelar</button>
-          <button type="submit" form="nomina-wizard-form" disabled={loading} aria-busy={loading} className="atlas-btn-primary rounded-md disabled:opacity-50">
-            {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
-          </button>
-        </div>
-      </div>
-    );
-  };
+  if (!isOpen) return null;
 
   return (
     <>
-      <AtlasModal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={nomina ? 'Editar Nómina' : 'Nueva Nómina'}
-        size="xl"
-        footer={renderNavButtons()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          {stepLabels.map((label, idx) => {
-            const s = idx + 1;
-            return (
-              <React.Fragment key={s}>
-                <button
-                  type="button"
-                  onClick={() => setStep(s)}
-                  className={`flex flex-col items-center text-xs font-medium transition-colors ${
-                    step === s ? 'text-brand-navy' : step > s ? 'text-success-600' : 'text-neutral-400'
-                  }`}
-                >
-                  <span className={`w-7 h-7 rounded-full border-2 flex items-center justify-center mb-1 text-sm font-bold ${
-                    step === s
-                      ? 'border-brand-navy bg-brand-navy text-white'
-                      : step > s
-                      ? 'border-success-600 bg-success-50 text-success-600'
-                      : 'border-neutral-300 text-neutral-400'
-                  }`}>{s}</span>
-                  <span className="hidden sm:block">{label}</span>
-                </button>
-                {idx < stepLabels.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${step > s ? 'bg-success-400' : 'bg-neutral-200'}`} />
-                )}
-              </React.Fragment>
-            );
-          })}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+        {/* Sticky header */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '12px 24px' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
+                {nomina ? 'Editar Nómina' : 'Nueva Nómina'}
+              </div>
+              <button
+                onClick={onClose}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
+              >
+                <X size={16} strokeWidth={1.5} />
+                Cancelar
+              </button>
+            </div>
+            {/* Horizontal stepper */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {stepLabels.map((label, idx) => {
+                const s = idx + 1;
+                const isActive = step === s;
+                const isCompleted = step > s;
+                return (
+                  <React.Fragment key={s}>
+                    <button
+                      type="button"
+                      onClick={() => setStep(s)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 14px', borderRadius: 20,
+                        border: isActive ? 'none' : isCompleted ? 'none' : '1.5px solid #d1d5db',
+                        backgroundColor: isActive ? 'var(--atlas-navy-1)' : isCompleted ? '#d1fae5' : 'white',
+                        color: isActive ? 'white' : isCompleted ? '#065f46' : '#9ca3af',
+                        fontSize: 13, fontWeight: isActive ? 600 : 400,
+                        cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 700,
+                        backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
+                      }}>
+                        {s}
+                      </span>
+                      {label}
+                    </button>
+                    {idx < stepLabels.length - 1 && (
+                      <div style={{ flex: 1, height: 1, borderTop: '1.5px dashed #d1d5db', minWidth: 16, margin: '0 4px' }} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        <form id="nomina-wizard-form" onSubmit={handleSubmit}>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: 100 }}>
+          <div style={{ maxWidth: 800, margin: '0 auto' }}>
+            <form id="nomina-wizard-form" onSubmit={handleSubmit}>
           {step === 1 && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -375,51 +372,38 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Antigüedad Reconocida <span className="text-neutral-400 font-normal">(opcional)</span>
-                  </label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Salario Bruto Anual Base (€) *</label>
                   <input
-                    type="date"
-                    value={formData.fechaAntiguedadReconocida}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fechaAntiguedadReconocida: e.target.value }))}
+                    type="number"
+                    step="0.01"
+                    value={formData.salarioBrutoAnual}
+                    onChange={(e) => setFormData(prev => ({ ...prev, salarioBrutoAnual: e.target.value }))}
                     className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                    placeholder="50000.00"
+                    required
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">Salario Bruto Anual Base (€) *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.salarioBrutoAnual}
-                  onChange={(e) => setFormData(prev => ({ ...prev, salarioBrutoAnual: e.target.value }))}
-                  className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
-                  placeholder="50000.00"
-                  required
-                />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-3">Distribución del Salario</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {(['doce', 'catorce', 'personalizado'] as const).map((tipo) => (
-                    <label key={tipo} className="flex items-center space-x-3 p-3 border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50">
-                      <input
-                        type="radio"
-                        name="distribucion"
-                        value={tipo}
-                        checked={formData.distribucion.tipo === tipo}
-                        onChange={() => setFormData(prev => ({
-                          ...prev,
-                          distribucion: { tipo, meses: tipo === 'doce' ? 12 : tipo === 'catorce' ? 14 : prev.distribucion.meses }
-                        }))}
-                        className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-                      />
-                      <span className="text-sm font-medium">
-                        {tipo === 'doce' ? '12 meses' : tipo === 'catorce' ? '14 meses (pagas extra)' : 'Personalizado'}
-                      </span>
-                    </label>
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => setFormData(prev => ({
+                        ...prev,
+                        distribucion: { tipo, meses: tipo === 'doce' ? 12 : tipo === 'catorce' ? 14 : prev.distribucion.meses }
+                      }))}
+                      className={`p-3 border rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
+                        formData.distribucion.tipo === tipo
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {tipo === 'doce' ? '12 meses' : tipo === 'catorce' ? '14 meses (pagas extra)' : 'Personalizado'}
+                    </button>
                   ))}
                 </div>
                 {formData.distribucion.tipo === 'personalizado' && (
@@ -462,7 +446,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-neutral-700">Bonus Puntuales</label>
+                  <label className="block text-sm font-medium text-neutral-700">Bonus</label>
                   <button type="button" onClick={() => setShowBonusForm(true)} className="inline-flex items-center atlas-btn-primary text-sm rounded-md">
                     <Plus className="w-4 h-4 mr-1" />Añadir Bonus
                   </button>
@@ -810,8 +794,58 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               })()}
             </div>
           )}
-        </form>
-      </AtlasModal>
+            </form>
+          </div>
+        </div>
+
+        {/* Fixed footer */}
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '12px 24px' }}>
+          <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => step > 1 && setStep(step - 1)}
+              disabled={step === 1}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px',
+                borderRadius: 8, border: '1.5px solid #ddd', backgroundColor: '#f9fafb',
+                color: step === 1 ? '#9ca3af' : 'var(--atlas-navy-1)',
+                cursor: step === 1 ? 'default' : 'pointer', fontSize: 14, fontWeight: 500,
+              }}
+            >
+              <ArrowLeft size={16} strokeWidth={1.5} />
+              Anterior
+            </button>
+            {step < 3 ? (
+              <button
+                type="button"
+                onClick={() => setStep(step + 1)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px',
+                  borderRadius: 8, border: 'none', backgroundColor: 'var(--atlas-blue)',
+                  color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                }}
+              >
+                Siguiente
+                <ArrowRight size={16} strokeWidth={1.5} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                form="nomina-wizard-form"
+                disabled={loading}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px',
+                  borderRadius: 8, border: 'none', backgroundColor: 'var(--ok)',
+                  color: '#fff', cursor: loading ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600,
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {showVariableForm && (
         <VariableForm
@@ -906,18 +940,17 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
             <label className="block text-sm font-medium text-neutral-700 mb-1">Tipo y Valor *</label>
             <div className="flex space-x-2">
               <select value={formData.tipo} onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as 'porcentaje' | 'importe' }))}
-                className="border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-2">
+                className="w-44 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-2">
                 <option value="porcentaje">% del salario</option>
                 <option value="importe">Importe fijo (€)</option>
               </select>
               <input type="number" step="0.01" value={formData.valor} onChange={(e) => setFormData(prev => ({ ...prev, valor: e.target.value }))}
-                className="flex-1 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2" placeholder={formData.tipo === 'porcentaje' ? '15' : '5000'} required />
+                className="w-24 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2" placeholder={formData.tipo === 'porcentaje' ? '15' : '5000'} required />
             </div>
           </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-3">Distribución por Meses (Total: {totalPorcentaje}%)</label>
-          {totalPorcentaje !== 100 && <p className="text-sm text-amber-600 mb-3">⚠️ La distribución suma {totalPorcentaje}%</p>}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {formData.distribucionMeses.map((dist, index) => (
               <div key={dist.mes} className="text-center">
