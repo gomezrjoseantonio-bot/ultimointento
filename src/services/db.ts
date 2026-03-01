@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 28; // V2.8: snapshotsDeclaracion.ejercicio index is now non-unique for forced multiple snapshots
+const DB_VERSION = 29; // V2.9: resultadosEjercicio store for immutable fiscal year snapshots
 
 export interface Property {
   id?: number;
@@ -120,6 +120,8 @@ export interface PropertyImprovement {
   counterpartyNIF?: string; // NIF contraparte (opcional)
   description: string; // descripción de la mejora
   // Metadata
+  originExerciseYear?: number; // año fiscal origen para trazabilidad histórica
+  sourceResultadoEjercicioId?: number; // FK resultadosEjercicio.id cuando aplica
   createdAt: string;
   updatedAt: string;
 }
@@ -938,8 +940,10 @@ export interface EjercicioFiscal {
   estado: EstadoEjercicio;        // vivo → cerrado → declarado
   origen: OrigenEjercicio;        // de dónde vienen los datos
   fechaCierre?: string;           // ISO date when closed
+  fechaRevisionFinal?: string;    // ISO date when final review was completed
   fechaDeclaracion?: string;      // ISO date when declared
   snapshotId?: number;            // FK → snapshotsDeclaracion.id
+  resultadoEjercicioId?: number;  // FK → resultadosEjercicio.id (snapshot canónico)
   // Resumen de alto nivel (se rellena al cerrar)
   resumen?: {
     baseImponibleGeneral: number;
@@ -950,6 +954,57 @@ export interface EjercicioFiscal {
     resultado: number;            // >0 a pagar, <0 a devolver
   };
   notas?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+// ─── V2.9: Resultado de Ejercicio (snapshot fiscal canónico) ─────────────────
+
+export interface ResultadoEjercicio {
+  id?: number;
+  ejercicio: number;
+  origen: 'cierre' | 'importacion_manual' | 'mixto';
+  estadoEjercicio: EstadoEjercicio;
+  fechaGeneracion: string;
+  fechaCierre?: string;
+  fechaPresentacion?: string;
+  moneda: 'EUR';
+  resumen: {
+    ingresosIntegros: number;
+    gastosDeducibles: number;
+    amortizacion: number;
+    reducciones: number;
+    baseImponibleGeneral: number;
+    baseImponibleAhorro: number;
+    cuotaIntegra: number;
+    cuotaLiquida: number;
+    deducciones: number;
+    retencionesYPagosCuenta: number;
+    resultado: number;
+    tipoEfectivo: number;
+  };
+  arrastres: {
+    generados: Array<{
+      arrastreId?: number;
+      tipo: TipoArrastre;
+      importe: number;
+      ejercicioCaducidad?: number;
+    }>;
+    aplicados: Array<{
+      arrastreId?: number;
+      tipo: TipoArrastre;
+      importe: number;
+      ejercicioOrigen?: number;
+    }>;
+  };
+  casillasAEAT?: Record<string, number>;
+  metadatos: {
+    validadoContraDatosReales: boolean;
+    notasRevision?: string;
+    origenDatos: OrigenEjercicio;
+    generadoPor: 'sistema' | 'usuario';
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -1121,6 +1176,9 @@ export interface FiscalSummary {
     accumulatedActual: number; // acumulado real deducido
   };
   // Metadata
+  ejercicioFiscalId?: number; // FK ejerciciosFiscales.id si existe
+  resultadoEjercicioId?: number; // FK resultadosEjercicio.id para histórico inmutable
+  snapshotLocked?: boolean; // evita recalcular histórico cerrado/importado
   createdAt: string;
   updatedAt: string;
 }
@@ -1456,6 +1514,7 @@ interface AtlasHorizonDB {
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
   ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
+  resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
 }
@@ -1885,6 +1944,16 @@ export const initDB = async () => {
           ejerciciosStore.createIndex('estado', 'estado', { unique: false });
           ejerciciosStore.createIndex('origen', 'origen', { unique: false });
           ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
+        }
+
+
+        // V2.9: Resultado de ejercicio store (immutable yearly snapshots)
+        if (!db.objectStoreNames.contains('resultadosEjercicio')) {
+          const resultadosStore = db.createObjectStore('resultadosEjercicio', { keyPath: 'id', autoIncrement: true });
+          resultadosStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          resultadosStore.createIndex('estadoEjercicio', 'estadoEjercicio', { unique: false });
+          resultadosStore.createIndex('origen', 'origen', { unique: false });
+          resultadosStore.createIndex('ejercicio-estado', ['ejercicio', 'estadoEjercicio'], { unique: false });
         }
 
         // V2.7: Arrastres IRPF store (carry-forwards between fiscal years)

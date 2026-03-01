@@ -89,7 +89,7 @@ describe('ejercicioFiscalService', () => {
     jest.spyOn(irpfCalculationService, 'calcularDeclaracionIRPF').mockResolvedValue(buildDeclaracionMock());
     await cerrarEjercicio(EJERCICIO);
 
-    await expect(cerrarEjercicio(EJERCICIO)).rejects.toThrow('No se puede cerrar');
+    await expect(cerrarEjercicio(EJERCICIO)).rejects.toThrow('No se puede actualizar el resumen');
   });
 
   test('reabrirEjercicio cambia estado de cerrado a vivo', async () => {
