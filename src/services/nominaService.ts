@@ -251,10 +251,37 @@ class NominaService {
       
       // Total bruto mensual
       const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
-      
-      // Calculate net using configured retention
-      const netoMensual = this.calculateNetFromBruto(brutoMensual, retencion);
-      
+      const totalDevengado = brutoMensual + pagaExtra;
+
+      // Deductions
+      const ssTotal = ssMensualBase;
+      const irpfImporte = (totalDevengado + especieMensual) * irpfPct;
+
+      // Plan pensiones employee contribution (deducted from líquido)
+      const ppEmpleado = planPensiones
+        ? planPensiones.aportacionEmpleado.tipo === 'porcentaje'
+          ? (planPensiones.aportacionEmpleado.valor / 100) *
+            (planPensiones.aportacionEmpleado.salarioBaseObjetivo ?? totalDevengado)
+          : planPensiones.aportacionEmpleado.valor
+        : 0;
+
+      // Plan pensiones company contribution (goes to financial product)
+      const ppEmpresa = planPensiones
+        ? planPensiones.aportacionEmpresa.tipo === 'porcentaje'
+          ? (planPensiones.aportacionEmpresa.valor / 100) *
+            (planPensiones.aportacionEmpresa.salarioBaseObjetivo ?? totalDevengado)
+          : planPensiones.aportacionEmpresa.valor
+        : 0;
+
+      // Other recurring or month-specific deductions
+      const otrasDeduciones = deduccionesAdicionales
+        .filter(d => d.esRecurrente || d.mes === mes)
+        .reduce((acc, d) => acc + d.importeMensual, 0);
+
+      const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeduciones;
+      const netoTotal = totalDevengado - totalDeducciones;
+      const ppTotalAlProducto = ppEmpleado + ppEmpresa;
+
       distribuccionMensual.push({
         mes,
         salarioBase,
@@ -287,6 +314,17 @@ class NominaService {
       totalAnualEspecie,
       totalAnualPP: totalAnualPPEmpresa + totalAnualPPEmpleado,
     };
+  }
+
+  /**
+   * Calculate net salary from gross using retention configuration
+   */
+  calculateNetFromBruto(bruto: number, retencion: RetencionNomina): number {
+    const { ss, cuotaSolidaridadMensual = 0 } = retencion;
+    const ssTotalPct =
+      (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
+    const ssTotal = ss.baseCotizacionMensual * ssTotalPct + cuotaSolidaridadMensual;
+    return bruto - ssTotal - bruto * (retencion.irpfPorcentaje / 100);
   }
 
   /**
