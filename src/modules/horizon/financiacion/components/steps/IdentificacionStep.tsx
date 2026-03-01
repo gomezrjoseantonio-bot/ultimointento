@@ -8,8 +8,6 @@ interface IdentificacionStepProps {
   data: Partial<PrestamoFinanciacion>;
   onChange: (updates: Partial<PrestamoFinanciacion>) => void;
   errors: Record<string, string>;
-  accounts: any[];
-  inmuebles: any[];
 }
 
 const cardStyle = (active: boolean): React.CSSProperties => ({
@@ -121,7 +119,7 @@ const IdentificacionStep: React.FC<IdentificacionStepProps> = ({ data, onChange,
           >
             <option value="">Selecciona un inmueble…</option>
             {inmuebles.map((inm: any) => (
-              <option key={inm.id} value={inm.id}>{inm.nombre || inm.direccion || inm.id}</option>
+              <option key={inm.id} value={inm.id}>{inm.alias || (inm.direccion?.calle ? `${inm.direccion.calle}, ${inm.direccion.municipio}` : inm.id)}</option>
             ))}
           </select>
           {errors.inmuebleId && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 4 }}>{errors.inmuebleId}</div>}
