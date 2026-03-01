@@ -1,0 +1,199 @@
+import { initDB, ArrastreIRPF, SnapshotDeclaracion } from './db';
+import { calcularDeclaracionIRPF } from './irpfCalculationService';
+
+export interface CrearSnapshotOpts {
+  origen?: 'cierre_automatico' | 'importacion_manual';
+  incluirCasillasAEAT?: boolean;
+  force?: boolean;
+}
+
+const STORE_NAME = 'snapshotsDeclaracion';
+const ARRSTRES_STORE_NAME = 'arrastresIRPF';
+
+function sortObjectKeysDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortObjectKeysDeep);
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => [key, sortObjectKeysDeep(val)]);
+
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+}
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function encodeUtf8(text: string): Promise<Uint8Array> {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(text);
+  }
+
+  const { TextEncoder: NodeTextEncoder } = await import('node:util');
+  return new NodeTextEncoder().encode(text);
+}
+
+async function computeSha256(payload: unknown): Promise<string> {
+  const canonicalPayload = JSON.stringify(sortObjectKeysDeep(payload));
+  const encoded = await encodeUtf8(canonicalPayload);
+
+  const runningInNode = typeof process !== 'undefined' && !!process.versions?.node;
+  if (runningInNode) {
+    const { createHash } = await import('node:crypto');
+    return createHash('sha256').update(encoded).digest('hex');
+  }
+
+  if (globalThis.crypto?.subtle) {
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', encoded);
+    return toHex(digest);
+  }
+
+  throw new Error('No hay implementación disponible para SHA-256.');
+}
+
+function buildCasillasAEAT(snapshot: SnapshotDeclaracion['datos']): Record<string, number> {
+  return {
+    '0435': snapshot.baseGeneral.total ?? 0,
+    '0460': snapshot.baseAhorro.total ?? 0,
+    '0500': snapshot.minimosPersonales.total ?? 0,
+    '0560': snapshot.liquidacion.cuotaIntegra ?? 0,
+    '0595': snapshot.liquidacion.cuotaLiquida ?? 0,
+    '0670': snapshot.liquidacion.deduccionesDobleImposicion ?? 0,
+  };
+}
+
+async function findLatestSnapshotByEjercicio(ejercicio: number): Promise<SnapshotDeclaracion | null> {
+  const db = await initDB();
+  const snapshots = (await db.getAllFromIndex(STORE_NAME, 'ejercicio', ejercicio)) as SnapshotDeclaracion[];
+
+  if (snapshots.length === 0) {
+    return null;
+  }
+
+  return snapshots.sort((a, b) => b.fechaSnapshot.localeCompare(a.fechaSnapshot))[0] ?? null;
+}
+
+async function findExistingCierreAutomatico(ejercicio: number): Promise<SnapshotDeclaracion | null> {
+  const db = await initDB();
+  const snapshots = (await db.getAllFromIndex(STORE_NAME, 'ejercicio', ejercicio)) as SnapshotDeclaracion[];
+
+  const cierreAutomatico = snapshots
+    .filter((snapshot) => snapshot.origen === 'cierre_automatico')
+    .sort((a, b) => b.fechaSnapshot.localeCompare(a.fechaSnapshot))[0];
+
+  return cierreAutomatico ?? null;
+}
+
+async function getArrastresForEjercicio(ejercicio: number): Promise<{ arrastresGenerados: number[]; arrastresAplicados: number[] }> {
+  const db = await initDB();
+
+  const generados = (await db.getAllFromIndex(ARRSTRES_STORE_NAME, 'ejercicioOrigen', ejercicio)) as ArrastreIRPF[];
+  const allArrastres = (await db.getAll(ARRSTRES_STORE_NAME)) as ArrastreIRPF[];
+
+  const arrastresGenerados = generados
+    .map((arrastre) => arrastre.id)
+    .filter((id): id is number => typeof id === 'number')
+    .sort((a, b) => a - b);
+
+  const arrastresAplicados = allArrastres
+    .filter((arrastre) => arrastre.aplicaciones.some((aplicacion) => aplicacion.ejercicio === ejercicio))
+    .map((arrastre) => arrastre.id)
+    .filter((id): id is number => typeof id === 'number')
+    .sort((a, b) => a - b);
+
+  return {
+    arrastresGenerados,
+    arrastresAplicados,
+  };
+}
+
+export async function crearSnapshotDeclaracion(
+  ejercicio: number,
+  opts: CrearSnapshotOpts = {}
+): Promise<SnapshotDeclaracion> {
+  const origen = opts.origen ?? 'cierre_automatico';
+
+  if (origen === 'cierre_automatico' && opts.force !== true) {
+    const existing = await findExistingCierreAutomatico(ejercicio);
+    if (existing) {
+      return existing;
+    }
+  }
+
+  const declaracion = await calcularDeclaracionIRPF(ejercicio, { usarConciliacion: true });
+  const { arrastresGenerados, arrastresAplicados } = await getArrastresForEjercicio(ejercicio);
+
+  const datos: SnapshotDeclaracion['datos'] = {
+    baseGeneral: declaracion.baseGeneral,
+    baseAhorro: declaracion.baseAhorro,
+    reducciones: declaracion.reducciones,
+    minimosPersonales: declaracion.minimoPersonal,
+    liquidacion: declaracion.liquidacion,
+    arrastresGenerados,
+    arrastresAplicados,
+  };
+
+  const fechaSnapshot = new Date().toISOString();
+  const hash = await computeSha256({ ejercicio, fechaSnapshot, datos, origen });
+  const createdAt = new Date().toISOString();
+
+  const snapshot: SnapshotDeclaracion = {
+    ejercicio,
+    fechaSnapshot,
+    datos,
+    origen,
+    hash,
+    createdAt,
+    casillasAEAT: opts.incluirCasillasAEAT ? buildCasillasAEAT(datos) : undefined,
+  };
+
+  const db = await initDB();
+  const id = await db.add(STORE_NAME, snapshot);
+
+  return {
+    ...snapshot,
+    id: typeof id === 'number' ? id : undefined,
+  };
+}
+
+export async function obtenerSnapshotDeclaracion(ejercicio: number): Promise<SnapshotDeclaracion | null> {
+  return findLatestSnapshotByEjercicio(ejercicio);
+}
+
+export async function listarSnapshotsDeclaracion(): Promise<SnapshotDeclaracion[]> {
+  const db = await initDB();
+  const snapshots = (await db.getAll(STORE_NAME)) as SnapshotDeclaracion[];
+  return snapshots.sort((a, b) => b.fechaSnapshot.localeCompare(a.fechaSnapshot));
+}
+
+export async function verificarIntegridadSnapshot(
+  idSnapshot: number
+): Promise<{ ok: boolean; hashActual: string; hashGuardado?: string }> {
+  const db = await initDB();
+  const snapshot = (await db.get(STORE_NAME, idSnapshot)) as SnapshotDeclaracion | undefined;
+
+  if (!snapshot) {
+    throw new Error(`No existe snapshotDeclaracion con id ${idSnapshot}.`);
+  }
+
+  const hashActual = await computeSha256({
+    ejercicio: snapshot.ejercicio,
+    fechaSnapshot: snapshot.fechaSnapshot,
+    datos: snapshot.datos,
+    origen: snapshot.origen,
+  });
+
+  return {
+    ok: hashActual === snapshot.hash,
+    hashActual,
+    hashGuardado: snapshot.hash,
+  };
+}
