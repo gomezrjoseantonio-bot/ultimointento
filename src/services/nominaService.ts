@@ -4,7 +4,6 @@ import {
   Variable, 
   ReglaDia, 
   RetencionNomina,
-  PlanPensionesNomina,
   CalculoNominaResult,
   DistribucionMensualResult
 } from '../types/personal';
@@ -29,7 +28,6 @@ class NominaService {
     // Migrate old retencion format { irpfPorcentaje, cotizacionSS } → new RetencionNomina
     let retencion: RetencionNomina;
     if (nomina.retencion && typeof (nomina.retencion as any).cotizacionSS === 'number') {
-      const oldSS: number = (nomina.retencion as any).cotizacionSS ?? 6.35;
       retencion = {
         irpfPorcentaje: nomina.retencion.irpfPorcentaje ?? 24,
         ss: {
