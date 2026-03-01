@@ -215,7 +215,8 @@ export async function ejecutarSimulacion(
         const reduccion = inmueble.esHabitual ? round2(rendBruto * REDUCCION_HABITUAL) : 0;
         inmueble.ingresosIntegros = round2(inmueble.ingresosIntegros + delta);
         inmueble.reduccionHabitual = reduccion;
-        inmueble.rendimientoNeto = round2(rendBruto - reduccion);
+        inmueble.rendimientoNetoAlquiler = round2(rendBruto - reduccion);
+        inmueble.rendimientoNeto = round2(rendBruto - reduccion + inmueble.imputacionRenta);
         sim.baseGeneral.rendimientosInmuebles[idx] = inmueble;
         sim.baseGeneral.total = round2(
           (sim.baseGeneral.rendimientosTrabajo?.rendimientoNeto ?? 0) +
@@ -271,12 +272,18 @@ export async function ejecutarSimulacion(
       sim.baseGeneral.rendimientosInmuebles.push({
         inmuebleId: parametros.inmuebleId,
         alias: imputacion?.alias ?? `Inmueble ${parametros.inmuebleId}`,
+        diasAlquilado: meses * 30,
+        diasVacio: 0,
+        diasEnObras: 0,
+        diasTotal: 365,
         ingresosIntegros: ingresos,
         gastosDeducibles: 0,
         amortizacion: 0,
         reduccionHabitual: reduccion,
-        rendimientoNeto: round2(rendBruto - reduccion),
+        rendimientoNetoAlquiler: round2(rendBruto - reduccion),
         esHabitual: false,
+        imputacionRenta: 0,
+        rendimientoNeto: round2(rendBruto - reduccion),
       });
       sim.baseGeneral.total = round2(
         (sim.baseGeneral.rendimientosTrabajo?.rendimientoNeto ?? 0) +

@@ -995,7 +995,8 @@ export interface FiscalSummary {
   propertyId: number;
   exerciseYear: number;
   // AEAT Box totals
-  box0105: number; // Interests/financing
+  box0105: number; // Interests/financing (manual docs + auto loans)
+  box0105_auto?: number; // Interests auto-calculated from linked loans (subset of box0105)
   box0106: number; // R&C
   box0109: number; // Community
   box0112: number; // Personal services
