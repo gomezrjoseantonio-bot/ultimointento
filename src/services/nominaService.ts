@@ -250,45 +250,13 @@ class NominaService {
       const bonusDelMes = bonus
         .filter(b => b.mes === mes)
         .reduce((total, b) => total + b.importe, 0);
-
-      const totalDevengado = salarioBase + pagaExtra + variablesDelMes + bonusDelMes;
-
-      // SS is the same base amount every month (already topped)
-      const ssTotal = ssMensualBase;
-
-      // IRPF applies on devengado + especie (especie adds to IRPF base)
-      const irpfImporte = (totalDevengado + especieMensual) * irpfPct;
-
-      // Plan pensiones empleado
-      let ppEmpleado = 0;
-      let ppEmpresa = 0;
-      if (planPensiones) {
-        const baseParaPP = salarioBrutoAnual / 12;
-        const { aportacionEmpleado, aportacionEmpresa } = planPensiones;
-
-        ppEmpleado =
-          aportacionEmpleado.tipo === 'porcentaje'
-            ? (aportacionEmpleado.salarioBaseObjetivo ?? baseParaPP) * (aportacionEmpleado.valor / 100)
-            : aportacionEmpleado.valor;
-
-        ppEmpresa =
-          aportacionEmpresa.tipo === 'porcentaje'
-            ? (aportacionEmpresa.salarioBaseObjetivo ?? baseParaPP) * (aportacionEmpresa.valor / 100)
-            : aportacionEmpresa.valor;
-      }
-
-      // Otras deducciones for this month
-      const otrasDeduciones = deduccionesAdicionales.reduce((total, d) => {
-        if (d.esRecurrente || d.mes === mes) {
-          return total + d.importeMensual;
-        }
-        return total;
-      }, 0);
-
-      const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeduciones;
-      const netoTotal = totalDevengado - totalDeducciones;
-      const ppTotalAlProducto = ppEmpresa + ppEmpleado;
-
+      
+      // Total bruto mensual
+      const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
+      
+      // Calculate net using configured retention
+      const netoMensual = this.calculateNetFromBruto(brutoMensual, retencion);
+      
       distribuccionMensual.push({
         mes,
         salarioBase,

@@ -1,6 +1,6 @@
 # Módulo de Análisis de Inmuebles
 
-Este módulo implementa un sistema completo de análisis de rentabilidad y rendimiento fiscal para inmuebles, siguiendo las especificaciones del problema statement.
+Este módulo implementa un sistema completo de análisis de rentabilidad y rendimiento fiscal para inmuebles usando exclusivamente datos reales de IndexedDB (stores `properties`, `contracts`, `ingresos`, `gastos`, `prestamos` y `valoraciones_historicas`).
 
 ## Estructura
 
@@ -188,17 +188,17 @@ import { Analisis } from './modules/horizon/inmuebles/analisis/Analisis';
 
 El módulo está preparado para:
 
-1. **Datos reales**: Sustituir mock data por datos de contratos, préstamos y movimientos
-2. **Plan Base**: Enviar decisiones de venta al módulo de planificación
-3. **Copiloto**: Integrar recomendaciones en el asistente IA
-4. **Alertas**: Notificar cuando ROI cae por debajo del umbral
-5. **Histórico**: Guardar análisis para tracking temporal
+1. **Plan Base**: Enviar decisiones de venta al módulo de planificación
+2. **Copiloto**: Integrar recomendaciones en el asistente IA
+3. **Alertas**: Notificar cuando ROI cae por debajo del umbral
+4. **Histórico**: Guardar análisis para tracking temporal
 
 ## Notas de Implementación
 
 - El semáforo refleja la **recomendación automática**, no la decisión del usuario
 - Las acciones no tienen "guardar global", cada acción guarda su estado directamente
-- La simulación permanece activa y editable en todo momento
+- La simulación permanece activa y editable con datos reales de la propiedad seleccionada
+- Si faltan datos críticos (ingresos, gastos operativos, valoración, compra), se muestra alerta y se desactivan acciones
 - Los intereses futuros evitados requieren datos de amortización del préstamo (actualmente simplificado)
 
 ## Mantenimiento
@@ -214,3 +214,19 @@ Para actualizar tipos impositivos o configuración:
 **Versión**: 1.0  
 **Última actualización**: Implementación inicial completa  
 **Autor**: Sistema de análisis fiscal de inmuebles
+
+## Integración de gastos centralizada (OPEX/CAPEX)
+
+Desde esta versión, `Analisis.tsx` consume exclusivamente el servicio `src/services/propertyExpenses.ts` para el cálculo de gastos operativos.
+
+Flujo:
+1. `getAnnualOpexForProperty(propertyId)` obtiene OPEX anual normalizado.
+2. El valor se transforma a mensual para el cálculo del bloque operacional.
+3. `getExpenseDiagnosticsForProperty(propertyId)` muestra alertas de:
+   - ausencia de gastos,
+   - uso de fallback legacy.
+
+Ruta de retirada legacy:
+- Mantener fallback sólo durante migración.
+- Completar reglas `opexRules` en todos los inmuebles.
+- Desactivar fallback en una siguiente versión cuando no haya inmuebles legacy.

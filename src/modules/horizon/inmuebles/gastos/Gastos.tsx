@@ -4,6 +4,7 @@ import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import toast from 'react-hot-toast';
+import { getAnnualOpexForProperty, getExpenseDiagnosticsForProperty } from '../../../../services/propertyExpenses';
 
 interface GastoFormData {
   proveedor_nombre: string;
@@ -26,6 +27,8 @@ const Gastos: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [portfolioAnnualOpex, setPortfolioAnnualOpex] = useState(0);
+  const [legacyWarningCount, setLegacyWarningCount] = useState(0);
 
   const [formData, setFormData] = useState<GastoFormData>({
     proveedor_nombre: '',
@@ -52,6 +55,13 @@ const Gastos: React.FC = () => {
 
       setGastos(gastosData);
       setProperties(propertiesData);
+
+      const propertyIds = propertiesData.map((property) => property.id).filter(Boolean) as number[];
+      const annualTotals = await Promise.all(propertyIds.map((id) => getAnnualOpexForProperty(id)));
+      const diagnostics = await Promise.all(propertyIds.map((id) => getExpenseDiagnosticsForProperty(id)));
+
+      setPortfolioAnnualOpex(annualTotals.reduce((sum, value) => sum + value, 0));
+      setLegacyWarningCount(diagnostics.filter((item) => item.usingLegacyFallback).length);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error al cargar los datos');
@@ -186,6 +196,17 @@ const Gastos: React.FC = () => {
       }}
     >
       <div className="space-y-6">
+        <div className="p-4 border border-gray-200 bg-gray-50">
+          <div className="text-sm text-gray-600">
+            OPEX anual estimado (API centralizada): <span className="font-semibold text-gray-900">{formatEuro(portfolioAnnualOpex)}</span>
+          </div>
+          {legacyWarningCount > 0 && (
+            <div className="text-sm text-orange-700 mt-2">
+              {legacyWarningCount} inmuebles están usando fallback legacy. Migra sus reglas a Presupuesto OPEX/CAPEX.
+            </div>
+          )}
+        </div>
+
         {/* Filters */}
         <div className="flex flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-2">
