@@ -49,7 +49,6 @@ const FiscalDashboard = React.lazy(() => import('./modules/horizon/fiscalidad/da
 const DeclaracionPage = React.lazy(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
 const SimuladorPage = React.lazy(() => import('./modules/horizon/fiscalidad/simulador/SimuladorPage'));
 const PagosPage = React.lazy(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
-const HistoricoPage = React.lazy(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
 
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
@@ -314,9 +313,9 @@ function App() {
             </Route>
             
             <Route path="fiscalidad">
-              <Route index element={<Navigate to="/fiscalidad/dashboard" replace />} />
+              <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
               {/* New fiscal module tabs */}
-              <Route path="dashboard" element={
+              <Route path="resumen" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FiscalDashboard />
                 </React.Suspense>
@@ -336,15 +335,11 @@ function App() {
                   <PagosPage />
                 </React.Suspense>
               } />
-              <Route path="historico" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <HistoricoPage />
-                </React.Suspense>
-              } />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad/resumen" replace />} />
+              <Route path="historico" element={<Navigate to="/fiscalidad/resumen" replace />} />
               {/* Legacy routes — redirect to new equivalents */}
-              <Route path="resumen" element={<Navigate to="/fiscalidad/dashboard" replace />} />
               <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
-              <Route path="declaraciones" element={<Navigate to="/fiscalidad/historico" replace />} />
+              <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />
             </Route>
             
             {/* Financing Module - Standalone loan management */}

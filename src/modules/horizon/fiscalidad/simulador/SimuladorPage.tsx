@@ -17,7 +17,7 @@ interface SimulacionCard {
 const SIMULACIONES: SimulacionCard[] = [
   {
     tipo: 'venta_inversion',
-    label: 'Venta de inversión',
+    label: 'Vender inmueble / inversión',
     descripcion: 'Calcula el impacto fiscal de vender una posición',
     icon: TrendingUp,
     campos: [
@@ -27,7 +27,7 @@ const SIMULACIONES: SimulacionCard[] = [
   },
   {
     tipo: 'aportacion_plan_pensiones',
-    label: 'Aportación plan de pensiones',
+    label: 'Aportar a plan de pensiones',
     descripcion: 'Simula una aportación adicional al plan de pensiones (máx. 1.500 €)',
     icon: PiggyBank,
     campos: [
@@ -36,7 +36,7 @@ const SIMULACIONES: SimulacionCard[] = [
   },
   {
     tipo: 'cambio_renta_alquiler',
-    label: 'Cambio de renta de alquiler',
+    label: 'Subir alquiler',
     descripcion: 'Modifica la renta mensual de un inmueble alquilado',
     icon: Building,
     campos: [
@@ -126,8 +126,8 @@ const SimuladorPage: React.FC = () => {
 
   return (
     <PageLayout
-      title="Simulador fiscal"
-      subtitle="Analiza el impacto de decisiones financieras en tu declaración IRPF"
+      title="Simulador fiscal (basado en datos vivos)"
+      subtitle="Compara escenario Actual vs Simulado para el ejercicio en curso"
     >
       {/* Grid de simulaciones */}
       {!selectedCard && (
@@ -136,11 +136,11 @@ const SimuladorPage: React.FC = () => {
             <button
               key={card.tipo}
               onClick={() => handleSelectCard(card)}
-              className="bg-white border border-gray-200 rounded-lg p-4 text-left hover:border-blue-400 hover:shadow-md transition-all duration-200"
+              className="bg-white border border-gray-200 rounded-lg p-4 text-left hover:border-[var(--atlas-info-400)] hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <card.icon className="w-4 h-4 text-blue-600" />
+                <div className="w-8 h-8 bg-[var(--atlas-info-100)] rounded-lg flex items-center justify-center">
+                  <card.icon className="w-4 h-4 text-[var(--atlas-info-700)]" />
                 </div>
                 <h3 className="text-sm font-semibold text-gray-900">{card.label}</h3>
               </div>
@@ -156,7 +156,7 @@ const SimuladorPage: React.FC = () => {
           <div className="flex items-center gap-3 mb-2">
             <button
               onClick={() => setSelectedCard(null)}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-[var(--atlas-info-700)] hover:underline"
             >
               ← Volver
             </button>
@@ -171,18 +171,18 @@ const SimuladorPage: React.FC = () => {
                 type={campo.type}
                 value={params[campo.name] ?? ''}
                 onChange={e => setParams(prev => ({ ...prev, [campo.name]: Number(e.target.value) || e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--atlas-info-500)] focus:border-transparent"
                 placeholder={campo.type === 'number' ? '0' : ''}
               />
             </div>
           ))}
 
-          {error && <p className="text-sm text-blue-700">{error}</p>}
+          {error && <p className="text-sm text-[var(--atlas-info-700)]">{error}</p>}
 
           <button
             onClick={handleSimular}
             disabled={loading}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full py-2.5 bg-[var(--atlas-info-600)] text-white rounded-lg text-sm font-medium hover:bg-[var(--atlas-info-700)] disabled:opacity-50 transition-colors"
           >
             {loading ? 'Calculando...' : 'Simular'}
           </button>
@@ -195,7 +195,7 @@ const SimuladorPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => { setResultado(null); setSelectedCard(null); }}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-sm text-[var(--atlas-info-700)] hover:underline"
             >
               ← Nueva simulación
             </button>
@@ -206,8 +206,8 @@ const SimuladorPage: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
             <div className="grid grid-cols-3 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-3 border-b border-gray-200">
               <span>Concepto</span>
-              <span className="text-center">Sin cambio</span>
-              <span className="text-center">Con cambio</span>
+              <span className="text-center">Actual</span>
+              <span className="text-center">Simulado</span>
             </div>
             {[
               { label: 'Base imponible general', antes: resultado.resultadoBase.liquidacion.baseImponibleGeneral, despues: resultado.resultadoSimulado.liquidacion.baseImponibleGeneral },
@@ -221,7 +221,7 @@ const SimuladorPage: React.FC = () => {
                 <div key={row.label} className="grid grid-cols-3 text-sm px-4 py-2.5 border-b border-gray-100 last:border-0">
                   <span className="text-gray-600">{row.label}</span>
                   <span className="text-center">{fmt(row.antes)}</span>
-                  <span className={`text-center font-medium ${diff > 0 ? 'text-blue-700' : diff < 0 ? 'text-cyan-700' : ''}`}>
+                  <span className={`text-center font-medium ${diff > 0 ? 'text-[var(--atlas-info-700)]' : diff < 0 ? 'text-cyan-700' : ''}`}>
                     {fmt(row.despues)}
                     {diff !== 0 && <span className="text-xs ml-1">({diff > 0 ? '+' : ''}{fmt(diff)})</span>}
                   </span>
@@ -231,10 +231,10 @@ const SimuladorPage: React.FC = () => {
           </div>
 
           {/* Impacto resumen */}
-          <div className={`p-4 rounded-lg border ${resultado.diferencia.cuotaLiquida > 0 ? 'bg-blue-50 border-blue-200' : 'bg-cyan-50 border-cyan-200'}`}>
+          <div className={`p-4 rounded-lg border ${resultado.diferencia.cuotaLiquida > 0 ? 'bg-[var(--atlas-info-100)] border-[var(--atlas-info-300)]' : 'bg-cyan-50 border-cyan-200'}`}>
             <p className="text-sm font-semibold text-gray-900">
               Impacto neto en bolsillo:{' '}
-              <span className={resultado.diferencia.impactoNetoBolsillo >= 0 ? 'text-cyan-800' : 'text-blue-800'}>
+              <span className={resultado.diferencia.impactoNetoBolsillo >= 0 ? 'text-cyan-800' : 'text-[var(--atlas-info-800)]'}>
                 {resultado.diferencia.impactoNetoBolsillo >= 0 ? '+' : ''}{fmt(resultado.diferencia.impactoNetoBolsillo)}
               </span>
             </p>
@@ -250,7 +250,7 @@ const SimuladorPage: React.FC = () => {
                 <div key={i} className={`p-3 rounded-lg text-sm border ${
                   tip.tipo === 'ahorro' ? 'bg-cyan-50 border-cyan-200 text-cyan-800' :
                   tip.tipo === 'alerta' ? 'bg-gray-50 border-gray-200 text-gray-700' :
-                  'bg-blue-50 border-blue-200 text-blue-800'
+                  'bg-[var(--atlas-info-100)] border-blue-200 text-blue-800'
                 }`}>
                   {tip.mensaje}
                 </div>

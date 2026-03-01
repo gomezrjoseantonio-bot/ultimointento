@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
-import { BarChart3, Calculator, CalendarClock, Landmark, ReceiptText } from 'lucide-react';
+import { Calculator, Landmark, ReceiptText, Rows3 } from 'lucide-react';
 
 interface Tab {
   label: string;
@@ -20,11 +20,10 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   ],
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
-    { label: 'Dashboard', path: '/fiscalidad/dashboard', icon: BarChart3 },
+    { label: 'Resumen', path: '/fiscalidad/resumen', icon: Rows3 },
     { label: 'Declaración', path: '/fiscalidad/declaracion', icon: ReceiptText },
-    { label: 'Simulador', path: '/fiscalidad/simulador', icon: Calculator },
     { label: 'Pagos', path: '/fiscalidad/pagos', icon: Landmark },
-    { label: 'Histórico', path: '/fiscalidad/historico', icon: CalendarClock },
+    { label: 'Simulador', path: '/fiscalidad/simulador', icon: Calculator },
   ],
   proyeccion: [
     { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
