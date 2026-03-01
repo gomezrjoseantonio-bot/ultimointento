@@ -251,36 +251,39 @@ class NominaService {
       
       // Total bruto mensual
       const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
+
+      // Total devengado for this month (base + paga extra)
       const totalDevengado = brutoMensual + pagaExtra;
 
-      // Deductions
+      // SS deductions for this month
       const ssTotal = ssMensualBase;
+
+      // IRPF on (devengado + especie)
       const irpfImporte = (totalDevengado + especieMensual) * irpfPct;
 
-      // Plan pensiones employee contribution (deducted from líquido)
-      const ppEmpleado = planPensiones
-        ? planPensiones.aportacionEmpleado.tipo === 'porcentaje'
-          ? (planPensiones.aportacionEmpleado.valor / 100) *
-            (planPensiones.aportacionEmpleado.salarioBaseObjetivo ?? totalDevengado)
-          : planPensiones.aportacionEmpleado.valor
-        : 0;
+      // Plan pensiones contributions
+      let ppEmpleado = 0;
+      let ppEmpresa = 0;
+      if (planPensiones) {
+        const baseEmpleado = planPensiones.aportacionEmpleado.salarioBaseObjetivo ?? totalDevengado;
+        ppEmpleado = planPensiones.aportacionEmpleado.tipo === 'porcentaje'
+          ? (baseEmpleado * planPensiones.aportacionEmpleado.valor) / 100
+          : planPensiones.aportacionEmpleado.valor;
+        const baseEmpresa = planPensiones.aportacionEmpresa.salarioBaseObjetivo ?? totalDevengado;
+        ppEmpresa = planPensiones.aportacionEmpresa.tipo === 'porcentaje'
+          ? (baseEmpresa * planPensiones.aportacionEmpresa.valor) / 100
+          : planPensiones.aportacionEmpresa.valor;
+      }
+      const ppTotalAlProducto = ppEmpleado + ppEmpresa;
 
-      // Plan pensiones company contribution (goes to financial product)
-      const ppEmpresa = planPensiones
-        ? planPensiones.aportacionEmpresa.tipo === 'porcentaje'
-          ? (planPensiones.aportacionEmpresa.valor / 100) *
-            (planPensiones.aportacionEmpresa.salarioBaseObjetivo ?? totalDevengado)
-          : planPensiones.aportacionEmpresa.valor
-        : 0;
-
-      // Other recurring or month-specific deductions
+      // Other deductions for this month
       const otrasDeduciones = deduccionesAdicionales
         .filter(d => d.esRecurrente || d.mes === mes)
         .reduce((acc, d) => acc + d.importeMensual, 0);
 
+      // Total deductions and net
       const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeduciones;
       const netoTotal = totalDevengado - totalDeducciones;
-      const ppTotalAlProducto = ppEmpleado + ppEmpresa;
 
       distribuccionMensual.push({
         mes,
@@ -317,14 +320,14 @@ class NominaService {
   }
 
   /**
-   * Calculate net salary from gross using retention configuration
+   * Calculate net salary from bruto applying SS and IRPF retentions
    */
   calculateNetFromBruto(bruto: number, retencion: RetencionNomina): number {
-    const { ss, cuotaSolidaridadMensual = 0 } = retencion;
-    const ssTotalPct =
-      (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
-    const ssTotal = ss.baseCotizacionMensual * ssTotalPct + cuotaSolidaridadMensual;
-    return bruto - ssTotal - bruto * (retencion.irpfPorcentaje / 100);
+    const { ss, cuotaSolidaridadMensual = 0, irpfPorcentaje } = retencion;
+    const ssTotalPct = (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
+    const ssImporte = ss.baseCotizacionMensual * ssTotalPct + cuotaSolidaridadMensual;
+    const irpfImporte = bruto * (irpfPorcentaje / 100);
+    return bruto - ssImporte - irpfImporte;
   }
 
   /**
