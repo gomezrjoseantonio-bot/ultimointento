@@ -434,6 +434,14 @@ export async function generateMonthlyForecasts(
         sourceId: undefined, // string UUID – incompatible with numeric sourceId field
         accountId,
         status: 'predicted' as const,
+        prestamoId: prestamo.id,
+        numeroCuota: (() => {
+          const fechaFirma = new Date(prestamo.fechaFirma);
+          const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses ?? 0;
+          const firstPayment = new Date(fechaFirma);
+          firstPayment.setMonth(firstPayment.getMonth() + (mesesDiferimiento > 0 ? mesesDiferimiento : 1));
+          return (year - firstPayment.getFullYear()) * 12 + (month - (firstPayment.getMonth() + 1)) + 1;
+        })(),
         createdAt: now,
         updatedAt: now,
       });
