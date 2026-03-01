@@ -652,15 +652,15 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
   // PASO 4: Reducciones
   // PP from trabajo (already limited per Art. 52 LIRPF)
   const ppTrabajo = trabajo?.ppTotalReduccion ?? 0;
-  // PP from inversiones (planes de pensiones individuales)
-  const ppInversiones = aportacionPensiones;
+  // PP from inversiones (planes de pensiones individuales), capped by remaining headroom
+  const ppIndividualCapped = Math.max(0, Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPPTotal - ppTrabajo));
   // Total PP reduction (combined limit 10.000€)
-  const totalPP = Math.min(ppTrabajo + ppInversiones, CONSTANTES_IRPF.maxAportacionPPTotal);
+  const totalPP = round2(ppTrabajo + ppIndividualCapped);
 
   const reducciones = {
     ppEmpleado: trabajo?.ppEmpleado ?? 0,
     ppEmpresa: trabajo?.ppEmpresa ?? 0,
-    ppIndividual: ppInversiones,
+    ppIndividual: ppIndividualCapped,
     planPensiones: totalPP,
     total: totalPP,
   };
