@@ -251,10 +251,40 @@ class NominaService {
       
       // Total bruto mensual
       const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
-      
-      // Calculate net using configured retention
-      const netoMensual = this.calculateNetFromBruto(brutoMensual, retencion);
-      
+
+      // Total devengado for this month (base + paga extra)
+      const totalDevengado = brutoMensual + pagaExtra;
+
+      // SS deductions for this month
+      const ssTotal = ssMensualBase;
+
+      // IRPF on (devengado + especie)
+      const irpfImporte = (totalDevengado + especieMensual) * irpfPct;
+
+      // Plan pensiones contributions
+      let ppEmpleado = 0;
+      let ppEmpresa = 0;
+      if (planPensiones) {
+        const baseEmpleado = planPensiones.aportacionEmpleado.salarioBaseObjetivo ?? totalDevengado;
+        ppEmpleado = planPensiones.aportacionEmpleado.tipo === 'porcentaje'
+          ? (baseEmpleado * planPensiones.aportacionEmpleado.valor) / 100
+          : planPensiones.aportacionEmpleado.valor;
+        const baseEmpresa = planPensiones.aportacionEmpresa.salarioBaseObjetivo ?? totalDevengado;
+        ppEmpresa = planPensiones.aportacionEmpresa.tipo === 'porcentaje'
+          ? (baseEmpresa * planPensiones.aportacionEmpresa.valor) / 100
+          : planPensiones.aportacionEmpresa.valor;
+      }
+      const ppTotalAlProducto = ppEmpleado + ppEmpresa;
+
+      // Other deductions for this month
+      const otrasDeduciones = deduccionesAdicionales
+        .filter(d => d.esRecurrente || d.mes === mes)
+        .reduce((acc, d) => acc + d.importeMensual, 0);
+
+      // Total deductions and net
+      const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeduciones;
+      const netoTotal = totalDevengado - totalDeducciones;
+
       distribuccionMensual.push({
         mes,
         salarioBase,
@@ -287,6 +317,17 @@ class NominaService {
       totalAnualEspecie,
       totalAnualPP: totalAnualPPEmpresa + totalAnualPPEmpleado,
     };
+  }
+
+  /**
+   * Calculate net salary from bruto applying SS and IRPF retentions
+   */
+  calculateNetFromBruto(bruto: number, retencion: RetencionNomina): number {
+    const { ss, cuotaSolidaridadMensual = 0, irpfPorcentaje } = retencion;
+    const ssTotalPct = (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
+    const ssImporte = ss.baseCotizacionMensual * ssTotalPct + cuotaSolidaridadMensual;
+    const irpfImporte = bruto * (irpfPorcentaje / 100);
+    return bruto - ssImporte - irpfImporte;
   }
 
   /**
