@@ -122,14 +122,22 @@ export const calculateFiscalSummary = async (
     summary.annualDepreciation = summary.constructionValue * 0.03; // 3% annual depreciation
   }
 
-  // Calculate deductible excess (if 0105 + 0106 exceed rental income)
-  // Note: This would need rental income data to be complete
-  // For now, mark excess if 0105 + 0106 > 0 (placeholder logic)
+  // Calculate deductible excess (0105 + 0106 that exceed rental income for this property/year)
   const financingAndRepairs = summary.box0105 + summary.box0106;
   if (financingAndRepairs > 0) {
-    // TODO: Compare against actual rental income for this property/year
-    // For now, assume excess if over a threshold
-    summary.deductibleExcess = financingAndRepairs; // Placeholder
+    const allIngresos = await db.getAll('ingresos');
+    const totalIncome = allIngresos
+      .filter((ingreso) => {
+        const incomeDate = new Date(ingreso.fecha_emision);
+        return (
+          incomeDate.getFullYear() === exerciseYear &&
+          ingreso.destino === 'inmueble_id' &&
+          ingreso.destino_id === propertyId &&
+          ingreso.estado === 'cobrado'
+        );
+      })
+      .reduce((sum, ingreso) => sum + ingreso.importe, 0);
+    summary.deductibleExcess = Math.max(0, financingAndRepairs - totalIncome);
   }
 
   // Save or update the summary
