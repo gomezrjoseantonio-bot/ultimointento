@@ -596,6 +596,9 @@ export interface PropertyDays {
   taxYear: number;
   daysRented: number;
   daysAvailable: number;
+  daysUnderRenovation?: number; // Días en obras: sin rendimiento ni imputación
+  manualOverride?: boolean; // true when user adjusted values manually
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1021,6 +1024,8 @@ export interface Ingreso {
   destino_id?: number; // ID del inmueble si aplica
   estado: IngresoEstado;
   movement_id?: number; // Link to reconciled movement
+  tipoFiscal?: 'alquiler' | 'nomina' | 'autonomo' | 'dividendo' | 'otros';
+  ejercicioFiscal?: number;
   from_doc?: boolean; // Flag for exceptional income from documents
   createdAt: string;
   updatedAt: string;
@@ -1044,6 +1049,8 @@ export interface Gasto {
   destino_id?: number; // ID del inmueble si aplica
   estado: GastoEstado;
   movement_id?: number; // Link to reconciled movement
+  tipoFiscal?: 'comunidad' | 'seguro' | 'hipoteca' | 'suministro' | 'impuesto' | 'reparacion' | 'otros';
+  ejercicioFiscal?: number;
   source_doc_id?: number; // Link to source document
   createdAt: string;
   updatedAt: string;

@@ -128,7 +128,9 @@ async function conciliarIngresosAlquiler(
       i.destino === 'inmueble_id' &&
       i.destino_id === prop.id &&
       i.estado === 'cobrado' &&
-      i.movement_id != null
+      i.movement_id != null &&
+      (i.ejercicioFiscal == null || i.ejercicioFiscal === ejercicio) &&
+      (i.tipoFiscal == null || i.tipoFiscal === 'alquiler')
     );
 
     for (let mes = 1; mes <= 12; mes++) {
@@ -246,7 +248,8 @@ async function conciliarGastosOPEX(
       g.destino === 'inmueble_id' &&
       g.destino_id === prop.id &&
       g.estado === 'pagado' &&
-      g.movement_id != null
+      g.movement_id != null &&
+      (g.ejercicioFiscal == null || g.ejercicioFiscal === ejercicio)
     );
 
     // Eventos OPEX confirmados/ejecutados para este inmueble
