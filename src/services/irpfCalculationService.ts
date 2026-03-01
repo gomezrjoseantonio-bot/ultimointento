@@ -6,6 +6,7 @@ import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
 import { calcularGananciasPerdidasEjercicio, getMinusvaliasPendientes } from './inversionesFiscalService';
+import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -94,6 +95,7 @@ export interface RendimientoInmueble {
   excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
   arrastresAplicados?: number;           // Carryforwards applied from previous years
   accesoriosIncluidos?: { id: number; alias: string; amortizacion: number; gastos: number }[];
+  conciliacion?: { estimado: number; real: number | null; fuente: import('./fiscalConciliationService').FiscalDataSource };
 }
 
 export interface ImputacionRenta {
@@ -175,6 +177,7 @@ export interface DeclaracionIRPF {
   retenciones: Retenciones;
   resultado: number; // positivo = a pagar, negativo = a devolver
   tipoEfectivo: number; // cuota líquida / base imponible total
+  conciliacion?: FiscalConciliationResult; // Solo presente si se pidió conciliación
 }
 
 // ─── Función de cálculo progresivo ───────────────────────────────────────────
@@ -707,7 +710,10 @@ async function calcularMinimosPersonales(ejercicio: number): Promise<MinimosPers
 
 // ─── Función principal ────────────────────────────────────────────────────────
 
-export async function calcularDeclaracionIRPF(ejercicio: number): Promise<DeclaracionIRPF> {
+export async function calcularDeclaracionIRPF(
+  ejercicio: number,
+  opciones?: { usarConciliacion?: boolean }
+): Promise<DeclaracionIRPF> {
   // PASO 1: Recopilar datos
   const [trabajo, autonomo, { inmuebles, imputaciones }, { rcm, gyp, aportacionPensiones }] =
     await Promise.all([
@@ -716,6 +722,48 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
       recopilarDatosInmuebles(ejercicio),
       recopilarDatosInversiones(ejercicio),
     ]);
+
+  // PASO 1b (opcional): Conciliación fiscal
+  let conciliacionResult: FiscalConciliationResult | undefined;
+  if (opciones?.usarConciliacion) {
+    try {
+      conciliacionResult = await conciliarEjercicioFiscal(ejercicio);
+
+      // Enriquecer RendimientoInmueble con datos conciliados de ingresos alquiler
+      for (const inmueble of inmuebles) {
+        const realAlquiler = conciliacionResult.lineas
+          .filter(l => l.categoria === 'ingresos_alquiler' && l.sourceId === inmueble.inmuebleId && l.real !== null)
+          .reduce((s, l) => s + l.real!, 0);
+        const hayReal = conciliacionResult.lineas.some(
+          l => l.categoria === 'ingresos_alquiler' && l.sourceId === inmueble.inmuebleId && l.real !== null
+        );
+
+        inmueble.conciliacion = {
+          estimado: inmueble.ingresosIntegros,
+          real: hayReal ? round2(realAlquiler) : null,
+          fuente: hayReal ? 'real' : 'estimado',
+        };
+
+        // Si hay datos reales, usar el importe real para ingresosIntegros
+        if (hayReal && realAlquiler > 0) {
+          inmueble.ingresosIntegros = round2(realAlquiler);
+        }
+      }
+
+      // Ajustar salarioBrutoAnual con datos reales de nómina si hay
+      if (trabajo) {
+        const realNomina = conciliacionResult.lineas
+          .filter(l => l.categoria === 'nomina' && l.real !== null)
+          .reduce((s, l) => s + l.real!, 0);
+        const hayRealNomina = conciliacionResult.lineas.some(l => l.categoria === 'nomina' && l.real !== null);
+        if (hayRealNomina && realNomina > 0) {
+          trabajo.salarioBrutoAnual = round2(realNomina);
+        }
+      }
+    } catch {
+      // conciliation failed: continue with estimated data
+    }
+  }
 
   // PASO 2: Base General
   const rendimientoTrabajo = trabajo?.rendimientoNeto ?? 0;
@@ -812,5 +860,6 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
     retenciones,
     resultado,
     tipoEfectivo,
+    ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),
   };
 }
