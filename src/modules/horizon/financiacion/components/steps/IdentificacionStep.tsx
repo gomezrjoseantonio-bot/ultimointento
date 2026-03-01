@@ -181,12 +181,12 @@ const IdentificacionStep: React.FC<IdentificacionStepProps> = ({ data, onChange,
           {errors.fechaPrimerCargo && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 4 }}>{errors.fechaPrimerCargo}</div>}
         </div>
         <div>
-          <label style={labelStyle}>Día de cobro (1–28)</label>
+          <label style={labelStyle}>Día de cobro (1–31)</label>
           <input
             type="number"
             style={inputStyle(!!errors.diaCobroMes)}
             min={1}
-            max={28}
+            max={31}
             value={data.diaCobroMes || ''}
             onChange={e => onChange({ diaCobroMes: parseInt(e.target.value, 10) })}
           />

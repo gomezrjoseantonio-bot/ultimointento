@@ -47,13 +47,13 @@ const LiveCalculationFooter: React.FC<LiveCalculationFooterProps> = ({
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 2 }}>TAE aprox.</div>
           <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-navy-1)' }}>
-            {tae !== null ? `${fmt(tae * 100)} %` : '—'}
+            {tae !== null ? `${fmt(tae)} %` : '—'}
           </div>
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 2 }}>TIN efectivo</div>
           <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--atlas-navy-1)' }}>
-            {tinEfectivo !== null ? `${fmt(tinEfectivo * 100)} %` : '—'}
+            {tinEfectivo !== null ? `${fmt(tinEfectivo)} %` : '—'}
           </div>
         </div>
       </div>
