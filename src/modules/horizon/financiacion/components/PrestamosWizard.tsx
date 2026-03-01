@@ -262,12 +262,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   const isLastStep = currentIndex === stepOrder.length - 1;
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* Sticky header */}
+    <div style={{ height: '100%', backgroundColor: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header */}
       <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
+        flexShrink: 0,
         backgroundColor: 'var(--bg)',
         borderBottom: '1px solid #eee',
         padding: '12px 24px',
@@ -292,7 +290,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, padding: '24px 24px 24px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, padding: '24px 24px 24px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowY: 'auto' }} className="hide-scrollbar">
         <StepTransition stepKey={currentStep}>
           {currentStep === 'identificacion' && (
             <IdentificacionStep
@@ -333,11 +331,9 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         </StepTransition>
       </div>
 
-      {/* Sticky footer — inside content flow to avoid covering sidebar */}
+      {/* Footer */}
       <div style={{
-        position: 'sticky',
-        bottom: 0,
-        zIndex: 100,
+        flexShrink: 0,
         backgroundColor: 'var(--bg)',
         borderTop: '1px solid #eee',
         padding: '12px 24px',

@@ -272,9 +272,19 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   return (
     <>
-      <div style={{ backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Sticky header */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '8px 24px' }}>
+      <div style={{ 
+        position: 'fixed', 
+        top: 0, 
+        right: 0, 
+        bottom: 0, 
+        left: 0,
+        backgroundColor: '#f9fafb', 
+        display: 'flex', 
+        flexDirection: 'column',
+        zIndex: 50,
+      }}>
+        {/* Header */}
+        <div style={{ flexShrink: 0, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '8px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
@@ -330,7 +340,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, padding: '16px 24px', paddingBottom: 8 }}>
+        <div style={{ flex: 1, padding: '16px 24px', paddingBottom: 8, overflowY: 'auto' }} className="hide-scrollbar">
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <form id="nomina-wizard-form" onSubmit={handleSubmit}>
           {step === 1 && (
@@ -804,7 +814,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Fixed footer */}
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '8px 24px' }}>
+        <div style={{ flexShrink: 0, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '8px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
