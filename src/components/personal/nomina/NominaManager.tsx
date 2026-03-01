@@ -224,18 +224,16 @@ const NominaManager: React.FC = () => {
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Distribución Mensual Neto</p>
-                    <div className="flex items-end justify-between gap-1" style={{ height: '130px' }}>
+                    <div className="flex items-end justify-between gap-1" style={{ height: '200px' }}>
                       {(() => {
                         const maxNeto = Math.max(...calculo.distribucionMensual.map(m => m.netoTotal));
                         return calculo.distribucionMensual.map((m) => {
-                          const barHeight = maxNeto > 0 ? (m.netoTotal / maxNeto) * 96 : 0;
+                          const barHeight = maxNeto > 0 ? (m.netoTotal / maxNeto) * 160 : 0;
                           const hasPagaExtra = m.pagaExtra > 0;
-                          const shortLabel = m.netoTotal >= 1000
-                            ? `${(m.netoTotal / 1000).toFixed(1)}k`
-                            : `${Math.round(m.netoTotal)}`;
+                          const shortLabel = m.netoTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
                           return (
                             <div key={m.mes} className="flex-1 flex flex-col items-center justify-end h-full">
-                              <span className="text-[8px] text-gray-500 leading-none text-center w-full truncate mb-0.5">
+                              <span className="text-[10px] text-gray-500 leading-none text-center w-full truncate mb-0.5">
                                 {shortLabel}
                               </span>
                               <div
@@ -243,7 +241,7 @@ const NominaManager: React.FC = () => {
                                 style={{ height: `${barHeight}px`, minHeight: '2px' }}
                                 title={formatCurrency(m.netoTotal)}
                               />
-                              <span className="text-[10px] text-gray-400 mt-1">{['E','F','M','A','M','J','J','A','S','O','N','D'][m.mes - 1]}</span>
+                              <span className="text-xs text-gray-400 mt-1">{['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m.mes - 1]}</span>
                             </div>
                           );
                         });

@@ -357,7 +357,7 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Subtle semi-transparent overlay */}
       <div 
-        className="absolute inset-0 bg-black/20"
+        className="absolute inset-0 bg-transparent"
         onClick={onClose}
       />
       
