@@ -4,7 +4,6 @@
 import { initDB } from './db';
 import { nominaService } from './nominaService';
 import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
-import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
 import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 
