@@ -5,6 +5,7 @@ import { initDB } from './db';
 import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
+import { calcularGananciasPerdidasEjercicio, getMinusvaliasPendientes } from './inversionesFiscalService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -25,7 +26,7 @@ const TRAMOS_BASE_AHORRO = [
   { hasta: Infinity, tipo: 0.28 },
 ];
 
-const CONSTANTES_IRPF = {
+export const CONSTANTES_IRPF = {
   minimoContribuyente: 5550,
   minimoMayor65: 1150,
   minimoMayor75: 1400,
@@ -199,7 +200,7 @@ export function calcularCuotaPorTramos(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function round2(n: number): number {
+export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
@@ -600,7 +601,7 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
 // ─── Recopilación datos inversiones ──────────────────────────────────────────
 
-async function recopilarDatosInversiones(): Promise<{
+async function recopilarDatosInversiones(ejercicio: number): Promise<{
   rcm: RendimientosCapitalMobiliario;
   gyp: GananciasPerdidasPatrimoniales;
   aportacionPensiones: number;
@@ -610,32 +611,37 @@ async function recopilarDatosInversiones(): Promise<{
 
   let intereses = 0;
   let dividendos = 0;
-  let plusvalias = 0;
-  let minusvalias = 0;
   let aportacionPensiones = 0;
 
   for (const p of posiciones) {
     if (!p.activo) continue;
-    // Dividendos/rendimientos
     if (p.dividendos) dividendos += p.dividendos;
-    // Plusvalías/minusvalías de aportaciones de tipo reembolso con ganancia
-    const aports: any[] = p.aportaciones ?? [];
-    for (const a of aports) {
-      if (a.tipo === 'reembolso') {
-        const coste = ((p.total_aportado ?? 0) / ((p.valor_actual + a.importe) || 1)) * a.importe;
-        const ganancia = a.importe - coste;
-        if (ganancia > 0) plusvalias += ganancia;
-        else minusvalias += Math.abs(ganancia);
-      }
-    }
-    // Planes de pensiones
-    if (p.tipo === 'plan-pensiones') {
+
+    if (p.tipo === 'plan_pensiones') {
       aportacionPensiones += p.total_aportado ?? 0;
     }
   }
 
+  const { plusvalias, minusvalias } = await calcularGananciasPerdidasEjercicio(ejercicio);
+  const minusvaliasPendientes = await getMinusvaliasPendientes(ejercicio);
+
+  const minusvaliasEjercicioAplicadas = Math.min(plusvalias, minusvalias);
+  let plusvaliasRestantes = round2(plusvalias - minusvaliasEjercicioAplicadas);
+
+  let minusvaliasPendientesAplicadas = 0;
+  for (const pendiente of minusvaliasPendientes) {
+    if (plusvaliasRestantes <= 0) break;
+    const aplicado = Math.min(plusvaliasRestantes, pendiente.importe);
+    minusvaliasPendientesAplicadas = round2(minusvaliasPendientesAplicadas + aplicado);
+    plusvaliasRestantes = round2(plusvaliasRestantes - aplicado);
+  }
+
+  const minusvaliasPendientesTotal = round2(
+    minusvaliasPendientes.reduce((sum, item) => sum + item.importe, 0) - minusvaliasPendientesAplicadas,
+  );
+
   const retenciones = round2((intereses + dividendos) * CONSTANTES_IRPF.retencionCapitalMobiliario);
-  const compensado = round2(Math.max(0, plusvalias - minusvalias));
+  const compensado = round2(Math.max(0, plusvalias - minusvalias - minusvaliasPendientesAplicadas));
 
   return {
     rcm: {
@@ -647,7 +653,7 @@ async function recopilarDatosInversiones(): Promise<{
     gyp: {
       plusvalias: round2(plusvalias),
       minusvalias: round2(minusvalias),
-      minusvaliasPendientes: 0,
+      minusvaliasPendientes: Math.max(0, minusvaliasPendientesTotal),
       compensado,
     },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
@@ -708,7 +714,7 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
       recopilarDatosTrabajo(ejercicio),
       recopilarDatosAutonomo(ejercicio),
       recopilarDatosInmuebles(ejercicio),
-      recopilarDatosInversiones(),
+      recopilarDatosInversiones(ejercicio),
     ]);
 
   // PASO 2: Base General
