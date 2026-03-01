@@ -165,7 +165,12 @@ export const calculateFiscalSummary = async (
     const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
     const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
     if (existingCf) {
-      await db.put('aeatCarryForwards', { ...cfRecord, id: existingCf.id });
+      await db.put('aeatCarryForwards', {
+        ...cfRecord,
+        id: existingCf.id,
+        createdAt: existingCf.createdAt,
+        updatedAt: new Date().toISOString(),
+      });
     } else {
       await db.add('aeatCarryForwards', cfRecord);
     }
