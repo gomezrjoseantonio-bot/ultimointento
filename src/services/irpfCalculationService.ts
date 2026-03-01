@@ -356,6 +356,39 @@ export function calcularDiasAlquiladoDesdeContratos(
   return Math.min(totalDays, diasTotal);
 }
 
+/**
+ * Separates a list of active properties into:
+ * - `propertiesToProcess`: main properties + orphan accessories (those whose mainPropertyId
+ *   does not reference any active main property)
+ * - `accessoryProperties`: all properties flagged as accessories
+ * - `linkedAccessoryIds`: Set of IDs of accessories that ARE properly linked to an active main property
+ *
+ * Exported for testability.
+ */
+export function separarAccesorios(activeProperties: any[]): {
+  propertiesToProcess: any[];
+  accessoryProperties: any[];
+  linkedAccessoryIds: Set<number>;
+} {
+  const mainPropertyIds = new Set(
+    activeProperties
+      .filter((p: any) => !p.fiscalData?.isAccessory)
+      .map((p: any) => p.id)
+  );
+  const accessoryProperties = activeProperties.filter(
+    (p: any) => p.fiscalData?.isAccessory === true
+  );
+  const linkedAccessoryIds = new Set<number>(
+    accessoryProperties
+      .filter((a: any) => a.fiscalData?.mainPropertyId != null && mainPropertyIds.has(a.fiscalData.mainPropertyId))
+      .map((a: any) => a.id as number)
+  );
+  const propertiesToProcess = activeProperties.filter(
+    (p: any) => !linkedAccessoryIds.has(p.id)
+  );
+  return { propertiesToProcess, accessoryProperties, linkedAccessoryIds };
+}
+
 async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   inmuebles: RendimientoInmueble[];
   imputaciones: ImputacionRenta[];
@@ -368,8 +401,12 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   const imputaciones: ImputacionRenta[] = [];
   const diasTotal = calcularDiasAnio(ejercicio);
 
-  for (const prop of properties) {
-    if (prop.state !== 'activo') continue;
+  const activeProperties = properties.filter((p: any) => p.state === 'activo');
+
+  // Separate main properties from accessories using the exported helper
+  const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
+
+  for (const prop of propertiesToProcess) {
 
     // Find contracts for this property in the exercise year
     const propContracts = contracts.filter((c: any) => {
@@ -459,13 +496,22 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
       // Imputación for vacant days (integrated into this property's rendimiento)
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
+      // Add accessory cadastral values for combined imputación
+      const accesoriosCombinados = accessoryProperties.filter(
+        (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
+      );
+      const valorCatastralTotal = round2(
+        valorCatastral +
+        accesoriosCombinados.reduce((sum: number, a: any) =>
+          sum + (a.fiscalData?.cadastralValue ?? a.fiscalData?.accessoryData?.cadastralValue ?? 0), 0)
+      );
       let imputacionRenta = 0;
-      if (diasVacio > 0 && valorCatastral > 0) {
+      if (diasVacio > 0 && valorCatastralTotal > 0) {
         const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
         const porcentajeImputacion = revisado
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
-        imputacionRenta = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
+        imputacionRenta = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
       }
 
       inmuebles.push({
@@ -491,17 +537,26 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
     } else {
       // Property is fully vacant — imputación de rentas only
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
-      if (valorCatastral > 0) {
+      // Add accessory cadastral values for combined imputación
+      const accesoriosCombinados = accessoryProperties.filter(
+        (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
+      );
+      const valorCatastralTotal = round2(
+        valorCatastral +
+        accesoriosCombinados.reduce((sum: number, a: any) =>
+          sum + (a.fiscalData?.cadastralValue ?? a.fiscalData?.accessoryData?.cadastralValue ?? 0), 0)
+      );
+      if (valorCatastralTotal > 0) {
         const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
         const porcentajeImputacion = revisado
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
-        const imputacion = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
+        const imputacion = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
 
         imputaciones.push({
           inmuebleId: prop.id!,
           alias: prop.alias,
-          valorCatastral,
+          valorCatastral: valorCatastralTotal,
           porcentajeImputacion,
           diasVacio,
           imputacion,
