@@ -295,7 +295,7 @@ export interface OtrosIngresos {
 // Calculation Results Types
 export interface CalculoNominaResult {
   netoMensual: number;                   // Promedio mensual del líquido
-  distribuccionMensual: DistribucionMensualResult[];
+  distribucionMensual: DistribucionMensualResult[];
   totalAnualNeto: number;
   totalAnualBruto: number;               // bruto base + variables + bonus
   totalAnualEspecie: number;
@@ -314,7 +314,7 @@ export interface DistribucionMensualResult {
   ssTotal: number;
   irpfImporte: number;
   ppEmpleado: number;
-  otrasDeduciones: number;
+  otrasDeducciones: number;
   totalDeducciones: number;
   netoTotal: number;                     // = totalDevengado - totalDeducciones
   // Plan pensiones al producto (NO pasa por cuenta)

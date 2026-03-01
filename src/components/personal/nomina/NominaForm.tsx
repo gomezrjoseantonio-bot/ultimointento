@@ -737,6 +737,26 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
               {(() => {
                 const bruto = parseFloat(formData.salarioBrutoAnual) || 0;
+                const tempNomina: Nomina = {
+                  personalDataId: personalDataId ?? 0,
+                  titular: formData.titular,
+                  nombre: formData.nombre || 'temp',
+                  salarioBrutoAnual: bruto,
+                  distribucion: formData.distribucion,
+                  variables: formData.variables,
+                  bonus: formData.bonus,
+                  beneficiosSociales: formData.beneficiosSociales,
+                  retencion: formData.retencion,
+                  planPensiones: formData.tienePlanPensiones ? formData.planPensiones : undefined,
+                  deduccionesAdicionales: formData.deduccionesAdicionales,
+                  cuentaAbono: formData.cuentaAbono,
+                  reglaCobroDia: formData.reglaCobroDia,
+                  activa: formData.activa,
+                  fechaAntiguedad: formData.fechaAntiguedad || new Date().toISOString(),
+                  fechaCreacion: new Date().toISOString(),
+                  fechaActualizacion: new Date().toISOString(),
+                };
+                const calculo = nominaService.calculateSalary(tempNomina);
                 const ssM = ssTotalMensual;
                 const irpfM = (bruto / 12) * (formData.retencion.irpfPorcentaje / 100);
                 const ppM = (() => {
@@ -757,7 +777,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       {ppM > 0 && <><div className="text-neutral-600">PP Empleado €/mes:</div><div className="font-medium text-right">− {fmt(ppM)} €</div></>}
                       <div className="border-t border-neutral-300 pt-2 font-semibold text-neutral-900">Líquido mes normal:</div>
                       <div className="border-t border-neutral-300 pt-2 font-bold text-brand-navy text-right">{fmt(netoM)} €</div>
-                      <div className="text-neutral-600">Neto anual estimado:</div><div className="font-medium text-right">{fmt(netoM * 12)} €</div>
+                      <div className="text-neutral-600">Neto anual estimado:</div><div className="font-medium text-right">{fmt(calculo.totalAnualNeto)} €</div>
                     </div>
                   </div>
                 );

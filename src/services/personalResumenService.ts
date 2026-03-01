@@ -65,7 +65,7 @@ class PersonalResumenService {
       
       if (nominaActiva) {
         const calculo = nominaService.calculateSalary(nominaActiva);
-        const mesData = calculo.distribuccionMensual.find(d => d.mes === mes);
+        const mesData = calculo.distribucionMensual.find(d => d.mes === mes);
         ingresoNomina = mesData?.netoTotal || 0;
       }
 

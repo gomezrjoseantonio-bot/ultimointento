@@ -566,7 +566,7 @@ async function loadBaseData(): Promise<BaseData> {
     for (const nomina of nominasActivas) {
       const calculo = nominaService.calculateSalary(nomina);
 
-      for (const mesData of calculo.distribuccionMensual) {
+      for (const mesData of calculo.distribucionMensual) {
         const idx = mesData.mes - 1; // 0-indexed
         nominaNetaMensual[idx] += mesData.netoTotal;
         nominaDrillDown[idx].push({

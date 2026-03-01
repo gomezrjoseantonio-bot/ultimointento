@@ -156,6 +156,12 @@ const NominaManager: React.FC = () => {
                   <span className="px-2 py-0.5 text-xs text-gray-500 bg-gray-100 rounded">
                     {pagasCount} pagas
                   </span>
+                  <span className={`px-2 py-0.5 text-xs rounded ${nomina.activa ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                    {nomina.activa ? 'Activa' : 'Inactiva'}
+                  </span>
+                  <span className="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded">
+                    {nomina.titular === 'yo' ? 'Titular' : 'Pareja'}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <button
@@ -195,6 +201,26 @@ const NominaManager: React.FC = () => {
                     </p>
                   </div>
                 </div>
+                {calculo && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-xs text-gray-400">SS Anual</p>
+                      <p className="text-sm font-semibold">{formatCurrency(calculo.distribucionMensual.reduce((s, m) => s + m.ssTotal, 0))}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">IRPF Anual</p>
+                      <p className="text-sm font-semibold">{formatCurrency(calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0))}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">PP Anual</p>
+                      <p className="text-sm font-semibold">{formatCurrency(calculo.totalAnualPP)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">% Retención Efectiva</p>
+                      <p className="text-sm font-semibold">{calculo.totalAnualBruto > 0 ? ((1 - calculo.totalAnualNeto / calculo.totalAnualBruto) * 100).toFixed(1) : '0.0'}%</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
