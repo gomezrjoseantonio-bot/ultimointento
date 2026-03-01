@@ -207,7 +207,7 @@ async function conciliarNominas(
 
       lineas.push(buildLineItem({
         ejercicio,
-        concepto: `Nómina ${nomina.empresa ?? nomina.id}`,
+        concepto: `Nómina ${nomina.nombre ?? nomina.id}`,
         categoria: 'nomina',
         mes,
         estimado,
