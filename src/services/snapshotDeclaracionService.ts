@@ -7,6 +7,22 @@ export interface CrearSnapshotOpts {
   force?: boolean;
 }
 
+export interface ArrastreImportadoInput {
+  tipo: ArrastreIRPF['tipo'];
+  importePendiente: number;
+  importeOriginal?: number;
+  ejercicioOrigen: number;
+  ejercicioCaducidad?: number;
+  inmuebleId?: number;
+}
+
+export interface ImportacionDeclaracionManualInput {
+  casillasAEAT: Record<string, number>;
+  datos?: Partial<SnapshotDeclaracion['datos']>;
+  arrastresGenerados?: ArrastreImportadoInput[];
+  arrastresAplicadosIds?: number[];
+}
+
 const STORE_NAME = 'snapshotsDeclaracion';
 const ARRSTRES_STORE_NAME = 'arrastresIRPF';
 
@@ -115,6 +131,38 @@ async function getArrastresForEjercicio(ejercicio: number): Promise<{ arrastresG
   };
 }
 
+async function persistArrastresImportados(
+  ejercicio: number,
+  arrastres: ArrastreImportadoInput[] = []
+): Promise<number[]> {
+  if (arrastres.length === 0) return [];
+
+  const db = await initDB();
+  const now = new Date().toISOString();
+  const createdIds: number[] = [];
+
+  for (const arrastre of arrastres) {
+    const id = await db.add(ARRSTRES_STORE_NAME, {
+      ejercicioOrigen: arrastre.ejercicioOrigen,
+      tipo: arrastre.tipo,
+      importeOriginal: arrastre.importeOriginal ?? arrastre.importePendiente,
+      importePendiente: arrastre.importePendiente,
+      ejercicioCaducidad: arrastre.ejercicioCaducidad,
+      inmuebleId: arrastre.inmuebleId,
+      aplicaciones: [],
+      estado: 'pendiente',
+      createdAt: now,
+      updatedAt: now,
+    } as ArrastreIRPF);
+
+    if (typeof id === 'number') {
+      createdIds.push(id);
+    }
+  }
+
+  return createdIds;
+}
+
 export async function crearSnapshotDeclaracion(
   ejercicio: number,
   opts: CrearSnapshotOpts = {}
@@ -153,6 +201,55 @@ export async function crearSnapshotDeclaracion(
     hash,
     createdAt,
     casillasAEAT: opts.incluirCasillasAEAT ? buildCasillasAEAT(datos) : undefined,
+  };
+
+  const db = await initDB();
+  const id = await db.add(STORE_NAME, snapshot);
+
+  return {
+    ...snapshot,
+    id: typeof id === 'number' ? id : undefined,
+  };
+}
+
+export async function crearSnapshotDeclaracionManual(
+  ejercicio: number,
+  input: ImportacionDeclaracionManualInput
+): Promise<SnapshotDeclaracion> {
+  const generatedIds = await persistArrastresImportados(ejercicio, input.arrastresGenerados);
+  const arrastresAplicados = input.arrastresAplicadosIds ?? [];
+
+  const datos: SnapshotDeclaracion['datos'] = {
+    baseGeneral: input.datos?.baseGeneral ?? { total: 0 },
+    baseAhorro: input.datos?.baseAhorro ?? { total: 0 },
+    reducciones: input.datos?.reducciones ?? {},
+    minimosPersonales: input.datos?.minimosPersonales ?? { total: 0 },
+    liquidacion: input.datos?.liquidacion ?? {
+      cuotaIntegra: 0,
+      cuotaLiquida: 0,
+      deduccionesDobleImposicion: 0,
+    },
+    arrastresGenerados: generatedIds,
+    arrastresAplicados,
+  };
+
+  const fechaSnapshot = new Date().toISOString();
+  const hash = await computeSha256({
+    ejercicio,
+    fechaSnapshot,
+    datos,
+    origen: 'importacion_manual',
+    casillasAEAT: input.casillasAEAT,
+  });
+
+  const snapshot: SnapshotDeclaracion = {
+    ejercicio,
+    fechaSnapshot,
+    datos,
+    casillasAEAT: input.casillasAEAT,
+    origen: 'importacion_manual',
+    hash,
+    createdAt: new Date().toISOString(),
   };
 
   const db = await initDB();
