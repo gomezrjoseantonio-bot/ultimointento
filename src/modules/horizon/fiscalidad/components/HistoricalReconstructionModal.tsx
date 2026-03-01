@@ -199,17 +199,17 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
           {/* Processing Result */}
           {result && (
             <div className={`rounded-lg p-4 ${
-              result.success ? 'bg-success-50 border border-success-200' : 'bg-error-50 border border-error-200'
+              result.success ? 'bg-cyan-50 border border-cyan-200' : 'bg-blue-50 border border-blue-200'
             }`}>
               <div className="flex items-start space-x-3">
                 {result.success ? (
-                  <CheckCircle className="w-5 h-5 text-success-600 mt-0.5" />
+                  <CheckCircle className="w-5 h-5 text-cyan-700 mt-0.5" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-error-600 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-blue-700 mt-0.5" />
                 )}
                 <div className="flex-1">
                   <h3 className={`font-medium ${
-                    result.success ? 'text-success-900' : 'text-error-900'
+                    result.success ? 'text-cyan-900' : 'text-blue-900'
                   }`}>
                     {result.success ? 'Reconstrucción completada' : 'Reconstrucción completada con errores'}
                   </h3>
@@ -240,12 +240,12 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
                   {result.errors.length > 0 && (
                     <div className="mt-3">
                       <details className="text-sm">
-                        <summary className="cursor-pointer text-error-700 font-medium">
+                        <summary className="cursor-pointer text-blue-700 font-medium">
                           Ver errores ({result.errors.length})
                         </summary>
                         <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
                           {result.errors.map((error, index) => (
-                            <div key={index} className="text-xs text-error-600 bg-error-100 p-2 rounded">
+                            <div key={index} className="text-xs text-blue-700 bg-blue-100 p-2 rounded">
                               {error}
                             </div>
                           ))}
@@ -260,12 +260,12 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
           {/* Warning */}
           {!result && (
-            <div className="bg-warning-50 border border-yellow-200 p-4">
+            <div className="bg-gray-50 border border-gray-200 p-4">
               <div className="flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-warning-600 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-atlas-teal mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium text-yellow-900 mb-1">Proceso de reconstrucción histórica</p>
-                  <p className="text-warning-700">
+                  <p className="font-medium text-gray-800 mb-1">Proceso de reconstrucción histórica</p>
+                  <p className="text-gray-600">
                     Este proceso puede tardar varios minutos dependiendo del volumen de datos históricos.
                     Se recomienda realizar esta operación fuera del horario de trabajo activo.
                   </p>
@@ -307,7 +307,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
             {result && result.success && (
               <button
                 onClick={handleComplete}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-success-600"
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-cyan-700 text-white"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Finalizar</span>

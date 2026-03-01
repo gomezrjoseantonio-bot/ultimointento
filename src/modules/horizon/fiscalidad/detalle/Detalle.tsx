@@ -101,17 +101,17 @@ const Detalle: React.FC = () => {
     const statusMap = {
       'previsto': { 
         label: 'Prevista', 
-        color: 'bg-warning-100 text-yellow-800 border-yellow-200',
+        color: 'bg-gray-100 text-gray-700 border-gray-200',
         icon: Clock 
       },
       'cobrado': { 
         label: 'Cobrada', 
-        color: 'bg-success-100 text-success-800 border-success-200',
+        color: 'bg-cyan-50 text-cyan-800 border-cyan-200',
         icon: CheckCircle 
       },
       'incompleto': { 
         label: 'Parcialmente cobrada', 
-        color: 'bg-warning-100 text-orange-800 border-orange-200',
+        color: 'bg-blue-50 text-blue-800 border-blue-200',
         icon: AlertCircle 
       },
       'completo': { 
@@ -121,7 +121,7 @@ const Detalle: React.FC = () => {
       },
       'pagado': { 
         label: 'Pagado', 
-        color: 'bg-success-100 text-success-800 border-success-200',
+        color: 'bg-cyan-50 text-cyan-800 border-cyan-200',
         icon: CheckCircle 
       }
     };
@@ -252,7 +252,7 @@ const Detalle: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   Detalle de ingresos devengados y estado de cobro 
                   {unreconciledCount > 0 && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning-100 text-yellow-800">
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
                       {unreconciledCount} sin conciliar
                     </span>
                   )}
@@ -325,13 +325,13 @@ const Detalle: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {hasReconciliation ? (
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-success-100 text-success-800">
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-cyan-50 text-cyan-800">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Conciliado
                             </span>
                           ) : suggestion && suggestion.potentialMovements.length > 0 ? (
                             <div className="flex flex-col space-y-1">
-                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-warning-100 text-orange-800">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-50 text-blue-800">
                                 <AlertCircle className="w-3 h-3 mr-1" />
                                 {suggestion.potentialMovements.length} sugerencias
                               </span>
@@ -370,7 +370,7 @@ const Detalle: React.FC = () => {
                             {contract && (
                               <button
                                 title="Ver contrato"
-                                className="text-success-600 hover:text-success-800"
+                                className="text-cyan-700 hover:text-cyan-900"
                               >
                                 <FileText className="h-4 w-4" />
                               </button>
@@ -474,7 +474,7 @@ const Detalle: React.FC = () => {
                                   {gasto.movement_id && (
                                     <button
                                       title="Ver conciliación bancaria"
-                                      className="text-success-600 hover:text-success-800"
+                                      className="text-cyan-700 hover:text-cyan-900"
                                     >
                                       <CheckCircle className="h-4 w-4" />
                                     </button>

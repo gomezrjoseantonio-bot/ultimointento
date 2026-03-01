@@ -619,8 +619,8 @@ const Resumen: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium ${
                             item.status === 'Vivo' 
-                              ? 'bg-success-100 text-success-800'
-                              : 'bg-warning-100 text-orange-800'
+                              ? 'bg-cyan-50 text-cyan-800'
+                              : 'bg-gray-100 text-gray-700'
                           }`}>
                             {item.status}
                           </span>

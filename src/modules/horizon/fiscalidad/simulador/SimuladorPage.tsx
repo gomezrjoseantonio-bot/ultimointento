@@ -177,7 +177,7 @@ const SimuladorPage: React.FC = () => {
             </div>
           ))}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-blue-700">{error}</p>}
 
           <button
             onClick={handleSimular}
@@ -221,7 +221,7 @@ const SimuladorPage: React.FC = () => {
                 <div key={row.label} className="grid grid-cols-3 text-sm px-4 py-2.5 border-b border-gray-100 last:border-0">
                   <span className="text-gray-600">{row.label}</span>
                   <span className="text-center">{fmt(row.antes)}</span>
-                  <span className={`text-center font-medium ${diff > 0 ? 'text-red-600' : diff < 0 ? 'text-green-600' : ''}`}>
+                  <span className={`text-center font-medium ${diff > 0 ? 'text-blue-700' : diff < 0 ? 'text-cyan-700' : ''}`}>
                     {fmt(row.despues)}
                     {diff !== 0 && <span className="text-xs ml-1">({diff > 0 ? '+' : ''}{fmt(diff)})</span>}
                   </span>
@@ -231,10 +231,10 @@ const SimuladorPage: React.FC = () => {
           </div>
 
           {/* Impacto resumen */}
-          <div className={`p-4 rounded-lg border ${resultado.diferencia.cuotaLiquida > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+          <div className={`p-4 rounded-lg border ${resultado.diferencia.cuotaLiquida > 0 ? 'bg-blue-50 border-blue-200' : 'bg-cyan-50 border-cyan-200'}`}>
             <p className="text-sm font-semibold text-gray-900">
               Impacto neto en bolsillo:{' '}
-              <span className={resultado.diferencia.impactoNetoBolsillo >= 0 ? 'text-green-700' : 'text-red-700'}>
+              <span className={resultado.diferencia.impactoNetoBolsillo >= 0 ? 'text-cyan-800' : 'text-blue-800'}>
                 {resultado.diferencia.impactoNetoBolsillo >= 0 ? '+' : ''}{fmt(resultado.diferencia.impactoNetoBolsillo)}
               </span>
             </p>
@@ -248,8 +248,8 @@ const SimuladorPage: React.FC = () => {
             <div className="space-y-2">
               {resultado.tips.map((tip, i) => (
                 <div key={i} className={`p-3 rounded-lg text-sm border ${
-                  tip.tipo === 'ahorro' ? 'bg-green-50 border-green-200 text-green-800' :
-                  tip.tipo === 'alerta' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                  tip.tipo === 'ahorro' ? 'bg-cyan-50 border-cyan-200 text-cyan-800' :
+                  tip.tipo === 'alerta' ? 'bg-gray-50 border-gray-200 text-gray-700' :
                   'bg-blue-50 border-blue-200 text-blue-800'
                 }`}>
                   {tip.mensaje}
