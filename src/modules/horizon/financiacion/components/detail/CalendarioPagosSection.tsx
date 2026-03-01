@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { Prestamo, PlanPagos, PeriodoPago } from '../../../../../types/prestamos';
 import CollapsibleSection from '../CollapsibleSection';
+import { formatDate } from '../../../../../utils/formatUtils';
 
 interface CalendarioPagosSectionProps {
   prestamo: Prestamo;
@@ -9,21 +10,19 @@ interface CalendarioPagosSectionProps {
   onCuotaPagada: (numeroPeriodo: number, pagado: boolean) => void;
 }
 
-type FilterTab = 'todas' | 'pagadas' | 'proximas' | 'futuras';
+type FilterTab = 'todas' | 'pagadas' | 'impagadas' | 'pendientes';
 
 const PAGE_SIZE = 12;
 
 const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function getCuotaStatus(periodo: PeriodoPago): 'pagada' | 'vencida' | 'proxima' | 'futura' {
+function getCuotaStatus(periodo: PeriodoPago): 'pagada' | 'impagada' | 'pendiente' {
   if (periodo.pagado) return 'pagada';
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const fechaCargo = new Date(periodo.fechaCargo);
-  const diffMs = fechaCargo.getTime() - today.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return 'vencida';
-  if (diffDays <= 30) return 'proxima';
-  return 'futura';
+  if (fechaCargo < today) return 'impagada';
+  return 'pendiente';
 }
 
 const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
@@ -31,7 +30,7 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
   planPagos,
   onCuotaPagada,
 }) => {
-  const [filter, setFilter] = useState<FilterTab>('todas');
+  const [filter, setFilter] = useState<FilterTab>('pendientes');
   const [yearFilter, setYearFilter] = useState<string>('todos');
   const [page, setPage] = useState(1);
 
@@ -49,8 +48,8 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
     const status = getCuotaStatus(p);
     if (yearFilter !== 'todos' && new Date(p.fechaCargo).getFullYear().toString() !== yearFilter) return false;
     if (filter === 'pagadas') return status === 'pagada';
-    if (filter === 'proximas') return status === 'proxima' || status === 'vencida';
-    if (filter === 'futuras') return status === 'futura';
+    if (filter === 'impagadas') return status === 'impagada';
+    if (filter === 'pendientes') return status === 'pendiente';
     return true;
   });
 
@@ -68,21 +67,15 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
   const rowStyle = (p: PeriodoPago): React.CSSProperties => {
     const status = getCuotaStatus(p);
     if (status === 'pagada') return { backgroundColor: 'rgba(40,167,69,0.05)' };
-    if (status === 'vencida') return { backgroundColor: 'rgba(220,53,69,0.05)', borderLeft: '2px solid var(--error)' };
-    if (status === 'proxima') return { backgroundColor: 'rgba(255,193,7,0.08)', borderLeft: '2px solid var(--warn)' };
+    if (status === 'impagada') return { backgroundColor: 'rgba(220,53,69,0.05)', borderLeft: '2px solid var(--error)' };
     return {};
   };
 
   const statusBadge = (p: PeriodoPago) => {
     const status = getCuotaStatus(p);
-    const map = {
-      pagada: { label: '✅ Pagada', color: 'var(--ok)' },
-      vencida: { label: '⚠ Vencida', color: 'var(--error)' },
-      proxima: { label: '⏳ Próxima', color: 'var(--warn)' },
-      futura: { label: '○ Futura', color: 'var(--text-gray)' },
-    };
-    const { label, color } = map[status];
-    return <span className="text-xs" style={{ color }}>{label}</span>;
+    if (status === 'pagada') return <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--ok)' }}><CheckCircle size={14} />Pagada</span>;
+    if (status === 'impagada') return <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--error)' }}><AlertTriangle size={14} />Impagada</span>;
+    return <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-gray)' }}><Clock size={14} />Pendiente</span>;
   };
 
   const badge = (
@@ -120,7 +113,7 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
         </div>
         {fechaFin && (
           <div className="text-xs" style={{ color: 'var(--text-gray)' }}>
-            Fecha fin: <span className="font-medium" style={{ color: 'var(--atlas-navy-1)' }}>{new Date(fechaFin).toLocaleDateString('es-ES')}</span>
+            Fecha fin: <span className="font-medium" style={{ color: 'var(--atlas-navy-1)' }}>{formatDate(fechaFin)}</span>
           </div>
         )}
 
@@ -128,21 +121,21 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           {([
             { key: 'todas', label: 'Todas' },
-            { key: 'pagadas', label: '✅ Pagadas' },
-            { key: 'proximas', label: '⏳ Próximas' },
-            { key: 'futuras', label: '○ Futuras' },
-          ] as { key: FilterTab; label: string }[]).map(tab => (
+            { key: 'pagadas', label: 'Pagadas', icon: <CheckCircle size={12} /> },
+            { key: 'impagadas', label: 'Impagadas', icon: <AlertTriangle size={12} /> },
+            { key: 'pendientes', label: 'Pendientes', icon: <Clock size={12} /> },
+          ] as { key: FilterTab; label: string; icon?: React.ReactNode }[]).map(tab => (
             <button
               key={tab.key}
               onClick={() => { setFilter(tab.key); setPage(1); }}
-              className="text-xs px-3 py-1 rounded-full border transition-colors"
+              className="flex items-center gap-1 text-xs px-3 py-1 rounded-full border transition-colors"
               style={{
                 borderColor: filter === tab.key ? 'var(--atlas-blue)' : 'var(--border-light, #e5e7eb)',
                 backgroundColor: filter === tab.key ? 'rgba(37,99,235,0.08)' : 'transparent',
                 color: filter === tab.key ? 'var(--atlas-blue)' : 'var(--text-gray)',
               }}
             >
-              {tab.label}
+              {tab.icon}{tab.label}
             </button>
           ))}
           {years.length > 1 && (
@@ -196,7 +189,7 @@ const CalendarioPagosSection: React.FC<CalendarioPagosSectionProps> = ({
                       onClick={() => handleToggle(p)}
                     >
                       <td className="px-3 py-2 text-xs" style={{ color: 'var(--text-gray)' }}>{p.periodo}</td>
-                      <td className="px-3 py-2">{new Date(p.fechaCargo).toLocaleDateString('es-ES')}</td>
+                      <td className="px-3 py-2">{formatDate(p.fechaCargo)}</td>
                       <td className="px-3 py-2 text-right">{fmt(p.cuota)} €</td>
                       <td className="px-3 py-2 text-right">{fmt(p.interes)} €</td>
                       <td className="px-3 py-2 text-right">{fmt(p.amortizacion)} €</td>

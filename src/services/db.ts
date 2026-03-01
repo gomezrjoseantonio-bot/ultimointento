@@ -855,6 +855,9 @@ export interface TreasuryEvent {
   actualDate?: string;
   actualAmount?: number;
   movementId?: number; // Link to actual bank movement
+  // Loan installment reference (for hipoteca / prestamo events)
+  prestamoId?: string;
+  numeroCuota?: number;
   // Metadata
   createdAt: string;
   updatedAt: string;

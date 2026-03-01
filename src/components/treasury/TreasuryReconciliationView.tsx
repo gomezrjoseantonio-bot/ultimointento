@@ -24,6 +24,7 @@ import { formatCompact, formatDateDDMMYYYY } from '../../utils/formatUtils';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
+import { prestamosService } from '../../services/prestamosService';
 import './treasury-reconciliation.css';
 
 /**
@@ -42,6 +43,8 @@ export interface TreasuryEvent {
   status: 'previsto' | 'confirmado';
   sourceType?: string;
   parentId?: string;
+  prestamoId?: string;
+  numeroCuota?: number;
 }
 
 interface SimpleAccount {
@@ -208,6 +211,8 @@ const TreasuryReconciliationView: React.FC = () => {
           type: e.type as 'income' | 'expense' | 'financing',
           status: dbStatusToLocal(e.status),
           sourceType: e.sourceType,
+          prestamoId: e.prestamoId,
+          numeroCuota: e.numeroCuota,
         }));
 
       setAccounts(simpleAccounts);
@@ -292,7 +297,26 @@ const TreasuryReconciliationView: React.FC = () => {
           });
         }
       }
-      toast.success(newStatus === 'confirmado' ? 'Evento punteado ✓' : 'Punteo retirado');
+
+      // If this event belongs to a loan installment, propagate the status to the payment plan
+      const isLoanEvent = ev.sourceType === 'hipoteca' || ev.sourceType === 'prestamo';
+      if (isLoanEvent && ev.prestamoId && ev.numeroCuota != null) {
+        try {
+          await prestamosService.marcarCuotaManual(ev.prestamoId, ev.numeroCuota, {
+            pagado: newStatus === 'confirmado',
+          });
+          toast.success(
+            newStatus === 'confirmado'
+              ? 'Cuota punteada ✓ — Plan de pagos actualizado'
+              : 'Punteo retirado — Cuota desmarcada del plan',
+          );
+        } catch (loanErr) {
+          console.error('Error updating payment plan:', loanErr);
+          toast.success(newStatus === 'confirmado' ? 'Evento punteado ✓' : 'Punteo retirado');
+        }
+      } else {
+        toast.success(newStatus === 'confirmado' ? 'Evento punteado ✓' : 'Punteo retirado');
+      }
     } catch (err) {
       console.error('Error updating event status:', err);
       // Rollback to original status on DB error

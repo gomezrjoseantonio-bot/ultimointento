@@ -78,11 +78,20 @@ export class PrestamosService {
     await this.savePrestamo(prestamo);
     prestamos.push(prestamo);
     
-    // AUTO-GENERATE AMORTIZATION SCHEDULE ON SAVE
+    // AUTO-GENERATE AND PERSIST AMORTIZATION SCHEDULE ON SAVE
     console.log(`[PRESTAMOS] Auto-generating amortization schedule for loan ${prestamo.id}`);
     try {
       const paymentPlan = prestamosCalculationService.generatePaymentSchedule(prestamo);
-      this.planesGenerados.set(prestamo.id, paymentPlan);
+      // Auto-mark all installments with fechaCargo <= today as paid
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      for (const periodo of paymentPlan.periodos) {
+        if (new Date(periodo.fechaCargo) <= today) {
+          periodo.pagado = true;
+          periodo.fechaPagoReal = periodo.fechaCargo;
+        }
+      }
+      await this.savePaymentPlan(prestamo.id, paymentPlan);
       console.log(`[PRESTAMOS] Amortization schedule generated: ${paymentPlan.periodos.length} payments, total interest: €${paymentPlan.resumen.totalIntereses.toFixed(2)}`);
     } catch (error) {
       console.error(`[PRESTAMOS] Failed to generate amortization schedule for loan ${prestamo.id}:`, error);
@@ -115,18 +124,26 @@ export class PrestamosService {
     
     if (parametersChanged) {
       console.log(`[PRESTAMOS] Loan parameters changed, regenerating amortization schedule for ${id}`);
-      // Clear cached payment plan and regenerate
       this.planesGenerados.delete(id);
       
       try {
         const paymentPlan = prestamosCalculationService.generatePaymentSchedule(prestamos[index]);
-        this.planesGenerados.set(id, paymentPlan);
+        // Re-mark all installments with fechaCargo <= today as paid
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        for (const periodo of paymentPlan.periodos) {
+          if (new Date(periodo.fechaCargo) <= today) {
+            periodo.pagado = true;
+            periodo.fechaPagoReal = periodo.fechaCargo;
+          }
+        }
+        await this.savePaymentPlan(id, paymentPlan);
         console.log(`[PRESTAMOS] Amortization schedule updated: ${paymentPlan.periodos.length} payments, total interest: €${paymentPlan.resumen.totalIntereses.toFixed(2)}`);
       } catch (error) {
         console.error(`[PRESTAMOS] Failed to regenerate amortization schedule for loan ${id}:`, error);
       }
     } else {
-      // Just clear cache to ensure fresh calculation on next request
+      // Just clear in-memory cache; persisted plan in IndexedDB remains valid
       this.planesGenerados.delete(id);
     }
 
@@ -164,34 +181,36 @@ export class PrestamosService {
   }
 
   /**
-   * Get or generate payment plan for a loan - ENHANCED with automatic schedule persistence
+   * Get or generate payment plan for a loan - reads from IndexedDB first
    */
   async getPaymentPlan(prestamoId: string): Promise<PlanPagos | null> {
     const prestamo = await this.getPrestamoById(prestamoId);
     if (!prestamo) return null;
 
-    // Check if plan is cached and recent
+    // Check in-memory cache first
     if (this.planesGenerados.has(prestamoId)) {
-      const cachedPlan = this.planesGenerados.get(prestamoId)!;
-      
-      // Check if cached plan is recent (within 1 hour)
-      const planAge = Date.now() - new Date(cachedPlan.fechaGeneracion).getTime();
-      const isRecent = planAge < 60 * 60 * 1000; // 1 hour
-      
-      if (isRecent) {
-        console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
-        return cachedPlan;
-      } else {
-        console.log(`[PRESTAMOS] Cached schedule expired, regenerating for ${prestamoId}`);
-      }
+      console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
+      return this.planesGenerados.get(prestamoId)!;
     }
 
-    // Generate new plan
+    // Try to load persisted plan from IndexedDB
+    try {
+      const db = await initDB();
+      const persistedPlan = await db.get('keyval', `planpagos_${prestamoId}`) as PlanPagos | undefined;
+      if (persistedPlan) {
+        console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
+        this.planesGenerados.set(prestamoId, persistedPlan);
+        return persistedPlan;
+      }
+    } catch (error) {
+      console.error('[PRESTAMOS] Failed to read payment plan from IndexedDB:', error);
+    }
+
+    // No persisted plan found — generate a fresh one
     console.log(`[PRESTAMOS] Generating fresh amortization schedule for ${prestamoId}`);
     const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
-    this.planesGenerados.set(prestamoId, plan);
+    await this.savePaymentPlan(prestamoId, plan);
     
-    // Log generation summary
     console.log(`[PRESTAMOS] Schedule generated - ${plan.periodos.length} payments, ends ${plan.resumen.fechaFinalizacion}, total interest: €${plan.resumen.totalIntereses.toFixed(2)}`);
     
     return plan;
