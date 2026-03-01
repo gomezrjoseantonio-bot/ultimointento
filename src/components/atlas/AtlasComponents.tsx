@@ -332,6 +332,7 @@ interface AtlasModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
@@ -340,6 +341,7 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
   onClose,
   title,
   children,
+  footer,
   size = 'md'
 }) => {
   if (!isOpen) return null;
@@ -353,23 +355,23 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Dark semi-transparent overlay */}
+      {/* Subtle semi-transparent overlay */}
       <div 
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/20"
         onClick={onClose}
       />
       
       {/* Modal content */}
       <div 
-        className={`relative bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]}`}
+        className={`relative bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} flex flex-col`}
         style={{ 
           border: '1px solid var(--hz-neutral-300)',
           maxHeight: '90vh',
-          overflow: 'auto'
+          overflow: 'hidden'
         }}
       >
         {title && (
-          <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--hz-neutral-300)' }}>
+          <div className="flex items-center justify-between p-6 border-b flex-shrink-0" style={{ borderColor: 'var(--hz-neutral-300)' }}>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
               {title}
             </h2>
@@ -381,9 +383,14 @@ export const AtlasModal: React.FC<AtlasModalProps> = ({
             </button>
           </div>
         )}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {children}
         </div>
+        {footer && (
+          <div className="px-6 pb-6 pt-4 border-t border-neutral-200 flex-shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
