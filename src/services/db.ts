@@ -1888,7 +1888,7 @@ export const initDB = async () => {
           arrastresStore.createIndex('estado', 'estado', { unique: false });
           arrastresStore.createIndex('ejercicioCaducidad', 'ejercicioCaducidad', { unique: false });
           arrastresStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          arrastresStore.createIndex('origen-tipo', ['ejercicioOrigen', 'tipo'], { unique: false });
+          arrastresStore.createIndex('ejercicioOrigen-tipo', ['ejercicioOrigen', 'tipo'], { unique: false });
         }
 
         // V2.7: Snapshots de Declaración store (frozen IRPF declaration data)
