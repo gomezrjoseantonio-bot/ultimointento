@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AlertTriangle, CircleDollarSign, HandCoins } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { calcularDeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import {
   Bar,
   BarChart,
@@ -12,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { AnioHistoricoFiscal, cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -19,42 +19,14 @@ const fmt = (n: number) =>
 const CURRENT_YEAR = new Date().getFullYear();
 const HISTORIC_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3];
 
-interface AnioHistorico {
-  ejercicio: number;
-  cuotaLiquida: number;
-  retenciones: number;
-  resultado: number;
-  tipoEfectivo: number;
-}
-
 const HistoricoPage: React.FC = () => {
-  const [historico, setHistorico] = useState<AnioHistorico[]>([]);
+  const [historico, setHistorico] = useState<AnioHistoricoFiscal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const results: AnioHistorico[] = [];
-      for (const year of HISTORIC_YEARS) {
-        try {
-          const decl = await calcularDeclaracionIRPF(year);
-          results.push({
-            ejercicio: year,
-            cuotaLiquida: decl.liquidacion.cuotaLiquida,
-            retenciones: decl.retenciones.total,
-            resultado: decl.resultado,
-            tipoEfectivo: decl.tipoEfectivo,
-          });
-        } catch {
-          results.push({
-            ejercicio: year,
-            cuotaLiquida: 0,
-            retenciones: 0,
-            resultado: 0,
-            tipoEfectivo: 0,
-          });
-        }
-      }
+      const results = await cargarHistoricoFiscal(HISTORIC_YEARS);
       setHistorico(results);
     } catch (e) {
       console.error('Error loading historico:', e);
@@ -90,7 +62,14 @@ const HistoricoPage: React.FC = () => {
             </div>
             {historico.map(row => (
               <div key={row.ejercicio} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-[color:var(--hz-neutral-100)] last:border-0 items-center">
-                <span className="font-semibold text-[var(--hz-neutral-900)]">{row.ejercicio}</span>
+                <span className="font-semibold text-[var(--hz-neutral-900)] flex items-center gap-2">
+                  {row.ejercicio}
+                  {row.fuente !== 'sin_datos' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-[var(--hz-neutral-200)] text-[var(--hz-neutral-700)]">
+                      {row.fuente}
+                    </span>
+                  )}
+                </span>
                 <span>{fmt(row.cuotaLiquida)}</span>
                 <span style={{ color: 'var(--ok)' }}>{fmt(row.retenciones)}</span>
                 <span
@@ -151,7 +130,7 @@ const HistoricoPage: React.FC = () => {
           <div className="rounded-lg p-4 flex items-start gap-3" style={{ backgroundColor: 'rgba(4, 44, 94, 0.08)', border: '1px solid rgba(4, 44, 94, 0.25)' }}>
             <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--atlas-blue)' }} />
             <p className="text-sm" style={{ color: 'var(--atlas-blue)' }}>
-              Los datos históricos se calculan en base a la información disponible en la aplicación. Para ejercicios anteriores es posible que no estén todos los datos introducidos.
+              Este histórico usa solo fuentes persistidas por ejercicio: año en curso = vivo, años cerrados = snapshot de cierre, años declarados/importados = snapshot declarado. No se recalculan ejercicios pasados automáticamente.
             </p>
           </div>
         </div>

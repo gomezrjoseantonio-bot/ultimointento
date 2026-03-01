@@ -4,6 +4,7 @@ import { initDB, SnapshotDeclaracion } from '../db';
 import * as irpfCalculationService from '../irpfCalculationService';
 import {
   crearSnapshotDeclaracion,
+  crearSnapshotDeclaracionManual,
   listarSnapshotsDeclaracion,
   obtenerSnapshotDeclaracion,
   verificarIntegridadSnapshot,
@@ -144,5 +145,25 @@ describe('snapshotDeclaracionService', () => {
 
     const result = await verificarIntegridadSnapshot(snapshot.id as number);
     expect(result.ok).toBe(false);
+  });
+
+  test('crearSnapshotDeclaracionManual persiste casillas y arrastres importados offline', async () => {
+    const snapshot = await crearSnapshotDeclaracionManual(EJERCICIO - 1, {
+      casillasAEAT: { '0435': 18000, '0560': 2200, '0670': 150 },
+      datos: {
+        baseGeneral: { total: 18000 },
+        minimosPersonales: { total: 5550 },
+        liquidacion: { cuotaIntegra: 2200, cuotaLiquida: 2050, deduccionesDobleImposicion: 150 },
+      },
+      arrastresGenerados: [{ tipo: 'otros', ejercicioOrigen: EJERCICIO - 1, importePendiente: 340 }],
+    });
+
+    expect(snapshot.origen).toBe('importacion_manual');
+    expect(snapshot.casillasAEAT?.['0435']).toBe(18000);
+    expect(snapshot.datos.arrastresGenerados.length).toBe(1);
+
+    const db = await initDB();
+    const arrastres = await db.getAllFromIndex('arrastresIRPF', 'ejercicioOrigen', EJERCICIO - 1);
+    expect(arrastres.length).toBe(1);
   });
 });
