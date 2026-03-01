@@ -4,6 +4,7 @@
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary } from './fiscalSummaryService';
+import { nominaService } from './nominaService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -51,6 +52,10 @@ export interface RendimientosTrabajo {
   cotizacionSS: number;
   irpfRetenido: number;
   rendimientoNeto: number; // bruto - SS - gastos generales
+  // Desglose adicional para transparencia fiscal
+  especieAnual?: number;      // Retribución en especie incluida en base IRPF
+  ppEmpresaAnual?: number;    // Aportación empresa a plan pensiones (rendimiento del trabajo)
+  ppEmpleadoAnual?: number;   // Aportación empleado a plan pensiones
 }
 
 export interface RendimientosAutonomo {
@@ -196,58 +201,41 @@ function edadDesde(fechaNacimiento: string, ejercicio: number): number {
 
 async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTrabajo | null> {
   try {
-    const db = await initDB();
-    const allNominas = await db.getAll('nominas');
-    const activas = allNominas.filter((n: any) => n.activa);
+    const personalData = await personalDataService.getPersonalData();
+    const todasNominas = personalData?.id ? await nominaService.getNominas(personalData.id) : [];
+    const activas = todasNominas.filter(n => n.activa);
     if (activas.length === 0) return null;
 
     let totalBruto = 0;
     let totalCotizacionSS = 0;
     let totalIRPFRetenido = 0;
+    let totalEspecie = 0;
+    let totalPPEmpresa = 0;
+    let totalPPEmpleado = 0;
 
-    for (const activa of activas) {
-      const bruto = activa.salarioBrutoAnual ?? 0;
+    for (const nomina of activas) {
+      const calculo = nominaService.calculateSalary(nomina);
 
-      // Sum taxable benefits in kind (especie) that increment IRPF base
-      const especieAnual = (activa.beneficiosSociales ?? [])
-        .filter((b: any) => b.incrementaBaseIRPF)
-        .reduce((sum: number, b: any) => sum + (b.importeMensual ?? 0) * 12, 0);
-      totalBruto += bruto + especieAnual;
-
-      // Support both old format { cotizacionSS: % } and new format { ss: { ... } }
-      let cotizacionSS: number;
-      if (activa.retencion?.ss) {
-        const ss = activa.retencion.ss;
-        const baseCot = Math.min(ss.baseCotizacionMensual ?? 4909.50, bruto / 12);
-        const pct = ((ss.contingenciasComunes ?? 4.70) + (ss.desempleo ?? 1.55) + (ss.formacionProfesional ?? 0.10) + (ss.mei ?? 0.13)) / 100;
-        cotizacionSS = round2(baseCot * pct * 12 + ((activa.retencion.cuotaSolidaridadMensual ?? 0) * 12));
-      } else {
-        const porcentajeSS = activa.retencion?.cotizacionSS ?? 6.35;
-        cotizacionSS = round2(bruto * (porcentajeSS / 100));
-      }
-      totalCotizacionSS += cotizacionSS;
-
-      const irpfPorcentaje = activa.retencion?.irpfPorcentaje ?? 0;
-      totalIRPFRetenido += round2(bruto * (irpfPorcentaje / 100));
-
-      // Deduct PP employee contributions (capped at legal limit of 1500€/year)
-      const ppEmpleadoAnual = (() => {
-        if (!activa.planPensiones) return 0;
-        const emp = activa.planPensiones.aportacionEmpleado;
-        if (emp.tipo === 'porcentaje') return round2(bruto * emp.valor / 100);
-        return round2(emp.valor * 12);
-      })();
-      const ppReduccion = Math.min(ppEmpleadoAnual, CONSTANTES_IRPF.maxAportacionPP);
-      totalBruto -= ppReduccion;
+      totalBruto += calculo.totalAnualBruto;
+      totalEspecie += calculo.totalAnualEspecie;
+      totalPPEmpresa += calculo.totalAnualPPEmpresa;
+      totalPPEmpleado += calculo.totalAnualPPEmpleado;
+      totalCotizacionSS += calculo.distribucionMensual.reduce((s, m) => s + m.ssTotal, 0);
+      totalIRPFRetenido += calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0);
     }
 
-    const rendimientoNeto = round2(totalBruto - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
+    // Base IRPF = bruto dinerario + especie + aportación empresa PP
+    const baseIRPF = round2(totalBruto + totalEspecie + totalPPEmpresa);
+    const rendimientoNeto = round2(baseIRPF - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
 
     return {
-      salarioBrutoAnual: round2(totalBruto),
+      salarioBrutoAnual: baseIRPF,
       cotizacionSS: round2(totalCotizacionSS),
       irpfRetenido: round2(totalIRPFRetenido),
       rendimientoNeto,
+      especieAnual: round2(totalEspecie),
+      ppEmpresaAnual: round2(totalPPEmpresa),
+      ppEmpleadoAnual: round2(totalPPEmpleado),
     };
   } catch {
     return null;
@@ -580,9 +568,18 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
   };
 
   // PASO 4: Reducciones
+  // Combine PP from nóminas and investments, applying legal limits
+  const MAX_PP_EMPLEADO = 1500;
+  const MAX_PP_EMPRESA = 8500;
+  const ppEmpleadoNomina = trabajo?.ppEmpleadoAnual ?? 0;
+  const ppEmpresaNomina = trabajo?.ppEmpresaAnual ?? 0;
+  // Employee limit applies to nómina employee PP + investment PP combined
+  const ppEmpleadoLimitado = Math.min(ppEmpleadoNomina + aportacionPensiones, MAX_PP_EMPLEADO);
+  const ppEmpresaLimitado = Math.min(ppEmpresaNomina, MAX_PP_EMPRESA);
+  const planPensiones = round2(ppEmpleadoLimitado + ppEmpresaLimitado);
   const reducciones = {
-    planPensiones: aportacionPensiones,
-    total: aportacionPensiones,
+    planPensiones,
+    total: planPensiones,
   };
 
   // PASO 5: Mínimos personales

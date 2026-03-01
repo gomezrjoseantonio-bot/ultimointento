@@ -300,6 +300,8 @@ export interface CalculoNominaResult {
   totalAnualBruto: number;               // bruto base + variables + bonus
   totalAnualEspecie: number;
   totalAnualPP: number;                  // empresa + empleado
+  totalAnualPPEmpleado: number;          // aportación empleado al plan pensiones
+  totalAnualPPEmpresa: number;           // aportación empresa al plan pensiones
 }
 
 export interface DistribucionMensualResult {

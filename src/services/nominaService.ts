@@ -318,6 +318,8 @@ class NominaService {
       totalAnualBruto,
       totalAnualEspecie,
       totalAnualPP: totalAnualPPEmpresa + totalAnualPPEmpleado,
+      totalAnualPPEmpleado,
+      totalAnualPPEmpresa,
     };
   }
 
