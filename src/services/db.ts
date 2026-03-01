@@ -1296,6 +1296,7 @@ export interface OpexRule {
   mesInicio?: number; // 1-12, mes de inicio para frecuencias periódicas
   asymmetricPayments?: AsymmetricPayment[]; // Importes distintos por mes (meses_especificos)
   estacionalidad?: OpexEstacionalidad; // Para suministros: 'plana' | 'invierno' | 'verano'
+  casillaAEAT?: string; // Override manual de la casilla AEAT (ej: '0109', '0114'…)
   activo: boolean;
   createdAt: string;
   updatedAt: string;

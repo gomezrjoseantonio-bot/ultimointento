@@ -1,4 +1,4 @@
-import { AEATFiscalType, AEATBox } from './db';
+import { AEATFiscalType, AEATBox, OpexCategory } from './db';
 
 // AEAT fiscal classification mapping
 export const AEAT_CLASSIFICATION_MAP: Record<AEATFiscalType, AEATBox> = {
@@ -57,8 +57,20 @@ export const PROVIDER_CLASSIFICATION_HINTS: Record<string, AEATFiscalType> = {
 };
 
 /**
- * Suggest AEAT classification based on provider and amount
+ * Mapping from OpexCategory to AEAT box for automatic fiscal classification
+ * of recurring property expenses (Modelo 100).
+ * Categories without a clear AEAT box (e.g. 'otro') are omitted intentionally.
  */
+export const OPEX_CATEGORY_TO_AEAT_BOX: Partial<Record<OpexCategory, AEATBox>> = {
+  'comunidad':  '0109', // Cantidades devengadas por terceros (comunidad de propietarios)
+  'seguro':     '0114', // Primas de contratos de seguro
+  'impuesto':   '0115', // Tributos y recargos no estatales (IBI, tasas basura…)
+  'suministro': '0113', // Suministros (luz, agua, gas)
+  'servicio':   '0112', // Servicios personales (limpieza, jardinería, administración…)
+  'gestion':    '0112', // Servicios personales (gestoría, administración de fincas)
+};
+
+
 export const suggestAEATClassification = (
   provider: string, 
   amount: number,

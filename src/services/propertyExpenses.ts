@@ -68,6 +68,7 @@ const mapOpexRule = (rule: OpexRule): PropertyExpense => {
     amount: monthsSpecificAmount,
     frequency: rule.frecuencia,
     accountId: rule.accountId,
+    casillaAEAT: rule.casillaAEAT,
     startDate: rule.mesInicio ? `${new Date().getFullYear()}-${String(rule.mesInicio).padStart(2, '0')}-01` : undefined,
     source: 'opex_rule',
     expenseClass: 'opex',
