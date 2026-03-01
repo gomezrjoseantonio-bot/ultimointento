@@ -236,12 +236,35 @@ async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTra
       if (activa.planPensiones) {
         const ppEmpresa = activa.planPensiones.aportacionEmpresa;
 
-        totalPPEmpleado += calculo.distribucionMensual.reduce((s, m) => s + m.ppEmpleado, 0);
-        // PP empresa: calculate from definition
-        if (ppEmpresa?.tipo && ppEmpresa.valor != null) {
-          const ppEmpresaAnual = ppEmpresa.tipo === 'porcentaje'
-            ? round2(calculo.totalAnualBruto * ppEmpresa.valor / 100)
-            : round2(ppEmpresa.valor * 12);
+        // Employee PP: always sum from payroll engine monthly distribution
+        totalPPEmpleado += calculo.distribucionMensual.reduce(
+          (s, m) => s + (m.ppEmpleado ?? 0),
+          0,
+        );
+
+        // Employer PP: prefer deriving from payroll engine output
+        const totalPPEmpresaFromDistribucion = calculo.distribucionMensual.reduce(
+          (s, m) => {
+            const totalProducto = (m as any).ppTotalAlProducto;
+            const ppEmpleadoMes = m.ppEmpleado ?? 0;
+            if (typeof totalProducto === 'number') {
+              const ppEmpresaMes = Math.max(0, totalProducto - ppEmpleadoMes);
+              return s + ppEmpresaMes;
+            }
+            return s;
+          },
+          0,
+        );
+
+        if (totalPPEmpresaFromDistribucion > 0) {
+          // Use engine-derived employer PP if available
+          totalPPEmpresa += totalPPEmpresaFromDistribucion;
+        } else if (ppEmpresa?.tipo && ppEmpresa.valor != null) {
+          // Fallback: calculate annual employer PP from plan definition
+          const ppEmpresaAnual =
+            ppEmpresa.tipo === 'porcentaje'
+              ? round2((calculo.totalAnualBruto * ppEmpresa.valor) / 100)
+              : round2(ppEmpresa.valor * 12);
           totalPPEmpresa += ppEmpresaAnual;
         }
       }
