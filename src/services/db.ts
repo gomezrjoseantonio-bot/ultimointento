@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 27; // V2.7: Added ejerciciosFiscales, arrastresIRPF, snapshotsDeclaracion stores
+const DB_VERSION = 28; // V2.8: snapshotsDeclaracion.ejercicio index is now non-unique for forced multiple snapshots
 
 export interface Property {
   id?: number;
@@ -1458,7 +1458,7 @@ let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 export const initDB = async () => {
   if (!dbPromise) {
     dbPromise = openDB<AtlasHorizonDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, _oldVersion, _newVersion, transaction) {
         // Properties store
         if (!db.objectStoreNames.contains('properties')) {
           const propertyStore = db.createObjectStore('properties', { keyPath: 'id', autoIncrement: true });
@@ -1894,9 +1894,19 @@ export const initDB = async () => {
         // V2.7: Snapshots de Declaración store (frozen IRPF declaration data)
         if (!db.objectStoreNames.contains('snapshotsDeclaracion')) {
           const snapshotsStore = db.createObjectStore('snapshotsDeclaracion', { keyPath: 'id', autoIncrement: true });
-          snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: true });
+          snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           snapshotsStore.createIndex('origen', 'origen', { unique: false });
           snapshotsStore.createIndex('fechaSnapshot', 'fechaSnapshot', { unique: false });
+        }
+
+
+        // V2.8: Allow multiple snapshots per ejercicio (force snapshots)
+        if (db.objectStoreNames.contains('snapshotsDeclaracion')) {
+          const snapshotsStore = transaction.objectStore('snapshotsDeclaracion');
+          if (snapshotsStore.indexNames.contains('ejercicio')) {
+            snapshotsStore.deleteIndex('ejercicio');
+          }
+          snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: false });
         }
       },
       blocked() {
