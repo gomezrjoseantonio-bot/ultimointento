@@ -81,10 +81,10 @@ export interface RendimientoInmueble {
   // Total: rendimientoNetoAlquiler + imputacionRenta
   rendimientoNeto: number;
   // AEAT art. 23 LIRPF limit tracking for 0105+0106
-  gastosFinanciacionYReparacion: number; // Original 0105+0106 (prorated)
-  limiteAplicado: number;               // min(financingRepairs, ingresosIntegros)
-  excesoArrastrable: number;            // max(0, financingRepairs - ingresosIntegros)
-  arrastresAplicados: number;           // Carryforwards applied from previous years
+  gastosFinanciacionYReparacion?: number; // Original 0105+0106 (prorated)
+  limiteAplicado?: number;               // min(financingRepairs, ingresosIntegros)
+  excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
+  arrastresAplicados?: number;           // Carryforwards applied from previous years
 }
 
 export interface ImputacionRenta {
