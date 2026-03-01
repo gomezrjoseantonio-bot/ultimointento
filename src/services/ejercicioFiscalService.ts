@@ -103,9 +103,6 @@ export async function updateResumen(año: number): Promise<EjercicioFiscal> {
 }
 
 export async function cerrarEjercicio(año: number): Promise<EjercicioFiscal> {
-  const ejercicio = await getOrCreateEjercicio(año);
-  assertEstadoActual(ejercicio, 'vivo', 'cerrar');
-
   const conResumen = await updateResumen(año);
   const now = new Date().toISOString();
   const updated: EjercicioFiscal = {
