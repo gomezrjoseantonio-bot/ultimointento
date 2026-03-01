@@ -4,6 +4,7 @@
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
+import { nominaService } from './nominaService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
