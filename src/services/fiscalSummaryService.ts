@@ -2,6 +2,7 @@ import { initDB, FiscalSummary, Document } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
 import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
+import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
 
 /**
  * Calculate or update fiscal summary for a property and year
