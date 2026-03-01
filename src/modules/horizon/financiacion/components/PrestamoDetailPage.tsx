@@ -6,6 +6,7 @@ import HeaderSection from './detail/HeaderSection';
 import CondicionesSection from './detail/CondicionesSection';
 import BonificacionesSection from './detail/BonificacionesSection';
 import CalendarioPagosSection from './detail/CalendarioPagosSection';
+import AmortizationSimulator from '../../inmuebles/prestamos/components/AmortizationSimulator';
 
 interface PrestamoDetailPageProps {
   prestamoId: string;
@@ -17,6 +18,7 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
   const [prestamo, setPrestamo] = useState<Prestamo | null>(null);
   const [planPagos, setPlanPagos] = useState<PlanPagos | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSimulator, setShowSimulator] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +103,7 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
           prestamo={prestamo}
           onEdit={() => onEdit(prestamoId)}
           onDelete={handleDelete}
-          onSimular={() => onEdit(prestamoId)}
+          onSimular={() => setShowSimulator(true)}
         />
         <BonificacionesSection prestamo={prestamo} />
         <CondicionesSection prestamo={prestamo} />
@@ -111,6 +113,26 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
           onCuotaPagada={handleCuotaPagada}
         />
       </div>
+
+      {showSimulator && (
+        <AmortizationSimulator
+          prestamo={prestamo}
+          onClose={() => setShowSimulator(false)}
+          onApply={async (_importe: number) => {
+            setShowSimulator(false);
+            try {
+              const [p, plan] = await Promise.all([
+                prestamosService.getPrestamoById(prestamoId),
+                prestamosService.getPaymentPlan(prestamoId),
+              ]);
+              setPrestamo(p);
+              setPlanPagos(plan);
+            } catch (e) {
+              console.error('[PrestamoDetailPage] reload after amortization error', e);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
