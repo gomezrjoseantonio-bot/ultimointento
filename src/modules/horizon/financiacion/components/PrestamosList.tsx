@@ -250,6 +250,32 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     </div>
   );
 
+  const renderCircleProgress = (pct: number) => {
+    const size = 64;
+    const strokeWidth = 5;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (Math.min(100, Math.max(0, pct)) / 100) * circumference;
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke="var(--border-light, #e5e7eb)" strokeWidth={strokeWidth} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke="var(--atlas-teal)" strokeWidth={strokeWidth} strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+        <text x={size / 2} y={size / 2 - 5} textAnchor="middle" dominantBaseline="middle"
+          style={{ fontSize: 11, fontWeight: 700, fill: 'var(--atlas-navy-1)' }}>
+          {Math.round(pct)}%
+        </text>
+        <text x={size / 2} y={size / 2 + 8} textAnchor="middle" dominantBaseline="middle"
+          style={{ fontSize: 9, fill: 'var(--text-gray)' }}>
+          Pagado
+        </text>
+      </svg>
+    );
+  };
+
   const renderBadge = (tipo: Prestamo['tipo']) => {
     if (tipo === 'FIJO') {
       return (
@@ -263,7 +289,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       return (
         <span style={{
           fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-          border: '1px solid var(--atlas-navy-1)', color: 'var(--atlas-navy-1)',
+          backgroundColor: 'rgba(37,99,235,0.1)', color: 'var(--atlas-blue)',
         }}>MIXTO</span>
       );
     }
@@ -316,7 +342,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
               {renderBadge(prestamo.tipo)}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 2 }}>
-              {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')}
+              {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')} – {calcEndDate(prestamo).toLocaleDateString('es-ES')}
             </div>
           </div>
           {/* Action icons — visible on hover */}
@@ -370,12 +396,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
           </div>
         )}
 
-        {/* Progress bar */}
-        <div>
-          {renderProgressBar(pagadoPct, 6)}
-          <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-            {pagadoPct.toLocaleString('es-ES', { maximumFractionDigits: 0 })}% pagado
-          </div>
+        {/* Circular progress */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+          {renderCircleProgress(pagadoPct)}
         </div>
       </div>
     );

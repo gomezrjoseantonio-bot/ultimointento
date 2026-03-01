@@ -9,13 +9,11 @@ import { prestamosService } from '../../../../../services/prestamosService';
 interface AmortizationSimulatorProps {
   prestamo: Prestamo;
   onClose: () => void;
-  onApply: (importe: number) => void;
 }
 
 const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({ 
   prestamo, 
-  onClose, 
-  onApply 
+  onClose 
 }) => {
   const [importe, setImporte] = useState<string>('');
   const [fechaAmortizacion, setFechaAmortizacion] = useState<string>(
@@ -67,18 +65,6 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
     }
   }, [importe, fechaAmortizacion, modo, simulateAmortization]);
 
-  const handleApply = async () => {
-    if (!calculo) return;
-    
-    try {
-      await prestamosService.applyAmortization(prestamo.id, calculo.importeAmortizar);
-      onApply(calculo.importeAmortizar);
-    } catch (err) {
-      setError('Error al aplicar la amortización');
-      console.error(err);
-    }
-  };
-
   const isValidAmount = (): boolean => {
     const importeNumerico = parseFloat(importe) || 0;
     return importeNumerico > 0 && importeNumerico <= prestamo.principalVivo;
@@ -125,7 +111,7 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
                 </div>
                 <div>
                   <span className="text-gray-500">Plazo restante:</span>
-                  <div className="font-medium text-neutral-900">{prestamo.plazoMesesTotal} meses</div>
+                  <div className="font-medium text-neutral-900">{prestamo.plazoMesesTotal - prestamo.cuotasPagadas} meses</div>
                 </div>
               </div>
             </div>
@@ -297,28 +283,13 @@ const AmortizationSimulator: React.FC<AmortizationSimulatorProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="bg-hz-neutral-100 px-6 py-4 flex items-center justify-between">
+          <div className="bg-hz-neutral-100 px-6 py-4 flex items-center justify-start">
             <button
               onClick={onClose}
               className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
             >
               Cancelar
             </button>
-            
-            <div className="flex items-center space-x-3">
-              {calculo && (
-                <div className="text-sm text-gray-500">
-                  Net: {formatEuro(calculo.interesesAhorrados - calculo.penalizacion)}
-                </div>
-              )}
-              <button
-                onClick={handleApply}
-                disabled={!calculo || !isValidAmount()}
-                className="px-6 py-2 bg-atlas-blue text-white rounded-lg hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Aplicar amortización
-              </button>
-            </div>
           </div>
         </div>
       </div>

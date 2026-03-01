@@ -118,19 +118,6 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
         <AmortizationSimulator
           prestamo={prestamo}
           onClose={() => setShowSimulator(false)}
-          onApply={async (_importe: number) => {
-            setShowSimulator(false);
-            try {
-              const [p, plan] = await Promise.all([
-                prestamosService.getPrestamoById(prestamoId),
-                prestamosService.getPaymentPlan(prestamoId),
-              ]);
-              setPrestamo(p);
-              setPlanPagos(plan);
-            } catch (e) {
-              console.error('[PrestamoDetailPage] reload after amortization error', e);
-            }
-          }}
         />
       )}
     </div>

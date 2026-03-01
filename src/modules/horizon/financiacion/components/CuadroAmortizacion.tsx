@@ -56,7 +56,7 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
 
       result.push({
         periodo: i,
-        fecha: fechaBase.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }),
+        fecha: fechaBase.toLocaleDateString('es-ES'),
         anio: fechaBase.getFullYear(),
         cuota: Math.round(cuota * 100) / 100,
         capital: Math.round(capital * 100) / 100,
