@@ -1,4 +1,4 @@
-# Racionalización real del módulo Inmuebles (propuesta v2)
+# Racionalización real del módulo Inmuebles (propuesta v3)
 
 > Objetivo: **menos pantallas, menos pestañas y menos duplicidades** sin rehacer todo el producto.
 
@@ -8,136 +8,169 @@ La fricción no es “visual”, es de **arquitectura funcional**:
 
 1. Se entra por **Inmuebles/Cartera**, pero para operar hay que saltar entre:
    - Ficha del inmueble
-   - Contratos global
-   - Cobros global
-   - Presupuesto OPEX/CAPEX
-   - Bloques fiscales dentro de fichas largas
+   - Contratos/Cobros globales
+   - Apartado específico de **Alquileres** (alta y gestión de contratos)
+   - Presupuesto y fiscal en bloques largos
 
 2. Hay mezcla de niveles:
    - Nivel cartera (global)
    - Nivel inmueble (detalle)
-   - Nivel operación (contrato/cobro/regla/mejora)
+   - Nivel operación (contrato/cobro/gasto)
 
-3. La misma tarea se puede hacer en más de un sitio.
+3. La misma tarea puede iniciarse en más de un sitio.
 
-**Resultado:** demasiada carga cognitiva, dudas de “dónde se hace”, y navegación innecesaria.
+**Resultado:** carga cognitiva alta, dudas de “dónde se hace” y navegación innecesaria.
 
 ---
 
 ## 2) Decisión de producto (clara)
 
-Tomar una decisión de gobierno UX:
+Tomar una decisión explícita de gobierno UX:
 
-- **La ficha del inmueble será el centro operativo.**
-- Las pantallas globales (Contratos/Cobros) pasan a ser de **control masivo**, no de operación diaria.
+- **La ficha del inmueble será el centro operativo por inmueble.**
+- **Alquileres** será el centro de **alta/gestión transversal de contratos** (visión multi-inmueble).
+- Las vistas globales de contratos/cobros se mantienen para control masivo y reporting.
 
-Si no se toma esta decisión, cualquier rediseño seguirá siendo cosmético.
+Esto evita conflicto entre “operar un inmueble” vs “administrar todos los contratos”.
 
 ---
 
-## 3) Qué dejamos en 2 niveles (y nada más)
+## 3) Arquitectura objetivo (2 superficies + 1 transversal)
 
-## Nivel A — Cartera (visión global + priorización)
-Una sola tabla/lista con:
+## Superficie A — Cartera (visión global + priorización)
+Tabla/lista única con:
 - Estado ocupación
 - Renta mensual
 - Yield
-- Alertas (sin contrato, fiscal incompleto, opex sin cuenta)
+- Alertas (sin contrato, fiscal incompleto, cuentas sin asignar)
 - CTA por fila: **Abrir ficha**
 
-## Nivel B — Ficha de inmueble (operación)
+## Superficie B — Ficha de inmueble (operación del activo)
 Solo 3 pestañas:
 
 1. **Operación**
    - Contrato activo
    - Próximos cobros
    - Estado ocupación
-   - CTA: Nuevo contrato / Renovar / Finalizar
+   - CTA contextual: renovar/finalizar contrato
+   - CTA secundario: “Gestionar en Alquileres”
 
 2. **Números**
    - Coste adquisición
-   - Gastos recurrentes (antes OPEX)
-   - Mejoras (antes CAPEX)
-   - KPI anual neto
+   - Gastos por tipología (ver taxonomía)
+   - KPI anual neto por inmueble
 
 3. **Fiscal**
    - Datos fiscales auxiliares
    - Ocupación anual fiscal
-   - Mejoras amortizables y trazabilidad
    - Estado “listo para cierre”
 
+## Superficie transversal — Alquileres (alta y gestión multi-inmueble)
+- Alta de contratos nuevos
+- Gestión masiva (lista, calendario, cobros)
+- Filtros por estado/modalidad/inmueble
+- Acceso rápido a ficha del inmueble asociado
+
 ### Eliminaciones/Fusiones directas
-- Eliminar pestaña separada “Contratos / Ingresos” → pasa a **Operación**.
-- Eliminar pestaña separada “Presupuesto OPEX/CAPEX” → pasa a **Números**.
-- “Atajos” fuera del cuerpo principal → menú contextual en cabecera.
-- “Contratos global” mantiene valor, pero como vista de administración masiva.
+- “Contratos / Ingresos” dentro de ficha se simplifica y queda en **Operación**.
+- “Presupuesto OPEX/CAPEX” se renombra y se integra en **Números**.
+- “Atajos” sale del cuerpo principal y pasa a cabecera contextual.
 
 ---
 
-## 4) Flujo ideal (3 clics máximo en tareas clave)
+## 4) Taxonomía de gastos (completa y clara)
 
-## Tarea 1: renovar contrato
-Cartera → abrir ficha inmueble → Operación → Renovar.
+Para evitar ambigüedad, en **Números** se muestran 4 bloques diferenciados:
 
-## Tarea 2: registrar gasto/mejora
-Cartera → abrir ficha inmueble → Números → Añadir gasto/mejora.
+1. **Gastos recurrentes**
+   - Comunidad, IBI, seguros, suministros, servicios periódicos.
 
-## Tarea 3: preparar cierre fiscal
-Cartera → abrir ficha inmueble → Fiscal → Completar campos pendientes.
+2. **Reparación y conservación**
+   - Gastos de mantenimiento que **no** incrementan valor estructural.
+   - Impacto fiscal como gasto del ejercicio (según regla fiscal aplicable).
+
+3. **Mejoras (CAPEX)**
+   - Actuaciones que incrementan valor/base amortizable.
+   - Seguimiento de amortización y trazabilidad.
+
+4. **Mobiliario y equipamiento**
+   - Compra de mobiliario, electrodomésticos y equipamiento.
+   - Separado de mejoras para tratamiento contable/fiscal más claro.
+
+> Regla UX: no mezclar “reparación y conservación” con “mejoras”, y no ocultar mobiliario dentro de “otros”.
+
+---
+
+## 5) Flujo ideal (máximo 3 clics en tareas frecuentes)
+
+## Tarea 1: alta de contrato nuevo
+Inmuebles/Cartera o ficha → **Alquileres** → Nuevo contrato → vincular inmueble.
+
+## Tarea 2: renovar contrato de un inmueble
+Cartera → abrir ficha → Operación → Renovar (o abrir en Alquileres si requiere edición avanzada).
+
+## Tarea 3: registrar gasto (reparación/mejora/mobiliario)
+Cartera → abrir ficha → Números → seleccionar tipología → guardar.
+
+## Tarea 4: preparar cierre fiscal de un inmueble
+Cartera → abrir ficha → Fiscal → completar pendientes.
 
 Regla: si una tarea frecuente necesita más de 3 pasos, está mal diseñada.
 
 ---
 
-## 5) Plan de implementación (sin big-bang)
+## 6) Plan de implementación (sin big-bang)
 
-## Sprint 1 (rápido: simplificación visible)
-1. Reordenar pestañas en ficha a: Operación / Números / Fiscal.
-2. Mover “Atajos” a cabecera contextual.
-3. Añadir bloque “Pendientes de este inmueble” arriba de la ficha.
+## Sprint 1 (simplificación visible)
+1. Reordenar ficha a: Operación / Números / Fiscal.
+2. Mover atajos a cabecera contextual.
+3. Añadir bloque “Pendientes de este inmueble”.
 
-## Sprint 2 (quitar duplicidad)
-1. En ficha, incluir mini-vista de cobros de contrato activo.
-2. En Contratos global, añadir texto/CTA: “para operar un contrato, abre la ficha del inmueble”.
-3. Unificar nomenclatura: “Gastos recurrentes (OPEX)” y “Mejoras (CAPEX)”.
+## Sprint 2 (alineación con Alquileres)
+1. Añadir CTA en Operación: “Gestionar en Alquileres”.
+2. En Alquileres, reforzar alta de contrato y link de vuelta a ficha.
+3. Unificar naming entre ficha y Alquileres (estado, modalidad, cobros).
 
-## Sprint 3 (eficiencia operativa)
-1. Filtro en Cartera: “Requiere acción”.
-2. Indicador por inmueble: Operación ✅ / Números ✅ / Fiscal ✅.
-3. KPI de reducción de saltos entre pantallas.
+## Sprint 3 (modelo económico completo)
+1. Implementar las 4 tipologías de gasto en Números.
+2. Etiquetas fiscales por tipología (recurrente, reparación, mejora, mobiliario).
+3. Filtro en Cartera: “Requiere acción”.
 
 ---
 
-## 6) Criterio de aceptación (definición de éxito)
+## 7) Criterio de aceptación
 
 La racionalización será válida solo si se cumple:
 
-1. Menos de 4 pestañas por ficha.
-2. Una tarea frecuente = un lugar único.
-3. Reducción de saltos entre módulo Inmuebles y Contratos global.
-4. Usuario entiende “qué tengo pendiente” en <10 segundos al abrir ficha.
+1. Ficha con máximo 3 pestañas.
+2. Alta de contrato claramente anclada en **Alquileres**.
+3. Operación por inmueble claramente anclada en **Ficha**.
+4. Gasto siempre clasificado en una de 4 tipologías (sin “cajón desastre”).
+5. Usuario identifica pendientes del inmueble en <10 segundos.
 
 ---
 
-## 7) Métricas que sí importan
+## 8) Métricas que sí importan
 
-- Tiempo medio para renovar contrato.
-- Tiempo medio para registrar mejora.
-- % inmuebles con estado “listo para cierre fiscal”.
-- Nº de visitas a pantallas globales para tareas que deberían resolverse en ficha.
+- Tiempo medio de alta de contrato (en Alquileres).
+- Tiempo medio de renovación desde ficha.
+- % gastos correctamente clasificados en 4 tipologías.
+- % inmuebles “listo para cierre fiscal”.
+- Nº de saltos entre pantallas por tarea.
 
 ---
 
-## 8) Propuesta concreta para validar ya (sin código adicional)
+## 9) Validación rápida (sin big design)
 
-Hacer una prueba guiada con 5 usuarios internos con 3 tareas:
-1. Renovar contrato de un inmueble activo.
-2. Registrar una mejora.
-3. Dejar inmueble listo para fiscal.
+Test con 5 usuarios internos, 4 tareas:
+1. Dar de alta un contrato nuevo desde Alquileres.
+2. Renovar contrato desde ficha.
+3. Registrar una reparación y una compra de mobiliario.
+4. Dejar inmueble listo para fiscal.
 
 Éxito si:
 - ≥80% completan sin ayuda.
-- Tiempo total <6 minutos entre 3 tareas.
+- Tiempo total <8 minutos.
 - Confusión de navegación <2 incidencias por usuario.
 
-Si falla, no iterar estilos: iterar arquitectura.
+Si falla, iterar arquitectura de navegación antes que estilos visuales.
