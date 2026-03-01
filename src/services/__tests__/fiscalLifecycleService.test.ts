@@ -10,12 +10,11 @@ function buildDeclaracionMock() {
   return {
     ejercicio: EJERCICIO,
     baseGeneral: {
-      rendimientosTrabajo: { total: 20000 },
-      rendimientosCapital: { total: 4000 },
-      gastosDeducibles: { total: 5000 },
-      amortizaciones: { total: 1000 },
+      rendimientosTrabajo: { salarioBrutoAnual: 20000, especieAnual: 0 },
+      rendimientosAutonomo: { ingresos: 4000, gastos: 3000, cuotaSS: 500 },
+      rendimientosInmuebles: [{ ingresosIntegros: 2500, gastosDeducibles: 1500, amortizacion: 1000 }],
     },
-    baseAhorro: { total: 1000 },
+    baseAhorro: { total: 1000, capitalMobiliario: { total: 200 }, gananciasYPerdidas: { plusvalias: 100 } },
     reducciones: { total: 1200 },
     minimoPersonal: { total: 5550 },
     liquidacion: {

@@ -61,9 +61,31 @@ function buildResultadoFromDeclaracion(
   notasRevision?: string
 ): ResultadoEjercicio {
   const now = new Date().toISOString();
-  const ingresos = Number(declaracion?.baseGeneral?.rendimientosTrabajo?.total ?? 0) + Number(declaracion?.baseGeneral?.rendimientosCapital?.total ?? 0);
-  const gastos = Number(declaracion?.baseGeneral?.gastosDeducibles?.total ?? 0);
-  const amortizacion = Number(declaracion?.baseGeneral?.amortizaciones?.total ?? 0);
+
+  const ingresosTrabajo = Number(declaracion?.baseGeneral?.rendimientosTrabajo?.salarioBrutoAnual ?? 0)
+    + Number(declaracion?.baseGeneral?.rendimientosTrabajo?.especieAnual ?? 0);
+  const ingresosAutonomo = Number(declaracion?.baseGeneral?.rendimientosAutonomo?.ingresos ?? 0);
+  const ingresosInmuebles = (declaracion?.baseGeneral?.rendimientosInmuebles ?? []).reduce(
+    (sum, inmueble) => sum + Number(inmueble?.ingresosIntegros ?? 0),
+    0
+  );
+  const ingresosAhorro = Number(declaracion?.baseAhorro?.capitalMobiliario?.total ?? 0)
+    + Number(declaracion?.baseAhorro?.gananciasYPerdidas?.plusvalias ?? 0);
+
+  const gastosAutonomo = Number(declaracion?.baseGeneral?.rendimientosAutonomo?.gastos ?? 0)
+    + Number(declaracion?.baseGeneral?.rendimientosAutonomo?.cuotaSS ?? 0);
+  const gastosInmuebles = (declaracion?.baseGeneral?.rendimientosInmuebles ?? []).reduce(
+    (sum, inmueble) => sum + Number(inmueble?.gastosDeducibles ?? 0),
+    0
+  );
+
+  const amortizacion = (declaracion?.baseGeneral?.rendimientosInmuebles ?? []).reduce(
+    (sum, inmueble) => sum + Number(inmueble?.amortizacion ?? 0),
+    0
+  );
+
+  const ingresos = ingresosTrabajo + ingresosAutonomo + ingresosInmuebles + ingresosAhorro;
+  const gastos = gastosAutonomo + gastosInmuebles;
 
   return {
     ejercicio,
