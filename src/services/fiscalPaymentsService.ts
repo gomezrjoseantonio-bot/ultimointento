@@ -19,6 +19,12 @@ export interface EventoFiscal {
   sourceType: 'irpf_modelo130' | 'iva_modelo303' | 'irpf_declaracion';
 }
 
+const CONFIG_STORE = 'configuracion_fiscal';
+
+function hasStore(db: any, storeName: string): boolean {
+  return !!db?.objectStoreNames?.contains?.(storeName);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fechaLimiteM130(ejercicio: number, trimestre: number): string {
@@ -39,7 +45,24 @@ function round2(n: number): number {
 
 export async function getConfiguracionFiscal(): Promise<ConfiguracionFiscal> {
   const db = await initDB();
-  const existing = await db.get('configuracionFiscal', 1);
+
+  if (!hasStore(db, CONFIG_STORE)) {
+    console.warn(`[fiscalPaymentsService] El store "${CONFIG_STORE}" no existe aún. Usando configuración fiscal por defecto.`);
+
+    return {
+      id: 1,
+      mes_declaracion: 6,
+      dia_declaracion: 25,
+      incluir_prevision_irpf: true,
+      fraccionarPago: false,
+      modelo130_pagados: [],
+      modelo303_pagados: [],
+      minusvalias_pendientes: [],
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const existing = await db.get(CONFIG_STORE, 1);
   if (existing) return existing;
 
   // Default config
@@ -55,12 +78,24 @@ export async function getConfiguracionFiscal(): Promise<ConfiguracionFiscal> {
     updatedAt: new Date().toISOString(),
   };
 
-  await db.put('configuracionFiscal', defaultConfig);
+  await db.put(CONFIG_STORE, defaultConfig);
   return defaultConfig;
 }
 
 export async function saveConfiguracionFiscal(config: Partial<ConfiguracionFiscal>): Promise<ConfiguracionFiscal> {
   const db = await initDB();
+
+  if (!hasStore(db, CONFIG_STORE)) {
+    console.warn(`[fiscalPaymentsService] El store "${CONFIG_STORE}" no existe aún. No se puede persistir la configuración fiscal.`);
+    const fallbackConfig = await getConfiguracionFiscal();
+    return {
+      ...fallbackConfig,
+      ...config,
+      id: 1,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
   const existing = await getConfiguracionFiscal();
   const updated: ConfiguracionFiscal = {
     ...existing,
@@ -68,7 +103,7 @@ export async function saveConfiguracionFiscal(config: Partial<ConfiguracionFisca
     id: 1,
     updatedAt: new Date().toISOString(),
   };
-  await db.put('configuracionFiscal', updated);
+  await db.put(CONFIG_STORE, updated);
   return updated;
 }
 
