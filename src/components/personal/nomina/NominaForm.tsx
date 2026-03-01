@@ -757,25 +757,26 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                   fechaActualizacion: new Date().toISOString(),
                 };
                 const calculo = nominaService.calculateSalary(tempNomina);
-                const ssM = ssTotalMensual;
-                const irpfM = (bruto / 12) * (formData.retencion.irpfPorcentaje / 100);
-                const ppM = (() => {
-                  if (!formData.tienePlanPensiones || !formData.planPensiones) return 0;
-                  const baseM = bruto / 12;
-                  const emp = formData.planPensiones.aportacionEmpleado;
-                  return emp.tipo === 'porcentaje' ? baseM * (emp.valor / 100) : emp.valor;
-                })();
-                const netoM = bruto / 12 - ssM - irpfM - ppM;
+                // Typical month: first month without paga extra or bonus; fall back to averages
+                const mesTipico = calculo.distribucionMensual.find(m => m.pagaExtra === 0 && m.bonus === 0);
+                const avg = mesTipico ? null : calculo.distribucionMensual.reduce(
+                  (acc, m) => ({ ss: acc.ss + m.ssTotal, irpf: acc.irpf + m.irpfImporte, pp: acc.pp + m.ppEmpleado }),
+                  { ss: 0, irpf: 0, pp: 0 }
+                );
+                const ssM = mesTipico ? mesTipico.ssTotal : avg!.ss / 12;
+                const irpfM = mesTipico ? mesTipico.irpfImporte : avg!.irpf / 12;
+                const ppM = mesTipico ? mesTipico.ppEmpleado : avg!.pp / 12;
+                const netoM = mesTipico ? mesTipico.netoTotal : calculo.netoMensual;
                 const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return (
                   <div className="bg-brand-navy/5 rounded-xl p-5 space-y-3">
                     <h4 className="font-semibold text-neutral-900">Resumen estimado</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="text-neutral-600">Bruto anual:</div><div className="font-medium text-right">{fmt(bruto)} €</div>
+                      <div className="text-neutral-600">Bruto anual:</div><div className="font-medium text-right">{fmt(calculo.totalAnualBruto)} €</div>
                       <div className="text-neutral-600">SS €/mes:</div><div className="font-medium text-right">− {fmt(ssM)} €</div>
                       <div className="text-neutral-600">IRPF €/mes:</div><div className="font-medium text-right">− {fmt(irpfM)} €</div>
                       {ppM > 0 && <><div className="text-neutral-600">PP Empleado €/mes:</div><div className="font-medium text-right">− {fmt(ppM)} €</div></>}
-                      <div className="border-t border-neutral-300 pt-2 font-semibold text-neutral-900">Líquido mes normal:</div>
+                      <div className="border-t border-neutral-300 pt-2 font-semibold text-neutral-900">Líquido mes típico:</div>
                       <div className="border-t border-neutral-300 pt-2 font-bold text-brand-navy text-right">{fmt(netoM)} €</div>
                       <div className="text-neutral-600">Neto anual estimado:</div><div className="font-medium text-right">{fmt(calculo.totalAnualNeto)} €</div>
                     </div>
