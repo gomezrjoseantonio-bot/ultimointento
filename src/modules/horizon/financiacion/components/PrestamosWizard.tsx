@@ -284,9 +284,15 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         if (existingCuotasPagadasRef.current !== undefined) {
           mapped.cuotasPagadas = existingCuotasPagadasRef.current;
         }
-        await prestamosService.updatePrestamo(prestamoId, mapped);
+        const updated = await prestamosService.updatePrestamo(prestamoId, mapped);
+        if (updated && new Date(formData.fechaFirma as string) < new Date()) {
+          await prestamosService.autoMarcarCuotasPagadas(updated.id);
+        }
       } else {
-        await prestamosService.createPrestamo(mapped);
+        const created = await prestamosService.createPrestamo(mapped);
+        if (created && new Date(formData.fechaFirma as string) < new Date()) {
+          await prestamosService.autoMarcarCuotasPagadas(created.id);
+        }
       }
       try { localStorage.removeItem(DRAFT_KEY); } catch {}
       onSuccess();

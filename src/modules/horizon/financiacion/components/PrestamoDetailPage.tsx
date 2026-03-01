@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Prestamo, PlanPagos } from '../../../../types/prestamos';
 import { prestamosService } from '../../../../services/prestamosService';
-import { useAutoMarcarCuotas } from '../../../../hooks/useAutoMarcarCuotas';
 import HeaderSection from './detail/HeaderSection';
 import CondicionesSection from './detail/CondicionesSection';
 import BonificacionesSection from './detail/BonificacionesSection';
@@ -18,8 +17,6 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
   const [prestamo, setPrestamo] = useState<Prestamo | null>(null);
   const [planPagos, setPlanPagos] = useState<PlanPagos | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useAutoMarcarCuotas([prestamoId]);
 
   useEffect(() => {
     let cancelled = false;
