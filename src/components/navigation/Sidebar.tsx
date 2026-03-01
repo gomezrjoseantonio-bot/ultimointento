@@ -165,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       />
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
+        className={`fixed inset-y-0 left-0 z-[100] transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
           sidebarOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'
         } ${collapsed ? 'w-16' : 'w-64'}`}
         style={{ backgroundColor: 'var(--atlas-navy-2)' }}

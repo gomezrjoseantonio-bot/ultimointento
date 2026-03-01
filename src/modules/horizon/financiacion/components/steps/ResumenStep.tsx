@@ -225,7 +225,7 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 700, fontSize: 14, color: 'var(--atlas-navy-1)' }}>
             Cuadro de amortización
           </div>
-          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 400, overflowY: 'auto' }} className="hide-scrollbar">
             <CuadroAmortizacion
               capitalInicial={capital}
               tinAnual={tinEfectivo}
