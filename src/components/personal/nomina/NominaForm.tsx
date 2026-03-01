@@ -272,7 +272,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
         {/* Sticky header */}
         <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '12px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -330,7 +330,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: 100 }}>
+        <div style={{ flex: 1, padding: '24px', paddingBottom: 100 }}>
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <form id="nomina-wizard-form" onSubmit={handleSubmit}>
           {step === 1 && (
@@ -396,9 +396,9 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                         ...prev,
                         distribucion: { tipo, meses: tipo === 'doce' ? 12 : tipo === 'catorce' ? 14 : prev.distribucion.meses }
                       }))}
-                      className={`p-3 border rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
+                      className={`p-3 border-2 rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
                         formData.distribucion.tipo === tipo
-                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          ? 'bg-blue-50 border-blue-500 text-brand-navy font-semibold'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
@@ -745,6 +745,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               </div>
 
               {(() => {
+                try {
                 const bruto = parseFloat(formData.salarioBrutoAnual) || 0;
                 const tempNomina: Nomina = {
                   personalDataId: personalDataId ?? 0,
@@ -791,6 +792,10 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     </div>
                   </div>
                 );
+                } catch (_e) {
+                  console.error('[NominaForm] Error calculating salary summary:', _e);
+                  return null;
+                }
               })()}
             </div>
           )}
@@ -799,7 +804,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Fixed footer */}
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '12px 24px' }}>
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '12px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
@@ -924,7 +929,6 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
   const updateDistribucion = (mes: number, porcentaje: number) =>
     setFormData(prev => ({ ...prev, distribucionMeses: prev.distribucionMeses.map(d => d.mes === mes ? { ...d, porcentaje } : d) }));
 
-  const totalPorcentaje = formData.distribucionMeses.reduce((sum, d) => sum + d.porcentaje, 0);
   const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
   return (
@@ -950,13 +954,14 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-3">Distribución por Meses (Total: {totalPorcentaje}%)</label>
+          <label className="block text-sm font-medium text-neutral-700 mb-3">Distribución por Meses</label>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {formData.distribucionMeses.map((dist, index) => (
               <div key={dist.mes} className="text-center">
                 <label className="block text-xs text-neutral-600 mb-1">{meses[index]}</label>
                 <input type="number" min="0" max="100" step="0.1" value={dist.porcentaje}
                   onChange={(e) => updateDistribucion(dist.mes, parseFloat(e.target.value) || 0)}
+                  onFocus={(e) => e.target.select()}
                   className="w-full text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy px-1 py-1" />
               </div>
             ))}

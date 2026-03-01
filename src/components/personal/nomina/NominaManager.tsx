@@ -100,8 +100,19 @@ const NominaManager: React.FC = () => {
     );
   }
 
+  if (showForm) {
+    return (
+      <NominaForm
+        isOpen={true}
+        onClose={() => { setShowForm(false); setEditingNomina(null); }}
+        nomina={editingNomina}
+        onSaved={handleNominaSaved}
+      />
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with Actions */}
       <div className="flex items-center justify-between">
         <div>
@@ -140,7 +151,7 @@ const NominaManager: React.FC = () => {
       )}
 
       {/* Nominas list */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {nominas.map((nomina) => {
           const calculo = nomina.id ? calculos.get(nomina.id) : null;
           const pagasCount = getPagasCount(nomina);
@@ -224,11 +235,11 @@ const NominaManager: React.FC = () => {
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Distribución Mensual Neto</p>
-                    <div className="flex items-end justify-between gap-1" style={{ height: '200px' }}>
+                    <div className="flex items-end justify-between gap-1" style={{ height: '160px' }}>
                       {(() => {
                         const maxNeto = Math.max(...calculo.distribucionMensual.map(m => m.netoTotal));
                         return calculo.distribucionMensual.map((m) => {
-                          const barHeight = maxNeto > 0 ? (m.netoTotal / maxNeto) * 160 : 0;
+                          const barHeight = maxNeto > 0 ? (m.netoTotal / maxNeto) * 120 : 0;
                           const hasPagaExtra = m.pagaExtra > 0;
                           const shortLabel = m.netoTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
                           return (
@@ -237,7 +248,7 @@ const NominaManager: React.FC = () => {
                                 {shortLabel}
                               </span>
                               <div
-                                className={`w-full rounded-t ${hasPagaExtra ? 'bg-emerald-500' : 'bg-brand-navy'}`}
+                                className={`w-full rounded-t ${hasPagaExtra ? 'bg-teal-400' : 'bg-brand-navy'}`}
                                 style={{ height: `${barHeight}px`, minHeight: '2px' }}
                                 title={formatCurrency(m.netoTotal)}
                               />
@@ -254,17 +265,6 @@ const NominaManager: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Nomina Form Modal */}
-      <NominaForm
-        isOpen={showForm}
-        onClose={() => {
-          setShowForm(false);
-          setEditingNomina(null);
-        }}
-        nomina={editingNomina}
-        onSaved={handleNominaSaved}
-      />
     </div>
   );
 };
