@@ -92,9 +92,10 @@ class NominaService {
       const db = await this.getDB();
       const transaction = db.transaction(['nominas'], 'readonly');
       const store = transaction.objectStore('nominas');
-      const index = store.index('activa');
-      const activeNominas = await index.getAll(true);
-      return (activeNominas || []).map((n: any) => this.applyDefaults(n));
+      const allNominas = await store.getAll();
+      return (allNominas || [])
+        .filter((n: any) => n.activa === true)
+        .map((n: any) => this.applyDefaults(n));
     } catch (error) {
       console.error('Error getting all active nominas:', error);
       return [];
