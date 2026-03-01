@@ -138,7 +138,7 @@ export class PrestamosService {
    */
   private hasAmortizationParametersChanged(original: Prestamo, updated: Prestamo): boolean {
     const criticalFields = [
-      'principalInicial', 'principalVivo', 'plazoMesesTotal', 'tipo',
+      'principalInicial', 'plazoMesesTotal', 'tipo',
       'tipoNominalAnualFijo', 'valorIndiceActual', 'diferencial', 
       'tramoFijoMeses', 'tipoNominalAnualMixtoFijo', 'mesesSoloIntereses',
       'diferirPrimeraCuotaMeses', 'diaCargoMes', 'fechaFirma'

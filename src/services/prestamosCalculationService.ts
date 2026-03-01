@@ -327,7 +327,7 @@ export class PrestamosCalculationService {
   generatePaymentSchedule(prestamo: Prestamo): PlanPagos {
     const fechaFirma = new Date(prestamo.fechaFirma);
     const periodos: PeriodoPago[] = [];
-    let principalVivo = prestamo.principalVivo;
+    let principalVivo = prestamo.principalInicial;
     
     // Calculate first payment date considering deferrals
     const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses || 0;
