@@ -64,12 +64,22 @@ export interface RendimientosAutonomo {
 export interface RendimientoInmueble {
   inmuebleId: number;
   alias: string;
+  // Días de ocupación
+  diasAlquilado: number;
+  diasVacio: number;        // a disposición del titular
+  diasEnObras: number;      // sin imputación ni rendimiento
+  diasTotal: number;        // 365 o 366
+  // Rendimiento por alquiler (prorrateado a días alquilados)
   ingresosIntegros: number;
   gastosDeducibles: number;
   amortizacion: number;
   reduccionHabitual: number; // 60% si modalidad habitual
-  rendimientoNeto: number;
+  rendimientoNetoAlquiler: number;
   esHabitual: boolean;
+  // Imputación por días vacíos (integrada cuando hay ocupación parcial)
+  imputacionRenta: number;
+  // Total: rendimientoNetoAlquiler + imputacionRenta
+  rendimientoNeto: number;
 }
 
 export interface ImputacionRenta {
@@ -278,6 +288,33 @@ async function recopilarDatosAutonomo(ejercicio: number): Promise<RendimientosAu
 
 // ─── Recopilación datos inmuebles ─────────────────────────────────────────────
 
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+export function calcularDiasAnio(ejercicio: number): number {
+  return new Date(ejercicio, 1, 29).getDate() === 29 ? 366 : 365;
+}
+
+export function calcularDiasAlquiladoDesdeContratos(
+  propContracts: any[],
+  ejercicio: number,
+  diasTotal: number
+): number {
+  const yearStart = new Date(ejercicio, 0, 1);
+  const yearEnd = new Date(ejercicio, 11, 31);
+  let totalDays = 0;
+  for (const c of propContracts) {
+    const inicio = new Date(c.fechaInicio ?? c.startDate);
+    const fin = new Date(c.fechaFin ?? c.endDate ?? `${ejercicio}-12-31`);
+    const effectiveStart = inicio > yearStart ? inicio : yearStart;
+    const effectiveEnd = fin < yearEnd ? fin : yearEnd;
+    if (effectiveStart <= effectiveEnd) {
+      const days = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / MS_PER_DAY) + 1;
+      totalDays += days;
+    }
+  }
+  return Math.min(totalDays, diasTotal);
+}
+
 async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   inmuebles: RendimientoInmueble[];
   imputaciones: ImputacionRenta[];
@@ -288,28 +325,45 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
   const inmuebles: RendimientoInmueble[] = [];
   const imputaciones: ImputacionRenta[] = [];
+  const diasTotal = calcularDiasAnio(ejercicio);
 
   for (const prop of properties) {
     if (prop.state !== 'activo') continue;
 
-    // Find active contracts for this property in the exercise year
+    // Find contracts for this property in the exercise year
     const propContracts = contracts.filter((c: any) => {
       if ((c.inmuebleId ?? c.propertyId) !== prop.id) return false;
-      const inicio = new Date(c.fechaInicio);
-      const fin = new Date(c.fechaFin ?? `${ejercicio}-12-31`);
+      const inicio = new Date(c.fechaInicio ?? c.startDate);
+      const fin = new Date(c.fechaFin ?? c.endDate ?? `${ejercicio}-12-31`);
       return inicio.getFullYear() <= ejercicio && fin.getFullYear() >= ejercicio;
     });
 
-    if (propContracts.length > 0) {
-      // Property is rented
+    // Determine rental days: check propertyDays store first, then fall back to contracts
+    let diasAlquilado = 0;
+    try {
+      const pdList = await db.getAllFromIndex('propertyDays', 'property-year', [prop.id!, ejercicio]);
+      const pd = pdList?.[0];
+      if (pd) {
+        diasAlquilado = pd.daysRented ?? 0;
+      } else {
+        diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
+      }
+    } catch {
+      diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
+    }
+
+    const diasEnObras = 0;
+    const diasVacio = Math.max(0, diasTotal - diasAlquilado - diasEnObras);
+
+    if (diasAlquilado > 0) {
+      // Property is rented (fully or partially)
       let ingresosIntegros = 0;
       let esHabitual = false;
 
       for (const contract of propContracts) {
         const renta = contract.rentaMensual ?? 0;
-        // Count months in exercise year
-        const inicio = new Date(contract.fechaInicio);
-        const fin = new Date(contract.fechaFin ?? `${ejercicio}-12-31`);
+        const inicio = new Date(contract.fechaInicio ?? contract.startDate);
+        const fin = new Date(contract.fechaFin ?? contract.endDate ?? `${ejercicio}-12-31`);
         const mesInicio = inicio.getFullYear() < ejercicio ? 1 : inicio.getMonth() + 1;
         const mesFin = fin.getFullYear() > ejercicio ? 12 : fin.getMonth() + 1;
         const meses = Math.max(0, mesFin - mesInicio + 1);
@@ -317,46 +371,62 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         if (contract.modalidad === 'habitual') esHabitual = true;
       }
 
-      // Get fiscal summary for expenses
+      // Get fiscal summary and prorate expenses by rental days ratio
       let gastosDeducibles = 0;
       let amortizacion = 0;
       try {
         const summary = await calculateFiscalSummary(prop.id!, ejercicio);
+        const ratio = diasAlquilado / diasTotal;
         gastosDeducibles = round2(
-          (summary.box0105 ?? 0) + (summary.box0106 ?? 0) + (summary.box0109 ?? 0) +
+          ((summary.box0105 ?? 0) + (summary.box0106 ?? 0) + (summary.box0109 ?? 0) +
           (summary.box0112 ?? 0) + (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
-          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)
+          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio
         );
-        amortizacion = round2(summary.annualDepreciation ?? 0);
+        amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
       } catch {
         // ignore
       }
 
       const rendimientoBruto = round2(ingresosIntegros - gastosDeducibles - amortizacion);
       const reduccionHabitual = esHabitual ? round2(rendimientoBruto * CONSTANTES_IRPF.reduccionViviendaHabitual) : 0;
-      const rendimientoNeto = round2(rendimientoBruto - reduccionHabitual);
+      const rendimientoNetoAlquiler = round2(rendimientoBruto - reduccionHabitual);
+
+      // Imputación for vacant days (integrated into this property's rendimiento)
+      const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
+      let imputacionRenta = 0;
+      if (diasVacio > 0 && valorCatastral > 0) {
+        const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
+        const porcentajeImputacion = revisado
+          ? CONSTANTES_IRPF.imputacionRentasRevisado
+          : CONSTANTES_IRPF.imputacionRentasNoRevisado;
+        imputacionRenta = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
+      }
 
       inmuebles.push({
         inmuebleId: prop.id!,
         alias: prop.alias,
+        diasAlquilado,
+        diasVacio,
+        diasEnObras,
+        diasTotal,
         ingresosIntegros: round2(ingresosIntegros),
         gastosDeducibles,
         amortizacion,
         reduccionHabitual,
-        rendimientoNeto,
+        rendimientoNetoAlquiler,
         esHabitual,
+        imputacionRenta,
+        rendimientoNeto: round2(rendimientoNetoAlquiler + imputacionRenta),
       });
     } else {
-      // Property is vacant — imputación de rentas
+      // Property is fully vacant — imputación de rentas only
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
       if (valorCatastral > 0) {
         const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
         const porcentajeImputacion = revisado
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
-        // Assume full year vacant (simplified)
-        const diasVacio = 365;
-        const imputacion = round2(valorCatastral * porcentajeImputacion * (diasVacio / 365));
+        const imputacion = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
 
         imputaciones.push({
           inmuebleId: prop.id!,
