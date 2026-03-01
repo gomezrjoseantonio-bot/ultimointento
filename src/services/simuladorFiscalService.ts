@@ -329,6 +329,7 @@ export async function ejecutarSimulacion(
         const nuevoNeto = round2(nuevoSalario - cotizacionSS - gastos);
         const delta = nuevoNeto - antiguo.rendimientoNeto;
         sim.baseGeneral.rendimientosTrabajo = {
+          ...antiguo,
           salarioBrutoAnual: nuevoSalario,
           cotizacionSS,
           irpfRetenido: antiguo.irpfRetenido, // keep original retention (simplification)

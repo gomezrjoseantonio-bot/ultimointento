@@ -90,6 +90,9 @@ const DeclaracionPage: React.FC = () => {
             {declaracion.baseGeneral.rendimientosTrabajo ? (
               <>
                 <Row label="Salario bruto anual" value={declaracion.baseGeneral.rendimientosTrabajo.salarioBrutoAnual} indent />
+                {(declaracion.baseGeneral.rendimientosTrabajo.especieAnual ?? 0) > 0 && (
+                  <Row label="Retribución en especie tributable" value={declaracion.baseGeneral.rendimientosTrabajo.especieAnual} indent />
+                )}
                 <Row label="Cotización a la SS" value={-declaracion.baseGeneral.rendimientosTrabajo.cotizacionSS} indent />
                 <Row label="Otros gastos (art. 19)" value={-2000} indent />
                 <Row label="Rendimiento neto del trabajo" value={declaracion.baseGeneral.rendimientosTrabajo.rendimientoNeto} highlight />
@@ -163,6 +166,15 @@ const DeclaracionPage: React.FC = () => {
           <Section title="Liquidación">
             <Row label="Base general" value={declaracion.baseGeneral.total} />
             <Row label="Reducción plan de pensiones" value={-declaracion.reducciones.planPensiones} indent />
+            {(declaracion.reducciones.ppEmpleado ?? 0) > 0 && (
+              <Row label="· PP empleado" value={-declaracion.reducciones.ppEmpleado} indent />
+            )}
+            {(declaracion.reducciones.ppEmpresa ?? 0) > 0 && (
+              <Row label="· PP empresa" value={-declaracion.reducciones.ppEmpresa} indent />
+            )}
+            {(declaracion.reducciones.ppIndividual ?? 0) > 0 && (
+              <Row label="· PP individual" value={-declaracion.reducciones.ppIndividual} indent />
+            )}
             <Row label="Base imponible general" value={declaracion.liquidacion.baseImponibleGeneral} highlight />
             <Row label="Base imponible ahorro" value={declaracion.liquidacion.baseImponibleAhorro} highlight />
             <Row label="Cuota íntegra BG (tramos progresivos)" value={declaracion.liquidacion.cuotaBaseGeneral} indent />
