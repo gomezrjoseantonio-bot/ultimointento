@@ -41,6 +41,8 @@ const CONSTANTES_IRPF = {
   imputacionRentasNoRevisado: 0.02,
   retencionCapitalMobiliario: 0.19,
   maxAportacionPP: 1500,
+  maxAportacionPPEmpresa: 8500,
+  maxAportacionPPTotal: 10000,
   maxCompensacionRCMconPerdidas: 0.25,
   aniosCompensacionPerdidas: 4,
 };
@@ -48,14 +50,14 @@ const CONSTANTES_IRPF = {
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface RendimientosTrabajo {
-  salarioBrutoAnual: number;
+  salarioBrutoAnual: number;      // Dinerario: base + variables + bonus (from calculateSalary)
+  especieAnual: number;           // Retribución en especie que tributa
   cotizacionSS: number;
   irpfRetenido: number;
-  rendimientoNeto: number; // bruto - SS - gastos generales
-  // Desglose adicional para transparencia fiscal
-  especieAnual?: number;      // Retribución en especie incluida en base IRPF
-  ppEmpresaAnual?: number;    // Aportación empresa a plan pensiones (rendimiento del trabajo)
-  ppEmpleadoAnual?: number;   // Aportación empleado a plan pensiones
+  rendimientoNeto: number;        // bruto + especie - SS - gastos generales
+  ppEmpleado: number;             // Aportación empleado PP (limitada a 1.500€)
+  ppEmpresa: number;              // Aportación empresa PP (limitada a 8.500€)
+  ppTotalReduccion: number;       // Total reducción PP (limitada a 10.000€)
 }
 
 export interface RendimientosAutonomo {
@@ -160,6 +162,9 @@ export interface DeclaracionIRPF {
   baseGeneral: BaseGeneral;
   baseAhorro: BaseAhorro;
   reducciones: {
+    ppEmpleado: number;
+    ppEmpresa: number;
+    ppIndividual: number;
     planPensiones: number;
     total: number;
   };
@@ -206,41 +211,84 @@ function edadDesde(fechaNacimiento: string, ejercicio: number): number {
 
 async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTrabajo | null> {
   try {
-    const personalData = await personalDataService.getPersonalData();
-    const todasNominas = personalData?.id ? await nominaService.getNominas(personalData.id) : [];
-    const activas = todasNominas.filter(n => n.activa);
+    const activas = await nominaService.getAllActiveNominas();
     if (activas.length === 0) return null;
 
     let totalBruto = 0;
+    let totalEspecie = 0;
     let totalCotizacionSS = 0;
     let totalIRPFRetenido = 0;
-    let totalEspecie = 0;
-    let totalPPEmpresa = 0;
     let totalPPEmpleado = 0;
+    let totalPPEmpresa = 0;
 
-    for (const nomina of activas) {
-      const calculo = nominaService.calculateSalary(nomina);
+    for (const activa of activas) {
+      // Use the calculation engine for accurate totals
+      const calculo = nominaService.calculateSalary(activa);
 
       totalBruto += calculo.totalAnualBruto;
       totalEspecie += calculo.totalAnualEspecie;
-      totalPPEmpresa += calculo.totalAnualPPEmpresa;
-      totalPPEmpleado += calculo.totalAnualPPEmpleado;
+
+      // Sum SS and IRPF from monthly distribution (accurate per-month calculation)
       totalCotizacionSS += calculo.distribucionMensual.reduce((s, m) => s + m.ssTotal, 0);
       totalIRPFRetenido += calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0);
+
+      // PP contributions
+      if (activa.planPensiones) {
+        const ppEmpresa = activa.planPensiones.aportacionEmpresa;
+
+        // Employee PP: always sum from payroll engine monthly distribution
+        totalPPEmpleado += calculo.distribucionMensual.reduce(
+          (s, m) => s + (m.ppEmpleado ?? 0),
+          0,
+        );
+
+        // Employer PP: prefer deriving from payroll engine output
+        const totalPPEmpresaFromDistribucion = calculo.distribucionMensual.reduce(
+          (s, m) => {
+            const totalProducto = (m as any).ppTotalAlProducto;
+            const ppEmpleadoMes = m.ppEmpleado ?? 0;
+            if (typeof totalProducto === 'number') {
+              const ppEmpresaMes = Math.max(0, totalProducto - ppEmpleadoMes);
+              return s + ppEmpresaMes;
+            }
+            return s;
+          },
+          0,
+        );
+
+        if (totalPPEmpresaFromDistribucion > 0) {
+          // Use engine-derived employer PP if available
+          totalPPEmpresa += totalPPEmpresaFromDistribucion;
+        } else if (ppEmpresa?.tipo && ppEmpresa.valor != null) {
+          // Fallback: calculate annual employer PP from plan definition
+          const ppEmpresaAnual =
+            ppEmpresa.tipo === 'porcentaje'
+              ? round2((calculo.totalAnualBruto * ppEmpresa.valor) / 100)
+              : round2(ppEmpresa.valor * 12);
+          totalPPEmpresa += ppEmpresaAnual;
+        }
+      }
     }
 
-    // Base IRPF trabajo = bruto dinerario + especie
+    // Apply PP limits (art. 52 LIRPF)
+    const ppEmpleadoLimitado = Math.min(totalPPEmpleado, CONSTANTES_IRPF.maxAportacionPP);
+    const ppEmpresaLimitado = Math.min(totalPPEmpresa, CONSTANTES_IRPF.maxAportacionPPEmpresa);
+    const ppTotalReduccion = Math.min(ppEmpleadoLimitado + ppEmpresaLimitado, CONSTANTES_IRPF.maxAportacionPPTotal);
+
+    // Rendimiento neto: bruto + especie - SS - gastos generales
+    // PP reduction is applied as a separate reduction in the declaration, NOT subtracted from bruto
     const baseIRPF = round2(totalBruto + totalEspecie);
     const rendimientoNeto = round2(baseIRPF - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
 
     return {
-      salarioBrutoAnual: baseIRPF,
+      salarioBrutoAnual: round2(totalBruto),
+      especieAnual: round2(totalEspecie),
       cotizacionSS: round2(totalCotizacionSS),
       irpfRetenido: round2(totalIRPFRetenido),
       rendimientoNeto,
-      especieAnual: round2(totalEspecie),
-      ppEmpresaAnual: round2(totalPPEmpresa),
-      ppEmpleadoAnual: round2(totalPPEmpleado),
+      ppEmpleado: round2(ppEmpleadoLimitado),
+      ppEmpresa: round2(ppEmpresaLimitado),
+      ppTotalReduccion: round2(ppTotalReduccion),
     };
   } catch {
     return null;
@@ -308,6 +356,39 @@ export function calcularDiasAlquiladoDesdeContratos(
   return Math.min(totalDays, diasTotal);
 }
 
+/**
+ * Separates a list of active properties into:
+ * - `propertiesToProcess`: main properties + orphan accessories (those whose mainPropertyId
+ *   does not reference any active main property)
+ * - `accessoryProperties`: all properties flagged as accessories
+ * - `linkedAccessoryIds`: Set of IDs of accessories that ARE properly linked to an active main property
+ *
+ * Exported for testability.
+ */
+export function separarAccesorios(activeProperties: any[]): {
+  propertiesToProcess: any[];
+  accessoryProperties: any[];
+  linkedAccessoryIds: Set<number>;
+} {
+  const mainPropertyIds = new Set(
+    activeProperties
+      .filter((p: any) => !p.fiscalData?.isAccessory)
+      .map((p: any) => p.id)
+  );
+  const accessoryProperties = activeProperties.filter(
+    (p: any) => p.fiscalData?.isAccessory === true
+  );
+  const linkedAccessoryIds = new Set<number>(
+    accessoryProperties
+      .filter((a: any) => a.fiscalData?.mainPropertyId != null && mainPropertyIds.has(a.fiscalData.mainPropertyId))
+      .map((a: any) => a.id as number)
+  );
+  const propertiesToProcess = activeProperties.filter(
+    (p: any) => !linkedAccessoryIds.has(p.id)
+  );
+  return { propertiesToProcess, accessoryProperties, linkedAccessoryIds };
+}
+
 async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   inmuebles: RendimientoInmueble[];
   imputaciones: ImputacionRenta[];
@@ -320,8 +401,12 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   const imputaciones: ImputacionRenta[] = [];
   const diasTotal = calcularDiasAnio(ejercicio);
 
-  for (const prop of properties) {
-    if (prop.state !== 'activo') continue;
+  const activeProperties = properties.filter((p: any) => p.state === 'activo');
+
+  // Separate main properties from accessories using the exported helper
+  const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
+
+  for (const prop of propertiesToProcess) {
 
     // Find contracts for this property in the exercise year
     const propContracts = contracts.filter((c: any) => {
@@ -411,13 +496,22 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
       // Imputación for vacant days (integrated into this property's rendimiento)
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
+      // Add accessory cadastral values for combined imputación
+      const accesoriosCombinados = accessoryProperties.filter(
+        (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
+      );
+      const valorCatastralTotal = round2(
+        valorCatastral +
+        accesoriosCombinados.reduce((sum: number, a: any) =>
+          sum + (a.fiscalData?.cadastralValue ?? a.fiscalData?.accessoryData?.cadastralValue ?? 0), 0)
+      );
       let imputacionRenta = 0;
-      if (diasVacio > 0 && valorCatastral > 0) {
+      if (diasVacio > 0 && valorCatastralTotal > 0) {
         const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
         const porcentajeImputacion = revisado
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
-        imputacionRenta = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
+        imputacionRenta = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
       }
 
       inmuebles.push({
@@ -443,17 +537,26 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
     } else {
       // Property is fully vacant — imputación de rentas only
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
-      if (valorCatastral > 0) {
+      // Add accessory cadastral values for combined imputación
+      const accesoriosCombinados = accessoryProperties.filter(
+        (a: any) => a.fiscalData?.mainPropertyId === prop.id && linkedAccessoryIds.has(a.id)
+      );
+      const valorCatastralTotal = round2(
+        valorCatastral +
+        accesoriosCombinados.reduce((sum: number, a: any) =>
+          sum + (a.fiscalData?.cadastralValue ?? a.fiscalData?.accessoryData?.cadastralValue ?? 0), 0)
+      );
+      if (valorCatastralTotal > 0) {
         const revisado = (prop as any).fiscalidad?.catastro_revisado_post_1994 ?? false;
         const porcentajeImputacion = revisado
           ? CONSTANTES_IRPF.imputacionRentasRevisado
           : CONSTANTES_IRPF.imputacionRentasNoRevisado;
-        const imputacion = round2(valorCatastral * porcentajeImputacion * (diasVacio / diasTotal));
+        const imputacion = round2(valorCatastralTotal * porcentajeImputacion * (diasVacio / diasTotal));
 
         imputaciones.push({
           inmuebleId: prop.id!,
           alias: prop.alias,
-          valorCatastral,
+          valorCatastral: valorCatastralTotal,
           porcentajeImputacion,
           diasVacio,
           imputacion,
@@ -602,18 +705,19 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
   };
 
   // PASO 4: Reducciones
-  // Combine PP from nóminas and investments, applying legal limits
-  const MAX_PP_EMPLEADO = 1500;
-  const MAX_PP_EMPRESA = 8500;
-  const ppEmpleadoNomina = trabajo?.ppEmpleadoAnual ?? 0;
-  const ppEmpresaNomina = trabajo?.ppEmpresaAnual ?? 0;
-  // Employee limit applies to nómina employee PP + investment PP combined
-  const ppEmpleadoLimitado = Math.min(ppEmpleadoNomina + aportacionPensiones, MAX_PP_EMPLEADO);
-  const ppEmpresaLimitado = Math.min(ppEmpresaNomina, MAX_PP_EMPRESA);
-  const planPensiones = round2(ppEmpleadoLimitado + ppEmpresaLimitado);
+  // PP from trabajo (already limited per Art. 52 LIRPF)
+  const ppTrabajo = trabajo?.ppTotalReduccion ?? 0;
+  // PP from inversiones (planes de pensiones individuales), capped by remaining headroom
+  const ppIndividualCapped = Math.max(0, Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPPTotal - ppTrabajo));
+  // Total PP reduction (combined limit 10.000€)
+  const totalPP = round2(ppTrabajo + ppIndividualCapped);
+
   const reducciones = {
-    planPensiones,
-    total: planPensiones,
+    ppEmpleado: trabajo?.ppEmpleado ?? 0,
+    ppEmpresa: trabajo?.ppEmpresa ?? 0,
+    ppIndividual: ppIndividualCapped,
+    planPensiones: totalPP,
+    total: totalPP,
   };
 
   // PASO 5: Mínimos personales
