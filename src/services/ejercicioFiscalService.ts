@@ -160,7 +160,10 @@ export async function declararEjercicio(año: number): Promise<EjercicioFiscal> 
 }
 
 export async function updateNotas(año: number, notas: string): Promise<EjercicioFiscal> {
-  const ejercicio = await getOrCreateEjercicio(año);
+  const ejercicio = await getEjercicio(año);
+  if (!ejercicio) {
+    throw new Error(`No existe un ejercicio fiscal para el año ${año}. No se pueden actualizar notas de un ejercicio inexistente.`);
+  }
   const updated: EjercicioFiscal = {
     ...ejercicio,
     notas,
