@@ -272,11 +272,11 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   return (
     <>
-      <div style={{ backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      <div style={{ backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Sticky header */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '12px 24px' }}>
+        <div style={{ position: 'sticky', top: 0, zIndex: 100, backgroundColor: '#f9fafb', borderBottom: '1px solid #eee', padding: '8px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
                 {nomina ? 'Editar Nómina' : 'Nueva Nómina'}
               </div>
@@ -301,11 +301,11 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       onClick={() => setStep(s)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 14px', borderRadius: 20,
+                        padding: '4px 10px', borderRadius: 16,
                         border: isActive ? 'none' : isCompleted ? 'none' : '1.5px solid #d1d5db',
                         backgroundColor: isActive ? 'var(--atlas-navy-1)' : isCompleted ? '#d1fae5' : 'white',
                         color: isActive ? 'white' : isCompleted ? '#065f46' : '#9ca3af',
-                        fontSize: 13, fontWeight: isActive ? 600 : 400,
+                        fontSize: 12, fontWeight: isActive ? 600 : 400,
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
@@ -315,7 +315,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                         fontSize: 12, fontWeight: 700,
                         backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'transparent',
                       }}>
-                        {s}
+                        {isCompleted ? '✓' : s}
                       </span>
                       {label}
                     </button>
@@ -330,55 +330,55 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, padding: '24px', paddingBottom: 100 }}>
+        <div style={{ flex: 1, padding: '16px 24px', paddingBottom: 8 }}>
           <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <form id="nomina-wizard-form" onSubmit={handleSubmit}>
           {step === 1 && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">Titular *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-0.5">Titular *</label>
                   <select
                     value={formData.titular}
                     onChange={(e) => setFormData(prev => ({ ...prev, titular: e.target.value as 'yo' | 'pareja' }))}
-                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
                   >
                     <option value="yo">Yo</option>
                     <option value="pareja">Pareja</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre de la Nómina *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-0.5">Nombre de la Nómina *</label>
                   <input
                     type="text"
                     value={formData.nombre}
                     onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
                     placeholder="Ej: Nómina Principal"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">Fecha de Antigüedad *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-0.5">Fecha de Antigüedad *</label>
                   <input
                     type="date"
                     value={formData.fechaAntiguedad}
                     onChange={(e) => setFormData(prev => ({ ...prev, fechaAntiguedad: e.target.value }))}
-                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">Salario Bruto Anual Base (€) *</label>
+                  <label className="block text-xs font-medium text-neutral-700 mb-0.5">Salario Bruto Anual Base (€) *</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.salarioBrutoAnual}
                     onChange={(e) => setFormData(prev => ({ ...prev, salarioBrutoAnual: e.target.value }))}
-                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                    className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
                     placeholder="50000.00"
                     required
                   />
@@ -386,8 +386,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-3">Distribución del Salario</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className="block text-xs font-medium text-neutral-700 mb-1">Distribución del Salario</label>
+                <div className="grid grid-cols-3 gap-2">
                   {(['doce', 'catorce', 'personalizado'] as const).map((tipo) => (
                     <button
                       key={tipo}
@@ -396,7 +396,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                         ...prev,
                         distribucion: { tipo, meses: tipo === 'doce' ? 12 : tipo === 'catorce' ? 14 : prev.distribucion.meses }
                       }))}
-                      className={`p-3 border-2 rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
+                      className={`p-2 py-1.5 border-2 rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
                         formData.distribucion.tipo === tipo
                           ? 'bg-blue-50 border-blue-500 text-brand-navy font-semibold'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
@@ -408,19 +408,19 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 </div>
                 {formData.distribucion.tipo === 'personalizado' && (
                   <div className="mt-3">
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">Número de meses</label>
+                    <label className="block text-xs font-medium text-neutral-700 mb-0.5">Número de meses</label>
                     <input
                       type="number" min="1" max="24"
                       value={formData.distribucion.meses}
                       onChange={(e) => setFormData(prev => ({ ...prev, distribucion: { ...prev.distribucion, meses: parseInt(e.target.value) } }))}
-                      className="w-32 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-3 py-2"
+                      className="w-32 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
                     />
                   </div>
                 )}
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-neutral-700">Variables Anuales</label>
                   <button type="button" onClick={() => setShowVariableForm(true)} className="inline-flex items-center atlas-btn-primary text-sm rounded-md">
                     <Plus className="w-4 h-4 mr-1" />Añadir Variable
@@ -445,7 +445,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-neutral-700">Bonus</label>
                   <button type="button" onClick={() => setShowBonusForm(true)} className="inline-flex items-center atlas-btn-primary text-sm rounded-md">
                     <Plus className="w-4 h-4 mr-1" />Añadir Bonus
@@ -470,7 +470,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-medium text-neutral-700">Beneficios Sociales (Especie)</label>
                   <button type="button" onClick={() => setShowBeneficioForm(true)} className="inline-flex items-center atlas-btn-primary text-sm rounded-md">
                     <Plus className="w-4 h-4 mr-1" />Añadir Beneficio
@@ -492,7 +492,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 )}
               </div>
 
-              <div className="bg-brand-navy/5 rounded-lg p-4">
+              <div className="bg-brand-navy/5 rounded-lg p-2">
                 <p className="text-sm text-neutral-600">Bruto total anual estimado (base + variables + bonus)</p>
                 <p className="text-xl font-bold text-brand-navy">{brutoTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</p>
               </div>
@@ -500,7 +500,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
           )}
 
           {step === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div className="space-y-2">
                 <h3 className="text-base font-semibold text-neutral-900">Retención IRPF</h3>
                 <p className="text-sm text-neutral-500">Porcentaje de retención que figura en tu nómina.</p>
@@ -516,7 +516,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 </div>
               </div>
 
-              <div className="space-y-3 border-t border-neutral-100 pt-4">
+              <div className="space-y-1.5 border-t border-neutral-100 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <h3 className="text-base font-semibold text-neutral-900">Seguridad Social</h3>
@@ -526,7 +526,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     Restaurar defaults {CURRENT_YEAR}
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-neutral-600 mb-1">Base cotización mensual (€)</label>
                     <input
@@ -584,7 +584,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 </div>
               </div>
 
-              <div className="space-y-3 border-t border-neutral-100 pt-4">
+              <div className="space-y-1.5 border-t border-neutral-100 pt-2">
                 <h3 className="text-base font-semibold text-neutral-900">Plan de Pensiones</h3>
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
@@ -650,7 +650,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 )}
               </div>
 
-              <div className="space-y-3 border-t border-neutral-100 pt-4">
+              <div className="space-y-1.5 border-t border-neutral-100 pt-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold text-neutral-900">Otras Deducciones</h3>
                   <button type="button" onClick={() => setShowDeduccionForm(true)} className="inline-flex items-center atlas-btn-primary text-sm rounded-md">
@@ -676,7 +676,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
           )}
 
           {step === 3 && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1">Cuenta Bancaria de Cobro</label>
                 <select
@@ -768,7 +768,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 };
                 const calculo = nominaService.calculateSalary(tempNomina);
                 // Typical month: first month without paga extra or bonus; fall back to averages
-                const mesTipico = calculo.distribucionMensual.find(m => m.pagaExtra === 0 && m.bonus === 0);
+                const mesTipico = calculo?.distribucionMensual?.find(m => m.pagaExtra === 0 && m.bonus === 0);
                 const avg = mesTipico ? null : calculo.distribucionMensual.reduce(
                   (acc, m) => ({ ss: acc.ss + m.ssTotal, irpf: acc.irpf + m.irpfImporte, pp: acc.pp + m.ppEmpleado }),
                   { ss: 0, irpf: 0, pp: 0 }
@@ -779,7 +779,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 const netoM = mesTipico ? mesTipico.netoTotal : calculo.netoMensual;
                 const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 return (
-                  <div className="bg-brand-navy/5 rounded-xl p-5 space-y-3">
+                  <div className="bg-brand-navy/5 rounded-lg p-3 space-y-1">
                     <h4 className="font-semibold text-neutral-900">Resumen estimado</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="text-neutral-600">Bruto anual:</div><div className="font-medium text-right">{fmt(calculo.totalAnualBruto)} €</div>
@@ -804,7 +804,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         </div>
 
         {/* Fixed footer */}
-        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '12px 24px' }}>
+        <div style={{ position: 'sticky', bottom: 0, zIndex: 10, backgroundColor: '#f9fafb', borderTop: '1px solid #eee', padding: '8px 24px' }}>
           <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
@@ -823,7 +823,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
             {step < 3 ? (
               <button
                 type="button"
-                onClick={() => setStep(step + 1)}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStep(step + 1); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px',
                   borderRadius: 8, border: 'none', backgroundColor: 'var(--atlas-blue)',
@@ -840,7 +840,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 disabled={loading}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px',
-                  borderRadius: 8, border: 'none', backgroundColor: 'var(--ok)',
+                  borderRadius: 8, border: 'none', backgroundColor: 'var(--atlas-navy-1)',
                   color: '#fff', cursor: loading ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600,
                   opacity: loading ? 0.5 : 1,
                 }}
@@ -959,9 +959,10 @@ const VariableForm: React.FC<VariableFormProps> = ({ isOpen, onClose, variable, 
             {formData.distribucionMeses.map((dist, index) => (
               <div key={dist.mes} className="text-center">
                 <label className="block text-xs text-neutral-600 mb-1">{meses[index]}</label>
-                <input type="number" min="0" max="100" step="0.1" value={dist.porcentaje}
+                <input type="number" min="0" max="100" step="0.1" value={dist.porcentaje === 0 ? '' : dist.porcentaje}
                   onChange={(e) => updateDistribucion(dist.mes, parseFloat(e.target.value) || 0)}
                   onFocus={(e) => e.target.select()}
+                  placeholder="0"
                   className="w-full text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-navy px-1 py-1" />
               </div>
             ))}
