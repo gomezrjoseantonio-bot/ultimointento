@@ -74,6 +74,13 @@ const DeclaracionPage: React.FC = () => {
     ? `Declaración IRPF ${ejercicio}`
     : `Estimación IRPF ${ejercicio}`;
 
+  const resumenCliente = declaracion ? {
+    resultadoAbs: Math.abs(declaracion.resultado),
+    resultadoLabel: declaracion.resultado >= 0 ? 'A ingresar' : 'A devolver',
+    baseTotal: declaracion.liquidacion.baseImponibleGeneral + declaracion.liquidacion.baseImponibleAhorro,
+    totalPagosCuenta: declaracion.retenciones.total,
+  } : null;
+
   return (
     <PageLayout
       title={title}
@@ -134,8 +141,36 @@ const DeclaracionPage: React.FC = () => {
         </div>
       )}
 
-      {!loading && declaracion && (
+      {!loading && declaracion && resumenCliente && (
         <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Resultado</p>
+              <p className={`text-lg font-semibold ${declaracion.resultado >= 0 ? 'text-[var(--atlas-danger-700)]' : 'text-[var(--atlas-success-700)]'}`}>
+                {resumenCliente.resultadoLabel}
+              </p>
+              <p className="text-sm text-gray-700">{fmt(resumenCliente.resultadoAbs)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Base imponible total</p>
+              <p className="text-lg font-semibold text-gray-900">{fmt(resumenCliente.baseTotal)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Pagos y retenciones</p>
+              <p className="text-lg font-semibold text-gray-900">{fmt(resumenCliente.totalPagosCuenta)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Tipo efectivo</p>
+              <p className="text-lg font-semibold text-gray-900">{declaracion.tipoEfectivo.toFixed(2)}%</p>
+              <p className="text-xs text-gray-500">sobre base imponible total</p>
+            </div>
+          </div>
+
+          <div className="bg-[var(--atlas-info-100)] border border-[var(--atlas-info-300)] p-4 text-sm text-[var(--atlas-info-700)]">
+            <strong>Guía rápida para cliente:</strong> esta vista resume la lógica del Modelo 100 con datos internos. Para presentar, valida NIF,
+            situación familiar y deducciones autonómicas en el borrador oficial de Renta Web.
+          </div>
+
           <Section title="A · Rendimientos del trabajo">
             {declaracion.baseGeneral.rendimientosTrabajo ? (
               <>
