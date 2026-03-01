@@ -186,7 +186,7 @@ const NominaManager: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-white border border-gray-200 p-4">
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Bruto Anual</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(nomina.salarioBrutoAnual)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{calculo ? formatCurrency(calculo.totalAnualBruto) : formatCurrency(nomina.salarioBrutoAnual)}</p>
                   </div>
                   <div className="bg-white border border-gray-200 p-4">
                     <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">Neto Mensual Promedio</p>
