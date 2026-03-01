@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { FileText, AlertTriangle, CheckCircle, X, Loader2 } from 'lucide-react';
 import { FeinLoanDraft } from '../../types/fein';
 import { feinOcrService } from '../../services/feinOcrService';
-import { showError } from '../../services/toastService';
+import { showError, showSuccess, showInfo } from '../../services/toastService';
 
 interface FEINUploaderProps {
   onFEINDraftReady: (draft: FeinLoanDraft) => void; // Main callback for new implementation
@@ -75,8 +75,8 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
       setUploadProgress(20);
       setProcessingStage('Preparando documento...');
 
-      // Use new synchronous implementation  
-      const result = await feinOcrService.processFEINDocumentNew(file, (progress) => {
+      // Use main implementation
+      const result = await feinOcrService.processFEINDocument(file, (progress) => {
         setProcessingStage(progress.message);
         if (progress.stage === 'processing') {
           setUploadProgress(50);
@@ -94,6 +94,12 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
         if (result.success && result.loanDraft) {
           // Apply to form using new method
           console.log('[FEIN] Successfully extracted data:', result.loanDraft);
+          // Show appropriate toast based on extraction completeness
+          if (result.fieldsMissing && result.fieldsMissing.includes('all')) {
+            showInfo('FEIN procesado. Complete manualmente los campos faltantes.');
+          } else {
+            showSuccess('FEIN procesado correctamente. Datos extraídos y prellenados.');
+          }
           onFEINDraftReady(result.loanDraft);
         } else {
           handleProcessingError(result.errors || ['Error procesando documento'], file);
@@ -110,7 +116,7 @@ const FEINUploader: React.FC<FEINUploaderProps> = ({ onFEINDraftReady, onCancel 
   const handleProcessingError = (errors: string[], file: File) => {
     // Show single toast message per requirements - no duplicates
     const errorMessage = errors.length > 0 ? errors[0] : 'No hemos podido procesar la FEIN. Revisa el documento o inténtalo de nuevo.';
-    showError(errorMessage);
+    showError(errorMessage, 'Intenta de nuevo o procesa manualmente');
     
     // Create empty draft for manual entry
     const emptyDraft: FeinLoanDraft = {
