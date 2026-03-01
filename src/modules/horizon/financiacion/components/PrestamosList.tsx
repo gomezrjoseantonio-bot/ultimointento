@@ -99,8 +99,8 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     const effectiveTIN = calculateEffectiveTIN(prestamo);
     const r = effectiveTIN / 12 / 100;
     const n = prestamo.plazoMesesTotal;
-    if (r > 0 && n > 0) return (prestamo.principalVivo * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    return n > 0 ? prestamo.principalVivo / n : 0;
+    if (r > 0 && n > 0) return (prestamo.principalInicial * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return n > 0 ? prestamo.principalInicial / n : 0;
   };
 
   const getAccount = (accountId?: string) =>

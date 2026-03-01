@@ -42,8 +42,8 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           {isPersonal
-            ? <User className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
-            : <Home className="h-6 w-6" style={{ color: 'var(--warn)' }} />
+            ? <User className="h-6 w-6" style={{ color: 'var(--atlas-teal)' }} />
+            : <Home className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
           }
           <div>
             <h2 className="text-xl font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
@@ -106,7 +106,6 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
         <ProgressBar
           value={pctAmortizado}
           label={`Capital amortizado: ${fmt(principalAmortizado)} € / ${fmt(prestamo.principalInicial)} €`}
-          color="var(--ok)"
         />
       </div>
 
