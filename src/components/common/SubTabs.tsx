@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
+import { BarChart3, Calculator, CalendarClock, Landmark, ReceiptText } from 'lucide-react';
 
 interface Tab {
   label: string;
   path: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 interface SubTabsConfig {
@@ -18,11 +20,11 @@ const HORIZON_SUBTABS: SubTabsConfig = {
   ],
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
-    { label: 'Dashboard', path: '/fiscalidad/dashboard' },
-    { label: 'Declaración', path: '/fiscalidad/declaracion' },
-    { label: 'Simulador', path: '/fiscalidad/simulador' },
-    { label: 'Pagos', path: '/fiscalidad/pagos' },
-    { label: 'Histórico', path: '/fiscalidad/historico' },
+    { label: 'Dashboard', path: '/fiscalidad/dashboard', icon: BarChart3 },
+    { label: 'Declaración', path: '/fiscalidad/declaracion', icon: ReceiptText },
+    { label: 'Simulador', path: '/fiscalidad/simulador', icon: Calculator },
+    { label: 'Pagos', path: '/fiscalidad/pagos', icon: Landmark },
+    { label: 'Histórico', path: '/fiscalidad/historico', icon: CalendarClock },
   ],
   proyeccion: [
     { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
@@ -106,25 +108,27 @@ const SubTabs: React.FC = () => {
   }
   
   return (
-    <div className="border-b border-gray-200 bg-white">
+    <div className="border-b border-[color:var(--hz-neutral-300)] bg-[var(--hz-card-bg)]">
       <div className="px-6">
         <div className="flex flex-wrap gap-6">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
+            const TabIcon = tab.icon;
             
             return (
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
                 className={`
-                  px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2
+                  px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2 flex items-center gap-1.5
                   ${isActive 
                     ? 'border-hz-primary' 
-                    : 'text-neutral-600 hover:text-neutral-900 border-transparent hover:border-gray-300'
+                    : 'text-[var(--hz-neutral-700)] hover:text-[var(--hz-neutral-900)] border-transparent hover:border-[color:var(--hz-neutral-300)]'
                   }
                 `}
                 style={isActive ? { color: 'var(--hz-primary)' } : {}}
               >
+                {TabIcon && <TabIcon className="h-4 w-4" />}
                 {tab.label}
               </button>
             );
