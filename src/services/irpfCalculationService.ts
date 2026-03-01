@@ -3,12 +3,7 @@
 
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
-import { calculateFiscalSummary } from './fiscalSummaryService';
-import {
-  getCarryForwardsDisponibles,
-  registrarArrastre,
-  consumirArrastresAplicados,
-} from './carryForwardService';
+import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -85,12 +80,11 @@ export interface RendimientoInmueble {
   imputacionRenta: number;
   // Total: rendimientoNetoAlquiler + imputacionRenta
   rendimientoNeto: number;
-  // Transparencia fiscal: límite AEAT 0105+0106 (art. 23.1.a LIRPF)
-  gastosFinanciacionReparacion: number; // 0105+0106 prorrateados del año
-  limiteAEAT: number;                   // = ingresosIntegros
-  gastosConLimiteAplicados: number;     // min(F&R + arrastres, límite)
-  excesoGenerado: number;               // max(0, F&R - límite) → nuevo arrastre
-  arrastresAplicados: number;           // importe de arrastres anteriores aplicado
+  // AEAT art. 23 LIRPF limit tracking for 0105+0106
+  gastosFinanciacionYReparacion?: number; // Original 0105+0106 (prorated)
+  limiteAplicado?: number;               // min(financingRepairs, ingresosIntegros)
+  excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
+  arrastresAplicados?: number;           // Carryforwards applied from previous years
 }
 
 export interface ImputacionRenta {
@@ -385,60 +379,40 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       // Get fiscal summary and prorate expenses by rental days ratio
       let gastosDeducibles = 0;
       let amortizacion = 0;
-      let gastosFinanciacionReparacion = 0;
-      let limiteAEAT = 0;
-      let gastosConLimiteAplicados = 0;
-      let excesoGenerado = 0;
+      let gastosFinanciacionYReparacion = 0;
+      let limiteAplicado = 0;
+      let excesoArrastrable = 0;
       let arrastresAplicados = 0;
       try {
         const summary = await calculateFiscalSummary(prop.id!, ejercicio);
         const ratio = diasAlquilado / diasTotal;
-        const ingresosIntegrosRound = round2(ingresosIntegros);
 
-        // PASO A: Gastos SIN límite (0109-0117) — se deducen íntegramente prorrateados
-        const gastosSinLimite = round2(
-          ((summary.box0109 ?? 0) + (summary.box0112 ?? 0) + (summary.box0113 ?? 0) +
-           (summary.box0114 ?? 0) + (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio
-        );
+        // AEAT art. 23 LIRPF: financing + repairs cannot exceed ingresos íntegros
+        const financingAndRepairsRaw = ((summary.box0105 ?? 0) + (summary.box0106 ?? 0)) * ratio;
+        const otherExpenses = ((summary.box0109 ?? 0) + (summary.box0112 ?? 0) +
+          (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
+          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio;
 
-        // PASO B: Gastos CON límite (0105+0106) prorrateados
-        gastosFinanciacionReparacion = round2(
-          ((summary.box0105 ?? 0) + (summary.box0106 ?? 0)) * ratio
-        );
-        limiteAEAT = ingresosIntegrosRound;
+        const limitedFinancingRepairs = Math.min(financingAndRepairsRaw, ingresosIntegros);
 
-        // PASO C: Aplicar arrastres de ejercicios anteriores (FIFO)
-        const arrastresDisponibles = await getCarryForwardsDisponibles(prop.id!, ejercicio);
-
-        // PASO D: Aplicar límite AEAT sobre F&R del año + arrastres anteriores
-        const totalConArrastres = round2(gastosFinanciacionReparacion + arrastresDisponibles.total);
-        gastosConLimiteAplicados = Math.min(totalConArrastres, limiteAEAT);
-
-        // Cuánto de arrastres anteriores se pudo aprovechar
-        const espacioDisponibleParaArrastres = Math.max(0, limiteAEAT - gastosFinanciacionReparacion);
-        arrastresAplicados = round2(Math.min(arrastresDisponibles.total, espacioDisponibleParaArrastres));
-
-        // PASO E: Exceso generado solo por F&R del año actual
-        excesoGenerado = round2(Math.max(0, gastosFinanciacionReparacion - limiteAEAT));
-
-        // PASO F: Registrar arrastre si hay exceso
-        if (excesoGenerado > 0) {
-          await registrarArrastre(
-            prop.id!,
-            ejercicio,
-            ingresosIntegrosRound,
-            gastosFinanciacionReparacion,
-            excesoGenerado
-          );
+        // Apply carryforwards from previous years (FIFO, oldest first)
+        // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
+        // which recomputes available amounts from fiscal summaries each time it is called.
+        const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
+        const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
+        let cfApplied = 0;
+        for (const cf of carryForwards) {
+          if (availableForCarryforward - cfApplied <= 0) break;
+          const canApply = Math.min(cf.remainingAmount, availableForCarryforward - cfApplied);
+          cfApplied = round2(cfApplied + canApply);
         }
 
-        // PASO G: Consumir arrastres anteriores aplicados (FIFO)
-        if (arrastresAplicados > 0) {
-          await consumirArrastresAplicados(arrastresDisponibles.detalle, arrastresAplicados);
-        }
-
-        gastosDeducibles = round2(gastosSinLimite + gastosConLimiteAplicados);
+        gastosDeducibles = round2(limitedFinancingRepairs + cfApplied + otherExpenses);
         amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
+        gastosFinanciacionYReparacion = round2(financingAndRepairsRaw);
+        limiteAplicado = round2(limitedFinancingRepairs);
+        excesoArrastrable = round2(Math.max(0, financingAndRepairsRaw - limitedFinancingRepairs));
+        arrastresAplicados = round2(cfApplied);
       } catch {
         // ignore
       }
@@ -473,10 +447,9 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         esHabitual,
         imputacionRenta,
         rendimientoNeto: round2(rendimientoNetoAlquiler + imputacionRenta),
-        gastosFinanciacionReparacion,
-        limiteAEAT,
-        gastosConLimiteAplicados,
-        excesoGenerado,
+        gastosFinanciacionYReparacion,
+        limiteAplicado,
+        excesoArrastrable,
         arrastresAplicados,
       });
     } else {
