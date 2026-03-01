@@ -967,7 +967,7 @@ export interface ArrastreIRPF {
   tipo: TipoArrastre;
   importeOriginal: number;         // Importe generado
   importePendiente: number;        // Importe aún no aplicado
-  ejercicioCaducidad?: number;     // Año en que caduca (null = sin caducidad)
+  ejercicioCaducidad?: number;     // Año en que caduca (undefined/missing = sin caducidad)
   inmuebleId?: number;             // FK → properties.id (si aplica, e.g. exceso 0105+0106)
   aplicaciones: {                  // Historial FIFO de consumos
     ejercicio: number;
