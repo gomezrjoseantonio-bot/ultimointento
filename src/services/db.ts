@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 26; // V2.6: Added configuracion_fiscal store for IRPF forecast
+const DB_VERSION = 27; // V2.7: Added ejerciciosFiscales, arrastresIRPF, snapshotsDeclaracion stores
 
 export interface Property {
   id?: number;
@@ -924,6 +924,85 @@ export interface TreasuryRecommendation {
   dismissedAt?: string;
 }
 
+// ─── V2.7: Ejercicios Fiscales ─────────────────────────────────────────────────
+
+export type EstadoEjercicio = 'vivo' | 'cerrado' | 'declarado';
+export type OrigenEjercicio = 'calculado' | 'importado' | 'mixto';
+
+export interface EjercicioFiscal {
+  id?: number;
+  año: number;                    // e.g. 2024, 2025
+  estado: EstadoEjercicio;        // vivo → cerrado → declarado
+  origen: OrigenEjercicio;        // de dónde vienen los datos
+  fechaCierre?: string;           // ISO date when closed
+  fechaDeclaracion?: string;      // ISO date when declared
+  snapshotId?: number;            // FK → snapshotsDeclaracion.id
+  // Resumen de alto nivel (se rellena al cerrar)
+  resumen?: {
+    baseImponibleGeneral: number;
+    baseImponibleAhorro: number;
+    cuotaIntegra: number;
+    deducciones: number;
+    retencionesYPagos: number;
+    resultado: number;            // >0 a pagar, <0 a devolver
+  };
+  notas?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── V2.7: Arrastres IRPF (cross-ejercicio) ───────────────────────────────────
+
+export type TipoArrastre =
+  | 'perdidas_patrimoniales_general'    // Art. 48 LIRPF - 4 años
+  | 'perdidas_patrimoniales_ahorro'     // Art. 49 LIRPF - 4 años
+  | 'exceso_gastos_0105_0106'           // Art. 23.1 LIRPF - sin caducidad
+  | 'deduccion_vivienda_habitual'       // DT 18ª LIRPF
+  | 'deduccion_maternidad'
+  | 'otros';
+
+export interface ArrastreIRPF {
+  id?: number;
+  ejercicioOrigen: number;         // Año en que se generó
+  tipo: TipoArrastre;
+  importeOriginal: number;         // Importe generado
+  importePendiente: number;        // Importe aún no aplicado
+  ejercicioCaducidad?: number;     // Año en que caduca (undefined/missing = sin caducidad)
+  inmuebleId?: number;             // FK → properties.id (si aplica, e.g. exceso 0105+0106)
+  aplicaciones: {                  // Historial FIFO de consumos
+    ejercicio: number;
+    importe: number;
+    fecha: string;                 // ISO date
+  }[];
+  estado: 'pendiente' | 'aplicado_parcial' | 'aplicado_total' | 'caducado';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── V2.7: Snapshots de Declaración ────────────────────────────────────────────
+
+export interface SnapshotDeclaracion {
+  id?: number;
+  ejercicio: number;               // Año fiscal
+  fechaSnapshot: string;           // ISO date del momento de congelación
+  // Blob congelado con todos los datos AEAT
+  datos: {
+    baseGeneral: any;              // BaseGeneral completa del motor IRPF
+    baseAhorro: any;               // BaseAhorro completa
+    reducciones: any;              // Reducciones aplicadas
+    minimosPersonales: any;        // Mínimos personales
+    liquidacion: any;              // Resultado de liquidación completo
+    arrastresGenerados: number[];  // IDs de ArrastreIRPF generados
+    arrastresAplicados: number[];  // IDs de ArrastreIRPF consumidos
+  };
+  // Casillas AEAT principales para consulta rápida
+  casillasAEAT?: Record<string, number>; // e.g. { "0505": 12345.67, "0620": 890.12 }
+  // Origen: automático (cierre) o manual (importación)
+  origen: 'cierre_automatico' | 'importacion_manual';
+  hash?: string;                   // Hash de integridad del blob
+  createdAt: string;
+}
+
 // H10: Treasury Ingreso (Income) types
 export type IngresoOrigen = 'contrato_id' | 'nomina_id' | 'doc_id';
 export type IngresoDestino = 'personal' | 'inmueble_id';
@@ -1369,6 +1448,9 @@ interface AtlasHorizonDB {
   keyval: any; // General key-value store for application configuration
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
+  ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
+  arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
+  snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -1787,6 +1869,34 @@ export const initDB = async () => {
         // V2.6: Configuración fiscal (IRPF forecast, singleton with id='default')
         if (!db.objectStoreNames.contains('configuracion_fiscal')) {
           db.createObjectStore('configuracion_fiscal', { keyPath: 'id' });
+        }
+
+        // V2.7: Ejercicios Fiscales store
+        if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
+          const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'id', autoIncrement: true });
+          ejerciciosStore.createIndex('año', 'año', { unique: true });
+          ejerciciosStore.createIndex('estado', 'estado', { unique: false });
+          ejerciciosStore.createIndex('origen', 'origen', { unique: false });
+          ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
+        }
+
+        // V2.7: Arrastres IRPF store (carry-forwards between fiscal years)
+        if (!db.objectStoreNames.contains('arrastresIRPF')) {
+          const arrastresStore = db.createObjectStore('arrastresIRPF', { keyPath: 'id', autoIncrement: true });
+          arrastresStore.createIndex('ejercicioOrigen', 'ejercicioOrigen', { unique: false });
+          arrastresStore.createIndex('tipo', 'tipo', { unique: false });
+          arrastresStore.createIndex('estado', 'estado', { unique: false });
+          arrastresStore.createIndex('ejercicioCaducidad', 'ejercicioCaducidad', { unique: false });
+          arrastresStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          arrastresStore.createIndex('ejercicioOrigen-tipo', ['ejercicioOrigen', 'tipo'], { unique: false });
+        }
+
+        // V2.7: Snapshots de Declaración store (frozen IRPF declaration data)
+        if (!db.objectStoreNames.contains('snapshotsDeclaracion')) {
+          const snapshotsStore = db.createObjectStore('snapshotsDeclaracion', { keyPath: 'id', autoIncrement: true });
+          snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: true });
+          snapshotsStore.createIndex('origen', 'origen', { unique: false });
+          snapshotsStore.createIndex('fechaSnapshot', 'fechaSnapshot', { unique: false });
         }
       },
       blocked() {
