@@ -4,6 +4,7 @@
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary } from './fiscalSummaryService';
+import { nominaService } from './nominaService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -40,6 +41,8 @@ const CONSTANTES_IRPF = {
   imputacionRentasNoRevisado: 0.02,
   retencionCapitalMobiliario: 0.19,
   maxAportacionPP: 1500,
+  maxAportacionPPEmpresa: 8500,
+  maxAportacionPPTotal: 10000,
   maxCompensacionRCMconPerdidas: 0.25,
   aniosCompensacionPerdidas: 4,
 };
@@ -47,10 +50,14 @@ const CONSTANTES_IRPF = {
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface RendimientosTrabajo {
-  salarioBrutoAnual: number;
+  salarioBrutoAnual: number;      // Dinerario: base + variables + bonus (from calculateSalary)
+  especieAnual: number;           // Retribución en especie que tributa
   cotizacionSS: number;
   irpfRetenido: number;
-  rendimientoNeto: number; // bruto - SS - gastos generales
+  rendimientoNeto: number;        // bruto + especie - SS - gastos generales
+  ppEmpleado: number;             // Aportación empleado PP (limitada a 1.500€)
+  ppEmpresa: number;              // Aportación empresa PP (limitada a 8.500€)
+  ppTotalReduccion: number;       // Total reducción PP (limitada a 10.000€)
 }
 
 export interface RendimientosAutonomo {
@@ -150,6 +157,9 @@ export interface DeclaracionIRPF {
   baseGeneral: BaseGeneral;
   baseAhorro: BaseAhorro;
   reducciones: {
+    ppEmpleado: number;
+    ppEmpresa: number;
+    ppIndividual: number;
     planPensiones: number;
     total: number;
   };
@@ -196,58 +206,61 @@ function edadDesde(fechaNacimiento: string, ejercicio: number): number {
 
 async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTrabajo | null> {
   try {
-    const db = await initDB();
-    const allNominas = await db.getAll('nominas');
-    const activas = allNominas.filter((n: any) => n.activa);
+    const activas = await nominaService.getAllActiveNominas();
     if (activas.length === 0) return null;
 
     let totalBruto = 0;
+    let totalEspecie = 0;
     let totalCotizacionSS = 0;
     let totalIRPFRetenido = 0;
+    let totalPPEmpleado = 0;
+    let totalPPEmpresa = 0;
 
     for (const activa of activas) {
-      const bruto = activa.salarioBrutoAnual ?? 0;
+      // Use the calculation engine for accurate totals
+      const calculo = nominaService.calculateSalary(activa);
 
-      // Sum taxable benefits in kind (especie) that increment IRPF base
-      const especieAnual = (activa.beneficiosSociales ?? [])
-        .filter((b: any) => b.incrementaBaseIRPF)
-        .reduce((sum: number, b: any) => sum + (b.importeMensual ?? 0) * 12, 0);
-      totalBruto += bruto + especieAnual;
+      totalBruto += calculo.totalAnualBruto;
+      totalEspecie += calculo.totalAnualEspecie;
 
-      // Support both old format { cotizacionSS: % } and new format { ss: { ... } }
-      let cotizacionSS: number;
-      if (activa.retencion?.ss) {
-        const ss = activa.retencion.ss;
-        const baseCot = Math.min(ss.baseCotizacionMensual ?? 4909.50, bruto / 12);
-        const pct = ((ss.contingenciasComunes ?? 4.70) + (ss.desempleo ?? 1.55) + (ss.formacionProfesional ?? 0.10) + (ss.mei ?? 0.13)) / 100;
-        cotizacionSS = round2(baseCot * pct * 12 + ((activa.retencion.cuotaSolidaridadMensual ?? 0) * 12));
-      } else {
-        const porcentajeSS = activa.retencion?.cotizacionSS ?? 6.35;
-        cotizacionSS = round2(bruto * (porcentajeSS / 100));
+      // Sum SS and IRPF from monthly distribution (accurate per-month calculation)
+      totalCotizacionSS += calculo.distribucionMensual.reduce((s, m) => s + m.ssTotal, 0);
+      totalIRPFRetenido += calculo.distribucionMensual.reduce((s, m) => s + m.irpfImporte, 0);
+
+      // PP contributions
+      if (activa.planPensiones) {
+        const ppEmpresa = activa.planPensiones.aportacionEmpresa;
+
+        totalPPEmpleado += calculo.distribucionMensual.reduce((s, m) => s + m.ppEmpleado, 0);
+        // PP empresa: calculate from definition
+        if (ppEmpresa?.tipo && ppEmpresa.valor != null) {
+          const ppEmpresaAnual = ppEmpresa.tipo === 'porcentaje'
+            ? round2(calculo.totalAnualBruto * ppEmpresa.valor / 100)
+            : round2(ppEmpresa.valor * 12);
+          totalPPEmpresa += ppEmpresaAnual;
+        }
       }
-      totalCotizacionSS += cotizacionSS;
-
-      const irpfPorcentaje = activa.retencion?.irpfPorcentaje ?? 0;
-      totalIRPFRetenido += round2(bruto * (irpfPorcentaje / 100));
-
-      // Deduct PP employee contributions (capped at legal limit of 1500€/year)
-      const ppEmpleadoAnual = (() => {
-        if (!activa.planPensiones) return 0;
-        const emp = activa.planPensiones.aportacionEmpleado;
-        if (emp.tipo === 'porcentaje') return round2(bruto * emp.valor / 100);
-        return round2(emp.valor * 12);
-      })();
-      const ppReduccion = Math.min(ppEmpleadoAnual, CONSTANTES_IRPF.maxAportacionPP);
-      totalBruto -= ppReduccion;
     }
 
-    const rendimientoNeto = round2(totalBruto - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
+    // Apply PP limits (art. 52 LIRPF)
+    const ppEmpleadoLimitado = Math.min(totalPPEmpleado, CONSTANTES_IRPF.maxAportacionPP);
+    const ppEmpresaLimitado = Math.min(totalPPEmpresa, CONSTANTES_IRPF.maxAportacionPPEmpresa);
+    const ppTotalReduccion = Math.min(ppEmpleadoLimitado + ppEmpresaLimitado, CONSTANTES_IRPF.maxAportacionPPTotal);
+
+    // Rendimiento neto: bruto + especie - SS - gastos generales
+    // PP reduction is applied as a separate reduction in the declaration, NOT subtracted from bruto
+    const baseIRPF = round2(totalBruto + totalEspecie);
+    const rendimientoNeto = round2(baseIRPF - totalCotizacionSS - CONSTANTES_IRPF.gastosGeneralesTrabajo);
 
     return {
       salarioBrutoAnual: round2(totalBruto),
+      especieAnual: round2(totalEspecie),
       cotizacionSS: round2(totalCotizacionSS),
       irpfRetenido: round2(totalIRPFRetenido),
       rendimientoNeto,
+      ppEmpleado: round2(ppEmpleadoLimitado),
+      ppEmpresa: round2(ppEmpresaLimitado),
+      ppTotalReduccion: round2(ppTotalReduccion),
     };
   } catch {
     return null;
@@ -580,9 +593,19 @@ export async function calcularDeclaracionIRPF(ejercicio: number): Promise<Declar
   };
 
   // PASO 4: Reducciones
+  // PP from trabajo (already limited per Art. 52 LIRPF)
+  const ppTrabajo = trabajo?.ppTotalReduccion ?? 0;
+  // PP from inversiones (planes de pensiones individuales)
+  const ppInversiones = aportacionPensiones;
+  // Total PP reduction (combined limit 10.000€)
+  const totalPP = Math.min(ppTrabajo + ppInversiones, CONSTANTES_IRPF.maxAportacionPPTotal);
+
   const reducciones = {
-    planPensiones: aportacionPensiones,
-    total: aportacionPensiones,
+    ppEmpleado: trabajo?.ppEmpleado ?? 0,
+    ppEmpresa: trabajo?.ppEmpresa ?? 0,
+    ppIndividual: ppInversiones,
+    planPensiones: totalPP,
+    total: totalPP,
   };
 
   // PASO 5: Mínimos personales

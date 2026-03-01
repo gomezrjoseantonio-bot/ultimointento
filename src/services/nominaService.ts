@@ -85,6 +85,22 @@ class NominaService {
   }
 
   /**
+   * Get all active nominas across all personal data IDs (with defaults applied)
+   */
+  async getAllActiveNominas(): Promise<Nomina[]> {
+    try {
+      const db = await this.getDB();
+      const allNominas = await db.getAll('nominas');
+      return (allNominas || [])
+        .filter((n: any) => n.activa)
+        .map((n: any) => this.applyDefaults(n));
+    } catch (error) {
+      console.error('Error getting all active nominas:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get active nomina for a personal data ID
    */
   async getActivaNomina(personalDataId: number): Promise<Nomina | null> {
