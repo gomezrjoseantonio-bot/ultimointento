@@ -11,7 +11,7 @@ const Row: React.FC<{ label: string; value: number; highlight?: boolean; indent?
 }) => (
   <div className={`flex justify-between items-center py-2 ${indent ? 'pl-4' : ''} ${highlight ? 'border-t border-gray-300 font-semibold' : 'border-t border-gray-100'}`}>
     <span className={`text-sm ${highlight ? 'text-gray-900' : 'text-gray-600'}`}>{label}</span>
-    <span className={`text-sm ${highlight ? 'text-gray-900' : ''} ${value < 0 ? 'text-green-600' : ''}`}>{fmt(value)}</span>
+    <span className={`text-sm ${highlight ? 'text-gray-900' : ''} ${value < 0 ? 'text-cyan-700' : ''}`}>{fmt(value)}</span>
   </div>
 );
 

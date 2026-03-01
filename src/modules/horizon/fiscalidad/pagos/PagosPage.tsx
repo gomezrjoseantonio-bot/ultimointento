@@ -105,16 +105,16 @@ const PagosPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total pendiente</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">{fmt(totalPendiente)}</p>
+              <p className="text-2xl font-bold text-blue-700 mt-1">{fmt(totalPendiente)}</p>
               <p className="text-xs text-gray-500 mt-1">{pendientes.length} pago(s) pendiente(s)</p>
             </div>
             {proximoEvento && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-                <p className="text-xs text-amber-700 font-medium uppercase tracking-wide flex items-center gap-1">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
+                <p className="text-xs text-gray-700 font-medium uppercase tracking-wide flex items-center gap-1">
                   <Calendar className="w-3 h-3" /> Próximo pago
                 </p>
-                <p className="text-lg font-bold text-amber-900 mt-1">{proximoEvento.descripcion}</p>
-                <p className="text-sm text-amber-700 mt-0.5">
+                <p className="text-lg font-bold text-gray-900 mt-1">{proximoEvento.descripcion}</p>
+                <p className="text-sm text-gray-700 mt-0.5">
                   {new Date(proximoEvento.fechaLimite).toLocaleDateString('es-ES')} — {fmt(proximoEvento.importe)}
                 </p>
               </div>
@@ -163,17 +163,17 @@ const PagosPage: React.FC = () => {
                 <div key={i} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-gray-100 last:border-0 items-center">
                   <span className="col-span-2 text-gray-700">{e.descripcion}</span>
                   <span className="text-gray-600">{new Date(e.fechaLimite).toLocaleDateString('es-ES')}</span>
-                  <span className={`font-medium ${e.importe < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                  <span className={`font-medium ${e.importe < 0 ? 'text-cyan-700' : 'text-blue-800'}`}>
                     {fmt(Math.abs(e.importe))}
                   </span>
                   <div className="flex items-center gap-2">
                     {e.pagado ? (
-                      <span className="flex items-center gap-1 text-green-600 text-xs font-medium">
+                      <span className="flex items-center gap-1 text-cyan-700 text-xs font-medium">
                         <CheckCircle className="w-4 h-4" /> Pagado
                       </span>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1 text-amber-600 text-xs">
+                        <span className="flex items-center gap-1 text-gray-600 text-xs">
                           <Circle className="w-4 h-4" /> Pendiente
                         </span>
                         {e.trimestre && (

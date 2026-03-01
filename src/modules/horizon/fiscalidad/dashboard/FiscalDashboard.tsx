@@ -76,17 +76,17 @@ const FiscalDashboard: React.FC = () => {
               </p>
             </div>
 
-            <div className={`border rounded-lg p-5 shadow-sm ${declaracion.resultado >= 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+            <div className={`border rounded-lg p-5 shadow-sm ${declaracion.resultado >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-cyan-50 border-cyan-200'}`}>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Resultado provisional</p>
               <div className="flex items-center gap-2 mt-1">
                 {declaracion.resultado >= 0
-                  ? <TrendingUp className="w-5 h-5 text-red-600" />
-                  : <TrendingDown className="w-5 h-5 text-green-600" />}
-                <p className={`text-2xl font-bold ${declaracion.resultado >= 0 ? 'text-red-700' : 'text-green-700'}`}>
+                  ? <TrendingUp className="w-5 h-5 text-blue-700" />
+                  : <TrendingDown className="w-5 h-5 text-cyan-700" />}
+                <p className={`text-2xl font-bold ${declaracion.resultado >= 0 ? 'text-blue-800' : 'text-cyan-800'}`}>
                   {fmt(Math.abs(declaracion.resultado))}
                 </p>
               </div>
-              <p className={`text-xs mt-1 font-medium ${declaracion.resultado >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className={`text-xs mt-1 font-medium ${declaracion.resultado >= 0 ? 'text-blue-700' : 'text-cyan-700'}`}>
                 {declaracion.resultado >= 0 ? 'A pagar' : 'A devolver'}
               </p>
             </div>
@@ -153,7 +153,7 @@ const FiscalDashboard: React.FC = () => {
                       <p className="text-sm font-medium text-gray-900">{e.descripcion}</p>
                       <p className="text-xs text-gray-500">Límite: {new Date(e.fechaLimite).toLocaleDateString('es-ES')}</p>
                     </div>
-                    <span className={`text-sm font-semibold ${e.importe >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <span className={`text-sm font-semibold ${e.importe >= 0 ? 'text-blue-700' : 'text-cyan-700'}`}>
                       {fmt(Math.abs(e.importe))}
                     </span>
                   </div>
@@ -164,11 +164,11 @@ const FiscalDashboard: React.FC = () => {
 
           {/* Alertas */}
           {declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-atlas-teal flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-800">Minusvalías pendientes de compensar</p>
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-sm font-medium text-gray-800">Minusvalías pendientes de compensar</p>
+                <p className="text-xs text-gray-600 mt-1">
                   Tienes {fmt(declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes)} en minusvalías que puedes compensar en los próximos 4 años.
                 </p>
               </div>
