@@ -423,11 +423,14 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
     // Determine rental days: check propertyDays store first, then fall back to contracts
     let diasAlquilado = 0;
+    let diasEnObras = 0;
     try {
       const pdList = await db.getAllFromIndex('propertyDays', 'property-year', [prop.id!, ejercicio]);
       const pd = pdList?.[0];
       if (pd) {
         diasAlquilado = pd.daysRented ?? 0;
+        const diasObrasFromDb = pd.daysUnderRenovation ?? 0;
+        diasEnObras = Math.max(0, Math.min(diasTotal - diasAlquilado, diasObrasFromDb));
       } else {
         diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
       }
@@ -435,7 +438,6 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
     }
 
-    const diasEnObras = 0;
     const diasVacio = Math.max(0, diasTotal - diasAlquilado - diasEnObras);
 
     if (diasAlquilado > 0) {

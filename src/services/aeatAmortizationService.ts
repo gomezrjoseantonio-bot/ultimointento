@@ -173,7 +173,14 @@ export const getRentalDaysForYear = async (
 ): Promise<number> => {
   const db = await initDB();
   
-  // Get all active contracts for this property
+  // Prefer explicit occupancy settings from propertyDays when available
+  const propertyDays = await db.getAllFromIndex('propertyDays', 'property-year', [propertyId, exerciseYear]);
+  const occupancy = propertyDays?.[0] as any;
+  if (occupancy && typeof occupancy.daysRented === 'number') {
+    return Math.max(0, occupancy.daysRented);
+  }
+
+  // Fallback: derive from active contracts
   const allContracts = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
   const activeContracts = allContracts.filter(contract => {
     const startYear = new Date(contract.startDate).getFullYear();

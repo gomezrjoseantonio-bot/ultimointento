@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
+import PropertyImprovements from '../../../../components/fiscalidad/PropertyImprovements';
+import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import { getAllContracts } from '../../../../services/contractService';
@@ -17,6 +19,9 @@ const PropertyDetail: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
+  const [occupancyYear, setOccupancyYear] = useState<number>(new Date().getFullYear());
+  const [occupancy, setOccupancy] = useState<{ daysRented: number; daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysRented: 0, daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
+  const [savingOccupancy, setSavingOccupancy] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -50,6 +55,48 @@ const PropertyDetail: React.FC = () => {
       loadProperty(parseInt(id));
     }
   }, [id, loadProperty]);
+
+  useEffect(() => {
+    const loadOccupancy = async () => {
+      if (!property?.id) return;
+      try {
+        const data = await ensurePropertyOccupancy(property.id, occupancyYear);
+        setOccupancy({
+          daysRented: data.daysRented ?? 0,
+          daysUnderRenovation: data.daysUnderRenovation ?? 0,
+          daysAvailable: data.daysAvailable ?? (new Date(occupancyYear, 1, 29).getDate() === 29 ? 366 : 365),
+          notes: data.notes ?? '',
+        });
+      } catch (e) {
+        console.error('Error loading occupancy', e);
+      }
+    };
+    loadOccupancy();
+  }, [property?.id, occupancyYear]);
+
+  const handleSaveOccupancy = async () => {
+    if (!property?.id) return;
+    try {
+      setSavingOccupancy(true);
+      const saved = await savePropertyOccupancy(property.id, occupancyYear, {
+        daysRented: occupancy.daysRented,
+        daysUnderRenovation: occupancy.daysUnderRenovation,
+        notes: occupancy.notes,
+      });
+      setOccupancy(prev => ({
+        ...prev,
+        daysRented: saved.daysRented,
+        daysUnderRenovation: saved.daysUnderRenovation || 0,
+        daysAvailable: saved.daysAvailable,
+      }));
+      toast.success('Ocupación anual guardada');
+    } catch (e) {
+      console.error(e);
+      toast.error('No se pudo guardar la ocupación anual');
+    } finally {
+      setSavingOccupancy(false);
+    }
+  };
 
   const calculateTotalCost = (prop: Property): number => {
     const costs = prop.acquisitionCosts;
@@ -479,6 +526,48 @@ const PropertyDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Ocupación anual (Grupo 1.1) */}
+      <div className="bg-white border border-neutral-200 p-6">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h3 className="text-lg font-semibold text-neutral-900">Ocupación anual</h3>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-neutral-600">Ejercicio</label>
+            <input
+              type="number"
+              className="w-28 px-3 py-2 border border-neutral-300 rounded-md"
+              value={occupancyYear}
+              onChange={(e) => setOccupancyYear(parseInt(e.target.value || String(new Date().getFullYear()), 10))}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div className="text-sm text-neutral-600 mb-1">Días alquilado</div>
+            <input type="number" min={0} max={occupancy.daysAvailable} className="w-full px-3 py-2 border border-neutral-300 rounded-md" value={occupancy.daysRented} onChange={(e) => setOccupancy(prev => ({ ...prev, daysRented: Number(e.target.value) || 0 }))} />
+          </div>
+          <div>
+            <div className="text-sm text-neutral-600 mb-1">Días en obras</div>
+            <input type="number" min={0} max={Math.max(0, occupancy.daysAvailable - occupancy.daysRented)} className="w-full px-3 py-2 border border-neutral-300 rounded-md" value={occupancy.daysUnderRenovation} onChange={(e) => setOccupancy(prev => ({ ...prev, daysUnderRenovation: Number(e.target.value) || 0 }))} />
+          </div>
+          <div>
+            <div className="text-sm text-neutral-600 mb-1">Días a disposición</div>
+            <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-sm text-neutral-900">{Math.max(0, occupancy.daysAvailable - occupancy.daysRented - occupancy.daysUnderRenovation)}</div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-sm text-neutral-600 mb-1">Notas</div>
+          <textarea className="w-full px-3 py-2 border border-neutral-300 rounded-md" rows={2} value={occupancy.notes} onChange={(e) => setOccupancy(prev => ({ ...prev, notes: e.target.value }))} />
+        </div>
+        <div className="mt-4">
+          <button onClick={handleSaveOccupancy} disabled={savingOccupancy} className="atlas-btn-primary">{savingOccupancy ? 'Guardando…' : 'Guardar ocupación'}</button>
+        </div>
+      </div>
+
+      {/* Mejoras amortizables (Grupo 1.2) */}
+      <div className="bg-white border border-neutral-200 p-6">
+        <PropertyImprovements propertyId={property.id!} />
       </div>
 
       {/* Atajos */}
