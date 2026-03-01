@@ -284,6 +284,10 @@ export async function ejecutarSimulacion(
         esHabitual: false,
         imputacionRenta: 0,
         rendimientoNeto: round2(rendBruto - reduccion),
+        gastosFinanciacionYReparacion: 0,
+        limiteAplicado: 0,
+        excesoArrastrable: 0,
+        arrastresAplicados: 0,
       });
       sim.baseGeneral.total = round2(
         (sim.baseGeneral.rendimientosTrabajo?.rendimientoNeto ?? 0) +
