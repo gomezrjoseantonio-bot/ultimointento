@@ -52,23 +52,92 @@ export type SituacionLaboral = 'asalariado' | 'autonomo' | 'desempleado' | 'jubi
 export interface Nomina {
   id?: number;
   personalDataId: number;
+
+  // ── IDENTIDAD ──────────────────────────────────────────────
+  titular: 'yo' | 'pareja';
   nombre: string;
+
+  // ── ANTIGÜEDAD ─────────────────────────────────────────────
+  fechaAntiguedad: string;               // ISO date — inicio en la empresa
+  fechaAntiguedadReconocida?: string;    // ISO date — si reconocen otra fecha anterior
+
+  // ── QUÉ COBRO: RETRIBUCIÓN DINERARIA ──────────────────────
   salarioBrutoAnual: number;
   distribucion: {
     tipo: 'doce' | 'catorce' | 'personalizado';
-    meses: number; // Always present, default based on tipo
+    meses: number;
   };
   variables: Variable[];
   bonus: Bonus[];
-  cuentaAbono: number; // ID of the bank account
+
+  // ── QUÉ COBRO: RETRIBUCIÓN EN ESPECIE ─────────────────────
+  beneficiosSociales: BeneficioSocial[];
+
+  // ── QUÉ ME QUITAN: RETENCIÓN ──────────────────────────────
+  retencion: RetencionNomina;
+
+  // ── QUÉ ME QUITAN: PLAN PENSIONES ─────────────────────────
+  planPensiones?: PlanPensionesNomina;
+
+  // ── QUÉ ME QUITAN: OTRAS DEDUCCIONES ──────────────────────
+  deduccionesAdicionales: DeduccionNomina[];
+
+  // ── DÓNDE COBRO ────────────────────────────────────────────
+  cuentaAbono: number;
+
+  // ── CUÁNDO COBRO ───────────────────────────────────────────
   reglaCobroDia: ReglaDia;
-  retencion: {
-    irpfPorcentaje: number;      // % IRPF (ej: 24)
-    cotizacionSS: number;        // % SS, default 6.35
-  };
+
+  // ── ESTADO ─────────────────────────────────────────────────
   activa: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
+}
+
+export interface RetencionNomina {
+  irpfPorcentaje: number;
+  ss: {
+    baseCotizacionMensual: number;       // Editable, pre-rellenado con tope del año
+    contingenciasComunes: number;        // % editable, default 4.70
+    desempleo: number;                   // % editable, default 1.55
+    formacionProfesional: number;        // % editable, default 0.10
+    mei?: number;                        // % editable, default 0.13 (2025) / 0.15 (2026)
+    overrideManual: boolean;             // true si usuario ajustó manualmente
+  };
+  cuotaSolidaridadMensual?: number;      // Importe fijo editable
+}
+
+export interface PlanPensionesNomina {
+  aportacionEmpresa: {
+    tipo: 'porcentaje' | 'importe';
+    valor: number;                       // % o €/mes
+    salarioBaseObjetivo?: number;        // Solo si tipo='porcentaje'
+  };
+  aportacionEmpleado: {
+    tipo: 'porcentaje' | 'importe';
+    valor: number;                       // % o €/mes — SE DESCUENTA del líquido
+    salarioBaseObjetivo?: number;
+  };
+  productoDestinoId?: number;            // → PosicionInversion.id
+  productoDestinoNombre?: string;        // Nombre para mostrar
+}
+
+export interface BeneficioSocial {
+  id: string;
+  concepto: string;
+  tipo: 'seguro-vida' | 'seguro-medico' | 'cheque-guarderia'
+      | 'gasolina' | 'vehiculo-empresa' | 'telefono' | 'formacion'
+      | 'conciliacion' | 'otro';
+  importeMensual: number;
+  incrementaBaseIRPF: boolean;           // true excepto cheque guardería (exento)
+}
+
+export interface DeduccionNomina {
+  id: string;
+  concepto: string;
+  importeMensual: number;
+  esRecurrente: boolean;
+  mes?: number;                          // Si puntual, en qué mes
 }
 
 export interface Variable {
@@ -225,25 +294,31 @@ export interface OtrosIngresos {
 
 // Calculation Results Types
 export interface CalculoNominaResult {
-  netoMensual: number;
+  netoMensual: number;                   // Promedio mensual del líquido
   distribuccionMensual: DistribucionMensualResult[];
   totalAnualNeto: number;
+  totalAnualBruto: number;               // bruto base + variables + bonus
+  totalAnualEspecie: number;
+  totalAnualPP: number;                  // empresa + empleado
 }
 
 export interface DistribucionMensualResult {
   mes: number;
   salarioBase: number;
+  pagaExtra: number;
   variables: number;
   bonus: number;
-  netoTotal: number;
-}
-
-export interface CalculoAutonomoResult {
-  resultadoNetoMensual: number;
-  ingresosBrutos: number;
-  gastos: number;
-  cuotaAutonomos: number;
-  resultadoAnual: number;
+  totalDevengado: number;
+  especie: number;
+  // Deducciones
+  ssTotal: number;
+  irpfImporte: number;
+  ppEmpleado: number;
+  otrasDeduciones: number;
+  totalDeducciones: number;
+  netoTotal: number;                     // = totalDevengado - totalDeducciones
+  // Plan pensiones al producto (NO pasa por cuenta)
+  ppTotalAlProducto: number;             // empresa + empleado → va al producto financiero
 }
 
 export interface CalculoAutonomoResult {

@@ -3,6 +3,7 @@ import {
   Nomina, 
   Variable, 
   ReglaDia, 
+  RetencionNomina,
   CalculoNominaResult,
   DistribucionMensualResult
 } from '../types/personal';
@@ -18,6 +19,53 @@ class NominaService {
   }
 
   /**
+   * Apply defaults to a nomina loaded from the database (backward compatibility)
+   */
+  private applyDefaults(nomina: any): Nomina {
+    const now = new Date().toISOString();
+    const currentYear = new Date().getFullYear();
+
+    // Migrate old retencion format { irpfPorcentaje, cotizacionSS } → new RetencionNomina
+    let retencion: RetencionNomina;
+    if (nomina.retencion && typeof (nomina.retencion as any).cotizacionSS === 'number') {
+      retencion = {
+        irpfPorcentaje: nomina.retencion.irpfPorcentaje ?? 24,
+        ss: {
+          baseCotizacionMensual: 4909.50,
+          contingenciasComunes: 4.70,
+          desempleo: 1.55,
+          formacionProfesional: 0.10,
+          mei: currentYear >= 2026 ? 0.15 : 0.13,
+          overrideManual: false,
+        },
+      };
+    } else if (nomina.retencion && nomina.retencion.ss) {
+      retencion = nomina.retencion as RetencionNomina;
+    } else {
+      retencion = {
+        irpfPorcentaje: 24,
+        ss: {
+          baseCotizacionMensual: 4909.50,
+          contingenciasComunes: 4.70,
+          desempleo: 1.55,
+          formacionProfesional: 0.10,
+          mei: currentYear >= 2026 ? 0.15 : 0.13,
+          overrideManual: false,
+        },
+      };
+    }
+
+    return {
+      titular: 'yo',
+      fechaAntiguedad: nomina.fechaCreacion ?? now,
+      beneficiosSociales: [],
+      deduccionesAdicionales: [],
+      ...nomina,
+      retencion,
+    } as Nomina;
+  }
+
+  /**
    * Get all nominas for a personal data ID
    */
   async getNominas(personalDataId: number): Promise<Nomina[]> {
@@ -27,7 +75,7 @@ class NominaService {
       const store = transaction.objectStore('nominas');
       const index = store.index('personalDataId');
       const nominas = await index.getAll(personalDataId);
-      return nominas || [];
+      return (nominas || []).map((n: any) => this.applyDefaults(n));
     } catch (error) {
       console.error('Error getting nominas:', error);
       return [];
@@ -128,56 +176,74 @@ class NominaService {
   }
 
   /**
-   * Calculate net monthly salary and distribution
+   * Calculate net monthly salary and distribution (v2 engine)
+   * - SS is topped against baseCotizacionMensual
+   * - PP empleado is deducted from líquido
+   * - Especie adds to IRPF base (not to líquido)
+   * - Handles 14-pagas with explicit pagaExtra field
    */
   calculateSalary(nomina: Nomina): CalculoNominaResult {
     const { salarioBrutoAnual, distribucion, variables, bonus } = nomina;
-    
-    // Get retention configuration (default values if not provided)
-    const retencion = nomina.retencion || { 
-      irpfPorcentaje: 24, 
-      cotizacionSS: 6.35 
-    };
-    
-    // Calculate base monthly salary
-    const mesesDistribucion = distribucion.tipo === 'personalizado' ? 
-      (distribucion.meses || 12) : 
-      (distribucion.tipo === 'catorce' ? 14 : 12);
-    
+    const retencion = nomina.retencion;
+    const beneficiosSociales = nomina.beneficiosSociales ?? [];
+    const planPensiones = nomina.planPensiones;
+    const deduccionesAdicionales = nomina.deduccionesAdicionales ?? [];
+
+    // How many salary units to divide the annual base into
+    const mesesDistribucion =
+      distribucion.tipo === 'personalizado'
+        ? distribucion.meses || 12
+        : distribucion.tipo === 'catorce'
+        ? 14
+        : 12;
+
     const salarioBaseMensual = salarioBrutoAnual / mesesDistribucion;
-    
-    // Generate monthly distribution
+
+    // SS deductions per month — baseCotizacionMensual is already pre-configured
+    // (pre-filled with the legal tope máximo; user can lower it if their salary is below the tope)
+    const { ss, cuotaSolidaridadMensual = 0 } = retencion;
+    const baseCotizacion = ss.baseCotizacionMensual;
+    const ssTotalPct =
+      (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
+    const ssMensualBase = baseCotizacion * ssTotalPct + cuotaSolidaridadMensual;
+
+    // Monthly especie (sum of benefits that increment IRPF base)
+    const especieMensual = beneficiosSociales
+      .filter(b => b.incrementaBaseIRPF)
+      .reduce((acc, b) => acc + b.importeMensual, 0);
+
+    const irpfPct = retencion.irpfPorcentaje / 100;
+
     const distribuccionMensual: DistribucionMensualResult[] = [];
     let totalAnualNeto = 0;
-    
+    let totalAnualBruto = 0;
+    let totalAnualEspecie = 0;
+    let totalAnualPPEmpleado = 0;
+    let totalAnualPPEmpresa = 0;
+
     for (let mes = 1; mes <= 12; mes++) {
-      // Base salary (distributed according to configuration)
-      let salarioBase = 0;
-      if (mesesDistribucion === 12) {
-        salarioBase = salarioBaseMensual;
-      } else if (mesesDistribucion === 14) {
-        // 12 months of base salary + 2 extra payments in June and December
-        salarioBase = salarioBaseMensual;
-        if (mes === 6 || mes === 12) {
-          salarioBase += salarioBaseMensual;
-        }
-      } else {
-        // Custom distribution - distribute evenly across specified months
-        salarioBase = salarioBaseMensual;
+      // Base salary per payment unit
+      let salarioBase = salarioBaseMensual;
+      let pagaExtra = 0;
+
+      if (mesesDistribucion === 14 && (mes === 6 || mes === 12)) {
+        // June and December include an extra payment
+        pagaExtra = salarioBaseMensual;
       }
-      
+
       // Variables for this month
       const variablesDelMes = variables.reduce((total, variable) => {
         const distribucionMes = variable.distribucionMeses.find(d => d.mes === mes);
         if (distribucionMes) {
-          const variableAnual = variable.tipo === 'porcentaje' ? 
-            (salarioBrutoAnual * variable.valor / 100) : 
-            variable.valor;
-          return total + (variableAnual * distribucionMes.porcentaje / 100);
+          const variableAnual =
+            variable.tipo === 'porcentaje'
+              ? (salarioBrutoAnual * variable.valor) / 100
+              : variable.valor;
+          return total + (variableAnual * distribucionMes.porcentaje) / 100;
         }
         return total;
       }, 0);
-      
+
       // Bonus for this month
       const bonusDelMes = bonus
         .filter(b => b.mes === mes)
@@ -192,30 +258,35 @@ class NominaService {
       distribuccionMensual.push({
         mes,
         salarioBase,
+        pagaExtra,
         variables: variablesDelMes,
         bonus: bonusDelMes,
-        netoTotal: netoMensual
+        totalDevengado,
+        especie: especieMensual,
+        ssTotal,
+        irpfImporte,
+        ppEmpleado,
+        otrasDeduciones,
+        totalDeducciones,
+        netoTotal,
+        ppTotalAlProducto,
       });
-      
-      totalAnualNeto += netoMensual;
-    }
-    
-    const netoMensualPromedio = totalAnualNeto / 12;
-    
-    return {
-      netoMensual: netoMensualPromedio,
-      distribuccionMensual,
-      totalAnualNeto
-    };
-  }
 
-  /**
-   * Calculate net salary from gross amount using configurable retention
-   */
-  private calculateNetFromBruto(brutoMensual: number, retencion: { irpfPorcentaje: number; cotizacionSS: number }): number {
-    const irpf = retencion.irpfPorcentaje / 100;
-    const ss = retencion.cotizacionSS / 100;
-    return brutoMensual * (1 - irpf - ss);
+      totalAnualNeto += netoTotal;
+      totalAnualBruto += totalDevengado;
+      totalAnualEspecie += especieMensual;
+      totalAnualPPEmpleado += ppEmpleado;
+      totalAnualPPEmpresa += ppEmpresa;
+    }
+
+    return {
+      netoMensual: totalAnualNeto / 12,
+      distribuccionMensual,
+      totalAnualNeto,
+      totalAnualBruto,
+      totalAnualEspecie,
+      totalAnualPP: totalAnualPPEmpresa + totalAnualPPEmpleado,
+    };
   }
 
   /**
