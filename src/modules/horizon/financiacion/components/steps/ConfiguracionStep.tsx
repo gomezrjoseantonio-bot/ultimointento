@@ -63,8 +63,8 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
               step="0.01"
               style={inputStyle(!!errors.tinFijo)}
               placeholder="3.45"
-              value={data.tinFijo !== undefined ? (data.tinFijo * 100).toFixed(2) : ''}
-              onChange={e => onChange({ tinFijo: parseFloat(e.target.value) / 100 || 0 })}
+              value={data.tinFijo ?? ''}
+              onChange={e => onChange({ tinFijo: parseFloat(e.target.value) || 0 })}
             />
             {errors.tinFijo && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 4 }}>{errors.tinFijo}</div>}
           </div>
@@ -91,8 +91,8 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
                   step="0.001"
                   style={inputStyle()}
                   placeholder="3.500"
-                  value={data.valorIndice !== undefined ? (data.valorIndice * 100).toFixed(3) : ''}
-                  onChange={e => onChange({ valorIndice: parseFloat(e.target.value) / 100 || 0 })}
+                  value={data.valorIndice ?? ''}
+                  onChange={e => onChange({ valorIndice: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div>
@@ -102,8 +102,8 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
                   step="0.01"
                   style={inputStyle(!!errors.diferencial)}
                   placeholder="0.75"
-                  value={data.diferencial !== undefined ? (data.diferencial * 100).toFixed(2) : ''}
-                  onChange={e => onChange({ diferencial: parseFloat(e.target.value) / 100 || 0 })}
+                  value={data.diferencial ?? ''}
+                  onChange={e => onChange({ diferencial: parseFloat(e.target.value) || 0 })}
                 />
                 {errors.diferencial && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 4 }}>{errors.diferencial}</div>}
               </div>
@@ -121,7 +121,7 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
             </div>
             {tinEfectivo !== null && (
               <div style={{ padding: '8px 12px', backgroundColor: 'rgba(4,44,94,0.1)', borderRadius: 6, fontSize: 13, color: 'var(--atlas-blue)' }}>
-                TIN calculado: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{(tinEfectivo * 100).toFixed(3)} %</strong>
+                TIN calculado: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{tinEfectivo.toFixed(3)} %</strong>
               </div>
             )}
           </div>
@@ -147,8 +147,8 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
                   step="0.01"
                   style={inputStyle()}
                   placeholder="2.50"
-                  value={data.tinTramoFijo !== undefined ? (data.tinTramoFijo * 100).toFixed(2) : ''}
-                  onChange={e => onChange({ tinTramoFijo: parseFloat(e.target.value) / 100 || 0 })}
+                  value={data.tinTramoFijo ?? ''}
+                  onChange={e => onChange({ tinTramoFijo: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div>
@@ -169,8 +169,8 @@ const ConfiguracionStep: React.FC<ConfiguracionStepProps> = ({ data, onChange, e
                   step="0.01"
                   style={inputStyle()}
                   placeholder="0.75"
-                  value={data.diferencial !== undefined ? (data.diferencial * 100).toFixed(2) : ''}
-                  onChange={e => onChange({ diferencial: parseFloat(e.target.value) / 100 || 0 })}
+                  value={data.diferencial ?? ''}
+                  onChange={e => onChange({ diferencial: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div>

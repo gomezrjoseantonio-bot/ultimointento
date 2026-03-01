@@ -9,13 +9,13 @@ interface BonificacionesStepProps {
 }
 
 const PRESET_BONIFICACIONES = [
-  { tipo: 'NOMINA' as const, nombre: 'Nómina', descuentoTIN: 0.003, condicion: 'Nómina ≥ 1.200 €/mes' },
-  { tipo: 'SEGURO_HOGAR' as const, nombre: 'Seguro hogar', descuentoTIN: 0.002, condicion: 'Seguro hogar contratado' },
-  { tipo: 'SEGURO_VIDA' as const, nombre: 'Seguro vida', descuentoTIN: 0.002, condicion: 'Seguro vida contratado' },
-  { tipo: 'TARJETA' as const, nombre: 'Uso tarjeta', descuentoTIN: 0.001, condicion: '≥ 6 operaciones/mes' },
-  { tipo: 'PLAN_PENSIONES' as const, nombre: 'Plan pensiones', descuentoTIN: 0.002, condicion: 'Plan activo' },
-  { tipo: 'RECIBOS' as const, nombre: 'Recibos domiciliados', descuentoTIN: 0.001, condicion: 'Recibos domiciliados' },
-  { tipo: 'ALARMA' as const, nombre: 'Alarma', descuentoTIN: 0.001, condicion: 'Alarma contratada' },
+  { tipo: 'NOMINA' as const, nombre: 'Nómina', descuentoTIN: 0.30, condicion: 'Nómina ≥ 1.200 €/mes' },
+  { tipo: 'SEGURO_HOGAR' as const, nombre: 'Seguro hogar', descuentoTIN: 0.20, condicion: 'Seguro hogar contratado' },
+  { tipo: 'SEGURO_VIDA' as const, nombre: 'Seguro vida', descuentoTIN: 0.20, condicion: 'Seguro vida contratado' },
+  { tipo: 'TARJETA' as const, nombre: 'Uso tarjeta', descuentoTIN: 0.10, condicion: '≥ 6 operaciones/mes' },
+  { tipo: 'PLAN_PENSIONES' as const, nombre: 'Plan pensiones', descuentoTIN: 0.25, condicion: 'Plan activo' },
+  { tipo: 'RECIBOS' as const, nombre: 'Recibos domiciliados', descuentoTIN: 0.10, condicion: 'Recibos domiciliados' },
+  { tipo: 'ALARMA' as const, nombre: 'Alarma', descuentoTIN: 0.10, condicion: 'Alarma contratada' },
 ];
 
 const labelStyle: React.CSSProperties = {
@@ -75,8 +75,8 @@ const BonificacionesStep: React.FC<BonificacionesStepProps> = ({ data, onChange,
       tipo: 'OTROS',
       nombre: customNombre,
       condicionParametrizable: customNombre,
-      descuentoTIN: parseFloat(customDescuento) / 100,
-      impacto: { puntos: -(parseFloat(customDescuento) / 100) },
+      descuentoTIN: parseFloat(customDescuento) || 0,
+      impacto: { puntos: -(parseFloat(customDescuento) || 0) },
       aplicaEn: 'FIJO',
       ventanaEvaluacion: 6,
       fuenteVerificacion: 'MANUAL',
@@ -129,7 +129,7 @@ const BonificacionesStep: React.FC<BonificacionesStepProps> = ({ data, onChange,
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-gray)' }}>{preset.condicion}</div>
                 <div style={{ fontSize: 12, color: isSelected ? 'var(--ok)' : 'var(--atlas-blue)', fontVariantNumeric: 'tabular-nums' }}>
-                  -{(preset.descuentoTIN * 100).toFixed(2)} p.p.
+                  -{preset.descuentoTIN.toFixed(2)} p.p.
                 </div>
                 {!isSelected && (
                   <button
@@ -177,7 +177,7 @@ const BonificacionesStep: React.FC<BonificacionesStepProps> = ({ data, onChange,
                 <div>
                   <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--atlas-navy-1)' }}>{bon.nombre}</span>
                   <span style={{ marginLeft: 12, fontSize: 12, color: 'var(--ok)', fontVariantNumeric: 'tabular-nums' }}>
-                    -{(bon.descuentoTIN * 100).toFixed(2)} p.p.
+                    -{bon.descuentoTIN.toFixed(2)} p.p.
                   </span>
                 </div>
                 <button
@@ -195,13 +195,13 @@ const BonificacionesStep: React.FC<BonificacionesStepProps> = ({ data, onChange,
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
               <span style={{ color: 'var(--text-gray)' }}>Descuento total:</span>
               <span style={{ fontWeight: 700, color: 'var(--ok)', fontVariantNumeric: 'tabular-nums' }}>
-                -{(totalDescuento * 100).toFixed(2)} p.p.
+                -{totalDescuento.toFixed(2)} p.p.
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }}>
               <span style={{ color: 'var(--text-gray)' }}>TIN efectivo resultante:</span>
               <span style={{ fontWeight: 700, color: 'var(--atlas-blue)', fontVariantNumeric: 'tabular-nums' }}>
-                {(tinEfectivo * 100).toFixed(3)} %
+                {tinEfectivo.toFixed(3)} %
               </span>
             </div>
           </div>

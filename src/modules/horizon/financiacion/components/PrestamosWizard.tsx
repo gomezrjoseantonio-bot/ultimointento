@@ -112,6 +112,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const hasChanges = useRef(false);
+  const existingPrincipalVivoRef = useRef<number | undefined>(undefined);
 
   const calculoLive = useDebouncedCalculation(formData);
 
@@ -136,6 +137,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     if (prestamoId) {
       prestamosService.getPrestamoById(prestamoId).then(prestamo => {
         if (prestamo) {
+          existingPrincipalVivoRef.current = prestamo.principalVivo;
           setFormData({
             id: prestamo.id,
             ambito: prestamo.ambito,
@@ -229,8 +231,8 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       if (!formData.cuentaCargoId) newErrors.cuentaCargoId = 'Selecciona una cuenta de cargo';
       if (!formData.fechaFirma) newErrors.fechaFirma = 'Introduce la fecha de firma';
       if (!formData.fechaPrimerCargo) newErrors.fechaPrimerCargo = 'Introduce la fecha del primer cargo';
-      if (!formData.diaCobroMes || formData.diaCobroMes < 1 || formData.diaCobroMes > 28) {
-        newErrors.diaCobroMes = 'Día de cobro debe estar entre 1 y 28';
+      if (!formData.diaCobroMes || formData.diaCobroMes < 1 || formData.diaCobroMes > 31) {
+        newErrors.diaCobroMes = 'Día de cobro debe estar entre 1 y 31';
       }
     }
 
@@ -272,6 +274,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     try {
       const mapped = mapToStoragePrestamo(formData as PrestamoFinanciacion);
       if (prestamoId) {
+        // Preserve principalVivo for existing loans instead of resetting to capitalInicial
+        if (existingPrincipalVivoRef.current !== undefined) {
+          mapped.principalVivo = existingPrincipalVivoRef.current;
+        }
         await prestamosService.updatePrestamo(prestamoId, mapped);
       } else {
         await prestamosService.createPrestamo(mapped);

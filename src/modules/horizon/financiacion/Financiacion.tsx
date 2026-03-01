@@ -17,6 +17,7 @@ const Financiacion: React.FC = () => {
   const [feinInitialData, setFeinInitialData] = useState<Partial<PrestamoFinanciacion> | null>(null);
 
   const handleCreateNew = () => {
+    setSelectedPrestamoId(''); // Clear any stale prestamo ID
     setFeinInitialData(null); // Clear any FEIN data
     setCurrentView('create');
   };
@@ -119,7 +120,7 @@ const Financiacion: React.FC = () => {
 
   if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload' || currentView === 'detail') {
     // Don't wrap creation/edit/FEIN/detail views in PageLayout since they have their own navigation
-    return <div className="min-h-screen bg-bg">{renderContent()}</div>;
+    return <div className="min-h-screen bg-bg pb-20">{renderContent()}</div>;
   }
 
   return (

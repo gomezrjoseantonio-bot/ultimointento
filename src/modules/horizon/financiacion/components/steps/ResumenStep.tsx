@@ -52,7 +52,7 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
   const tinEfectivo = Math.max(0, tinBase - totalDescuento);
 
   // Simple French system calculation
-  const r = tinEfectivo / 12;
+  const r = tinEfectivo / 100 / 12;
   const cuotaMensual =
     r > 0 && plazoMeses > 0
       ? (capital * r * Math.pow(1 + r, plazoMeses)) / (Math.pow(1 + r, plazoMeses) - 1)
@@ -140,7 +140,7 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
           </div>
           <div style={rowStyle}>
             <span style={{ color: 'var(--text-gray)' }}>TIN base</span>
-            <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{(tinBase * 100).toFixed(3)} %</span>
+            <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{tinBase.toFixed(3)} %</span>
           </div>
         </div>
 
@@ -155,14 +155,14 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
                 <div key={b.id} style={rowStyle}>
                   <span style={{ color: 'var(--text-gray)' }}>{b.nombre}</span>
                   <span style={{ fontWeight: 600, color: 'var(--ok)', fontVariantNumeric: 'tabular-nums' }}>
-                    -{(b.descuentoTIN * 100).toFixed(2)} p.p.
+                    -{b.descuentoTIN.toFixed(2)} p.p.
                   </span>
                 </div>
               ))}
               <div style={{ ...rowStyle, borderTop: '1px solid #eee', paddingTop: 4, marginTop: 4 }}>
                 <span style={{ fontWeight: 700, color: 'var(--atlas-navy-1)' }}>TIN efectivo</span>
                 <span style={{ fontWeight: 700, color: 'var(--atlas-blue)', fontVariantNumeric: 'tabular-nums' }}>
-                  {(tinEfectivo * 100).toFixed(3)} %
+                  {tinEfectivo.toFixed(3)} %
                 </span>
               </div>
             </>
