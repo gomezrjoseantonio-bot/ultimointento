@@ -66,6 +66,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
     planPensiones: undefined as PlanPensionesNomina | undefined,
     deduccionesAdicionales: [] as DeduccionNomina[],
     cuentaAbono: 0,
+    retribucionEspecieAnual: '',
+    aportacionEmpresaPlanPensionesAnual: '',
     reglaCobroDia: { tipo: 'fijo', dia: 25 } as ReglaDia,
     activa: true,
   });
@@ -97,6 +99,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         planPensiones: nomina.planPensiones,
         deduccionesAdicionales: nomina.deduccionesAdicionales ?? [],
         cuentaAbono: nomina.cuentaAbono,
+        retribucionEspecieAnual: nomina.retribucionEspecieAnual?.toString() ?? '',
+        aportacionEmpresaPlanPensionesAnual: nomina.aportacionEmpresaPlanPensionesAnual?.toString() ?? '',
         reglaCobroDia: nomina.reglaCobroDia,
         activa: nomina.activa,
       });
@@ -116,6 +120,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         planPensiones: undefined,
         deduccionesAdicionales: [],
         cuentaAbono: 0,
+        retribucionEspecieAnual: '',
+        aportacionEmpresaPlanPensionesAnual: '',
         reglaCobroDia: { tipo: 'fijo', dia: 25 },
         activa: true,
       });
@@ -174,6 +180,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         planPensiones: formData.tienePlanPensiones ? formData.planPensiones : undefined,
         deduccionesAdicionales: formData.deduccionesAdicionales,
         cuentaAbono: formData.cuentaAbono,
+        retribucionEspecieAnual: parseFloat(formData.retribucionEspecieAnual) || undefined,
+        aportacionEmpresaPlanPensionesAnual: parseFloat(formData.aportacionEmpresaPlanPensionesAnual) || undefined,
         reglaCobroDia: formData.reglaCobroDia,
         activa: formData.activa,
       };
@@ -395,6 +403,35 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                 </div>
               </div>
 
+
+
+              <details className="border border-neutral-200 p-3 bg-neutral-50">
+                <summary className="text-sm font-medium text-neutral-800 cursor-pointer">Datos fiscales adicionales (opcional)</summary>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 mb-0.5">Retribución en especie anual (€)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.retribucionEspecieAnual}
+                      onChange={(e) => setFormData(prev => ({ ...prev, retribucionEspecieAnual: e.target.value }))}
+                      className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 mb-0.5">Aportación empresa a plan pensiones (€)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.aportacionEmpresaPlanPensionesAnual}
+                      onChange={(e) => setFormData(prev => ({ ...prev, aportacionEmpresaPlanPensionesAnual: e.target.value }))}
+                      className="w-full border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                </div>
+              </details>
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">Distribución del Salario</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -408,7 +445,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                       }))}
                       className={`p-2 py-1.5 border-2 rounded-lg cursor-pointer text-sm font-medium text-center transition-colors ${
                         formData.distribucion.tipo === tipo
-                          ? 'bg-blue-50 border-blue-500 text-brand-navy font-semibold'
+                          ? 'bg-[var(--atlas-info-100)] border-[var(--atlas-info-500)] text-brand-navy font-semibold'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
@@ -770,6 +807,8 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                   planPensiones: formData.tienePlanPensiones ? formData.planPensiones : undefined,
                   deduccionesAdicionales: formData.deduccionesAdicionales,
                   cuentaAbono: formData.cuentaAbono,
+                  retribucionEspecieAnual: parseFloat(formData.retribucionEspecieAnual) || undefined,
+                  aportacionEmpresaPlanPensionesAnual: parseFloat(formData.aportacionEmpresaPlanPensionesAnual) || undefined,
                   reglaCobroDia: formData.reglaCobroDia,
                   activa: formData.activa,
                   fechaAntiguedad: formData.fechaAntiguedad || new Date().toISOString(),

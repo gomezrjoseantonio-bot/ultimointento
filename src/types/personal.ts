@@ -73,6 +73,10 @@ export interface Nomina {
   // ── QUÉ COBRO: RETRIBUCIÓN EN ESPECIE ─────────────────────
   beneficiosSociales: BeneficioSocial[];
 
+  // ── DATOS FISCALES ADICIONALES (OPCIONAL) ─────────────────
+  retribucionEspecieAnual?: number;
+  aportacionEmpresaPlanPensionesAnual?: number;
+
   // ── QUÉ ME QUITAN: RETENCIÓN ──────────────────────────────
   retencion: RetencionNomina;
 

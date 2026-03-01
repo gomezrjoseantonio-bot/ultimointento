@@ -39,10 +39,14 @@ const FiscalDashboard: React.FC = () => {
 
   return (
     <PageLayout
-      title="Fiscalidad — Dashboard"
-      subtitle="Resumen fiscal del ejercicio"
+      title="Resumen fiscal"
+      subtitle="Histórico + situación del año en curso"
     >
       {/* Year selector */}
+      <div className="mb-3">
+        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-neutral-100 text-neutral-700">Estimación basada en proyecciones cuando faltan datos de Tesorería</span>
+      </div>
+
       <div className="flex justify-end mb-4">
         <select
           value={ejercicio}
@@ -54,7 +58,7 @@ const FiscalDashboard: React.FC = () => {
       </div>
       {loading && (
         <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--atlas-info-600)] border-t-transparent" />
         </div>
       )}
 
@@ -76,17 +80,17 @@ const FiscalDashboard: React.FC = () => {
               </p>
             </div>
 
-            <div className={`border rounded-lg p-5 shadow-sm ${declaracion.resultado >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-cyan-50 border-cyan-200'}`}>
+            <div className={`border rounded-lg p-5 shadow-sm ${declaracion.resultado >= 0 ? 'bg-[var(--atlas-info-100)] border-[var(--atlas-info-300)]' : 'bg-cyan-50 border-cyan-200'}`}>
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Resultado provisional</p>
               <div className="flex items-center gap-2 mt-1">
                 {declaracion.resultado >= 0
-                  ? <TrendingUp className="w-5 h-5 text-blue-700" />
+                  ? <TrendingUp className="w-5 h-5 text-[var(--atlas-info-700)]" />
                   : <TrendingDown className="w-5 h-5 text-cyan-700" />}
-                <p className={`text-2xl font-bold ${declaracion.resultado >= 0 ? 'text-blue-800' : 'text-cyan-800'}`}>
+                <p className={`text-2xl font-bold ${declaracion.resultado >= 0 ? 'text-[var(--atlas-info-800)]' : 'text-cyan-800'}`}>
                   {fmt(Math.abs(declaracion.resultado))}
                 </p>
               </div>
-              <p className={`text-xs mt-1 font-medium ${declaracion.resultado >= 0 ? 'text-blue-700' : 'text-cyan-700'}`}>
+              <p className={`text-xs mt-1 font-medium ${declaracion.resultado >= 0 ? 'text-[var(--atlas-info-700)]' : 'text-cyan-700'}`}>
                 {declaracion.resultado >= 0 ? 'A pagar' : 'A devolver'}
               </p>
             </div>
@@ -143,7 +147,7 @@ const FiscalDashboard: React.FC = () => {
           {proximosEventos.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
+                <Calendar className="w-4 h-4 text-[var(--atlas-info-700)]" />
                 Próximos pagos fiscales
               </h3>
               <div className="space-y-2">
@@ -153,7 +157,7 @@ const FiscalDashboard: React.FC = () => {
                       <p className="text-sm font-medium text-gray-900">{e.descripcion}</p>
                       <p className="text-xs text-gray-500">Límite: {new Date(e.fechaLimite).toLocaleDateString('es-ES')}</p>
                     </div>
-                    <span className={`text-sm font-semibold ${e.importe >= 0 ? 'text-blue-700' : 'text-cyan-700'}`}>
+                    <span className={`text-sm font-semibold ${e.importe >= 0 ? 'text-[var(--atlas-info-700)]' : 'text-cyan-700'}`}>
                       {fmt(Math.abs(e.importe))}
                     </span>
                   </div>

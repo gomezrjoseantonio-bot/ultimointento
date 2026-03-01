@@ -10,7 +10,7 @@ import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 
-type DetailTab = 'resumen' | 'contratos' | 'presupuesto';
+type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
 
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -183,6 +183,7 @@ const PropertyDetail: React.FC = () => {
             { id: 'resumen', label: 'Resumen', Icon: LayoutList },
             { id: 'contratos', label: 'Contratos / Ingresos', Icon: Users },
             { id: 'presupuesto', label: 'Presupuesto (OPEX/CAPEX)', Icon: TrendingDown },
+            { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
         ).map(({ id: tabId, label, Icon }) => {
           const isActive = activeTab === tabId;
@@ -440,6 +441,8 @@ const PropertyDetail: React.FC = () => {
         <p className="text-xs text-neutral-500 mt-2">El cálculo de CAPEX se implementará en H5</p>
       </div>
 
+      {activeTab === 'fiscal' && (
+        <>
       {/* H5: Datos fiscales auxiliares */}
       <div className="bg-white border border-neutral-200 p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Datos fiscales auxiliares</h3>
@@ -501,7 +504,7 @@ const PropertyDetail: React.FC = () => {
 
           {/* Inmueble accesorio */}
           {property.fiscalData?.isAccessory && (
-            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
+            <div className="bg-[var(--atlas-info-100)] border border-[var(--atlas-info-300)] p-3">
               <div className="text-sm font-medium text-primary-900 mb-2">Inmueble accesorio</div>
               {property.fiscalData.mainPropertyId && (
                 <div className="text-xs text-primary-700">
@@ -569,6 +572,10 @@ const PropertyDetail: React.FC = () => {
       <div className="bg-white border border-neutral-200 p-6">
         <PropertyImprovements propertyId={property.id!} />
       </div>
+
+
+        </>
+      )}
 
       {/* Atajos */}
       <div className="bg-white border border-neutral-200 p-6">

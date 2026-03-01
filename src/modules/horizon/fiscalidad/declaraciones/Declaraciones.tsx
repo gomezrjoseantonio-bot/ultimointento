@@ -610,7 +610,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
     return (
       <PageLayout title="Declaraciones" subtitle="Preparación de declaraciones fiscales." primaryAction={primaryAction}>
         <div className="flex items-center justify-center py-12">
-          <div className="btn-secondary-horizon animate-spin h-8 w-8 "></div>
+          <div className="animate-spin h-8 w-8 border-2 border-[var(--atlas-info-600)] border-t-transparent rounded-full"></div>
         </div>
       </PageLayout>
     );
@@ -662,7 +662,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
             </div>
           </div>
           
-          <div className="btn-secondary-horizon mt-4 p-4">
+          <div className="mt-4 p-4 bg-[var(--atlas-info-100)] border border-[var(--atlas-info-300)]">
             <div className="flex items-center space-x-2 text-sm text-primary-800">
               <Archive className="h-4 w-4" />
               <span>

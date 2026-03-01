@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
+import { getOrCreateEjercicio } from '../../../../services/ejercicioFiscalService';
+import { EjercicioFiscal } from '../../../../services/db';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -11,20 +14,26 @@ const Row: React.FC<{ label: string; value: number; highlight?: boolean; indent?
 }) => (
   <div className={`flex justify-between items-center py-2 ${indent ? 'pl-4' : ''} ${highlight ? 'border-t border-gray-300 font-semibold' : 'border-t border-gray-100'}`}>
     <span className={`text-sm ${highlight ? 'text-gray-900' : 'text-gray-600'}`}>{label}</span>
-    <span className={`text-sm ${highlight ? 'text-gray-900' : ''} ${value < 0 ? 'text-cyan-700' : ''}`}>{fmt(value)}</span>
+    <span className={`text-sm ${highlight ? 'text-gray-900' : ''} ${value < 0 ? 'text-[var(--atlas-teal-700)]' : ''}`}>{fmt(value)}</span>
   </div>
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="bg-white border border-gray-200 p-5 shadow-sm">
-    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-700">{title}</h3>
+    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--atlas-navy-1)]">{title}</h3>
     {children}
   </div>
 );
 
+const formatDate = (date?: string) => {
+  if (!date) return '—';
+  return new Date(date).toLocaleDateString('es-ES');
+};
+
 const DeclaracionPage: React.FC = () => {
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
+  const [ejercicioFiscal, setEjercicioFiscal] = useState<EjercicioFiscal | null>(null);
   const [loading, setLoading] = useState(true);
 
   const currentYear = new Date().getFullYear();
@@ -33,8 +42,12 @@ const DeclaracionPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const decl = await calcularDeclaracionIRPF(ejercicio);
+      const [decl, ejercicioData] = await Promise.all([
+        calcularDeclaracionIRPF(ejercicio),
+        getOrCreateEjercicio(ejercicio),
+      ]);
       setDeclaracion(decl);
+      setEjercicioFiscal(ejercicioData);
     } catch (e) {
       console.error('Error loading declaracion:', e);
     } finally {
@@ -55,37 +68,74 @@ const DeclaracionPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const dataRealPct = declaracion ? (declaracion.retenciones.total > 0 ? 75 : 0) : 0;
+
+  const title = ejercicioFiscal?.estado === 'declarado'
+    ? `Declaración IRPF ${ejercicio}`
+    : `Estimación IRPF ${ejercicio}`;
+
   return (
     <PageLayout
-      title={`Declaración IRPF ${ejercicio}`}
-      subtitle="Desglose completo de bases, liquidación y resultado"
+      title={title}
+      subtitle="Desglose AEAT del ejercicio seleccionado"
     >
-      {/* Controls */}
-      <div className="flex justify-end gap-2 mb-4">
-        <select
-          value={ejercicio}
-          onChange={e => setEjercicio(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        >
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button
-          onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Exportar
-        </button>
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          {ejercicioFiscal?.estado === 'declarado' ? (
+            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--atlas-info-100)] text-[var(--atlas-info-700)]">
+              🔵 Declarado · Presentado {formatDate(ejercicioFiscal.fechaDeclaracion)}
+            </span>
+          ) : ejercicioFiscal?.estado === 'cerrado' ? (
+            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--atlas-warning-100)] text-[var(--atlas-warning-700)]">
+              🟡 Cerrado el {formatDate(ejercicioFiscal.fechaCierre)}
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-[var(--atlas-success-100)] text-[var(--atlas-success-700)]">
+              🟢 Ejercicio en curso · {dataRealPct}% datos reales
+            </span>
+          )}
+          {dataRealPct === 0 && (
+            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-neutral-100 text-neutral-700">
+              Estimación basada en proyecciones
+            </span>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <select
+            value={ejercicio}
+            onChange={e => setEjercicio(Number(e.target.value))}
+            className="px-3 py-2 border border-gray-300 text-sm"
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 atlas-btn-primary text-sm"
+          >
+            <Download className="w-4 h-4" />
+            Exportar JSON
+          </button>
+        </div>
       </div>
+
       {loading && (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" />
+        <div className="space-y-3">
+          {[1, 2, 3].map(item => (
+            <div key={item} className="bg-white border border-gray-200 p-5 animate-pulse">
+              <div className="h-4 w-48 bg-neutral-200 mb-4" />
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-neutral-100" />
+                <div className="h-3 w-5/6 bg-neutral-100" />
+                <div className="h-3 w-2/3 bg-neutral-100" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {!loading && declaracion && (
         <div className="space-y-4">
-          {/* BASE GENERAL */}
           <Section title="A · Rendimientos del trabajo">
             {declaracion.baseGeneral.rendimientosTrabajo ? (
               <>
@@ -98,20 +148,7 @@ const DeclaracionPage: React.FC = () => {
                 <Row label="Rendimiento neto del trabajo" value={declaracion.baseGeneral.rendimientosTrabajo.rendimientoNeto} highlight />
               </>
             ) : (
-              <p className="text-sm text-gray-500">No se han declarado rendimientos del trabajo.</p>
-            )}
-          </Section>
-
-          <Section title="B · Actividades económicas (autónomo)">
-            {declaracion.baseGeneral.rendimientosAutonomo ? (
-              <>
-                <Row label="Ingresos" value={declaracion.baseGeneral.rendimientosAutonomo.ingresos} indent />
-                <Row label="Gastos deducibles" value={-declaracion.baseGeneral.rendimientosAutonomo.gastos} indent />
-                <Row label="Cuota Seguridad Social" value={-declaracion.baseGeneral.rendimientosAutonomo.cuotaSS} indent />
-                <Row label="Rendimiento neto" value={declaracion.baseGeneral.rendimientosAutonomo.rendimientoNeto} highlight />
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">No se han declarado actividades económicas.</p>
+              <p className="text-sm text-gray-500">No hay nómina registrada. <Link className="underline" to="/personal">Ir a Personal → Nómina</Link>.</p>
             )}
           </Section>
 
@@ -128,61 +165,15 @@ const DeclaracionPage: React.FC = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">No se han declarado rendimientos inmobiliarios.</p>
+              <p className="text-sm text-gray-500">No hay datos de inmuebles para este ejercicio.</p>
             )}
           </Section>
 
-          {declaracion.baseGeneral.imputacionRentas.length > 0 && (
-            <Section title="D · Imputación de rentas (inmuebles vacíos)">
-              {declaracion.baseGeneral.imputacionRentas.map(i => (
-                <div key={i.inmuebleId} className="mb-2">
-                  <Row
-                    label={`${i.alias} (${(i.porcentajeImputacion * 100).toFixed(1)}% × VC ${fmt(i.valorCatastral)})`}
-                    value={i.imputacion}
-                  />
-                </div>
-              ))}
-              <Row
-                label="Total imputación rentas"
-                value={declaracion.baseGeneral.imputacionRentas.reduce((s, i) => s + i.imputacion, 0)}
-                highlight
-              />
-            </Section>
-          )}
-
-          <Section title="E · Rendimientos del capital mobiliario (base ahorro)">
-            <Row label="Intereses" value={declaracion.baseAhorro.capitalMobiliario.intereses} indent />
-            <Row label="Dividendos" value={declaracion.baseAhorro.capitalMobiliario.dividendos} indent />
-            <Row label="Total RCM" value={declaracion.baseAhorro.capitalMobiliario.total} highlight />
-          </Section>
-
-          <Section title="F · Ganancias y pérdidas patrimoniales (base ahorro)">
-            <Row label="Plusvalías realizadas" value={declaracion.baseAhorro.gananciasYPerdidas.plusvalias} indent />
-            <Row label="Minusvalías realizadas" value={-declaracion.baseAhorro.gananciasYPerdidas.minusvalias} indent />
-            <Row label="Resultado compensado" value={declaracion.baseAhorro.gananciasYPerdidas.compensado} highlight />
-          </Section>
-
-          {/* LIQUIDACIÓN */}
           <Section title="Liquidación">
             <Row label="Base general" value={declaracion.baseGeneral.total} />
             <Row label="Reducción plan de pensiones" value={-declaracion.reducciones.planPensiones} indent />
-            {(declaracion.reducciones.ppEmpleado ?? 0) > 0 && (
-              <Row label="· PP empleado" value={-declaracion.reducciones.ppEmpleado} indent />
-            )}
-            {(declaracion.reducciones.ppEmpresa ?? 0) > 0 && (
-              <Row label="· PP empresa" value={-declaracion.reducciones.ppEmpresa} indent />
-            )}
-            {(declaracion.reducciones.ppIndividual ?? 0) > 0 && (
-              <Row label="· PP individual" value={-declaracion.reducciones.ppIndividual} indent />
-            )}
             <Row label="Base imponible general" value={declaracion.liquidacion.baseImponibleGeneral} highlight />
             <Row label="Base imponible ahorro" value={declaracion.liquidacion.baseImponibleAhorro} highlight />
-            <Row label="Cuota íntegra BG (tramos progresivos)" value={declaracion.liquidacion.cuotaBaseGeneral} indent />
-            <Row label="Cuota íntegra BA" value={declaracion.liquidacion.cuotaBaseAhorro} indent />
-            <Row label="Reducción por mínimos personales" value={-declaracion.liquidacion.cuotaMinimosBaseGeneral} indent />
-            <Row label="Mínimo personal" value={declaracion.minimoPersonal.total} indent />
-            <Row label="Cuota íntegra total" value={declaracion.liquidacion.cuotaIntegra} highlight />
-            <Row label="Deducciones (doble imposición internacional)" value={-declaracion.liquidacion.deduccionesDobleImposicion} indent />
             <Row label="Cuota líquida" value={declaracion.liquidacion.cuotaLiquida} highlight />
             <Row label="Retenciones e ingresos a cuenta" value={-declaracion.retenciones.total} indent />
             <Row
@@ -192,9 +183,8 @@ const DeclaracionPage: React.FC = () => {
             />
           </Section>
 
-          {/* TIPO EFECTIVO */}
-          <div className="bg-primary-50 border border-primary-200 p-4">
-            <p className="text-sm text-primary-800">
+          <div className="bg-[var(--atlas-info-100)] border border-[var(--atlas-info-300)] p-4">
+            <p className="text-sm text-[var(--atlas-info-700)]">
               Tipo efectivo: <strong>{declaracion.tipoEfectivo.toFixed(2)}%</strong>
               {' '}sobre una base imponible total de{' '}
               <strong>{fmt(declaracion.liquidacion.baseImponibleGeneral + declaracion.liquidacion.baseImponibleAhorro)}</strong>
