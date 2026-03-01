@@ -1,8 +1,9 @@
-import { initDB, FiscalSummary, Document } from './db';
+import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
 import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
 import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
+import { calculateAEATLimits } from '../utils/aeatUtils';
 
 /**
  * Calculate or update fiscal summary for a property and year
@@ -122,14 +123,64 @@ export const calculateFiscalSummary = async (
     summary.annualDepreciation = summary.constructionValue * 0.03; // 3% annual depreciation
   }
 
-  // Calculate deductible excess (if 0105 + 0106 exceed rental income)
-  // Note: This would need rental income data to be complete
-  // For now, mark excess if 0105 + 0106 > 0 (placeholder logic)
+  // Calculate deductible excess: (0105 + 0106) limited to rental income per AEAT art. 23 LIRPF
   const financingAndRepairs = summary.box0105 + summary.box0106;
-  if (financingAndRepairs > 0) {
-    // TODO: Compare against actual rental income for this property/year
-    // For now, assume excess if over a threshold
-    summary.deductibleExcess = financingAndRepairs; // Placeholder
+
+  // Get rental income for this property in this year from contracts
+  const contractsForProperty = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
+  const propertyContracts = (contractsForProperty as any[]).filter((c: any) => {
+    const inicio = new Date(c.fechaInicio ?? c.startDate);
+    const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
+    return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
+  });
+  let ingresosIntegros = 0;
+  for (const contract of propertyContracts) {
+    const renta = contract.rentaMensual ?? 0;
+    const inicio = new Date(contract.fechaInicio ?? contract.startDate);
+    const fin = new Date(contract.fechaFin ?? contract.endDate ?? `${exerciseYear}-12-31`);
+    const mesInicio = inicio.getFullYear() < exerciseYear ? 1 : inicio.getMonth() + 1;
+    const mesFin = fin.getFullYear() > exerciseYear ? 12 : fin.getMonth() + 1;
+    const meses = Math.max(0, mesFin - mesInicio + 1);
+    ingresosIntegros += renta * meses;
+  }
+
+  // Apply AEAT limit: 0105 + 0106 cannot exceed ingresos íntegros
+  const { applied: limitApplied, excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
+  summary.deductibleExcess = excess;
+
+  // Save or upsert AEATCarryForward record when there is excess; delete stale record when excess becomes 0
+  if (excess > 0) {
+    const cfRecord: Omit<AEATCarryForward, 'id'> = {
+      propertyId,
+      taxYear: exerciseYear,
+      totalIncome: ingresosIntegros,
+      financingAndRepair: financingAndRepairs,
+      limitApplied,
+      excessAmount: excess,
+      expirationYear: exerciseYear + 4,
+      remainingAmount: excess,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
+    if (existingCf) {
+      await db.put('aeatCarryForwards', {
+        ...cfRecord,
+        id: existingCf.id,
+        createdAt: existingCf.createdAt,
+        updatedAt: new Date().toISOString(),
+      });
+    } else {
+      await db.add('aeatCarryForwards', cfRecord);
+    }
+  } else {
+    // Excess is zero: remove any stale record for this property/year (e.g. documents reclassified)
+    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
+    if (existingCf) {
+      await db.delete('aeatCarryForwards', existingCf.id!);
+    }
   }
 
   // Save or update the summary
@@ -252,7 +303,8 @@ export const exportFiscalData = async (
  * Calculate carryforward amounts for deductible excess with proper AEAT 4-year limit
  */
 export const calculateCarryForwards = async (
-  propertyId: number
+  propertyId: number,
+  ejercicio?: number
 ): Promise<Array<{
   exerciseYear: number;
   excessAmount: number;
@@ -262,7 +314,7 @@ export const calculateCarryForwards = async (
   expiresThisYear?: boolean;
 }>> => {
   const summaries = await getPropertyFiscalSummaries(propertyId);
-  const currentYear = new Date().getFullYear();
+  const currentYear = ejercicio ?? new Date().getFullYear();
   
   // Get summaries with deductible excess from last 4 years that haven't expired
   const excessSummaries = summaries

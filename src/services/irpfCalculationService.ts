@@ -3,8 +3,7 @@
 
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
-import { calculateFiscalSummary } from './fiscalSummaryService';
-import { nominaService } from './nominaService';
+import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -87,6 +86,11 @@ export interface RendimientoInmueble {
   imputacionRenta: number;
   // Total: rendimientoNetoAlquiler + imputacionRenta
   rendimientoNeto: number;
+  // AEAT art. 23 LIRPF limit tracking for 0105+0106
+  gastosFinanciacionYReparacion?: number; // Original 0105+0106 (prorated)
+  limiteAplicado?: number;               // min(financingRepairs, ingresosIntegros)
+  excesoArrastrable?: number;            // max(0, financingRepairs - ingresosIntegros)
+  arrastresAplicados?: number;           // Carryforwards applied from previous years
 }
 
 export interface ImputacionRenta {
@@ -387,15 +391,40 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       // Get fiscal summary and prorate expenses by rental days ratio
       let gastosDeducibles = 0;
       let amortizacion = 0;
+      let gastosFinanciacionYReparacion = 0;
+      let limiteAplicado = 0;
+      let excesoArrastrable = 0;
+      let arrastresAplicados = 0;
       try {
         const summary = await calculateFiscalSummary(prop.id!, ejercicio);
         const ratio = diasAlquilado / diasTotal;
-        gastosDeducibles = round2(
-          ((summary.box0105 ?? 0) + (summary.box0106 ?? 0) + (summary.box0109 ?? 0) +
-          (summary.box0112 ?? 0) + (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
-          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio
-        );
+
+        // AEAT art. 23 LIRPF: financing + repairs cannot exceed ingresos íntegros
+        const financingAndRepairsRaw = ((summary.box0105 ?? 0) + (summary.box0106 ?? 0)) * ratio;
+        const otherExpenses = ((summary.box0109 ?? 0) + (summary.box0112 ?? 0) +
+          (summary.box0113 ?? 0) + (summary.box0114 ?? 0) +
+          (summary.box0115 ?? 0) + (summary.box0117 ?? 0)) * ratio;
+
+        const limitedFinancingRepairs = Math.min(financingAndRepairsRaw, ingresosIntegros);
+
+        // Apply carryforwards from previous years (FIFO, oldest first)
+        // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
+        // which recomputes available amounts from fiscal summaries each time it is called.
+        const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
+        const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
+        let cfApplied = 0;
+        for (const cf of carryForwards) {
+          if (availableForCarryforward - cfApplied <= 0) break;
+          const canApply = Math.min(cf.remainingAmount, availableForCarryforward - cfApplied);
+          cfApplied = round2(cfApplied + canApply);
+        }
+
+        gastosDeducibles = round2(limitedFinancingRepairs + cfApplied + otherExpenses);
         amortizacion = round2((summary.annualDepreciation ?? 0) * ratio);
+        gastosFinanciacionYReparacion = round2(financingAndRepairsRaw);
+        limiteAplicado = round2(limitedFinancingRepairs);
+        excesoArrastrable = round2(Math.max(0, financingAndRepairsRaw - limitedFinancingRepairs));
+        arrastresAplicados = round2(cfApplied);
       } catch {
         // ignore
       }
@@ -430,6 +459,10 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         esHabitual,
         imputacionRenta,
         rendimientoNeto: round2(rendimientoNetoAlquiler + imputacionRenta),
+        gastosFinanciacionYReparacion,
+        limiteAplicado,
+        excesoArrastrable,
+        arrastresAplicados,
       });
     } else {
       // Property is fully vacant — imputación de rentas only
