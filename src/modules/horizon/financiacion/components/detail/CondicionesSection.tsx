@@ -80,17 +80,6 @@ const CondicionesSection: React.FC<CondicionesSectionProps> = ({ prestamo, cuent
           </div>
         ) : null}
 
-        {/* Metadata */}
-        <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-gray)' }}>
-            Metadata
-          </h4>
-          <div className="divide-y divide-gray-100 border border-gray-100 rounded px-4">
-            <Row label="Origen" value={prestamo.origenCreacion} />
-            <Row label="Creado" value={new Date(prestamo.createdAt).toLocaleString('es-ES')} />
-            <Row label="Actualizado" value={new Date(prestamo.updatedAt).toLocaleString('es-ES')} />
-          </div>
-        </div>
       </div>
     </CollapsibleSection>
   );

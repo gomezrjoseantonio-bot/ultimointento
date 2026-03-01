@@ -51,8 +51,8 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
             </h2>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: prestamo.tipo === 'FIJO' ? 'rgba(37,99,235,0.1)' : 'rgba(234,179,8,0.1)',
-                         color: prestamo.tipo === 'FIJO' ? 'var(--atlas-blue)' : 'var(--warn)' }}>
+                style={{ backgroundColor: prestamo.tipo === 'VARIABLE' ? 'rgba(107,114,128,0.08)' : 'rgba(37,99,235,0.1)',
+                         color: prestamo.tipo === 'VARIABLE' ? 'var(--text-gray)' : 'var(--atlas-blue)' }}>
                 {prestamo.tipo}
               </span>
               <span className="text-xs px-2 py-0.5 rounded-full"
@@ -118,9 +118,6 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
         )}
         <span className="px-2 py-0.5 rounded-full border border-gray-200" style={{ color: 'var(--text-gray)' }}>
           Día cargo: {prestamo.diaCargoMes}
-        </span>
-        <span className="px-2 py-0.5 rounded-full border border-gray-200" style={{ color: 'var(--text-gray)' }}>
-          Sistema {prestamo.sistema}
         </span>
       </div>
     </div>

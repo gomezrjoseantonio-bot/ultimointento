@@ -273,13 +273,6 @@ const PrestamoDetail: React.FC<PrestamoDetailProps> = ({ prestamoId, onBack }) =
         <AmortizationSimulator
           prestamo={prestamo}
           onClose={() => setShowSimulator(false)}
-          onApply={(importe: number) => {
-            // Handle amortization application
-            console.log('Apply amortization:', importe);
-            setShowSimulator(false);
-            // Reload data after amortization
-            loadPrestamoData();
-          }}
         />
       )}
     </div>

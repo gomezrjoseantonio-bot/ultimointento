@@ -118,8 +118,8 @@ const Financiacion: React.FC = () => {
     }
   };
 
-  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload' || currentView === 'detail') {
-    // Don't wrap creation/edit/FEIN/detail views in PageLayout since they have their own navigation
+  if (currentView === 'create' || currentView === 'edit' || currentView === 'fein-upload') {
+    // Don't wrap creation/edit/FEIN views in PageLayout since they have their own navigation
     return <div style={{ height: '100vh', overflow: 'hidden', position: 'relative' }}>{renderContent()}</div>;
   }
 
