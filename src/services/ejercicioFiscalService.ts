@@ -138,7 +138,10 @@ export async function reabrirEjercicio(año: number): Promise<EjercicioFiscal> {
 }
 
 export async function declararEjercicio(año: number): Promise<EjercicioFiscal> {
-  const ejercicio = await getOrCreateEjercicio(año);
+  const ejercicio = await getEjercicio(año);
+  if (!ejercicio) {
+    throw new Error(`No se encontró el ejercicio ${año}.`);
+  }
   if (ejercicio.estado !== 'cerrado') {
     throw new Error(`No se puede declarar el ejercicio ${año} porque está en estado "${ejercicio.estado}". Primero debe cerrarse.`);
   }
