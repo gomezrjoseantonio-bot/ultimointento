@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, X } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { PrestamoFinanciacion } from '../../../../../types/financiacion';
 import CuadroAmortizacion from '../CuadroAmortizacion';
 
@@ -193,7 +193,7 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
 
       {/* Button to view amortization table */}
       <button
-        onClick={() => setShowAmortizacion(true)}
+        onClick={() => setShowAmortizacion(prev => !prev)}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -210,41 +210,22 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
         }}
       >
         <TrendingUp size={16} strokeWidth={1.5} />
-        Ver cuadro de amortización completo
+        {showAmortizacion ? 'Ocultar cuadro de amortización' : 'Ver cuadro de amortización completo'}
       </button>
 
-      {/* Error summary */}
-      {Object.keys(errors).length > 0 && (
-        <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,53,69,0.1)', border: '1px solid rgba(220,53,69,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--error)' }}>
-          Hay errores de validación. Revisa los pasos anteriores antes de guardar.
-        </div>
-      )}
-
-      {/* Amortization modal */}
+      {/* Inline amortization table */}
       {showAmortizacion && capital > 0 && plazoMeses > 0 && tinEfectivo >= 0 && (
         <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            padding: '40px 20px',
-            overflow: 'auto',
+            border: '1px solid #eee',
+            borderRadius: 8,
+            overflow: 'hidden',
           }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowAmortizacion(false); }}
         >
-          <div style={{ backgroundColor: 'var(--bg)', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', width: '100%', maxWidth: 900, padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--atlas-navy-1)' }}>Cuadro de amortización</div>
-              <button
-                onClick={() => setShowAmortizacion(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)' }}
-              >
-                <X size={20} strokeWidth={1.5} />
-              </button>
-            </div>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 700, fontSize: 14, color: 'var(--atlas-navy-1)' }}>
+            Cuadro de amortización
+          </div>
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
             <CuadroAmortizacion
               capitalInicial={capital}
               tinAnual={tinEfectivo}
@@ -253,6 +234,13 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
               tramoFijoMeses={data.tramoFijoAnos ? data.tramoFijoAnos * 12 : undefined}
             />
           </div>
+        </div>
+      )}
+
+      {/* Error summary */}
+      {Object.keys(errors).length > 0 && (
+        <div style={{ padding: '10px 14px', backgroundColor: 'rgba(220,53,69,0.1)', border: '1px solid rgba(220,53,69,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--error)' }}>
+          Hay errores de validación. Revisa los pasos anteriores antes de guardar.
         </div>
       )}
     </div>
