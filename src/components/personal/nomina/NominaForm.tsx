@@ -268,6 +268,35 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
 
   const stepLabels = ['Retribución', 'Retención y Deducciones', 'Cobro y Resumen'];
 
+  const renderNavButtons = () => {
+    if (step === 1) {
+      return (
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setStep(2)} className="atlas-btn-primary rounded-md">Siguiente →</button>
+        </div>
+      );
+    }
+    if (step === 2) {
+      return (
+        <div className="flex justify-between">
+          <button type="button" onClick={() => setStep(1)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
+          <button type="button" onClick={() => setStep(3)} className="atlas-btn-primary rounded-md">Siguiente →</button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex justify-between">
+        <button type="button" onClick={() => setStep(2)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
+        <div className="flex space-x-3">
+          <button type="button" onClick={onClose} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">Cancelar</button>
+          <button type="submit" form="nomina-wizard-form" disabled={loading} aria-busy={loading} className="atlas-btn-primary rounded-md disabled:opacity-50">
+            {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <AtlasModal
@@ -275,6 +304,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
         onClose={onClose}
         title={nomina ? 'Editar Nómina' : 'Nueva Nómina'}
         size="xl"
+        footer={renderNavButtons()}
       >
         <div className="flex items-center justify-between mb-4">
           {stepLabels.map((label, idx) => {
@@ -305,7 +335,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
           })}
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form id="nomina-wizard-form" onSubmit={handleSubmit}>
           {step === 1 && (
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -417,7 +447,7 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                     {formData.variables.map(variable => (
                       <div key={variable.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                         <div>
-                          <span className="font-medium">{variable.nombre}</span>
+                          <span className="text-sm font-medium">{variable.nombre}</span>
                           <span className="text-sm text-neutral-600 ml-2">({variable.tipo === 'porcentaje' ? `${variable.valor}%` : `${variable.valor}€`})</span>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -481,10 +511,6 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
               <div className="bg-brand-navy/5 rounded-lg p-4">
                 <p className="text-sm text-neutral-600">Bruto total anual estimado (base + variables + bonus)</p>
                 <p className="text-xl font-bold text-brand-navy">{brutoTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</p>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button type="button" onClick={() => setStep(2)} className="atlas-btn-primary rounded-md">Siguiente →</button>
               </div>
             </div>
           )}
@@ -662,11 +688,6 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                   </div>
                 )}
               </div>
-
-              <div className="flex justify-between pt-2">
-                <button type="button" onClick={() => setStep(1)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
-                <button type="button" onClick={() => setStep(3)} className="atlas-btn-primary rounded-md">Siguiente →</button>
-              </div>
             </div>
           )}
 
@@ -787,16 +808,6 @@ const NominaForm: React.FC<NominaFormProps> = ({ isOpen, onClose, nomina, onSave
                   </div>
                 );
               })()}
-
-              <div className="flex justify-between pt-2">
-                <button type="button" onClick={() => setStep(2)} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">← Anterior</button>
-                <div className="flex space-x-3">
-                  <button type="button" onClick={onClose} className="text-neutral-700 border border-neutral-300 rounded-md px-4 py-2 hover:bg-neutral-50">Cancelar</button>
-                  <button type="submit" disabled={loading} className="atlas-btn-primary rounded-md disabled:opacity-50">
-                    {loading ? 'Guardando...' : (nomina ? 'Actualizar' : 'Crear')} Nómina
-                  </button>
-                </div>
-              </div>
             </div>
           )}
         </form>
