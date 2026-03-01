@@ -221,6 +221,30 @@ const NominaManager: React.FC = () => {
                     </div>
                   </div>
                 )}
+                {calculo && calculo.distribucionMensual.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">Distribución Mensual Neto</p>
+                    <div className="flex items-end justify-between gap-1" style={{ height: '120px' }}>
+                      {(() => {
+                        const maxNeto = Math.max(...calculo.distribucionMensual.map(m => m.netoTotal));
+                        return calculo.distribucionMensual.map((m) => {
+                          const heightPct = maxNeto > 0 ? (m.netoTotal / maxNeto) * 100 : 0;
+                          const hasPagaExtra = m.pagaExtra > 0;
+                          return (
+                            <div key={m.mes} className="flex-1 flex flex-col items-center justify-end h-full">
+                              <div
+                                className={`w-full rounded-t ${hasPagaExtra ? 'bg-emerald-500' : 'bg-brand-navy'}`}
+                                style={{ height: `${heightPct}%`, minHeight: '2px' }}
+                                title={formatCurrency(m.netoTotal)}
+                              />
+                              <span className="text-[10px] text-gray-400 mt-1">{['E','F','M','A','M','J','J','A','S','O','N','D'][m.mes - 1]}</span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
