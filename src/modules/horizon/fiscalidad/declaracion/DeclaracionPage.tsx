@@ -70,6 +70,10 @@ const DeclaracionPage: React.FC = () => {
 
   const dataRealPct = declaracion ? (declaracion.retenciones.total > 0 ? 75 : 0) : 0;
 
+  const totalBaseAhorro = declaracion
+    ? declaracion.baseAhorro.capitalMobiliario.total + declaracion.baseAhorro.gananciasYPerdidas.compensado
+    : 0;
+
   const title = ejercicioFiscal?.estado === 'declarado'
     ? `Declaración IRPF ${ejercicio}`
     : `Estimación IRPF ${ejercicio}`;
@@ -167,6 +171,49 @@ const DeclaracionPage: React.FC = () => {
             ) : (
               <p className="text-sm text-gray-500">No hay datos de inmuebles para este ejercicio.</p>
             )}
+          </Section>
+
+          <Section title="B · Rendimientos de actividades económicas">
+            {declaracion.baseGeneral.rendimientosAutonomo ? (
+              <>
+                <Row label="Ingresos íntegros" value={declaracion.baseGeneral.rendimientosAutonomo.ingresos} indent />
+                <Row label="Gastos deducibles" value={-declaracion.baseGeneral.rendimientosAutonomo.gastos} indent />
+                <Row label="Cuota autónomos (SS)" value={-declaracion.baseGeneral.rendimientosAutonomo.cuotaSS} indent />
+                <Row label="Rendimiento neto" value={declaracion.baseGeneral.rendimientosAutonomo.rendimientoNeto} highlight />
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">No hay actividad económica registrada para este ejercicio.</p>
+            )}
+          </Section>
+
+          <Section title="D · Imputación de rentas inmobiliarias">
+            {declaracion.baseGeneral.imputacionRentas.length > 0 ? (
+              <>
+                {declaracion.baseGeneral.imputacionRentas.map(i => (
+                  <div key={i.inmuebleId} className="mb-3 last:mb-0">
+                    <p className="text-xs font-semibold text-gray-700 mb-1">{i.alias}</p>
+                    <Row label="Valor catastral" value={i.valorCatastral} indent />
+                    <Row label={`Días no alquilado (${i.diasVacio})`} value={0} indent />
+                    <Row label={`Imputación (${(i.porcentajeImputacion * 100).toFixed(1)}%)`} value={i.imputacion} highlight />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">No hay imputaciones de rentas para este ejercicio.</p>
+            )}
+          </Section>
+
+          <Section title="E · Base del ahorro">
+            <Row label="Intereses" value={declaracion.baseAhorro.capitalMobiliario.intereses} indent />
+            <Row label="Dividendos" value={declaracion.baseAhorro.capitalMobiliario.dividendos} indent />
+            <Row label="Rendimientos del capital mobiliario" value={declaracion.baseAhorro.capitalMobiliario.total} highlight />
+            <Row label="Plusvalías" value={declaracion.baseAhorro.gananciasYPerdidas.plusvalias} indent />
+            <Row label="Minusvalías" value={-declaracion.baseAhorro.gananciasYPerdidas.minusvalias} indent />
+            {declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes > 0 && (
+              <Row label="Minusvalías pendientes compensación" value={-declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes} indent />
+            )}
+            <Row label="Saldo ganancias/pérdidas" value={declaracion.baseAhorro.gananciasYPerdidas.compensado} highlight />
+            <Row label="Total base del ahorro" value={totalBaseAhorro} highlight />
           </Section>
 
           <Section title="Liquidación">
