@@ -16,8 +16,8 @@ const Row: React.FC<{ label: string; value: number; highlight?: boolean; indent?
 );
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-    <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide text-xs text-blue-700">{title}</h3>
+  <div className="bg-white border border-gray-200 p-5 shadow-sm">
+    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-700">{title}</h3>
     {children}
   </div>
 );
@@ -71,7 +71,7 @@ const DeclaracionPage: React.FC = () => {
         </select>
         <button
           onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
         >
           <Download className="w-4 h-4" />
           Exportar
@@ -79,7 +79,7 @@ const DeclaracionPage: React.FC = () => {
       </div>
       {loading && (
         <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" />
         </div>
       )}
 
@@ -193,8 +193,8 @@ const DeclaracionPage: React.FC = () => {
           </Section>
 
           {/* TIPO EFECTIVO */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-primary-50 border border-primary-200 p-4">
+            <p className="text-sm text-primary-800">
               Tipo efectivo: <strong>{declaracion.tipoEfectivo.toFixed(2)}%</strong>
               {' '}sobre una base imponible total de{' '}
               <strong>{fmt(declaracion.liquidacion.baseImponibleGeneral + declaracion.liquidacion.baseImponibleAhorro)}</strong>
