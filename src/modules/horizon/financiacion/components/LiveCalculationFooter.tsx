@@ -22,19 +22,20 @@ const LiveCalculationFooter: React.FC<LiveCalculationFooterProps> = ({
   return (
     <div
       style={{
-        backgroundColor: 'rgba(40,167,69,0.08)',
-        border: '1px solid rgba(40,167,69,0.2)',
+        backgroundColor: 'rgba(4,44,94,0.06)',
+        border: '1px solid rgba(4,44,94,0.15)',
         borderRadius: 8,
         padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: 24,
         flexWrap: 'wrap',
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ok)', fontSize: 13, fontWeight: 600 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--atlas-blue)', fontSize: 13, fontWeight: 600 }}>
         <Calculator size={16} strokeWidth={1.5} />
-        Cálculo en vivo
+        Cuota estimada
       </span>
 
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>

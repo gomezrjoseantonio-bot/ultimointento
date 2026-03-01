@@ -450,7 +450,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
                   padding: '9px 20px',
                   borderRadius: 8,
                   border: 'none',
-                  backgroundColor: 'var(--ok)',
+                  backgroundColor: 'var(--atlas-navy-1)',
                   color: '#fff',
                   cursor: isLoading ? 'wait' : 'pointer',
                   fontSize: 14,

@@ -105,7 +105,7 @@ const EstructuraStep: React.FC<EstructuraStepProps> = ({ data, onChange, errors 
           {carenciaOptions.map(opt => (
             <button
               key={opt.id}
-              style={cardStyle(data.carencia === opt.id)}
+              style={cardStyle((data.carencia ?? 'NINGUNA') === opt.id)}
               onClick={() => onChange({ carencia: opt.id, carenciaMeses: opt.id === 'NINGUNA' ? undefined : (data.carenciaMeses || 6) })}
             >
               {opt.label}

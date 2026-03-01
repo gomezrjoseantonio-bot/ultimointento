@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Edit3, 
-  Eye,
-  Trash2,
-  Calculator,
-  Calendar,
-  CreditCard,
-  Home,
-  User,
-  TrendingUp,
-  Clock,
-  ArrowUpDown
-} from 'lucide-react';
+import { Edit3, Eye, Trash2, CreditCard, Home, User } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { inmuebleService } from '../../../../services/inmuebleService';
@@ -20,182 +8,67 @@ import { Account } from '../../../../services/db';
 import { Inmueble } from '../../../../types/inmueble';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 import { confirmDelete } from '../../../../services/confirmationService';
-import AccountOption from '../../../../components/common/AccountOption';
-import { AtlasText } from '../../../../components/atlas';
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
   onViewDetail?: (prestamoId: string) => void;
 }
 
-type SortField = 'nombre' | 'tin' | 'capitalVivo' | 'vencimiento';
-type SortDirection = 'asc' | 'desc';
-
 const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('nombre');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
-  
-  // Detail drawer state
   const [selectedPrestamoForDetail, setSelectedPrestamoForDetail] = useState<Prestamo | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
 
-  // Load loans
   useEffect(() => {
-    const loadPrestamos = async () => {
+    const loadAll = async () => {
       try {
         setLoading(true);
-        const allPrestamos = await prestamosService.getAllPrestamos();
+        const [allPrestamos, accountsList, inmueblesList] = await Promise.all([
+          prestamosService.getAllPrestamos(),
+          cuentasService.list(),
+          inmuebleService.getAll(),
+        ]);
         setPrestamos(allPrestamos);
+        setAccounts(accountsList);
+        setInmuebles(inmueblesList);
       } catch (error) {
         console.error('Error loading loans:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    const loadAccounts = async () => {
-      try {
-        const accountsList = await cuentasService.list();
-        setAccounts(accountsList);
-      } catch (error) {
-        console.error('Error loading accounts:', error);
-      }
-    };
-
-    const loadInmuebles = async () => {
-      try {
-        const inmueblesList = await inmuebleService.getAll();
-        setInmuebles(inmueblesList);
-      } catch (error) {
-        console.error('Error loading inmuebles:', error);
-      }
-    };
-
-    loadPrestamos();
-    loadAccounts();
-    loadInmuebles();
+    loadAll();
   }, []);
 
-  // Format numbers
-  const formatNumber = (value: number) => {
-    return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
+  const fmt = (value: number) =>
+    value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const formatPercentage = (value: number) => {
-    return value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
-
-  // Calculate effective TIN (with bonifications)
   const calculateEffectiveTIN = (prestamo: Prestamo) => {
     let baseTIN = 0;
-    if (prestamo.tipo === 'FIJO') {
-      baseTIN = prestamo.tipoNominalAnualFijo || 0;
-    } else if (prestamo.tipo === 'VARIABLE') {
-      baseTIN = (prestamo.valorIndiceActual || 0) + (prestamo.diferencial || 0);
-    } else if (prestamo.tipo === 'MIXTO') {
-      baseTIN = prestamo.tipoNominalAnualMixtoFijo || 0;
-    }
-
-    const totalBonificaciones = (prestamo.bonificaciones || [])
-      .reduce((sum, b) => sum + b.reduccionPuntosPorcentuales, 0);
-
+    if (prestamo.tipo === 'FIJO') baseTIN = prestamo.tipoNominalAnualFijo || 0;
+    else if (prestamo.tipo === 'VARIABLE') baseTIN = (prestamo.valorIndiceActual || 0) + (prestamo.diferencial || 0);
+    else if (prestamo.tipo === 'MIXTO') baseTIN = prestamo.tipoNominalAnualMixtoFijo || 0;
+    const totalBonificaciones = (prestamo.bonificaciones || []).reduce((s, b) => s + b.reduccionPuntosPorcentuales, 0);
     return Math.max(0, baseTIN - totalBonificaciones);
   };
 
-  // Estimate monthly payment
   const estimateMonthlyPayment = (prestamo: Prestamo) => {
     const effectiveTIN = calculateEffectiveTIN(prestamo);
-    const monthlyRate = effectiveTIN / 12 / 100;
-    const months = prestamo.plazoMesesTotal;
-    
-    if (monthlyRate > 0) {
-      return (prestamo.principalVivo * monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-             (Math.pow(1 + monthlyRate, months) - 1);
-    } else {
-      return prestamo.principalVivo / months;
-    }
+    const r = effectiveTIN / 12 / 100;
+    const n = prestamo.plazoMesesTotal;
+    if (r > 0 && n > 0) return (prestamo.principalVivo * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return n > 0 ? prestamo.principalVivo / n : 0;
   };
 
-  // Sort loans without complex filtering
-  const sortedPrestamos = prestamos
-    .sort((a, b) => {
-      let valueA: any, valueB: any;
-      
-      switch (sortField) {
-        case 'nombre':
-          valueA = a.nombre.toLowerCase();
-          valueB = b.nombre.toLowerCase();
-          break;
-        case 'tin':
-          valueA = calculateEffectiveTIN(a);
-          valueB = calculateEffectiveTIN(b);
-          break;
-        case 'capitalVivo':
-          valueA = a.principalVivo;
-          valueB = b.principalVivo;
-          break;
-        case 'vencimiento':
-          // Calculate loan end date
-          const fechaA = new Date(a.fechaFirma);
-          fechaA.setMonth(fechaA.getMonth() + a.plazoMesesTotal);
-          const fechaB = new Date(b.fechaFirma);
-          fechaB.setMonth(fechaB.getMonth() + b.plazoMesesTotal);
-          valueA = fechaA.getTime();
-          valueB = fechaB.getTime();
-          break;
-        default:
-          valueA = a.nombre.toLowerCase();
-          valueB = b.nombre.toLowerCase();
-      }
-      
-      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
-      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+  const getAccount = (accountId?: string) =>
+    accountId ? accounts.find(a => a.id?.toString() === accountId) || null : null;
 
-  // Calculate comprehensive loan statistics based on all loans
-  const calculateLoanStats = () => {
-    const loansToCalculate = sortedPrestamos; // Use all loans
-    const capitalSolicitado = loansToCalculate.reduce((sum, p) => sum + p.principalInicial, 0);
-    const capitalPendiente = loansToCalculate.reduce((sum, p) => sum + p.principalVivo, 0);
-    const cuotaTotal = loansToCalculate.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
-    
-    // Calculate paid and pending interests (estimation based on elapsed time)
-    let interesesPagados = 0;
-    let interesesPendientes = 0;
-    
-    loansToCalculate.forEach(prestamo => {
-      const fechaFirma = new Date(prestamo.fechaFirma);
-      const fechaActual = new Date();
-      const mesesTranscurridos = Math.max(0, Math.floor((fechaActual.getTime() - fechaFirma.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
-      
-      const effectiveTIN = calculateEffectiveTIN(prestamo);
-      const monthlyRate = effectiveTIN / 12 / 100;
+  const getInmueble = (inmuebleId?: string) =>
+    inmuebleId && inmuebleId !== 'standalone' ? inmuebles.find(i => i.id === inmuebleId) || null : null;
 
-      const mesesPagados = Math.min(mesesTranscurridos, prestamo.plazoMesesTotal);
-      const mesesRestantes = Math.max(0, prestamo.plazoMesesTotal - mesesTranscurridos);
-
-      const interesesPorCuota = prestamo.principalVivo * monthlyRate;
-      interesesPagados += interesesPorCuota * mesesPagados;
-      interesesPendientes += interesesPorCuota * mesesRestantes;
-    });
-    
-    return {
-      capitalSolicitado,
-      capitalPendiente,
-      interesesPagados,
-      interesesPendientes,
-      cuotaTotal
-    };
-  };
-
-  const loanStats = calculateLoanStats();
-
-  // Action handlers
   const handleViewDetail = (prestamo: Prestamo) => {
     if (onViewDetail) {
       onViewDetail(prestamo.id);
@@ -216,7 +89,6 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     if (confirmed) {
       try {
         await prestamosService.deletePrestamo(prestamoId);
-        // Reload loans
         const allPrestamos = await prestamosService.getAllPrestamos();
         setPrestamos(allPrestamos);
         handleCloseDetailDrawer();
@@ -226,288 +98,303 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     }
   };
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-text-gray ml-1" />;
-    return sortDirection === 'asc' ? 
-      <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1" /> : 
-      <ArrowUpDown className="h-3 w-3 text-atlas-blue ml-1 transform rotate-180" />;
-  };
-
-  // Get account by ID
-  const getAccount = (accountId?: string) => {
-    if (!accountId) return null;
-    return accounts.find(a => a.id?.toString() === accountId) || null;
-  };
-
-  // Get inmueble by ID
-  const getInmueble = (inmuebleId?: string) => {
-    if (!inmuebleId || inmuebleId === 'standalone') return null;
-    return inmuebles.find(i => i.id === inmuebleId) || null;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4" />
           <p className="text-atlas-navy-1">Cargando préstamos...</p>
         </div>
       </div>
     );
   }
 
+  if (prestamos.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+        <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
+        <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
+      </div>
+    );
+  }
+
+  // Split by ambito
+  const hipotecas = prestamos.filter(p => p.ambito === 'INMUEBLE');
+  const personales = prestamos.filter(p => p.ambito === 'PERSONAL');
+
+  // Sort each group by monthly payment descending
+  const sortByPayment = (list: Prestamo[]) =>
+    [...list].sort((a, b) => estimateMonthlyPayment(b) - estimateMonthlyPayment(a));
+
+  // Global KPIs
+  const deudaTotal = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
+  const totalPagado = prestamos.reduce((sum, p) => sum + (p.principalInicial - p.principalVivo), 0);
+  const totalPendiente = prestamos.reduce((sum, p) => sum + p.principalVivo, 0);
+  const cuotaMensualTotal = prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
+  const globalPct = deudaTotal > 0 ? (totalPagado / deudaTotal) * 100 : 0;
+
+  const sectionStats = (list: Prestamo[]) => {
+    const deuda = list.reduce((sum, p) => sum + p.principalInicial, 0);
+    const pendiente = list.reduce((sum, p) => sum + p.principalVivo, 0);
+    return {
+      deuda,
+      pagado: list.reduce((sum, p) => sum + (p.principalInicial - p.principalVivo), 0),
+      pendiente,
+      cuota: list.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0),
+      capitalVivo: pendiente,
+    };
+  };
+
+  const renderProgressBar = (pct: number, height = 8) => (
+    <div
+      style={{
+        height,
+        borderRadius: height / 2,
+        backgroundColor: 'var(--hz-neutral-200, #e5e7eb)',
+        overflow: 'hidden',
+        width: '100%',
+      }}
+    >
+      <div
+        style={{
+          height: '100%',
+          width: `${Math.min(100, Math.max(0, pct))}%`,
+          backgroundColor: 'var(--atlas-blue)',
+          borderRadius: height / 2,
+          transition: 'width 0.4s ease',
+        }}
+      />
+    </div>
+  );
+
+  const renderBadge = (tipo: Prestamo['tipo']) => {
+    if (tipo === 'FIJO') {
+      return (
+        <span style={{
+          fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+          backgroundColor: 'var(--atlas-navy-1)', color: '#fff',
+        }}>FIJO</span>
+      );
+    }
+    if (tipo === 'MIXTO') {
+      return (
+        <span style={{
+          fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+          border: '1px solid var(--atlas-navy-1)', color: 'var(--atlas-navy-1)',
+        }}>MIXTO</span>
+      );
+    }
+    return (
+      <span style={{
+        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+        backgroundColor: '#f3f4f6', color: 'var(--text-gray)',
+      }}>VARIABLE</span>
+    );
+  };
+
+  const renderCard = (prestamo: Prestamo) => {
+    const effectiveTIN = calculateEffectiveTIN(prestamo);
+    const monthlyPayment = estimateMonthlyPayment(prestamo);
+    const pagadoPct = prestamo.principalInicial > 0
+      ? ((prestamo.principalInicial - prestamo.principalVivo) / prestamo.principalInicial) * 100
+      : 0;
+    const inmueble = getInmueble(prestamo.inmuebleId);
+    const account = getAccount(prestamo.cuentaCargoId);
+    const displayName = inmueble?.alias || prestamo.nombre;
+
+    return (
+      <div
+        key={prestamo.id}
+        className="group"
+        style={{
+          backgroundColor: 'var(--bg)',
+          border: '1px solid #e5e7eb',
+          borderRadius: 10,
+          padding: 16,
+          cursor: 'pointer',
+          transition: 'box-shadow 0.15s ease',
+          position: 'relative',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)')}
+        onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+        onClick={() => handleViewDetail(prestamo)}
+      >
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--atlas-navy-1)', wordBreak: 'break-word' }}>
+                {displayName}
+              </span>
+              {renderBadge(prestamo.tipo)}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 2 }}>
+              {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')}
+            </div>
+          </div>
+          {/* Action icons — visible on hover */}
+          <div
+            className="group-hover:opacity-100"
+            style={{ display: 'flex', gap: 4, opacity: 0, transition: 'opacity 0.15s' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => handleViewDetail(prestamo)}
+              title="Ver detalle"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--atlas-blue)', padding: 4, borderRadius: 4 }}
+            >
+              <Eye size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => onEdit(prestamo.id)}
+              title="Editar"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', padding: 4, borderRadius: 4 }}
+            >
+              <Edit3 size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => handleDeletePrestamo(prestamo.id)}
+              title="Eliminar"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error)', padding: 4, borderRadius: 4 }}
+            >
+              <Trash2 size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* Capital vivo */}
+        <div style={{ margin: '10px 0 6px', fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--atlas-navy-1)' }}>
+            {fmt(prestamo.principalVivo)} €
+          </div>
+        </div>
+
+        {/* TIN + Cuota */}
+        <div style={{ fontSize: 13, color: 'var(--text-gray)', marginBottom: 6, fontVariantNumeric: 'tabular-nums' }}>
+          TIN: {effectiveTIN.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+          &nbsp;·&nbsp;
+          Cuota: {fmt(monthlyPayment)} €
+        </div>
+
+        {/* Bank / account */}
+        {account && (
+          <div style={{ fontSize: 12, color: 'var(--text-gray)', marginBottom: 8 }}>
+            Banco: {account.alias || account.banco?.name || account.bank || account.iban || '—'}
+          </div>
+        )}
+
+        {/* Progress bar */}
+        <div>
+          {renderProgressBar(pagadoPct, 6)}
+          <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            {pagadoPct.toLocaleString('es-ES', { maximumFractionDigits: 0 })}% pagado
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSection = (
+    title: string,
+    list: Prestamo[],
+    icon: React.ReactNode,
+  ) => {
+    if (list.length === 0) return null;
+    const stats = sectionStats(list);
+    const pct = stats.deuda > 0 ? (stats.pagado / stats.deuda) * 100 : 0;
+    const sorted = sortByPayment(list);
+
+    return (
+      <div style={{ marginBottom: 32 }}>
+        {/* Section header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {icon}
+            <span style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--atlas-navy-1)' }}>
+              {title} ({list.length})
+            </span>
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--atlas-blue)', fontVariantNumeric: 'tabular-nums' }}>
+            Capital vivo: {fmt(stats.capitalVivo)} €
+          </span>
+        </div>
+
+        {/* Section sub-KPIs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 10 }}>
+          {[
+            { label: 'Deuda total', value: stats.deuda },
+            { label: 'Pagado', value: stats.pagado },
+            { label: 'Pendiente', value: stats.pendiente },
+            { label: 'Cuota mensual', value: stats.cuota },
+          ].map(k => (
+            <div key={k.label} style={{ backgroundColor: 'var(--bg)', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 2 }}>{k.label}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
+                {fmt(k.value)} €
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Section progress bar */}
+        <div style={{ marginBottom: 16 }}>
+          {renderProgressBar(pct, 8)}
+          <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            {pct.toLocaleString('es-ES', { maximumFractionDigits: 0 })}% amortizado
+          </div>
+        </div>
+
+        {/* Cards grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}
+          className="loan-cards-grid">
+          {sorted.map(p => renderCard(p))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Information text with icon */}
-      <div className="flex items-center space-x-2 text-sm text-text-gray">
-        <div className="atlas-atlas-atlas-atlas-atlas-btn-primary flex-shrink-0 w-4 h-4 flex items-center justify-center">
-          <span className="text-xs font-medium text-atlas-blue">i</span>
-        </div>
-        <span>Gestione sus préstamos hipotecarios y personales. Puede ordenar las columnas haciendo clic en los encabezados.</span>
+    <div>
+      {/* Global KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        {[
+          { label: 'Deuda Total', value: deudaTotal },
+          { label: 'Total Pagado', value: totalPagado },
+          { label: 'Total Pendiente', value: totalPendiente },
+          { label: 'Cuota Mensual Total', value: cuotaMensualTotal },
+        ].map(k => (
+          <div key={k.label} style={{ backgroundColor: 'var(--bg)', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-gray)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>{k.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
+              {fmt(k.value)} €
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {/* Capital Solicitado */}
-        <div className="bg-white border border-gray-200 p-4">
-          <div className="flex flex-col">
-            <div className="flex items-center mb-3">
-              <Calculator className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
-              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
-                Capital Solicitado
-              </AtlasText>
-            </div>
-            <AtlasText variant="kpi" color="primary" className="text-right">
-              {formatNumber(loanStats.capitalSolicitado)} €
-            </AtlasText>
-          </div>
-        </div>
-
-        {/* Capital Pendiente */}
-        <div className="bg-white border border-gray-200 p-4">
-          <div className="flex flex-col">
-            <div className="flex items-center mb-3">
-              <Calculator className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
-              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
-                Capital Pendiente
-              </AtlasText>
-            </div>
-            <AtlasText variant="kpi" color="primary" className="text-right">
-              {formatNumber(loanStats.capitalPendiente)} €
-            </AtlasText>
-          </div>
-        </div>
-
-        {/* Intereses Pagados */}
-        <div className="bg-white border border-gray-200 p-4">
-          <div className="flex flex-col">
-            <div className="flex items-center mb-3">
-              <TrendingUp className="h-6 w-6" style={{ color: 'var(--ok)' }} />
-              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
-                Intereses Pagados
-              </AtlasText>
-            </div>
-            <AtlasText variant="kpi" color="primary" className="text-right">
-              {formatNumber(loanStats.interesesPagados)} €
-            </AtlasText>
-          </div>
-        </div>
-
-        {/* Intereses Pendientes */}
-        <div className="bg-white border border-gray-200 p-4">
-          <div className="flex flex-col">
-            <div className="flex items-center mb-3">
-              <Clock className="h-6 w-6" style={{ color: 'var(--text-gray)' }} />
-              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
-                Intereses Pendientes
-              </AtlasText>
-            </div>
-            <AtlasText variant="kpi" color="primary" className="text-right">
-              {formatNumber(loanStats.interesesPendientes)} €
-            </AtlasText>
-          </div>
-        </div>
-
-        {/* Cuota Total */}
-        <div className="bg-white border border-gray-200 p-4">
-          <div className="flex flex-col">
-            <div className="flex items-center mb-3">
-              <Calendar className="h-6 w-6" style={{ color: 'var(--atlas-blue)' }} />
-              <AtlasText variant="caption" color="secondary" className="ml-3 flex-1">
-                Cuota Total
-              </AtlasText>
-            </div>
-            <AtlasText variant="kpi" color="primary" className="text-right">
-              {formatNumber(loanStats.cuotaTotal)} €
-            </AtlasText>
-          </div>
+      {/* Global progress bar */}
+      <div style={{ marginBottom: 28 }}>
+        {renderProgressBar(globalPct, 10)}
+        <div style={{ fontSize: 12, color: 'var(--text-gray)', marginTop: 6, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          {globalPct.toLocaleString('es-ES', { maximumFractionDigits: 1 })}% amortizado del total
         </div>
       </div>
 
-      {/* Loans List */}
-      {sortedPrestamos.length === 0 ? (
-        <div className="text-center py-12 bg-white border border-gray-200">
-          <CreditCard className="h-12 w-12 text-text-gray mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-atlas-navy-1 mb-2">No hay préstamos</h3>
-          <p className="text-text-gray">Comience creando su primer préstamo con el botón "Crear Préstamo"</p>
-        </div>
-      ) : (
-        <div className="bg-white border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              <thead className="bg-gray-50">
-                <tr>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('nombre')}
-                  >
-                    <div className="flex items-center">
-                      Préstamo
-                      {getSortIcon('nombre')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Tipo
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('capitalVivo')}
-                  >
-                    <div className="flex items-center justify-end">
-                      Capital Vivo
-                      {getSortIcon('capitalVivo')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('tin')}
-                  >
-                    <div className="flex items-center justify-end">
-                      TIN Efectivo
-                      {getSortIcon('tin')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Cuota Est.
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Cuenta
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-text-gray uppercase tracking-wider">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedPrestamos.map((prestamo) => {
-                  const effectiveTIN = calculateEffectiveTIN(prestamo);
-                  const monthlyPayment = estimateMonthlyPayment(prestamo);
-                  const isPersonal = prestamo.inmuebleId === 'standalone';
-                  const inmueble = getInmueble(prestamo.inmuebleId);
-                  const account = getAccount(prestamo.cuentaCargoId);
-
-                  const displayName = inmueble
-                    ? inmueble.alias
-                    : prestamo.nombre;
-
-                  return (
-                    <tr key={prestamo.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className={`flex-shrink-0 h-8 w-8 flex items-center justify-center ${
-                            isPersonal ? 'bg-primary-100' : 'bg-warning-100'
-                          }`}>
-                            {isPersonal ? (
-                              <User className="h-4 w-4 text-atlas-blue" />
-                            ) : (
-                              <Home className="h-4 w-4 text-warn" />
-                            )}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-atlas-navy-1">
-                              {displayName}
-                            </div>
-                            <div className="text-sm text-text-gray">
-                              {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold ${
-                          prestamo.tipo === 'FIJO' ? 'bg-primary-100 text-primary-800' :
-                          prestamo.tipo === 'VARIABLE' ? 'bg-warning-100 text-yellow-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {prestamo.tipo}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-atlas-navy-1">
-                        {formatNumber(prestamo.principalVivo)} €
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className="text-atlas-navy-1 font-medium">
-                          {formatPercentage(effectiveTIN)} %
-                        </div>
-                        {(prestamo.bonificaciones || []).length > 0 && (
-                          <div className="text-xs text-ok-600">
-                            {(prestamo.bonificaciones || []).length} bonif.
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-atlas-navy-1">
-                        {formatNumber(monthlyPayment)} €
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text-gray">
-                        {account ? (
-                          <AccountOption account={account} size="sm" />
-                        ) : (
-                          <div className="text-error-500">Sin cuenta configurada</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleViewDetail(prestamo)}
-                            className="text-atlas-blue hover:text-primary-800"
-                            title="Ver detalle"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => onEdit(prestamo.id)}
-                            className="text-text-gray hover:text-atlas-blue"
-                            title="Editar"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePrestamo(prestamo.id)}
-                            className="text-text-gray hover:text-error"
-                            title="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Hipotecas section */}
+      {renderSection(
+        'Hipotecas',
+        hipotecas,
+        <Home size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
       )}
-      
+
+      {/* Préstamos personales section */}
+      {renderSection(
+        'Préstamos Personales',
+        personales,
+        <User size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
+      )}
+
       {/* Loan Detail Drawer */}
       <PrestamoDetailDrawer
         prestamo={selectedPrestamoForDetail}
@@ -516,6 +403,16 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         onEdit={onEdit}
         onDelete={handleDeletePrestamo}
       />
+
+      <style>{`
+        @media (max-width: 1024px) {
+          .loan-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 640px) {
+          .loan-cards-grid { grid-template-columns: 1fr !important; }
+        }
+        .group:hover .group-hover\\:opacity-100 { opacity: 1 !important; }
+      `}</style>
     </div>
   );
 };
