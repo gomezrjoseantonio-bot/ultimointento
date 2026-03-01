@@ -74,6 +74,13 @@ const DeclaracionPage: React.FC = () => {
     ? `Declaración IRPF ${ejercicio}`
     : `Estimación IRPF ${ejercicio}`;
 
+  const resumenCliente = declaracion ? {
+    resultadoAbs: Math.abs(declaracion.resultado),
+    resultadoLabel: declaracion.resultado >= 0 ? 'A ingresar' : 'A devolver',
+    baseTotal: declaracion.liquidacion.baseImponibleGeneral + declaracion.liquidacion.baseImponibleAhorro,
+    totalPagosCuenta: declaracion.retenciones.total,
+  } : null;
+
   return (
     <PageLayout
       title={title}
@@ -134,8 +141,36 @@ const DeclaracionPage: React.FC = () => {
         </div>
       )}
 
-      {!loading && declaracion && (
+      {!loading && declaracion && resumenCliente && (
         <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Resultado</p>
+              <p className={`text-lg font-semibold ${declaracion.resultado >= 0 ? 'text-[var(--atlas-danger-700)]' : 'text-[var(--atlas-success-700)]'}`}>
+                {resumenCliente.resultadoLabel}
+              </p>
+              <p className="text-sm text-gray-700">{fmt(resumenCliente.resultadoAbs)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Base imponible total</p>
+              <p className="text-lg font-semibold text-gray-900">{fmt(resumenCliente.baseTotal)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Pagos y retenciones</p>
+              <p className="text-lg font-semibold text-gray-900">{fmt(resumenCliente.totalPagosCuenta)}</p>
+            </div>
+            <div className="bg-white border border-gray-200 p-4 shadow-sm">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Tipo efectivo</p>
+              <p className="text-lg font-semibold text-gray-900">{declaracion.tipoEfectivo.toFixed(2)}%</p>
+              <p className="text-xs text-gray-500">sobre base imponible total</p>
+            </div>
+          </div>
+
+          <div className="bg-[var(--atlas-info-100)] border border-[var(--atlas-info-300)] p-4 text-sm text-[var(--atlas-info-700)]">
+            <strong>Guía rápida para cliente:</strong> esta vista resume la lógica del Modelo 100 con datos internos. Para presentar, valida NIF,
+            situación familiar y deducciones autonómicas en el borrador oficial de Renta Web.
+          </div>
+
           <Section title="A · Rendimientos del trabajo">
             {declaracion.baseGeneral.rendimientosTrabajo ? (
               <>
@@ -152,16 +187,43 @@ const DeclaracionPage: React.FC = () => {
             )}
           </Section>
 
-          <Section title="C · Rendimientos inmobiliarios">
+          <Section title="B · Rendimientos de actividades económicas">
+            {declaracion.baseGeneral.rendimientosAutonomo ? (
+              <>
+                <Row label="Ingresos íntegros" value={declaracion.baseGeneral.rendimientosAutonomo.ingresos} indent />
+                <Row label="Gastos deducibles" value={-declaracion.baseGeneral.rendimientosAutonomo.gastos} indent />
+                <Row label="Cuota autónomos (SS)" value={-declaracion.baseGeneral.rendimientosAutonomo.cuotaSS} indent />
+                <Row label="Rendimiento neto" value={declaracion.baseGeneral.rendimientosAutonomo.rendimientoNeto} highlight />
+                <Row label="Pagos fraccionados modelo 130" value={-declaracion.baseGeneral.rendimientosAutonomo.pagosFraccionadosM130} indent />
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">No hay actividad económica registrada para este ejercicio.</p>
+            )}
+          </Section>
+
+          <Section title="C · Rendimientos de capital inmobiliario">
             {declaracion.baseGeneral.rendimientosInmuebles.length > 0 ? (
               declaracion.baseGeneral.rendimientosInmuebles.map(i => (
-                <div key={i.inmuebleId} className="mb-3 last:mb-0">
+                <div key={i.inmuebleId} className="mb-4 pb-4 border-b border-gray-100 last:mb-0 last:pb-0 last:border-b-0">
                   <p className="text-xs font-semibold text-gray-700 mb-1">{i.alias}</p>
                   <Row label="Ingresos íntegros" value={i.ingresosIntegros} indent />
                   <Row label="Gastos deducibles" value={-i.gastosDeducibles} indent />
                   <Row label="Amortización" value={-i.amortizacion} indent />
+                  {i.gastosFinanciacionYReparacion !== undefined && (
+                    <Row label="Intereses + reparación/conservación" value={-i.gastosFinanciacionYReparacion} indent />
+                  )}
+                  {i.arrastresAplicados !== undefined && i.arrastresAplicados > 0 && (
+                    <Row label="Arrastres aplicados ejercicios previos" value={-i.arrastresAplicados} indent />
+                  )}
+                  {i.excesoArrastrable !== undefined && i.excesoArrastrable > 0 && (
+                    <Row label="Exceso a compensar en próximos ejercicios" value={-i.excesoArrastrable} indent />
+                  )}
                   {i.esHabitual && <Row label="Reducción vivienda habitual (60%)" value={-i.reduccionHabitual} indent />}
-                  <Row label="Rendimiento neto" value={i.rendimientoNeto} highlight />
+                  <Row label={`Imputación renta (${i.diasVacio} días no alquilado)`} value={i.imputacionRenta} indent />
+                  {i.accesoriosIncluidos && i.accesoriosIncluidos.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-2 pl-4">Incluye {i.accesoriosIncluidos.length} inmueble(s) accesorio(s).</p>
+                  )}
+                  <Row label="Rendimiento neto total del inmueble" value={i.rendimientoNeto} highlight />
                 </div>
               ))
             ) : (
@@ -169,13 +231,61 @@ const DeclaracionPage: React.FC = () => {
             )}
           </Section>
 
-          <Section title="Liquidación">
+          <Section title="D · Imputación de rentas inmobiliarias">
+            {declaracion.baseGeneral.imputacionRentas.length > 0 ? (
+              declaracion.baseGeneral.imputacionRentas.map(i => (
+                <div key={i.inmuebleId} className="mb-3 last:mb-0">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">{i.alias}</p>
+                  <Row label="Valor catastral" value={i.valorCatastral} indent />
+                  <Row label={`Imputación (${(i.porcentajeImputacion * 100).toFixed(1)}%)`} value={i.imputacion} highlight />
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No hay imputaciones de rentas para este ejercicio.</p>
+            )}
+          </Section>
+
+          <Section title="E · Base del ahorro">
+            <Row label="Intereses" value={declaracion.baseAhorro.capitalMobiliario.intereses} indent />
+            <Row label="Dividendos" value={declaracion.baseAhorro.capitalMobiliario.dividendos} indent />
+            <Row label="Rendimientos del capital mobiliario" value={declaracion.baseAhorro.capitalMobiliario.total} highlight />
+            <Row label="Plusvalías" value={declaracion.baseAhorro.gananciasYPerdidas.plusvalias} indent />
+            <Row label="Minusvalías" value={-declaracion.baseAhorro.gananciasYPerdidas.minusvalias} indent />
+            {declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes > 0 && (
+              <Row label="Minusvalías pendientes compensación" value={-declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes} indent />
+            )}
+            <Row label="Saldo ganancias/pérdidas" value={declaracion.baseAhorro.gananciasYPerdidas.compensado} highlight />
+            <Row label="Base imponible del ahorro" value={declaracion.liquidacion.baseImponibleAhorro} highlight />
+          </Section>
+
+          <Section title="F · Reducciones y mínimos personales/familiares">
+            <Row label="Aportación PP empleado" value={-declaracion.reducciones.ppEmpleado} indent />
+            <Row label="Aportación PP empresa" value={-declaracion.reducciones.ppEmpresa} indent />
+            <Row label="Aportación PP individual" value={-declaracion.reducciones.ppIndividual} indent />
+            <Row label="Reducción total plan de pensiones" value={-declaracion.reducciones.total} highlight />
+            <Row label="Mínimo contribuyente" value={-declaracion.minimoPersonal.contribuyente} indent />
+            <Row label="Mínimo descendientes" value={-declaracion.minimoPersonal.descendientes} indent />
+            <Row label="Mínimo ascendientes" value={-declaracion.minimoPersonal.ascendientes} indent />
+            <Row label="Mínimo discapacidad" value={-declaracion.minimoPersonal.discapacidad} indent />
+            <Row label="Mínimo personal y familiar total" value={-declaracion.minimoPersonal.total} highlight />
+          </Section>
+
+          <Section title="G · Base liquidable y cuotas">
             <Row label="Base general" value={declaracion.baseGeneral.total} />
-            <Row label="Reducción plan de pensiones" value={-declaracion.reducciones.planPensiones} indent />
             <Row label="Base imponible general" value={declaracion.liquidacion.baseImponibleGeneral} highlight />
-            <Row label="Base imponible ahorro" value={declaracion.liquidacion.baseImponibleAhorro} highlight />
+            <Row label="Cuota base general" value={declaracion.liquidacion.cuotaBaseGeneral} indent />
+            <Row label="Cuota por mínimos personales" value={-declaracion.liquidacion.cuotaMinimosBaseGeneral} indent />
+            <Row label="Cuota base ahorro" value={declaracion.liquidacion.cuotaBaseAhorro} indent />
+            <Row label="Cuota íntegra" value={declaracion.liquidacion.cuotaIntegra} highlight />
+            <Row label="Deducciones por doble imposición" value={-declaracion.liquidacion.deduccionesDobleImposicion} indent />
             <Row label="Cuota líquida" value={declaracion.liquidacion.cuotaLiquida} highlight />
-            <Row label="Retenciones e ingresos a cuenta" value={-declaracion.retenciones.total} indent />
+          </Section>
+
+          <Section title="H · Retenciones, pagos a cuenta y resultado">
+            <Row label="Retenciones trabajo" value={-declaracion.retenciones.trabajo} indent />
+            <Row label="Pagos fraccionados actividades (M130)" value={-declaracion.retenciones.autonomoM130} indent />
+            <Row label="Retenciones capital mobiliario" value={-declaracion.retenciones.capitalMobiliario} indent />
+            <Row label="Total pagos a cuenta" value={-declaracion.retenciones.total} highlight />
             <Row
               label={declaracion.resultado >= 0 ? '▶ RESULTADO — A PAGAR' : '▶ RESULTADO — A DEVOLVER'}
               value={declaracion.resultado}
