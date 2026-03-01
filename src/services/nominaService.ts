@@ -57,19 +57,14 @@ class NominaService {
       };
     }
 
-    // Filter undefined values from spread to avoid overwriting defaults
-    const cleanNomina = Object.fromEntries(
-      Object.entries(nomina).filter(([_key, v]) => v !== undefined)
-    );
-
     return {
-      titular: 'yo',
-      fechaAntiguedad: nomina.fechaCreacion ?? now,
-      beneficiosSociales: [],
-      deduccionesAdicionales: [],
-      ...cleanNomina,
+      ...nomina,
+      titular: nomina.titular ?? 'yo',
+      fechaAntiguedad: nomina.fechaAntiguedad ?? nomina.fechaCreacion ?? now,
+      beneficiosSociales: nomina.beneficiosSociales ?? [],
+      deduccionesAdicionales: nomina.deduccionesAdicionales ?? [],
       retencion,
-    } as Nomina;
+    } satisfies Nomina;
   }
 
   /**
