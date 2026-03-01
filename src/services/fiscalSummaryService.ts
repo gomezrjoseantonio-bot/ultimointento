@@ -149,8 +149,6 @@ export const calculateFiscalSummary = async (
   summary.deductibleExcess = excess;
 
   // Save or upsert AEATCarryForward record when there is excess; delete stale record when excess becomes 0
-  const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
-  const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
   if (excess > 0) {
     const cfRecord: Omit<AEATCarryForward, 'id'> = {
       propertyId,
@@ -164,6 +162,8 @@ export const calculateFiscalSummary = async (
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
     if (existingCf) {
       await db.put('aeatCarryForwards', {
         ...cfRecord,
@@ -174,9 +174,13 @@ export const calculateFiscalSummary = async (
     } else {
       await db.add('aeatCarryForwards', cfRecord);
     }
-  } else if (existingCf) {
-    // Excess was previously recorded but is now zero (e.g. documents reclassified): remove stale record
-    await db.delete('aeatCarryForwards', existingCf.id!);
+  } else {
+    // Excess is zero: remove any stale record for this property/year (e.g. documents reclassified)
+    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
+    if (existingCf) {
+      await db.delete('aeatCarryForwards', existingCf.id!);
+    }
   }
 
   // Save or update the summary
