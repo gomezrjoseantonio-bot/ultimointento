@@ -662,7 +662,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
             </div>
           </div>
           
-          <div className="btn-secondary-horizon btn-primary-horizon mt-4 p-4 ">
+          <div className="btn-secondary-horizon mt-4 p-4">
             <div className="flex items-center space-x-2 text-sm text-primary-800">
               <Archive className="h-4 w-4" />
               <span>
