@@ -85,6 +85,23 @@ class NominaService {
   }
 
   /**
+   * Get all active nominas across all personal data IDs (with defaults applied)
+   */
+  async getAllActiveNominas(): Promise<Nomina[]> {
+    try {
+      const db = await this.getDB();
+      const transaction = db.transaction(['nominas'], 'readonly');
+      const store = transaction.objectStore('nominas');
+      const index = store.index('activa');
+      const activeNominas = await index.getAll(true);
+      return (activeNominas || []).map((n: any) => this.applyDefaults(n));
+    } catch (error) {
+      console.error('Error getting all active nominas:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get active nomina for a personal data ID
    */
   async getActivaNomina(personalDataId: number): Promise<Nomina | null> {
@@ -318,6 +335,8 @@ class NominaService {
       totalAnualBruto,
       totalAnualEspecie,
       totalAnualPP: totalAnualPPEmpresa + totalAnualPPEmpleado,
+      totalAnualPPEmpleado,
+      totalAnualPPEmpresa,
     };
   }
 
