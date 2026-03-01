@@ -398,7 +398,7 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         // Apply carryforwards from previous years (FIFO, oldest first)
         // Note: remainingAmount tracking is managed dynamically by calculateCarryForwards()
         // which recomputes available amounts from fiscal summaries each time it is called.
-        const carryForwards = await calculateCarryForwards(prop.id!);
+        const carryForwards = await calculateCarryForwards(prop.id!, ejercicio);
         const availableForCarryforward = Math.max(0, ingresosIntegros - limitedFinancingRepairs);
         let cfApplied = 0;
         for (const cf of carryForwards) {
