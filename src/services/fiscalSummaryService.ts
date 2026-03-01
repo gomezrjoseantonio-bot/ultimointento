@@ -1,6 +1,7 @@
 import { initDB, FiscalSummary, Document } from './db';
 import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
 import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
+import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
 
 /**
  * Calculate or update fiscal summary for a property and year
@@ -63,6 +64,16 @@ export const calculateFiscalSummary = async (
         case '0115': summary.box0115 += amount; break;
         case '0117': summary.box0117 += amount; break;
       }
+    }
+  }
+
+  // Add auto-calculated loan interests to box0105 when no manual documents exist for it.
+  // This avoids double-counting when the user has already uploaded interest documents.
+  if (summary.box0105 === 0) {
+    const interesesAuto = await getInteresesHipotecaByPropertyAndYear(propertyId, exerciseYear);
+    if (interesesAuto > 0) {
+      summary.box0105 = interesesAuto;
+      summary.box0105_auto = interesesAuto;
     }
   }
 
