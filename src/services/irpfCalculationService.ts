@@ -490,6 +490,29 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         // ignore
       }
 
+      // Sum amortization and expenses from linked accessories
+      const accesoriosIncluidos: { id: number; alias: string; amortizacion: number; gastos: number }[] = [];
+      for (const acc of accesorios) {
+        let accAmortizacion = 0;
+        let accGastos = 0;
+        try {
+          const accSummary = await calculateFiscalSummary(acc.id!, ejercicio);
+          accAmortizacion = round2((accSummary.annualDepreciation ?? 0) * ratio);
+          accGastos = round2(
+            ((accSummary.box0105 ?? 0) + (accSummary.box0106 ?? 0) + (accSummary.box0109 ?? 0) +
+             (accSummary.box0112 ?? 0) + (accSummary.box0113 ?? 0) + (accSummary.box0114 ?? 0) +
+             (accSummary.box0115 ?? 0) + (accSummary.box0117 ?? 0)) * ratio
+          );
+        } catch {
+          if (acc.fiscalData?.accessoryData) {
+            accAmortizacion = round2(acc.fiscalData.accessoryData.constructionCadastralValue * 0.03 * ratio);
+          }
+        }
+        amortizacion = round2(amortizacion + accAmortizacion);
+        gastosDeducibles = round2(gastosDeducibles + accGastos);
+        accesoriosIncluidos.push({ id: acc.id!, alias: acc.alias, amortizacion: accAmortizacion, gastos: accGastos });
+      }
+
       const rendimientoBruto = round2(ingresosIntegros - gastosDeducibles - amortizacion);
       const reduccionHabitual = esHabitual ? round2(rendimientoBruto * CONSTANTES_IRPF.reduccionViviendaHabitual) : 0;
       const rendimientoNetoAlquiler = round2(rendimientoBruto - reduccionHabitual);
