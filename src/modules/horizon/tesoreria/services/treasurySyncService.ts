@@ -342,7 +342,7 @@ export async function generateMonthlyForecasts(
       }
 
       const calculo = nominaService.calculateSalary(nomina);
-      const mesData = calculo.distribuccionMensual.find(d => d.mes === month);
+      const mesData = calculo.distribucionMensual.find(d => d.mes === month);
       if (!mesData || mesData.netoTotal <= 0) continue;
 
       await insertEvent({

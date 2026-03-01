@@ -7,6 +7,7 @@ import {
   CalculoNominaResult,
   DistribucionMensualResult
 } from '../types/personal';
+import { getBaseMaxima, getSSDefaults } from '../constants/cotizacionSS';
 
 class NominaService {
   private db: any = null;
@@ -24,6 +25,7 @@ class NominaService {
   private applyDefaults(nomina: any): Nomina {
     const now = new Date().toISOString();
     const currentYear = new Date().getFullYear();
+    const ssConfig = getSSDefaults(currentYear);
 
     // Migrate old retencion format { irpfPorcentaje, cotizacionSS } → new RetencionNomina
     let retencion: RetencionNomina;
@@ -31,11 +33,11 @@ class NominaService {
       retencion = {
         irpfPorcentaje: nomina.retencion.irpfPorcentaje ?? 24,
         ss: {
-          baseCotizacionMensual: 4909.50,
-          contingenciasComunes: 4.70,
-          desempleo: 1.55,
-          formacionProfesional: 0.10,
-          mei: currentYear >= 2026 ? 0.15 : 0.13,
+          baseCotizacionMensual: getBaseMaxima(currentYear),
+          contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
+          desempleo: ssConfig.desempleo.trabajador,
+          formacionProfesional: ssConfig.formacionProfesional.trabajador,
+          mei: ssConfig.mei.trabajador,
           overrideManual: false,
         },
       };
@@ -45,24 +47,24 @@ class NominaService {
       retencion = {
         irpfPorcentaje: 24,
         ss: {
-          baseCotizacionMensual: 4909.50,
-          contingenciasComunes: 4.70,
-          desempleo: 1.55,
-          formacionProfesional: 0.10,
-          mei: currentYear >= 2026 ? 0.15 : 0.13,
+          baseCotizacionMensual: getBaseMaxima(currentYear),
+          contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
+          desempleo: ssConfig.desempleo.trabajador,
+          formacionProfesional: ssConfig.formacionProfesional.trabajador,
+          mei: ssConfig.mei.trabajador,
           overrideManual: false,
         },
       };
     }
 
     return {
-      titular: 'yo',
-      fechaAntiguedad: nomina.fechaCreacion ?? now,
-      beneficiosSociales: [],
-      deduccionesAdicionales: [],
       ...nomina,
+      titular: nomina.titular ?? 'yo',
+      fechaAntiguedad: nomina.fechaAntiguedad ?? nomina.fechaCreacion ?? now,
+      beneficiosSociales: nomina.beneficiosSociales ?? [],
+      deduccionesAdicionales: nomina.deduccionesAdicionales ?? [],
       retencion,
-    } as Nomina;
+    } satisfies Nomina;
   }
 
   /**
@@ -199,13 +201,10 @@ class NominaService {
 
     const salarioBaseMensual = salarioBrutoAnual / mesesDistribucion;
 
-    // SS deductions per month — baseCotizacionMensual is already pre-configured
-    // (pre-filled with the legal tope máximo; user can lower it if their salary is below the tope)
+    // SS deductions per month — will be computed inside the loop against totalDevengado
     const { ss, cuotaSolidaridadMensual = 0 } = retencion;
-    const baseCotizacion = ss.baseCotizacionMensual;
     const ssTotalPct =
       (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
-    const ssMensualBase = baseCotizacion * ssTotalPct + cuotaSolidaridadMensual;
 
     // Monthly especie (sum of benefits that increment IRPF base)
     const especieMensual = beneficiosSociales
@@ -214,7 +213,7 @@ class NominaService {
 
     const irpfPct = retencion.irpfPorcentaje / 100;
 
-    const distribuccionMensual: DistribucionMensualResult[] = [];
+    const distribucionMensual: DistribucionMensualResult[] = [];
     let totalAnualNeto = 0;
     let totalAnualBruto = 0;
     let totalAnualEspecie = 0;
@@ -255,8 +254,11 @@ class NominaService {
       // Total devengado for this month (base + paga extra)
       const totalDevengado = brutoMensual + pagaExtra;
 
-      // SS deductions for this month
-      const ssTotal = ssMensualBase;
+      // SS deductions for this month — cap against actual devengado
+      const baseCotizacionEfectiva = ss.overrideManual
+        ? ss.baseCotizacionMensual
+        : Math.min(ss.baseCotizacionMensual, totalDevengado);
+      const ssTotal = baseCotizacionEfectiva * ssTotalPct + cuotaSolidaridadMensual;
 
       // IRPF on (devengado + especie)
       const irpfImporte = (totalDevengado + especieMensual) * irpfPct;
@@ -277,15 +279,15 @@ class NominaService {
       const ppTotalAlProducto = ppEmpleado + ppEmpresa;
 
       // Other deductions for this month
-      const otrasDeduciones = deduccionesAdicionales
+      const otrasDeducciones = deduccionesAdicionales
         .filter(d => d.esRecurrente || d.mes === mes)
         .reduce((acc, d) => acc + d.importeMensual, 0);
 
       // Total deductions and net
-      const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeduciones;
+      const totalDeducciones = ssTotal + irpfImporte + ppEmpleado + otrasDeducciones;
       const netoTotal = totalDevengado - totalDeducciones;
 
-      distribuccionMensual.push({
+      distribucionMensual.push({
         mes,
         salarioBase,
         pagaExtra,
@@ -296,7 +298,7 @@ class NominaService {
         ssTotal,
         irpfImporte,
         ppEmpleado,
-        otrasDeduciones,
+        otrasDeducciones,
         totalDeducciones,
         netoTotal,
         ppTotalAlProducto,
@@ -311,7 +313,7 @@ class NominaService {
 
     return {
       netoMensual: totalAnualNeto / 12,
-      distribuccionMensual,
+      distribucionMensual,
       totalAnualNeto,
       totalAnualBruto,
       totalAnualEspecie,
@@ -325,7 +327,8 @@ class NominaService {
   calculateNetFromBruto(bruto: number, retencion: RetencionNomina): number {
     const { ss, cuotaSolidaridadMensual = 0, irpfPorcentaje } = retencion;
     const ssTotalPct = (ss.contingenciasComunes + ss.desempleo + ss.formacionProfesional + (ss.mei ?? 0)) / 100;
-    const ssImporte = ss.baseCotizacionMensual * ssTotalPct + cuotaSolidaridadMensual;
+    const baseCotizacionEfectiva = ss.overrideManual ? ss.baseCotizacionMensual : Math.min(ss.baseCotizacionMensual, bruto);
+    const ssImporte = baseCotizacionEfectiva * ssTotalPct + cuotaSolidaridadMensual;
     const irpfImporte = bruto * (irpfPorcentaje / 100);
     return bruto - ssImporte - irpfImporte;
   }
