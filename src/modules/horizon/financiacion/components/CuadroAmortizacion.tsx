@@ -127,7 +127,10 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto border border-gray-200 rounded-atlas">
+      <div
+        className="hide-scrollbar border border-gray-200 rounded-atlas"
+        style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 400 }}
+      >
         <table className="w-full text-sm">
           <thead className="bg-primary-50 text-atlas-navy-1">
             <tr>

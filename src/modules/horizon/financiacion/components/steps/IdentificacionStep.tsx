@@ -53,12 +53,6 @@ const IdentificacionStep: React.FC<IdentificacionStepProps> = ({ data, onChange,
     inmuebleService.getAll().then(list => setInmuebles(list)).catch(() => {});
   }, []);
 
-  const origenOptions = [
-    { id: 'MANUAL', label: 'Manual' },
-    { id: 'IMPORTACION', label: 'Importar existente' },
-    { id: 'FEIN', label: 'Desde FEIN' },
-  ] as const;
-
   const ambitoOptions = [
     { id: 'PERSONAL', label: 'Personal', icon: <User size={16} strokeWidth={1.5} /> },
     { id: 'INMUEBLE', label: 'Inmueble', icon: <Home size={16} strokeWidth={1.5} /> },
@@ -70,29 +64,11 @@ const IdentificacionStep: React.FC<IdentificacionStepProps> = ({ data, onChange,
     { id: 'PRORRATA', label: 'Prorrata' },
   ] as const;
 
-  // origen stored as a UI field - we track via data.origenCreacion conceptually but
-  // PrestamoFinanciacion doesn't have it, so we use a local workaround via alias comment
-  // Actually looking at the type, there's no origenCreacion in PrestamoFinanciacion.
-  // We'll just not persist origen in the form data and use a local state trick.
-  const [origen, setOrigen] = useState<'MANUAL' | 'IMPORTACION' | 'FEIN'>('MANUAL');
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Origen */}
+      {/* Tipo de Préstamo */}
       <div>
-        <label style={labelStyle}>Origen</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {origenOptions.map(opt => (
-            <button key={opt.id} style={cardStyle(origen === opt.id)} onClick={() => setOrigen(opt.id)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Ámbito */}
-      <div>
-        <label style={labelStyle}>Ámbito</label>
+        <label style={labelStyle}>Tipo de Préstamo</label>
         <div style={{ display: 'flex', gap: 8 }}>
           {ambitoOptions.map(opt => (
             <button

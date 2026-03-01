@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Edit3, Eye, Trash2, CreditCard, Home, User } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Edit3, Eye, Trash2, CreditCard, Home, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { inmuebleService } from '../../../../services/inmuebleService';
@@ -8,6 +8,36 @@ import { Account } from '../../../../services/db';
 import { Inmueble } from '../../../../types/inmueble';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
 import { confirmDelete } from '../../../../services/confirmationService';
+
+const STORAGE_KEY_HIPOTECAS = 'atlas-loan-card-order-hipotecas';
+const STORAGE_KEY_PERSONALES = 'atlas-loan-card-order-personales';
+
+/** Calculate approximate end date: fechaPrimerCargo + plazoMesesTotal months */
+const calcEndDate = (prestamo: Prestamo): Date => {
+  const base = prestamo.fechaPrimerCargo ? new Date(prestamo.fechaPrimerCargo) : new Date(prestamo.fechaFirma);
+  base.setMonth(base.getMonth() + (prestamo.plazoMesesTotal || 0));
+  return base;
+};
+
+/** Sort by finish date ascending (closest end date first) */
+const sortByEndDate = (list: Prestamo[]): Prestamo[] =>
+  [...list].sort((a, b) => calcEndDate(a).getTime() - calcEndDate(b).getTime());
+
+/** Apply saved order from localStorage, fallback to end-date sort */
+const applyOrder = (list: Prestamo[], storageKey: string): Prestamo[] => {
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const savedIds: string[] = JSON.parse(saved);
+      const byId = Object.fromEntries(list.map(p => [p.id, p]));
+      const ordered = savedIds.filter(id => byId[id]).map(id => byId[id]);
+      // Append any new items not yet in saved order
+      const newItems = list.filter(p => !savedIds.includes(p.id));
+      return [...ordered, ...sortByEndDate(newItems)];
+    }
+  } catch {}
+  return sortByEndDate(list);
+};
 
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
@@ -21,6 +51,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   const [inmuebles, setInmuebles] = useState<Inmueble[]>([]);
   const [selectedPrestamoForDetail, setSelectedPrestamoForDetail] = useState<Prestamo | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [hipotecasExpanded, setHipotecasExpanded] = useState(false);
+  const [personalesExpanded, setPersonalesExpanded] = useState(false);
+  const [hipotecasOrder, setHipotecasOrder] = useState<string[]>([]);
+  const [personalesOrder, setPersonalesOrder] = useState<string[]>([]);
+  const dragSrcRef = useRef<{ id: string; section: 'hipotecas' | 'personales' } | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -34,6 +69,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         setPrestamos(allPrestamos);
         setAccounts(accountsList);
         setInmuebles(inmueblesList);
+        // Initialize order
+        const hipotecasList = allPrestamos.filter(p => p.ambito === 'INMUEBLE');
+        const personalesList = allPrestamos.filter(p => p.ambito === 'PERSONAL');
+        setHipotecasOrder(applyOrder(hipotecasList, STORAGE_KEY_HIPOTECAS).map(p => p.id));
+        setPersonalesOrder(applyOrder(personalesList, STORAGE_KEY_PERSONALES).map(p => p.id));
       } catch (error) {
         console.error('Error loading loans:', error);
       } finally {
@@ -98,6 +138,56 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     }
   };
 
+  // Split by ambito
+  const hipotecas = prestamos.filter(p => p.ambito === 'INMUEBLE');
+  const personales = prestamos.filter(p => p.ambito === 'PERSONAL');
+
+  // Apply saved/sorted order to each group
+  const getOrderedList = (list: Prestamo[], order: string[]): Prestamo[] => {
+    if (order.length === 0) return sortByEndDate(list);
+    const byId = Object.fromEntries(list.map(p => [p.id, p]));
+    const ordered = order.filter(id => byId[id]).map(id => byId[id]);
+    const newItems = list.filter(p => !order.includes(p.id));
+    return [...ordered, ...sortByEndDate(newItems)];
+  };
+
+  // Drag & drop handlers
+  const handleDragStart = useCallback((id: string, section: 'hipotecas' | 'personales') => {
+    dragSrcRef.current = { id, section };
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback((targetId: string, section: 'hipotecas' | 'personales') => {
+    const src = dragSrcRef.current;
+    if (!src || src.id === targetId || src.section !== section) return;
+    dragSrcRef.current = null;
+
+    const reorder = (
+      prev: string[],
+      storageKey: string,
+    ): string[] => {
+      if (prev.length === 0) return prev; // order not yet initialized
+      const next = [...prev];
+      const fromIdx = next.indexOf(src.id);
+      const toIdx = next.indexOf(targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, src.id);
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch {}
+      return next;
+    };
+
+    if (section === 'hipotecas') {
+      setHipotecasOrder(prev => reorder(prev, STORAGE_KEY_HIPOTECAS));
+    } else {
+      setPersonalesOrder(prev => reorder(prev, STORAGE_KEY_PERSONALES));
+    }
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -118,14 +208,6 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       </div>
     );
   }
-
-  // Split by ambito
-  const hipotecas = prestamos.filter(p => p.ambito === 'INMUEBLE');
-  const personales = prestamos.filter(p => p.ambito === 'PERSONAL');
-
-  // Sort each group by monthly payment descending
-  const sortByPayment = (list: Prestamo[]) =>
-    [...list].sort((a, b) => estimateMonthlyPayment(b) - estimateMonthlyPayment(a));
 
   // Global KPIs
   const deudaTotal = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
@@ -193,7 +275,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     );
   };
 
-  const renderCard = (prestamo: Prestamo) => {
+  const renderCard = (prestamo: Prestamo, section: 'hipotecas' | 'personales') => {
     const effectiveTIN = calculateEffectiveTIN(prestamo);
     const monthlyPayment = estimateMonthlyPayment(prestamo);
     const pagadoPct = prestamo.principalInicial > 0
@@ -207,12 +289,16 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       <div
         key={prestamo.id}
         className="group"
+        draggable
+        onDragStart={() => handleDragStart(prestamo.id, section)}
+        onDragOver={handleDragOver}
+        onDrop={() => handleDrop(prestamo.id, section)}
         style={{
           backgroundColor: 'var(--bg)',
           border: '1px solid #e5e7eb',
           borderRadius: 10,
           padding: 16,
-          cursor: 'pointer',
+          cursor: 'grab',
           transition: 'box-shadow 0.15s ease',
           position: 'relative',
         }}
@@ -299,21 +385,29 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     title: string,
     list: Prestamo[],
     icon: React.ReactNode,
+    section: 'hipotecas' | 'personales',
+    expanded: boolean,
+    onToggle: () => void,
   ) => {
     if (list.length === 0) return null;
     const stats = sectionStats(list);
     const pct = stats.deuda > 0 ? (stats.pagado / stats.deuda) * 100 : 0;
-    const sorted = sortByPayment(list);
+    const order = section === 'hipotecas' ? hipotecasOrder : personalesOrder;
+    const sorted = getOrderedList(list, order);
 
     return (
       <div style={{ marginBottom: 32 }}>
-        {/* Section header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        {/* Section header — clickable to expand/collapse */}
+        <div
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, cursor: 'pointer', userSelect: 'none' }}
+          onClick={onToggle}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {icon}
             <span style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--atlas-navy-1)' }}>
               {title} ({list.length})
             </span>
+            {expanded ? <ChevronUp size={14} strokeWidth={1.5} style={{ color: 'var(--text-gray)' }} /> : <ChevronDown size={14} strokeWidth={1.5} style={{ color: 'var(--text-gray)' }} />}
           </div>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--atlas-blue)', fontVariantNumeric: 'tabular-nums' }}>
             Capital vivo: {fmt(stats.capitalVivo)} €
@@ -338,18 +432,20 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         </div>
 
         {/* Section progress bar */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: expanded ? 16 : 0 }}>
           {renderProgressBar(pct, 8)}
           <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
             {pct.toLocaleString('es-ES', { maximumFractionDigits: 0 })}% amortizado
           </div>
         </div>
 
-        {/* Cards grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}
-          className="loan-cards-grid">
-          {sorted.map(p => renderCard(p))}
-        </div>
+        {/* Cards grid — only when expanded */}
+        {expanded && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginTop: 16 }}
+            className="loan-cards-grid">
+            {sorted.map(p => renderCard(p, section))}
+          </div>
+        )}
       </div>
     );
   };
@@ -386,6 +482,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         'Hipotecas',
         hipotecas,
         <Home size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
+        'hipotecas',
+        hipotecasExpanded,
+        () => setHipotecasExpanded(e => !e),
       )}
 
       {/* Préstamos personales section */}
@@ -393,6 +492,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         'Préstamos Personales',
         personales,
         <User size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
+        'personales',
+        personalesExpanded,
+        () => setPersonalesExpanded(e => !e),
       )}
 
       {/* Loan Detail Drawer */}
