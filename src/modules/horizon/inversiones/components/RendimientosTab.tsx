@@ -45,7 +45,7 @@ const RendimientosTab: React.FC = () => {
         textAlign: 'center',
       }}>
         <p style={{ fontFamily: 'var(--font-inter)', color: 'var(--text-gray)', margin: 0 }}>
-          No hay rendimientos generados todavía. Crea una inversión con rendimiento periódico para empezar.
+          No hay rendimientos generados todavÃ­a. Crea una inversiÃ³n con rendimiento periÃ³dico para empezar.
         </p>
       </div>
     );
@@ -67,7 +67,7 @@ const RendimientosTab: React.FC = () => {
         {[
           { label: 'Total bruto', value: totalBruto, color: 'var(--atlas-navy-1)' },
           { label: `IRPF retenido (${IRPF_RATE * 100}%)`, value: totalRetencion, color: 'var(--error)' },
-          { label: 'Total neto', value: totalNeto, color: '#15803d' },
+          { label: 'Total neto', value: totalNeto, color: 'var(--ok)' },
         ].map(item => (
           <div key={item.label} style={{
             background: 'var(--hz-card-bg)',
@@ -96,7 +96,7 @@ const RendimientosTab: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)', background: '#f9fafb' }}>
-                {['Fecha', 'Posición', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
+                {['Fecha', 'PosiciÃ³n', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
                   <th key={th} style={{
                     padding: '0.75rem 1rem',
                     textAlign: 'left',
@@ -131,10 +131,10 @@ const RendimientosTab: React.FC = () => {
                       borderRadius: '999px',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      background: '#dcfce7',
-                      color: '#15803d',
+                      background: 'var(--hz-info-soft)',
+                      color: 'var(--atlas-blue)',
                     }}>
-                      Interés periódico
+                      InterÃ©s periÃ³dico
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
@@ -143,7 +143,7 @@ const RendimientosTab: React.FC = () => {
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--error)', fontVariantNumeric: 'tabular-nums' }}>
                     -{formatEuro(r.retencion_fiscal)}
                   </td>
-                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', fontWeight: 700, color: '#15803d', fontVariantNumeric: 'tabular-nums' }}>
+                  <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--ok)', fontVariantNumeric: 'tabular-nums' }}>
                     {formatEuro(r.importe_neto)}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
