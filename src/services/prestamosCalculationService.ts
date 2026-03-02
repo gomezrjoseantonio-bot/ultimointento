@@ -329,22 +329,17 @@ export class PrestamosCalculationService {
     const periodos: PeriodoPago[] = [];
     let principalVivo = prestamo.principalInicial;
     
-    // Calculate first payment date considering deferrals
+    // Calculate first payment date considering deferrals.
+    // Keep a stable target day across months, clamping to month-end when needed
+    // (e.g. day 31 -> Feb 28/29) to avoid month skips caused by Date overflow.
     const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses || 0;
-    const fechaPrimeraCuota = new Date(fechaFirma);
-    
-    if (mesesDiferimiento > 0) {
-      // If there's deferral, add exactly that many months
-      fechaPrimeraCuota.setMonth(fechaPrimeraCuota.getMonth() + mesesDiferimiento);
-    } else {
-      // If no deferral, first payment is next month
-      fechaPrimeraCuota.setMonth(fechaPrimeraCuota.getMonth() + 1);
-    }
-    
-    // Adjust to payment day
-    if (prestamo.diaCargoMes) {
-      fechaPrimeraCuota.setDate(prestamo.diaCargoMes);
-    }
+    const paymentDay = prestamo.diaCargoMes || fechaFirma.getDate();
+    const firstOffsetMonths = mesesDiferimiento > 0 ? mesesDiferimiento : 1;
+    const fechaPrimeraCuota = this.addMonthsWithClampedDay(
+      fechaFirma,
+      firstOffsetMonths,
+      paymentDay,
+    );
 
     const baseRate = this.calculateBaseRate(prestamo);
     const mesesSoloIntereses = prestamo.mesesSoloIntereses || 0;
@@ -438,8 +433,8 @@ export class PrestamosCalculationService {
         pagado: false
       });
 
-      // Move to next month
-      fechaActual.setMonth(fechaActual.getMonth() + 1);
+      // Move to next month preserving billing day and clamping when month is shorter
+      fechaActual = this.addMonthsWithClampedDay(fechaActual, 1, paymentDay);
     }
 
     const totalIntereses = periodos.reduce((sum, p) => sum + p.interes, 0);
@@ -455,6 +450,29 @@ export class PrestamosCalculationService {
         fechaFinalizacion
       }
     };
+  }
+
+
+  /**
+   * Adds months to a date while keeping a target day-of-month clamped to month end.
+   * Prevents JS Date overflow from skipping months (e.g. Jan-31 + 1 month -> Mar-02).
+   */
+  private addMonthsWithClampedDay(baseDate: Date, monthsToAdd: number, dayOfMonth: number): Date {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth() + monthsToAdd;
+    const firstOfTargetMonth = new Date(year, month, 1);
+    const lastDay = new Date(
+      firstOfTargetMonth.getFullYear(),
+      firstOfTargetMonth.getMonth() + 1,
+      0,
+    ).getDate();
+    const safeDay = Math.max(1, Math.min(dayOfMonth, lastDay));
+
+    return new Date(
+      firstOfTargetMonth.getFullYear(),
+      firstOfTargetMonth.getMonth(),
+      safeDay,
+    );
   }
 
   /**

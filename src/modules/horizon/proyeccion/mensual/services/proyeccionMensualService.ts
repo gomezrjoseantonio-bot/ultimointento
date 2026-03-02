@@ -120,6 +120,27 @@ function isContractActiveInMonth(contract: Contract, year: number, month: number
   return monthStart <= fechaFin && monthEnd >= fechaInicio;
 }
 
+
+function getMonthDistance(fromMonth: string, toMonth: string): number {
+  const [fromY, fromM] = fromMonth.split('-').map(Number);
+  const [toY, toM] = toMonth.split('-').map(Number);
+  return (toY - fromY) * 12 + (toM - fromM);
+}
+
+function hasIrregularMonthlyCadence(periodos: PeriodoPago[]): boolean {
+  if (periodos.length < 2) return false;
+
+  for (let i = 1; i < periodos.length; i++) {
+    const prevMonth = periodos[i - 1].fechaCargo.substring(0, 7);
+    const currentMonth = periodos[i].fechaCargo.substring(0, 7);
+    if (getMonthDistance(prevMonth, currentMonth) !== 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 interface LoanInfo {
   principalInicial: number; // fallback for months before first payment
   isHipoteca: boolean; // true = mortgage, false = personal loan
