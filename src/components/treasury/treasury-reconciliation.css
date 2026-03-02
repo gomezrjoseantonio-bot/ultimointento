@@ -980,6 +980,31 @@
   gap: 12px;
 }
 
+
+.events-type-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.events-type-pill {
+  border: 1px solid #d1d5db;
+  background: #f8fafc;
+  color: #64748b;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.events-type-pill--active {
+  border-color: var(--atlas-blue);
+  color: var(--atlas-blue);
+  background: #eef3ff;
+}
+
 .events-panel__add-btn {
   display: flex;
   align-items: center;
