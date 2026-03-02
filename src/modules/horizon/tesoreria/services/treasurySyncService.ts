@@ -371,7 +371,7 @@ export async function generateMonthlyForecasts(
       });
     }
 
-    for (const receipt of cardReceipts.values()) {
+    for (const receipt of Array.from(cardReceipts.values())) {
       await insertEvent({
         type: 'expense' as const,
         amount: receipt.amount,
