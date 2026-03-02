@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
-import PropertyImprovements from '../../../../components/fiscalidad/PropertyImprovements';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
@@ -217,7 +216,7 @@ const PropertyDetail: React.FC = () => {
           [
             { id: 'resumen', label: 'Operación', Icon: LayoutList },
             { id: 'contratos', label: 'Alquileres', Icon: Users },
-            { id: 'presupuesto', label: 'Números', Icon: TrendingDown },
+            { id: 'presupuesto', label: 'Gastos', Icon: TrendingDown },
             { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
         ).map(({ id: tabId, label, Icon }) => {
@@ -616,11 +615,6 @@ const PropertyDetail: React.FC = () => {
         <div className="mt-4">
           <button onClick={handleSaveOccupancy} disabled={savingOccupancy} className="atlas-btn-primary">{savingOccupancy ? 'Guardando…' : 'Guardar ocupación'}</button>
         </div>
-      </div>
-
-      {/* Mejoras amortizables (Grupo 1.2) */}
-      <div className="bg-white border border-neutral-200 p-6">
-        <PropertyImprovements propertyId={property.id!} />
       </div>
 
 

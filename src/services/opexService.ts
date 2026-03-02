@@ -16,6 +16,7 @@ const createRule = (
   importeEstimado: 0,
   frecuencia,
   activo: true,
+  businessType: 'recurrente',
 });
 
 /**
