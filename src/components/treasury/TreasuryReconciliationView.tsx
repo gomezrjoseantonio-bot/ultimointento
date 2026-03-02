@@ -67,6 +67,15 @@ interface CardSettlementConfig {
   chargeAccountId: number;
 }
 
+const toNumericId = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
 interface DesgloseLine {
   label: string;
   previsto: number;
@@ -225,7 +234,7 @@ const TreasuryReconciliationView: React.FC = () => {
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
       for (const account of dbAccounts) {
         if (account.id == null) continue;
-        if (account.tipo === 'TARJETA_CREDITO' && account.cardConfig?.chargeAccountId != null) {
+        if (account.cardConfig?.chargeAccountId != null) {
           cardSettlementByAccountId.set(account.id, {
             chargeAccountId: account.cardConfig.chargeAccountId,
           });
@@ -252,11 +261,12 @@ const TreasuryReconciliationView: React.FC = () => {
             ? contractMap.get(Number(e.sourceId))
             : undefined;
 
-          const sourceCardConfig = e.sourceId != null
-            ? cardSettlementByAccountId.get(Number(e.sourceId))
+          const sourceId = toNumericId(e.sourceId);
+          const sourceCardConfig = sourceId != null
+            ? cardSettlementByAccountId.get(sourceId)
             : undefined;
 
-          const eventAccountId = e.accountId != null ? Number(e.accountId) : undefined;
+          const eventAccountId = toNumericId(e.accountId);
           const eventCardConfig = eventAccountId != null
             ? cardSettlementByAccountId.get(eventAccountId)
             : undefined;
