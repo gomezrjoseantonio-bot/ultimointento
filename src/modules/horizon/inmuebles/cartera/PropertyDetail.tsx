@@ -10,7 +10,41 @@ import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 
+
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
+
+const getContractDateRange = (contract: Contract): { start: Date; end: Date } | null => {
+  const startRaw = contract.fechaInicio || contract.startDate;
+  const endRaw = contract.fechaFin || contract.endDate;
+  if (!startRaw || !endRaw) return null;
+  const start = new Date(startRaw);
+  const end = new Date(endRaw);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return start <= end ? { start, end } : { start: end, end: start };
+};
+
+const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number): number => {
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31);
+  const occupiedDays = new Set<string>();
+
+  contracts.forEach((contract) => {
+    const range = getContractDateRange(contract);
+    if (!range) return;
+
+    const start = range.start > yearStart ? range.start : yearStart;
+    const end = range.end < yearEnd ? range.end : yearEnd;
+    if (start > end) return;
+
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      occupiedDays.add(cursor.toISOString().slice(0, 10));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  });
+
+  return occupiedDays.size;
+};
 
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +54,7 @@ const PropertyDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
   const [occupancyYear, setOccupancyYear] = useState<number>(new Date().getFullYear());
-  const [occupancy, setOccupancy] = useState<{ daysRented: number; daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysRented: 0, daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
+  const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
@@ -62,8 +96,7 @@ const PropertyDetail: React.FC = () => {
       try {
         const data = await ensurePropertyOccupancy(property.id, occupancyYear);
         setOccupancy({
-          daysRented: data.daysRented ?? 0,
-          daysUnderRenovation: data.daysUnderRenovation ?? 0,
+                    daysUnderRenovation: data.daysUnderRenovation ?? 0,
           daysAvailable: data.daysAvailable ?? (new Date(occupancyYear, 1, 29).getDate() === 29 ? 366 : 365),
           notes: data.notes ?? '',
         });
@@ -79,13 +112,12 @@ const PropertyDetail: React.FC = () => {
     try {
       setSavingOccupancy(true);
       const saved = await savePropertyOccupancy(property.id, occupancyYear, {
-        daysRented: occupancy.daysRented,
+        daysRented: calculatedOccupiedDays,
         daysUnderRenovation: occupancy.daysUnderRenovation,
         notes: occupancy.notes,
       });
       setOccupancy(prev => ({
         ...prev,
-        daysRented: saved.daysRented,
         daysUnderRenovation: saved.daysUnderRenovation || 0,
         daysAvailable: saved.daysAvailable,
       }));
@@ -150,6 +182,9 @@ const PropertyDetail: React.FC = () => {
 
   const totalCost = calculateTotalCost(property);
   const pricePerSqm = calculatePricePerSqm(property);
+  const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
+  const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
+  const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -180,9 +215,9 @@ const PropertyDetail: React.FC = () => {
       <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
         {(
           [
-            { id: 'resumen', label: 'Resumen', Icon: LayoutList },
-            { id: 'contratos', label: 'Contratos / Ingresos', Icon: Users },
-            { id: 'presupuesto', label: 'Presupuesto (OPEX/CAPEX)', Icon: TrendingDown },
+            { id: 'resumen', label: 'Operación', Icon: LayoutList },
+            { id: 'contratos', label: 'Alquileres', Icon: Users },
+            { id: 'presupuesto', label: 'Números', Icon: TrendingDown },
             { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
         ).map(({ id: tabId, label, Icon }) => {
@@ -211,14 +246,22 @@ const PropertyDetail: React.FC = () => {
         <InmueblePresupuestoTab propertyId={property.id!} />
       ) : activeTab === 'contratos' ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-neutral-900">Contratos / Ingresos</h3>
-            <button
-              onClick={() => navigate('/inmuebles/contratos')}
-              className="text-sm text-brand-navy hover:text-brand-navy/80"
-            >
-              Gestionar todos los contratos →
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/tesoreria')}
+                className="text-sm text-brand-navy hover:text-brand-navy/80"
+              >
+                Ver cobros en Tesorería →
+              </button>
+              <button
+                onClick={() => navigate('/inmuebles/contratos')}
+                className="text-sm text-brand-navy hover:text-brand-navy/80"
+              >
+                Gestionar todos los contratos →
+              </button>
+            </div>
           </div>
           {contracts.length === 0 ? (
             <div className="bg-white border border-neutral-200 rounded-lg p-8 text-center">
@@ -547,17 +590,24 @@ const PropertyDetail: React.FC = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <div className="text-sm text-neutral-600 mb-1">Días alquilado</div>
-            <input type="number" min={0} max={occupancy.daysAvailable} className="w-full px-3 py-2 border border-neutral-300 rounded-md" value={occupancy.daysRented} onChange={(e) => setOccupancy(prev => ({ ...prev, daysRented: Number(e.target.value) || 0 }))} />
+            <div className="text-sm text-neutral-600 mb-1">Días alquilado (derivado de contratos)</div>
+            <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-sm text-neutral-900">{calculatedOccupiedDays}</div>
           </div>
           <div>
             <div className="text-sm text-neutral-600 mb-1">Días en obras</div>
-            <input type="number" min={0} max={Math.max(0, occupancy.daysAvailable - occupancy.daysRented)} className="w-full px-3 py-2 border border-neutral-300 rounded-md" value={occupancy.daysUnderRenovation} onChange={(e) => setOccupancy(prev => ({ ...prev, daysUnderRenovation: Number(e.target.value) || 0 }))} />
+            <input type="number" min={0} max={Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays)} className="w-full px-3 py-2 border border-neutral-300 rounded-md" value={occupancy.daysUnderRenovation} onChange={(e) => setOccupancy(prev => ({ ...prev, daysUnderRenovation: Number(e.target.value) || 0 }))} />
           </div>
           <div>
             <div className="text-sm text-neutral-600 mb-1">Días a disposición</div>
-            <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-sm text-neutral-900">{Math.max(0, occupancy.daysAvailable - occupancy.daysRented - occupancy.daysUnderRenovation)}</div>
+            <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-sm text-neutral-900">{daysAtDisposal}</div>
           </div>
+        </div>
+        <div className="mt-4 p-3 bg-neutral-50 border border-neutral-200 rounded-md text-xs text-neutral-600">
+          La ocupación y tasa de ocupación se calculan automáticamente desde las fechas de los contratos.
+          Puedes añadir únicamente ajustes manuales por excepciones (por ejemplo, días en obras).
+        </div>
+        <div className="mt-3 text-sm text-neutral-700">
+          Tasa de ocupación del ejercicio: <span className="font-semibold">{occupancyRate.toFixed(2)}%</span>
         </div>
         <div className="mt-4">
           <div className="text-sm text-neutral-600 mb-1">Notas</div>
