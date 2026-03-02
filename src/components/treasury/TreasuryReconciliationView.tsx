@@ -63,6 +63,10 @@ interface SimpleAccount {
   balance: number;
 }
 
+interface CardSettlementConfig {
+  chargeAccountId: number;
+}
+
 interface DesgloseLine {
   label: string;
   previsto: number;
@@ -218,8 +222,18 @@ const TreasuryReconciliationView: React.FC = () => {
         });
       }
 
+      const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      for (const account of dbAccounts) {
+        if (account.id == null) continue;
+        if (account.tipo === 'TARJETA_CREDITO' && account.cardConfig?.chargeAccountId != null) {
+          cardSettlementByAccountId.set(account.id, {
+            chargeAccountId: account.cardConfig.chargeAccountId,
+          });
+        }
+      }
+
       const simpleAccounts: SimpleAccount[] = dbAccounts
-        .filter(a => a.id != null && a.activa !== false && a.status !== 'DELETED')
+        .filter(a => a.id != null && a.activa !== false && a.status !== 'DELETED' && a.tipo !== 'TARJETA_CREDITO')
         .map(a => ({
           id: String(a.id),
           dbId: a.id as number,
@@ -233,28 +247,40 @@ const TreasuryReconciliationView: React.FC = () => {
           const d = new Date(e.predictedDate);
           return d.getFullYear() === year && d.getMonth() + 1 === month;
         })
-        .map(e => ({
-          ...(() => {
-            const contractInfo = e.sourceType === 'contrato' && e.sourceId != null
-              ? contractMap.get(Number(e.sourceId))
-              : undefined;
-            return {
-              rentalUnitType: contractInfo?.unidadTipo,
-              rentalPropertyAlias: contractInfo?.propertyAlias,
-            };
-          })(),
-          id: String(e.id),
-          dbId: e.id as number,
-          accountId: String(e.accountId ?? ''),
-          concept: e.description,
-          amount: e.amount,
-          date: e.predictedDate,
-          type: e.type as 'income' | 'expense' | 'financing',
-          status: dbStatusToLocal(e.status),
-          sourceType: e.sourceType,
-          prestamoId: e.prestamoId,
-          numeroCuota: e.numeroCuota,
-        }));
+        .map(e => {
+          const contractInfo = e.sourceType === 'contrato' && e.sourceId != null
+            ? contractMap.get(Number(e.sourceId))
+            : undefined;
+
+          const sourceCardConfig = e.sourceId != null
+            ? cardSettlementByAccountId.get(Number(e.sourceId))
+            : undefined;
+
+          const eventAccountId = e.accountId != null ? Number(e.accountId) : undefined;
+          const eventCardConfig = eventAccountId != null
+            ? cardSettlementByAccountId.get(eventAccountId)
+            : undefined;
+
+          const displayAccountId = sourceCardConfig?.chargeAccountId
+            ?? eventCardConfig?.chargeAccountId
+            ?? eventAccountId;
+
+          return {
+            id: String(e.id),
+            dbId: e.id as number,
+            accountId: String(displayAccountId ?? ''),
+            concept: e.description,
+            amount: e.amount,
+            date: e.predictedDate,
+            type: e.type as 'income' | 'expense' | 'financing',
+            status: dbStatusToLocal(e.status),
+            sourceType: e.sourceType,
+            prestamoId: e.prestamoId,
+            numeroCuota: e.numeroCuota,
+            rentalUnitType: contractInfo?.unidadTipo,
+            rentalPropertyAlias: contractInfo?.propertyAlias,
+          };
+        });
 
       setAccounts(simpleAccounts);
       setEvents(localEvents);
