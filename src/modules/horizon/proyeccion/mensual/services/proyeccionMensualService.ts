@@ -13,6 +13,7 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
+import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
 import { GastoRecurrente, PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
@@ -731,19 +732,11 @@ async function loadBaseData(): Promise<BaseData> {
     // No valuation history available
   }
 
-  // Cash balance from bank accounts
+  // Cash opening balance from all active accounts at projection start.
+  // Uses openingBalance/openingBalanceDate plus prior treasury movements/events.
   let cajaInicial = 0;
   try {
-    const accounts = await db.getAll('accounts');
-    cajaInicial = accounts
-      .filter(
-        (a: { status: string; activa: boolean; balance?: number }) =>
-          a.status === 'ACTIVE' || a.activa,
-      )
-      .reduce(
-        (sum: number, a: { balance?: number }) => sum + (a.balance ?? 0),
-        0,
-      );
+    cajaInicial = await calculateTotalInitialCash(`${START_YEAR}-01-01`);
   } catch {
     // No account data available
   }

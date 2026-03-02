@@ -111,7 +111,11 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
       titular: { 
         nombre: account.titular?.nombre || '', 
         nif: account.titular?.nif || '' 
-      }
+      },
+      openingBalance: account.openingBalance?.toString() ?? '',
+      openingBalanceDate: account.openingBalanceDate
+        ? account.openingBalanceDate.split('T')[0]
+        : new Date().toISOString().split('T')[0],
     });
     setFormErrors({});
     setShowModal(true);
@@ -147,7 +151,11 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
         // Update existing account
         const updateData: UpdateAccountData = {
           alias: formData.alias.trim(),
-          titular: formData.titular.nombre || formData.titular.nif ? formData.titular : undefined
+          titular: formData.titular.nombre || formData.titular.nif ? formData.titular : undefined,
+          openingBalance: parseFloat(formData.openingBalance ?? '') || 0,
+          openingBalanceDate: formData.openingBalanceDate
+            ? new Date(formData.openingBalanceDate).toISOString()
+            : undefined,
         };
         await cuentasService.update(editingAccount.id!, updateData);
         toast.success('Cuenta actualizada correctamente');
@@ -506,9 +514,8 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                     </div>
                   </div>
 
-                  {/* Opening Balance (solo en creación) */}
-                  {!editingAccount && (
-                    <div className="grid grid-cols-2 gap-3">
+                  {/* Opening Balance */}
+                  <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label htmlFor="openingBalance" className="block text-sm font-medium text-atlas-navy-1 mb-1">
                           Saldo actual (€)
@@ -536,7 +543,6 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                         />
                       </div>
                     </div>
-                  )}
                 </div>
               </div>
 

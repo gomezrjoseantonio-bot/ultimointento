@@ -26,6 +26,8 @@ export interface UpdateAccountData {
   activa?: boolean;
   titular?: { nombre?: string; nif?: string; };
   logoUser?: string; // User uploaded logo
+  openingBalance?: number;
+  openingBalanceDate?: string;
 }
 
 class CuentasService {
@@ -321,6 +323,13 @@ class CuentasService {
     }
     if (data.logoUser !== undefined) {
       account.logoUser = data.logoUser;
+    }
+    if (data.openingBalance !== undefined) {
+      account.openingBalance = data.openingBalance;
+      account.balance = data.openingBalance;
+    }
+    if (data.openingBalanceDate !== undefined) {
+      account.openingBalanceDate = data.openingBalanceDate;
     }
 
     account.updatedAt = new Date().toISOString();

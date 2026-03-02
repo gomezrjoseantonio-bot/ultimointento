@@ -130,6 +130,28 @@ describe('cuentasService.create() - opening balance movement', () => {
     );
   });
 
+
+  it('updates opening balance and date when editing an account', async () => {
+    mockDB.getAll.mockResolvedValue([]);
+    mockDB.add.mockResolvedValue(101);
+
+    const created = await cuentasService.create({
+      alias: 'Cuenta Editable',
+      iban: uniqueIban(),
+      openingBalance: 100,
+      openingBalanceDate: '2024-01-01',
+    });
+
+    const updated = await cuentasService.update(created.id!, {
+      openingBalance: 250,
+      openingBalanceDate: '2024-02-01T00:00:00.000Z',
+    });
+
+    expect(updated.openingBalance).toBe(250);
+    expect(updated.balance).toBe(250);
+    expect(updated.openingBalanceDate).toBe('2024-02-01T00:00:00.000Z');
+  });
+
   it('uses the dbAccountId returned by syncAccountToIndexedDB (no second getAll)', async () => {
     await cuentasService.create({
       alias: 'Cuenta Nómina',

@@ -24,6 +24,7 @@ import { formatCompact, formatDateDDMMYYYY } from '../../utils/formatUtils';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
+import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
 import './treasury-reconciliation.css';
 
@@ -179,6 +180,9 @@ const TreasuryReconciliationView: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const [year, month] = currentMonth.split('-').map(Number);
+      await rollForwardAccountBalancesToMonth(year, month);
+
       const db = await initDB();
       const [dbAccounts, dbEvents] = await Promise.all([
         db.getAll('accounts'),
@@ -195,7 +199,6 @@ const TreasuryReconciliationView: React.FC = () => {
           balance: a.balance || 0,
         }));
 
-      const [year, month] = currentMonth.split('-').map(Number);
       const localEvents: TreasuryEvent[] = dbEvents
         .filter(e => {
           const d = new Date(e.predictedDate);
@@ -767,9 +770,9 @@ const TreasuryReconciliationView: React.FC = () => {
           accounts.map(account => {
             const isActive = selectedBankFilter === account.id;
             const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
-            const acctNetPrevisto = acctEvents.reduce((sum, e) =>
+            const acctNetPrevisto = account.balance + acctEvents.reduce((sum, e) =>
               e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
-            const acctNetReal = acctEvents
+            const acctNetReal = account.balance + acctEvents
               .filter(e => e.status === 'confirmado')
               .reduce((sum, e) => e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
             return (
