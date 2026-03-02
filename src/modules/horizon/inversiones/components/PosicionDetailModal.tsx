@@ -36,18 +36,18 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
     });
 
   const tipoLabels: Record<string, string> = {
-    fondo_inversion: 'Fondo inversión',
-    accion: 'Acción',
+    fondo_inversion: 'Fondo inversiÃ³n',
+    accion: 'AcciÃ³n',
     etf: 'ETF',
     plan_pensiones: 'Plan pensiones',
     plan_empleo: 'Plan empleo',
     crypto: 'Crypto',
-    deposito: 'Depósito',
+    deposito: 'DepÃ³sito',
     otro: 'Otro',
   };
 
   const tipoAportacionLabel: Record<string, string> = {
-    aportacion: 'Aportación',
+    aportacion: 'AportaciÃ³n',
     reembolso: 'Reembolso',
     dividendo: 'Dividendo',
   };
@@ -108,7 +108,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               fontSize: 'var(--text-caption)',
               color: 'var(--text-gray)',
             }}>
-              {tipoLabels[posicion.tipo] || posicion.tipo} · {posicion.entidad}
+              {tipoLabels[posicion.tipo] || posicion.tipo} Â· {posicion.entidad}
             </span>
           </div>
           <button
@@ -120,7 +120,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
         </div>
 
         <div style={{ padding: '1.5rem' }}>
-          {/* Valoración summary */}
+          {/* ValoraciÃ³n summary */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -184,7 +184,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             </div>
 
             <div style={{
-              background: isPositive ? 'var(--hz-success-soft, #f0fdf4)' : 'var(--hz-error-soft, #fef2f2)',
+              background: isPositive ? 'var(--hz-success-soft, #f0fdfa)' : 'var(--hz-error-soft, #fef2f2)',
               borderRadius: '10px',
               padding: '1rem',
             }}>
@@ -233,7 +233,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 color: 'var(--atlas-navy-1)',
                 margin: 0,
               }}>
-                Histórico de aportaciones
+                HistÃ³rico de aportaciones
               </h3>
               <button
                 onClick={onAddAportacion}
@@ -253,7 +253,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 }}
               >
                 <Plus size={14} />
-                Añadir aportación
+                AÃ±adir aportaciÃ³n
               </button>
             </div>
 
@@ -329,13 +329,13 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                                     width: 'fit-content',
                                     padding: '0.125rem 0.5rem',
                                     borderRadius: '999px',
-                                    background: ap.ganancia_perdida >= 0 ? '#16a34a22' : '#dc262622',
-                                    color: ap.ganancia_perdida >= 0 ? '#16a34a' : '#dc2626',
+                                    background: ap.ganancia_perdida >= 0 ? '#ccfbf122' : '#dc262622',
+                                    color: ap.ganancia_perdida >= 0 ? '#0d9488' : '#dc2626',
                                     fontWeight: 600,
                                     fontSize: '0.75rem',
                                   }}
                                 >
-                                  {ap.ganancia_perdida >= 0 ? 'Plusvalía' : 'Minusvalía'} {ap.ganancia_perdida >= 0 ? '+' : ''}{formatCurrency(ap.ganancia_perdida)}
+                                  {ap.ganancia_perdida >= 0 ? 'PlusvalÃ­a' : 'MinusvalÃ­a'} {ap.ganancia_perdida >= 0 ? '+' : ''}{formatCurrency(ap.ganancia_perdida)}
                                 </span>
                                 <span style={{ fontSize: '0.75rem' }}>
                                   Coste FIFO: {formatCurrency(ap.coste_adquisicion_fifo ?? 0)}
@@ -419,7 +419,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               }}
             >
               <Edit size={16} />
-              Editar posición
+              Editar posiciÃ³n
             </button>
             <button
               onClick={onClose}
