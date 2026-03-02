@@ -150,6 +150,33 @@ describe('PrestamosCalculationService', () => {
       expect(totalPagado).toBeGreaterThan(120000); // More than principal due to interest
     });
 
+
+    test('does not skip shorter months when payment day is 31', () => {
+      const prestamo: Prestamo = {
+        id: 'test-day-31',
+        inmuebleId: 'prop1',
+        nombre: 'Test Day 31',
+        principalInicial: 90000,
+        principalVivo: 90000,
+        fechaFirma: '2026-01-15',
+        plazoMesesTotal: 3,
+        tipo: 'FIJO',
+        tipoNominalAnualFijo: 3.6,
+        diaCargoMes: 31,
+        cuentaCargoId: 'cuenta1',
+        createdAt: '2026-01-15T00:00:00Z',
+        updatedAt: '2026-01-15T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos.map(p => p.fechaCargo)).toEqual([
+        '2026-02-28',
+        '2026-03-31',
+        '2026-04-30',
+      ]);
+    });
+
     test('handles deferred first payment', () => {
       const prestamo: Prestamo = {
         id: 'test',
