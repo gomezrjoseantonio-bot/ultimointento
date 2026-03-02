@@ -7,695 +7,373 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   ATLAS — SISTEMA DE COLOR UNIFICADO v2.0
+   Paleta única. Sin Horizon/Pulse. Sin semáforos.
+   ============================================================ */
 :root {
-  /* ATLAS HORIZON - Official Color Tokens ONLY */
-  --atlas-blue: #042C5E;          /* Horizon primary - ONLY allowed blue */
-  --atlas-blue-dark: #031F47;     /* Hover state for atlas-blue */
-  --atlas-navy-1: #303A4C;        /* Neutral dark text */
-  --atlas-navy-2: #142C50;        /* Dark backgrounds/sidebar */
-  --atlas-teal: #1DA0BA;          /* PULSE accent - chips, gestión tags */
-  --atlas-teal-dark: #178999;     /* Hover state for atlas-teal */
-  --bg: #F8F9FA;                   /* Light background */
-  --text-gray: #6C757D;            /* Secondary text */
-  --font-inter: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  
-  /* ATLAS Functional States - EXACT requirements */
-  --ok: #28A745;                   /* Success green */
-  --ok-dark: #218838;              /* Hover state for success */
-  --warn: #FFC107;                 /* Warning yellow */
-  --warn-bg: rgba(255, 193, 7, 0.1); /* Warning background */
-  --error: #DC3545;                /* Error red */
-  
-  /* PROHIBITED COLORS - DO NOT USE */
-  /* #1e40af */                    /* NEVER USE - forbidden */
-  
-  /* Horizon Module - ATLAS Design System Tokens (EXACT per requirements) */
-  --hz-primary: var(--atlas-blue);          /* #042C5E */
-  --hz-primary: var(--atlas-blue);     /* Same as primary */
-  --hz-bg: var(--bg);                       /* #F8F9FA */
-  --hz-text: var(--atlas-navy-1);           /* #303A4C */
-  
-  /* Horizon Semantic States - EXACT ATLAS specification */
-  --hz-success: var(--ok);                  /* #28A745 */
-  --hz-warning: var(--warn);                /* #FFC107 */
-  --hz-error: var(--error);                 /* #DC3545 */
-  --hz-info: var(--atlas-blue);             /* #042C5E */
-  
-  /* Horizon Neutral System - ATLAS specification */
-  --hz-neutral-900: var(--atlas-navy-1);   /* #303A4C - Darkest text */
-  --hz-neutral-700: var(--text-gray);      /* #6C757D - Secondary text */
-  --hz-neutral-500: var(--text-gray);      /* #6C757D - Muted text */
-  --hz-neutral-300: #DEE2E6;               /* Light borders */
-  --hz-neutral-200: #E2E8F0;               /* Light borders for cards */
-  --hz-neutral-100: var(--bg);             /* #F8F9FA - Light backgrounds */
-  --hz-card-bg: #FFFFFF;                   /* White cards */
-  --bg-card: #FFFFFF;                      /* Alias for card backgrounds */
-  --atlas-line: #DEE2E6;                   /* Separator lines */
-  --hz-success-soft: #EAF7EE;
-  --hz-warning-soft: #FFF7E6;
-  --hz-error-soft: #FDECEC;
-  --hz-info-soft: #E8F0FF;
-  --hz-success-strong: #1C7C5A;
-  --hz-warning-strong: #935E00;
-  --hz-error-strong: #8D2C2C;
-  --hz-info-strong: #126579;
-  
-  /* Movement States - EXACT per specification */
-  --movement-previsto-ingreso: var(--ok);  /* Green for expected income */
-  --movement-previsto-gasto: var(--error); /* Red for expected expense */
-  --movement-confirmado: var(--atlas-blue); /* Blue for confirmed */
-  --movement-vencido: var(--warn);         /* Amber for overdue */
-  --movement-no-previsto: var(--text-gray); /* Gray for unplanned */
-  
-  /* Typography - Inter as specified - using direct declarations */
-  
-  /* Legacy cleanup - redirect to Horizon tokens */
-  --text: var(--hz-text);
-  --text-muted: var(--hz-neutral-700);
-  --surface: var(--hz-card-bg);
-  --surface-2: var(--hz-bg);      /* Light neutral surface uses Horizon bg */
-  --border: #E2E8F0;              /* Border color */
 
-  /* Estados semánticos - mapped to Horizon tokens */
-  --success: var(--hz-success);   /* Use Horizon success */
-  --warning: var(--hz-warning);   /* Use Horizon warning */
-  --danger: var(--hz-error);      /* Use Horizon error */
-  --info: var(--hz-info);         /* Use Horizon info */
+  /* ── AZUL — jerarquía principal ── */
+  --blue-900: #021E3F;   /* sidebar fondo                  */
+  --blue-800: #042C5E;   /* botones, primario, énfasis      */
+  --blue-700: #0A3D7A;   /* hover de botones primarios      */
+  --blue-600: #1254A0;   /* links activos, iconos           */
+  --blue-500: #2E72C2;   /* iconos secundarios              */
+  --blue-200: #B8D4EF;   /* bordes suaves                   */
+  --blue-100: #DCE9F7;   /* hover fondos                    */
+  --blue-050: #EFF5FC;   /* fondos de cards y rows          */
 
-  /* Primary interactions - use Horizon tokens */
-  --primary: var(--hz-primary);
-  --primary-contrast: #FFFFFF;
-  --primary-hover: var(--hz-primary-600);
-  
-  /* Legacy Horizon tokens for backward compatibility */
-  --horizon-primary: var(--hz-primary);
-  --horizon-primary-hover: var(--hz-primary-600);
-  --horizon-bg-soft: var(--hz-bg);
+  /* ── TURQUESA — único acento ── */
+  --teal-600: #158AA0;   /* hover del acento                */
+  --teal-500: #1DA0BA;   /* KPIs positivos, datos destacados*/
+  --teal-200: #A8DDE8;   /* bordes teal suaves              */
+  --teal-050: #E8F7FA;   /* fondo badge teal                */
 
-  /* ATLAS Typography System - Direct Inter font declarations */
-  
-  /* ATLAS Typography Scale */
-  --text-h1: 1.5rem;              /* H1: 1.5-1.75rem (Semibold) */
-  --text-h1-large: 1.75rem;       /* H1 large variant */
-  --text-h2: 1.25rem;             /* H2: 1.25rem (Semibold) */
-  --text-body: 1rem;              /* Body: 1rem (Regular) */
-  --text-caption: 0.875rem;       /* Caption/Chip: 0.875rem (Medium) */
-  --text-kpi: 1.25rem;            /* KPIs: 1.25-1.5rem (Semibold, tabular-nums) */
-  --text-kpi-large: 1.5rem;       /* KPI large variant */
-  
-  /* Font Weights - Inter only */
-  --font-regular: 400;
-  --font-medium: 500;
-  --font-semibold: 600;
-  --font-bold: 700;
-  
-  /* Design elements */
+  /* ── GRISES — todo lo neutro ── */
+  --gray-900: #1A1F2E;   /* texto principal                 */
+  --gray-700: #3D4560;   /* texto secundario                */
+  --gray-500: #6B748A;   /* texto terciario, VALORES NEGATIVOS */
+  --gray-400: #9BA3B8;   /* placeholders, disabled          */
+  --gray-300: #C8CCDB;   /* bordes, dividers                */
+  --gray-200: #E2E5EE;   /* bordes muy suaves               */
+  --gray-100: #F1F3F8;   /* fondo alternativo               */
+  --gray-050: #F8F9FC;   /* fondo base página               */
+
+  /* ── SEMÁNTICOS APAGADOS (solo para errores/alertas críticas) ── */
+  --alert:   #C84B31;    /* rojo apagado — solo errores     */
+  --caution: #8A6D00;    /* ámbar apagado — solo avisos     */
+
+  /* ── VALORES FINANCIEROS ── */
+  --positive: var(--teal-500);  /* azul/turquesa = positivo */
+  --negative: var(--gray-500);  /* gris = negativo           */
+
+  /* ── SUPERFICIES ── */
+  --surface-page:    var(--gray-050);
+  --surface-card:    #FFFFFF;
+  --surface-sidebar: var(--blue-900);
+
+  /* ── BORDES Y SOMBRAS ── */
+  --border:    var(--gray-200);
+  --border-md: var(--gray-300);
+  --shadow-1:  0 1px 2px rgba(2, 30, 63, .05), 0 4px 12px rgba(2, 30, 63, .04);
+  --shadow-2:  0 6px 18px rgba(2, 30, 63, .08);
+
+  /* ── RADIOS ── */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  --shadow-1: 0 1px 2px rgba(15, 61, 98, .06), 0 4px 12px rgba(15, 61, 98, .04);
-  --shadow-2: 0 6px 18px rgba(15, 61, 98, .08);
 
-  /* Controles */
-  --chip-bg: #ECF7FA;          /* chips neutrales (etiquetas OCR, estados) */
-  --chip-text: #0F3D62;
-  --input-bg: var(--surface);
-  --input-focus: var(--accent);
-  
-  /* Legacy neutral colors for backward compatibility */
-  --neutral-50: #F8FAFC;
-  --neutral-100: #F1F5F9;
-  --neutral-200: #E2E8F0;
-  --neutral-300: #CBD5E1;
-  --neutral-400: #94A3B8;
-  --neutral-500: #64748B;
-  --neutral-600: #475569;
-  --neutral-700: #334155;
-  --neutral-800: #1E293B;
-  --neutral-900: #0F172A;
+  /* ── TIPOGRAFÍA ── */
+  --font-base:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-regular: 400;
+  --font-medium:  500;
+  --font-semibold:600;
+  --font-bold:    700;
+
+  /* ── ESCALA TIPOGRÁFICA ── */
+  --text-xs:      0.75rem;    /* 12px — labels, badges       */
+  --text-sm:      0.875rem;   /* 14px — caption, chips       */
+  --text-base:    1rem;       /* 16px — body                 */
+  --text-lg:      1.125rem;   /* 18px — subtítulos           */
+  --text-xl:      1.25rem;    /* 20px — h2, KPI              */
+  --text-2xl:     1.5rem;     /* 24px — h1, KPI grande       */
+  --text-3xl:     2rem;       /* 32px — hero                 */
+
+  /* ── CONTROLES ── */
+  --input-bg:    var(--surface-card);
+  --input-focus: var(--blue-800);
+  --chip-bg:     var(--blue-050);
+  --chip-text:   var(--blue-800);
+
+  /* ── ALIASES — compatibilidad con Tailwind config existente ── */
+  --atlas-blue:      var(--blue-800);
+  --atlas-teal:      var(--teal-500);
+  --text-gray:       var(--gray-500);
+  --bg:              var(--gray-050);
+  --surface:         var(--surface-card);
+  --text:            var(--gray-900);
+  --text-muted:      var(--gray-500);
+  --primary:         var(--blue-800);
+  --primary-contrast:#FFFFFF;
+  --primary-hover:   var(--blue-700);
 }
 
-/* ATLAS Global Typography - Apply Inter and tabular-nums */
-html, body { 
-  font-family: Inter, system-ui, sans-serif; 
-  color: var(--atlas-navy-1); 
-  background: var(--bg); 
+/* ============================================================
+   BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; border-style: solid; }
+
+html, body {
+  font-family: var(--font-base);
+  font-size: var(--text-base);
+  color: var(--gray-900);
+  background: var(--surface-page);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  font-variant-numeric: tabular-nums; /* Tabular numbers globally for financial data */
-}
-
-html {
-  min-height: 100vh;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-/* ATLAS Typography Classes */
-.atlas-h1 {
-  font-size: var(--text-h1);
-  font-weight: var(--font-semibold);
-  line-height: 1.2;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-h1-large {
-  font-size: var(--text-h1-large);
-  font-weight: var(--font-semibold);
-  line-height: 1.2;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-h2 {
-  font-size: var(--text-h2);
-  font-weight: var(--font-semibold);
-  line-height: 1.3;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-body {
-  font-size: var(--text-body);
-  font-weight: var(--font-regular);
-  line-height: 1.5;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-caption {
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
-  line-height: 1.4;
-  color: var(--text-gray);
-}
-
-.atlas-kpi {
-  font-size: var(--text-kpi);
-  font-weight: var(--font-semibold);
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  color: var(--atlas-navy-1);
 }
 
-.atlas-kpi-large {
-  font-size: var(--text-kpi-large);
-  font-weight: var(--font-semibold);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  color: var(--atlas-navy-1);
-}
+html, #root { min-height: 100vh; }
 
-/* ATLAS Component Styles */
+/* ============================================================
+   TIPOGRAFÍA — clases utilitarias
+   ============================================================ */
+.atlas-hero    { font-size: var(--text-3xl); font-weight: var(--font-bold);    line-height: 1.2; color: var(--gray-900); }
+.atlas-h1      { font-size: var(--text-2xl); font-weight: var(--font-semibold);line-height: 1.25; color: var(--gray-900); }
+.atlas-h2      { font-size: var(--text-xl);  font-weight: var(--font-semibold);line-height: 1.3;  color: var(--gray-900); }
+.atlas-h3      { font-size: var(--text-lg);  font-weight: var(--font-medium);  line-height: 1.4;  color: var(--gray-900); }
+.atlas-subtitle{ font-size: var(--text-lg);  font-weight: var(--font-medium);  line-height: 1.5;  color: var(--gray-700); }
+.atlas-body    { font-size: var(--text-base);font-weight: var(--font-regular); line-height: 1.5;  color: var(--gray-900); }
+.atlas-body-strong { font-size: var(--text-base); font-weight: var(--font-semibold); color: var(--gray-900); }
+.atlas-caption { font-size: var(--text-sm);  font-weight: var(--font-medium);  color: var(--gray-500); }
+
+.atlas-kpi       { font-size: var(--text-xl);  font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; color: var(--gray-900); }
+.atlas-kpi-large { font-size: var(--text-2xl); font-weight: var(--font-bold);     font-variant-numeric: tabular-nums; color: var(--gray-900); }
+
+/* ── Color helpers ── */
+.text-secondary { color: var(--gray-500); }
+.text-muted     { color: var(--gray-400); }
+.text-positive  { color: var(--teal-500); }
+.text-negative  { color: var(--gray-500); }
+.text-alert     { color: var(--alert);    }
+
+/* ============================================================
+   BOTONES
+   ============================================================ */
 .atlas-btn-primary {
-  background-color: var(--atlas-blue);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .5rem 1rem;
+  background: var(--blue-800); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-family: var(--font-base); font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  transition: opacity 0.2s;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  cursor: pointer; transition: background .15s;
 }
-
-.atlas-btn-primary:hover {
-  opacity: 0.9;
-}
+.atlas-btn-primary:hover    { background: var(--blue-700); }
+.atlas-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
 .atlas-btn-secondary {
-  background-color: transparent;
-  color: var(--atlas-blue);
-  border: 1px solid var(--atlas-blue);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .5rem 1rem;
+  background: transparent; color: var(--blue-800);
+  border: 1.5px solid var(--blue-200); border-radius: var(--radius-sm);
+  font-family: var(--font-base); font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  transition: background-color 0.2s;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  cursor: pointer; transition: all .15s;
 }
-
-.atlas-btn-secondary:hover {
-  background-color: var(--bg);
-}
-
-.atlas-btn-destructive {
-  background-color: var(--error);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  font-weight: var(--font-medium);
-  transition: opacity 0.2s;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.atlas-btn-destructive:hover {
-  opacity: 0.9;
-}
-
-.atlas-field {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--hz-neutral-300);
-  border-radius: var(--radius-sm);
-  background-color: var(--hz-card-bg);
-  color: var(--atlas-navy-1);
-  font-size: var(--text-body);
-  font-family: var(--font-inter, "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.atlas-field:focus {
-  outline: none;
-  border-color: var(--atlas-blue);
-  box-shadow: 0 0 0 2px rgba(4, 44, 94, 0.12);
-}
-
-.atlas-field::placeholder {
-  color: var(--text-gray);
-  opacity: 0.7;
-}
+.atlas-btn-secondary:hover    { background: var(--blue-050); border-color: var(--blue-500); }
+.atlas-btn-secondary:disabled { opacity: .5; cursor: not-allowed; }
 
 .atlas-btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background-color: transparent;
-  color: var(--atlas-navy-1);
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  background: transparent; color: var(--gray-700);
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .15s;
 }
+.atlas-btn-ghost:hover  { background: var(--gray-100); border-color: var(--gray-300); }
+.atlas-btn-ghost:focus  { outline: none; border-color: var(--blue-800); box-shadow: 0 0 0 2px rgba(4,44,94,.16); }
+.atlas-btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 
-.atlas-btn-ghost:hover {
-  background-color: var(--hz-neutral-100);
-  border-color: var(--hz-neutral-300);
-}
-
-.atlas-btn-ghost:focus {
-  outline: none;
-  border-color: var(--atlas-blue);
-  box-shadow: 0 0 0 2px rgba(4, 44, 94, 0.16);
-}
-
-/* ATLAS Button Success Variant */
-.atlas-btn-success {
-  background-color: var(--ok);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
+.atlas-btn-destructive {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .5rem 1rem;
+  background: var(--alert); color: #fff;
+  border: none; border-radius: var(--radius-sm);
+  font-family: var(--font-base); font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  transition: opacity 0.2s;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+  cursor: pointer; transition: opacity .15s;
 }
+.atlas-btn-destructive:hover    { opacity: .88; }
+.atlas-btn-destructive:disabled { opacity: .5; cursor: not-allowed; }
 
-.atlas-btn-success:hover {
-  opacity: 0.9;
-}
+/* Tamaños */
+.atlas-btn-sm { padding: .375rem .75rem; font-size: var(--text-xs); }
+.atlas-btn-lg { padding: .75rem 1.5rem;  font-size: var(--text-base); }
 
-/* ATLAS Button Sizes */
-.atlas-btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
-}
+/* Alias cortos (compatibilidad) */
+.btn           { display: inline-flex; gap: .5rem; align-items: center; border-radius: var(--radius-md); padding: .6rem .9rem; font-weight: 600; transition: all .2s; border: none; cursor: pointer; }
+.btn-primary   { background: var(--blue-800); color: #fff; }
+.btn-primary:hover { background: var(--blue-700); }
 
-.atlas-btn-lg {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-}
-
-/* ATLAS Button States */
-.atlas-btn-primary:disabled,
-.atlas-btn-secondary:disabled,
-.atlas-btn-destructive:disabled,
-.atlas-btn-success:disabled,
-.atlas-btn-ghost:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.atlas-btn-primary:disabled:hover,
-.atlas-btn-secondary:disabled:hover,
-.atlas-btn-destructive:disabled:hover,
-.atlas-btn-success:disabled:hover,
-.atlas-btn-ghost:disabled:hover {
-  transform: none;
-  opacity: 0.5;
-  background-color: inherit;
-}
-
-.atlas-card {
-  background-color: var(--hz-card-bg);
-  border: 1px solid var(--hz-neutral-300);
+/* ============================================================
+   CARDS
+   ============================================================ */
+.atlas-card, .card {
+  background: var(--surface-card);
+  border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.atlas-card:hover {
-  border-color: var(--atlas-blue);
   box-shadow: var(--shadow-1);
 }
+.atlas-card { padding: 1.5rem; }
+.atlas-card-hover { transition: box-shadow .2s; }
+.atlas-card-hover:hover { box-shadow: var(--shadow-2); border-color: var(--blue-200); }
 
-/* ATLAS Chips/Badges */
+/* ============================================================
+   CHIPS / BADGES
+   ============================================================ */
 .atlas-chip-neutral {
-  background-color: var(--chip-bg);
-  color: var(--chip-text);
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
+  background: var(--chip-bg); color: var(--chip-text);
+  padding: .2rem .55rem; border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: var(--font-medium);
   display: inline-block;
 }
 
-.atlas-chip-pulse {
-  background-color: rgba(29, 160, 186, 0.1);
-  color: var(--atlas-teal);
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
+/* El turquesa = positivo/activo. El gris = neutro/negativo. */
+.atlas-chip-positive {
+  background: var(--teal-050); color: var(--teal-600);
+  border: 1px solid var(--teal-200);
+  padding: .2rem .55rem; border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: var(--font-medium);
+  display: inline-block;
+}
+.atlas-chip-negative {
+  background: var(--gray-100); color: var(--gray-500);
+  border: 1px solid var(--gray-300);
+  padding: .2rem .55rem; border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: var(--font-medium);
+  display: inline-block;
+}
+.atlas-chip-alert {
+  background: #FDF1EE; color: var(--alert);
+  border: 1px solid #F0C4B8;
+  padding: .2rem .55rem; border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: var(--font-medium);
   display: inline-block;
 }
 
-.atlas-chip-success {
-  background-color: rgba(40, 167, 69, 0.1);
-  color: var(--ok);
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
-  display: inline-block;
-}
+/* Aliases legacy */
+.atlas-chip-pulse   { background: var(--teal-050); color: var(--teal-600); padding: .25rem .5rem; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--font-medium); display: inline-block; }
+.atlas-chip-success { background: var(--teal-050); color: var(--teal-600); padding: .25rem .5rem; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--font-medium); display: inline-block; }
+.atlas-chip-warning { background: #FDF5E0; color: var(--caution);           padding: .25rem .5rem; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--font-medium); display: inline-block; }
+.atlas-chip-error   { background: #FDF1EE; color: var(--alert);             padding: .25rem .5rem; border-radius: var(--radius-sm); font-size: var(--text-sm); font-weight: var(--font-medium); display: inline-block; }
 
-.atlas-chip-warning {
-  background-color: rgba(255, 193, 7, 0.1);
-  color: var(--warn);
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
-  display: inline-block;
-}
+/* Badge (pill) */
+.badge         { border-radius: 999px; padding: .2rem .6rem; font-weight: 600; font-size: var(--text-xs); display: inline-block; }
+.badge-blue    { background: var(--blue-050);  color: var(--blue-800);  border: 1px solid var(--blue-200);  }
+.badge-teal    { background: var(--teal-050);  color: var(--teal-600);  border: 1px solid var(--teal-200);  }
+.badge-gray    { background: var(--gray-100);  color: var(--gray-700);  border: 1px solid var(--gray-300);  }
+.badge-alert   { background: #FDF1EE;          color: var(--alert);     border: 1px solid #F0C4B8;          }
 
-.atlas-chip-error {
-  background-color: rgba(220, 53, 69, 0.1);
-  color: var(--error);
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--font-medium);
-  display: inline-block;
-}
+/* Legacy badge aliases */
+.badge-success { background: var(--teal-050); color: var(--teal-600); }
+.badge-warning { background: #FDF5E0;         color: var(--caution);  }
+.badge-danger  { background: #FDF1EE;         color: var(--alert);    }
+.badge-info    { background: var(--blue-050); color: var(--blue-800); }
+.chip { background: var(--chip-bg); color: var(--chip-text); border-radius: 999px; padding: .25rem .6rem; display: inline-block; font-size: var(--text-sm); font-weight: 500; }
 
-/* ATLAS Cards */
-.atlas-card {
-  background-color: white;
-  border: 1px solid var(--hz-neutral-300);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
-  padding: 1.5rem;
+/* ============================================================
+   INPUTS / FIELDS
+   ============================================================ */
+.atlas-field, .input, select {
+  width: 100%; padding: .5rem .75rem;
+  background: var(--surface-card);
+  border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+  font-family: var(--font-base); font-size: var(--text-base);
+  color: var(--gray-900);
+  transition: border-color .15s, box-shadow .15s;
 }
-
-/* Apply tabular numbers to all financial/monetary content */
-.tabular-nums, 
-[class*="currency"], 
-[class*="amount"], 
-[class*="price"],
-table td,
-.kpi,
-.financial-data {
-  font-variant-numeric: tabular-nums;
+.atlas-field:focus, .input:focus, select:focus {
+  outline: none;
+  border-color: var(--blue-800);
+  box-shadow: 0 0 0 2px rgba(4, 44, 94, .12);
 }
+.atlas-field::placeholder, .input::placeholder { color: var(--gray-400); }
 
-/* ATLAS Component System */
-.card { 
-  background: var(--surface); 
-  border: 1px solid var(--border); 
-  border-radius: var(--radius-lg); 
-  box-shadow: var(--shadow-1); 
-}
+/* ============================================================
+   ESTADOS DE MOVIMIENTOS FINANCIEROS
+   Sin semáforos. Turquesa = positivo/confirmado. Gris = negativo/pendiente.
+   ============================================================ */
+.movement-ingreso   { color: var(--teal-500); font-weight: var(--font-semibold); }
+.movement-gasto     { color: var(--gray-500); }
+.movement-confirmado{ color: var(--blue-800); font-weight: var(--font-semibold); }
+.movement-vencido   { color: var(--caution);  }
+.movement-no-previsto{ color: var(--gray-400); }
 
-.btn { 
-  display: inline-flex; 
-  gap: .5rem; 
-  align-items: center; 
-  border-radius: var(--radius-md); 
-  padding: .6rem .9rem; 
-  font-weight: 600; 
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.btn-primary { 
-  background: var(--primary); 
-  color: var(--primary-contrast); 
-}
-
-.btn-primary:hover { 
-  background: var(--primary-hover); 
-}
-
-.btn-accent { 
-  background: var(--accent); 
-  color: #fff; 
-}
-
-.btn-accent:hover { 
-  background: var(--accent-hover); 
-}
-
-.badge { 
-  border-radius: 999px; 
-  padding: .2rem .6rem; 
-  font-weight: 600; 
-  font-size: .78rem; 
-  display: inline-block;
-}
-
-.badge-success { 
-  background: rgba(46,175,125,.12); 
-  color: var(--hz-success-strong);
-}
-
-.badge-warning { 
-  background: rgba(240,162,2,.14); 
-  color: var(--hz-warning-strong);
-}
-
-.badge-danger { 
-  background: rgba(227,93,93,.12); 
-  color: var(--hz-error-strong);
-}
-
-.badge-info { 
-  background: rgba(46,176,203,.12); 
-  color: var(--hz-info-strong);
-}
-
-.chip { 
-  background: var(--chip-bg); 
-  color: var(--chip-text); 
-  border-radius: 999px; 
-  padding: .25rem .6rem; 
-  display: inline-block;
-  font-size: .875rem;
-  font-weight: 500;
-}
-
-.input, select { 
-  background: var(--input-bg); 
-  border: 1px solid var(--border); 
-  border-radius: var(--radius-md); 
-  padding: .55rem .7rem; 
-  font-family: Inter, system-ui, sans-serif;
-  color: var(--text);
-  width: 100%;
-}
-
-.input:focus, select:focus { 
-  outline: 2px solid var(--input-focus); 
-  outline-offset: 1px; 
-  border-color: var(--input-focus);
-}
-
-/* Temas por contexto */
-.theme-inbox { 
-  --primary: var(--brand-navy); 
-  --accent: var(--brand-teal); 
-}
-
-.theme-horizon { 
-  --primary: var(--brand-navy); 
-  --accent: var(--brand-teal); 
-}
-
-.theme-pulse { 
-  --primary: var(--brand-navy); 
-  --accent: var(--brand-teal); 
-  /* KPI cards pueden usar --accent */ 
-}
-
-/* Tabular numbers for KPIs */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Enhanced Component Styles (maintaining compatibility) */
+/* ============================================================
+   COMPONENTES TAILWIND (compatibilidad con clases existentes)
+   ============================================================ */
 @layer components {
-  /* Base button styles */
+
   .btn-base {
-    @apply inline-flex items-center px-4 py-2 text-sm font-medium rounded-atlas transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center px-4 py-2 text-sm font-medium rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
-  
-  /* Primary buttons - ATLAS blue for Horizon */
-  .btn-primary-horizon {
-    @apply btn-base bg-atlas-blue text-white hover:bg-navy-800 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
+
+  /* Todos los botones primarios unificados — sin sufijo -horizon/-pulse */
+  .btn-primary-horizon,
   .btn-primary-pulse {
-    @apply btn-base bg-atlas-blue text-white hover:bg-navy-800 focus:ring-atlas-blue disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base text-white focus:ring-blue-700 disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--blue-800);
   }
-  
-  /* Secondary/Outline buttons */
-  .btn-secondary-horizon {
-    @apply btn-base border border-neutral-300 text-atlas-blue bg-white hover:bg-neutral-50 focus:ring-atlas-blue;
-  }
-  
+  .btn-primary-horizon:hover,
+  .btn-primary-pulse:hover { background-color: var(--blue-700); }
+
+  .btn-secondary-horizon,
   .btn-secondary-pulse {
-    @apply btn-base border border-neutral-300 text-atlas-blue bg-white hover:bg-neutral-50 focus:ring-atlas-blue;
+    @apply btn-base bg-white focus:ring-blue-700;
+    color: var(--blue-800);
+    border-color: var(--blue-200);
   }
-  
-  /* Ghost buttons */
-  .btn-ghost-horizon {
-    @apply btn-base border-transparent text-atlas-blue bg-transparent hover:bg-neutral-50 focus:ring-atlas-blue;
-  }
-  
+  .btn-secondary-horizon:hover,
+  .btn-secondary-pulse:hover { background-color: var(--blue-050); }
+
+  .btn-ghost-horizon,
   .btn-ghost-pulse {
-    @apply btn-base border-transparent text-hz-primary bg-transparent hover:bg-hz-neutral-100 focus:ring-hz-primary;
+    @apply btn-base bg-transparent focus:ring-blue-700;
+    color: var(--blue-800);
   }
-  
-  /* Accent buttons (for secondary positive actions) - HORIZON only uses atlas-blue */
-  .btn-accent-horizon {
-    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
-  /* DEPRECATED - Pulse button style not allowed in Horizon */
+  .btn-ghost-horizon:hover,
+  .btn-ghost-pulse:hover { background-color: var(--blue-050); }
+
+  .btn-accent-horizon,
   .btn-accent-pulse {
-    @apply btn-base bg-hz-success text-white hover:bg-success-600 focus:ring-hz-success disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply btn-base text-white focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--teal-500);
   }
-  
-  /* Danger buttons */
-  .btn-danger {
-    @apply btn-base bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
-  .btn-danger-outline {
-    @apply btn-base border border-red-600 text-red-600 bg-white hover:bg-red-50 focus:ring-red-600;
-  }
+  .btn-accent-horizon:hover,
+  .btn-accent-pulse:hover { background-color: var(--teal-600); }
+
+  .btn-danger         { @apply btn-base bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 disabled:opacity-50; }
+  .btn-danger-outline { @apply btn-base border border-red-600 text-red-600 bg-white hover:bg-red-50 focus:ring-red-600; }
+
+  /* Horizon component aliases */
+  .horizon-primary   { background-color: var(--blue-800); color: white; }
+  .horizon-primary:hover { background-color: var(--blue-700); }
+  .horizon-secondary { border: 1.5px solid var(--blue-800); color: var(--blue-800); background: transparent; }
+  .horizon-secondary:hover { background: var(--blue-800); color: white; }
+
+  .horizon-badge-success { background-color: var(--teal-050); color: var(--teal-600); }
+  .horizon-badge-warning { background-color: #FDF5E0;          color: var(--caution);  }
+  .horizon-badge-error   { background-color: #FDF1EE;          color: var(--alert);    }
+  .horizon-badge-info    { background-color: var(--blue-050);  color: var(--blue-800); }
+
+  .horizon-pending-queue { @apply bg-white rounded-xl border shadow-sm; border-color: var(--gray-200); }
+
+  /* Screen reader */
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 }
 
-/* Clean borders and focus styles */
+/* ============================================================
+   FORMULARIOS BASE
+   ============================================================ */
 @layer base {
-  /* Ensure all borders are solid and use ATLAS colors */
   input, select, textarea {
-    @apply border-solid focus:ring-2 focus:ring-opacity-50;
-    border-color: var(--border);
+    @apply border-solid;
+    border-color: var(--gray-200);
   }
-  
   input:focus, select:focus, textarea:focus {
-    border-color: var(--input-focus);
-    outline: 2px solid var(--input-focus);
+    border-color: var(--blue-800);
+    outline: 2px solid var(--blue-800);
     outline-offset: 1px;
   }
-  
-  /* Remove any dotted or dashed borders globally */
-  * {
-    border-style: solid;
-  }
 }
 
-/* Horizon Module Styles - AUTOGUARDADO OFF */
-@layer components {
-  .horizon-pending-queue {
-    @apply bg-white rounded-xl border border-neutral-200 shadow-sm;
-  }
-  
-  /* Horizon Design System Utility Classes - Official Tokens */
-  .horizon-primary {
-    background-color: var(--hz-primary);
-    color: white;
-  }
-  
-  .horizon-primary:hover {
-    background-color: var(--hz-primary-600);
-  }
-  
-  .horizon-secondary {
-    @apply border text-white bg-transparent hover:bg-white hover:text-current;
-    border-color: var(--hz-primary);
-    color: var(--hz-primary);
-  }
-  
-  .horizon-secondary:hover {
-    background-color: var(--hz-primary);
-    color: white;
-  }
-  
-  /* Horizon Badge System - Official Design Tokens */
-  .horizon-badge-success {
-    background-color: var(--hz-success-soft);  /* Success background per specification */
-    color: var(--hz-success);
-  }
-  
-  .horizon-badge-warning {
-    background-color: var(--hz-warning-soft);  /* Warning background per specification */
-    color: var(--hz-warning-strong);             /* Warning text per specification */
-  }
-  
-  .horizon-badge-error {
-    background-color: var(--hz-error-soft);  /* Error background per specification */
-    color: var(--hz-error-strong);             /* Error text per specification */
-  }
-  
-  .horizon-badge-info {
-    background-color: var(--hz-info-soft);  /* Info background per specification */
-    color: var(--hz-info-strong);             /* Info text per specification */
-  }
-  
-  /* Screen reader only content */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-/* Sprint 1 UX Improvements - Mobile Touch Targets (44px minimum) */
+/* ============================================================
+   MOBILE — touch targets mínimos 44px
+   ============================================================ */
 @media (max-width: 768px) {
-  /* Ensure buttons meet 44px touch target on mobile */
   button:not(.atlas-btn-sm),
   .atlas-btn-primary,
   .atlas-btn-secondary,
@@ -705,238 +383,66 @@ table td,
     min-width: 44px;
   }
 
-  /* Input fields on mobile */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="search"],
-  input[type="date"],
-  select,
-  textarea {
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="tel"], input[type="date"],
+  select, textarea {
     min-height: 44px;
-    padding: 0.75rem 1rem;
+    padding: .75rem 1rem;
+    font-size: max(16px, 1rem);
   }
 
-  /* Icon buttons specifically */
-  button[aria-label]:not([aria-label=""]) {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.5rem;
-  }
+  form { padding: 1rem; }
 
-  /* Increase tap area for interactive elements */
-  a, 
-  label {
-    padding: 0.5rem 0;
-  }
-}
-
-/* Sprint 2 UX Improvements - Enhanced Mobile Form Experience */
-@media (max-width: 768px) {
-  /* Better form spacing on mobile */
-  form {
-    padding: 1rem;
-  }
-
-  /* Stack form grids on mobile */
   .grid.grid-cols-2,
   .grid.grid-cols-3,
-  .grid.md\\:grid-cols-2,
-  .grid.md\\:grid-cols-3 {
+  .grid.md\:grid-cols-2,
+  .grid.md\:grid-cols-3 {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  /* Improve modal readability on mobile */
-  .fixed.inset-0 > div {
-    max-width: 100%;
-    margin: 0.5rem;
-  }
-
-  /* Make form labels more prominent on mobile */
-  label {
-    font-size: 0.9375rem;
-    font-weight: 500;
-  }
-
-  /* Improve select dropdowns on mobile */
-  select {
-    font-size: max(16px, 1rem); /* Prevents zoom on iOS while respecting user preferences */
-  }
-
-  /* Improve input focus states on mobile */
-  input:focus,
-  select:focus,
-  textarea:focus {
-    outline: 2px solid var(--hz-primary);
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--blue-800);
     outline-offset: 2px;
-  }
-
-  /* Better error message visibility on mobile */
-  .text-red-500,
-  .text-red-600,
-  .text-red-700 {
-    font-size: 0.875rem;
-    font-weight: 500;
   }
 }
 
-/* Compact Property Form Styles - Single Screen Layout */
+/* ============================================================
+   INMUEBLES FORM — compact
+   ============================================================ */
 .inmueble-form-compact {
   max-height: calc(100vh - 180px);
   overflow-y: auto;
 }
-
 .inmueble-form-compact input[type="number"],
 .inmueble-form-compact input[type="text"],
 .inmueble-form-compact input[type="date"] {
-  padding: 0.375rem 0.5rem;
-  font-size: 0.875rem;
+  padding: .375rem .5rem;
+  font-size: var(--text-sm);
 }
-
 .inmueble-form-compact label {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
+  font-size: var(--text-xs);
+  color: var(--gray-500);
+  margin-bottom: .25rem;
   display: block;
 }
 
-/* Collapsible sections */
-.section-header {
-  cursor: pointer;
-  user-select: none;
-}
+/* ============================================================
+   SECCIONES COLAPSABLES
+   ============================================================ */
+.section-header { cursor: pointer; user-select: none; }
+.section-header:hover { background-color: var(--gray-050); }
+.section-content { transition: max-height .2s ease-out; }
+.section-content.collapsed { max-height: 0; overflow: hidden; padding: 0; }
 
-.section-header:hover {
-  background-color: #f9fafb;
-}
-
-.section-content {
-  transition: max-height 0.2s ease-out;
-}
-
-.section-content.collapsed {
-  max-height: 0;
-  overflow: hidden;
-  padding: 0;
-}
-}
-/* ========================================
-   ATLAS UTILITY CLASSES
-   ======================================== */
-
-/* Typography Scale */
-.atlas-caption {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-body {
-  font-size: 1rem;
-  line-height: 1.5rem;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-body-strong {
-  font-size: 1rem;
-  line-height: 1.5rem;
-  font-weight: 600;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-subtitle {
-  font-size: 1.125rem;
-  line-height: 1.75rem;
-  font-weight: 500;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-h3 {
-  font-size: 1rem;
-  line-height: 1.5rem;
-  font-weight: 500;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-h2 {
-  font-size: 1.125rem;
-  line-height: 1.75rem;
-  font-weight: 600;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-h1 {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-weight: 600;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-hero {
-  font-size: 2rem;
-  line-height: 2.5rem;
-  font-weight: 700;
-  color: var(--atlas-navy-1);
-}
-
-.atlas-kpi {
-  font-size: 1.5rem;
-  line-height: 2rem;
-  font-weight: 600;
+/* ============================================================
+   UTILIDADES
+   ============================================================ */
+.tabular-nums,
+[class*="currency"], [class*="amount"], [class*="price"],
+table td, .kpi, .financial-data {
   font-variant-numeric: tabular-nums;
-  color: var(--atlas-navy-1);
 }
 
-.atlas-kpi-large {
-  font-size: 1.75rem;
-  line-height: 2.25rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--atlas-navy-1);
-}
-
-/* Color Utilities */
-.text-secondary {
-  color: var(--text-gray);
-}
-
-.text-success {
-  color: var(--ok);
-}
-
-.text-warning {
-  color: var(--warn);
-}
-
-.text-danger {
-  color: var(--error);
-}
-
-/* Card Utility */
-.atlas-card {
-  background-color: white;
-  border: 1px solid var(--gray-300, #DEE2E6);
-  border-radius: 12px;
-  padding: 1rem;
-}
-
-.atlas-card-hover {
-  transition: box-shadow 0.2s;
-}
-
-.atlas-card-hover:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Hide scrollbar while keeping scroll functionality */
-.hide-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-.hide-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
-}
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
