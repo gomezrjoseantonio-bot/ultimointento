@@ -8,7 +8,8 @@ La fricción no es “visual”, es de **arquitectura funcional**:
 
 1. Se entra por **Inmuebles/Cartera**, pero para operar hay que saltar entre:
    - Ficha del inmueble
-   - Contratos/Cobros globales
+   - Contratos globales
+   - Cobros marcados en **Tesorería**
    - Apartado específico de **Alquileres** (alta y gestión de contratos)
    - Presupuesto y fiscal en bloques largos
 
@@ -67,9 +68,14 @@ Solo 3 pestañas:
 
 ## Superficie transversal — Alquileres (alta y gestión multi-inmueble)
 - Alta de contratos nuevos
-- Gestión masiva (lista, calendario, cobros)
+- Gestión masiva (lista y calendario contractual)
 - Filtros por estado/modalidad/inmueble
 - Acceso rápido a ficha del inmueble asociado
+
+## Superficie transversal — Tesorería (estado de cobros reales)
+- Marcado de recibos: pendiente/cobrado/parcial/devuelto
+- Conciliación con movimientos bancarios
+- Verificación final de cobro real (fuente de verdad de caja)
 
 ### Eliminaciones/Fusiones directas
 - “Contratos / Ingresos” dentro de ficha se simplifica y queda en **Operación**.
@@ -106,6 +112,9 @@ Para evitar ambigüedad, en **Números** se muestran 4 bloques diferenciados:
 ## Tarea 1: alta de contrato nuevo
 Inmuebles/Cartera o ficha → **Alquileres** → Nuevo contrato → vincular inmueble.
 
+## Tarea 1b: marcar cobro real
+Alquileres (contexto de contrato) → abrir en **Tesorería** → marcar estado real del cobro.
+
 ## Tarea 2: renovar contrato de un inmueble
 Cartera → abrir ficha → Operación → Renovar (o abrir en Alquileres si requiere edición avanzada).
 
@@ -129,12 +138,21 @@ Regla: si una tarea frecuente necesita más de 3 pasos, está mal diseñada.
 ## Sprint 2 (alineación con Alquileres)
 1. Añadir CTA en Operación: “Gestionar en Alquileres”.
 2. En Alquileres, reforzar alta de contrato y link de vuelta a ficha.
-3. Unificar naming entre ficha y Alquileres (estado, modalidad, cobros).
+3. Unificar naming entre ficha y Alquileres (estado, modalidad, vigencia).
+4. Añadir CTA de paso a Tesorería para marcaje de cobros reales.
 
 ## Sprint 3 (modelo económico completo)
 1. Implementar las 4 tipologías de gasto en Números.
 2. Etiquetas fiscales por tipología (recurrente, reparación, mejora, mobiliario).
 3. Filtro en Cartera: “Requiere acción”.
+4. Derivar **calendario de ocupación y tasa de ocupación** desde fechas de contratos (autocalculado por ejercicio).
+
+## Regla de datos (obligatoria)
+
+1. **Cobro real**: la fuente de verdad es Tesorería.
+2. **Calendario de ocupación**: se deriva automáticamente de las fechas de contrato.
+3. **Tasa de ocupación**: cálculo automático por ejercicio (días ocupados / días del año).
+4. Ajustes manuales solo para excepciones justificadas (obras, bloqueos, incidencias), con trazabilidad.
 
 ---
 
@@ -145,8 +163,10 @@ La racionalización será válida solo si se cumple:
 1. Ficha con máximo 3 pestañas.
 2. Alta de contrato claramente anclada en **Alquileres**.
 3. Operación por inmueble claramente anclada en **Ficha**.
-4. Gasto siempre clasificado en una de 4 tipologías (sin “cajón desastre”).
-5. Usuario identifica pendientes del inmueble en <10 segundos.
+4. Cobros marcados y conciliados en **Tesorería**.
+5. Calendario/tasa de ocupación autoderivados de contratos.
+6. Gasto siempre clasificado en una de 4 tipologías (sin “cajón desastre”).
+7. Usuario identifica pendientes del inmueble en <10 segundos.
 
 ---
 
@@ -154,6 +174,8 @@ La racionalización será válida solo si se cumple:
 
 - Tiempo medio de alta de contrato (en Alquileres).
 - Tiempo medio de renovación desde ficha.
+- % cobros conciliados correctamente en Tesorería.
+- % ocupación calculada automáticamente sin intervención manual.
 - % gastos correctamente clasificados en 4 tipologías.
 - % inmuebles “listo para cierre fiscal”.
 - Nº de saltos entre pantallas por tarea.
@@ -164,9 +186,10 @@ La racionalización será válida solo si se cumple:
 
 Test con 5 usuarios internos, 4 tareas:
 1. Dar de alta un contrato nuevo desde Alquileres.
-2. Renovar contrato desde ficha.
-3. Registrar una reparación y una compra de mobiliario.
-4. Dejar inmueble listo para fiscal.
+2. Marcar y conciliar un cobro en Tesorería.
+3. Verificar que ocupación anual se calcula desde contratos.
+4. Registrar una reparación y una compra de mobiliario.
+5. Dejar inmueble listo para fiscal.
 
 Éxito si:
 - ≥80% completan sin ayuda.
