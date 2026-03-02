@@ -182,7 +182,7 @@ interface BaseData {
 
   // Scalars
   pensionNetaMensual: number;
-  /** Individual otros-ingresos items – monthly amount computed per-month to respect fechaFin */
+  /** Individual otros-ingresos items – monthly amount computed per-month to respect fechaInicio/fechaFin */
   otrosIngresosItems: OtrosIngresos[];
   valorPlanesPension: number;
   cajaInicial: number;
@@ -345,6 +345,7 @@ function buildMonthRow(
 
   // E. Otros ingresos: exact monthly amount based on frequency — respect actual months, not flat division
   const otrosIngresosMensual = baseData.otrosIngresosItems.reduce((sum, otro) => {
+    if (otro.fechaInicio && monthStr < otro.fechaInicio) return sum;
     if (otro.fechaFin && monthStr > otro.fechaFin) return sum;
     let mensual = 0;
     switch (otro.frecuencia) {
@@ -359,6 +360,7 @@ function buildMonthRow(
   // Per-month drill-down for otros ingresos
   const otrosIngresosDrillDown: DrillDownItem[] = baseData.otrosIngresosItems
     .filter(otro => {
+      if (otro.fechaInicio && monthStr < otro.fechaInicio) return false;
       if (otro.fechaFin && monthStr > otro.fechaFin) return false;
       switch (otro.frecuencia) {
         case 'mensual': return true;

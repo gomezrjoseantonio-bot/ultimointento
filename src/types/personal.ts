@@ -291,6 +291,7 @@ export interface OtrosIngresos {
   cuentaCobro: number;
   reglasDia: ReglaDia;
   activo: boolean;
+  fechaInicio?: string;
   fechaFin?: string;
   fechaCreacion: string;
   fechaActualizacion: string;
