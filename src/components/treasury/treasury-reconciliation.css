@@ -892,6 +892,27 @@
   background: #fafafa;
 }
 
+
+.event-item--group {
+  background: #f8fafc;
+}
+
+.event-group-toggle {
+  border: none;
+  background: none;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.event-item--nested {
+  padding-left: 52px;
+  background: #fcfdff;
+}
+
 .event-item--confirmed {
   opacity: 0.55;
 }

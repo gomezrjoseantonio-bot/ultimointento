@@ -109,6 +109,7 @@ const SECTION_ROWS: Record<SectionKey, RowDef[]> = {
       label: 'Rentas alquiler',
       getValue: m => m.ingresos.rentasAlquiler,
       getDrillDownItems: m => m.ingresos.drillDown?.rentasAlquiler ?? [],
+      drillDownGroupKey: 'fuente',
     },
     { label: 'Intereses Inversiones', getValue: m => m.ingresos.dividendosInversiones },
     {

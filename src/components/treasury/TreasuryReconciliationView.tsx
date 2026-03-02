@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   TrendingUp,
   TrendingDown,
   CreditCard,
@@ -46,7 +47,13 @@ export interface TreasuryEvent {
   parentId?: string;
   prestamoId?: string;
   numeroCuota?: number;
+  rentalUnitType?: 'vivienda' | 'habitacion';
+  rentalPropertyAlias?: string;
 }
+
+type EventListRow =
+  | { kind: 'event'; event: TreasuryEvent; nested?: boolean }
+  | { kind: 'rental-group'; groupId: string; propertyAlias: string; events: TreasuryEvent[] };
 
 interface SimpleAccount {
   id: string;
@@ -170,6 +177,7 @@ const TreasuryReconciliationView: React.FC = () => {
 
   // "Generar Previsiones" sync state
   const [syncingForecasts, setSyncingForecasts] = useState(false);
+  const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
 
   // Focus amount input when inline editing starts
   useEffect(() => {
@@ -187,10 +195,28 @@ const TreasuryReconciliationView: React.FC = () => {
       await rollForwardAccountBalancesToMonth(year, month);
 
       const db = await initDB();
-      const [dbAccounts, dbEvents] = await Promise.all([
+      const [dbAccounts, dbEvents, contracts, properties] = await Promise.all([
         db.getAll('accounts'),
         db.getAll('treasuryEvents'),
+        db.getAll('contracts'),
+        db.getAll('properties'),
       ]);
+
+      const propertyAliasMap = new Map<number, string>();
+      for (const property of properties) {
+        if (property.id != null) {
+          propertyAliasMap.set(property.id, property.alias ?? `Inmueble ${property.id}`);
+        }
+      }
+
+      const contractMap = new Map<number, { unidadTipo: 'vivienda' | 'habitacion'; propertyAlias: string }>();
+      for (const contract of contracts) {
+        if (contract.id == null) continue;
+        contractMap.set(contract.id, {
+          unidadTipo: contract.unidadTipo,
+          propertyAlias: propertyAliasMap.get(contract.inmuebleId) ?? `Inmueble ${contract.inmuebleId}`,
+        });
+      }
 
       const simpleAccounts: SimpleAccount[] = dbAccounts
         .filter(a => a.id != null && a.activa !== false && a.status !== 'DELETED')
@@ -208,6 +234,15 @@ const TreasuryReconciliationView: React.FC = () => {
           return d.getFullYear() === year && d.getMonth() + 1 === month;
         })
         .map(e => ({
+          ...(() => {
+            const contractInfo = e.sourceType === 'contrato' && e.sourceId != null
+              ? contractMap.get(Number(e.sourceId))
+              : undefined;
+            return {
+              rentalUnitType: contractInfo?.unidadTipo,
+              rentalPropertyAlias: contractInfo?.propertyAlias,
+            };
+          })(),
           id: String(e.id),
           dbId: e.id as number,
           accountId: String(e.accountId ?? ''),
@@ -545,6 +580,42 @@ const TreasuryReconciliationView: React.FC = () => {
 
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
+  const eventListRows = useMemo<EventListRow[]>(() => {
+    const rows: EventListRow[] = [];
+    const rentalGroupIndex = new Map<string, number>();
+
+    for (const event of filteredEvents) {
+      const shouldGroupRental =
+        event.type === 'income' &&
+        event.sourceType === 'contrato' &&
+        event.rentalUnitType === 'habitacion';
+
+      if (!shouldGroupRental) {
+        rows.push({ kind: 'event', event });
+        continue;
+      }
+
+      const groupId = `${event.rentalPropertyAlias ?? 'Sin inmueble'}|${event.accountId}|${event.date}`;
+      const existingIdx = rentalGroupIndex.get(groupId);
+      if (existingIdx == null) {
+        rentalGroupIndex.set(groupId, rows.length);
+        rows.push({
+          kind: 'rental-group',
+          groupId,
+          propertyAlias: event.rentalPropertyAlias ?? 'Sin inmueble',
+          events: [event],
+        });
+      } else {
+        const existing = rows[existingIdx];
+        if (existing.kind === 'rental-group') {
+          existing.events.push(event);
+        }
+      }
+    }
+
+    return rows;
+  }, [filteredEvents]);
+
   const formatAmount = (value: number): string =>
     value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -860,7 +931,98 @@ const TreasuryReconciliationView: React.FC = () => {
           ) : filteredEvents.length === 0 ? (
             <div className="events-list__empty">Sin eventos para este periodo</div>
           ) : (
-            filteredEvents.map(event => {
+            eventListRows.map(row => {
+              if (row.kind === 'rental-group') {
+                const isExpanded = !!expandedRentalGroups[row.groupId];
+                const totalAmount = row.events.reduce((sum, ev) => sum + ev.amount, 0);
+                const confirmedCount = row.events.filter(ev => ev.status === 'confirmado').length;
+                const allConfirmed = confirmedCount === row.events.length;
+
+                return (
+                  <React.Fragment key={row.groupId}>
+                    <div className={`event-item event-item--group${allConfirmed ? ' event-item--confirmed' : ''}`}>
+                      <button
+                        className="event-group-toggle"
+                        onClick={() => setExpandedRentalGroups(prev => ({ ...prev, [row.groupId]: !prev[row.groupId] }))}
+                        aria-label={isExpanded ? 'Ocultar rentas individuales' : 'Mostrar rentas individuales'}
+                        title={isExpanded ? 'Ocultar rentas individuales' : 'Mostrar rentas individuales'}
+                      >
+                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      </button>
+                      <Home size={16} className="event-item__type-icon" />
+                      <span className="event-item__concept">Rentas alquiler — {row.propertyAlias}</span>
+                      <span className="event-item__date">{formatDateDDMMYYYY(row.events[0].date)}</span>
+                      <span className="event-item__amount">{formatAmount(totalAmount)} €</span>
+                      <span className={`event-item__status${allConfirmed ? ' event-item__status--confirmed' : ''}`}>
+                        {confirmedCount}/{row.events.length} punteados
+                      </span>
+                    </div>
+
+                    {isExpanded && row.events.map(event => {
+                      const isConfirmed = event.status === 'confirmado';
+                      const isEditing = editState?.eventId === event.id;
+                      return (
+                        <div
+                          key={event.id}
+                          className={`event-item event-item--nested${isConfirmed ? ' event-item--confirmed' : ''}`}
+                        >
+                          <button
+                            className={`event-toggle-btn${isConfirmed ? ' event-toggle-btn--confirmed' : ''}`}
+                            onClick={() => handleToggleStatus(event.id)}
+                            aria-label={isConfirmed ? 'Quitar punteo' : 'Puntear como visto en banco'}
+                            title={isConfirmed ? 'Quitar punteo' : 'Puntear como visto en banco'}
+                          >
+                            {isConfirmed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                          </button>
+
+                          <TrendingUp size={16} className="event-item__type-icon" />
+                          <span className="event-item__concept">{event.concept}</span>
+                          <span className="event-item__date">{formatDateDDMMYYYY(event.date)}</span>
+
+                          {isEditing ? (
+                            <>
+                              <input
+                                ref={amountInputRef}
+                                className="event-item__amount-input"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editState.amount}
+                                onChange={e => setEditState(prev => prev ? { ...prev, amount: e.target.value } : null)}
+                                onKeyDown={e => { if (e.key === 'Escape') setEditState(null); }}
+                                aria-label="Importe editado"
+                              />
+                              <div className="event-item__inline-actions">
+                                <button className="event-item__inline-btn" onClick={handleAjustarPrevision} title="Confirmar este importe; la previsión original queda finalizada">Ajustar previsión</button>
+                                <button className="event-item__inline-btn event-item__inline-btn--pending" onClick={handleDejarPendiente} title="Confirmar este importe y crear un evento pendiente por la diferencia">Dejar pendiente</button>
+                                <button className="event-item__inline-btn event-item__inline-btn--cancel" onClick={() => setEditState(null)} aria-label="Cancelar edición"><X size={12} /></button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span
+                                className={`event-item__amount${!isConfirmed ? ' event-item__amount--editable' : ''}`}
+                                onClick={() => !isConfirmed && handleAmountClick(event)}
+                                title={!isConfirmed ? 'Clic para editar el importe' : undefined}
+                                role={!isConfirmed ? 'button' : undefined}
+                                tabIndex={!isConfirmed ? 0 : undefined}
+                                onKeyDown={!isConfirmed ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAmountClick(event); } } : undefined}
+                              >
+                                {formatAmount(event.amount)} €
+                              </span>
+                              <span className={`event-item__status${isConfirmed ? ' event-item__status--confirmed' : ''}`}>
+                                {isConfirmed ? 'Confirmado' : 'Previsto'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              }
+
+              const event = row.event;
               const isConfirmed = event.status === 'confirmado';
               const isEditing = editState?.eventId === event.id;
               const EventTypeIcon =
