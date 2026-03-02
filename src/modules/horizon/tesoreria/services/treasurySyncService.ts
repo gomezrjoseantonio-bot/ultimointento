@@ -19,6 +19,7 @@ import { autonomoService } from '../../../../services/autonomoService';
 import { inversionesService } from '../../../../services/inversionesService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { otrosIngresosService } from '../../../../services/otrosIngresosService';
+import { rollForwardAccountBalancesToMonth } from '../../../../services/accountBalanceService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -142,6 +143,9 @@ export async function generateMonthlyForecasts(
 
   let created = 0;
   let skipped = 0;
+
+  // Ensure each month's opening balance starts from prior months' net available balance.
+  await rollForwardAccountBalancesToMonth(year, month);
 
   // Helper: check if a forecast already exists for this sourceType + sourceId in this month
   async function isDuplicate(sourceType: string, sourceId: number | string): Promise<boolean> {
