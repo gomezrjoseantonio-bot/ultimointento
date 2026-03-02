@@ -1421,6 +1421,7 @@ export interface PatrimonioSnapshot {
 export type OpexCategory = 'impuesto' | 'suministro' | 'comunidad' | 'seguro' | 'servicio' | 'gestion' | 'otro';
 export type OpexFrequency = 'semanal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'meses_especificos';
 export type OpexEstacionalidad = 'plana' | 'invierno' | 'verano';
+export type ExpenseBusinessType = 'recurrente' | 'reparacion' | 'mejora' | 'mobiliario';
 
 export interface AsymmetricPayment {
   mes: number; // 1-12
@@ -1442,6 +1443,7 @@ export interface OpexRule {
   asymmetricPayments?: AsymmetricPayment[]; // Importes distintos por mes (meses_especificos)
   estacionalidad?: OpexEstacionalidad; // Para suministros: 'plana' | 'invierno' | 'verano'
   casillaAEAT?: string; // Override manual de la casilla AEAT (ej: '0109', '0114'…)
+  businessType?: ExpenseBusinessType;
   activo: boolean;
   createdAt: string;
   updatedAt: string;
