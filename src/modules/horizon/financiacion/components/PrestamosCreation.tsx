@@ -270,7 +270,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
         principalInicial: formData.capitalInicial!,
         principalVivo: formData.capitalInicial!,
         fechaFirma: formData.fechaFirma!,
-        fechaPrimerCargo: formData.fechaFirma!,
+        fechaPrimerCargo: formData.fechaPrimerCargo!,
         plazoMesesTotal: formData.plazoPeriodo === 'AÑOS' ? formData.plazoTotal! * 12 : formData.plazoTotal!,
         diaCargoMes: formData.diaCobroMes ?? 1,
         esquemaPrimerRecibo: 'NORMAL' as const,

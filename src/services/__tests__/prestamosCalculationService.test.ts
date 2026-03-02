@@ -201,6 +201,56 @@ describe('PrestamosCalculationService', () => {
       expect(plan.periodos[0].fechaCargo).toBe('2024-10-10');
     });
 
+    test('respects explicit fechaPrimerCargo as first schedule date', () => {
+      const prestamo: Prestamo = {
+        id: 'test-first-charge',
+        inmuebleId: 'prop1',
+        nombre: 'Test First Charge',
+        principalInicial: 52500,
+        principalVivo: 52500,
+        fechaFirma: '2022-08-30',
+        fechaPrimerCargo: '2022-11-30',
+        plazoMesesTotal: 300,
+        tipo: 'FIJO',
+        tipoNominalAnualFijo: 3.13,
+        diaCargoMes: 30,
+        cuentaCargoId: 'cuenta1',
+        createdAt: '2022-08-30T00:00:00Z',
+        updatedAt: '2022-08-30T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].fechaCargo).toBe('2022-11-30');
+    });
+
+    test('amortized principal total matches requested capital to the cent', () => {
+      const prestamo: Prestamo = {
+        id: 'test-principal-match',
+        inmuebleId: 'prop1',
+        nombre: 'Test Principal Match',
+        principalInicial: 52500,
+        principalVivo: 52500,
+        fechaFirma: '2022-08-30',
+        fechaPrimerCargo: '2022-11-30',
+        plazoMesesTotal: 300,
+        tipo: 'FIJO',
+        tipoNominalAnualFijo: 3.13,
+        diaCargoMes: 30,
+        cuentaCargoId: 'cuenta1',
+        createdAt: '2022-08-30T00:00:00Z',
+        updatedAt: '2022-08-30T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+      const totalAmortizado = Math.round(
+        plan.periodos.reduce((sum, p) => sum + p.amortizacion, 0) * 100,
+      ) / 100;
+
+      expect(totalAmortizado).toBe(52500);
+      expect(plan.periodos[plan.periodos.length - 1].principalFinal).toBe(0);
+    });
+
     test('handles interest-only periods', () => {
       const prestamo: Prestamo = {
         id: 'test',

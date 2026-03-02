@@ -42,21 +42,19 @@ export interface SyncResult {
 }
 
 /**
- * Pads a day number to a two-digit string.
- * Days are clamped to 28 to ensure validity across all months,
- * including February (the shortest month).
- */
-function padDay(day: number): string {
-  return String(Math.min(Math.max(day, 1), 28)).padStart(2, '0');
-}
-
-/**
  * Builds a representative date string (YYYY-MM-DD) within the given month.
- * Clamps day to 28 to avoid invalid dates in short months.
+ * Supports configured payment days 1-31 and only adjusts when a specific month
+ * does not contain that day (e.g. 31 → 30 in April, 29/30/31 → 28/29 in February).
  */
 function buildDate(year: number, month: number, day: number): string {
-  const mm = String(month).padStart(2, '0');
-  return `${year}-${mm}-${padDay(day)}`;
+  const safeMonth = Math.min(Math.max(month, 1), 12);
+  const normalizedDay = Math.min(Math.max(day, 1), 31);
+  const lastDayOfMonth = new Date(year, safeMonth, 0).getDate();
+  const effectiveDay = Math.min(normalizedDay, lastDayOfMonth);
+
+  const mm = String(safeMonth).padStart(2, '0');
+  const dd = String(effectiveDay).padStart(2, '0');
+  return `${year}-${mm}-${dd}`;
 }
 
 
