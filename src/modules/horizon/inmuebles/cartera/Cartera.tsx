@@ -42,13 +42,13 @@ const getDisplayState = (property: Property, contracts: Contract[]): string => {
   const hasActiveContract = contracts.some(
     c => (c.inmuebleId === property.id || c.propertyId === property.id) && isActiveContract(c)
   );
-  return hasActiveContract ? 'Alquilado' : 'Vacío';
+  return hasActiveContract ? 'Alquilado' : 'VacÃ­o';
 };
 
 const getStateBadgeClass = (displayState: string): string => {
   switch (displayState) {
-    case 'Alquilado': return 'bg-success-100 text-success-800';
-    case 'Vacío': return 'bg-neutral-100 text-neutral-600';
+    case 'Alquilado': return 'bg-teal-100 text-teal-800';
+    case 'VacÃ­o': return 'bg-neutral-100 text-neutral-600';
     case 'Vendido': return 'bg-primary-100 text-primary-800';
     default: return 'bg-neutral-100 text-neutral-600';
   }
@@ -178,7 +178,7 @@ const Cartera: React.FC = () => {
     return (
       <PageLayout
         title="Cartera"
-        subtitle="Dashboard financiero de tus propiedades de inversión."
+        subtitle="Dashboard financiero de tus propiedades de inversiÃ³n."
         showInfoIcon={true}
       >
         <div className="flex items-center justify-center min-h-96">
@@ -191,7 +191,7 @@ const Cartera: React.FC = () => {
   return (
     <PageLayout
       title="Cartera"
-      subtitle="Dashboard financiero de tus propiedades de inversión."
+      subtitle="Dashboard financiero de tus propiedades de inversiÃ³n."
       showInfoIcon={true}
     >
       <div className="space-y-4">
@@ -201,7 +201,7 @@ const Cartera: React.FC = () => {
             <Search className="h-4 w-4 absolute left-3 top-2.5 text-neutral-400" />
             <input
               type="text"
-              placeholder="Buscar por alias o dirección..."
+              placeholder="Buscar por alias o direcciÃ³n..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
@@ -237,8 +237,8 @@ const Cartera: React.FC = () => {
                 </h3>
                 <p className="text-neutral-600 mt-1">
                   {searchTerm
-                    ? 'Intenta cambiar los términos de búsqueda.'
-                    : 'Comienza registrando tu primer inmueble de inversión.'}
+                    ? 'Intenta cambiar los tÃ©rminos de bÃºsqueda.'
+                    : 'Comienza registrando tu primer inmueble de inversiÃ³n.'}
                 </p>
               </div>
               {!searchTerm && (
@@ -263,7 +263,7 @@ const Cartera: React.FC = () => {
                       onClick={() => handleSort('alias')}
                     >
                       <div className="flex items-center gap-1">
-                        <span>Dirección / Alias</span>
+                        <span>DirecciÃ³n / Alias</span>
                         {getSortIcon('alias')}
                       </div>
                     </th>
@@ -281,7 +281,7 @@ const Cartera: React.FC = () => {
                       onClick={() => handleSort('totalCost')}
                     >
                       <div className="flex items-center gap-1">
-                        <span>Coste inversión</span>
+                        <span>Coste inversiÃ³n</span>
                         {getSortIcon('totalCost')}
                       </div>
                     </th>
@@ -330,12 +330,12 @@ const Cartera: React.FC = () => {
                           {formatEuro(totalCost)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {cashflow > 0 ? formatEuro(cashflow) : <span className="text-neutral-400">—</span>}
+                          {cashflow > 0 ? formatEuro(cashflow) : <span className="text-neutral-400">â€”</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {yieldPct > 0
-                            ? <span className="text-success-700 font-medium">{yieldPct.toFixed(2)}%</span>
-                            : <span className="text-neutral-400">—</span>}
+                            ? <span className="text-teal-600 font-medium">{yieldPct.toFixed(2)}%</span>
+                            : <span className="text-neutral-400">â€”</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
