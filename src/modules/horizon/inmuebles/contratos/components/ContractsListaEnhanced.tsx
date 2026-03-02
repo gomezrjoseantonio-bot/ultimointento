@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Contract, Property } from '../../../../../services/db';
 import {
   getAllContracts,
@@ -20,6 +20,9 @@ interface ContractsListaEnhancedProps {
   onContractsUpdated?: (contracts: Contract[]) => void;
 }
 
+type SortKey = 'property' | 'tenant' | 'dates' | 'modalidad' | 'rent' | 'indexation' | 'nextDueDate' | 'signature' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditContract, onContractsUpdated }) => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
@@ -31,8 +34,11 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'terminated'>('active');
   const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada' | 'vacacional'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'default' | 'floor' | 'startDate' | 'endDate' | 'rent' | 'modalidad' | 'tenant'>('default');
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'property', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
   const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const pageSize = 10;
 
   const getRoomOrder = (contract: Contract): number => {
     if (contract.unidadTipo !== 'habitacion') {
@@ -137,50 +143,74 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
 
     const propertyNameById = new Map(properties.map((property) => [property.id, (property.alias || '').toLowerCase()]));
 
+    const getSortValue = (contract: Contract, sortKey: SortKey): string | number => {
+      const tenantName = `${contract.inquilino?.nombre || ''} ${contract.inquilino?.apellidos || ''}`.trim();
+      switch (sortKey) {
+        case 'property':
+          return `${propertyNameById.get(contract.inmuebleId) || ''}-${getUnitDisplay(contract).toLowerCase()}-${getRoomOrder(contract)}`;
+        case 'tenant':
+          return tenantName;
+        case 'dates':
+          return new Date(contract.fechaInicio).getTime();
+        case 'modalidad':
+          return contract.modalidad || '';
+        case 'rent':
+          return contract.rentaMensual || 0;
+        case 'indexation':
+          return contract.indexacion || '';
+        case 'nextDueDate': {
+          const now = new Date();
+          let nextDate = new Date(now.getFullYear(), now.getMonth(), contract.diaPago);
+          if (nextDate < now) {
+            nextDate = new Date(now.getFullYear(), now.getMonth() + 1, contract.diaPago);
+          }
+          return nextDate.getTime();
+        }
+        case 'signature':
+          return contract.firma?.estado || 'manual';
+        case 'status':
+          return getContractStatus(contract);
+        default:
+          return '';
+      }
+    };
+
     filtered.sort((a, b) => {
-      if (sortBy === 'floor') {
-        return getUnitDisplay(a).localeCompare(getUnitDisplay(b), 'es', { sensitivity: 'base' });
+      const left = getSortValue(a, sortConfig.key);
+      const right = getSortValue(b, sortConfig.key);
+      const direction = sortConfig.direction === 'asc' ? 1 : -1;
+
+      if (typeof left === 'number' && typeof right === 'number') {
+        return (left - right) * direction;
       }
 
-      if (sortBy === 'startDate') {
-        return new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime();
-      }
-
-      if (sortBy === 'endDate') {
-        return new Date(a.fechaFin).getTime() - new Date(b.fechaFin).getTime();
-      }
-
-      if (sortBy === 'rent') {
-        return (a.rentaMensual || 0) - (b.rentaMensual || 0);
-      }
-
-      if (sortBy === 'modalidad') {
-        return (a.modalidad || '').localeCompare((b.modalidad || ''), 'es', { sensitivity: 'base' });
-      }
-
-      if (sortBy === 'tenant') {
-        const fullNameA = `${a.inquilino?.nombre || ''} ${a.inquilino?.apellidos || ''}`.trim();
-        const fullNameB = `${b.inquilino?.nombre || ''} ${b.inquilino?.apellidos || ''}`.trim();
-        return fullNameA.localeCompare(fullNameB, 'es', { sensitivity: 'base' });
-      }
-
-      const propertyNameA = propertyNameById.get(a.inmuebleId) || '';
-      const propertyNameB = propertyNameById.get(b.inmuebleId) || '';
-      const byProperty = propertyNameA.localeCompare(propertyNameB, 'es', { sensitivity: 'base' });
-      if (byProperty !== 0) {
-        return byProperty;
-      }
-
-      const byRoom = getRoomOrder(a) - getRoomOrder(b);
-      if (byRoom !== 0) {
-        return byRoom;
-      }
-
-      return getUnitDisplay(a).localeCompare(getUnitDisplay(b), 'es', { sensitivity: 'base' });
+      return String(left).localeCompare(String(right), 'es', { sensitivity: 'base' }) * direction;
     });
 
     setFilteredContracts(filtered);
-  }, [contracts, searchTerm, statusFilter, modalidadFilter, selectedPropertyId, sortBy, properties]);
+  }, [contracts, searchTerm, statusFilter, modalidadFilter, selectedPropertyId, sortConfig, properties]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, modalidadFilter, selectedPropertyId, sortConfig]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / pageSize));
+  const paginatedContracts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredContracts.slice(start, start + pageSize);
+  }, [filteredContracts, currentPage]);
+
+  const toggleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const scrollTableHorizontally = (offset: number) => {
+    if (!tableScrollRef.current) return;
+    tableScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   const handleDeleteContract = async (contract: Contract) => {
     if (!contract || !contract.inquilino) {
@@ -441,35 +471,9 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white border border-gray-200 p-4">
-        <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Filtrar contratos por estado">
-          {[
-            { id: 'all', label: 'Todos' },
-            { id: 'active', label: 'Activos' },
-            { id: 'terminated', label: 'Finalizados' },
-          ].map((pill) => {
-            const isActive = statusFilter === pill.id;
-            return (
-              <button
-                key={pill.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setStatusFilter(pill.id as typeof statusFilter)}
-                className={`inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'border-brand-navy bg-primary-50 text-brand-navy'
-                    : 'border-neutral-300 bg-white text-neutral-500 hover:text-neutral-700'
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Search */}
-          <div>
+          <div className="lg:order-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Buscar
             </label>
@@ -486,13 +490,13 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           </div>
 
           {/* Modalidad Filter */}
-          <div>
+          <div className="lg:order-1">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Modalidad
             </label>
             <select
               value={modalidadFilter}
-              onChange={(e) => setModalidadFilter(e.target.value as any)}
+              onChange={(e) => setModalidadFilter(e.target.value as 'all' | 'habitual' | 'temporada' | 'vacacional')}
               className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
             >
               <option value="all">Todas</option>
@@ -503,7 +507,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           </div>
 
           {/* Property Filter */}
-          <div>
+          <div className="lg:order-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Inmueble
             </label>
@@ -520,35 +524,60 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
               ))}
             </select>
           </div>
-
-          {/* Sort */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ordenar (A-Z)
-            </label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-            >
-              <option value="default">Inmueble / Habitación (por defecto)</option>
-              <option value="floor">Piso</option>
-              <option value="startDate">Fecha de inicio</option>
-              <option value="endDate">Fecha de fin</option>
-              <option value="rent">Renta</option>
-              <option value="modalidad">Modalidad</option>
-              <option value="tenant">Inquilino</option>
-            </select>
-          </div>
         </div>
       </div>
 
       {/* Contracts Table */}
       <div className="bg-white border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            Contratos ({filteredContracts.length})
-          </h3>
+        <div className="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-lg font-medium text-gray-900">
+              Contratos ({filteredContracts.length})
+            </h3>
+            <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Filtrar contratos por estado">
+              {[
+                { id: 'all', label: 'Todos' },
+                { id: 'active', label: 'Activos' },
+                { id: 'terminated', label: 'Finalizados' },
+              ].map((pill) => {
+                const isActive = statusFilter === pill.id;
+                return (
+                  <button
+                    key={pill.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setStatusFilter(pill.id as typeof statusFilter)}
+                    className={`inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border-brand-navy bg-primary-50 text-brand-navy'
+                        : 'border-neutral-300 bg-white text-neutral-500 hover:text-neutral-700'
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollTableHorizontally(-320)}
+              className="rounded-md border border-neutral-300 p-2 text-neutral-600 hover:bg-neutral-50"
+              aria-label="Desplazar tabla a la izquierda"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTableHorizontally(320)}
+              className="rounded-md border border-neutral-300 p-2 text-neutral-600 hover:bg-neutral-50"
+              aria-label="Desplazar tabla a la derecha"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {filteredContracts.length === 0 ? (
@@ -562,36 +591,91 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div ref={tableScrollRef} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Inmueble/Unidad
+                    <button type="button" onClick={() => toggleSort('property')} className="inline-flex items-center gap-1">
+                      Inmueble/Unidad
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'property' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'property' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Inquilino
+                    <button type="button" onClick={() => toggleSort('tenant')} className="inline-flex items-center gap-1">
+                      Inquilino
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'tenant' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'tenant' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fechas
+                    <button type="button" onClick={() => toggleSort('dates')} className="inline-flex items-center gap-1">
+                      Fechas
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'dates' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'dates' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Modalidad
+                    <button type="button" onClick={() => toggleSort('modalidad')} className="inline-flex items-center gap-1">
+                      Modalidad
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'modalidad' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'modalidad' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Renta
+                    <button type="button" onClick={() => toggleSort('rent')} className="inline-flex items-center gap-1">
+                      Renta
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'rent' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'rent' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Indexación
+                    <button type="button" onClick={() => toggleSort('indexation')} className="inline-flex items-center gap-1">
+                      Indexación
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'indexation' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'indexation' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Próximo vencimiento
+                    <button type="button" onClick={() => toggleSort('nextDueDate')} className="inline-flex items-center gap-1">
+                      Próximo vencimiento
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'nextDueDate' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'nextDueDate' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Firma
+                    <button type="button" onClick={() => toggleSort('signature')} className="inline-flex items-center gap-1">
+                      Firma
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'signature' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'signature' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Estado
+                    <button type="button" onClick={() => toggleSort('status')} className="inline-flex items-center gap-1">
+                      Estado
+                      <span className="inline-flex flex-col leading-none">
+                        <ChevronUp className={`h-3 w-3 ${sortConfig.key === 'status' && sortConfig.direction === 'asc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                        <ChevronDown className={`-mt-1 h-3 w-3 ${sortConfig.key === 'status' && sortConfig.direction === 'desc' ? 'text-brand-navy' : 'text-gray-400'}`} />
+                      </span>
+                    </button>
                   </th>
                   <th className="relative px-6 py-3">
                     <span className="sr-only">Acciones</span>
@@ -599,7 +683,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredContracts
+                {paginatedContracts
                   .filter(contract => contract && contract.inquilino) // Filter out undefined contracts
                   .map((contract) => (
                   <tr key={contract.id} className="hover:bg-gray-50">
@@ -741,6 +825,28 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
               </tbody>
             </table>
           </div>
+          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3">
+            <p className="text-sm text-gray-500">Página {currentPage} de {totalPages}</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+          </>
         )}
       </div>
     </div>
