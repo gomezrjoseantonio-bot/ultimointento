@@ -362,9 +362,14 @@ export async function generateMonthlyForecasts(
         'Inquilino';
       const day = contract.diaPago ?? 1;
 
+      const periodKey = `${year}-${String(month).padStart(2, '0')}`;
+      const rentEntries = await db.getAllFromIndex('rentaMensual', 'contratoId', contract.id);
+      const rentEntryForMonth = rentEntries.find(entry => entry.periodo === periodKey);
+      const amount = rentEntryForMonth?.importePrevisto ?? contract.rentaMensual ?? 0;
+
       await insertEvent({
         type: 'income' as const,
-        amount: contract.rentaMensual ?? 0,
+        amount,
         predictedDate: buildDate(year, month, day),
         description: `Renta – ${inquilino}`,
         sourceType: 'contrato' as const,
