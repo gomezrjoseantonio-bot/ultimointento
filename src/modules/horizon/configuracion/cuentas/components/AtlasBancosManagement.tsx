@@ -25,6 +25,8 @@ interface AccountFormData {
   alias: string;
   iban: string;
   logoFile: File | null;
+  openingBalance: string;
+  openingBalanceDate: string;
 }
 
 /**
@@ -66,7 +68,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   const [formData, setFormData] = useState<AccountFormData>({
     alias: '',
     iban: '',
-    logoFile: null
+    logoFile: null,
+    openingBalance: '',
+    openingBalanceDate: new Date().toISOString().split('T')[0],
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -169,7 +173,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setFormData({
       alias: '',
       iban: '',
-      logoFile: null
+      logoFile: null,
+      openingBalance: '',
+      openingBalanceDate: new Date().toISOString().split('T')[0],
     });
     setFormErrors({});
     setShowModal(true);
@@ -180,7 +186,11 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setFormData({
       alias: account.alias || '',
       iban: formatIban(account.iban),
-      logoFile: null
+      logoFile: null,
+      openingBalance: account.openingBalance?.toString() ?? '',
+      openingBalanceDate: account.openingBalanceDate
+        ? account.openingBalanceDate.split('T')[0]
+        : new Date().toISOString().split('T')[0],
     });
     setFormErrors({});
     setShowModal(true);
@@ -192,7 +202,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setFormData({
       alias: '',
       iban: '',
-      logoFile: null
+      logoFile: null,
+      openingBalance: '',
+      openingBalanceDate: new Date().toISOString().split('T')[0],
     });
     setFormErrors({});
   };
@@ -256,6 +268,10 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         alias: formData.alias.trim() || undefined, // Optional alias
         iban: formData.iban,
         logoUser, // User uploaded logo URL
+        openingBalance: parseFloat(formData.openingBalance || '0') || 0,
+        openingBalanceDate: formData.openingBalanceDate
+          ? new Date(formData.openingBalanceDate).toISOString()
+          : undefined,
       };
 
       if (editingAccount) {
@@ -670,6 +686,34 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                       </div>
                     </div>
                   )}
+                </div>
+
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                      Saldo inicial (€)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.openingBalance}
+                      onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                      placeholder="0,00"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
+                      Fecha saldo inicial
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.openingBalanceDate}
+                      onChange={(e) => setFormData({ ...formData, openingBalanceDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
 
