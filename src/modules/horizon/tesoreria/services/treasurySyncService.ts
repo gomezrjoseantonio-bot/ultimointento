@@ -463,9 +463,10 @@ export async function generateMonthlyForecasts(
       if (cuota <= 0) continue;
 
       // Differentiate hipotecas (linked to a property) from personal loans.
-      // 'standalone' is the sentinel value used by prestamosService to indicate a personal (non-property) loan.
-      const STANDALONE_LOAN_ID = 'standalone';
-      const isHipoteca = prestamo.inmuebleId !== STANDALONE_LOAN_ID;
+      // Prefer `ambito` as source of truth, fallback to legacy `inmuebleId` sentinel.
+      const isHipoteca = prestamo.ambito
+        ? prestamo.ambito === 'INMUEBLE'
+        : Boolean(prestamo.inmuebleId && prestamo.inmuebleId !== 'standalone');
       const sourceType = isHipoteca ? 'hipoteca' as const : 'prestamo' as const;
       const label = isHipoteca ? 'Hipoteca' : 'Préstamo';
       const description = `Cuota ${label} – ${prestamo.nombre ?? 'Financiación'}`;
