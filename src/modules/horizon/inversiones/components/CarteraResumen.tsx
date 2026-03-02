@@ -19,7 +19,7 @@ const tipoLabels: Record<string, string> = {
   plan_pensiones: 'Pensiones',
   plan_empleo: 'Plan empleo',
   crypto: 'Crypto',
-  deposito: 'DepÃ³sitos',
+  deposito: 'Depósitos',
   otro: 'Otros',
 };
 
@@ -151,7 +151,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
         </div>
       </div>
 
-      {/* DistribuciÃ³n por tipo */}
+      {/* Distribución por tipo */}
       <div style={{
         background: 'var(--hz-card-bg)',
         border: '1px solid var(--hz-neutral-300)',
@@ -165,7 +165,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             fontWeight: 500,
             color: 'var(--text-gray)' 
           }}>
-            DistribuciÃ³n por tipo
+            Distribución por tipo
           </span>
         </div>
         {Object.keys(porTipo).length > 0 ? (

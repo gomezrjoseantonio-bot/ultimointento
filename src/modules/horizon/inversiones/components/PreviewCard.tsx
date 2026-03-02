@@ -46,7 +46,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ tasaAnual, capital, frecuenci
       padding: '1rem',
     }}>
       <p style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 600, color: '#0d9488', margin: '0 0 0.5rem 0' }}>
-        EstimaciÃ³n de rendimientos
+        Estimación de rendimientos
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
         <div>

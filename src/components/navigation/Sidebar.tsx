@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     </NavLink>
   );
 
-  // Sin secciones Horizon/Pulse â€” navegaciÃ³n plana agrupada por tipo
+  // Sin secciones Horizon/Pulse — navegación plana agrupada por tipo
   const mainItems       = navigation.filter(item => item.section === 'horizon');
   const managementItems = navigation.filter(item => item.section === 'pulse');
   const docsItems       = navigation.filter(item => item.section === 'documentation');
@@ -87,11 +87,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               A
             </div>
           )}
-          {/* Colapsar â€” desktop */}
+          {/* Colapsar — desktop */}
           <button
             className="hidden md:block text-white/40 hover:text-white/80 transition-colors focus:outline-none"
             onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? 'Expandir menÃº' : 'Colapsar menÃº'}
+            aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {collapsed
@@ -100,11 +100,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               }
             </svg>
           </button>
-          {/* Cerrar â€” mobile */}
+          {/* Cerrar — mobile */}
           <button
             className="md:hidden text-white/60 hover:text-white"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Cerrar menÃº"
+            aria-label="Cerrar menú"
           >
             <X className="h-6 w-6" />
           </button>
@@ -112,12 +112,12 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
         {/* Nav */}
         <nav className="px-2 mt-3 flex-1 overflow-y-auto space-y-0.5">
-          {/* SupervisiÃ³n */}
-          <SectionLabel label="SupervisiÃ³n" />
+          {/* Supervisión */}
+          <SectionLabel label="Supervisión" />
           {mainItems.map(renderNavItem)}
 
-          {/* GestiÃ³n */}
-          <SectionLabel label="GestiÃ³n" />
+          {/* Gestión */}
+          <SectionLabel label="Gestión" />
           {managementItems.map(renderNavItem)}
 
           {/* Docs */}

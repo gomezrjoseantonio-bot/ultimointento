@@ -89,7 +89,7 @@ const AutonomoManager: React.FC = () => {
         });
       }
     } catch (error) {
-      toast.error('Error al cargar los datos de autÃ³nomo');
+      toast.error('Error al cargar los datos de autónomo');
     } finally {
       setLoading(false);
     }
@@ -101,13 +101,13 @@ const AutonomoManager: React.FC = () => {
   const handleEditAutonomo   = (autonomo: Autonomo) => { setEditingAutonomo(autonomo); setShowForm(true); };
 
   const handleDeleteAutonomo = async (id: number) => {
-    const confirmed = await confirmDelete('esta configuraciÃ³n de autÃ³nomo');
+    const confirmed = await confirmDelete('esta configuración de autónomo');
     if (!confirmed) return;
     try {
       await autonomoService.deleteAutonomo(id);
-      toast.success('ConfiguraciÃ³n de autÃ³nomo eliminada');
+      toast.success('Configuración de autónomo eliminada');
       loadData();
-    } catch { toast.error('Error al eliminar la configuraciÃ³n'); }
+    } catch { toast.error('Error al eliminar la configuración'); }
   };
 
   const handleEditFuenteIngreso = (fuente: FuenteIngreso) => {
@@ -125,7 +125,7 @@ const AutonomoManager: React.FC = () => {
     try {
       const fuente: Omit<FuenteIngreso, 'id'> = { nombre: fuenteFormData.nombre, importeEstimado: importe, meses: fuenteFormData.meses, aplIrpf: fuenteFormData.aplIrpf, aplIva: fuenteFormData.aplIva };
       if (editingFuenteId) { await autonomoService.updateFuenteIngreso(selectedAutonomo.id!, editingFuenteId, fuente); toast.success('Concepto actualizado'); }
-      else { await autonomoService.addFuenteIngreso(selectedAutonomo.id!, fuente); toast.success('Concepto aÃ±adido'); }
+      else { await autonomoService.addFuenteIngreso(selectedAutonomo.id!, fuente); toast.success('Concepto añadido'); }
       setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, aplIrpf: false, aplIva: false });
       setEditingFuenteId(null); setShowFuenteForm(false); loadData();
     } catch { toast.error('Error al guardar concepto de ingreso'); }
@@ -154,7 +154,7 @@ const AutonomoManager: React.FC = () => {
     try {
       const gasto: Omit<GastoRecurrenteActividad, 'id'> = { descripcion: gastoRecurrenteFormData.descripcion, importe, categoria: gastoRecurrenteFormData.categoria, meses: gastoRecurrenteFormData.meses };
       if (editingGastoId) { await autonomoService.updateGastoRecurrenteActividad(selectedAutonomo.id!, editingGastoId, gasto); toast.success('Concepto actualizado'); }
-      else { await autonomoService.addGastoRecurrenteActividad(selectedAutonomo.id!, gasto); toast.success('Concepto aÃ±adido'); }
+      else { await autonomoService.addGastoRecurrenteActividad(selectedAutonomo.id!, gasto); toast.success('Concepto añadido'); }
       setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES });
       setEditingGastoId(null); setShowGastoRecurrenteForm(false); loadData();
     } catch { toast.error('Error al guardar concepto de gasto'); }
@@ -187,7 +187,7 @@ const AutonomoManager: React.FC = () => {
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full"
              style={{ borderColor: 'var(--blue-800)', borderTopColor: 'transparent' }} />
-        <span className="ml-2" style={{ color: 'var(--gray-500)' }}>Cargando datos de autÃ³nomo...</span>
+        <span className="ml-2" style={{ color: 'var(--gray-500)' }}>Cargando datos de autónomo...</span>
       </div>
     );
   }
@@ -206,13 +206,13 @@ const AutonomoManager: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium" style={{ color: 'var(--gray-900)' }}>GestiÃ³n de AutÃ³nomos</h3>
-          <p className="text-sm" style={{ color: 'var(--gray-500)' }}>Proyecta ingresos y gastos de tu actividad autÃ³noma con temporalidad mensual</p>
+          <h3 className="text-lg font-medium" style={{ color: 'var(--gray-900)' }}>Gestión de Autónomos</h3>
+          <p className="text-sm" style={{ color: 'var(--gray-500)' }}>Proyecta ingresos y gastos de tu actividad autónoma con temporalidad mensual</p>
         </div>
         <button onClick={handleCreateAutonomo}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium rounded"
                 style={btnPrimary}>
-          <Plus className="w-4 h-4 mr-2" /> Nueva ConfiguraciÃ³n
+          <Plus className="w-4 h-4 mr-2" /> Nueva Configuración
         </button>
       </div>
 
@@ -220,11 +220,11 @@ const AutonomoManager: React.FC = () => {
       {autonomos.length === 0 && (
         <div className="bg-white border p-12 text-center rounded" style={{ borderColor: 'var(--gray-200)' }}>
           <Euro className="mx-auto h-12 w-12" style={{ color: 'var(--gray-300)' }} />
-          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay configuraciones de autÃ³nomo</h3>
-          <p className="mt-1 text-sm" style={{ color: 'var(--gray-500)' }}>Crea tu primera configuraciÃ³n para empezar.</p>
+          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay configuraciones de autónomo</h3>
+          <p className="mt-1 text-sm" style={{ color: 'var(--gray-500)' }}>Crea tu primera configuración para empezar.</p>
           <div className="mt-6">
             <button onClick={handleCreateAutonomo} className="inline-flex items-center px-4 py-2 text-sm font-medium rounded" style={btnPrimary}>
-              <Plus className="w-4 h-4 mr-2" /> Crear Primera ConfiguraciÃ³n
+              <Plus className="w-4 h-4 mr-2" /> Crear Primera Configuración
             </button>
           </div>
         </div>
@@ -286,7 +286,7 @@ const AutonomoManager: React.FC = () => {
             </div>
             <div className="border p-4 rounded" style={cardStyle}>
               <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--gray-500)' }}>Rendimiento Neto Estimado</p>
-              {/* turquesa = positivo, gris = negativo â€” sin verde/rojo */}
+              {/* turquesa = positivo, gris = negativo — sin verde/rojo */}
               <p className="text-2xl font-bold" style={{ color: estimated.rendimientoNeto >= 0 ? 'var(--teal-500)' : 'var(--gray-500)' }}>
                 {formatCurrency(estimated.rendimientoNeto)}
               </p>
@@ -295,11 +295,11 @@ const AutonomoManager: React.FC = () => {
         </div>
       )}
 
-      {/* GrÃ¡fico mensual */}
+      {/* Gráfico mensual */}
       {selectedAutonomo && monthlyDist && (
         <div className="bg-white border p-6 rounded shadow-sm" style={{ borderColor: 'var(--gray-200)' }}>
           <h4 className="text-sm font-semibold flex items-center mb-4" style={{ color: 'var(--gray-900)' }}>
-            <BarChart2 className="w-4 h-4 mr-2" style={{ color: 'var(--gray-500)' }} /> DistribuciÃ³n Mensual Prevista
+            <BarChart2 className="w-4 h-4 mr-2" style={{ color: 'var(--gray-500)' }} /> Distribución Mensual Prevista
           </h4>
           <div className="grid grid-cols-12 gap-1 text-center">
             {(() => {
@@ -320,7 +320,7 @@ const AutonomoManager: React.FC = () => {
                            title={`Gastos: ${formatCurrency(gastos)}`} />
                     )}
                   </div>
-                  {/* neto: turquesa si positivo, gris si negativo â€” sin rojo */}
+                  {/* neto: turquesa si positivo, gris si negativo — sin rojo */}
                   <span className="text-[10px] mt-1 font-medium leading-tight"
                         style={{ color: neto >= 0 ? 'var(--teal-500)' : 'var(--gray-500)' }}>
                     {formatNetoShort(neto)}
@@ -345,7 +345,7 @@ const AutonomoManager: React.FC = () => {
             </h4>
             <button onClick={() => { handleCancelFuenteForm(); setShowFuenteForm(!showFuenteForm); }}
                     className="inline-flex items-center px-3 py-1.5 text-sm rounded" style={btnOutline}>
-              <Plus className="w-4 h-4 mr-1" /> AÃ±adir concepto
+              <Plus className="w-4 h-4 mr-1" /> Añadir concepto
             </button>
           </div>
 
@@ -357,10 +357,10 @@ const AutonomoManager: React.FC = () => {
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Concepto *</label>
                   <input type="text" value={fuenteFormData.nombre} onChange={e => setFuenteFormData(p => ({ ...p, nombre: e.target.value }))}
-                         className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="Ej: FacturaciÃ³n Cliente A" required />
+                         className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="Ej: Facturación Cliente A" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Importe (â‚¬) *</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Importe (€) *</label>
                   <input type="number" step="0.01" value={fuenteFormData.importeEstimado} onChange={e => setFuenteFormData(p => ({ ...p, importeEstimado: e.target.value }))}
                          className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="5000.00" required />
                 </div>
@@ -395,9 +395,9 @@ const AutonomoManager: React.FC = () => {
                     <p className="font-medium text-sm" style={{ color: 'var(--gray-900)' }}>{fuente.nombre}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-0.5">
                       <span className="text-sm" style={{ color: 'var(--gray-600)' }}>{formatCurrency(fuente.importeEstimado)}/vez</span>
-                      <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
                       {renderMesesBadges(meses)}
-                      <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
                       <span className="text-xs font-medium" style={{ color: 'var(--gray-700)' }}>Anual: {formatCurrency(fuente.importeEstimado * meses.length)}</span>
                     </div>
                   </div>
@@ -430,19 +430,19 @@ const AutonomoManager: React.FC = () => {
             </h4>
             <button onClick={() => { handleCancelGastoForm(); setShowGastoRecurrenteForm(!showGastoRecurrenteForm); }}
                     className="inline-flex items-center px-3 py-1.5 text-sm rounded" style={btnOutline}>
-              <Plus className="w-4 h-4 mr-1" /> AÃ±adir concepto
+              <Plus className="w-4 h-4 mr-1" /> Añadir concepto
             </button>
           </div>
 
           {/* Cuota fija SS */}
           <div className="flex items-center justify-between p-3 border rounded mb-2" style={{ borderColor: 'var(--gray-200)' }}>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm" style={{ color: 'var(--gray-900)' }}>Cuota de AutÃ³nomos (SS)</p>
+              <p className="font-medium text-sm" style={{ color: 'var(--gray-900)' }}>Cuota de Autónomos (SS)</p>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 <span className="text-sm" style={{ color: 'var(--gray-600)' }}>{formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes</span>
-                <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                <span style={{ color: 'var(--gray-300)' }}>·</span>
                 <span className="text-xs" style={{ color: 'var(--gray-400)' }}>Todos los meses</span>
-                <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                <span style={{ color: 'var(--gray-300)' }}>·</span>
                 <span className="text-xs font-medium" style={{ color: 'var(--gray-700)' }}>Anual: {formatCurrency(selectedAutonomo.cuotaAutonomos * 12)}</span>
               </div>
             </div>
@@ -454,23 +454,23 @@ const AutonomoManager: React.FC = () => {
               <p className="text-xs font-semibold" style={{ color: 'var(--gray-700)' }}>{editingGastoId ? 'Editar concepto' : 'Nuevo concepto de gasto'}</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>DescripciÃ³n *</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Descripción *</label>
                   <input type="text" value={gastoRecurrenteFormData.descripcion} onChange={e => setGastoRecurrenteFormData(p => ({ ...p, descripcion: e.target.value }))}
                          className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="Ej: Licencia Software" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Importe (â‚¬) *</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Importe (€) *</label>
                   <input type="number" step="0.01" value={gastoRecurrenteFormData.importe} onChange={e => setGastoRecurrenteFormData(p => ({ ...p, importe: e.target.value }))}
                          className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="300.00" required />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>CategorÃ­a</label>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Categoría</label>
                   <select value={gastoRecurrenteFormData.categoria} onChange={e => setGastoRecurrenteFormData(p => ({ ...p, categoria: e.target.value }))}
                           className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle}>
-                    <option value="asesoria">GestorÃ­a / AsesorÃ­a</option>
+                    <option value="asesoria">Gestoría / Asesoría</option>
                     <option value="seguros">Seguros RC</option>
                     <option value="software">Software / Licencias</option>
-                    <option value="telefono-internet">TelÃ©fono e Internet</option>
+                    <option value="telefono-internet">Teléfono e Internet</option>
                     <option value="alquiler">Alquiler de local</option>
                     <option value="otros">Otros</option>
                   </select>
@@ -496,9 +496,9 @@ const AutonomoManager: React.FC = () => {
                     <p className="font-medium text-sm" style={{ color: 'var(--gray-900)' }}>{gasto.descripcion}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-0.5">
                       <span className="text-sm" style={{ color: 'var(--gray-600)' }}>{formatCurrency(gasto.importe)}/vez</span>
-                      <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
                       {renderMesesBadges(meses)}
-                      <span style={{ color: 'var(--gray-300)' }}>Â·</span>
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
                       <span className="text-xs font-medium" style={{ color: 'var(--gray-700)' }}>Anual: {formatCurrency(gasto.importe * meses.length)}</span>
                     </div>
                   </div>

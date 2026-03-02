@@ -45,7 +45,7 @@ const RendimientosTab: React.FC = () => {
         textAlign: 'center',
       }}>
         <p style={{ fontFamily: 'var(--font-inter)', color: 'var(--text-gray)', margin: 0 }}>
-          No hay rendimientos generados todavÃ­a. Crea una inversiÃ³n con rendimiento periÃ³dico para empezar.
+          No hay rendimientos generados todavía. Crea una inversión con rendimiento periódico para empezar.
         </p>
       </div>
     );
@@ -96,7 +96,7 @@ const RendimientosTab: React.FC = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)', background: '#f9fafb' }}>
-                {['Fecha', 'PosiciÃ³n', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
+                {['Fecha', 'Posición', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
                   <th key={th} style={{
                     padding: '0.75rem 1rem',
                     textAlign: 'left',
@@ -134,7 +134,7 @@ const RendimientosTab: React.FC = () => {
                       background: 'var(--hz-info-soft)',
                       color: 'var(--atlas-blue)',
                     }}>
-                      InterÃ©s periÃ³dico
+                      Interés periódico
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
