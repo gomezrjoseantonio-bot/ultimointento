@@ -1105,7 +1105,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {rentPreview.slice(0, 6).map((periodo) => (
+                  {rentPreview.map((periodo) => (
                     <tr key={periodo.periodo}>
                       <td className="px-4 py-2 text-sm text-neutral-800">{formatPeriodLabel(periodo.periodo)}</td>
                       <td className="px-4 py-2 text-sm font-medium text-neutral-900">{formatEuro(periodo.importe)}</td>
@@ -1114,11 +1114,6 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   ))}
                 </tbody>
               </table>
-              {rentPreview.length > 6 && (
-                <p className="text-xs text-neutral-500 mt-2">
-                  Mostrando los próximos 6 meses. El calendario completo se generará automáticamente en supervisión.
-                </p>
-              )}
             </div>
           </div>
         )}
