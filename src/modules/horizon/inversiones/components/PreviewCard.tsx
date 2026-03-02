@@ -40,13 +40,13 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ tasaAnual, capital, frecuenci
 
   return (
     <div style={{
-      background: '#f0fdf4',
-      border: '1px solid #bbf7d0',
+      background: '#f0fdfa',
+      border: '1px solid #99f6e4',
       borderRadius: '8px',
       padding: '1rem',
     }}>
-      <p style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 600, color: '#15803d', margin: '0 0 0.5rem 0' }}>
-        Estimación de rendimientos
+      <p style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 600, color: '#0d9488', margin: '0 0 0.5rem 0' }}>
+        EstimaciÃ³n de rendimientos
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
         <div>
@@ -69,7 +69,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ tasaAnual, capital, frecuenci
           <div style={{ fontSize: 'var(--text-caption)', color: 'var(--text-gray)' }}>
             Neto anual
           </div>
-          <div style={{ fontWeight: 600, color: '#15803d', fontFamily: 'var(--font-inter)' }}>
+          <div style={{ fontWeight: 600, color: '#0d9488', fontFamily: 'var(--font-inter)' }}>
             {formatEuro(importeAnualNeto)}
           </div>
         </div>
