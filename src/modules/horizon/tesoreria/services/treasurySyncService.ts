@@ -59,6 +59,8 @@ function buildDate(year: number, month: number, day: number): string {
   return `${year}-${mm}-${padDay(day)}`;
 }
 
+
+
 function otrosIngresosAppliesToMonth(
   ingreso: { frecuencia: string; fechaInicio?: string; fechaFin?: string },
   year: number,
@@ -315,6 +317,9 @@ export async function generateMonthlyForecasts(
     const personalDataId = personalData?.id ?? 1;
     const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
     const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
+    const accounts = await db.getAll('accounts');
+    const accountsById = new Map(accounts.map((acc) => [acc.id, acc]));
+    const cardReceipts = new Map<string, { accountId: number; sourceId: number; amount: number; description: string; predictedDate: string }>();
 
     for (const expense of activePersonalExpenses) {
       if (!personalExpenseAppliesToMonth(expense, month)) continue;
@@ -328,6 +333,30 @@ export async function generateMonthlyForecasts(
       const amount = getPersonalExpenseAmountForMonth(expense, month);
       if (amount <= 0) continue;
 
+      const account = expense.accountId ? accountsById.get(expense.accountId) : undefined;
+      const isCreditCard = account?.tipo === 'TARJETA_CREDITO' && account.cardConfig;
+
+      if (isCreditCard && account?.id && account.cardConfig) {
+        const chargeAccountId = account.cardConfig.chargeAccountId;
+        const settlementDay = Math.min(31, Math.max(1, account.cardConfig.settlementDay || 1));
+        const receiptDate = buildDate(year, month, settlementDay);
+        const key = `${account.id}-${year}-${month}`;
+        const existing = cardReceipts.get(key);
+
+        if (existing) {
+          existing.amount += amount;
+        } else {
+          cardReceipts.set(key, {
+            accountId: chargeAccountId,
+            sourceId: account.id,
+            amount,
+            description: `Recibo tarjeta ${account.alias || `#${account.id}`}`,
+            predictedDate: receiptDate,
+          });
+        }
+        continue;
+      }
+
       await insertEvent({
         type: 'expense' as const,
         amount,
@@ -336,6 +365,21 @@ export async function generateMonthlyForecasts(
         sourceType: 'personal_expense' as const,
         sourceId: expense.id,
         accountId: expense.accountId,
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    for (const receipt of cardReceipts.values()) {
+      await insertEvent({
+        type: 'expense' as const,
+        amount: receipt.amount,
+        predictedDate: receipt.predictedDate,
+        description: receipt.description,
+        sourceType: 'personal_expense' as const,
+        sourceId: receipt.sourceId,
+        accountId: receipt.accountId,
         status: 'predicted' as const,
         createdAt: now,
         updatedAt: now,

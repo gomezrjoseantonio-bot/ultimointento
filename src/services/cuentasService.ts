@@ -12,8 +12,12 @@ const LOG_PREFIX = '[TESO-ACCOUNTS]';
 
 export interface CreateAccountData {
   alias?: string;  // ATLAS: alias is now optional
-  iban: string;
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA';
+  iban?: string;
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
+  cardConfig?: {
+    settlementDay: number;
+    chargeAccountId: number;
+  };
   titular?: { nombre?: string; nif?: string; };
   logoUser?: string; // User uploaded logo
   openingBalance?: number;      // Saldo a fecha de referencia (default 0)
@@ -22,6 +26,11 @@ export interface CreateAccountData {
 
 export interface UpdateAccountData {
   alias?: string;  // ATLAS: alias is optional
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
+  cardConfig?: {
+    settlementDay: number;
+    chargeAccountId: number;
+  };
   isDefault?: boolean;
   activa?: boolean;
   titular?: { nombre?: string; nif?: string; };
@@ -73,7 +82,7 @@ class CuentasService {
       
       // Check if account already exists in IndexedDB
       const existingAccounts = await db.getAll('accounts');
-      const existingAccount = existingAccounts.find(acc => acc.iban === account.iban);
+    const existingAccount = existingAccounts.find(acc => acc.iban === account.iban);
       
       // Transform atlas account to treasury account format
       const treasuryAccount = {
@@ -89,6 +98,7 @@ class CuentasService {
         logoUser: account.logoUser,
         logo_url: account.logoUser || account.banco?.brand?.logoUrl,
         tipo: account.tipo || 'CORRIENTE',
+        cardConfig: account.cardConfig,
         moneda: account.moneda || 'EUR',
         currency: 'EUR',
         titular: account.titular,
@@ -185,12 +195,32 @@ class CuentasService {
     }
 
     // Validate and normalize IBAN
-    const ibanValidation = validateIbanEs(data.iban);
-    if (!ibanValidation.ok) {
-      throw new Error(ibanValidation.message);
+    const isCreditCard = data.tipo === 'TARJETA_CREDITO';
+
+    if (isCreditCard && !data.cardConfig) {
+      throw new Error('Configura la domiciliación de la tarjeta (cuenta y día de cargo)');
     }
 
-    const normalizedIban = normalizeIban(data.iban);
+    if (isCreditCard && data.cardConfig) {
+      if (data.cardConfig.settlementDay < 1 || data.cardConfig.settlementDay > 31) {
+        throw new Error('El día de cargo de la tarjeta debe estar entre 1 y 31');
+      }
+    }
+
+    if (!isCreditCard && !data.iban) {
+      throw new Error('El IBAN es obligatorio');
+    }
+
+    if (!isCreditCard) {
+      const ibanValidation = validateIbanEs(data.iban!);
+      if (!ibanValidation.ok) {
+        throw new Error(ibanValidation.message);
+      }
+    }
+
+    const normalizedIban = isCreditCard
+      ? `CARD-${Date.now()}`
+      : normalizeIban(data.iban!);
     
     // Check for duplicates
     const existingAccount = this.accounts.find(
@@ -201,7 +231,9 @@ class CuentasService {
     }
 
     // Detect bank information using new function
-    const bankInfo = detectBankByIBAN(normalizedIban);
+    const bankInfo = isCreditCard
+      ? { name: 'Tarjeta de crédito' }
+      : detectBankByIBAN(normalizedIban);
 
     // Create new account
     const newAccount: Account = {
@@ -211,6 +243,7 @@ class CuentasService {
       banco: bankInfo || undefined,
       logoUser: data.logoUser,
       tipo: data.tipo || 'CORRIENTE',
+      cardConfig: data.cardConfig,
       moneda: 'EUR',
       titular: data.titular,
       status: 'ACTIVE', // New required field
@@ -330,6 +363,12 @@ class CuentasService {
     }
     if (data.openingBalanceDate !== undefined) {
       account.openingBalanceDate = data.openingBalanceDate;
+    }
+    if (data.tipo !== undefined) {
+      account.tipo = data.tipo;
+    }
+    if (data.cardConfig !== undefined) {
+      account.cardConfig = data.cardConfig;
     }
 
     account.updatedAt = new Date().toISOString();

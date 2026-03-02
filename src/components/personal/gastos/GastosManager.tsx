@@ -39,6 +39,7 @@ const CATEGORY_ICONS: Record<PersonalExpenseCategory, React.ElementType> = {
   otros: MoreHorizontal,
 };
 
+
 const formatEuro = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
 
@@ -92,6 +93,7 @@ const GastosManager: React.FC = () => {
     const acc = accounts.find((a) => a.id === accountId);
     if (!acc) return '—';
     if (acc.alias) return acc.alias;
+    if (acc.tipo === 'TARJETA_CREDITO') return 'Tarjeta de crédito';
     const iban = acc.iban ?? '';
     const last4 = iban.length >= 4 ? iban.slice(-4) : iban;
     if (acc.banco?.name) return `${acc.banco.name} ···${last4}`;

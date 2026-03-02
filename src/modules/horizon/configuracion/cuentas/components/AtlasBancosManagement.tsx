@@ -24,6 +24,9 @@ import {
 interface AccountFormData {
   alias: string;
   iban: string;
+  tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
+  cardSettlementDay: string;
+  cardChargeAccountId: string;
   logoFile: File | null;
   openingBalance: string;
   openingBalanceDate: string;
@@ -68,6 +71,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
   const [formData, setFormData] = useState<AccountFormData>({
     alias: '',
     iban: '',
+    tipo: 'CORRIENTE',
+    cardSettlementDay: '1',
+    cardChargeAccountId: '',
     logoFile: null,
     openingBalance: '',
     openingBalanceDate: new Date().toISOString().split('T')[0],
@@ -173,6 +179,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setFormData({
       alias: '',
       iban: '',
+      tipo: 'CORRIENTE',
+      cardSettlementDay: '1',
+      cardChargeAccountId: '',
       logoFile: null,
       openingBalance: '',
       openingBalanceDate: new Date().toISOString().split('T')[0],
@@ -185,7 +194,10 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setEditingAccount(account);
     setFormData({
       alias: account.alias || '',
-      iban: formatIban(account.iban),
+      iban: account.tipo === 'TARJETA_CREDITO' ? '' : formatIban(account.iban),
+      tipo: account.tipo || 'CORRIENTE',
+      cardSettlementDay: account.cardConfig?.settlementDay?.toString() || '1',
+      cardChargeAccountId: account.cardConfig?.chargeAccountId?.toString() || '',
       logoFile: null,
       openingBalance: account.openingBalance?.toString() ?? '',
       openingBalanceDate: account.openingBalanceDate
@@ -202,6 +214,9 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     setFormData({
       alias: '',
       iban: '',
+      tipo: 'CORRIENTE',
+      cardSettlementDay: '1',
+      cardChargeAccountId: '',
       logoFile: null,
       openingBalance: '',
       openingBalanceDate: new Date().toISOString().split('T')[0],
@@ -213,12 +228,24 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
     const errors: Record<string, string> = {};
 
     // IBAN validation
-    if (!formData.iban.trim()) {
-      errors.iban = 'El IBAN es obligatorio';
-    } else {
-      const ibanValidation = validateIbanEs(formData.iban);
-      if (!ibanValidation.ok) {
-        errors.iban = ibanValidation.message || 'IBAN inválido';
+    if (formData.tipo !== 'TARJETA_CREDITO') {
+      if (!formData.iban.trim()) {
+        errors.iban = 'El IBAN es obligatorio';
+      } else {
+        const ibanValidation = validateIbanEs(formData.iban);
+        if (!ibanValidation.ok) {
+          errors.iban = ibanValidation.message || 'IBAN inválido';
+        }
+      }
+    }
+
+    if (formData.tipo === 'TARJETA_CREDITO') {
+      const day = parseInt(formData.cardSettlementDay || '0', 10);
+      if (!day || day < 1 || day > 31) {
+        errors.cardSettlementDay = 'Indica un día de cargo entre 1 y 31';
+      }
+      if (!formData.cardChargeAccountId) {
+        errors.cardChargeAccountId = 'Selecciona la cuenta bancaria de cargo del recibo';
       }
     }
 
@@ -266,7 +293,14 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
 
       const accountData: CreateAccountData | UpdateAccountData = {
         alias: formData.alias.trim() || undefined, // Optional alias
-        iban: formData.iban,
+        iban: formData.tipo === 'TARJETA_CREDITO' ? undefined : formData.iban,
+        tipo: formData.tipo,
+        cardConfig: formData.tipo === 'TARJETA_CREDITO'
+          ? {
+              settlementDay: parseInt(formData.cardSettlementDay || '1', 10),
+              chargeAccountId: parseInt(formData.cardChargeAccountId, 10),
+            }
+          : undefined,
         logoUser, // User uploaded logo URL
         openingBalance: parseFloat(formData.openingBalance || '0') || 0,
         openingBalanceDate: formData.openingBalanceDate
@@ -577,7 +611,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                         )}
                       </div>
                       <p className={`text-sm ${isActive ? 'text-text-gray' : 'text-gray-400'}`}>
-                        {maskIban(account.iban)}
+                        {account.tipo === 'TARJETA_CREDITO' ? 'Tarjeta de crédito' : maskIban(account.iban)}
                       </p>
                       {account.banco?.name && (
                         <p className={`text-xs ${isActive ? 'text-text-gray' : 'text-gray-400'}`}>
@@ -632,7 +666,57 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                   )}
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Tipo de cuenta</label>
+                  <select
+                    value={formData.tipo}
+                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value as AccountFormData['tipo'] })}
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    disabled={!!editingAccount}
+                  >
+                    <option value="CORRIENTE">Cuenta corriente</option>
+                    <option value="AHORRO">Cuenta ahorro</option>
+                    <option value="OTRA">Otra cuenta</option>
+                    <option value="TARJETA_CREDITO">Tarjeta de crédito</option>
+                  </select>
+                </div>
+
+                {formData.tipo === 'TARJETA_CREDITO' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Día de cargo del recibo (1-31)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={formData.cardSettlementDay}
+                        onChange={(e) => setFormData({ ...formData, cardSettlementDay: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                      />
+                      {formErrors.cardSettlementDay && <p className="mt-1 text-sm text-error-600">{formErrors.cardSettlementDay}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Cuenta bancaria de cargo del recibo</label>
+                      <select
+                        value={formData.cardChargeAccountId}
+                        onChange={(e) => setFormData({ ...formData, cardChargeAccountId: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                      >
+                        <option value="">Selecciona una cuenta</option>
+                        {accounts
+                          .filter((acc) => acc.tipo !== 'TARJETA_CREDITO')
+                          .map((acc) => (
+                            <option key={acc.id} value={acc.id}>{acc.alias || maskIban(acc.iban)}</option>
+                          ))}
+                      </select>
+                      {formErrors.cardChargeAccountId && <p className="mt-1 text-sm text-error-600">{formErrors.cardChargeAccountId}</p>}
+                    </div>
+                  </>
+                )}
+
                 {/* IBAN field - Required */}
+                {formData.tipo !== 'TARJETA_CREDITO' && (
                 <div>
                   <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
                     IBAN <span className="text-error-500">*</span>
@@ -650,6 +734,7 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                     <p className="mt-1 text-sm text-error-600">{formErrors.iban}</p>
                   )}
                 </div>
+                )}
 
                 {/* Logo upload - Optional */}
                 <div>
