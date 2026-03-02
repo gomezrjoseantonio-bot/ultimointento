@@ -26,17 +26,17 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
 
   const getTipoLabel = (tipo: string) => {
     const labels: Record<string, string> = {
-      fondo_inversion: 'Fondo inversión',
-      accion: 'Acción',
+      fondo_inversion: 'Fondo inversiÃ³n',
+      accion: 'AcciÃ³n',
       etf: 'ETF',
       reit: 'REIT',
       plan_pensiones: 'Plan pensiones',
       plan_empleo: 'Plan empleo',
       crypto: 'Crypto',
-      deposito: 'Depósito',
-      deposito_plazo: 'Depósito a plazo',
+      deposito: 'DepÃ³sito',
+      deposito_plazo: 'DepÃ³sito a plazo',
       cuenta_remunerada: 'Cuenta remunerada',
-      prestamo_p2p: 'Préstamo P2P',
+      prestamo_p2p: 'PrÃ©stamo P2P',
       otro: 'Otro',
     };
     return labels[tipo] || tipo;
@@ -50,7 +50,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
 
   const getCategoryColor = (): string => {
     const cat = getTipoCategoria();
-    if (cat === 'rendimiento') return '#15803d';
+    if (cat === 'rendimiento') return '#0d9488';
     if (cat === 'dividendos') return '#1d4ed8';
     return 'var(--text-gray)';
   };
@@ -81,18 +81,18 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
     
     if (cat === 'rendimiento' && posAny.rendimiento?.tasa_interes_anual) {
       return {
-        label: `Genera intereses ${posAny.rendimiento.tasa_interes_anual}%/año`,
-        bg: '#dcfce7',
-        color: '#15803d',
+        label: `Genera intereses ${posAny.rendimiento.tasa_interes_anual}%/aÃ±o`,
+        bg: '#ccfbf1',
+        color: '#0d9488',
       };
     }
     if (cat === 'dividendos') {
       const pagaDividendos = posAny.dividendos?.paga_dividendos;
       return pagaDividendos
         ? { label: 'Paga dividendos', bg: '#dbeafe', color: '#1d4ed8' }
-        : { label: 'Acumulación', bg: '#eff6ff', color: '#1d4ed8' };
+        : { label: 'AcumulaciÃ³n', bg: '#eff6ff', color: '#1d4ed8' };
     }
-    return { label: 'Valoración simple', bg: '#f3f4f6', color: 'var(--text-gray)' };
+    return { label: 'ValoraciÃ³n simple', bg: '#f3f4f6', color: 'var(--text-gray)' };
   };
 
   const categoryBadge = getCategoryBadge();
@@ -149,7 +149,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
                 alignItems: 'center',
                 gap: '0.5rem',
               }}>
-                {getTipoLabel(posicion.tipo)} · {posicion.entidad}
+                {getTipoLabel(posicion.tipo)} Â· {posicion.entidad}
                 <span style={{
                   display: 'inline-block',
                   padding: '0.1rem 0.5rem',
@@ -194,7 +194,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
           </div>
         </div>
 
-        {/* Ver más button */}
+        {/* Ver mÃ¡s button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -219,7 +219,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
           onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--atlas-blue)'; }}
         >
           <Eye size={16} />
-          Ver más
+          Ver mÃ¡s
         </button>
       </div>
     </div>
