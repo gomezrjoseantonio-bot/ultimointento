@@ -47,6 +47,40 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 const formatEuroLocal = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
 
+const getAnnualAmount = (rule: OpexRule): number => {
+  const cyclesPerYear: Record<string, number> = {
+    semanal: 52,
+    mensual: 12,
+    bimestral: 6,
+    trimestral: 4,
+    semestral: 2,
+    anual: 1,
+    meses_especificos: rule.mesesCobro?.length ?? 1,
+  };
+  const cycles = cyclesPerYear[rule.frecuencia] ?? 1;
+  if (rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments?.length) {
+    return rule.asymmetricPayments.reduce((sum, p) => sum + p.importe, 0);
+  }
+  return rule.importeEstimado * cycles;
+};
+
+type ExpenseBusinessType = 'recurrente' | 'reparacion' | 'mejora' | 'mobiliario';
+
+const BUSINESS_TYPE_LABELS: Record<ExpenseBusinessType, string> = {
+  recurrente: 'Gasto recurrente',
+  reparacion: 'Reparación y conservación',
+  mejora: 'Mejora (CAPEX)',
+  mobiliario: 'Mobiliario y equipamiento',
+};
+
+const detectExpenseBusinessType = (rule: OpexRule): ExpenseBusinessType => {
+  const concept = (rule.concepto || '').toLowerCase();
+  if (/mobili|mueble|electro|equipamiento|menaje/.test(concept)) return 'mobiliario';
+  if (/mejora|reforma|capex|obra/.test(concept)) return 'mejora';
+  if (/repar|conserv|manten|aver[ií]a|pintura|fontaner|electric/.test(concept)) return 'reparacion';
+  return 'recurrente';
+};
+
 const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propertyId }) => {
   const [rules, setRules] = useState<OpexRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,26 +172,18 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
     setEditingRule(undefined);
   };
 
-  // Calculate annual total
-  const annualTotal = rules
-    .filter((r) => r.activo)
-    .reduce((sum, r) => {
-      const cyclesPerYear: Record<string, number> = {
-        semanal: 52,
-        mensual: 12,
-        bimestral: 6,
-        trimestral: 4,
-        semestral: 2,
-        anual: 1,
-        meses_especificos: r.mesesCobro?.length ?? 1,
-      };
-      const cycles = cyclesPerYear[r.frecuencia] ?? 1;
-      // For asymmetric payments, use the sum of all monthly amounts
-      if (r.frecuencia === 'meses_especificos' && r.asymmetricPayments?.length) {
-        return sum + r.asymmetricPayments.reduce((s, p) => s + p.importe, 0);
-      }
-      return sum + r.importeEstimado * cycles;
-    }, 0);
+  const activeRules = rules.filter((r) => r.activo);
+  const annualTotal = activeRules.reduce((sum, r) => sum + getAnnualAmount(r), 0);
+  const annualTotalsByType = activeRules.reduce<Record<ExpenseBusinessType, number>>((acc, rule) => {
+    const type = detectExpenseBusinessType(rule);
+    acc[type] += getAnnualAmount(rule);
+    return acc;
+  }, {
+    recurrente: 0,
+    reparacion: 0,
+    mejora: 0,
+    mobiliario: 0,
+  });
 
   if (loading) {
     return (
@@ -186,6 +212,15 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
         </button>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {(Object.entries(BUSINESS_TYPE_LABELS) as [ExpenseBusinessType, string][]).map(([type, label]) => (
+          <div key={type} className="rounded-lg border border-neutral-200 bg-white p-3">
+            <p className="text-xs text-neutral-500">{label}</p>
+            <p className="text-sm font-semibold text-neutral-900">{formatEuroLocal(annualTotalsByType[type])}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Rules table */}
       {rules.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -208,6 +243,9 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Concepto
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tipo
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Importe/ciclo
@@ -241,6 +279,9 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                     })()}
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{rule.concepto}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {BUSINESS_TYPE_LABELS[detectExpenseBusinessType(rule)]}
+                  </td>
                   <td className="px-4 py-3 text-right text-gray-700">
                     {rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments?.length ? (
                       <span title="Pagos asimétricos por mes">

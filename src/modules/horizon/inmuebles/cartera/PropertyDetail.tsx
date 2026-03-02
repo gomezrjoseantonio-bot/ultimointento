@@ -215,9 +215,9 @@ const PropertyDetail: React.FC = () => {
       <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
         {(
           [
-            { id: 'resumen', label: 'Resumen', Icon: LayoutList },
-            { id: 'contratos', label: 'Contratos / Ingresos', Icon: Users },
-            { id: 'presupuesto', label: 'Presupuesto (OPEX/CAPEX)', Icon: TrendingDown },
+            { id: 'resumen', label: 'Operación', Icon: LayoutList },
+            { id: 'contratos', label: 'Alquileres', Icon: Users },
+            { id: 'presupuesto', label: 'Números', Icon: TrendingDown },
             { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
         ).map(({ id: tabId, label, Icon }) => {
