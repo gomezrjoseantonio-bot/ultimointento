@@ -818,14 +818,7 @@ async function loadDeudaState(): Promise<DeudaState> {
   try {
     const prestamos = await prestamosService.getAllPrestamos();
     for (const p of prestamos) {
-      let plan = await prestamosService.getPaymentPlan(p.id);
-
-      // Self-heal legacy schedules generated with JS Date overflow on day 29/30/31,
-      // which could skip months (e.g. Jan -> Mar) and understate monthly projections.
-      if (plan?.periodos && hasIrregularMonthlyCadence(plan.periodos)) {
-        plan = await prestamosService.regeneratePaymentPlan(p.id);
-      }
-
+      const plan = await prestamosService.getPaymentPlan(p.id);
       const isHipoteca = p.ambito
         ? p.ambito === 'INMUEBLE'
         : Boolean(p.inmuebleId && p.inmuebleId !== 'standalone');
