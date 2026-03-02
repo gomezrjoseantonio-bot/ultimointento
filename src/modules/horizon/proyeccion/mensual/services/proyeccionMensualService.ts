@@ -798,7 +798,6 @@ async function loadDeudaState(): Promise<DeudaState> {
     const prestamos = await prestamosService.getAllPrestamos();
     for (const p of prestamos) {
       const plan = await prestamosService.getPaymentPlan(p.id);
-
       const isHipoteca = p.ambito
         ? p.ambito === 'INMUEBLE'
         : Boolean(p.inmuebleId && p.inmuebleId !== 'standalone');
