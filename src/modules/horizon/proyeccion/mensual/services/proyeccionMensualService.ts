@@ -120,6 +120,27 @@ function isContractActiveInMonth(contract: Contract, year: number, month: number
   return monthStart <= fechaFin && monthEnd >= fechaInicio;
 }
 
+
+function getMonthDistance(fromMonth: string, toMonth: string): number {
+  const [fromY, fromM] = fromMonth.split('-').map(Number);
+  const [toY, toM] = toMonth.split('-').map(Number);
+  return (toY - fromY) * 12 + (toM - fromM);
+}
+
+function hasIrregularMonthlyCadence(periodos: PeriodoPago[]): boolean {
+  if (periodos.length < 2) return false;
+
+  for (let i = 1; i < periodos.length; i++) {
+    const prevMonth = periodos[i - 1].fechaCargo.substring(0, 7);
+    const currentMonth = periodos[i].fechaCargo.substring(0, 7);
+    if (getMonthDistance(prevMonth, currentMonth) !== 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 interface LoanInfo {
   principalInicial: number; // fallback for months before first payment
   isHipoteca: boolean; // true = mortgage, false = personal loan
@@ -797,10 +818,21 @@ async function loadDeudaState(): Promise<DeudaState> {
   try {
     const prestamos = await prestamosService.getAllPrestamos();
     for (const p of prestamos) {
-      const plan = await prestamosService.getPaymentPlan(p.id);
+      let plan = await prestamosService.getPaymentPlan(p.id);
+
+      // Self-heal legacy schedules generated with JS Date overflow on day 29/30/31,
+      // which could skip months (e.g. Jan -> Mar) and understate monthly projections.
+      if (plan?.periodos && hasIrregularMonthlyCadence(plan.periodos)) {
+        plan = await prestamosService.regeneratePaymentPlan(p.id);
+      }
+
+      const isHipoteca = p.ambito
+        ? p.ambito === 'INMUEBLE'
+        : Boolean(p.inmuebleId && p.inmuebleId !== 'standalone');
+
       loans.push({
         principalInicial: p.principalInicial,
-        isHipoteca: p.inmuebleId !== 'standalone', // standalone = personal loan; otherwise mortgage
+        isHipoteca,
         concepto: p.nombre ?? 'Hipoteca/Préstamo',
         periodos: plan?.periodos ?? [],
       });
