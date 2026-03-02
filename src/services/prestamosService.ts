@@ -180,6 +180,27 @@ export class PrestamosService {
     return true;
   }
 
+
+  private getMonthDistance(fromMonth: string, toMonth: string): number {
+    const [fromY, fromM] = fromMonth.split('-').map(Number);
+    const [toY, toM] = toMonth.split('-').map(Number);
+    return (toY - fromY) * 12 + (toM - fromM);
+  }
+
+  private hasIrregularMonthlyCadence(plan: PlanPagos): boolean {
+    if (!plan.periodos || plan.periodos.length < 2) return false;
+
+    for (let i = 1; i < plan.periodos.length; i++) {
+      const prevMonth = plan.periodos[i - 1].fechaCargo.substring(0, 7);
+      const currentMonth = plan.periodos[i].fechaCargo.substring(0, 7);
+      if (this.getMonthDistance(prevMonth, currentMonth) !== 1) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * Get or generate payment plan for a loan - reads from IndexedDB first
    */
@@ -189,8 +210,14 @@ export class PrestamosService {
 
     // Check in-memory cache first
     if (this.planesGenerados.has(prestamoId)) {
-      console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
-      return this.planesGenerados.get(prestamoId)!;
+      const cachedPlan = this.planesGenerados.get(prestamoId)!;
+      if (!this.hasIrregularMonthlyCadence(cachedPlan)) {
+        console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
+        return cachedPlan;
+      }
+
+      console.warn(`[PRESTAMOS] Cached schedule has irregular monthly cadence, regenerating ${prestamoId}`);
+      this.planesGenerados.delete(prestamoId);
     }
 
     // Try to load persisted plan from IndexedDB
@@ -198,9 +225,13 @@ export class PrestamosService {
       const db = await initDB();
       const persistedPlan = await db.get('keyval', `planpagos_${prestamoId}`) as PlanPagos | undefined;
       if (persistedPlan) {
-        console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
-        this.planesGenerados.set(prestamoId, persistedPlan);
-        return persistedPlan;
+        if (!this.hasIrregularMonthlyCadence(persistedPlan)) {
+          console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
+          this.planesGenerados.set(prestamoId, persistedPlan);
+          return persistedPlan;
+        }
+
+        console.warn(`[PRESTAMOS] Persisted schedule has irregular monthly cadence, regenerating ${prestamoId}`);
       }
     } catch (error) {
       console.error('[PRESTAMOS] Failed to read payment plan from IndexedDB:', error);

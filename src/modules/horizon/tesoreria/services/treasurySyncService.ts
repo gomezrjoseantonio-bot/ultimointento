@@ -26,10 +26,6 @@ import {
   getPersonalExpenseAmountForMonth,
 } from '../../../horizon/proyeccion/mensual/services/forecastEngine';
 import {
-  calculateLoanPayment,
-  PROJECTION_START_YEAR,
-} from '../../../horizon/proyeccion/mensual/services/proyeccionMensualService';
-import {
   ConfiguracionFiscal,
   TRAMOS_AHORRO_2026,
 } from '../../../../types/inversiones-extended';
@@ -422,13 +418,10 @@ export async function generateMonthlyForecasts(
   }
 
   // ── 5. FINANCIACIÓN (Cuotas de Hipotecas y Préstamos) ────────────────────
-  // Consumes the same data source and formula as the projection engine
-  // (prestamosService + calculateLoanPayment) to guarantee amounts match
-  // the P&L at the cent.
+  // Uses the same amortization schedules persisted by prestamosService so treasury
+  // and projection consume exactly the same per-month installment source.
   try {
     const prestamos = await prestamosService.getAllPrestamos();
-    // absoluteMonthIndex mirrors the index used by buildMonthRow in the projection engine
-    const absoluteMonthIndex = (year - PROJECTION_START_YEAR) * 12 + (month - 1);
 
     // Load all existing financing events for the month (hipoteca + prestamo) for duplicate check.
     // Prestamos use string UUIDs as IDs, so we use description-based deduplication.
@@ -445,27 +438,16 @@ export async function generateMonthlyForecasts(
     for (const prestamo of prestamos) {
       if (!prestamo.id) continue;
 
-      // Determine the effective annual rate using the same logic as loadDeudaState()
-      const annualRatePct =
-        prestamo.tipo === 'FIJO'
-          ? (prestamo.tipoNominalAnualFijo ?? 0)
-          : prestamo.tipo === 'VARIABLE'
-            ? (prestamo.valorIndiceActual ?? 0) + (prestamo.diferencial ?? 0)
-            : (prestamo.tipoNominalAnualMixtoFijo ?? prestamo.tipoNominalAnualFijo ?? 0);
-
-      const { cuota } = calculateLoanPayment(
-        prestamo.principalInicial,
-        annualRatePct / 100,
-        prestamo.plazoMesesTotal,
-        absoluteMonthIndex,
-      );
-
+      const plan = await prestamosService.getPaymentPlan(prestamo.id);
+      const currentPeriodo = plan?.periodos.find(p => p.fechaCargo.startsWith(monthPrefix));
+      const cuota = currentPeriodo?.cuota ?? 0;
       if (cuota <= 0) continue;
 
       // Differentiate hipotecas (linked to a property) from personal loans.
-      // 'standalone' is the sentinel value used by prestamosService to indicate a personal (non-property) loan.
-      const STANDALONE_LOAN_ID = 'standalone';
-      const isHipoteca = prestamo.inmuebleId !== STANDALONE_LOAN_ID;
+      // Prefer `ambito` as source of truth, fallback to legacy `inmuebleId` sentinel.
+      const isHipoteca = prestamo.ambito
+        ? prestamo.ambito === 'INMUEBLE'
+        : Boolean(prestamo.inmuebleId && prestamo.inmuebleId !== 'standalone');
       const sourceType = isHipoteca ? 'hipoteca' as const : 'prestamo' as const;
       const label = isHipoteca ? 'Hipoteca' : 'Préstamo';
       const description = `Cuota ${label} – ${prestamo.nombre ?? 'Financiación'}`;
@@ -487,20 +469,14 @@ export async function generateMonthlyForecasts(
       await insertEvent({
         type: 'financing' as const,
         amount: cuota,
-        predictedDate: buildDate(year, month, prestamo.diaCargoMes ?? 1),
+        predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
         description,
         sourceType,
         sourceId: undefined, // string UUID – incompatible with numeric sourceId field
         accountId,
         status: 'predicted' as const,
         prestamoId: prestamo.id,
-        numeroCuota: (() => {
-          const fechaFirma = new Date(prestamo.fechaFirma);
-          const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses ?? 0;
-          const firstPayment = new Date(fechaFirma);
-          firstPayment.setMonth(firstPayment.getMonth() + (mesesDiferimiento > 0 ? mesesDiferimiento : 1));
-          return (year - firstPayment.getFullYear()) * 12 + (month - (firstPayment.getMonth() + 1)) + 1;
-        })(),
+        numeroCuota: currentPeriodo?.periodo,
         createdAt: now,
         updatedAt: now,
       });
