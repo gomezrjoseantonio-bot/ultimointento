@@ -159,7 +159,7 @@ const TreasuryReconciliationView: React.FC = () => {
   const [events, setEvents] = useState<TreasuryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBankFilter, setSelectedBankFilter] = useState<string | null>(null);
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'income' | 'expense'>(
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'income' | 'expense' | 'financing'>(
     'all',
   );
 
@@ -570,7 +570,7 @@ const TreasuryReconciliationView: React.FC = () => {
     const listByType =
       selectedTypeFilter === 'all'
         ? list
-        : list.filter(e => (selectedTypeFilter === 'income' ? e.type === 'income' : e.type === 'expense'));
+        : list.filter(e => e.type === selectedTypeFilter);
     return [...listByType].sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
@@ -907,6 +907,13 @@ const TreasuryReconciliationView: React.FC = () => {
                 aria-pressed={selectedTypeFilter === 'expense'}
               >
                 Gastos
+              </button>
+              <button
+                className={`events-type-pill${selectedTypeFilter === 'financing' ? ' events-type-pill--active' : ''}`}
+                onClick={() => setSelectedTypeFilter('financing')}
+                aria-pressed={selectedTypeFilter === 'financing'}
+              >
+                Financiación
               </button>
             </div>
             <span className="events-panel__count">
