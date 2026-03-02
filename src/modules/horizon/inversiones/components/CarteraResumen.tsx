@@ -19,18 +19,18 @@ const tipoLabels: Record<string, string> = {
   plan_pensiones: 'Pensiones',
   plan_empleo: 'Plan empleo',
   crypto: 'Crypto',
-  deposito: 'Depósitos',
+  deposito: 'DepÃ³sitos',
   otro: 'Otros',
 };
 
 const tipoColors: Record<string, string> = {
-  plan_pensiones: '#16a34a',
+  plan_pensiones: '#0b8fa0',
   fondo_inversion: '#0b4f8f',
-  accion: '#f59e0b',
+  accion: '#2563eb',
   etf: '#3b82f6',
-  crypto: '#dc2626',
-  deposito: '#10b981',
-  plan_empleo: '#8b5cf6',
+  crypto: '#64748b',
+  deposito: '#0d9488',
+  plan_empleo: '#1e40af',
   otro: '#6b7280',
 };
 
@@ -151,7 +151,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
         </div>
       </div>
 
-      {/* Distribución por tipo */}
+      {/* DistribuciÃ³n por tipo */}
       <div style={{
         background: 'var(--hz-card-bg)',
         border: '1px solid var(--hz-neutral-300)',
@@ -165,7 +165,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             fontWeight: 500,
             color: 'var(--text-gray)' 
           }}>
-            Distribución por tipo
+            DistribuciÃ³n por tipo
           </span>
         </div>
         {Object.keys(porTipo).length > 0 ? (
