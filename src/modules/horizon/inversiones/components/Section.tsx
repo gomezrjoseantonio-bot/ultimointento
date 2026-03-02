@@ -12,7 +12,7 @@ interface SectionProps {
 }
 
 const colorMap = {
-  green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#15803d', iconBg: '#dcfce7' },
+  green: { bg: '#f0fdfa', border: '#99f6e4', text: '#0d9488', iconBg: '#ccfbf1' },
   blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', iconBg: '#dbeafe' },
   gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)' },
   orange: { bg: '#fff7ed', border: '#fed7aa', text: '#c2410c', iconBg: '#ffedd5' },
