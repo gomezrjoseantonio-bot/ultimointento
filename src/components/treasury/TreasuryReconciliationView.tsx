@@ -567,6 +567,7 @@ const TreasuryReconciliationView: React.FC = () => {
         else if (ev.sourceType === 'inversion' || c.includes('inter') || c.includes('cupón') || c.includes('cupon') || c.includes('dividendo')) line = inc[3];
         else if (c.includes('venta')) line = inc[4];
         else if (ev.sourceType === 'autonomo_ingreso' || c.includes('freelance') || c.includes('autónom') || c.includes('autonom')) line = inc[1];
+        else if (ev.sourceType === 'otros_ingresos') line = inc[4];
         else line = inc[0]; // fallback: bucket unclassified income with Nómina
       } else if (ev.type === 'expense') {
         if (ev.sourceType === 'opex_rule') line = exp[0];

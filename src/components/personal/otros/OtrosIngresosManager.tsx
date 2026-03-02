@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { personalDataService } from '../../../services/personalDataService';
+import { cuentasService } from '../../../services/cuentasService';
+import { Account } from '../../../services/db';
 import { OtrosIngresos, PersonalData } from '../../../types/personal';
 import { Plus, Trash2, Pencil, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -19,6 +21,9 @@ const EMPTY_FORM = {
   tipo: 'prestacion-desempleo' as OtrosIngresos['tipo'],
   importe: '',
   frecuencia: 'mensual' as OtrosIngresos['frecuencia'],
+  cuentaCobro: '0',
+  diaCobro: '1',
+  fechaInicio: '',
   fechaFin: '',
 };
 
@@ -27,6 +32,7 @@ const OtrosIngresosManager: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [cuentas, setCuentas] = useState<Account[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<typeof EMPTY_FORM>(EMPTY_FORM);
@@ -40,6 +46,8 @@ const OtrosIngresosManager: React.FC = () => {
         const ingresosData = await otrosIngresosService.getOtrosIngresos(pData.id);
         setIngresos(ingresosData);
       }
+      const allCuentas = await cuentasService.list();
+      setCuentas(allCuentas.filter((c: Account) => c.activa));
     } catch (error) {
       console.error('Error loading otros ingresos:', error);
       toast.error('Error al cargar otros ingresos');
@@ -108,9 +116,10 @@ const OtrosIngresosManager: React.FC = () => {
         tipo: form.tipo,
         importe: parseFloat(form.importe),
         frecuencia: form.frecuencia,
-        cuentaCobro: 0,
-        reglasDia: { tipo: 'fijo' as const, dia: 1 },
+        cuentaCobro: parseInt(form.cuentaCobro, 10) || 0,
+        reglasDia: { tipo: 'fijo' as const, dia: parseInt(form.diaCobro, 10) || 1 },
         activo: true,
+        ...(form.fechaInicio ? { fechaInicio: form.fechaInicio } : { fechaInicio: undefined }),
         ...(form.fechaFin ? { fechaFin: form.fechaFin } : { fechaFin: undefined }),
       };
       if (editingId !== null) {
@@ -139,10 +148,19 @@ const OtrosIngresosManager: React.FC = () => {
       tipo: ingreso.tipo,
       importe: String(ingreso.importe),
       frecuencia: ingreso.frecuencia,
+      cuentaCobro: String(ingreso.cuentaCobro ?? 0),
+      diaCobro: String(ingreso.reglasDia?.dia ?? 1),
+      fechaInicio: ingreso.fechaInicio ?? '',
       fechaFin: ingreso.fechaFin ?? '',
     });
     setEditingId(ingreso.id ?? null);
     setShowForm(true);
+  };
+
+  const getCuentaCobroLabel = (cuentaCobro: number): string => {
+    if (!cuentaCobro) return 'Sin cuenta seleccionada';
+    const cuenta = cuentas.find(c => c.id === cuentaCobro);
+    return cuenta?.alias || cuenta?.name || `Cuenta #${cuentaCobro}`;
   };
 
   const handleCloseForm = () => {
@@ -274,6 +292,44 @@ const OtrosIngresosManager: React.FC = () => {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Banco / Cuenta de cobro</label>
+              <select
+                name="cuentaCobro"
+                value={form.cuentaCobro}
+                onChange={handleFormChange}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              >
+                <option value="0">Selecciona una cuenta</option>
+                {cuentas.map((cuenta) => (
+                  <option key={cuenta.id} value={cuenta.id}>
+                    {cuenta.alias || cuenta.name || cuenta.iban}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Día de cobro</label>
+              <input
+                type="number"
+                name="diaCobro"
+                value={form.diaCobro}
+                onChange={handleFormChange}
+                min="1"
+                max="31"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+              <input
+                type="month"
+                name="fechaInicio"
+                value={form.fechaInicio}
+                onChange={handleFormChange}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Fecha Fin (opcional)</label>
               <input
                 type="month"
@@ -347,6 +403,9 @@ const OtrosIngresosManager: React.FC = () => {
                   <p className="text-sm font-medium text-gray-900 truncate">{ingreso.nombre}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {getTipoLabel(ingreso.tipo)} · {getTitularLabel(ingreso.titularidad)}
+                    {` · ${getCuentaCobroLabel(ingreso.cuentaCobro)}`}
+                    {ingreso.reglasDia?.dia && ` · Día ${ingreso.reglasDia.dia}`}
+                    {ingreso.fechaInicio && ` · Desde ${formatFechaFin(ingreso.fechaInicio)}`}
                     {ingreso.fechaFin && ` · Hasta ${formatFechaFin(ingreso.fechaFin)}`}
                   </p>
                 </div>
