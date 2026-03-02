@@ -20,7 +20,7 @@ import {
   FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatCompact, formatDateDDMMYYYY } from '../../utils/formatUtils';
+import { formatDateDDMMYYYY } from '../../utils/formatUtils';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
@@ -152,6 +152,9 @@ const TreasuryReconciliationView: React.FC = () => {
   const [events, setEvents] = useState<TreasuryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBankFilter, setSelectedBankFilter] = useState<string | null>(null);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'income' | 'expense'>(
+    'all',
+  );
 
   // Inline amount editing
   const [editState, setEditState] = useState<{ eventId: string; amount: string } | null>(null);
@@ -256,10 +259,15 @@ const TreasuryReconciliationView: React.FC = () => {
     try {
       const [year, month] = currentMonth.split('-').map(Number);
       const result = await generateMonthlyForecasts(year, month);
-      if (result.created > 0) {
-        toast.success(
-          result.created === 1 ? '1 previsión generada' : `${result.created} previsiones generadas`,
-        );
+      if (result.created > 0 || result.updated > 0) {
+        const messages: string[] = [];
+        if (result.created > 0) {
+          messages.push(result.created === 1 ? '1 previsión creada' : `${result.created} previsiones creadas`);
+        }
+        if (result.updated > 0) {
+          messages.push(result.updated === 1 ? '1 previsión actualizada' : `${result.updated} previsiones actualizadas`);
+        }
+        toast.success(messages.join(' · '));
         await loadData();
       } else {
         toast.success('El mes ya está sincronizado');
@@ -524,18 +532,24 @@ const TreasuryReconciliationView: React.FC = () => {
   /** Nivel 3 – Eventos filtrados por banco seleccionado, ordenados por fecha y concepto */
   const filteredEvents = useMemo(() => {
     const list = selectedBankFilter ? events.filter(e => e.accountId === selectedBankFilter) : events;
-    return [...list].sort((a, b) => {
+    const listByType =
+      selectedTypeFilter === 'all'
+        ? list
+        : list.filter(e => (selectedTypeFilter === 'income' ? e.type === 'income' : e.type === 'expense'));
+    return [...listByType].sort((a, b) => {
       const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
       return a.concept.localeCompare(b.concept, 'es');
     });
-  }, [events, selectedBankFilter]);
+  }, [events, selectedBankFilter, selectedTypeFilter]);
 
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
+  const formatAmount = (value: number): string =>
+    value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   /** Format amount with 2 decimal places in Spanish locale: "1.302,59 €" */
-  const formatDesglose = (v: number): string =>
-    v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const formatDesglose = (v: number): string => `${formatAmount(v)} €`;
 
   /** Build desglose breakdown grouped into fixed categories */
   const buildGroupedDesglose = (evList: TreasuryEvent[]): GroupedDesglose => {
@@ -638,7 +652,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Ingresos</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.ingresos.previsto)} € / {formatCompact(globalTotals.ingresos.real)} €
+              {formatAmount(globalTotals.ingresos.previsto)} € / {formatAmount(globalTotals.ingresos.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -657,7 +671,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Gastos</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.gastos.previsto)} € / {formatCompact(globalTotals.gastos.real)} €
+              {formatAmount(globalTotals.gastos.previsto)} € / {formatAmount(globalTotals.gastos.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -676,7 +690,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Financiación</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.financiacion.previsto)} € / {formatCompact(globalTotals.financiacion.real)} €
+              {formatAmount(globalTotals.financiacion.previsto)} € / {formatAmount(globalTotals.financiacion.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -695,7 +709,7 @@ const TreasuryReconciliationView: React.FC = () => {
               <span className="summary-panel-col__title">Cashflow</span>
             </div>
             <div className="summary-panel-col__val">
-              {formatCompact(globalTotals.cashflow.previsto)} € / {formatCompact(globalTotals.cashflow.real)} €
+              {formatAmount(globalTotals.cashflow.previsto)} € / {formatAmount(globalTotals.cashflow.real)} €
             </div>
             <div className="summary-panel-col__lbl">PREV. / REAL</div>
             <div className="summary-panel-col__bar">
@@ -787,7 +801,7 @@ const TreasuryReconciliationView: React.FC = () => {
                   {account.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="bank-filter-card__name">{account.name}</span>
-                <span className="bank-filter-card__saldo">{formatCompact(acctNetPrevisto)} € / {formatCompact(acctNetReal)} €</span>
+                <span className="bank-filter-card__saldo">{formatAmount(acctNetPrevisto)} € / {formatAmount(acctNetReal)} €</span>
               </button>
             );
           })
@@ -801,6 +815,29 @@ const TreasuryReconciliationView: React.FC = () => {
             {selectedBankFilter ? `Eventos — ${selectedBankName}` : 'Todos los eventos previstos'}
           </h2>
           <div className="events-panel__header-right">
+            <div className="events-type-pills" role="group" aria-label="Filtrar movimientos por tipo">
+              <button
+                className={`events-type-pill${selectedTypeFilter === 'all' ? ' events-type-pill--active' : ''}`}
+                onClick={() => setSelectedTypeFilter('all')}
+                aria-pressed={selectedTypeFilter === 'all'}
+              >
+                Todas
+              </button>
+              <button
+                className={`events-type-pill${selectedTypeFilter === 'income' ? ' events-type-pill--active' : ''}`}
+                onClick={() => setSelectedTypeFilter('income')}
+                aria-pressed={selectedTypeFilter === 'income'}
+              >
+                Ingresos
+              </button>
+              <button
+                className={`events-type-pill${selectedTypeFilter === 'expense' ? ' events-type-pill--active' : ''}`}
+                onClick={() => setSelectedTypeFilter('expense')}
+                aria-pressed={selectedTypeFilter === 'expense'}
+              >
+                Gastos
+              </button>
+            </div>
             <span className="events-panel__count">
               {filteredEvents.filter(e => e.status === 'confirmado').length} / {filteredEvents.length} punteados
             </span>
@@ -896,7 +933,7 @@ const TreasuryReconciliationView: React.FC = () => {
                         tabIndex={!isConfirmed ? 0 : undefined}
                         onKeyDown={!isConfirmed ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleAmountClick(event); } } : undefined}
                       >
-                        {event.type !== 'income' && '−\u202F'}{formatCompact(event.amount)} €
+                        {event.type !== 'income' && '−\u202F'}{formatAmount(event.amount)} €
                       </span>
                       <span className={`event-item__status${isConfirmed ? ' event-item__status--confirmed' : ''}`}>
                         {isConfirmed ? 'Confirmado' : 'Previsto'}

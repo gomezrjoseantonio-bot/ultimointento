@@ -38,6 +38,7 @@ const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 export interface SyncResult {
   created: number;
   skipped: number;
+  updated: number;
 }
 
 /**
@@ -142,6 +143,7 @@ export async function generateMonthlyForecasts(
   const monthPrefix = `${year}-${mm}`;
 
   let created = 0;
+  let updated = 0;
   let skipped = 0;
 
   // Ensure each month's opening balance starts from prior months' net available balance.
@@ -150,14 +152,39 @@ export async function generateMonthlyForecasts(
   // Helper: check if a forecast already exists for this sourceType + sourceId in this month
   async function isDuplicate(sourceType: string, sourceId: number | string): Promise<boolean> {
     const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
-    return existing.some(
-      e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
+    return existing.some(e =>
+      e.sourceType === sourceType &&
+      e.predictedDate.startsWith(monthPrefix) &&
+      e.status === 'confirmed',
     );
   }
 
-  // Helper: insert an event and count
+  // Helper: upsert an event by sourceType/sourceId for the month
   async function insertEvent(event: Parameters<typeof db.add>[1]): Promise<void> {
-    await db.add('treasuryEvents', event);
+    const sourceId = (event as { sourceId?: number | string }).sourceId;
+    const sourceType = (event as { sourceType?: string }).sourceType;
+    if (sourceId != null && sourceType) {
+      const existing = await db.getAllFromIndex('treasuryEvents', 'sourceId', sourceId);
+      const currentMonthEvent = existing.find(
+        e => e.sourceType === sourceType && e.predictedDate.startsWith(monthPrefix),
+      );
+      if (currentMonthEvent) {
+        if (currentMonthEvent.status === 'confirmed') {
+          skipped++;
+          return;
+        }
+        await db.put('treasuryEvents', {
+          ...currentMonthEvent,
+          ...event,
+          id: currentMonthEvent.id,
+          updatedAt: now,
+        });
+        updated++;
+        return;
+      }
+    }
+
+    await db.add('treasuryEvents', { ...event, updatedAt: now });
     created++;
   }
 
@@ -427,16 +454,10 @@ export async function generateMonthlyForecasts(
   try {
     const prestamos = await prestamosService.getAllPrestamos();
 
-    // Load all existing financing events for the month (hipoteca + prestamo) for duplicate check.
-    // Prestamos use string UUIDs as IDs, so we use description-based deduplication.
-    const existingFinancingDescriptions = new Set<string>(
-      (await db.getAll('treasuryEvents'))
-        .filter(
-          e =>
-            (e.sourceType === 'hipoteca' || e.sourceType === 'prestamo') &&
-            e.predictedDate.startsWith(monthPrefix),
-        )
-        .map(e => e.description),
+    const existingFinancingEvents = (await db.getAll('treasuryEvents')).filter(
+      e =>
+        (e.sourceType === 'hipoteca' || e.sourceType === 'prestamo') &&
+        e.predictedDate.startsWith(monthPrefix),
     );
 
     for (const prestamo of prestamos) {
@@ -456,7 +477,8 @@ export async function generateMonthlyForecasts(
       const label = isHipoteca ? 'Hipoteca' : 'Préstamo';
       const description = `Cuota ${label} – ${prestamo.nombre ?? 'Financiación'}`;
 
-      if (existingFinancingDescriptions.has(description)) {
+      const existingByDescription = existingFinancingEvents.find(e => e.description === description);
+      if (existingByDescription?.status === 'confirmed') {
         skipped++;
         continue;
       }
@@ -470,20 +492,36 @@ export async function generateMonthlyForecasts(
         : undefined;
       const accountId = resolveAccountId(rawAccountId);
 
-      await insertEvent({
-        type: 'financing' as const,
-        amount: cuota,
-        predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
-        description,
-        sourceType,
-        sourceId: undefined, // string UUID – incompatible with numeric sourceId field
-        accountId,
-        status: 'predicted' as const,
-        prestamoId: prestamo.id,
-        numeroCuota: currentPeriodo?.periodo,
-        createdAt: now,
-        updatedAt: now,
-      });
+      if (existingByDescription) {
+        await db.put('treasuryEvents', {
+          ...existingByDescription,
+          type: 'financing' as const,
+          amount: cuota,
+          predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
+          description,
+          sourceType,
+          accountId,
+          prestamoId: prestamo.id,
+          numeroCuota: currentPeriodo?.periodo,
+          updatedAt: now,
+        });
+        updated++;
+      } else {
+        await insertEvent({
+          type: 'financing' as const,
+          amount: cuota,
+          predictedDate: currentPeriodo?.fechaCargo ?? buildDate(year, month, prestamo.diaCargoMes ?? 1),
+          description,
+          sourceType,
+          sourceId: undefined, // string UUID – incompatible with numeric sourceId field
+          accountId,
+          status: 'predicted' as const,
+          prestamoId: prestamo.id,
+          numeroCuota: currentPeriodo?.periodo,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing prestamos:', err);
@@ -1017,5 +1055,5 @@ export async function generateMonthlyForecasts(
     console.error('[TreasurySyncService] Error processing inversiones:', err);
   }
 
-  return { created, skipped };
+  return { created, skipped, updated };
 }
