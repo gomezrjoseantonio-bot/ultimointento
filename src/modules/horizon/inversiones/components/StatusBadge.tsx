@@ -11,7 +11,7 @@ interface StatusBadgeProps {
 
 const config: Record<Status, { label: string; bg: string; color: string }> = {
   pendiente: { label: 'Pendiente', bg: '#fef9c3', color: '#854d0e' },
-  pagado: { label: 'Pagado', bg: '#dcfce7', color: '#15803d' },
+  pagado: { label: 'Pagado', bg: '#ccfbf1', color: '#0d9488' },
   reinvertido: { label: 'Reinvertido', bg: '#dbeafe', color: '#1d4ed8' },
 };
 
