@@ -457,6 +457,7 @@ export type PersonalExpenseFrequency =
 
 export type PersonalExpenseEstacionalidad = 'plana' | 'invierno' | 'verano';
 
+
 export interface AsymmetricPaymentPersonal {
   mes: number;
   importe: number;

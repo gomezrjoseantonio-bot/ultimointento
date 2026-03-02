@@ -342,7 +342,9 @@ const PersonalExpenseForm: React.FC<PersonalExpenseFormProps> = ({ personalDataI
               <option value="">Sin vincular</option>
               {accounts.map((acc) => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.alias ?? acc.banco?.name ?? `Cuenta …${acc.iban.slice(-4)}`} – {acc.ibanMasked ?? acc.iban}
+                  {acc.alias ?? acc.banco?.name ?? (acc.tipo === 'TARJETA_CREDITO' ? 'Tarjeta de crédito' : `Cuenta …${acc.iban.slice(-4)}`)}
+                  {' – '}
+                  {acc.tipo === 'TARJETA_CREDITO' ? 'Tarjeta diferida' : (acc.ibanMasked ?? acc.iban)}
                 </option>
               ))}
             </select>

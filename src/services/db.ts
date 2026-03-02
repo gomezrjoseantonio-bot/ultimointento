@@ -625,7 +625,11 @@ export interface Account {
     brand?: { logoUrl?: string; color?: string; } // logo/color corporativo si disponible
   };
   logoUser?: string;                      // ATLAS: logo subido por usuario (prioridad 1)
-  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA'; // default: CORRIENTE
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO'; // default: CORRIENTE
+  cardConfig?: {
+    settlementDay: number; // Día del cargo del recibo (1-31)
+    chargeAccountId: number; // Cuenta bancaria donde se domicilia el recibo
+  };
   moneda?: 'EUR';                         // default: EUR (solo EUR por ahora)
   titular?: { nombre?: string; nif?: string; }; // opcional (no obligatorio en alta)
   

@@ -8,7 +8,7 @@ import { formatIban, maskIban, validateIbanEs, inferBank, loadBanksCatalog, gene
 interface AccountFormData {
   alias: string;
   iban: string;
-  tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA';
+  tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
   titular: { nombre: string; nif: string; };
   openingBalance?: string;        // string for input, parse to number on save
   openingBalanceDate?: string;    // YYYY-MM-DD
