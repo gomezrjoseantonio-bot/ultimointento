@@ -28,10 +28,22 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'upcoming' | 'terminated'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'terminated'>('active');
   const [modalidadFilter, setModalidadFilter] = useState<'all' | 'habitual' | 'temporada' | 'vacacional'>('all');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'floor' | 'startDate' | 'endDate' | 'rent' | 'modalidad' | 'tenant'>('default');
   const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
+
+  const getRoomOrder = (contract: Contract): number => {
+    if (contract.unidadTipo !== 'habitacion') {
+      return -1;
+    }
+
+    const rawRoomId = (contract.habitacionId || '').toString();
+    const match = rawRoomId.match(/\d+/);
+    return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+  };
+
 
   const loadData = useCallback(async (retry = false) => {
     try {
@@ -123,8 +135,52 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
       filtered = filtered.filter(contract => contract && contract.inmuebleId?.toString() === selectedPropertyId);
     }
 
+    const propertyNameById = new Map(properties.map((property) => [property.id, (property.alias || '').toLowerCase()]));
+
+    filtered.sort((a, b) => {
+      if (sortBy === 'floor') {
+        return getUnitDisplay(a).localeCompare(getUnitDisplay(b), 'es', { sensitivity: 'base' });
+      }
+
+      if (sortBy === 'startDate') {
+        return new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime();
+      }
+
+      if (sortBy === 'endDate') {
+        return new Date(a.fechaFin).getTime() - new Date(b.fechaFin).getTime();
+      }
+
+      if (sortBy === 'rent') {
+        return (a.rentaMensual || 0) - (b.rentaMensual || 0);
+      }
+
+      if (sortBy === 'modalidad') {
+        return (a.modalidad || '').localeCompare((b.modalidad || ''), 'es', { sensitivity: 'base' });
+      }
+
+      if (sortBy === 'tenant') {
+        const fullNameA = `${a.inquilino?.nombre || ''} ${a.inquilino?.apellidos || ''}`.trim();
+        const fullNameB = `${b.inquilino?.nombre || ''} ${b.inquilino?.apellidos || ''}`.trim();
+        return fullNameA.localeCompare(fullNameB, 'es', { sensitivity: 'base' });
+      }
+
+      const propertyNameA = propertyNameById.get(a.inmuebleId) || '';
+      const propertyNameB = propertyNameById.get(b.inmuebleId) || '';
+      const byProperty = propertyNameA.localeCompare(propertyNameB, 'es', { sensitivity: 'base' });
+      if (byProperty !== 0) {
+        return byProperty;
+      }
+
+      const byRoom = getRoomOrder(a) - getRoomOrder(b);
+      if (byRoom !== 0) {
+        return byRoom;
+      }
+
+      return getUnitDisplay(a).localeCompare(getUnitDisplay(b), 'es', { sensitivity: 'base' });
+    });
+
     setFilteredContracts(filtered);
-  }, [contracts, searchTerm, statusFilter, modalidadFilter, selectedPropertyId]);
+  }, [contracts, searchTerm, statusFilter, modalidadFilter, selectedPropertyId, sortBy, properties]);
 
   const handleDeleteContract = async (contract: Contract) => {
     if (!contract || !contract.inquilino) {
@@ -385,7 +441,33 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     <div className="space-y-6">
       {/* Filters */}
       <div className="bg-white border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mb-4 flex flex-wrap items-center gap-2" role="tablist" aria-label="Filtrar contratos por estado">
+          {[
+            { id: 'all', label: 'Todos' },
+            { id: 'active', label: 'Activos' },
+            { id: 'terminated', label: 'Finalizados' },
+          ].map((pill) => {
+            const isActive = statusFilter === pill.id;
+            return (
+              <button
+                key={pill.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setStatusFilter(pill.id as typeof statusFilter)}
+                className={`inline-flex items-center rounded-full border px-5 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'border-brand-navy bg-primary-50 text-brand-navy'
+                    : 'border-neutral-300 bg-white text-neutral-500 hover:text-neutral-700'
+                }`}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {/* Search */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -401,23 +483,6 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
                 placeholder="Nombre, DNI, email..."
               />
             </div>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Estado
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
-            >
-              <option value="all">Todos</option>
-              <option value="active">Activos</option>
-              <option value="upcoming">Próximos</option>
-              <option value="terminated">Finalizados</option>
-            </select>
           </div>
 
           {/* Modalidad Filter */}
@@ -455,6 +520,26 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
               ))}
             </select>
           </div>
+
+          {/* Sort */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ordenar (A-Z)
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-full border-gray-300 shadow-sm focus:border-atlas-blue focus:ring-atlas-blue"
+            >
+              <option value="default">Inmueble / Habitación (por defecto)</option>
+              <option value="floor">Piso</option>
+              <option value="startDate">Fecha de inicio</option>
+              <option value="endDate">Fecha de fin</option>
+              <option value="rent">Renta</option>
+              <option value="modalidad">Modalidad</option>
+              <option value="tenant">Inquilino</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -471,7 +556,7 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No hay contratos</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== 'all' || modalidadFilter !== 'all' || selectedPropertyId !== 'all'
+              {searchTerm || statusFilter !== 'active' || modalidadFilter !== 'all' || selectedPropertyId !== 'all'
                 ? 'No se encontraron contratos que coincidan con los filtros.'
                 : 'Comience creando su primer contrato.'}
             </p>

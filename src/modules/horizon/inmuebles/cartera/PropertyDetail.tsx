@@ -5,7 +5,7 @@ import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
-import { getAllContracts } from '../../../../services/contractService';
+import { getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 
@@ -181,6 +181,7 @@ const PropertyDetail: React.FC = () => {
 
   const totalCost = calculateTotalCost(property);
   const pricePerSqm = calculatePricePerSqm(property);
+  const activeContractsAtQueryDate = contracts.filter((contract) => getContractStatus(contract) === 'active');
   const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
   const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
   const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
@@ -262,10 +263,10 @@ const PropertyDetail: React.FC = () => {
               </button>
             </div>
           </div>
-          {contracts.length === 0 ? (
+          {activeContractsAtQueryDate.length === 0 ? (
             <div className="bg-white border border-neutral-200 rounded-lg p-8 text-center">
               <Users className="mx-auto h-8 w-8 text-neutral-300 mb-3" />
-              <p className="text-sm text-neutral-600">No hay contratos registrados para este inmueble.</p>
+              <p className="text-sm text-neutral-600">No hay contratos activos para la fecha de consulta.</p>
             </div>
           ) : (
             <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
@@ -280,7 +281,7 @@ const PropertyDetail: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
-                  {contracts.map((contract) => (
+                  {activeContractsAtQueryDate.map((contract) => (
                     <tr key={contract.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 text-sm text-neutral-900">
                         {contract.inquilino
