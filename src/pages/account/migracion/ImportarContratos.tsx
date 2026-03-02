@@ -55,6 +55,11 @@ const parseNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeAccountId = (value: unknown): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplete }) => {
   const [preview, setPreview] = useState<RentilaImportRow[] | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -69,7 +74,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
       const [availableAccounts, db] = await Promise.all([getAvailableAccounts(), initDB()]);
       const allProperties = await db.getAll('properties');
       setAccounts(availableAccounts);
-      setSelectedAccountId(availableAccounts[0]?.id || null);
+      setSelectedAccountId(normalizeAccountId(availableAccounts[0]?.id));
       setProperties(allProperties);
     };
 
@@ -102,8 +107,10 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
         'Inicio de alquiler': '01/01/2024',
         'Fin de alquiler': '31/12/2028',
         'Nombre compañía': 'ANA GARCIA LOPEZ',
+        Habitación: 'H1',
         Alquiler: 950,
         Fianza: 950,
+        'Banco de cobro': 'Santander',
         Comentarios: 'Importado desde Rentila',
       },
     ];
@@ -144,10 +151,18 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
 
         const parsed = rows.map((row) => {
           const byKey = Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeHeader(k), v]));
+          const accountLabel = String(byKey['banco de cobro'] || byKey.banco || byKey.cuenta || '').trim().toLowerCase();
+          const accountFromFile = accounts.find((account) => {
+            const name = String(account.alias || account.name || account.bank || account.iban || '').toLowerCase();
+            return accountLabel && name.includes(accountLabel);
+          });
+
           return {
             idExterno: String(byKey.id || byKey.identificador || '').trim() || undefined,
             propiedad: String(byKey.propiedad || '').trim(),
             tipo: String(byKey.tipo || '').trim(),
+            habitacionId: String(byKey.habitacion || byKey['habitacion id'] || byKey['habitacion/estancia'] || '').trim() || undefined,
+            cuentaCobroId: normalizeAccountId(byKey['cuenta cobro id'] || byKey['cuenta de cobro id'] || accountFromFile?.id || selectedAccountId || undefined) || undefined,
             inicioAlquiler: parseDate(byKey['inicio de alquiler']),
             finAlquiler: parseDate(byKey['fin de alquiler']),
             nombreCompania: String(byKey['nombre compania'] || '').trim(),
@@ -167,7 +182,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
     };
 
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [accounts, selectedAccountId]);
 
   const handleImport = async () => {
     if (!preview?.length || !selectedAccountId) {
@@ -218,7 +233,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
         </button>
         <select
           value={selectedAccountId || ''}
-          onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+          onChange={(e) => setSelectedAccountId(normalizeAccountId(e.target.value))}
           style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--hz-neutral-300)', minWidth: '240px' }}
         >
           {!accounts.length && <option value="">No hay cuentas activas</option>}

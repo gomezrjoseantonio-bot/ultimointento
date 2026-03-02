@@ -5,6 +5,8 @@ export interface RentilaImportRow {
   idExterno?: string;
   propiedad: string;
   tipo?: string;
+  habitacionId?: string;
+  cuentaCobroId?: number;
   inicioAlquiler: string;
   finAlquiler: string;
   nombreCompania: string;
@@ -42,10 +44,14 @@ const parseTenantName = (fullName: string): { nombre: string; apellidos: string 
   };
 };
 
-const mapContractType = (tipo: string | undefined): { unidadTipo: Contract['unidadTipo']; modalidad: Contract['modalidad'] } => {
+const mapContractType = (
+  tipo: string | undefined,
+  habitacionId?: string
+): { unidadTipo: Contract['unidadTipo']; modalidad: Contract['modalidad'] } => {
   const normalized = normalizeText(tipo || '');
+  const hasRoomId = Boolean(habitacionId && habitacionId.trim());
 
-  const unidadTipo: Contract['unidadTipo'] = normalized.includes('habitacion') ? 'habitacion' : 'vivienda';
+  const unidadTipo: Contract['unidadTipo'] = (normalized.includes('habitacion') || hasRoomId) ? 'habitacion' : 'vivienda';
 
   if (normalized.includes('vacacional')) {
     return { unidadTipo, modalidad: 'vacacional' };
@@ -126,8 +132,9 @@ export const importContractsFromRentilaRows = async (
       }
 
       const { nombre, apellidos } = parseTenantName(row.nombreCompania);
-      const typeData = mapContractType(row.tipo);
+      const typeData = mapContractType(row.tipo, row.habitacionId);
       const estadoContrato = inferEstadoContrato(row.finAlquiler);
+      const resolvedCuentaCobroId = Number(row.cuentaCobroId || cuentaCobroId);
 
       const existing = existingContracts.find((contract) =>
         contract.inmuebleId === property.id &&
@@ -139,6 +146,9 @@ export const importContractsFromRentilaRows = async (
       const payload: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'> = {
         inmuebleId: property.id,
         unidadTipo: typeData.unidadTipo,
+        habitacionId: typeData.unidadTipo === 'habitacion'
+          ? row.habitacionId?.trim() || 'H1'
+          : undefined,
         modalidad: typeData.modalidad,
         inquilino: {
           nombre,
@@ -157,7 +167,7 @@ export const importContractsFromRentilaRows = async (
         fianzaMeses: row.fianza && row.alquiler > 0 ? Number((row.fianza / row.alquiler).toFixed(2)) : 1,
         fianzaImporte: row.fianza || 0,
         fianzaEstado: 'retenida',
-        cuentaCobroId,
+        cuentaCobroId: Number.isFinite(resolvedCuentaCobroId) ? resolvedCuentaCobroId : cuentaCobroId,
         estadoContrato,
         propertyId: property.id,
         type: typeData.unidadTipo,
@@ -189,5 +199,15 @@ export const importContractsFromRentilaRows = async (
 export const getAvailableAccounts = async (): Promise<Account[]> => {
   const db = await initDB();
   const accounts = await db.getAll('accounts');
-  return accounts.filter((account) => (account.status === 'ACTIVE' || account.activa) && !!account.id);
+
+  return accounts
+    .filter((account) => account.status === 'ACTIVE' || account.activa)
+    .map((account) => {
+      const normalizedId = Number(account.id);
+      return {
+        ...account,
+        id: Number.isFinite(normalizedId) ? normalizedId : undefined,
+      };
+    })
+    .filter((account) => !!account.id);
 };
