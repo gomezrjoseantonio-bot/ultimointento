@@ -83,9 +83,11 @@ interface FormData {
 }
 
 const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onContractCreated, onCancel }) => {
+  const PREVIEW_PAGE_SIZE = 6;
   const [properties, setProperties] = useState<Property[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [rentPreviewPage, setRentPreviewPage] = useState(1);
   const [formData, setFormData] = useState<FormData>({
     inmuebleId: editingContract?.inmuebleId || 0,
     unidadTipo: editingContract?.unidadTipo || 'vivienda',
@@ -384,6 +386,19 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
 
   const forecastTotal = rentPreview.reduce((sum, period) => sum + period.importe, 0);
   const monthsCovered = rentPreview.length;
+  const totalPreviewPages = Math.max(1, Math.ceil(monthsCovered / PREVIEW_PAGE_SIZE));
+  const currentPreviewStart = (rentPreviewPage - 1) * PREVIEW_PAGE_SIZE;
+  const visibleRentPreview = rentPreview.slice(currentPreviewStart, currentPreviewStart + PREVIEW_PAGE_SIZE);
+
+  useEffect(() => {
+    setRentPreviewPage(1);
+  }, [formData.fechaInicio, formData.fechaFin, formData.rentaMensual, formData.diaPago, formData.indexacion]);
+
+  useEffect(() => {
+    if (rentPreviewPage > totalPreviewPages) {
+      setRentPreviewPage(totalPreviewPages);
+    }
+  }, [rentPreviewPage, totalPreviewPages]);
 
   const nextPeriod = (() => {
     const today = new Date();
@@ -1105,7 +1120,7 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200">
-                  {rentPreview.map((periodo) => (
+                  {visibleRentPreview.map((periodo) => (
                     <tr key={periodo.periodo}>
                       <td className="px-4 py-2 text-sm text-neutral-800">{formatPeriodLabel(periodo.periodo)}</td>
                       <td className="px-4 py-2 text-sm font-medium text-neutral-900">{formatEuro(periodo.importe)}</td>
@@ -1115,6 +1130,35 @@ const ContractsNuevo: React.FC<ContractsNuevoProps> = ({ editingContract, onCont
                 </tbody>
               </table>
             </div>
+
+            {monthsCovered > PREVIEW_PAGE_SIZE && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-neutral-500">
+                  Mostrando {currentPreviewStart + 1}-{Math.min(currentPreviewStart + PREVIEW_PAGE_SIZE, monthsCovered)} de {monthsCovered} periodos
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRentPreviewPage(prev => Math.max(1, prev - 1))}
+                    disabled={rentPreviewPage === 1}
+                    className="px-3 py-1.5 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-sm text-neutral-600">
+                    Página {rentPreviewPage} de {totalPreviewPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRentPreviewPage(prev => Math.min(totalPreviewPages, prev + 1))}
+                    disabled={rentPreviewPage === totalPreviewPages}
+                    className="px-3 py-1.5 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
