@@ -31,7 +31,7 @@ const NominaManager: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading nominas:', error);
-      toast.error('Error al cargar las nÃ³minas');
+      toast.error('Error al cargar las nóminas');
     } finally {
       setLoading(false);
     }
@@ -42,14 +42,14 @@ const NominaManager: React.FC = () => {
   const handleNominaSaved  = () => { setShowForm(false); setEditingNomina(null); loadData(); };
 
   const handleDeleteNomina = async (id: number) => {
-    const confirmed = await confirmDelete('esta nÃ³mina');
+    const confirmed = await confirmDelete('esta nómina');
     if (!confirmed) return;
     try {
       await nominaService.deleteNomina(id);
-      toast.success('NÃ³mina eliminada correctamente');
+      toast.success('Nómina eliminada correctamente');
       loadData();
     } catch (error) {
-      toast.error('Error al eliminar la nÃ³mina');
+      toast.error('Error al eliminar la nómina');
     }
   };
 
@@ -67,7 +67,7 @@ const NominaManager: React.FC = () => {
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full"
              style={{ borderColor: 'var(--blue-800)', borderTopColor: 'transparent' }} />
-        <span className="ml-2 text-neutral-600">Cargando nÃ³minas...</span>
+        <span className="ml-2 text-neutral-600">Cargando nóminas...</span>
       </div>
     );
   }
@@ -88,9 +88,9 @@ const NominaManager: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--gray-900)' }}>GestiÃ³n de NÃ³minas</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--gray-900)' }}>Gestión de Nóminas</h3>
           <p className="text-sm" style={{ color: 'var(--gray-500)' }}>
-            Configura y gestiona tus nÃ³minas con distribuciÃ³n, variables y bonus
+            Configura y gestiona tus nóminas con distribución, variables y bonus
           </p>
         </div>
         <button
@@ -101,7 +101,7 @@ const NominaManager: React.FC = () => {
           onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--blue-800)')}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Nueva NÃ³mina
+          Nueva Nómina
         </button>
       </div>
 
@@ -109,9 +109,9 @@ const NominaManager: React.FC = () => {
       {nominas.length === 0 && (
         <div className="bg-white border p-12 text-center" style={{ borderColor: 'var(--gray-200)' }}>
           <DollarSign className="mx-auto h-12 w-12" style={{ color: 'var(--gray-300)' }} />
-          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay nÃ³minas configuradas</h3>
+          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay nóminas configuradas</h3>
           <p className="mt-1 text-sm" style={{ color: 'var(--gray-500)' }}>
-            Crea tu primera nÃ³mina para empezar a gestionar tus ingresos salariales.
+            Crea tu primera nómina para empezar a gestionar tus ingresos salariales.
           </p>
           <div className="mt-6">
             <button
@@ -120,13 +120,13 @@ const NominaManager: React.FC = () => {
               style={{ backgroundColor: 'var(--blue-800)' }}
             >
               <Plus className="w-4 h-4 mr-2" />
-              Crear Primera NÃ³mina
+              Crear Primera Nómina
             </button>
           </div>
         </div>
       )}
 
-      {/* NÃ³minas list */}
+      {/* Nóminas list */}
       <div className="space-y-3">
         {nominas.map((nomina) => {
           const calculo = nomina.id ? calculos.get(nomina.id) : null;
@@ -141,19 +141,19 @@ const NominaManager: React.FC = () => {
                   <span className="font-semibold tracking-wide uppercase" style={{ color: 'var(--gray-900)' }}>
                     {nomina.nombre}
                   </span>
-                  {/* pagas â€” gris neutro */}
+                  {/* pagas — gris neutro */}
                   <span className="px-2 py-0.5 text-xs rounded"
                         style={{ background: 'var(--gray-100)', color: 'var(--gray-500)' }}>
                     {pagasCount} pagas
                   </span>
-                  {/* activa â€” turquesa si activa, gris si no */}
+                  {/* activa — turquesa si activa, gris si no */}
                   <span className="px-2 py-0.5 text-xs rounded"
                         style={nomina.activa
                           ? { background: 'var(--teal-050)', color: 'var(--teal-600)', border: '1px solid var(--teal-200)' }
                           : { background: 'var(--gray-100)', color: 'var(--gray-400)' }}>
                     {nomina.activa ? 'Activa' : 'Inactiva'}
                   </span>
-                  {/* titular â€” azul */}
+                  {/* titular — azul */}
                   <span className="px-2 py-0.5 text-xs rounded"
                         style={{ background: 'var(--blue-050)', color: 'var(--blue-800)', border: '1px solid var(--blue-200)' }}>
                     {nomina.titular === 'yo' ? 'Titular' : 'Pareja'}
@@ -195,7 +195,7 @@ const NominaManager: React.FC = () => {
                       {calculo ? formatCurrency(calculo.netoMensual) : '-'}
                     </p>
                   </div>
-                  {/* Neto anual â€” turquesa (positivo) */}
+                  {/* Neto anual — turquesa (positivo) */}
                   <div className="bg-white border p-4" style={{ borderColor: 'var(--gray-200)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--gray-500)' }}>Neto Anual</p>
                     <p className="text-2xl font-bold" style={{ color: 'var(--teal-500)' }}>
@@ -227,7 +227,7 @@ const NominaManager: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs" style={{ color: 'var(--gray-400)' }}>% RetenciÃ³n Efectiva</p>
+                      <p className="text-xs" style={{ color: 'var(--gray-400)' }}>% Retención Efectiva</p>
                       <p className="text-sm font-semibold" style={{ color: 'var(--gray-900)' }}>
                         {calculo.totalAnualBruto > 0
                           ? ((1 - calculo.totalAnualNeto / calculo.totalAnualBruto) * 100).toFixed(1)
@@ -237,11 +237,11 @@ const NominaManager: React.FC = () => {
                   </div>
                 )}
 
-                {/* GrÃ¡fico barras â€” azul base, turquesa en meses con bonus/paga extra */}
+                {/* Gráfico barras — azul base, turquesa en meses con bonus/paga extra */}
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--gray-100)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--gray-500)' }}>
-                      DistribuciÃ³n Mensual Neto
+                      Distribución Mensual Neto
                     </p>
                     <div className="flex items-end justify-between gap-1" style={{ height: '160px' }}>
                       {(() => {
@@ -253,7 +253,7 @@ const NominaManager: React.FC = () => {
                             <div key={m.mes} className="flex-1 flex flex-col items-center justify-end h-full">
                               <span className="text-[10px] leading-none text-center w-full truncate mb-0.5"
                                     style={{ color: 'var(--gray-500)' }}>
-                                {m.netoTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} â‚¬
+                                {m.netoTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
                               </span>
                               <div
                                 className="w-full rounded-t"

@@ -36,18 +36,18 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
     });
 
   const tipoLabels: Record<string, string> = {
-    fondo_inversion: 'Fondo inversiÃ³n',
-    accion: 'AcciÃ³n',
+    fondo_inversion: 'Fondo inversión',
+    accion: 'Acción',
     etf: 'ETF',
     plan_pensiones: 'Plan pensiones',
     plan_empleo: 'Plan empleo',
     crypto: 'Crypto',
-    deposito: 'DepÃ³sito',
+    deposito: 'Depósito',
     otro: 'Otro',
   };
 
   const tipoAportacionLabel: Record<string, string> = {
-    aportacion: 'AportaciÃ³n',
+    aportacion: 'Aportación',
     reembolso: 'Reembolso',
     dividendo: 'Dividendo',
   };
@@ -108,7 +108,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               fontSize: 'var(--text-caption)',
               color: 'var(--text-gray)',
             }}>
-              {tipoLabels[posicion.tipo] || posicion.tipo} Â· {posicion.entidad}
+              {tipoLabels[posicion.tipo] || posicion.tipo} · {posicion.entidad}
             </span>
           </div>
           <button
@@ -120,7 +120,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
         </div>
 
         <div style={{ padding: '1.5rem' }}>
-          {/* ValoraciÃ³n summary */}
+          {/* Valoración summary */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -233,7 +233,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 color: 'var(--atlas-navy-1)',
                 margin: 0,
               }}>
-                HistÃ³rico de aportaciones
+                Histórico de aportaciones
               </h3>
               <button
                 onClick={onAddAportacion}
@@ -253,7 +253,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 }}
               >
                 <Plus size={14} />
-                AÃ±adir aportaciÃ³n
+                Añadir aportación
               </button>
             </div>
 
@@ -335,7 +335,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                                     fontSize: '0.75rem',
                                   }}
                                 >
-                                  {ap.ganancia_perdida >= 0 ? 'PlusvalÃ­a' : 'MinusvalÃ­a'} {ap.ganancia_perdida >= 0 ? '+' : ''}{formatCurrency(ap.ganancia_perdida)}
+                                  {ap.ganancia_perdida >= 0 ? 'Plusvalía' : 'Minusvalía'} {ap.ganancia_perdida >= 0 ? '+' : ''}{formatCurrency(ap.ganancia_perdida)}
                                 </span>
                                 <span style={{ fontSize: '0.75rem' }}>
                                   Coste FIFO: {formatCurrency(ap.coste_adquisicion_fifo ?? 0)}
@@ -419,7 +419,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               }}
             >
               <Edit size={16} />
-              Editar posiciÃ³n
+              Editar posición
             </button>
             <button
               onClick={onClose}

@@ -131,7 +131,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
             color: 'var(--atlas-navy-1)',
             margin: 0,
           }}>
-            AÃ±adir aportaciÃ³n
+            Añadir aportación
           </h2>
           <button
             onClick={onClose}
@@ -176,7 +176,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'aportacion' | 'reembolso' })}
                 style={selectStyle}
               >
-                <option value="aportacion">AportaciÃ³n</option>
+                <option value="aportacion">Aportación</option>
                 <option value="reembolso">Reembolso</option>
               </select>
             </div>
@@ -184,7 +184,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
             {/* Importe */}
             <div>
               <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
-                Importe * (â‚¬)
+                Importe * (€)
               </label>
               <input
                 type="number"
@@ -217,10 +217,10 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
 
                 <div style={{ background: 'var(--hz-neutral-100)', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', padding: '0.75rem' }}>
                   <div style={{ fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
-                    Coste de adquisiciÃ³n (FIFO): <strong style={{ color: 'var(--atlas-navy-1)' }}>{fifoPreview.costeAdquisicion.toFixed(2)} â‚¬</strong>
+                    Coste de adquisición (FIFO): <strong style={{ color: 'var(--atlas-navy-1)' }}>{fifoPreview.costeAdquisicion.toFixed(2)} €</strong>
                   </div>
                   <div style={{ fontSize: 'var(--text-caption)', color: fifoPreview.gananciaOPerdida >= 0 ? '#0d9488' : '#dc2626' }}>
-                    Ganancia/PÃ©rdida estimada: {fifoPreview.gananciaOPerdida >= 0 ? '+' : ''}{fifoPreview.gananciaOPerdida.toFixed(2)} â‚¬
+                    Ganancia/Pérdida estimada: {fifoPreview.gananciaOPerdida >= 0 ? '+' : ''}{fifoPreview.gananciaOPerdida.toFixed(2)} €
                   </div>
                 </div>
               </>
