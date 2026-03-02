@@ -18,6 +18,7 @@ import { prestamosService } from '../../../../services/prestamosService';
 import { autonomoService } from '../../../../services/autonomoService';
 import { inversionesService } from '../../../../services/inversionesService';
 import { cuentasService } from '../../../../services/cuentasService';
+import { otrosIngresosService } from '../../../../services/otrosIngresosService';
 import {
   calculateOpexBreakdownForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -60,6 +61,30 @@ function buildDate(year: number, month: number, day: number): string {
   return `${year}-${mm}-${padDay(day)}`;
 }
 
+function otrosIngresosAppliesToMonth(
+  ingreso: { frecuencia: string; fechaInicio?: string; fechaFin?: string },
+  year: number,
+  month: number,
+): boolean {
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+  if (ingreso.fechaInicio && monthKey < ingreso.fechaInicio) return false;
+  if (ingreso.fechaFin && monthKey > ingreso.fechaFin) return false;
+
+  switch (ingreso.frecuencia) {
+    case 'mensual':
+      return true;
+    case 'trimestral':
+      return month % 3 === 0;
+    case 'semestral':
+      return month % 6 === 0;
+    case 'anual':
+      return month === 12;
+    default:
+      return false;
+  }
+}
+
 /**
  * Checks whether a contract is active during the specified calendar month.
  */
@@ -92,6 +117,7 @@ function isContractActiveInMonth(
  *  - Autónomo income (fuentesIngreso) → type 'income', sourceType 'autonomo_ingreso'
  *  - Autónomo expenses (gastosRecurrentesActividad + cuotaAutonomos) → type 'expense', sourceType 'autonomo'
  *  - Investment interest/dividends → type 'income', sourceType 'inversion'
+ *  - Otros ingresos recurrentes → type 'income', sourceType 'otros_ingresos'
  *
  * Duplicate prevention: before inserting, we check whether an event with the
  * same sourceType + sourceId already has a predictedDate in the same year-month.
@@ -360,6 +386,39 @@ export async function generateMonthlyForecasts(
     }
   } catch (err) {
     console.error('[TreasurySyncService] Error processing nominas:', err);
+  }
+
+  // ── 4b. OTROS INGRESOS (recurrent income) ─────────────────────────────────
+  try {
+    const personalData = await personalDataService.getPersonalData();
+    const personalDataId = personalData?.id ?? 1;
+    const otrosIngresos = await otrosIngresosService.getOtrosIngresos(personalDataId);
+
+    for (const ingreso of otrosIngresos) {
+      if (!ingreso.activo || ingreso.frecuencia === 'unico') continue;
+      if (ingreso.id == null) continue;
+      if (!otrosIngresosAppliesToMonth(ingreso, year, month)) continue;
+
+      if (await isDuplicate('otros_ingresos', ingreso.id)) {
+        skipped++;
+        continue;
+      }
+
+      await insertEvent({
+        type: 'income' as const,
+        amount: ingreso.importe,
+        predictedDate: buildDate(year, month, ingreso.reglasDia?.dia ?? 1),
+        description: `Otros ingresos – ${ingreso.nombre ?? ingreso.tipo}`,
+        sourceType: 'otros_ingresos' as const,
+        sourceId: ingreso.id,
+        accountId: resolveAccountId(ingreso.cuentaCobro),
+        status: 'predicted' as const,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  } catch (err) {
+    console.error('[TreasurySyncService] Error processing otros ingresos:', err);
   }
 
   // ── 5. FINANCIACIÓN (Cuotas de Hipotecas y Préstamos) ────────────────────
