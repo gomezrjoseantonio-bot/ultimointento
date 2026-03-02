@@ -391,9 +391,17 @@ const formatYearMonth = (date: Date): string => {
 // Contract status helpers
 export const getContractStatus = (contract: Contract): 'active' | 'upcoming' | 'terminated' => {
   const now = new Date();
+  now.setHours(0, 0, 0, 0);
   const startDate = new Date(contract.fechaInicio);
+  const endDate = new Date(contract.fechaFin);
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
   
   if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
+    return 'terminated';
+  }
+
+  if (endDate < now) {
     return 'terminated';
   }
   
