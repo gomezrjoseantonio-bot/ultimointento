@@ -327,26 +327,33 @@ export class PrestamosCalculationService {
   generatePaymentSchedule(prestamo: Prestamo): PlanPagos {
     const fechaFirma = new Date(prestamo.fechaFirma);
     const periodos: PeriodoPago[] = [];
-    let principalVivo = prestamo.principalInicial;
+    let principalVivoCentimos = Math.round(prestamo.principalInicial * 100);
     
     // Calculate first payment date considering deferrals.
     // Keep a stable target day across months, clamping to month-end when needed
     // (e.g. day 31 -> Feb 28/29) to avoid month skips caused by Date overflow.
     const mesesDiferimiento = prestamo.diferirPrimeraCuotaMeses || 0;
     const paymentDay = prestamo.diaCargoMes || fechaFirma.getDate();
-    const firstOffsetMonths = mesesDiferimiento > 0 ? mesesDiferimiento : 1;
-    const fechaPrimeraCuota = this.addMonthsWithClampedDay(
-      fechaFirma,
-      firstOffsetMonths,
-      paymentDay,
-    );
+
+    let fechaPrimeraCuota = new Date(prestamo.fechaPrimerCargo);
+    const fechaPrimerCargoValida = !Number.isNaN(fechaPrimeraCuota.getTime());
+    if (!fechaPrimerCargoValida) {
+      const firstOffsetMonths = mesesDiferimiento > 0 ? mesesDiferimiento : 1;
+      fechaPrimeraCuota = this.addMonthsWithClampedDay(
+        fechaFirma,
+        firstOffsetMonths,
+        paymentDay,
+      );
+    }
 
     const baseRate = this.calculateBaseRate(prestamo);
     const mesesSoloIntereses = prestamo.mesesSoloIntereses || 0;
     const plazoAmortizacion = prestamo.plazoMesesTotal - mesesSoloIntereses;
     
     // Calculate standard payment for amortization period
-    const cuotaEstandar = this.calculateFrenchPayment(principalVivo, baseRate, plazoAmortizacion);
+    const cuotaEstandarCentimos = Math.round(
+      this.calculateFrenchPayment(prestamo.principalInicial, baseRate, plazoAmortizacion) * 100,
+    );
 
     let fechaActual = new Date(fechaPrimeraCuota);
     
@@ -383,37 +390,43 @@ export class PrestamosCalculationService {
       }
 
       // Calculate interest for the period
-      let interes: number;
+      let interesCentimos: number;
       if (esProrrateado) {
         const dias = this.getDaysDifference(devengoDesde, devengoHasta) + 1;
-        interes = principalVivo * (baseRate / 100) / 365 * dias;
+        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 365 * dias;
+        interesCentimos = Math.round(interes * 100);
       } else {
-        interes = principalVivo * (baseRate / 100) / 12;
+        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 12;
+        interesCentimos = Math.round(interes * 100);
       }
 
-      interes = Math.round(interes * 100) / 100;
-
-      let amortizacion: number;
-      let cuota: number;
+      let amortizacionCentimos: number;
+      let cuotaCentimos: number;
 
       if (esSoloIntereses) {
         // Interest-only payment
-        amortizacion = 0;
-        cuota = interes;
+        amortizacionCentimos = 0;
+        cuotaCentimos = interesCentimos;
       } else {
         // Standard French payment
         if (periodo === prestamo.plazoMesesTotal) {
           // Last payment: pay remaining principal + interest
-          amortizacion = principalVivo;
-          cuota = amortizacion + interes;
+          amortizacionCentimos = principalVivoCentimos;
+          cuotaCentimos = amortizacionCentimos + interesCentimos;
         } else {
-          cuota = cuotaEstandar;
-          amortizacion = cuota - interes;
+          cuotaCentimos = cuotaEstandarCentimos;
+          amortizacionCentimos = cuotaCentimos - interesCentimos;
+
+          // Guard against edge cases where interest could exceed cuota (very short/irregular periods)
+          if (amortizacionCentimos < 0) {
+            amortizacionCentimos = 0;
+            cuotaCentimos = interesCentimos;
+          }
         }
       }
 
-      principalVivo -= amortizacion;
-      principalVivo = Math.max(0, Math.round(principalVivo * 100) / 100);
+      principalVivoCentimos -= amortizacionCentimos;
+      principalVivoCentimos = Math.max(0, principalVivoCentimos);
 
       // Calculate days for prorated period
       const diasCalculo = esProrrateado ? this.getDaysDifference(devengoDesde, devengoHasta) + 1 : undefined;
@@ -423,10 +436,10 @@ export class PrestamosCalculationService {
         devengoDesde: devengoDesde.toISOString().split('T')[0],
         devengoHasta: devengoHasta.toISOString().split('T')[0],
         fechaCargo: fechaCargo.toISOString().split('T')[0],
-        cuota: Math.round(cuota * 100) / 100,
-        interes,
-        amortizacion: Math.round(amortizacion * 100) / 100,
-        principalFinal: principalVivo,
+        cuota: cuotaCentimos / 100,
+        interes: interesCentimos / 100,
+        amortizacion: amortizacionCentimos / 100,
+        principalFinal: principalVivoCentimos / 100,
         esProrrateado,
         esSoloIntereses,
         diasDevengo: diasCalculo && diasCalculo > 0 ? diasCalculo : undefined,
