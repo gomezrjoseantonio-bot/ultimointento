@@ -12,11 +12,11 @@ interface SectionProps {
 }
 
 const colorMap = {
-  green: { bg: '#f0fdfa', border: '#99f6e4', text: '#0d9488', iconBg: '#ccfbf1' },
-  blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', iconBg: '#dbeafe' },
-  gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)' },
-  orange: { bg: '#fff7ed', border: '#fed7aa', text: '#c2410c', iconBg: '#ffedd5' },
-  purple: { bg: '#faf5ff', border: '#e9d5ff', text: '#7e22ce', iconBg: '#f3e8ff' },
+  green: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-teal)' },
+  blue: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue)' },
+  gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-navy-1)' },
+  orange: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue-dark)' },
+  purple: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue)' },
 };
 
 const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', children }) => {
@@ -39,7 +39,7 @@ const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', ch
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <Icon size={18} style={{ color: colors.text }} />
+            <Icon size={18} style={{ color: colors.iconColor }} />
           </div>
         )}
         <h3 style={{
