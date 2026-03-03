@@ -6,6 +6,7 @@ import { rendimientosService } from '../../../../services/rendimientosService';
 import { PagoRendimiento } from '../../../../types/inversiones-extended';
 import { IRPF_RATE } from '../../../../constants/inversiones';
 import StatusBadge from './StatusBadge';
+import { formatDateDDMMAAAA } from '../../../../utils/recurrenceDateUtils';
 
 type RendimientoRow = PagoRendimiento & { posicion_nombre: string; posicion_id: number };
 
@@ -19,10 +20,6 @@ const RendimientosTab: React.FC = () => {
       .catch((err) => console.error('Error loading rendimientos:', err))
       .finally(() => setLoading(false));
   }, []);
-
-  const formatDate = (iso: string) => {
-    return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
 
   const formatEuro = (v: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
@@ -119,7 +116,7 @@ const RendimientosTab: React.FC = () => {
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--atlas-navy-1)' }}>
-                    {formatDate(r.fecha_pago)}
+                    {formatDateDDMMAAAA(r.fecha_pago)}
                   </td>
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--atlas-navy-1)', fontWeight: 500 }}>
                     {r.posicion_nombre}

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { addMonthsClampedUTC } from '../../../../utils/recurrenceDateUtils';
 
 interface AmortizacionRow {
   periodo: number;
@@ -30,21 +31,14 @@ function parseISODateOnly(dateStr: string): Date {
 }
 
 function addMonthsWithClampedDay(baseDate: Date, monthsToAdd: number, dayOfMonth: number): Date {
-  const year = baseDate.getFullYear();
-  const month = baseDate.getMonth() + monthsToAdd;
-  const firstOfTargetMonth = new Date(year, month, 1);
-  const lastDay = new Date(
-    firstOfTargetMonth.getFullYear(),
-    firstOfTargetMonth.getMonth() + 1,
-    0,
-  ).getDate();
-  const safeDay = Math.max(1, Math.min(dayOfMonth, lastDay));
+  const baseIso = new Date(Date.UTC(
+    baseDate.getFullYear(),
+    baseDate.getMonth(),
+    baseDate.getDate(),
+  )).toISOString();
 
-  return new Date(
-    firstOfTargetMonth.getFullYear(),
-    firstOfTargetMonth.getMonth(),
-    safeDay,
-  );
+  const nextDateUTC = addMonthsClampedUTC(baseIso, monthsToAdd, dayOfMonth);
+  return new Date(nextDateUTC.getUTCFullYear(), nextDateUTC.getUTCMonth(), nextDateUTC.getUTCDate());
 }
 
 const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({

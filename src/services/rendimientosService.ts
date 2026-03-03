@@ -11,6 +11,7 @@ import {
 } from '../types/inversiones-extended';
 import { PosicionInversion } from '../types/inversiones';
 import { IRPF_RATE, MAX_PAGO_ITERATIONS } from '../constants/inversiones';
+import { calculateNextRecurringDate, parseIsoDateAsUTC } from '../utils/recurrenceDateUtils';
 
 const DIVISORES: Record<string, number> = {
   mensual: 12,
@@ -31,23 +32,12 @@ export class RendimientosService {
   /**
    * Calculate next payment date from a base date and frequency
    */
-  calcularProximaFecha(fechaBase: string, frecuencia: string): string {
-    const fecha = new Date(fechaBase);
-    switch (frecuencia) {
-      case 'mensual':
-        fecha.setMonth(fecha.getMonth() + 1);
-        break;
-      case 'trimestral':
-        fecha.setMonth(fecha.getMonth() + 3);
-        break;
-      case 'semestral':
-        fecha.setMonth(fecha.getMonth() + 6);
-        break;
-      case 'anual':
-        fecha.setFullYear(fecha.getFullYear() + 1);
-        break;
-    }
-    return fecha.toISOString();
+  calcularProximaFecha(fechaBase: string, frecuencia: string, diaPreferido?: number): string {
+    return calculateNextRecurringDate(
+      fechaBase,
+      frecuencia as 'mensual' | 'trimestral' | 'semestral' | 'anual',
+      diaPreferido,
+    );
   }
 
   /**
@@ -138,21 +128,23 @@ export class RendimientosService {
   ): Promise<void> {
     const { rendimiento } = posicion;
     const hoy = new Date();
+    const hoyUTC = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
 
     // Check if position has ended
-    if (rendimiento.fecha_fin_rendimiento && new Date(rendimiento.fecha_fin_rendimiento) < hoy) {
+    if (rendimiento.fecha_fin_rendimiento && parseIsoDateAsUTC(rendimiento.fecha_fin_rendimiento) < hoyUTC) {
       return;
     }
 
     const ultimoPago = this.getUltimoPago(rendimiento.pagos_generados);
     const fechaBase = ultimoPago?.fecha_pago ?? rendimiento.fecha_inicio_rendimiento;
-    let proximaFecha = this.calcularProximaFecha(fechaBase, rendimiento.frecuencia_pago);
+    const diaCobro = rendimiento.dia_cobro;
+    let proximaFecha = this.calcularProximaFecha(fechaBase, rendimiento.frecuencia_pago, diaCobro);
 
     // Generate all overdue payments (loop to catch multiple missed periods)
     let iterations = 0;
-    while (new Date(proximaFecha) <= hoy && iterations < MAX_PAGO_ITERATIONS) {
+    while (parseIsoDateAsUTC(proximaFecha) <= hoyUTC && iterations < MAX_PAGO_ITERATIONS) {
       await this.generarPago(posicion, proximaFecha);
-      proximaFecha = this.calcularProximaFecha(proximaFecha, rendimiento.frecuencia_pago);
+      proximaFecha = this.calcularProximaFecha(proximaFecha, rendimiento.frecuencia_pago, diaCobro);
       iterations++;
     }
   }
