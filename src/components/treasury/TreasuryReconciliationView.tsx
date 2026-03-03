@@ -67,6 +67,20 @@ interface CardSettlementConfig {
   chargeAccountId: number;
 }
 
+interface CardAliasMatcher {
+  label: string;
+  config: CardSettlementConfig;
+}
+
+interface DisplayAccountResolverInput {
+  eventAccountId?: number;
+  eventSourceId?: number;
+  sourceType?: string;
+  description?: string;
+  cardSettlementByAccountId: Map<number, CardSettlementConfig>;
+  cardAliasMatchers: CardAliasMatcher[];
+}
+
 const toNumericId = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -74,6 +88,90 @@ const toNumericId = (value: unknown): number | undefined => {
     if (Number.isFinite(parsed)) return parsed;
   }
   return undefined;
+};
+
+
+const normalizeText = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const extractCardAliasFromReceiptDescription = (description?: string): string | undefined => {
+  if (!description) return undefined;
+  const normalized = normalizeText(description);
+
+  // Accept flexible variants:
+  // - "Recibo tarjeta Carrefour Pass"
+  // - "Recibotarjeta Carrefour Pass"
+  // - "Recibo de tarjeta Carrefour Pass"
+  // - "RECIBO TARJETA: Carrefour Pass"
+  const receiptPattern = /^recibo(?:\s*de)?\s*tarjeta\s*:?\s*(.+)$/;
+  const compactPattern = /^recibotarjeta\s*:?\s*(.+)$/;
+  const match = normalized.match(receiptPattern) || normalized.match(compactPattern);
+  if (!match || !match[1]) return undefined;
+
+  const alias = match[1].trim();
+  return alias || undefined;
+};
+
+const matchCardConfigByAlias = (
+  alias: string | undefined,
+  cardAliasMatchers: CardAliasMatcher[],
+): CardSettlementConfig | undefined => {
+  if (!alias) return undefined;
+  const normalizedAlias = normalizeText(alias);
+  if (!normalizedAlias) return undefined;
+
+  // Priority:
+  // 1) exact label match
+  // 2) containment match (either direction), using longest label as tie-break
+  const exact = cardAliasMatchers.find(m => m.label === normalizedAlias);
+  if (exact) return exact.config;
+
+  const contains = cardAliasMatchers
+    .filter(m => m.label.includes(normalizedAlias) || normalizedAlias.includes(m.label))
+    .sort((a, b) => b.label.length - a.label.length);
+
+  return contains[0]?.config;
+};
+
+export const resolveDisplayAccountId = ({
+  eventAccountId,
+  eventSourceId,
+  sourceType,
+  description,
+  cardSettlementByAccountId,
+  cardAliasMatchers,
+}: DisplayAccountResolverInput): number | undefined => {
+  const eventCardConfig = eventAccountId != null
+    ? cardSettlementByAccountId.get(eventAccountId)
+    : undefined;
+
+  // Backward-compatibility fallback:
+  // Some older card receipt events were created with empty `accountId` and only
+  // `sourceId` pointing to the credit-card account. In that legacy shape we can
+  // safely infer the bank account only for personal card expenses.
+  const sourceCardConfig =
+    eventAccountId == null &&
+    sourceType === 'personal_expense' &&
+    eventSourceId != null
+      ? cardSettlementByAccountId.get(eventSourceId)
+      : undefined;
+
+  const receiptCardAlias =
+    eventAccountId == null
+      ? extractCardAliasFromReceiptDescription(description)
+      : undefined;
+
+  const aliasCardConfig = matchCardConfigByAlias(receiptCardAlias, cardAliasMatchers);
+
+  return eventCardConfig?.chargeAccountId
+    ?? sourceCardConfig?.chargeAccountId
+    ?? aliasCardConfig?.chargeAccountId
+    ?? eventAccountId;
 };
 
 interface DesgloseLine {
@@ -232,12 +330,20 @@ const TreasuryReconciliationView: React.FC = () => {
       }
 
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      const cardAliasMatchers: CardAliasMatcher[] = [];
       for (const account of dbAccounts) {
         if (account.id == null) continue;
         if (account.cardConfig?.chargeAccountId != null) {
-          cardSettlementByAccountId.set(account.id, {
-            chargeAccountId: account.cardConfig.chargeAccountId,
-          });
+          const config = { chargeAccountId: account.cardConfig.chargeAccountId };
+          cardSettlementByAccountId.set(account.id, config);
+
+          const labels = [account.alias, account.name, account.banco?.name]
+            .map(value => normalizeText(value || ''))
+            .filter(Boolean);
+
+          for (const label of labels) {
+            cardAliasMatchers.push({ label, config });
+          }
         }
       }
 
@@ -262,18 +368,27 @@ const TreasuryReconciliationView: React.FC = () => {
             : undefined;
 
           const eventAccountId = toNumericId(e.accountId);
-          const eventCardConfig = eventAccountId != null
-            ? cardSettlementByAccountId.get(eventAccountId)
-            : undefined;
+          const eventSourceId = toNumericId(e.sourceId);
 
           /**
            * IMPORTANT:
-           * We only remap using `accountId` (never `sourceId`).
-           * `sourceId` is polymorphic (e.g. contract IDs for rent events), and can
-           * collide numerically with account IDs, which breaks bank filtering.
+           * Primary mapping uses `accountId` to avoid polymorphic `sourceId`
+           * collisions (e.g. contrato IDs vs account IDs).
+           *
+           * Legacy exceptions (handled inside resolveDisplayAccountId):
+           * - old `personal_expense` card receipts with missing accountId can
+           *   fallback through sourceId
+           * - receipt descriptions like "Recibo tarjeta <alias>" can fallback
+           *   through configured credit-card alias
            */
-          const displayAccountId = eventCardConfig?.chargeAccountId
-            ?? eventAccountId;
+          const displayAccountId = resolveDisplayAccountId({
+            eventAccountId,
+            eventSourceId,
+            sourceType: e.sourceType,
+            description: e.description,
+            cardSettlementByAccountId,
+            cardAliasMatchers,
+          });
 
           return {
             id: String(e.id),
