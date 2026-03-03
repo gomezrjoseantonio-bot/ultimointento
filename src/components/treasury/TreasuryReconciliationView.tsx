@@ -71,9 +71,7 @@ interface DisplayAccountResolverInput {
   eventAccountId?: number;
   eventSourceId?: number;
   sourceType?: string;
-  description?: string;
   cardSettlementByAccountId: Map<number, CardSettlementConfig>;
-  cardSettlementByAlias: Map<string, CardSettlementConfig>;
 }
 
 const toNumericId = (value: unknown): number | undefined => {
@@ -85,31 +83,11 @@ const toNumericId = (value: unknown): number | undefined => {
   return undefined;
 };
 
-
-const normalizeText = (value: string): string =>
-  value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-
-const extractCardAliasFromReceiptDescription = (description?: string): string | undefined => {
-  if (!description) return undefined;
-  const normalized = normalizeText(description);
-  const prefix = 'recibo tarjeta ';
-  if (!normalized.startsWith(prefix)) return undefined;
-  const alias = normalized.slice(prefix.length).trim();
-  return alias || undefined;
-};
-
 export const resolveDisplayAccountId = ({
   eventAccountId,
   eventSourceId,
   sourceType,
-  description,
   cardSettlementByAccountId,
-  cardSettlementByAlias,
 }: DisplayAccountResolverInput): number | undefined => {
   const eventCardConfig = eventAccountId != null
     ? cardSettlementByAccountId.get(eventAccountId)
@@ -126,18 +104,8 @@ export const resolveDisplayAccountId = ({
       ? cardSettlementByAccountId.get(eventSourceId)
       : undefined;
 
-  const receiptCardAlias =
-    eventAccountId == null
-      ? extractCardAliasFromReceiptDescription(description)
-      : undefined;
-
-  const aliasCardConfig = receiptCardAlias
-    ? cardSettlementByAlias.get(receiptCardAlias)
-    : undefined;
-
   return eventCardConfig?.chargeAccountId
     ?? sourceCardConfig?.chargeAccountId
-    ?? aliasCardConfig?.chargeAccountId
     ?? eventAccountId;
 };
 
@@ -339,19 +307,15 @@ const TreasuryReconciliationView: React.FC = () => {
            * Primary mapping uses `accountId` to avoid polymorphic `sourceId`
            * collisions (e.g. contrato IDs vs account IDs).
            *
-           * Legacy exceptions (handled inside resolveDisplayAccountId):
-           * - old `personal_expense` card receipts with missing accountId can
-           *   fallback through sourceId
-           * - receipt descriptions like "Recibo tarjeta <alias>" can fallback
-           *   through configured credit-card alias
+           * Legacy exception (handled inside resolveDisplayAccountId):
+           * for old `personal_expense` card receipts with missing accountId,
+           * allow a guarded fallback through sourceId.
            */
           const displayAccountId = resolveDisplayAccountId({
             eventAccountId,
             eventSourceId,
             sourceType: e.sourceType,
-            description: e.description,
             cardSettlementByAccountId,
-            cardSettlementByAlias,
           });
 
           return {
