@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calculator, Plus } from 'lucide-react';
+import toast from 'react-hot-toast';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Presupuesto, PresupuestoLinea, TipoLinea, UUID } from '../../../../services/db';
 import { 
@@ -11,6 +12,7 @@ import {
   createPresupuestoLinea,
   updatePresupuestoLinea,
   deletePresupuestoLinea,
+  syncPresupuestoActualFromMovements,
   ResumenPresupuesto
 } from './services/presupuestoService';
 import PresupuestoHeader from './components/PresupuestoHeader';
@@ -101,6 +103,20 @@ const PresupuestoNuevo: React.FC = () => {
       await loadPresupuestoData();
     } catch (error) {
       console.error('Error seeding presupuesto:', error);
+    }
+  };
+
+
+  const handleSyncActual = async () => {
+    if (!presupuestoActual) return;
+
+    try {
+      const result = await syncPresupuestoActualFromMovements(presupuestoActual.id);
+      await loadPresupuestoData();
+      toast.success(`Actual sincronizado en ${result.updated} líneas`);
+    } catch (error) {
+      console.error('Error syncing actual amounts:', error);
+      toast.error('No se pudo sincronizar el actual');
     }
   };
 
@@ -231,6 +247,7 @@ const PresupuestoNuevo: React.FC = () => {
           onSembrar={handleSembrarPresupuesto}
           onAddLinea={handleCreateLinea}
           onExport={handleExportCSV}
+          onSyncActual={handleSyncActual}
         />
 
         {/* Zona A: Resumen */}

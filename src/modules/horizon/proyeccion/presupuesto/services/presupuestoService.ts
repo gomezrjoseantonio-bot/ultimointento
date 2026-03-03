@@ -1,5 +1,7 @@
 import { initDB, Presupuesto, PresupuestoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, UUID } from '../../../../../services/db';
 import { emitBudgetUpdatedEvent } from '../../../../../services/budgetReclassificationService';
+import { buildLayeredAmounts, ensureLayeredBudgetLine } from './planningLayerService';
+import { calculateActualAmountsByLine } from './actualSyncService';
 
 // UUID helper (simple implementation)
 export const generateUUID = (): UUID => {
@@ -86,7 +88,8 @@ export const getPresupuestoLineas = async (presupuestoId: UUID): Promise<Presupu
   const db = await initDB();
   const tx = db.transaction('presupuestoLineas', 'readonly');
   const index = tx.store.index('presupuestoId');
-  return index.getAll(presupuestoId);
+  const lines = await index.getAll(presupuestoId);
+  return lines.map(line => ensureLayeredBudgetLine(line));
 };
 
 // Create presupuesto line
@@ -94,10 +97,10 @@ export const createPresupuestoLinea = async (linea: Omit<PresupuestoLinea, 'id'>
   const db = await initDB();
   const id = generateUUID();
   
-  const nuevaLinea: PresupuestoLinea = {
+  const nuevaLinea: PresupuestoLinea = ensureLayeredBudgetLine({
     ...linea,
     id
-  };
+  } as PresupuestoLinea);
   
   await db.add('presupuestoLineas', nuevaLinea);
   
@@ -121,10 +124,10 @@ export const updatePresupuestoLinea = async (id: UUID, updates: Partial<Presupue
   const linea = await db.get('presupuestoLineas', id);
   if (!linea) throw new Error('Presupuesto linea not found');
   
-  const updatedLinea: PresupuestoLinea = {
+  const updatedLinea: PresupuestoLinea = ensureLayeredBudgetLine({
     ...linea,
     ...updates
-  };
+  } as PresupuestoLinea);
   
   await db.put('presupuestoLineas', updatedLinea);
   
@@ -379,6 +382,45 @@ export const sembrarPresupuesto = async (
   }
   
   return lineasCreadas;
+};
+
+
+export const syncPresupuestoActualFromMovements = async (presupuestoId: UUID): Promise<{ updated: number }> => {
+  const db = await initDB();
+  const presupuesto = await db.get('presupuestos', presupuestoId);
+  if (!presupuesto) throw new Error('Presupuesto not found');
+
+  const tx = db.transaction(['presupuestoLineas', 'movements'], 'readwrite');
+  const linesIndex = tx.objectStore('presupuestoLineas').index('presupuestoId');
+  const lineas = await linesIndex.getAll(presupuestoId);
+  const movements = await tx.objectStore('movements').getAll();
+
+  let updated = 0;
+  for (const line of lineas) {
+    const layeredLine = ensureLayeredBudgetLine(line as PresupuestoLinea);
+    const actualAmountByMonth = calculateActualAmountsByLine(layeredLine, presupuesto.year, movements);
+    const baseLayered = buildLayeredAmounts({
+      amountByMonth: layeredLine.amountByMonth,
+      planAmountByMonth: layeredLine.planAmountByMonth,
+      forecastAmountByMonth: layeredLine.forecastAmountByMonth,
+      actualAmountByMonth,
+      statusCertidumbreByMonth: layeredLine.statusCertidumbreByMonth
+    });
+
+    const statusCertidumbreByMonth = baseLayered.statusCertidumbreByMonth.map((status, idx) =>
+      actualAmountByMonth[idx] > 0 ? 'conciliado' : status
+    );
+
+    await tx.objectStore('presupuestoLineas').put({
+      ...layeredLine,
+      actualAmountByMonth,
+      statusCertidumbreByMonth
+    });
+    updated += 1;
+  }
+
+  await tx.done;
+  return { updated };
 };
 
 // Calculate totals and monthly breakdown

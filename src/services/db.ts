@@ -1288,6 +1288,15 @@ export type CategoriaIngreso =
   | "Alquiler"
   | "OtrosIngresos";
 
+export type PlanningLayer = "LRP" | "BUDGET" | "FORECAST" | "ACTUAL";
+
+export type EstadoCertidumbre =
+  | "estimado"
+  | "previsto"
+  | "confirmado"
+  | "conciliado"
+  | "desviado";
+
 export type OrigenLinea = 
   | "SemillaAuto"      // generada automáticamente
   | "ManualUsuario"    // creada o editada por el usuario
@@ -1322,7 +1331,12 @@ export interface PresupuestoLinea {
   accountId?: UUID;                    // Cuenta de cargo/abono (obligatorio antes de guardar)
   sourceRef?: UUID;                    // ID de Contrato, Préstamo, etc. (opcional)
   // Importes mensuales - Array de 12 posiciones para ENE...DIC
-  amountByMonth: number[];             // Importes mensuales [12]
+  amountByMonth: number[];             // DEPRECATED gradual: mantener compatibilidad con forecastAmountByMonth
+  planAmountByMonth?: number[];        // Nuevo: baseline anual (budget)
+  forecastAmountByMonth?: number[];    // Nuevo: mejor estimación viva
+  actualAmountByMonth?: number[];      // Nuevo: movimientos reales conciliados
+  statusCertidumbreByMonth?: EstadoCertidumbre[]; // Nuevo: estado de confianza por mes
+  planningLayer?: PlanningLayer;       // Nuevo: capa principal de la línea
   note?: string;                       // Nota opcional
   // Campos de compatibilidad (mantener por ahora)
   tipo?: TipoLinea;                    // DEPRECATED: usar type

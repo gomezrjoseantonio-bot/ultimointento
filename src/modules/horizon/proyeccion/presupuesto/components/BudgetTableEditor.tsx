@@ -30,6 +30,20 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
   const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 
                      'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
+
+  const getEditableAmounts = (line: PresupuestoLinea): number[] => {
+    const base = line.forecastAmountByMonth || line.amountByMonth || [];
+    const normalized = new Array(12).fill(0);
+    for (let i = 0; i < Math.min(base.length, 12); i += 1) {
+      normalized[i] = Number(base[i] || 0);
+    }
+    return normalized;
+  };
+
+  const getLineCertidumbre = (line: PresupuestoLinea, monthIndex: number): string | null => {
+    return line.statusCertidumbreByMonth?.[monthIndex] || null;
+  };
+
   // Income and expense lines
   const incomeLines = lines.filter(line => line.type === 'INGRESO');
   const expenseLines = lines.filter(line => line.type === 'COSTE');
@@ -39,13 +53,13 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
   const monthlyExpenseTotals = new Array(12).fill(0);
 
   incomeLines.forEach(line => {
-    line.amountByMonth.forEach((amount, month) => {
+    getEditableAmounts(line).forEach((amount, month) => {
       monthlyIncomeTotals[month] += amount || 0;
     });
   });
 
   expenseLines.forEach(line => {
-    line.amountByMonth.forEach((amount, month) => {
+    getEditableAmounts(line).forEach((amount, month) => {
       monthlyExpenseTotals[month] += amount || 0;
     });
   });
@@ -82,7 +96,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     } else if (field === 'counterpartyName') {
       value = line.counterpartyName || '';
     } else if (field === 'amount' && month !== undefined) {
-      value = (line.amountByMonth[month] || 0).toString();
+      value = (getEditableAmounts(line)[month] || 0).toString();
     }
 
     setEditValue(value);
@@ -106,8 +120,9 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       } else if (editingCell.field === 'counterpartyName') {
         updates.counterpartyName = editValue;
       } else if (editingCell.field === 'amount' && editingCell.month !== undefined) {
-        const newAmounts = [...line.amountByMonth];
+        const newAmounts = [...getEditableAmounts(line)];
         newAmounts[editingCell.month] = parseFloat(editValue) || 0;
+        updates.forecastAmountByMonth = newAmounts;
         updates.amountByMonth = newAmounts;
       }
 
@@ -145,7 +160,11 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       ...lineToClone,
       id: `temp-${Date.now()}`, // Temporary ID
       label: `${lineToClone.label} (copia)`,
-      amountByMonth: [...lineToClone.amountByMonth]
+      amountByMonth: [...getEditableAmounts(lineToClone)],
+      forecastAmountByMonth: [...getEditableAmounts(lineToClone)],
+      planAmountByMonth: lineToClone.planAmountByMonth ? [...lineToClone.planAmountByMonth] : undefined,
+      actualAmountByMonth: lineToClone.actualAmountByMonth ? [...lineToClone.actualAmountByMonth] : undefined,
+      statusCertidumbreByMonth: lineToClone.statusCertidumbreByMonth ? [...lineToClone.statusCertidumbreByMonth] : undefined
     };
 
     onLinesChange([...lines, newLine]);
@@ -250,7 +269,8 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
           
           <tbody className="bg-white divide-y divide-gray-200">
             {sectionLines.map((line) => {
-              const lineTotal = line.amountByMonth.reduce((sum, amount) => sum + (amount || 0), 0);
+              const displayAmounts = getEditableAmounts(line);
+              const lineTotal = displayAmounts.reduce((sum, amount) => sum + (amount || 0), 0);
               
               return (
                 <tr key={line.id} className="hover:bg-gray-50">
@@ -276,15 +296,22 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                   <td className="px-3 py-2 text-sm">
                     {renderEditableCell(line.counterpartyName || '', line.id, 'counterpartyName')}
                   </td>
-                  {line.amountByMonth.map((amount, monthIndex) => (
+                  {displayAmounts.map((amount, monthIndex) => (
                     <td key={monthIndex} className="px-2 py-2 text-sm text-right">
-                      {renderEditableCell(
-                        amount || 0, 
-                        line.id, 
-                        'amount', 
-                        monthIndex,
-                        'text-right'
-                      )}
+                      <div className="flex flex-col items-end">
+                        {renderEditableCell(
+                          amount || 0, 
+                          line.id, 
+                          'amount', 
+                          monthIndex,
+                          'text-right'
+                        )}
+                        {getLineCertidumbre(line, monthIndex) && (
+                          <span className="text-[10px] uppercase text-gray-500">
+                            {getLineCertidumbre(line, monthIndex)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   ))}
                   <td className="px-3 py-2 text-sm text-right font-medium">
@@ -339,6 +366,10 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
 
   return (
     <div className="space-y-6">
+      <div className="text-xs text-gray-500">
+        Mostrando capa editable de <strong>Forecast</strong>. 
+        `Actual` y `Plan` se conservan para conciliación y análisis sin romper el flujo actual.
+      </div>
       {/* Ingresos Section */}
       {renderTableSection('Ingresos', incomeLines, monthlyIncomeTotals)}
       

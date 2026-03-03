@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, Repeat } from 'lucide-react';
+import { Plus, Download, Repeat, RefreshCw } from 'lucide-react';
 import { Presupuesto, UUID, Property, initDB } from '../../../../../services/db';
 
 interface PresupuestoHeaderProps {
@@ -10,6 +10,7 @@ interface PresupuestoHeaderProps {
   onSembrar: () => void;
   onAddLinea: () => void;
   onExport: () => void;
+  onSyncActual: () => void;
 }
 
 const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
@@ -19,7 +20,8 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
   onInmuebleChange,
   onSembrar,
   onAddLinea,
-  onExport
+  onExport,
+  onSyncActual
 }) => {
   const [properties, setProperties] = useState<Property[]>([]);
 
@@ -83,6 +85,15 @@ const PresupuestoHeader: React.FC<PresupuestoHeaderProps> = ({
             <span>Añadir Línea</span>
           </button>
           
+
+          <button
+            onClick={onSyncActual}
+            className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Sincronizar actual</span>
+          </button>
+
           <button
             onClick={onExport}
             className="flex items-center space-x-2 bg-gray-600 px-4 py-2"
