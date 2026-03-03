@@ -3,6 +3,7 @@ import { Calculator, Plus, FileText, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import BudgetWizard from './components/BudgetWizard';
 import BudgetList from './components/BudgetList';
+import PresupuestoScopeView from './PresupuestoScopeView';
 import { Budget } from '../../../../services/db';
 import { getBudgetsByYear } from './services/budgetService';
 
@@ -11,6 +12,7 @@ const ProyeccionPresupuesto: React.FC = () => {
   const [currentYear] = useState(new Date().getFullYear());
   const [existingBudgets, setExistingBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOperationalView, setShowOperationalView] = useState(false);
 
   useEffect(() => {
     loadBudgets();
@@ -36,6 +38,11 @@ const ProyeccionPresupuesto: React.FC = () => {
   const handleCreateBudget = () => {
     setShowWizard(true);
   };
+
+
+  if (showOperationalView) {
+    return <PresupuestoScopeView />;
+  }
 
   if (showWizard) {
     return (
@@ -77,13 +84,23 @@ const ProyeccionPresupuesto: React.FC = () => {
             </div>
           </div>
           
-          <button
-            onClick={handleCreateBudget}
-            className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Crear Presupuesto {currentYear}</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowOperationalView(true)}
+              className="flex items-center space-x-2 bg-primary-700 text-white px-4 py-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              <span>Vista Forecast/Actual</span>
+            </button>
+
+            <button
+              onClick={handleCreateBudget}
+              className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center space-x-2 px-4 py-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Crear Presupuesto {currentYear}</span>
+            </button>
+          </div>
         </div>
 
         {/* Budget List or Empty State */}
@@ -105,13 +122,22 @@ const ProyeccionPresupuesto: React.FC = () => {
             <p className="text-gray-600 mb-6">
               Crea tu primer presupuesto anual para gestionar ingresos y gastos deducibles
             </p>
-            <button
-              onClick={handleCreateBudget}
-              className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Crear Presupuesto {currentYear}</span>
-            </button>
+            <div className="flex items-center justify-center space-x-3">
+              <button
+                onClick={() => setShowOperationalView(true)}
+                className="inline-flex items-center space-x-2 bg-primary-700 text-white px-6 py-3"
+              >
+                <TrendingUp className="h-5 w-5" />
+                <span>Ver Forecast/Actual</span>
+              </button>
+              <button
+                onClick={handleCreateBudget}
+                className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center space-x-2 px-6 py-3"
+              >
+                <Plus className="h-5 w-5" />
+                <span>Crear Presupuesto {currentYear}</span>
+              </button>
+            </div>
           </div>
         )}
 
