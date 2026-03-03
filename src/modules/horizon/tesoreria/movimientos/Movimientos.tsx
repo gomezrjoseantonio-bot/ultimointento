@@ -94,7 +94,10 @@ const Movimientos: React.FC<MovimientosProps> = ({ accountId }) => {
       let filteredMovements = allMovements;
       
       if (selectedAccountId) {
-        filteredMovements = allMovements.filter(m => m.account_id === selectedAccountId);
+        filteredMovements = allMovements.filter(m => {
+          const movementAccountId = m.accountId ?? m.account_id;
+          return movementAccountId === selectedAccountId;
+        });
       }
       
       // Sort by date descending
