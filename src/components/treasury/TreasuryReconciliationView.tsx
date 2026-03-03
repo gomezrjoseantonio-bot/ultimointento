@@ -261,18 +261,18 @@ const TreasuryReconciliationView: React.FC = () => {
             ? contractMap.get(Number(e.sourceId))
             : undefined;
 
-          const sourceId = toNumericId(e.sourceId);
-          const sourceCardConfig = sourceId != null
-            ? cardSettlementByAccountId.get(sourceId)
-            : undefined;
-
           const eventAccountId = toNumericId(e.accountId);
           const eventCardConfig = eventAccountId != null
             ? cardSettlementByAccountId.get(eventAccountId)
             : undefined;
 
-          const displayAccountId = sourceCardConfig?.chargeAccountId
-            ?? eventCardConfig?.chargeAccountId
+          /**
+           * IMPORTANT:
+           * We only remap using `accountId` (never `sourceId`).
+           * `sourceId` is polymorphic (e.g. contract IDs for rent events), and can
+           * collide numerically with account IDs, which breaks bank filtering.
+           */
+          const displayAccountId = eventCardConfig?.chargeAccountId
             ?? eventAccountId;
 
           return {
