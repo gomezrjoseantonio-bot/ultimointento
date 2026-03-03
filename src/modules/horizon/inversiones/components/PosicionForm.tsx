@@ -165,9 +165,21 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     importe_estimado: existingPlanLiq?.importe_estimado || 0,
     cuenta_destino_id: existingPlanLiq?.cuenta_destino_id || 0,
   });
+  const [showAdvancedPlans, setShowAdvancedPlans] = useState(
+    Boolean(existingPlanAp?.activo || existingPlanLiq?.activo),
+  );
 
   useEffect(() => {
     cuentasService.list().then(setCuentas).catch(() => setCuentas([]));
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, []);
 
   // Auto-populate liquidation plan for deposito_plazo
@@ -387,32 +399,46 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     cursor: 'pointer',
   };
 
+  const modalBackground = 'var(--hz-card-bg, #FFFFFF)';
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem',
-    }}>
+    <div
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+    >
       <div style={{
-        background: 'var(--hz-card-bg)',
+        background: modalBackground,
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '640px',
-        maxHeight: '90vh',
-        overflow: 'auto',
+        maxWidth: '760px',
+        maxHeight: 'calc(100vh - 2.5rem)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
       }}>
         {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '1.5rem',
+          padding: '1.25rem 1.5rem',
           borderBottom: '1px solid var(--hz-neutral-300)',
+          background: modalBackground,
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
         }}>
           <h2 style={{
             fontFamily: 'var(--font-inter)',
@@ -433,7 +459,17 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            padding: '1.25rem 1.5rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            overflowY: 'auto',
+            scrollbarGutter: 'stable',
+          }}
+        >
           {/* Section: Datos Básicos */}
           <Section title="Datos Básicos">
             <FormField label="Nombre" required error={errors.nombre}>
@@ -825,191 +861,229 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
             </div>
           )}
 
-          {/* Bloque ①: Plan de Aportaciones Periódicas */}
-          <Section title="Plan de Aportaciones Periódicas" icon={Banknote} color="purple">
-            <div style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                id="planAp_activo"
-                checked={planApActivo}
-                onChange={(e) => setPlanApActivo(e.target.checked)}
-                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-              />
-              <label htmlFor="planAp_activo" style={checkboxLabelStyle}>
-                Tengo aportaciones periódicas programadas
-              </label>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.875rem 1rem',
+            border: '1px solid var(--hz-neutral-300)',
+            borderRadius: '10px',
+            background: 'var(--hz-neutral-50)',
+          }}>
+            <div>
+              <p style={{ margin: 0, fontWeight: 600, color: 'var(--atlas-navy-1)', fontFamily: 'var(--font-inter)' }}>
+                Configuración avanzada (opcional)
+              </p>
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-gray)', fontSize: '0.875rem', fontFamily: 'var(--font-inter)' }}>
+                Aportaciones periódicas y planificación de liquidación.
+              </p>
             </div>
-            {planApActivo && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <FormField label="Importe por aportación (€)" required error={errors.planAp_importe}>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={planAp.importe}
-                      onChange={(e) => setPlanAp({ ...planAp, importe: parseFloat(e.target.value) || 0 })}
-                      style={inputStyle(!!errors.planAp_importe)}
-                      placeholder="200.00"
-                    />
-                  </FormField>
-                  <FormField label="Frecuencia">
-                    <select
-                      value={planAp.frecuencia}
-                      onChange={(e) => setPlanAp({ ...planAp, frecuencia: e.target.value as PlanAportaciones['frecuencia'] })}
-                      style={selectStyle}
-                    >
-                      <option value="mensual">Mensual</option>
-                      <option value="bimestral">Bimestral</option>
-                      <option value="trimestral">Trimestral</option>
-                      <option value="semestral">Semestral</option>
-                      <option value="anual">Anual</option>
-                    </select>
-                  </FormField>
-                </div>
-                {planAp.frecuencia !== 'mensual' && (
-                  <div>
-                    <MonthSelector
-                      label={`Meses de cargo (${FRECUENCIA_MESES[planAp.frecuencia] ?? '?'} meses para ${planAp.frecuencia})`}
-                      selected={planAp.meses}
-                      onChange={(m) => setPlanAp({ ...planAp, meses: m })}
-                    />
-                    {errors.planAp_meses && (
-                      <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
-                        {errors.planAp_meses}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <FormField label="Día del cargo (1-31)">
-                    <input
-                      type="number"
-                      min={1}
-                      max={31}
-                      value={planAp.dia_cargo}
-                      onChange={(e) => setPlanAp({ ...planAp, dia_cargo: parseInt(e.target.value) || 1 })}
-                      style={inputStyle()}
-                    />
-                  </FormField>
-                  <FormField label="Cuenta de cargo" required error={errors.planAp_cuenta}>
-                    <select
-                      value={planAp.cuenta_cargo_id || ''}
-                      onChange={(e) => setPlanAp({ ...planAp, cuenta_cargo_id: Number(e.target.value) || 0 })}
-                      style={{ ...selectStyle, border: errors.planAp_cuenta ? '1px solid var(--error)' : '1px solid var(--hz-neutral-300)' }}
-                    >
-                      <option value="">Seleccionar cuenta...</option>
-                      {cuentas.map(c => (
-                        <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
-                      ))}
-                    </select>
-                  </FormField>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <FormField label="Fecha inicio" required error={errors.planAp_fecha_inicio}>
-                    <input
-                      type="date"
-                      value={planAp.fecha_inicio}
-                      onChange={(e) => setPlanAp({ ...planAp, fecha_inicio: e.target.value })}
-                      style={inputStyle(!!errors.planAp_fecha_inicio)}
-                    />
-                  </FormField>
-                  <FormField label="Fecha fin (vacío = indefinido)">
-                    <input
-                      type="date"
-                      value={planAp.fecha_fin || ''}
-                      onChange={(e) => setPlanAp({ ...planAp, fecha_fin: e.target.value || '' })}
-                      style={inputStyle()}
-                    />
-                  </FormField>
-                </div>
-              </div>
-            )}
-          </Section>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedPlans(!showAdvancedPlans)}
+              style={{
+                border: '1px solid var(--hz-neutral-300)',
+                borderRadius: '8px',
+                background: 'white',
+                color: 'var(--atlas-blue)',
+                fontWeight: 600,
+                padding: '0.5rem 0.75rem',
+                cursor: 'pointer',
+              }}
+            >
+              {showAdvancedPlans ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
 
-          {/* Bloque ③: Plan de Liquidación */}
-          <Section title="Plan de Liquidación" icon={Calendar} color="orange">
-            <div style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                id="planLiq_activo"
-                checked={planLiqActivo}
-                onChange={(e) => setPlanLiqActivo(e.target.checked)}
-                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-              />
-              <label htmlFor="planLiq_activo" style={checkboxLabelStyle}>
-                Tengo prevista una fecha de venta/vencimiento/rescate
-              </label>
-            </div>
-            {planLiqActivo && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <FormField label="Tipo de liquidación">
-                    <select
-                      value={planLiq.tipo_liquidacion}
-                      onChange={(e) => setPlanLiq({ ...planLiq, tipo_liquidacion: e.target.value as PlanLiquidacion['tipo_liquidacion'] })}
-                      style={selectStyle}
-                    >
-                      <option value="vencimiento">Vencimiento</option>
-                      <option value="venta">Venta</option>
-                      <option value="rescate">Rescate</option>
-                    </select>
-                  </FormField>
-                  <FormField label="Fecha estimada" required error={errors.planLiq_fecha}>
-                    <input
-                      type="date"
-                      value={planLiq.fecha_estimada}
-                      onChange={(e) => setPlanLiq({ ...planLiq, fecha_estimada: e.target.value })}
-                      style={inputStyle(!!errors.planLiq_fecha)}
-                    />
-                  </FormField>
-                </div>
+          {showAdvancedPlans && (
+            <>
+              {/* Bloque ①: Plan de Aportaciones Periódicas */}
+              <Section title="Plan de Aportaciones Periódicas" icon={Banknote} color="purple">
                 <div style={checkboxRowStyle}>
                   <input
-                    type="radio"
-                    id="liq_total"
-                    name="liquidacion_tipo"
-                    checked={planLiq.liquidacion_total}
-                    onChange={() => setPlanLiq({ ...planLiq, liquidacion_total: true })}
-                    style={{ cursor: 'pointer' }}
+                    type="checkbox"
+                    id="planAp_activo"
+                    checked={planApActivo}
+                    onChange={(e) => setPlanApActivo(e.target.checked)}
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
                   />
-                  <label htmlFor="liq_total" style={checkboxLabelStyle}>Total</label>
-                  <input
-                    type="radio"
-                    id="liq_parcial"
-                    name="liquidacion_tipo"
-                    checked={!planLiq.liquidacion_total}
-                    onChange={() => setPlanLiq({ ...planLiq, liquidacion_total: false })}
-                    style={{ cursor: 'pointer', marginLeft: '1rem' }}
-                  />
-                  <label htmlFor="liq_parcial" style={checkboxLabelStyle}>Parcial</label>
+                  <label htmlFor="planAp_activo" style={checkboxLabelStyle}>
+                    Tengo aportaciones periódicas programadas
+                  </label>
                 </div>
-                {!planLiq.liquidacion_total && (
-                  <FormField label="Importe estimado (€)">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={planLiq.importe_estimado}
-                      onChange={(e) => setPlanLiq({ ...planLiq, importe_estimado: parseFloat(e.target.value) || 0 })}
-                      style={inputStyle()}
-                      placeholder="5000.00"
-                    />
-                  </FormField>
+                {planApActivo && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <FormField label="Importe por aportación (€)" required error={errors.planAp_importe}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={planAp.importe}
+                          onChange={(e) => setPlanAp({ ...planAp, importe: parseFloat(e.target.value) || 0 })}
+                          style={inputStyle(!!errors.planAp_importe)}
+                          placeholder="200.00"
+                        />
+                      </FormField>
+                      <FormField label="Frecuencia">
+                        <select
+                          value={planAp.frecuencia}
+                          onChange={(e) => setPlanAp({ ...planAp, frecuencia: e.target.value as PlanAportaciones['frecuencia'] })}
+                          style={selectStyle}
+                        >
+                          <option value="mensual">Mensual</option>
+                          <option value="bimestral">Bimestral</option>
+                          <option value="trimestral">Trimestral</option>
+                          <option value="semestral">Semestral</option>
+                          <option value="anual">Anual</option>
+                        </select>
+                      </FormField>
+                    </div>
+                    {planAp.frecuencia !== 'mensual' && (
+                      <div>
+                        <MonthSelector
+                          label={`Meses de cargo (${FRECUENCIA_MESES[planAp.frecuencia] ?? '?'} meses para ${planAp.frecuencia})`}
+                          selected={planAp.meses}
+                          onChange={(m) => setPlanAp({ ...planAp, meses: m })}
+                        />
+                        {errors.planAp_meses && (
+                          <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
+                            {errors.planAp_meses}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <FormField label="Día del cargo (1-31)">
+                        <input
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={planAp.dia_cargo}
+                          onChange={(e) => setPlanAp({ ...planAp, dia_cargo: parseInt(e.target.value) || 1 })}
+                          style={inputStyle()}
+                        />
+                      </FormField>
+                      <FormField label="Cuenta de cargo" required error={errors.planAp_cuenta}>
+                        <select
+                          value={planAp.cuenta_cargo_id || ''}
+                          onChange={(e) => setPlanAp({ ...planAp, cuenta_cargo_id: Number(e.target.value) || 0 })}
+                          style={{ ...selectStyle, border: errors.planAp_cuenta ? '1px solid var(--error)' : '1px solid var(--hz-neutral-300)' }}
+                        >
+                          <option value="">Seleccionar cuenta...</option>
+                          {cuentas.map(c => (
+                            <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
+                          ))}
+                        </select>
+                      </FormField>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <FormField label="Fecha inicio" required error={errors.planAp_fecha_inicio}>
+                        <input
+                          type="date"
+                          value={planAp.fecha_inicio}
+                          onChange={(e) => setPlanAp({ ...planAp, fecha_inicio: e.target.value })}
+                          style={inputStyle(!!errors.planAp_fecha_inicio)}
+                        />
+                      </FormField>
+                      <FormField label="Fecha fin (vacío = indefinido)">
+                        <input
+                          type="date"
+                          value={planAp.fecha_fin || ''}
+                          onChange={(e) => setPlanAp({ ...planAp, fecha_fin: e.target.value || '' })}
+                          style={inputStyle()}
+                        />
+                      </FormField>
+                    </div>
+                  </div>
                 )}
-                <FormField label="Cuenta destino" required error={errors.planLiq_cuenta}>
-                  <select
-                    value={planLiq.cuenta_destino_id || ''}
-                    onChange={(e) => setPlanLiq({ ...planLiq, cuenta_destino_id: Number(e.target.value) || 0 })}
-                    style={{ ...selectStyle, border: errors.planLiq_cuenta ? '1px solid var(--error)' : '1px solid var(--hz-neutral-300)' }}
-                  >
-                    <option value="">Seleccionar cuenta...</option>
-                    {cuentas.map(c => (
-                      <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
-                    ))}
-                  </select>
-                </FormField>
-              </div>
-            )}
-          </Section>
+              </Section>
+
+              {/* Bloque ③: Plan de Liquidación */}
+              <Section title="Plan de Liquidación" icon={Calendar} color="orange">
+                <div style={checkboxRowStyle}>
+                  <input
+                    type="checkbox"
+                    id="planLiq_activo"
+                    checked={planLiqActivo}
+                    onChange={(e) => setPlanLiqActivo(e.target.checked)}
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="planLiq_activo" style={checkboxLabelStyle}>
+                    Tengo prevista una fecha de venta/vencimiento/rescate
+                  </label>
+                </div>
+                {planLiqActivo && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <FormField label="Tipo de liquidación">
+                        <select
+                          value={planLiq.tipo_liquidacion}
+                          onChange={(e) => setPlanLiq({ ...planLiq, tipo_liquidacion: e.target.value as PlanLiquidacion['tipo_liquidacion'] })}
+                          style={selectStyle}
+                        >
+                          <option value="vencimiento">Vencimiento</option>
+                          <option value="venta">Venta</option>
+                          <option value="rescate">Rescate</option>
+                        </select>
+                      </FormField>
+                      <FormField label="Fecha estimada" required error={errors.planLiq_fecha}>
+                        <input
+                          type="date"
+                          value={planLiq.fecha_estimada}
+                          onChange={(e) => setPlanLiq({ ...planLiq, fecha_estimada: e.target.value })}
+                          style={inputStyle(!!errors.planLiq_fecha)}
+                        />
+                      </FormField>
+                    </div>
+                    <div style={checkboxRowStyle}>
+                      <input
+                        type="radio"
+                        id="liq_total"
+                        name="liquidacion_tipo"
+                        checked={planLiq.liquidacion_total}
+                        onChange={() => setPlanLiq({ ...planLiq, liquidacion_total: true })}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <label htmlFor="liq_total" style={checkboxLabelStyle}>Total</label>
+                      <input
+                        type="radio"
+                        id="liq_parcial"
+                        name="liquidacion_tipo"
+                        checked={!planLiq.liquidacion_total}
+                        onChange={() => setPlanLiq({ ...planLiq, liquidacion_total: false })}
+                        style={{ cursor: 'pointer', marginLeft: '1rem' }}
+                      />
+                      <label htmlFor="liq_parcial" style={checkboxLabelStyle}>Parcial</label>
+                    </div>
+                    {!planLiq.liquidacion_total && (
+                      <FormField label="Importe estimado (€)">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={planLiq.importe_estimado}
+                          onChange={(e) => setPlanLiq({ ...planLiq, importe_estimado: parseFloat(e.target.value) || 0 })}
+                          style={inputStyle()}
+                          placeholder="5000.00"
+                        />
+                      </FormField>
+                    )}
+                    <FormField label="Cuenta destino" required error={errors.planLiq_cuenta}>
+                      <select
+                        value={planLiq.cuenta_destino_id || ''}
+                        onChange={(e) => setPlanLiq({ ...planLiq, cuenta_destino_id: Number(e.target.value) || 0 })}
+                        style={{ ...selectStyle, border: errors.planLiq_cuenta ? '1px solid var(--error)' : '1px solid var(--hz-neutral-300)' }}
+                      >
+                        <option value="">Seleccionar cuenta...</option>
+                        {cuentas.map(c => (
+                          <option key={c.id} value={c.id}>{c.alias || c.iban}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                  </div>
+                )}
+              </Section>
+            </>
+          )}
 
           {/* Notas */}
           <FormField label="Notas">
@@ -1026,7 +1100,17 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
           </FormField>
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            justifyContent: 'flex-end',
+            marginTop: '0.5rem',
+            position: 'sticky',
+            bottom: 0,
+            background: modalBackground,
+            paddingTop: '0.75rem',
+            borderTop: '1px solid var(--hz-neutral-200)',
+          }}>
             <button
               type="button"
               onClick={onClose}
