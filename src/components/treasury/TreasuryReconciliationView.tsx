@@ -265,13 +265,10 @@ const TreasuryReconciliationView: React.FC = () => {
       };
 
       for (const account of dbAccounts) {
-        const accountId = toNumericId(account.id);
-        if (accountId == null) continue;
+        if (account.id == null) continue;
         if (account.cardConfig?.chargeAccountId != null) {
-          const chargeAccountId = resolveCanonicalAccountId(account.cardConfig.chargeAccountId);
-          if (chargeAccountId == null) continue;
-          cardSettlementByAccountId.set(accountId, {
-            chargeAccountId,
+          cardSettlementByAccountId.set(account.id, {
+            chargeAccountId: account.cardConfig.chargeAccountId,
           });
         }
       }
@@ -296,12 +293,12 @@ const TreasuryReconciliationView: React.FC = () => {
             ? contractMap.get(Number(e.sourceId))
             : undefined;
 
-          const sourceId = resolveCanonicalAccountId(e.sourceId);
+          const sourceId = toNumericId(e.sourceId);
           const sourceCardConfig = sourceId != null
             ? cardSettlementByAccountId.get(sourceId)
             : undefined;
 
-          const eventAccountId = resolveCanonicalAccountId(e.accountId);
+          const eventAccountId = toNumericId(e.accountId);
           const eventCardConfig = eventAccountId != null
             ? cardSettlementByAccountId.get(eventAccountId)
             : undefined;
