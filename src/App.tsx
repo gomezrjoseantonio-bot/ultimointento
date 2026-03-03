@@ -8,6 +8,7 @@ import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import CopilotWidget from './components/common/CopilotWidget';
 
 // Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
@@ -175,6 +176,7 @@ function App() {
               },
             }}
           />
+          <CopilotWidget />
           <Routes>
             {/* Public Auth Routes */}
             <Route path="/login" element={
