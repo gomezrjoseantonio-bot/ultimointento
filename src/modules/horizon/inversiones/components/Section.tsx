@@ -4,10 +4,12 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
+type SectionColor = 'green' | 'blue' | 'gray' | 'orange' | 'purple';
+
 interface SectionProps {
   title: string;
   icon?: LucideIcon;
-  color?: 'green' | 'blue' | 'gray' | 'orange' | 'purple';
+  color?: SectionColor;
   children: React.ReactNode;
 }
 
