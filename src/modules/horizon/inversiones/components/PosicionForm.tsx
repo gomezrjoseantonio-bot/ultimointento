@@ -399,7 +399,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     cursor: 'pointer',
   };
 
-  const modalBackground = 'var(--hz-card-bg, #FFFFFF)';
+  const modalBackground = 'var(--surface-card, #FFFFFF)';
 
   return (
     <div
@@ -409,7 +409,8 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
+        background: 'rgba(2, 30, 63, 0.56)',
+        backdropFilter: 'blur(2px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -419,14 +420,15 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     >
       <div style={{
         background: modalBackground,
-        borderRadius: '12px',
+        borderRadius: '14px',
         width: '100%',
-        maxWidth: '760px',
-        maxHeight: 'calc(100vh - 2.5rem)',
+        maxWidth: '720px',
+        maxHeight: 'calc(100vh - 1.5rem)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
+        boxShadow: 'var(--shadow-2, 0 10px 28px rgba(2, 30, 63, 0.16))',
+        border: '1px solid var(--border, #E2E5EE)',
       }}>
         {/* Header */}
         <div style={{
@@ -467,7 +469,6 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
             flexDirection: 'column',
             gap: '1.25rem',
             overflowY: 'auto',
-            scrollbarGutter: 'stable',
           }}
         >
           {/* Section: Datos Básicos */}
@@ -1084,20 +1085,6 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
               </Section>
             </>
           )}
-
-          {/* Notas */}
-          <FormField label="Notas">
-            <textarea
-              value={formData.notas}
-              onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-              rows={3}
-              style={{
-                ...inputStyle(),
-                resize: 'vertical',
-              }}
-              placeholder="Notas adicionales..."
-            />
-          </FormField>
 
           {/* Actions */}
           <div style={{
