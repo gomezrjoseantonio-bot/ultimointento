@@ -27,6 +27,7 @@ import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
+import { cuentasService } from '../../services/cuentasService';
 import './treasury-reconciliation.css';
 
 /**
@@ -232,6 +233,37 @@ const TreasuryReconciliationView: React.FC = () => {
       }
 
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      const dbAccountIdSet = new Set<number>(
+        dbAccounts
+          .map(account => toNumericId(account.id))
+          .filter((id): id is number => id != null),
+      );
+
+      const localToDbAccountId = new Map<number, number>();
+      try {
+        const localAccounts = await cuentasService.list();
+        for (const localAcc of localAccounts) {
+          const localId = toNumericId(localAcc.id);
+          if (localId == null || !localAcc.iban) continue;
+          const dbMatch = dbAccounts.find(acc => acc.iban === localAcc.iban);
+          const dbId = toNumericId(dbMatch?.id);
+          if (dbId != null) {
+            localToDbAccountId.set(localId, dbId);
+          }
+        }
+      } catch {
+        // Silently ignore: fallback keeps existing IDs if localStorage mapping is unavailable.
+      }
+
+      const resolveCanonicalAccountId = (rawId: unknown): number | undefined => {
+        const parsedId = toNumericId(rawId);
+        if (parsedId == null) return undefined;
+        const mappedId = localToDbAccountId.get(parsedId);
+        if (mappedId != null) return mappedId;
+        if (dbAccountIdSet.has(parsedId)) return parsedId;
+        return undefined;
+      };
+
       for (const account of dbAccounts) {
         if (account.id == null) continue;
         if (account.cardConfig?.chargeAccountId != null) {
