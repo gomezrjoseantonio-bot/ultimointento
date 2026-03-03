@@ -232,6 +232,10 @@ const TreasuryReconciliationView: React.FC = () => {
       }
 
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+<<<<<<< codex/fix-unused-variable-in-treasuryreconciliationview
+
+=======
+>>>>>>> main
       for (const account of dbAccounts) {
         if (account.id == null) continue;
         if (account.cardConfig?.chargeAccountId != null) {
