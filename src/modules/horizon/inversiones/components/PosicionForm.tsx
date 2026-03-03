@@ -399,6 +399,8 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     cursor: 'pointer',
   };
 
+  const modalBackground = 'var(--hz-card-bg, #FFFFFF)';
+
   return (
     <div
       onMouseDown={(event) => {
@@ -416,7 +418,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       }}
     >
       <div style={{
-        background: 'var(--hz-card-bg)',
+        background: modalBackground,
         borderRadius: '12px',
         width: '100%',
         maxWidth: '760px',
@@ -433,7 +435,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
           justifyContent: 'space-between',
           padding: '1.25rem 1.5rem',
           borderBottom: '1px solid var(--hz-neutral-300)',
-          background: 'var(--hz-card-bg)',
+          background: modalBackground,
           position: 'sticky',
           top: 0,
           zIndex: 2,
@@ -1105,7 +1107,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
             marginTop: '0.5rem',
             position: 'sticky',
             bottom: 0,
-            background: 'var(--hz-card-bg)',
+            background: modalBackground,
             paddingTop: '0.75rem',
             borderTop: '1px solid var(--hz-neutral-200)',
           }}>
