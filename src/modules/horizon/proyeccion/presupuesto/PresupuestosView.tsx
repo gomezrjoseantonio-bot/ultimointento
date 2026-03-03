@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { BarChart3, Calculator, TrendingUp } from 'lucide-react';
+import { BarChart3, Calculator, TrendingUp, Layers } from 'lucide-react';
 import ProyeccionMensual from '../mensual/ProyeccionMensual';
 import ProyeccionPresupuesto from './ProyeccionPresupuesto';
 import ProyeccionComparativa from '../comparativa/ProyeccionComparativa';
+import PresupuestoScopeView from './PresupuestoScopeView';
 
-type PresupuestosTab = 'proyeccion' | 'presupuesto' | 'comparativa';
+type PresupuestosTab = 'operativa' | 'proyeccion' | 'presupuesto' | 'comparativa';
 
 const PresupuestosView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<PresupuestosTab>('proyeccion');
+  const [activeTab, setActiveTab] = useState<PresupuestosTab>('operativa');
 
   const tabs = [
+    {
+      id: 'operativa' as const,
+      label: 'Forecast/Actual (Nueva)',
+      icon: Layers,
+    },
     {
       id: 'proyeccion' as const,
       label: 'Proyección Automática',
@@ -29,6 +35,8 @@ const PresupuestosView: React.FC = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'operativa':
+        return <PresupuestoScopeView />;
       case 'proyeccion':
         return <ProyeccionMensual />;
       case 'presupuesto':
@@ -36,7 +44,7 @@ const PresupuestosView: React.FC = () => {
       case 'comparativa':
         return <ProyeccionComparativa />;
       default:
-        return <ProyeccionMensual />;
+        return <PresupuestoScopeView />;
     }
   };
 
