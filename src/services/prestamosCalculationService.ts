@@ -433,9 +433,9 @@ export class PrestamosCalculationService {
 
       periodos.push({
         periodo,
-        devengoDesde: devengoDesde.toISOString().split('T')[0],
-        devengoHasta: devengoHasta.toISOString().split('T')[0],
-        fechaCargo: fechaCargo.toISOString().split('T')[0],
+        devengoDesde: this.formatLocalDate(devengoDesde),
+        devengoHasta: this.formatLocalDate(devengoHasta),
+        fechaCargo: this.formatLocalDate(fechaCargo),
         cuota: cuotaCentimos / 100,
         interes: interesCentimos / 100,
         amortizacion: amortizacionCentimos / 100,
@@ -528,7 +528,7 @@ export class PrestamosCalculationService {
       // Keep same term, reduce payment
       nuevaCuota = this.calculateFrenchPayment(nuevoPrincipal, baseRate, mesesRestantes);
       nuevoplazo = mesesRestantes;
-      nuevaFechaFin = fechaFin.toISOString().split('T')[0];
+      nuevaFechaFin = this.formatLocalDate(fechaFin);
     } else {
       // Keep payment, reduce term
       const cuotaActual = this.calculateFrenchPayment(prestamo.principalVivo, baseRate, mesesRestantes);
@@ -536,7 +536,7 @@ export class PrestamosCalculationService {
       
       const nuevaFecha = new Date(fechaAmort);
       nuevaFecha.setMonth(nuevaFecha.getMonth() + nuevoplazo);
-      nuevaFechaFin = nuevaFecha.toISOString().split('T')[0];
+      nuevaFechaFin = this.formatLocalDate(nuevaFecha);
     }
 
     // Calculate interest savings
@@ -597,6 +597,18 @@ export class PrestamosCalculationService {
   private getDaysDifference(date1: Date, date2: Date): number {
     const timeDiff = date2.getTime() - date1.getTime();
     return Math.floor(timeDiff / (1000 * 3600 * 24));
+  }
+
+  /**
+   * Format a JS Date as YYYY-MM-DD using local calendar fields.
+   * Avoids UTC conversion drift from toISOString() in positive timezones.
+   */
+  private formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }
 
