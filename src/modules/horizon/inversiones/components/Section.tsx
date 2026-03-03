@@ -4,14 +4,16 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 
+type SectionColor = 'green' | 'blue' | 'gray' | 'orange' | 'purple';
+
 interface SectionProps {
   title: string;
   icon?: LucideIcon;
-  color?: 'green' | 'blue' | 'gray' | 'orange' | 'purple';
+  color?: SectionColor;
   children: React.ReactNode;
 }
 
-const colorMap = {
+const colorMap: Record<SectionColor, { bg: string; border: string; text: string; iconBg: string; iconColor: string }> = {
   green: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-teal)' },
   blue: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue)' },
   gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-navy-1)' },

@@ -182,6 +182,19 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     };
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onClose]);
+
+
   // Auto-populate liquidation plan for deposito_plazo
   useEffect(() => {
     if (
@@ -400,16 +413,21 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem',
-    }}>
+    <div
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '1rem',
+      }}
+    >
       <div style={{
         background: 'var(--hz-card-bg)',
         borderRadius: '12px',
