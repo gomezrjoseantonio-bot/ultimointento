@@ -13,12 +13,12 @@ interface SectionProps {
   children: React.ReactNode;
 }
 
-const colorMap: Record<SectionColor, { bg: string; border: string; text: string; iconBg: string; iconColor: string }> = {
-  green: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-teal)' },
-  blue: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue)' },
+const colorMap = {
+  green: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#e6f9f6', iconColor: '#0f766e' },
+  blue: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#e6efff', iconColor: 'var(--atlas-blue)' },
   gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-navy-1)' },
-  orange: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue-dark)' },
-  purple: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-blue)' },
+  orange: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#fff2e8', iconColor: '#c2410c' },
+  purple: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#f2ecff', iconColor: '#6d28d9' },
 };
 
 const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', children }) => {

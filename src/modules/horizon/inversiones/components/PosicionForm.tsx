@@ -182,19 +182,6 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     };
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [onClose]);
-
-
   // Auto-populate liquidation plan for deposito_plazo
   useEffect(() => {
     if (
@@ -432,21 +419,24 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         background: 'var(--hz-card-bg)',
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '920px',
-        maxHeight: 'min(920px, calc(100vh - 2rem))',
+        maxWidth: '760px',
+        maxHeight: 'calc(100vh - 2.5rem)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 24px 48px rgba(2, 21, 48, 0.2)',
+        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.18)',
       }}>
         {/* Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '1rem 1.5rem',
+          padding: '1.25rem 1.5rem',
           borderBottom: '1px solid var(--hz-neutral-300)',
           background: 'var(--hz-card-bg)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
         }}>
           <h2 style={{
             fontFamily: 'var(--font-inter)',
@@ -470,13 +460,12 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         <form
           onSubmit={handleSubmit}
           style={{
-            padding: '1rem 1.5rem',
+            padding: '1.25rem 1.5rem 1.5rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '1.25rem',
             overflowY: 'auto',
             scrollbarGutter: 'stable',
-            overscrollBehavior: 'contain',
           }}
         >
           {/* Section: Datos Básicos */}
@@ -1114,7 +1103,11 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
             gap: '1rem',
             justifyContent: 'flex-end',
             marginTop: '0.5rem',
-            paddingTop: '0.25rem'
+            position: 'sticky',
+            bottom: 0,
+            background: 'var(--hz-card-bg)',
+            paddingTop: '0.75rem',
+            borderTop: '1px solid var(--hz-neutral-200)',
           }}>
             <button
               type="button"
