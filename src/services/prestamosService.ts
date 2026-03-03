@@ -158,12 +158,43 @@ export class PrestamosService {
       'principalInicial', 'plazoMesesTotal', 'tipo',
       'tipoNominalAnualFijo', 'valorIndiceActual', 'diferencial', 
       'tramoFijoMeses', 'tipoNominalAnualMixtoFijo', 'mesesSoloIntereses',
-      'diferirPrimeraCuotaMeses', 'diaCargoMes', 'fechaFirma'
+      'diferirPrimeraCuotaMeses', 'diaCargoMes', 'fechaFirma', 'fechaPrimerCargo'
     ];
     
     return criticalFields.some(field => 
       original[field as keyof Prestamo] !== updated[field as keyof Prestamo]
     );
+  }
+
+  private needsPlanRegeneration(prestamo: Prestamo, plan: PlanPagos): boolean {
+    if (!plan.periodos || plan.periodos.length === 0) return true;
+    if (this.hasIrregularMonthlyCadence(plan)) return true;
+
+    // First installment must match explicit first charge date (date-only compare)
+    if (prestamo.fechaPrimerCargo) {
+      const expectedFirst = prestamo.fechaPrimerCargo.slice(0, 10);
+      const currentFirst = plan.periodos[0]?.fechaCargo?.slice(0, 10);
+      if (expectedFirst && currentFirst && expectedFirst !== currentFirst) {
+        return true;
+      }
+    }
+
+    // Principal amortized must match initial principal to the cent
+    const amortizadoCentimos = plan.periodos.reduce(
+      (sum, p) => sum + Math.round(p.amortizacion * 100),
+      0,
+    );
+    const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
+    if (amortizadoCentimos !== principalInicialCentimos) {
+      return true;
+    }
+
+    const finalPrincipalCentimos = Math.round((plan.periodos[plan.periodos.length - 1]?.principalFinal || 0) * 100);
+    if (finalPrincipalCentimos !== 0) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -211,12 +242,12 @@ export class PrestamosService {
     // Check in-memory cache first
     if (this.planesGenerados.has(prestamoId)) {
       const cachedPlan = this.planesGenerados.get(prestamoId)!;
-      if (!this.hasIrregularMonthlyCadence(cachedPlan)) {
+      if (!this.needsPlanRegeneration(prestamo, cachedPlan)) {
         console.log(`[PRESTAMOS] Using cached amortization schedule for ${prestamoId}`);
         return cachedPlan;
       }
 
-      console.warn(`[PRESTAMOS] Cached schedule has irregular monthly cadence, regenerating ${prestamoId}`);
+      console.warn(`[PRESTAMOS] Cached schedule is outdated/inconsistent, regenerating ${prestamoId}`);
       this.planesGenerados.delete(prestamoId);
     }
 
@@ -225,13 +256,13 @@ export class PrestamosService {
       const db = await initDB();
       const persistedPlan = await db.get('keyval', `planpagos_${prestamoId}`) as PlanPagos | undefined;
       if (persistedPlan) {
-        if (!this.hasIrregularMonthlyCadence(persistedPlan)) {
+        if (!this.needsPlanRegeneration(prestamo, persistedPlan)) {
           console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
           this.planesGenerados.set(prestamoId, persistedPlan);
           return persistedPlan;
         }
 
-        console.warn(`[PRESTAMOS] Persisted schedule has irregular monthly cadence, regenerating ${prestamoId}`);
+        console.warn(`[PRESTAMOS] Persisted schedule is outdated/inconsistent, regenerating ${prestamoId}`);
       }
     } catch (error) {
       console.error('[PRESTAMOS] Failed to read payment plan from IndexedDB:', error);

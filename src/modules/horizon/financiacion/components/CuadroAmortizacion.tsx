@@ -23,6 +23,30 @@ interface CuadroAmortizacionProps {
 
 const PAGE_SIZE = 25;
 
+function parseISODateOnly(dateStr: string): Date {
+  const [y, m, d] = (dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return new Date(NaN);
+  return new Date(y, m - 1, d);
+}
+
+function addMonthsWithClampedDay(baseDate: Date, monthsToAdd: number, dayOfMonth: number): Date {
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth() + monthsToAdd;
+  const firstOfTargetMonth = new Date(year, month, 1);
+  const lastDay = new Date(
+    firstOfTargetMonth.getFullYear(),
+    firstOfTargetMonth.getMonth() + 1,
+    0,
+  ).getDate();
+  const safeDay = Math.max(1, Math.min(dayOfMonth, lastDay));
+
+  return new Date(
+    firstOfTargetMonth.getFullYear(),
+    firstOfTargetMonth.getMonth(),
+    safeDay,
+  );
+}
+
 const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
   capitalInicial,
   tinAnual,
@@ -37,33 +61,51 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
   const rows = useMemo<AmortizacionRow[]>(() => {
     const result: AmortizacionRow[] = [];
     const tasaMensual = tinAnual / 100 / 12;
-    let capitalPendiente = capitalInicial;
+    let capitalPendienteCentimos = Math.round(capitalInicial * 100);
 
-    const cuota =
-      tasaMensual > 0
+    const cuotaCentimos = Math.round(
+      (tasaMensual > 0
         ? capitalInicial * (tasaMensual * Math.pow(1 + tasaMensual, plazoMeses)) /
           (Math.pow(1 + tasaMensual, plazoMeses) - 1)
-        : capitalInicial / plazoMeses;
+        : capitalInicial / plazoMeses) * 100,
+    );
 
-    const fechaBase = new Date(fechaInicio);
+    const firstDate = parseISODateOnly(fechaInicio);
+    if (isNaN(firstDate.getTime())) return result;
+    const paymentDay = firstDate.getDate();
+    let fechaCargo = new Date(firstDate);
 
     for (let i = 1; i <= plazoMeses; i++) {
-      const intereses = capitalPendiente * tasaMensual;
-      const capital = cuota - intereses;
-      capitalPendiente = Math.max(0, capitalPendiente - capital);
+      const interesesCentimos = Math.round((capitalPendienteCentimos / 100) * tasaMensual * 100);
 
-      fechaBase.setMonth(fechaBase.getMonth() + 1);
+      let capitalCentimos: number;
+      let cuotaPeriodoCentimos: number;
+      if (i === plazoMeses) {
+        capitalCentimos = capitalPendienteCentimos;
+        cuotaPeriodoCentimos = capitalCentimos + interesesCentimos;
+      } else {
+        cuotaPeriodoCentimos = cuotaCentimos;
+        capitalCentimos = cuotaPeriodoCentimos - interesesCentimos;
+        if (capitalCentimos < 0) {
+          capitalCentimos = 0;
+          cuotaPeriodoCentimos = interesesCentimos;
+        }
+      }
+
+      capitalPendienteCentimos = Math.max(0, capitalPendienteCentimos - capitalCentimos);
 
       result.push({
         periodo: i,
-        fecha: fechaBase.toLocaleDateString('es-ES'),
-        anio: fechaBase.getFullYear(),
-        cuota: Math.round(cuota * 100) / 100,
-        capital: Math.round(capital * 100) / 100,
-        intereses: Math.round(intereses * 100) / 100,
-        capitalPendiente: Math.round(capitalPendiente * 100) / 100,
+        fecha: fechaCargo.toLocaleDateString('es-ES'),
+        anio: fechaCargo.getFullYear(),
+        cuota: cuotaPeriodoCentimos / 100,
+        capital: capitalCentimos / 100,
+        intereses: interesesCentimos / 100,
+        capitalPendiente: capitalPendienteCentimos / 100,
         esMixto: tramoFijoMeses !== undefined && i <= tramoFijoMeses
       });
+
+      fechaCargo = addMonthsWithClampedDay(fechaCargo, 1, paymentDay);
     }
 
     return result;
@@ -85,8 +127,8 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
   const pageRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Summary totals
-  const totalCapital = rows.reduce((s, r) => s + r.capital, 0);
-  const totalIntereses = rows.reduce((s, r) => s + r.intereses, 0);
+  const totalCapital = rows.reduce((s, r) => s + Math.round(r.capital * 100), 0) / 100;
+  const totalIntereses = rows.reduce((s, r) => s + Math.round(r.intereses * 100), 0) / 100;
   const fechaFin = rows[rows.length - 1]?.fecha ?? '-';
 
   const fmt = (v: number) =>
