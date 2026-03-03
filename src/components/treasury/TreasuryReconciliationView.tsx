@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '../../utils/formatUtils';
+import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
@@ -141,7 +142,7 @@ const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
 
 const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
-  const name = (acc.alias || acc.banco?.name || acc.name || '').toLowerCase();
+  const name = normalizeText(acc.alias || acc.banco?.name || acc.name || '');
   if (name.includes('metal') || name.includes('cash') || name.includes('efectivo')) return 'cash';
   if (name.includes('revolut') || name.includes('wallet') || name.includes('paypal')) return 'wallet';
   return 'bank';
