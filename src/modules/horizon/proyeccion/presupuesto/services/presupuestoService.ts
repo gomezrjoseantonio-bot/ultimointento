@@ -1,5 +1,6 @@
 import { initDB, Presupuesto, PresupuestoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, UUID } from '../../../../../services/db';
 import { emitBudgetUpdatedEvent } from '../../../../../services/budgetReclassificationService';
+import { ensureLayeredBudgetLine } from './planningLayerService';
 
 // UUID helper (simple implementation)
 export const generateUUID = (): UUID => {
@@ -86,7 +87,8 @@ export const getPresupuestoLineas = async (presupuestoId: UUID): Promise<Presupu
   const db = await initDB();
   const tx = db.transaction('presupuestoLineas', 'readonly');
   const index = tx.store.index('presupuestoId');
-  return index.getAll(presupuestoId);
+  const lines = await index.getAll(presupuestoId);
+  return lines.map(line => ensureLayeredBudgetLine(line));
 };
 
 // Create presupuesto line
@@ -94,10 +96,10 @@ export const createPresupuestoLinea = async (linea: Omit<PresupuestoLinea, 'id'>
   const db = await initDB();
   const id = generateUUID();
   
-  const nuevaLinea: PresupuestoLinea = {
+  const nuevaLinea: PresupuestoLinea = ensureLayeredBudgetLine({
     ...linea,
     id
-  };
+  } as PresupuestoLinea);
   
   await db.add('presupuestoLineas', nuevaLinea);
   
@@ -121,10 +123,10 @@ export const updatePresupuestoLinea = async (id: UUID, updates: Partial<Presupue
   const linea = await db.get('presupuestoLineas', id);
   if (!linea) throw new Error('Presupuesto linea not found');
   
-  const updatedLinea: PresupuestoLinea = {
+  const updatedLinea: PresupuestoLinea = ensureLayeredBudgetLine({
     ...linea,
     ...updates
-  };
+  } as PresupuestoLinea);
   
   await db.put('presupuestoLineas', updatedLinea);
   
