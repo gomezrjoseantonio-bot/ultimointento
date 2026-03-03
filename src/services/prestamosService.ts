@@ -170,6 +170,19 @@ export class PrestamosService {
     if (!plan.periodos || plan.periodos.length === 0) return true;
     if (this.hasIrregularMonthlyCadence(plan)) return true;
 
+    // Date sequence must match current generation rules exactly.
+    // This catches legacy persisted plans that kept monthly cadence but drifted
+    // from the configured billing day after short months (e.g. day 31 loans).
+    const expectedPlan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+    if (expectedPlan.periodos.length !== plan.periodos.length) {
+      return true;
+    }
+    for (let i = 0; i < plan.periodos.length; i++) {
+      if (expectedPlan.periodos[i].fechaCargo !== plan.periodos[i].fechaCargo) {
+        return true;
+      }
+    }
+
     // First installment must match explicit first charge date (date-only compare)
     if (prestamo.fechaPrimerCargo) {
       const expectedFirst = prestamo.fechaPrimerCargo.slice(0, 10);
