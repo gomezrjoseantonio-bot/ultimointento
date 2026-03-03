@@ -266,12 +266,17 @@ const TreasuryReconciliationView: React.FC = () => {
       }
 
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      const cardSettlementByAlias = new Map<string, CardSettlementConfig>();
       for (const account of dbAccounts) {
         if (account.id == null) continue;
         if (account.cardConfig?.chargeAccountId != null) {
-          cardSettlementByAccountId.set(account.id, {
-            chargeAccountId: account.cardConfig.chargeAccountId,
-          });
+          const config = { chargeAccountId: account.cardConfig.chargeAccountId };
+          cardSettlementByAccountId.set(account.id, config);
+
+          const normalizedAlias = normalizeText(account.alias || account.name || '');
+          if (normalizedAlias) {
+            cardSettlementByAlias.set(normalizedAlias, config);
+          }
         }
       }
 
