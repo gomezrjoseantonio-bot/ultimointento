@@ -27,6 +27,7 @@ import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
+import { cuentasService } from '../../services/cuentasService';
 import './treasury-reconciliation.css';
 
 /**
@@ -66,6 +67,15 @@ interface SimpleAccount {
 interface CardSettlementConfig {
   chargeAccountId: number;
 }
+
+const toNumericId = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
 
 interface DesgloseLine {
   label: string;
@@ -223,11 +233,45 @@ const TreasuryReconciliationView: React.FC = () => {
       }
 
       const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      const dbAccountIdSet = new Set<number>(
+        dbAccounts
+          .map(account => toNumericId(account.id))
+          .filter((id): id is number => id != null),
+      );
+
+      const localToDbAccountId = new Map<number, number>();
+      try {
+        const localAccounts = await cuentasService.list();
+        for (const localAcc of localAccounts) {
+          const localId = toNumericId(localAcc.id);
+          if (localId == null || !localAcc.iban) continue;
+          const dbMatch = dbAccounts.find(acc => acc.iban === localAcc.iban);
+          const dbId = toNumericId(dbMatch?.id);
+          if (dbId != null) {
+            localToDbAccountId.set(localId, dbId);
+          }
+        }
+      } catch {
+        // Silently ignore: fallback keeps existing IDs if localStorage mapping is unavailable.
+      }
+
+      const resolveCanonicalAccountId = (rawId: unknown): number | undefined => {
+        const parsedId = toNumericId(rawId);
+        if (parsedId == null) return undefined;
+        const mappedId = localToDbAccountId.get(parsedId);
+        if (mappedId != null) return mappedId;
+        if (dbAccountIdSet.has(parsedId)) return parsedId;
+        return undefined;
+      };
+
       for (const account of dbAccounts) {
-        if (account.id == null) continue;
-        if (account.tipo === 'TARJETA_CREDITO' && account.cardConfig?.chargeAccountId != null) {
-          cardSettlementByAccountId.set(account.id, {
-            chargeAccountId: account.cardConfig.chargeAccountId,
+        const accountId = toNumericId(account.id);
+        if (accountId == null) continue;
+        if (account.cardConfig?.chargeAccountId != null) {
+          const chargeAccountId = resolveCanonicalAccountId(account.cardConfig.chargeAccountId);
+          if (chargeAccountId == null) continue;
+          cardSettlementByAccountId.set(accountId, {
+            chargeAccountId,
           });
         }
       }
@@ -252,11 +296,12 @@ const TreasuryReconciliationView: React.FC = () => {
             ? contractMap.get(Number(e.sourceId))
             : undefined;
 
-          const sourceCardConfig = e.sourceId != null
-            ? cardSettlementByAccountId.get(Number(e.sourceId))
+          const sourceId = resolveCanonicalAccountId(e.sourceId);
+          const sourceCardConfig = sourceId != null
+            ? cardSettlementByAccountId.get(sourceId)
             : undefined;
 
-          const eventAccountId = e.accountId != null ? Number(e.accountId) : undefined;
+          const eventAccountId = resolveCanonicalAccountId(e.accountId);
           const eventCardConfig = eventAccountId != null
             ? cardSettlementByAccountId.get(eventAccountId)
             : undefined;
