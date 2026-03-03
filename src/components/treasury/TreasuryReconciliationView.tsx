@@ -67,6 +67,13 @@ interface CardSettlementConfig {
   chargeAccountId: number;
 }
 
+interface DisplayAccountResolverInput {
+  eventAccountId?: number;
+  eventSourceId?: number;
+  sourceType?: string;
+  cardSettlementByAccountId: Map<number, CardSettlementConfig>;
+}
+
 const toNumericId = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string' && value.trim() !== '') {
@@ -74,6 +81,32 @@ const toNumericId = (value: unknown): number | undefined => {
     if (Number.isFinite(parsed)) return parsed;
   }
   return undefined;
+};
+
+export const resolveDisplayAccountId = ({
+  eventAccountId,
+  eventSourceId,
+  sourceType,
+  cardSettlementByAccountId,
+}: DisplayAccountResolverInput): number | undefined => {
+  const eventCardConfig = eventAccountId != null
+    ? cardSettlementByAccountId.get(eventAccountId)
+    : undefined;
+
+  // Backward-compatibility fallback:
+  // Some older card receipt events were created with empty `accountId` and only
+  // `sourceId` pointing to the credit-card account. In that legacy shape we can
+  // safely infer the bank account only for personal card expenses.
+  const sourceCardConfig =
+    eventAccountId == null &&
+    sourceType === 'personal_expense' &&
+    eventSourceId != null
+      ? cardSettlementByAccountId.get(eventSourceId)
+      : undefined;
+
+  return eventCardConfig?.chargeAccountId
+    ?? sourceCardConfig?.chargeAccountId
+    ?? eventAccountId;
 };
 
 interface DesgloseLine {
@@ -261,19 +294,24 @@ const TreasuryReconciliationView: React.FC = () => {
             ? contractMap.get(Number(e.sourceId))
             : undefined;
 
-          const sourceId = toNumericId(e.sourceId);
-          const sourceCardConfig = sourceId != null
-            ? cardSettlementByAccountId.get(sourceId)
-            : undefined;
-
           const eventAccountId = toNumericId(e.accountId);
-          const eventCardConfig = eventAccountId != null
-            ? cardSettlementByAccountId.get(eventAccountId)
-            : undefined;
+          const eventSourceId = toNumericId(e.sourceId);
 
-          const displayAccountId = sourceCardConfig?.chargeAccountId
-            ?? eventCardConfig?.chargeAccountId
-            ?? eventAccountId;
+          /**
+           * IMPORTANT:
+           * Primary mapping uses `accountId` to avoid polymorphic `sourceId`
+           * collisions (e.g. contrato IDs vs account IDs).
+           *
+           * Legacy exception (handled inside resolveDisplayAccountId):
+           * for old `personal_expense` card receipts with missing accountId,
+           * allow a guarded fallback through sourceId.
+           */
+          const displayAccountId = resolveDisplayAccountId({
+            eventAccountId,
+            eventSourceId,
+            sourceType: e.sourceType,
+            cardSettlementByAccountId,
+          });
 
           return {
             id: String(e.id),
