@@ -43,7 +43,8 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
+      background: 'rgba(2, 30, 63, 0.56)',
+      backdropFilter: 'blur(2px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -51,10 +52,12 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
       padding: '1rem',
     }}>
       <div style={{
-        background: 'var(--hz-card-bg)',
-        borderRadius: '12px',
+        background: 'var(--surface-card, #FFFFFF)',
+        border: '1px solid var(--border, #E2E5EE)',
+        boxShadow: 'var(--shadow-2, 0 10px 28px rgba(2, 30, 63, 0.16))',
+        borderRadius: '14px',
         width: '100%',
-        maxWidth: '440px',
+        maxWidth: '520px',
       }}>
         {/* Header */}
         <div style={{
@@ -66,7 +69,7 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
         }}>
           <h2 style={{
             fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-h2)',
+            fontSize: 'var(--text-xl)',
             fontWeight: 600,
             color: 'var(--atlas-navy-1)',
             margin: 0,
@@ -75,7 +78,7 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
           </h2>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--text-gray)' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--gray-500)' }}
           >
             <X size={20} />
           </button>
@@ -97,7 +100,7 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
               <label style={{
                 display: 'block',
                 fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
+                fontSize: 'var(--text-sm)',
                 fontWeight: 500,
                 color: 'var(--atlas-navy-1)',
                 marginBottom: '0.5rem',
@@ -112,15 +115,17 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: `1px solid ${errors.nuevoValor ? 'var(--error)' : 'var(--hz-neutral-300)'}`,
+                  border: `1px solid ${errors.nuevoValor ? 'var(--alert)' : 'var(--border)'}`,
                   borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
+                  background: 'var(--surface-card)',
+                  color: 'var(--gray-900)',
+                  fontFamily: 'var(--font-base)',
                   fontSize: '1rem',
                 }}
                 placeholder="10000.00"
               />
               {errors.nuevoValor && (
-                <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--alert)', marginTop: '0.25rem', display: 'block' }}>
                   {errors.nuevoValor}
                 </span>
               )}
@@ -131,7 +136,7 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
               <label style={{
                 display: 'block',
                 fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
+                fontSize: 'var(--text-sm)',
                 fontWeight: 500,
                 color: 'var(--atlas-navy-1)',
                 marginBottom: '0.5rem',
@@ -145,14 +150,16 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
                 style={{
                   width: '100%',
                   padding: '0.75rem',
-                  border: `1px solid ${errors.fecha ? 'var(--error)' : 'var(--hz-neutral-300)'}`,
+                  border: `1px solid ${errors.fecha ? 'var(--alert)' : 'var(--border)'}`,
                   borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
+                  background: 'var(--surface-card)',
+                  color: 'var(--gray-900)',
+                  fontFamily: 'var(--font-base)',
                   fontSize: '1rem',
                 }}
               />
               {errors.fecha && (
-                <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>
+                <span style={{ fontSize: 'var(--text-sm)', color: 'var(--alert)', marginTop: '0.25rem', display: 'block' }}>
                   {errors.fecha}
                 </span>
               )}
@@ -166,13 +173,13 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
               onClick={onClose}
               style={{
                 padding: '0.75rem 1.5rem',
-                border: '1px solid var(--hz-neutral-300)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                background: 'white',
-                fontFamily: 'var(--font-inter)',
+                background: 'var(--surface-card)',
+                fontFamily: 'var(--font-base)',
                 fontSize: '1rem',
                 fontWeight: 500,
-                color: 'var(--atlas-navy-1)',
+                color: 'var(--gray-900)',
                 cursor: 'pointer',
               }}
             >
@@ -185,7 +192,7 @@ const ActualizarValorModal: React.FC<ActualizarValorModalProps> = ({
                 border: 'none',
                 borderRadius: '8px',
                 background: 'var(--atlas-blue)',
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-base)',
                 fontSize: '1rem',
                 fontWeight: 500,
                 color: 'white',

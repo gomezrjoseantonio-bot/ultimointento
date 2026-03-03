@@ -59,8 +59,6 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   };
 
   const isPositive = posicion.rentabilidad_euros >= 0;
-  const rentabilidadColor = isPositive ? 'var(--ok)' : 'var(--error)';
-
   // Sort aportaciones by date descending
   const aportacionesOrdenadas = [...posicion.aportaciones].sort(
     (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
@@ -70,7 +68,8 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
+      background: 'rgba(2, 30, 63, 0.56)',
+      backdropFilter: 'blur(2px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -78,8 +77,10 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
       padding: '1rem',
     }}>
       <div style={{
-        background: 'var(--hz-card-bg)',
-        borderRadius: '12px',
+        background: 'var(--surface-card, #FFFFFF)',
+        border: '1px solid var(--border, #E2E5EE)',
+        boxShadow: 'var(--shadow-2, 0 10px 28px rgba(2, 30, 63, 0.16))',
+        borderRadius: '14px',
         width: '100%',
         maxWidth: '680px',
         maxHeight: '90vh',
@@ -113,7 +114,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--text-gray)' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--gray-500)' }}
           >
             <X size={20} />
           </button>
@@ -128,7 +129,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             marginBottom: '2rem',
           }}>
             <div style={{
-              background: 'var(--hz-info-soft)',
+              background: 'var(--blue-050)',
               borderRadius: '10px',
               padding: '1rem',
             }}>
@@ -160,7 +161,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             </div>
 
             <div style={{
-              background: 'var(--hz-neutral-100)',
+              background: 'var(--gray-050)',
               borderRadius: '10px',
               padding: '1rem',
             }}>
@@ -184,14 +185,14 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             </div>
 
             <div style={{
-              background: isPositive ? 'var(--hz-success-soft, #f0fdfa)' : 'var(--hz-error-soft, #fef2f2)',
+              background: isPositive ? 'var(--teal-050)' : '#F8F9FC',
               borderRadius: '10px',
               padding: '1rem',
             }}>
               <div style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: 'var(--text-caption)',
-                color: 'var(--text-gray)',
+                color: 'var(--gray-500)',
                 marginBottom: '0.25rem',
               }}>
                 Rentabilidad
@@ -200,7 +201,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 fontFamily: 'var(--font-inter)',
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: rentabilidadColor,
+                color: isPositive ? 'var(--teal-600)' : 'var(--gray-700)',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {posicion.rentabilidad_porcentaje >= 0 ? '+' : ''}
@@ -209,7 +210,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               <div style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.75rem',
-                color: rentabilidadColor,
+                color: isPositive ? 'var(--teal-600)' : 'var(--gray-700)',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {posicion.rentabilidad_euros >= 0 ? '+' : ''}
@@ -264,7 +265,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 color: 'var(--text-gray)',
                 textAlign: 'center',
                 padding: '1.5rem',
-                background: 'var(--hz-neutral-100)',
+                background: 'var(--gray-100)',
                 borderRadius: '8px',
                 margin: 0,
               }}>
@@ -279,7 +280,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                   fontSize: 'var(--text-caption)',
                 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       {['Fecha', 'Tipo', 'Importe', 'Notas'].map(col => (
                         <th key={col} style={{
                           textAlign: 'left',
@@ -294,7 +295,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                   </thead>
                   <tbody>
                     {aportacionesOrdenadas.map(ap => (
-                      <tr key={ap.id} style={{ borderBottom: '1px solid var(--hz-neutral-100)' }}>
+                      <tr key={ap.id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
                         <td style={{ padding: '0.625rem 0.75rem', color: 'var(--atlas-navy-1)' }}>
                           {formatDate(ap.fecha)}
                         </td>
@@ -312,7 +313,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                         </td>
                         <td style={{
                           padding: '0.625rem 0.75rem',
-                          color: ap.tipo === 'reembolso' ? '#f97316' : 'var(--atlas-navy-1)',
+                          color: ap.tipo === 'reembolso' ? 'var(--gray-700)' : 'var(--atlas-navy-1)',
                           fontVariantNumeric: 'tabular-nums',
                           fontWeight: 600,
                         }}>
@@ -348,7 +349,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr style={{ borderTop: '2px solid var(--hz-neutral-300)' }}>
+                    <tr style={{ borderTop: '2px solid var(--border)' }}>
                       <td colSpan={2} style={{
                         padding: '0.625rem 0.75rem',
                         fontWeight: 600,
@@ -379,7 +380,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             gap: '0.75rem',
             justifyContent: 'flex-end',
             paddingTop: '1rem',
-            borderTop: '1px solid var(--hz-neutral-300)',
+            borderTop: '1px solid var(--border)',
           }}>
             <button
               onClick={onActualizarValor}
@@ -408,9 +409,9 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.75rem 1.25rem',
-                border: '1px solid var(--hz-neutral-300)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                background: 'white',
+                background: 'var(--surface-card)',
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.875rem',
                 fontWeight: 500,
@@ -427,7 +428,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 padding: '0.75rem 1.25rem',
                 border: 'none',
                 borderRadius: '8px',
-                background: 'var(--hz-neutral-300)',
+                background: 'var(--gray-100)',
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.875rem',
                 fontWeight: 500,
