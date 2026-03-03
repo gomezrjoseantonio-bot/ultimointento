@@ -383,6 +383,45 @@ export const sembrarPresupuesto = async (
   return lineasCreadas;
 };
 
+
+export const syncPresupuestoActualFromMovements = async (presupuestoId: UUID): Promise<{ updated: number }> => {
+  const db = await initDB();
+  const presupuesto = await db.get('presupuestos', presupuestoId);
+  if (!presupuesto) throw new Error('Presupuesto not found');
+
+  const tx = db.transaction(['presupuestoLineas', 'movements'], 'readwrite');
+  const linesIndex = tx.objectStore('presupuestoLineas').index('presupuestoId');
+  const lineas = await linesIndex.getAll(presupuestoId);
+  const movements = await tx.objectStore('movements').getAll();
+
+  let updated = 0;
+  for (const line of lineas) {
+    const layeredLine = ensureLayeredBudgetLine(line as PresupuestoLinea);
+    const actualAmountByMonth = calculateActualAmountsByLine(layeredLine, presupuesto.year, movements);
+    const baseLayered = buildLayeredAmounts({
+      amountByMonth: layeredLine.amountByMonth,
+      planAmountByMonth: layeredLine.planAmountByMonth,
+      forecastAmountByMonth: layeredLine.forecastAmountByMonth,
+      actualAmountByMonth,
+      statusCertidumbreByMonth: layeredLine.statusCertidumbreByMonth
+    });
+
+    const statusCertidumbreByMonth = baseLayered.statusCertidumbreByMonth.map((status, idx) =>
+      actualAmountByMonth[idx] > 0 ? 'conciliado' : status
+    );
+
+    await tx.objectStore('presupuestoLineas').put({
+      ...layeredLine,
+      actualAmountByMonth,
+      statusCertidumbreByMonth
+    });
+    updated += 1;
+  }
+
+  await tx.done;
+  return { updated };
+};
+
 // Calculate totals and monthly breakdown
 export interface ResumenPresupuesto {
   year: number;
