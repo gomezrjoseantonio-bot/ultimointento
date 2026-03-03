@@ -401,6 +401,7 @@ export const syncPresupuestoActualFromMovements = async (presupuestoId: UUID): P
     const actualAmountByMonth = calculateActualAmountsByLine(layeredLine, presupuesto.year, movements);
     const baseLayered = buildLayeredAmounts({
       amountByMonth: layeredLine.amountByMonth,
+      lrpAmountByMonth: layeredLine.lrpAmountByMonth,
       planAmountByMonth: layeredLine.planAmountByMonth,
       forecastAmountByMonth: layeredLine.forecastAmountByMonth,
       actualAmountByMonth,

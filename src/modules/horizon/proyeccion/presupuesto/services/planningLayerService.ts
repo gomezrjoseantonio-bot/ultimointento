@@ -13,9 +13,10 @@ const normalizeMonthArray = (values?: number[]): number[] => {
   return base;
 };
 
-export const buildLayeredAmounts = (line: Pick<PresupuestoLinea, 'amountByMonth' | 'planAmountByMonth' | 'forecastAmountByMonth' | 'actualAmountByMonth' | 'statusCertidumbreByMonth'>) => {
+export const buildLayeredAmounts = (line: Pick<PresupuestoLinea, 'amountByMonth' | 'lrpAmountByMonth' | 'planAmountByMonth' | 'forecastAmountByMonth' | 'actualAmountByMonth' | 'statusCertidumbreByMonth'>) => {
   const legacy = normalizeMonthArray(line.amountByMonth);
-  const plan = normalizeMonthArray(line.planAmountByMonth || legacy);
+  const lrp = normalizeMonthArray(line.lrpAmountByMonth || line.planAmountByMonth || legacy);
+  const plan = normalizeMonthArray(line.planAmountByMonth || lrp);
   const forecast = normalizeMonthArray(line.forecastAmountByMonth || legacy);
   const actual = normalizeMonthArray(line.actualAmountByMonth);
 
@@ -38,6 +39,7 @@ export const buildLayeredAmounts = (line: Pick<PresupuestoLinea, 'amountByMonth'
   }
 
   return {
+    lrpAmountByMonth: lrp,
     planAmountByMonth: plan,
     forecastAmountByMonth: forecast,
     actualAmountByMonth: actual,
@@ -51,6 +53,6 @@ export const ensureLayeredBudgetLine = <T extends PresupuestoLinea | Omit<Presup
   return {
     ...line,
     ...layered,
-    planningLayer: line.planningLayer || 'BUDGET'
+    planningLayer: line.planningLayer || 'FORECAST'
   };
 };

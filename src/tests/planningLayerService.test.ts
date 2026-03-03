@@ -12,6 +12,15 @@ describe('planningLayerService', () => {
     expect(result.statusCertidumbreByMonth[0]).toBe('previsto');
   });
 
+
+  it('creates LRP layer from legacy data when missing', () => {
+    const legacy = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
+    const result = buildLayeredAmounts({ amountByMonth: legacy });
+
+    expect(result.lrpAmountByMonth).toEqual(legacy);
+    expect(result.planAmountByMonth).toEqual(legacy);
+  });
+
   it('marks month as conciliado when actual exists', () => {
     const result = buildLayeredAmounts({
       amountByMonth: new Array(12).fill(0),

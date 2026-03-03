@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Copy } from 'lucide-react';
-import { PresupuestoLinea } from '../../../../../services/db';
+import { PresupuestoLinea, PlanningLayer } from '../../../../../services/db';
 
 interface BudgetTableEditorProps {
   lines: PresupuestoLinea[];
@@ -25,30 +25,36 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
 }) => {
   const [editingCell, setEditingCell] = useState<EditCell | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [activeLayer, setActiveLayer] = useState<PlanningLayer>('FORECAST');
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 
-                     'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+    'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
+  const getAmountsByLayer = (line: PresupuestoLinea, layer: PlanningLayer): number[] => {
+    let base: number[] | undefined;
+    if (layer === 'LRP') base = line.lrpAmountByMonth;
+    if (layer === 'BUDGET') base = line.planAmountByMonth;
+    if (layer === 'FORECAST') base = line.forecastAmountByMonth || line.amountByMonth;
+    if (layer === 'ACTUAL') base = line.actualAmountByMonth;
 
-  const getEditableAmounts = (line: PresupuestoLinea): number[] => {
-    const base = line.forecastAmountByMonth || line.amountByMonth || [];
     const normalized = new Array(12).fill(0);
-    for (let i = 0; i < Math.min(base.length, 12); i += 1) {
-      normalized[i] = Number(base[i] || 0);
+    const source = base || [];
+    for (let i = 0; i < Math.min(source.length, 12); i += 1) {
+      normalized[i] = Number(source[i] || 0);
     }
     return normalized;
   };
+
+  const getEditableAmounts = (line: PresupuestoLinea): number[] => getAmountsByLayer(line, activeLayer);
 
   const getLineCertidumbre = (line: PresupuestoLinea, monthIndex: number): string | null => {
     return line.statusCertidumbreByMonth?.[monthIndex] || null;
   };
 
-  // Income and expense lines
   const incomeLines = lines.filter(line => line.type === 'INGRESO');
   const expenseLines = lines.filter(line => line.type === 'COSTE');
 
-  // Calculate monthly totals
   const monthlyIncomeTotals = new Array(12).fill(0);
   const monthlyExpenseTotals = new Array(12).fill(0);
 
@@ -64,11 +70,10 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     });
   });
 
-  const monthlyNetTotals = monthlyIncomeTotals.map((income, month) => 
+  const monthlyNetTotals = monthlyIncomeTotals.map((income, month) =>
     income - monthlyExpenseTotals[month]
   );
 
-  // Annual totals
   const annualIncomeTotal = monthlyIncomeTotals.reduce((sum, month) => sum + month, 0);
   const annualExpenseTotal = monthlyExpenseTotals.reduce((sum, month) => sum + month, 0);
   const annualNetTotal = annualIncomeTotal - annualExpenseTotal;
@@ -82,7 +87,7 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
 
   const handleCellClick = (lineId: string, field: string, month?: number) => {
     if (readonly) return;
-    
+
     const line = lines.find(l => l.id === lineId);
     if (!line) return;
 
@@ -122,8 +127,14 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
       } else if (editingCell.field === 'amount' && editingCell.month !== undefined) {
         const newAmounts = [...getEditableAmounts(line)];
         newAmounts[editingCell.month] = parseFloat(editValue) || 0;
-        updates.forecastAmountByMonth = newAmounts;
-        updates.amountByMonth = newAmounts;
+
+        if (activeLayer === 'LRP') updates.lrpAmountByMonth = newAmounts;
+        if (activeLayer === 'BUDGET') updates.planAmountByMonth = newAmounts;
+        if (activeLayer === 'FORECAST') {
+          updates.forecastAmountByMonth = newAmounts;
+          updates.amountByMonth = newAmounts;
+        }
+        if (activeLayer === 'ACTUAL') updates.actualAmountByMonth = newAmounts;
       }
 
       return { ...line, ...updates };
@@ -141,7 +152,6 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     } else if (e.key === 'Tab') {
       e.preventDefault();
       handleCellSave();
-      // TODO: Move to next cell
     }
   };
 
@@ -158,10 +168,11 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
 
     const newLine: PresupuestoLinea = {
       ...lineToClone,
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp-${Date.now()}`,
       label: `${lineToClone.label} (copia)`,
-      amountByMonth: [...getEditableAmounts(lineToClone)],
-      forecastAmountByMonth: [...getEditableAmounts(lineToClone)],
+      amountByMonth: [...getAmountsByLayer(lineToClone, 'FORECAST')],
+      forecastAmountByMonth: [...getAmountsByLayer(lineToClone, 'FORECAST')],
+      lrpAmountByMonth: lineToClone.lrpAmountByMonth ? [...lineToClone.lrpAmountByMonth] : undefined,
       planAmountByMonth: lineToClone.planAmountByMonth ? [...lineToClone.planAmountByMonth] : undefined,
       actualAmountByMonth: lineToClone.actualAmountByMonth ? [...lineToClone.actualAmountByMonth] : undefined,
       statusCertidumbreByMonth: lineToClone.statusCertidumbreByMonth ? [...lineToClone.statusCertidumbreByMonth] : undefined
@@ -184,9 +195,9 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
     month?: number,
     className?: string
   ) => {
-    const isEditing = editingCell?.lineId === lineId && 
-                     editingCell?.field === field && 
-                     editingCell?.month === month;
+    const isEditing = editingCell?.lineId === lineId &&
+      editingCell?.field === field &&
+      editingCell?.month === month;
 
     if (isEditing) {
       return (
@@ -220,13 +231,13 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
   ) => (
     <div className="mb-8">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      
+
       <div className="overflow-x-auto border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="w-8 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                {!readonly && scope !== 'CONSOLIDADO' && 
+                {!readonly && scope !== 'CONSOLIDADO' &&
                   <button
                     onClick={onAddLine}
                     className="p-1 text-primary-600 hover:text-primary-800"
@@ -236,102 +247,56 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                   </button>
                 }
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">
-                Tipo
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                Categoría
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">
-                Subtipo
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-64">
-                Descripción
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">
-                Proveedor
-              </th>
-              {monthNames.map((month, index) => (
-                <th key={month} className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase w-24">
-                  {month}
-                </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">Tipo</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Categoría</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-32">Subtipo</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-64">Descripción</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase w-48">Proveedor</th>
+              {monthNames.map((month) => (
+                <th key={month} className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase w-24">{month}</th>
               ))}
-              <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase w-24">
-                Total
-              </th>
+              <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase w-24">Total</th>
               {!readonly && scope !== 'CONSOLIDADO' && (
-                <th className="w-16 px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                  Acciones
-                </th>
+                <th className="w-16 px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acciones</th>
               )}
             </tr>
           </thead>
-          
+
           <tbody className="bg-white divide-y divide-gray-200">
             {sectionLines.map((line) => {
               const displayAmounts = getEditableAmounts(line);
               const lineTotal = displayAmounts.reduce((sum, amount) => sum + (amount || 0), 0);
-              
+
               return (
                 <tr key={line.id} className="hover:bg-gray-50">
                   <td className="px-2 py-2">
                     {scope === 'CONSOLIDADO' && (
-                      <span className={`inline-block w-3 h-3 ${
-                        line.scope === 'PERSONAL' ? 'bg-primary-500' : 'bg-success-500'
-                      }`} title={line.scope} />
+                      <span className={`inline-block w-3 h-3 ${line.scope === 'PERSONAL' ? 'bg-primary-500' : 'bg-success-500'}`} title={line.scope} />
                     )}
                   </td>
-                  <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.type, line.id, 'type')}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.category, line.id, 'category')}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.subcategory || '', line.id, 'subcategory')}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.label, line.id, 'label')}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {renderEditableCell(line.counterpartyName || '', line.id, 'counterpartyName')}
-                  </td>
+                  <td className="px-3 py-2 text-sm">{renderEditableCell(line.type, line.id, 'type')}</td>
+                  <td className="px-3 py-2 text-sm">{renderEditableCell(line.category, line.id, 'category')}</td>
+                  <td className="px-3 py-2 text-sm">{renderEditableCell(line.subcategory || '', line.id, 'subcategory')}</td>
+                  <td className="px-3 py-2 text-sm">{renderEditableCell(line.label, line.id, 'label')}</td>
+                  <td className="px-3 py-2 text-sm">{renderEditableCell(line.counterpartyName || '', line.id, 'counterpartyName')}</td>
                   {displayAmounts.map((amount, monthIndex) => (
                     <td key={monthIndex} className="px-2 py-2 text-sm text-right">
                       <div className="flex flex-col items-end">
-                        {renderEditableCell(
-                          amount || 0, 
-                          line.id, 
-                          'amount', 
-                          monthIndex,
-                          'text-right'
-                        )}
-                        {getLineCertidumbre(line, monthIndex) && (
-                          <span className="text-[10px] uppercase text-gray-500">
-                            {getLineCertidumbre(line, monthIndex)}
-                          </span>
+                        {renderEditableCell(amount || 0, line.id, 'amount', monthIndex, 'text-right')}
+                        {activeLayer === 'FORECAST' && getLineCertidumbre(line, monthIndex) && (
+                          <span className="text-[10px] uppercase text-gray-500">{getLineCertidumbre(line, monthIndex)}</span>
                         )}
                       </div>
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-sm text-right font-medium">
-                    {formatEuro(lineTotal)}
-                  </td>
+                  <td className="px-3 py-2 text-sm text-right font-medium">{formatEuro(lineTotal)}</td>
                   {!readonly && scope !== 'CONSOLIDADO' && (
                     <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center space-x-1">
-                        <button
-                          onClick={() => handleDuplicateLine(line.id)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                          title="Duplicar línea"
-                        >
+                        <button onClick={() => handleDuplicateLine(line.id)} className="p-1 text-gray-400 hover:text-gray-600" title="Duplicar línea">
                           <Copy className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteLine(line.id)}
-                          className="p-1 text-gray-400 hover:text-error-600"
-                          title="Eliminar"
-                        >
+                        <button onClick={() => handleDeleteLine(line.id)} className="p-1 text-gray-400 hover:text-error-600" title="Eliminar">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -340,23 +305,14 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
                 </tr>
               );
             })}
-            
-            {/* Monthly totals row */}
+
             <tr className="bg-gray-100 font-medium">
-              <td colSpan={6} className="px-3 py-2 text-sm text-right">
-                Total {title}:
-              </td>
+              <td colSpan={6} className="px-3 py-2 text-sm text-right">Total {title}:</td>
               {monthlyTotals.map((total, monthIndex) => (
-                <td key={monthIndex} className="px-2 py-2 text-sm text-right font-bold">
-                  {formatEuro(total)}
-                </td>
+                <td key={monthIndex} className="px-2 py-2 text-sm text-right font-bold">{formatEuro(total)}</td>
               ))}
-              <td className="px-3 py-2 text-sm text-right font-bold">
-                {formatEuro(monthlyTotals.reduce((sum, month) => sum + month, 0))}
-              </td>
-              {!readonly && scope !== 'CONSOLIDADO' && (
-                <td></td>
-              )}
+              <td className="px-3 py-2 text-sm text-right font-bold">{formatEuro(monthlyTotals.reduce((sum, month) => sum + month, 0))}</td>
+              {!readonly && scope !== 'CONSOLIDADO' && <td></td>}
             </tr>
           </tbody>
         </table>
@@ -366,50 +322,49 @@ const BudgetTableEditor: React.FC<BudgetTableEditorProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="text-xs text-gray-500">
-        Mostrando capa editable de <strong>Forecast</strong>. 
-        `Actual` y `Plan` se conservan para conciliación y análisis sin romper el flujo actual.
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="text-xs text-gray-500">
+          Estás editando la capa <strong>{activeLayer}</strong>.
+        </div>
+        <div className="flex items-center gap-2">
+          {(['LRP', 'BUDGET', 'FORECAST', 'ACTUAL'] as PlanningLayer[]).map(layer => (
+            <button
+              key={layer}
+              onClick={() => setActiveLayer(layer)}
+              className={`px-3 py-1 text-xs border ${activeLayer === layer ? 'bg-primary-700 text-white border-primary-700' : 'bg-white text-gray-700 border-gray-300'}`}
+            >
+              {layer}
+            </button>
+          ))}
+        </div>
       </div>
-      {/* Ingresos Section */}
+
       {renderTableSection('Ingresos', incomeLines, monthlyIncomeTotals)}
-      
-      {/* Costes Section */}
       {renderTableSection('Costes', expenseLines, monthlyExpenseTotals)}
-      
-      {/* Net Totals */}
+
       <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
-        <h3 className="text-lg font-semibold text-primary-900 mb-4">Resumen Neto</h3>
-        
+        <h3 className="text-lg font-semibold text-primary-900 mb-4">Resumen Neto ({activeLayer})</h3>
+
         <div className="overflow-x-auto">
           <table className="min-w-full">
             <thead>
               <tr>
-                <th className="text-left text-sm font-medium text-primary-800 px-3 py-2 w-48">
-                  Concepto
-                </th>
+                <th className="text-left text-sm font-medium text-primary-800 px-3 py-2 w-48">Concepto</th>
                 {monthNames.map((month) => (
-                  <th key={month} className="text-center text-sm font-medium text-primary-800 px-2 py-2 w-24">
-                    {month}
-                  </th>
+                  <th key={month} className="text-center text-sm font-medium text-primary-800 px-2 py-2 w-24">{month}</th>
                 ))}
-                <th className="text-center text-sm font-medium text-primary-800 px-3 py-2 w-24">
-                  Total Anual
-                </th>
+                <th className="text-center text-sm font-medium text-primary-800 px-3 py-2 w-24">Total Anual</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td className="px-3 py-2 text-sm text-primary-900">Neto (Ingresos - Costes)</td>
                 {monthlyNetTotals.map((net, monthIndex) => (
-                  <td key={monthIndex} className={`px-2 py-2 text-sm text-center font-medium ${
-                    net >= 0 ? 'text-success-600' : 'text-error-600'
-                  }`}>
+                  <td key={monthIndex} className={`px-2 py-2 text-sm text-center font-medium ${net >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                     {formatEuro(net)}
                   </td>
                 ))}
-                <td className={`px-3 py-2 text-sm text-center font-bold text-lg ${
-                  annualNetTotal >= 0 ? 'text-success-600' : 'text-error-600'
-                }`}>
+                <td className={`px-3 py-2 text-sm text-center font-bold text-lg ${annualNetTotal >= 0 ? 'text-success-600' : 'text-error-600'}`}>
                   {formatEuro(annualNetTotal)}
                 </td>
               </tr>

@@ -1332,6 +1332,7 @@ export interface PresupuestoLinea {
   sourceRef?: UUID;                    // ID de Contrato, Préstamo, etc. (opcional)
   // Importes mensuales - Array de 12 posiciones para ENE...DIC
   amountByMonth: number[];             // DEPRECATED gradual: mantener compatibilidad con forecastAmountByMonth
+  lrpAmountByMonth?: number[];         // Nuevo: plan estratégico (3-5 años) para el año en curso
   planAmountByMonth?: number[];        // Nuevo: baseline anual (budget)
   forecastAmountByMonth?: number[];    // Nuevo: mejor estimación viva
   actualAmountByMonth?: number[];      // Nuevo: movimientos reales conciliados
