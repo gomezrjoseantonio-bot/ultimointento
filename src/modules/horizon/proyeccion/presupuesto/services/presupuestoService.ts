@@ -1,6 +1,7 @@
 import { initDB, Presupuesto, PresupuestoLinea, CategoriaGasto, CategoriaIngreso, FrecuenciaPago, UUID } from '../../../../../services/db';
 import { emitBudgetUpdatedEvent } from '../../../../../services/budgetReclassificationService';
-import { ensureLayeredBudgetLine } from './planningLayerService';
+import { calculateActualAmountsByLine } from './actualSyncService';
+import { buildLayeredAmounts, ensureLayeredBudgetLine } from './planningLayerService';
 
 // UUID helper (simple implementation)
 export const generateUUID = (): UUID => {
