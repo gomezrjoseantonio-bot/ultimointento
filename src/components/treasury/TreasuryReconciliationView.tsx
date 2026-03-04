@@ -27,7 +27,7 @@ import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
-import { normalizeText, resolveDisplayAccountId, type CardAliasMatcher } from './displayAccountResolver';
+import { buildCardSettlementLookups, resolveDisplayAccountId } from './displayAccountResolver';
 import './treasury-reconciliation.css';
 
 /**
@@ -219,23 +219,7 @@ const TreasuryReconciliationView: React.FC = () => {
         });
       }
 
-      const cardSettlementByAccountId = new Map<number, { chargeAccountId: number }>();
-      const cardAliasMatchers: CardAliasMatcher[] = [];
-      for (const account of dbAccounts) {
-        if (account.id == null) continue;
-        if (account.cardConfig?.chargeAccountId != null) {
-          const config = { chargeAccountId: account.cardConfig.chargeAccountId };
-          cardSettlementByAccountId.set(account.id, config);
-
-          const labels = [account.alias, account.name, account.banco?.name]
-            .map(value => normalizeText(value || ''))
-            .filter(Boolean);
-
-          for (const label of labels) {
-            cardAliasMatchers.push({ label, config });
-          }
-        }
-      }
+      const { cardSettlementByAccountId, cardAliasMatchers } = buildCardSettlementLookups(dbAccounts);
 
       const simpleAccounts: SimpleAccount[] = dbAccounts
         .filter(a => a.id != null && a.activa !== false && a.status !== 'DELETED' && a.tipo !== 'TARJETA_CREDITO')

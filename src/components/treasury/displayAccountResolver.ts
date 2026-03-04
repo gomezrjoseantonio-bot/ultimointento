@@ -86,3 +86,38 @@ export const resolveDisplayAccountId = ({
     ?? aliasCardConfig?.chargeAccountId
     ?? eventAccountId;
 };
+
+
+export const buildCardSettlementLookups = (
+  accounts: Array<{
+    id?: number;
+    alias?: string;
+    name?: string;
+    banco?: { name?: string };
+    cardConfig?: { chargeAccountId?: number };
+  }>,
+): {
+  cardSettlementByAccountId: Map<number, CardSettlementConfig>;
+  cardAliasMatchers: CardAliasMatcher[];
+} => {
+  const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+  const cardAliasMatchers: CardAliasMatcher[] = [];
+
+  for (const account of accounts) {
+    if (account.id == null) continue;
+    if (account.cardConfig?.chargeAccountId == null) continue;
+
+    const config = { chargeAccountId: account.cardConfig.chargeAccountId };
+    cardSettlementByAccountId.set(account.id, config);
+
+    const labels = [account.alias, account.name, account.banco?.name]
+      .map(value => normalizeText(value || ''))
+      .filter(Boolean);
+
+    for (const label of labels) {
+      cardAliasMatchers.push({ label, config });
+    }
+  }
+
+  return { cardSettlementByAccountId, cardAliasMatchers };
+};
