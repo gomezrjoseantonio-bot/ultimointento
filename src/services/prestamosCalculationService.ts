@@ -347,7 +347,14 @@ export class PrestamosCalculationService {
     }
 
     const baseRate = this.calculateBaseRate(prestamo);
-    const mesesSoloIntereses = prestamo.mesesSoloIntereses || 0;
+
+    // Backward/forward compatibility: honor explicit irregular fields first,
+    // but derive sensible defaults from esquemaPrimerRecibo when they are not present.
+    const mesesSoloIntereses = prestamo.mesesSoloIntereses
+      ?? (prestamo.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0);
+    const prorratearPrimerPeriodo = prestamo.prorratearPrimerPeriodo
+      ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA');
+
     const plazoAmortizacion = prestamo.plazoMesesTotal - mesesSoloIntereses;
     
     // Calculate standard payment for amortization period
@@ -359,7 +366,7 @@ export class PrestamosCalculationService {
     
     for (let periodo = 1; periodo <= prestamo.plazoMesesTotal; periodo++) {
       const esSoloIntereses = periodo <= mesesSoloIntereses;
-      const esProrrateado = periodo === 1 && prestamo.prorratearPrimerPeriodo;
+      const esProrrateado = periodo === 1 && prorratearPrimerPeriodo;
       
       // Calculate accrual period
       let devengoDesde: Date;
