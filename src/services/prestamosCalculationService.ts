@@ -347,7 +347,14 @@ export class PrestamosCalculationService {
     }
 
     const baseRate = this.calculateBaseRate(prestamo);
-    const mesesSoloIntereses = prestamo.mesesSoloIntereses || 0;
+
+    // Backward/forward compatibility: honor explicit irregular fields first,
+    // but derive sensible defaults from esquemaPrimerRecibo when they are not present.
+    const mesesSoloIntereses = prestamo.mesesSoloIntereses
+      ?? (prestamo.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0);
+    const prorratearPrimerPeriodo = prestamo.prorratearPrimerPeriodo
+      ?? (prestamo.esquemaPrimerRecibo === 'PRORRATA');
+
     const plazoAmortizacion = prestamo.plazoMesesTotal - mesesSoloIntereses;
     
     // Calculate standard payment for amortization period
@@ -359,7 +366,7 @@ export class PrestamosCalculationService {
     
     for (let periodo = 1; periodo <= prestamo.plazoMesesTotal; periodo++) {
       const esSoloIntereses = periodo <= mesesSoloIntereses;
-      const esProrrateado = periodo === 1 && prestamo.prorratearPrimerPeriodo;
+      const esProrrateado = periodo === 1 && prorratearPrimerPeriodo;
       
       // Calculate accrual period
       let devengoDesde: Date;
@@ -389,11 +396,16 @@ export class PrestamosCalculationService {
         devengoHasta.setDate(devengoHasta.getDate() - 1);
       }
 
+      const diasDevengo = this.getDaysDifference(devengoDesde, devengoHasta) + 1;
+
       // Calculate interest for the period
+      // - PRORRATA: day-count interest for first period
+      // - SOLO_INTERESES on first period: also day-count from signing to first charge
+      // - Otherwise: regular monthly interest
       let interesCentimos: number;
-      if (esProrrateado) {
-        const dias = this.getDaysDifference(devengoDesde, devengoHasta) + 1;
-        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 365 * dias;
+      const usarInteresDiario = esProrrateado || (periodo === 1 && esSoloIntereses);
+      if (usarInteresDiario) {
+        const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 365 * diasDevengo;
         interesCentimos = Math.round(interes * 100);
       } else {
         const interes = (principalVivoCentimos / 100) * (baseRate / 100) / 12;
@@ -414,7 +426,13 @@ export class PrestamosCalculationService {
           amortizacionCentimos = principalVivoCentimos;
           cuotaCentimos = amortizacionCentimos + interesCentimos;
         } else {
-          cuotaCentimos = cuotaEstandarCentimos;
+          if (esProrrateado) {
+            // First period in PRORRATA mode: prorate the installment amount by accrual days
+            // so cuota/interés/capital are all coherent for the shortened first period.
+            cuotaCentimos = Math.round(cuotaEstandarCentimos * (diasDevengo / 30));
+          } else {
+            cuotaCentimos = cuotaEstandarCentimos;
+          }
           amortizacionCentimos = cuotaCentimos - interesCentimos;
 
           // Guard against edge cases where interest could exceed cuota (very short/irregular periods)
@@ -429,7 +447,7 @@ export class PrestamosCalculationService {
       principalVivoCentimos = Math.max(0, principalVivoCentimos);
 
       // Calculate days for prorated period
-      const diasCalculo = esProrrateado ? this.getDaysDifference(devengoDesde, devengoHasta) + 1 : undefined;
+      const diasCalculo = esProrrateado ? diasDevengo : undefined;
 
       periodos.push({
         periodo,

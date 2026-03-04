@@ -308,6 +308,138 @@ describe('PrestamosCalculationService', () => {
       expect(plan.periodos[0].diasDevengo).toBeDefined();
       expect(plan.periodos[0].diasDevengo).toBeGreaterThan(0);
     });
+
+    test('derives first payment as interest-only when esquemaPrimerRecibo is SOLO_INTERESES', () => {
+      const prestamo: Prestamo = {
+        id: 'test-esquema-solo-intereses',
+        inmuebleId: 'prop1',
+        nombre: 'Test Esquema Solo Intereses',
+        principalInicial: 100000,
+        principalVivo: 100000,
+        fechaFirma: '2024-08-10',
+        fechaPrimerCargo: '2024-08-31',
+        plazoMesesTotal: 6,
+        diaCargoMes: 31,
+        esquemaPrimerRecibo: 'SOLO_INTERESES',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 3.6,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2024-08-10T00:00:00Z',
+        updatedAt: '2024-08-10T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].esSoloIntereses).toBe(true);
+      expect(plan.periodos[0].amortizacion).toBe(0);
+      expect(plan.periodos[1].amortizacion).toBeGreaterThan(0);
+    });
+
+
+    test('prorated first installment reduces cuota and interest vs regular period', () => {
+      const prestamo: Prestamo = {
+        id: 'test-prorrata-first-cuota',
+        inmuebleId: 'prop1',
+        nombre: 'Test Prorrata First Cuota',
+        principalInicial: 73800,
+        principalVivo: 73800,
+        fechaFirma: '2021-08-17',
+        fechaPrimerCargo: '2021-08-30',
+        plazoMesesTotal: 360,
+        diaCargoMes: 30,
+        esquemaPrimerRecibo: 'PRORRATA',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 0.85,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2021-08-17T00:00:00Z',
+        updatedAt: '2021-08-17T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].esProrrateado).toBe(true);
+      expect(plan.periodos[0].cuota).toBeLessThan(plan.periodos[1].cuota);
+      expect(plan.periodos[0].interes).toBeLessThan(plan.periodos[1].interes);
+      expect(plan.periodos[0].diasDevengo).toBe(13);
+    });
+
+    test('first SOLO_INTERESES installment is calculated by actual accrual days', () => {
+      const prestamo: Prestamo = {
+        id: 'test-solo-interes-dias',
+        inmuebleId: 'prop1',
+        nombre: 'Test Solo Intereses Días',
+        principalInicial: 73800,
+        principalVivo: 73800,
+        fechaFirma: '2021-08-17',
+        fechaPrimerCargo: '2021-08-30',
+        plazoMesesTotal: 360,
+        diaCargoMes: 30,
+        esquemaPrimerRecibo: 'SOLO_INTERESES',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 0.85,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2021-08-17T00:00:00Z',
+        updatedAt: '2021-08-17T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+      const interesDiarioEsperado = Math.round(((73800 * (0.85 / 100) / 365) * 13) * 100) / 100;
+
+      expect(plan.periodos[0].esSoloIntereses).toBe(true);
+      expect(plan.periodos[0].amortizacion).toBe(0);
+      expect(plan.periodos[0].interes).toBeCloseTo(interesDiarioEsperado, 2);
+      expect(plan.periodos[0].cuota).toBeCloseTo(interesDiarioEsperado, 2);
+      expect(plan.periodos[1].cuota).toBeGreaterThan(plan.periodos[0].cuota);
+    });
+    test('derives first payment as prorated when esquemaPrimerRecibo is PRORRATA', () => {
+      const prestamo: Prestamo = {
+        id: 'test-esquema-prorrata',
+        inmuebleId: 'prop1',
+        nombre: 'Test Esquema Prorrata',
+        principalInicial: 100000,
+        principalVivo: 100000,
+        fechaFirma: '2024-08-10',
+        fechaPrimerCargo: '2024-08-31',
+        plazoMesesTotal: 6,
+        diaCargoMes: 31,
+        esquemaPrimerRecibo: 'PRORRATA',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 3.6,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2024-08-10T00:00:00Z',
+        updatedAt: '2024-08-10T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].esProrrateado).toBe(true);
+      expect(plan.periodos[0].diasDevengo).toBe(21);
+      expect(plan.periodos[0].amortizacion).toBeGreaterThan(0);
+    });
   });
 
   describe('simulateAmortization', () => {
