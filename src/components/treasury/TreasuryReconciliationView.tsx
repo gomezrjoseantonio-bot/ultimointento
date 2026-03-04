@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDateDDMMYYYY } from '../../utils/formatUtils';
+import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
@@ -64,6 +65,52 @@ interface SimpleAccount {
   balance: number;
 }
 
+interface CardSettlementConfig {
+  chargeAccountId: number;
+}
+
+interface DisplayAccountResolverInput {
+  eventAccountId?: number;
+  eventSourceId?: number;
+  sourceType?: string;
+  cardSettlementByAccountId: Map<number, CardSettlementConfig>;
+}
+
+const toNumericId = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+export const resolveDisplayAccountId = ({
+  eventAccountId,
+  eventSourceId,
+  sourceType,
+  cardSettlementByAccountId,
+}: DisplayAccountResolverInput): number | undefined => {
+  const eventCardConfig = eventAccountId != null
+    ? cardSettlementByAccountId.get(eventAccountId)
+    : undefined;
+
+  // Backward-compatibility fallback:
+  // Some older card receipt events were created with empty `accountId` and only
+  // `sourceId` pointing to the credit-card account. In that legacy shape we can
+  // safely infer the bank account only for personal card expenses.
+  const sourceCardConfig =
+    eventAccountId == null &&
+    sourceType === 'personal_expense' &&
+    eventSourceId != null
+      ? cardSettlementByAccountId.get(eventSourceId)
+      : undefined;
+
+  return eventCardConfig?.chargeAccountId
+    ?? sourceCardConfig?.chargeAccountId
+    ?? eventAccountId;
+};
+
 interface DesgloseLine {
   label: string;
   previsto: number;
@@ -96,7 +143,7 @@ const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
 
 const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
-  const name = (acc.alias || acc.banco?.name || acc.name || '').toLowerCase();
+  const name = normalizeText(acc.alias || acc.banco?.name || acc.name || '');
   if (name.includes('metal') || name.includes('cash') || name.includes('efectivo')) return 'cash';
   if (name.includes('revolut') || name.includes('wallet') || name.includes('paypal')) return 'wallet';
   return 'bank';
@@ -219,7 +266,20 @@ const TreasuryReconciliationView: React.FC = () => {
         });
       }
 
-      const { cardSettlementByAccountId, cardAliasMatchers } = buildCardSettlementLookups(dbAccounts);
+      const cardSettlementByAccountId = new Map<number, CardSettlementConfig>();
+      const cardSettlementByAlias = new Map<string, CardSettlementConfig>();
+      for (const account of dbAccounts) {
+        if (account.id == null) continue;
+        if (account.cardConfig?.chargeAccountId != null) {
+          const config = { chargeAccountId: account.cardConfig.chargeAccountId };
+          cardSettlementByAccountId.set(account.id, config);
+
+          const normalizedAlias = normalizeText(account.alias || account.name || '');
+          if (normalizedAlias) {
+            cardSettlementByAlias.set(normalizedAlias, config);
+          }
+        }
+      }
 
       const simpleAccounts: SimpleAccount[] = dbAccounts
         .filter(a => a.id != null && a.activa !== false && a.status !== 'DELETED' && a.tipo !== 'TARJETA_CREDITO')
@@ -249,19 +309,15 @@ const TreasuryReconciliationView: React.FC = () => {
            * Primary mapping uses `accountId` to avoid polymorphic `sourceId`
            * collisions (e.g. contrato IDs vs account IDs).
            *
-           * Legacy exceptions (handled inside resolveDisplayAccountId):
-           * - old `personal_expense` card receipts with missing accountId can
-           *   fallback through sourceId
-           * - receipt descriptions like "Recibo tarjeta <alias>" can fallback
-           *   through configured credit-card alias
+           * Legacy exception (handled inside resolveDisplayAccountId):
+           * for old `personal_expense` card receipts with missing accountId,
+           * allow a guarded fallback through sourceId.
            */
           const displayAccountId = resolveDisplayAccountId({
             eventAccountId,
             eventSourceId,
             sourceType: e.sourceType,
-            description: e.description,
             cardSettlementByAccountId,
-            cardAliasMatchers,
           });
 
           return {
