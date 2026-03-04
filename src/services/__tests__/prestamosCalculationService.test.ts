@@ -308,6 +308,70 @@ describe('PrestamosCalculationService', () => {
       expect(plan.periodos[0].diasDevengo).toBeDefined();
       expect(plan.periodos[0].diasDevengo).toBeGreaterThan(0);
     });
+
+    test('derives first payment as interest-only when esquemaPrimerRecibo is SOLO_INTERESES', () => {
+      const prestamo: Prestamo = {
+        id: 'test-esquema-solo-intereses',
+        inmuebleId: 'prop1',
+        nombre: 'Test Esquema Solo Intereses',
+        principalInicial: 100000,
+        principalVivo: 100000,
+        fechaFirma: '2024-08-10',
+        fechaPrimerCargo: '2024-08-31',
+        plazoMesesTotal: 6,
+        diaCargoMes: 31,
+        esquemaPrimerRecibo: 'SOLO_INTERESES',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 3.6,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2024-08-10T00:00:00Z',
+        updatedAt: '2024-08-10T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].esSoloIntereses).toBe(true);
+      expect(plan.periodos[0].amortizacion).toBe(0);
+      expect(plan.periodos[1].amortizacion).toBeGreaterThan(0);
+    });
+
+    test('derives first payment as prorated when esquemaPrimerRecibo is PRORRATA', () => {
+      const prestamo: Prestamo = {
+        id: 'test-esquema-prorrata',
+        inmuebleId: 'prop1',
+        nombre: 'Test Esquema Prorrata',
+        principalInicial: 100000,
+        principalVivo: 100000,
+        fechaFirma: '2024-08-10',
+        fechaPrimerCargo: '2024-08-31',
+        plazoMesesTotal: 6,
+        diaCargoMes: 31,
+        esquemaPrimerRecibo: 'PRORRATA',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        tipoNominalAnualFijo: 3.6,
+        carencia: 'NINGUNA',
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL',
+        cuentaCargoId: 'cuenta1',
+        activo: true,
+        ambito: 'INMUEBLE',
+        createdAt: '2024-08-10T00:00:00Z',
+        updatedAt: '2024-08-10T00:00:00Z'
+      };
+
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+
+      expect(plan.periodos[0].esProrrateado).toBe(true);
+      expect(plan.periodos[0].diasDevengo).toBe(21);
+      expect(plan.periodos[0].amortizacion).toBeGreaterThan(0);
+    });
   });
 
   describe('simulateAmortization', () => {
