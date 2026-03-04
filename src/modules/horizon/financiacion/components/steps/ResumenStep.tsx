@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { PrestamoFinanciacion } from '../../../../../types/financiacion';
+import { Prestamo } from '../../../../../types/prestamos';
 import CuadroAmortizacion from '../CuadroAmortizacion';
+import { prestamosCalculationService } from '../../../../../services/prestamosCalculationService';
 
 interface ResumenStepProps {
   data: Partial<PrestamoFinanciacion>;
@@ -51,17 +53,76 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
   const totalDescuento = (data.bonificaciones || []).reduce((s, b) => s + b.descuentoTIN, 0);
   const tinEfectivo = Math.max(0, tinBase - totalDescuento);
 
-  // Simple French system calculation
-  const r = tinEfectivo / 100 / 12;
-  const cuotaMensual =
-    r > 0 && plazoMeses > 0
-      ? (capital * r * Math.pow(1 + r, plazoMeses)) / (Math.pow(1 + r, plazoMeses) - 1)
-      : plazoMeses > 0
-      ? capital / plazoMeses
-      : 0;
+  const previewPlan = useMemo(() => {
+    if (!capital || !plazoMeses || !data.fechaFirma || !data.fechaPrimerCargo || !data.tipo) {
+      return null;
+    }
 
-  const totalPagar = cuotaMensual * plazoMeses;
-  const totalIntereses = totalPagar - capital;
+    const prestamoPreview: Prestamo = {
+      id: 'preview',
+      ambito: data.ambito || 'PERSONAL',
+      inmuebleId: data.inmuebleId,
+      nombre: data.alias || 'Préstamo',
+      principalInicial: capital,
+      principalVivo: capital,
+      fechaFirma: data.fechaFirma,
+      fechaPrimerCargo: data.fechaPrimerCargo,
+      plazoMesesTotal: plazoMeses,
+      diaCargoMes: data.diaCobroMes || new Date(data.fechaPrimerCargo).getDate(),
+      esquemaPrimerRecibo: data.esquemaPrimerRecibo || 'NORMAL',
+      tipo: data.tipo,
+      sistema: 'FRANCES',
+      tipoNominalAnualFijo: data.tipo === 'FIJO' ? tinEfectivo : undefined,
+      indice: data.tipo === 'VARIABLE' ? (data.indice || 'EURIBOR') : undefined,
+      valorIndiceActual: data.tipo === 'VARIABLE' ? data.valorIndice : undefined,
+      diferencial: data.tipo === 'VARIABLE' ? data.diferencial : undefined,
+      tramoFijoMeses: data.tipo === 'MIXTO' ? (data.tramoFijoAnos || 0) * 12 : undefined,
+      tipoNominalAnualMixtoFijo: data.tipo === 'MIXTO' ? tinEfectivo : undefined,
+      carencia: data.carencia || 'NINGUNA',
+      carenciaMeses: data.carenciaMeses,
+      mesesSoloIntereses: data.esquemaPrimerRecibo === 'SOLO_INTERESES' ? 1 : 0,
+      prorratearPrimerPeriodo: data.esquemaPrimerRecibo === 'PRORRATA',
+      cuentaCargoId: data.cuentaCargoId || 'preview-account',
+      cuotasPagadas: 0,
+      origenCreacion: data.origenCreacion || 'MANUAL',
+      activo: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    return prestamosCalculationService.generatePaymentSchedule(prestamoPreview);
+  }, [
+    capital,
+    plazoMeses,
+    data.fechaFirma,
+    data.fechaPrimerCargo,
+    data.tipo,
+    data.ambito,
+    data.inmuebleId,
+    data.alias,
+    data.diaCobroMes,
+    data.esquemaPrimerRecibo,
+    data.indice,
+    data.valorIndice,
+    data.diferencial,
+    data.tramoFijoAnos,
+    data.carencia,
+    data.carenciaMeses,
+    data.cuentaCargoId,
+    data.origenCreacion,
+    tinEfectivo
+  ]);
+
+  const cuotaMensual = (() => {
+    if (!previewPlan) return 0;
+    const regular = previewPlan.periodos.find((p) => !p.esProrrateado && !p.esSoloIntereses);
+    return regular?.cuota || previewPlan.periodos[0]?.cuota || 0;
+  })();
+
+  const totalPagar = previewPlan
+    ? previewPlan.periodos.reduce((sum, p) => sum + p.cuota, 0)
+    : 0;
+  const totalIntereses = previewPlan?.resumen.totalIntereses || 0;
 
   const plazoLabel =
     data.plazoPeriodo === 'AÑOS'
@@ -232,6 +293,7 @@ const ResumenStep: React.FC<ResumenStepProps> = ({ data, onSubmit, isLoading, er
               plazoMeses={plazoMeses}
               fechaInicio={data.fechaPrimerCargo || new Date().toISOString().split('T')[0]}
               tramoFijoMeses={data.tramoFijoAnos ? data.tramoFijoAnos * 12 : undefined}
+              periodos={previewPlan?.periodos}
             />
           </div>
         </div>

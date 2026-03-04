@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { addMonthsClampedUTC } from '../../../../utils/recurrenceDateUtils';
+import { PeriodoPago } from '../../../../types/prestamos';
 
 interface AmortizacionRow {
   periodo: number;
@@ -20,6 +21,8 @@ interface CuadroAmortizacionProps {
   fechaInicio: string;
   /** Marks rows up to this month index as the fixed tranche (for mixed loans) */
   tramoFijoMeses?: number;
+  /** Optional precomputed payment schedule (used to keep wizard + detail views consistent) */
+  periodos?: PeriodoPago[];
 }
 
 const PAGE_SIZE = 25;
@@ -46,13 +49,30 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
   tinAnual,
   plazoMeses,
   fechaInicio,
-  tramoFijoMeses
+  tramoFijoMeses,
+  periodos
 }) => {
   const [page, setPage] = useState(1);
   const [filtroAnio, setFiltroAnio] = useState<number | ''>('');
 
-  // Generate amortization schedule (French system)
+  // Generate amortization schedule (French system) or adapt a precomputed schedule.
   const rows = useMemo<AmortizacionRow[]>(() => {
+    if (periodos && periodos.length > 0) {
+      return periodos.map((p) => {
+        const fecha = parseISODateOnly(p.fechaCargo);
+        return {
+          periodo: p.periodo,
+          fecha: Number.isNaN(fecha.getTime()) ? p.fechaCargo : fecha.toLocaleDateString('es-ES'),
+          anio: Number.isNaN(fecha.getTime()) ? Number(p.fechaCargo.slice(0, 4)) : fecha.getFullYear(),
+          cuota: p.cuota,
+          capital: p.amortizacion,
+          intereses: p.interes,
+          capitalPendiente: p.principalFinal,
+          esMixto: tramoFijoMeses !== undefined && p.periodo <= tramoFijoMeses
+        };
+      });
+    }
+
     const result: AmortizacionRow[] = [];
     const tasaMensual = tinAnual / 100 / 12;
     let capitalPendienteCentimos = Math.round(capitalInicial * 100);
@@ -103,7 +123,7 @@ const CuadroAmortizacion: React.FC<CuadroAmortizacionProps> = ({
     }
 
     return result;
-  }, [capitalInicial, tinAnual, plazoMeses, fechaInicio, tramoFijoMeses]);
+  }, [capitalInicial, tinAnual, plazoMeses, fechaInicio, tramoFijoMeses, periodos]);
 
   // Available years for filter
   const years = useMemo(() => {
