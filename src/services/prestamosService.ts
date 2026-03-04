@@ -179,7 +179,30 @@ export class PrestamosService {
       return true;
     }
     for (let i = 0; i < plan.periodos.length; i++) {
-      if (expectedPlan.periodos[i].fechaCargo !== plan.periodos[i].fechaCargo) {
+      const expected = expectedPlan.periodos[i];
+      const current = plan.periodos[i];
+
+      if (expected.fechaCargo !== current.fechaCargo) {
+        return true;
+      }
+
+      // Keep canonical financial fields synced with current generation rules.
+      // This forces legacy plans (e.g. old first-installment logic) to be refreshed
+      // so Calendario de pagos and Cuadro de amortización stay aligned.
+      const sameCuota = Math.round(expected.cuota * 100) === Math.round(current.cuota * 100);
+      const sameInteres = Math.round(expected.interes * 100) === Math.round(current.interes * 100);
+      const sameAmortizacion = Math.round(expected.amortizacion * 100) === Math.round(current.amortizacion * 100);
+      const samePrincipalFinal = Math.round(expected.principalFinal * 100) === Math.round(current.principalFinal * 100);
+
+      if (!sameCuota || !sameInteres || !sameAmortizacion || !samePrincipalFinal) {
+        return true;
+      }
+
+      if ((expected.esProrrateado ?? false) !== (current.esProrrateado ?? false)) {
+        return true;
+      }
+
+      if ((expected.esSoloIntereses ?? false) !== (current.esSoloIntereses ?? false)) {
         return true;
       }
     }
