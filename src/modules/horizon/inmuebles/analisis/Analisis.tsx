@@ -29,6 +29,7 @@ import FinancialProfitabilitySection from './components/FinancialProfitabilitySe
 import FiscalROISection from './components/FiscalROISection';
 import SaleSimulationSection from './components/SaleSimulationSection';
 import RecommendationActionSection from './components/RecommendationActionSection';
+import PropertySaleModal from '../components/PropertySaleModal';
 import toast from 'react-hot-toast';
 
 const Analisis: React.FC = () => {
@@ -46,6 +47,7 @@ const Analisis: React.FC = () => {
   const [expenseWarning, setExpenseWarning] = useState<string | null>(null);
   const [mortgageWarning, setMortgageWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
 
   const loadProperties = useCallback(async () => {
     try {
@@ -200,32 +202,25 @@ const Analisis: React.FC = () => {
   const handleDecision = (decision: PropertyDecision, targetDate?: string) => {
     if (!analysis) return;
 
+    if (decision === 'VENDER') {
+      setIsSaleModalOpen(true);
+      return;
+    }
+
     const updatedAnalysis: PropertyAnalysis = {
       ...analysis,
       decision,
       decisionDate: new Date().toISOString(),
       ...(decision === 'REVISAR' && targetDate && { reviewScheduledDate: targetDate }),
-      ...(decision === 'VENDER' && targetDate && { targetSaleDate: targetDate }),
     };
 
     setAnalysis(updatedAnalysis);
 
-    // Show success message
-    let message = '';
-    switch (decision) {
-      case 'MANTENER':
-        message = 'Estado guardado: Mantener activo';
-        break;
-      case 'REVISAR':
-        message = `Revisión agendada para ${targetDate}`;
-        break;
-      case 'VENDER':
-        message = `Venta objetivo programada para ${targetDate}`;
-        break;
-    }
-    toast.success(message);
+    const message = decision === 'MANTENER'
+      ? 'Estado guardado: Mantener activo'
+      : `Revisión agendada para ${targetDate}`;
 
-    // In production, this would save to database and potentially trigger Plan Base/Copiloto
+    toast.success(message);
   };
 
   if (loading) {
@@ -402,6 +397,17 @@ const Analisis: React.FC = () => {
           </div>
         )}
       </div>
+
+      <PropertySaleModal
+        open={isSaleModalOpen}
+        property={properties.find((p) => p.id === selectedPropertyId) || null}
+        source="analisis"
+        onClose={() => setIsSaleModalOpen(false)}
+        onConfirmed={() => {
+          setIsSaleModalOpen(false);
+          void loadProperties();
+        }}
+      />
     </PageLayout>
   );
 };

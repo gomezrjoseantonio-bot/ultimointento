@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 29; // V2.9: resultadosEjercicio store for immutable fiscal year snapshots
+const DB_VERSION = 30; // V3.0: property_sales store for real-estate sale workflow
 
 export interface Property {
   id?: number;
@@ -107,6 +107,31 @@ export interface Property {
       manualAmount?: number; // importe manual en casos especiales
     };
   };
+}
+
+export interface PropertySale {
+  id?: number;
+  propertyId: number;
+  saleDate: string;
+  salePrice: number;
+  saleCosts: {
+    agencyCommission: number;
+    municipalTax: number;
+    saleNotaryCosts: number;
+    otherCosts: number;
+  };
+  loanSettlement: {
+    payoffAmount: number;
+    cancellationFee: number;
+    total: number;
+  };
+  grossProceeds: number;
+  netProceeds: number;
+  status: 'draft' | 'confirmed' | 'reverted';
+  source: 'cartera' | 'detalle' | 'analisis';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // H9-FISCAL: Property improvements for AEAT amortization
@@ -1483,6 +1508,7 @@ export interface ConfiguracionFiscal {
 
 interface AtlasHorizonDB {
   properties: Property;
+  property_sales: PropertySale;
   documents: Document;
   contracts: Contract;
   rentCalendar: RentCalendar; // H7: Rent calendar entries
@@ -1550,6 +1576,14 @@ export const initDB = async () => {
           const propertyStore = db.createObjectStore('properties', { keyPath: 'id', autoIncrement: true });
           propertyStore.createIndex('alias', 'alias', { unique: false });
           propertyStore.createIndex('address', 'address', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('property_sales')) {
+          const propertySalesStore = db.createObjectStore('property_sales', { keyPath: 'id', autoIncrement: true });
+          propertySalesStore.createIndex('propertyId', 'propertyId', { unique: false });
+          propertySalesStore.createIndex('saleDate', 'saleDate', { unique: false });
+          propertySalesStore.createIndex('status', 'status', { unique: false });
+          propertySalesStore.createIndex('property-status', ['propertyId', 'status'], { unique: false });
         }
 
         // Documents store
