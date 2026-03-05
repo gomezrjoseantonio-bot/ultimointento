@@ -670,8 +670,9 @@ const TreasuryReconciliationView: React.FC = () => {
 
         toast.success('Transferencia creada');
       } else {
+        const eventType: 'income' | 'expense' = newMovementForm.type;
         const newId = await db.add('treasuryEvents', {
-          type: newMovementForm.type,
+          type: eventType,
           amount,
           predictedDate: newMovementForm.date,
           description: baseConcept,
@@ -694,7 +695,7 @@ const TreasuryReconciliationView: React.FC = () => {
             concept: baseConcept,
             amount,
             date: newMovementForm.date,
-            type: newMovementForm.type,
+            type: eventType,
             status: 'confirmado',
           }]);
         }
