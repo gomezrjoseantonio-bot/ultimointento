@@ -162,6 +162,8 @@ describe('treasurySyncService – treasury detail regressions', () => {
 
   it('uses property literal helper to include address when alias is missing', () => {
     expect(source).toContain('function getPropertyLiteral');
-    expect(source).toContain('property.address?.trim()');
+    expect(source).toContain('function getAddressStreetLiteral');
+    expect(source).toContain(".split(',')[0]");
+    expect(source).toContain(".replace(/^avda\\.?\\s+/i, 'Avenida ')");
   });
 });
