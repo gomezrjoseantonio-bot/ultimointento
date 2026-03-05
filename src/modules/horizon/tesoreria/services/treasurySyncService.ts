@@ -362,9 +362,10 @@ export async function generateMonthlyForecasts(
       const account = expense.accountId ? accountsById.get(expense.accountId) : undefined;
       const isCreditCard = account?.tipo === 'TARJETA_CREDITO' && account.cardConfig;
 
-      if (isCreditCard && account?.id && account.cardConfig) {
+      if (isCreditCard && account?.id != null && account.cardConfig) {
         const chargeAccountId = account.cardConfig.chargeAccountId;
         const settlementDay = Math.min(31, Math.max(1, account.cardConfig.settlementDay || 1));
+        const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id;
         const receiptDate = buildDate(year, month, settlementDay);
         const key = `${account.id}-${year}-${month}`;
         const existing = cardReceipts.get(key);
@@ -373,7 +374,7 @@ export async function generateMonthlyForecasts(
           existing.amount += amount;
         } else {
           cardReceipts.set(key, {
-            accountId: resolveAccountId(chargeAccountId),
+            accountId: resolvedAccountId,
             sourceId: account.id,
             amount,
             description: `Recibo tarjeta ${account.alias || `#${account.id}`}`,
@@ -657,7 +658,8 @@ export async function generateMonthlyForecasts(
       const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
       const recurrentes = autonomoActivo.gastosRecurrentesActividad ?? [];
-      for (const [index, gasto] of recurrentes.entries()) {
+      for (let index = 0; index < recurrentes.length; index++) {
+        const gasto = recurrentes[index];
         if (gasto.importe <= 0) continue;
         const activeMeses = gasto.meses?.length ? gasto.meses : ALL_MONTHS;
         if (!activeMeses.includes(month)) continue;
@@ -705,7 +707,9 @@ export async function generateMonthlyForecasts(
       // FALLBACK: if new model arrays are empty, emit legacy monthly split per concept
       const hasNewModel = recurrentes.length > 0 || (autonomoActivo.cuotaAutonomos ?? 0) > 0;
       if (!hasNewModel) {
-        for (const [index, gasto] of (autonomoActivo.gastosDeducibles ?? []).entries()) {
+        const legacyGastos = autonomoActivo.gastosDeducibles ?? [];
+        for (let index = 0; index < legacyGastos.length; index++) {
+          const gasto = legacyGastos[index];
           const monthlyAmount = gasto.importe / 12;
           if (monthlyAmount <= 0) continue;
 

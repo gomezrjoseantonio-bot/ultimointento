@@ -156,8 +156,9 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(source).not.toContain("sourceType: 'autonomo' as const");
   });
 
-  it('resolves credit-card receipt bank account through resolveAccountId', () => {
-    expect(source).toContain('accountId: resolveAccountId(chargeAccountId)');
+  it('resolves credit-card receipt bank account through resolveAccountId with numeric fallback', () => {
+    expect(source).toContain('const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id');
+    expect(source).toContain('accountId: resolvedAccountId');
   });
 
   it('uses property literal helper to include address when alias is missing', () => {
