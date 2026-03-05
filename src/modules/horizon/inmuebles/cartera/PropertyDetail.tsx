@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
@@ -11,6 +11,9 @@ import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePre
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
+
+const isDetailTab = (value: string | null): value is DetailTab =>
+  value === 'resumen' || value === 'contratos' || value === 'presupuesto' || value === 'fiscal';
 
 const getContractDateRange = (contract: Contract): { start: Date; end: Date } | null => {
   const startRaw = contract.fechaInicio || contract.startDate;
@@ -48,6 +51,7 @@ const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number)
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +92,13 @@ const PropertyDetail: React.FC = () => {
       loadProperty(parseInt(id));
     }
   }, [id, loadProperty]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (isDetailTab(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const loadOccupancy = async () => {
@@ -185,6 +196,8 @@ const PropertyDetail: React.FC = () => {
   const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
   const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
   const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
+  const requestedTab = searchParams.get('tab');
+  const isForcedTabView = isDetailTab(requestedTab);
 
   return (
     <div className="space-y-6">
@@ -212,15 +225,16 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
-        {(
+      {!isForcedTabView && (
+        <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
+          {(
           [
             { id: 'resumen', label: 'Operación', Icon: LayoutList },
             { id: 'contratos', label: 'Alquileres', Icon: Users },
             { id: 'presupuesto', label: 'Gastos', Icon: TrendingDown },
             { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
-        ).map(({ id: tabId, label, Icon }) => {
+          ).map(({ id: tabId, label, Icon }) => {
           const isActive = activeTab === tabId;
           return (
             <button
@@ -238,8 +252,9 @@ const PropertyDetail: React.FC = () => {
               {label}
             </button>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'presupuesto' ? (

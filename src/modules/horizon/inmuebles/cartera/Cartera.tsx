@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { formatEuro } from '../../../../utils/formatUtils';
@@ -338,7 +338,7 @@ const Cartera: React.FC = () => {
                             : <span className="text-neutral-400">—</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}`)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
@@ -359,6 +359,30 @@ const Cartera: React.FC = () => {
                               title="Eliminar"
                             >
                               <Trash2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=contratos`)}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              title="Alquileres"
+                            >
+                              <Users className="h-3.5 w-3.5" />
+                              <span>Alquileres</span>
+                            </button>
+                            <button
+                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=presupuesto`)}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              title="Gastos"
+                            >
+                              <TrendingDown className="h-3.5 w-3.5" />
+                              <span>Gastos</span>
+                            </button>
+                            <button
+                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=fiscal`)}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              title="Fiscal"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>Fiscal</span>
                             </button>
                           </div>
                         </td>
