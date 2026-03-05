@@ -25,7 +25,9 @@ describe('treasurySyncService – treasury detail regressions', () => {
   });
 
   it('applies reglaPagoDia business-day logic for cuota de autónomos dates', () => {
-    expect(serviceSource).toContain('getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, 1)');
+    expect(serviceSource).toContain("const day = autonomoActivo.reglaPagoDia?.dia ?? 1;");
+    expect(serviceSource).toContain("autonomoActivo.reglaPagoDia?.tipo === 'fijo'");
+    expect(serviceSource).toContain('getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, day)');
     expect(helperSource).toContain('export function getBusinessDayForRule');
     expect(helperSource).toContain("rule.tipo === 'ultimo-habil'");
   });
