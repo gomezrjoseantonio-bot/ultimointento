@@ -126,14 +126,16 @@ interface NewMovementForm {
   concept: string;
   amount: string;
   accountId: string;
+  targetAccountId: string;
   date: string;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'transfer';
 }
 
 const DEFAULT_NEW_MOVEMENT: NewMovementForm = {
   concept: '',
   amount: '',
   accountId: '',
+  targetAccountId: '',
   date: new Date().toISOString().substring(0, 10),
   type: 'expense',
 };
@@ -569,48 +571,143 @@ const TreasuryReconciliationView: React.FC = () => {
   /** "+ Movimiento Directo": guarda un nuevo evento confirmado en DB */
   const handleSaveNewMovement = async () => {
     const amount = parseFloat(newMovementForm.amount);
-    if (!newMovementForm.concept.trim() || isNaN(amount) || amount <= 0 || !newMovementForm.date) {
+    if (isNaN(amount) || amount <= 0 || !newMovementForm.date) {
       toast.error('Completa todos los campos');
       return;
     }
+
+    const rawAccountId = newMovementForm.accountId ? parseInt(newMovementForm.accountId, 10) : undefined;
+    const accountId = rawAccountId !== undefined && !isNaN(rawAccountId) ? rawAccountId : undefined;
+
+    const rawTargetAccountId = newMovementForm.targetAccountId ? parseInt(newMovementForm.targetAccountId, 10) : undefined;
+    const targetAccountId = rawTargetAccountId !== undefined && !isNaN(rawTargetAccountId) ? rawTargetAccountId : undefined;
+
+    if (newMovementForm.type === 'transfer') {
+      if (!accountId || !targetAccountId) {
+        toast.error('Selecciona cuenta origen y destino');
+        return;
+      }
+      if (accountId === targetAccountId) {
+        toast.error('La cuenta origen y destino deben ser diferentes');
+        return;
+      }
+    } else {
+      if (!newMovementForm.concept.trim()) {
+        toast.error('Completa todos los campos');
+        return;
+      }
+    }
+
     setSavingMovement(true);
     try {
       const db = await initDB();
       const now = new Date().toISOString();
-      const rawAccountId = newMovementForm.accountId ? parseInt(newMovementForm.accountId, 10) : undefined;
-      const accountId = rawAccountId !== undefined && !isNaN(rawAccountId) ? rawAccountId : undefined;
-      const newId = await db.add('treasuryEvents', {
-        type: newMovementForm.type as 'income' | 'expense',
-        amount,
-        predictedDate: newMovementForm.date,
-        description: newMovementForm.concept.trim(),
-        sourceType: 'manual' as const,
-        accountId,
-        status: 'confirmed' as const,
-        actualDate: newMovementForm.date,
-        actualAmount: amount,
-        createdAt: now,
-        updatedAt: now,
-      });
+      const baseConcept = newMovementForm.concept.trim();
 
-      // Add to local state if the event falls within the current month
-      const [year, month] = currentMonth.split('-').map(Number);
-      const evDate = new Date(newMovementForm.date);
-      if (evDate.getFullYear() === year && evDate.getMonth() + 1 === month) {
-        setEvents(prev => [...prev, {
-          id: String(newId),
-          dbId: newId as number,
-          accountId: String(accountId ?? ''),
-          concept: newMovementForm.concept.trim(),
+      if (newMovementForm.type === 'transfer') {
+        const fromAccount = accounts.find(a => a.id === String(accountId));
+        const toAccount = accounts.find(a => a.id === String(targetAccountId));
+
+        const sourceConcept = baseConcept || `Transferencia a ${toAccount?.name ?? 'cuenta destino'}`;
+        const targetConcept = baseConcept || `Transferencia desde ${fromAccount?.name ?? 'cuenta origen'}`;
+
+        const [fromId, toId] = await Promise.all([
+          db.add('treasuryEvents', {
+            type: 'expense' as const,
+            amount,
+            predictedDate: newMovementForm.date,
+            description: sourceConcept,
+            sourceType: 'manual' as const,
+            accountId,
+            status: 'confirmed' as const,
+            actualDate: newMovementForm.date,
+            actualAmount: amount,
+            createdAt: now,
+            updatedAt: now,
+          }),
+          db.add('treasuryEvents', {
+            type: 'income' as const,
+            amount,
+            predictedDate: newMovementForm.date,
+            description: targetConcept,
+            sourceType: 'manual' as const,
+            accountId: targetAccountId,
+            status: 'confirmed' as const,
+            actualDate: newMovementForm.date,
+            actualAmount: amount,
+            createdAt: now,
+            updatedAt: now,
+          }),
+        ]);
+
+        const [year, month] = currentMonth.split('-').map(Number);
+        const evDate = new Date(newMovementForm.date);
+        if (evDate.getFullYear() === year && evDate.getMonth() + 1 === month) {
+          setEvents(prev => ([
+            ...prev,
+            {
+              id: String(fromId),
+              dbId: fromId as number,
+              accountId: String(accountId),
+              concept: sourceConcept,
+              amount,
+              date: newMovementForm.date,
+              type: 'expense',
+              status: 'confirmado',
+            },
+            {
+              id: String(toId),
+              dbId: toId as number,
+              accountId: String(targetAccountId),
+              concept: targetConcept,
+              amount,
+              date: newMovementForm.date,
+              type: 'income',
+              status: 'confirmado',
+            },
+          ]));
+        }
+
+        toast.success('Transferencia creada');
+      } else {
+        const eventType: 'income' | 'expense' = newMovementForm.type;
+        const newId = await db.add('treasuryEvents', {
+          type: eventType,
           amount,
-          date: newMovementForm.date,
-          type: newMovementForm.type as 'income' | 'expense',
-          status: 'confirmado',
-        }]);
+          predictedDate: newMovementForm.date,
+          description: baseConcept,
+          sourceType: 'manual' as const,
+          accountId,
+          status: 'confirmed' as const,
+          actualDate: newMovementForm.date,
+          actualAmount: amount,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        const [year, month] = currentMonth.split('-').map(Number);
+        const evDate = new Date(newMovementForm.date);
+        if (evDate.getFullYear() === year && evDate.getMonth() + 1 === month) {
+          setEvents(prev => [...prev, {
+            id: String(newId),
+            dbId: newId as number,
+            accountId: String(accountId ?? ''),
+            concept: baseConcept,
+            amount,
+            date: newMovementForm.date,
+            type: eventType,
+            status: 'confirmado',
+          }]);
+        }
+        toast.success('Movimiento añadido');
       }
-      toast.success('Movimiento añadido');
+
       setShowAddModal(false);
-      setNewMovementForm(prev => ({ ...DEFAULT_NEW_MOVEMENT, accountId: prev.accountId }));
+      setNewMovementForm(prev => ({
+        ...DEFAULT_NEW_MOVEMENT,
+        accountId: prev.accountId,
+        targetAccountId: '',
+      }));
     } catch (err) {
       console.error('Error saving new movement:', err);
       toast.error('Error al guardar el movimiento');
@@ -1223,10 +1320,11 @@ const TreasuryReconciliationView: React.FC = () => {
               <select
                 className="add-movement-modal__select"
                 value={newMovementForm.type}
-                onChange={e => setNewMovementForm(p => ({ ...p, type: e.target.value as 'income' | 'expense' }))}
+                onChange={e => setNewMovementForm(p => ({ ...p, type: e.target.value as 'income' | 'expense' | 'transfer' }))}
               >
                 <option value="expense">Gasto</option>
                 <option value="income">Ingreso</option>
+                <option value="transfer">Transferencia</option>
               </select>
             </div>
 
@@ -1244,18 +1342,36 @@ const TreasuryReconciliationView: React.FC = () => {
             </div>
 
             <div className="add-movement-modal__field">
-              <label className="add-movement-modal__label">Cuenta</label>
+              <label className="add-movement-modal__label">{newMovementForm.type === 'transfer' ? 'Cuenta origen' : 'Cuenta'}</label>
               <select
                 className="add-movement-modal__select"
                 value={newMovementForm.accountId}
                 onChange={e => setNewMovementForm(p => ({ ...p, accountId: e.target.value }))}
               >
-                <option value="">Sin cuenta específica</option>
+                <option value="">{newMovementForm.type === 'transfer' ? 'Selecciona cuenta origen' : 'Sin cuenta específica'}</option>
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </div>
+
+            {newMovementForm.type === 'transfer' && (
+              <div className="add-movement-modal__field">
+                <label className="add-movement-modal__label">Cuenta destino</label>
+                <select
+                  className="add-movement-modal__select"
+                  value={newMovementForm.targetAccountId}
+                  onChange={e => setNewMovementForm(p => ({ ...p, targetAccountId: e.target.value }))}
+                >
+                  <option value="">Selecciona cuenta destino</option>
+                  {accounts
+                    .filter(a => a.id !== newMovementForm.accountId)
+                    .map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                </select>
+              </div>
+            )}
 
             <div className="add-movement-modal__field">
               <label className="add-movement-modal__label">Fecha</label>
