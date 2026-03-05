@@ -184,3 +184,54 @@ Este enfoque permite vender Atlas tanto a usuarios que solo quieren control fina
 4. Evolucionar a planes de estabilidad para usuarios que adopten la capa estratégica.
 
 Con este orden, Atlas conserva su potencia financiera actual y suma una narrativa diferencial sin romper la experiencia existente.
+
+---
+
+## ¿Por dónde empezamos? (plan de arranque en 30 días)
+
+Para empezar sin fricción ni riesgo técnico, propongo una secuencia de 3 entregables pequeños:
+
+### Semana 1: Definición de métrica y reglas (sin tocar UI)
+- Definir versión v0 del **Índice Mesa Atlas** con pesos simples:
+  - 40% diversificación de ingresos.
+  - 30% liquidez/colchón.
+  - 20% estabilidad de gasto.
+  - 10% tendencia de mejora mensual.
+- Dejar reglas en un documento funcional validado por producto + datos.
+- Acordar umbrales de color (rojo/ámbar/verde).
+
+**Resultado de la semana:** fórmula aprobada y auditable.
+
+### Semana 2: Módulo visible mínimo en dashboard
+- Incorporar un card opcional: “Tu Mesa Atlas hoy”.
+- Mostrar:
+  - Score actual.
+  - Número de patas activas.
+  - Principal riesgo (ej. “72% de tus ingresos dependen de 1 fuente”).
+- Añadir CTA único: “Ver plan de estabilidad”.
+
+**Resultado de la semana:** primera versión usable con valor inmediato.
+
+### Semana 3-4: Recomendaciones accionables (MVP)
+- Activar 3 recomendaciones automáticas máximas, priorizadas por impacto:
+  1. Reducir concentración de ingresos.
+  2. Subir meses de colchón.
+  3. Activar una segunda vía de ingreso.
+- Medir conversión de recomendación a acción.
+- Levantar feedback cualitativo de usuarios reales.
+
+**Resultado de la fase:** MVP validado con datos de uso reales.
+
+## Equipo mínimo sugerido para arrancar
+- 1 PM (definición de reglas y priorización).
+- 1 dev frontend (card + flujo básico).
+- 1 dev backend/data (cálculo de score y señales).
+- 1 diseñador/a part-time (narrativa visual y estados).
+
+## Criterio de éxito de este arranque
+Al final de 30 días deberíamos poder responder 3 preguntas:
+1. ¿Los usuarios entienden el concepto en menos de 1 minuto?
+2. ¿El índice los mueve a tomar una acción concreta?
+3. ¿La capa de estabilidad convive sin degradar la experiencia financiera principal?
+
+Si estas 3 respuestas son “sí”, se pasa a fase 2 (planes de 90 días y alertas avanzadas).
