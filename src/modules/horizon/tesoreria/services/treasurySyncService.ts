@@ -604,33 +604,32 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
-      const ingresosEsteMes = (autonomoActivo.fuentesIngreso || []).reduce((total, fuente) => {
+      const accountId = resolveAccountId(autonomoActivo.cuentaPago ?? autonomoActivo.cuentaCobro);
+      const fuentes = autonomoActivo.fuentesIngreso ?? [];
+
+      for (let index = 0; index < fuentes.length; index++) {
+        const fuente = fuentes[index];
         const activeMeses = fuente.meses?.length ? fuente.meses : ALL_MONTHS;
-        return activeMeses.includes(month) ? total + fuente.importeEstimado : total;
-      }, 0);
+        if (!activeMeses.includes(month) || (fuente.importeEstimado ?? 0) <= 0) continue;
 
-      if (ingresosEsteMes > 0 && autonomoActivo.id != null) {
-        const description = `Ingresos Autónomo – ${autonomoActivo.nombre}`;
-
-        const alreadyExists = await isDuplicate('autonomo_ingreso', autonomoActivo.id);
-
-        if (alreadyExists) {
+        const sourceId = `${autonomoActivo.id}-fuente-${fuente.id ?? index}`;
+        if (await isDuplicate('autonomo_ingreso', sourceId)) {
           skipped++;
-        } else {
-          const predictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaCobroDia, 15);
-          await insertEvent({
-            type: 'income' as const,
-            amount: ingresosEsteMes,
-            predictedDate,
-            description,
-            sourceType: 'autonomo_ingreso' as const,
-            sourceId: autonomoActivo.id,
-            accountId: resolveAccountId(autonomoActivo.cuentaCobro ?? autonomoActivo.cuentaPago),
-            status: 'predicted' as const,
-            createdAt: now,
-            updatedAt: now,
-          });
+          continue;
         }
+
+        await insertEvent({
+          type: 'income' as const,
+          amount: fuente.importeEstimado,
+          predictedDate: buildDate(year, month, fuente.diaCobro ?? 1),
+          description: `${fuente.nombre || 'Ingreso autónomo'} – ${autonomoActivo.nombre}`,
+          sourceType: 'autonomo_ingreso' as const,
+          sourceId,
+          accountId,
+          status: 'predicted' as const,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
     }
   } catch (err) {
@@ -646,8 +645,7 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
-      const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
-      const predictedDate = buildDate(year, month, day);
+      const cuotaPredictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, 5);
       const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
       const recurrentes = autonomoActivo.gastosRecurrentesActividad ?? [];
@@ -666,7 +664,7 @@ export async function generateMonthlyForecasts(
         await insertEvent({
           type: 'expense' as const,
           amount: gasto.importe,
-          predictedDate,
+          predictedDate: buildDate(year, month, gasto.diaPago ?? 1),
           description: `${gasto.descripcion || 'Gasto actividad'} – ${autonomoActivo.nombre}`,
           sourceType: 'autonomo_gasto' as const,
           sourceId,
@@ -685,7 +683,7 @@ export async function generateMonthlyForecasts(
           await insertEvent({
             type: 'expense' as const,
             amount: autonomoActivo.cuotaAutonomos,
-            predictedDate,
+            predictedDate: cuotaPredictedDate,
             description: `Cuota autónomos – ${autonomoActivo.nombre}`,
             sourceType: 'autonomo_cuota' as const,
             sourceId,
@@ -715,7 +713,7 @@ export async function generateMonthlyForecasts(
           await insertEvent({
             type: 'expense' as const,
             amount: monthlyAmount,
-            predictedDate,
+            predictedDate: cuotaPredictedDate,
             description: `${gasto.descripcion || 'Gasto deducible'} – ${autonomoActivo.nombre}`,
             sourceType: 'autonomo_gasto_legacy' as const,
             sourceId,

@@ -22,12 +22,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
   const [formData, setFormData] = useState({
     titular: '',
     cuotaAutonomos: '',
-    cuentaCobro: 0,
     cuentaPago: 0,
-    reglaCobroDia: {
-      tipo: 'fijo' as 'fijo' | 'ultimo-habil' | 'n-esimo-habil',
-      dia: 1 as number | undefined
-    },
     reglaPagoDia: {
       tipo: 'fijo' as 'fijo' | 'ultimo-habil' | 'n-esimo-habil',
       dia: 5 as number | undefined
@@ -72,12 +67,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
       setFormData({
         titular: autonomo.titular || autonomo.nombre || '',
         cuotaAutonomos: autonomo.cuotaAutonomos.toString(),
-        cuentaCobro: autonomo.cuentaCobro,
         cuentaPago: autonomo.cuentaPago,
-        reglaCobroDia: {
-          tipo: autonomo.reglaCobroDia.tipo,
-          dia: autonomo.reglaCobroDia.dia || 1
-        },
         reglaPagoDia: {
           tipo: autonomo.reglaPagoDia.tipo,
           dia: autonomo.reglaPagoDia.dia || 5
@@ -124,9 +114,9 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         nombre: formData.titular,
         titular: formData.titular,
         cuotaAutonomos,
-        cuentaCobro: formData.cuentaCobro,
+        cuentaCobro: formData.cuentaPago,
         cuentaPago: formData.cuentaPago,
-        reglaCobroDia: formData.reglaCobroDia,
+        reglaCobroDia: formData.reglaPagoDia,
         reglaPagoDia: formData.reglaPagoDia,
         ingresosFacturados: autonomo?.ingresosFacturados || [],
         gastosDeducibles: autonomo?.gastosDeducibles || [],
@@ -211,24 +201,6 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Cuenta de Cobro de Facturas
-            </label>
-            <select
-              value={formData.cuentaCobro}
-              onChange={(e) => setFormData(prev => ({ ...prev, cuentaCobro: parseInt(e.target.value) }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            >
-              <option value={0}>Seleccionar cuenta</option>
-              {bankAccounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.alias || acc.name || acc.ibanMasked || acc.iban}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Cuenta de Pago de Cuota SS
             </label>
             <select
@@ -247,56 +219,7 @@ const AutonomoForm: React.FC<AutonomoFormProps> = ({ isOpen, onClose, autonomo, 
         </div>
 
         {/* Payment Rules */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Cobro Rules */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-3">
-              Regla de Día de Cobro
-            </label>
-            <div className="space-y-3">
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="reglaCobroDia"
-                  checked={formData.reglaCobroDia.tipo === 'fijo'}
-                  onChange={() => setFormData(prev => ({
-                    ...prev,
-                    reglaCobroDia: { tipo: 'fijo', dia: 1 }
-                  }))}
-                  className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-                />
-                <span className="text-sm">Día fijo del mes</span>
-                {formData.reglaCobroDia.tipo === 'fijo' && (
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.reglaCobroDia.dia || 1}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      reglaCobroDia: { ...prev.reglaCobroDia, dia: parseInt(e.target.value) }
-                    }))}
-                    className="w-16 px-2 py-1 border border-neutral-300 rounded text-sm"
-                  />
-                )}
-              </label>
-
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="reglaCobroDia"
-                  checked={formData.reglaCobroDia.tipo === 'ultimo-habil'}
-                  onChange={() => setFormData(prev => ({
-                    ...prev,
-                    reglaCobroDia: { tipo: 'ultimo-habil', dia: undefined }
-                  }))}
-                  className="h-4 w-4 text-brand-navy focus:ring-brand-navy"
-                />
-                <span className="text-sm">Último día hábil del mes</span>
-              </label>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-6">
           {/* Pago Rules */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-3">

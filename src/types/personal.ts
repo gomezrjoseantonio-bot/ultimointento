@@ -176,6 +176,7 @@ export interface FuenteIngreso {
   nombre: string; // Income concept name
   importeEstimado: number; // Amount per occurrence
   meses: number[]; // Months of impact (1=Jan..12=Dec); all 12 means monthly
+  diaCobro?: number; // Day of month when this concept is collected (1-31)
   frecuencia?: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'; // Legacy – kept for backward compatibility
   aplIrpf?: boolean; // Whether IRPF is retained by client on this income
   aplIva?: boolean; // Whether IVA applies to this income
@@ -187,6 +188,7 @@ export interface GastoRecurrenteActividad {
   importe: number; // Amount per occurrence
   categoria: string;
   meses?: number[]; // Months of impact (1=Jan..12=Dec); undefined/empty means monthly (all 12)
+  diaPago?: number; // Day of month when this concept is paid (1-31)
 }
 
 export interface Autonomo {
