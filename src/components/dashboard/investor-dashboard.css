@@ -75,3 +75,98 @@
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Mesa Atlas - Phase 1 card */
+.investor-dashboard .mesa-atlas-wrapper {
+  padding: 0 24px 12px 24px;
+  flex-shrink: 0;
+}
+
+.mesa-atlas-card {
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: 12px;
+  background: var(--bg);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mesa-atlas-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mesa-atlas-card__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.mesa-atlas-card__subtitle {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+
+.mesa-atlas-card__score {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mesa-atlas-card__risk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text);
+}
+
+.mesa-atlas-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.mesa-atlas-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.mesa-atlas-card__button {
+  border: 1px solid var(--hz-neutral-300);
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mesa-atlas-card__button:hover {
+  border-color: var(--atlas-blue);
+  color: var(--atlas-blue);
+}
+
+.mesa-atlas-card--critical {
+  border-left: 4px solid var(--error);
+}
+
+.mesa-atlas-card--warning {
+  border-left: 4px solid var(--warn);
+}
+
+.mesa-atlas-card--healthy {
+  border-left: 4px solid var(--ok);
+}
