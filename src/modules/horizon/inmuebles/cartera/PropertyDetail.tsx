@@ -95,10 +95,10 @@ const PropertyDetail: React.FC = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (isDetailTab(tab)) {
+    if (isDetailTab(tab) && tab !== activeTab) {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+  }, [searchParams, activeTab]);
 
   useEffect(() => {
     const loadOccupancy = async () => {
