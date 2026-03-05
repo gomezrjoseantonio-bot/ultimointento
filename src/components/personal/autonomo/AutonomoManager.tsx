@@ -66,12 +66,12 @@ const AutonomoManager: React.FC = () => {
 
   const [showFuenteForm, setShowFuenteForm] = useState(false);
   const [editingFuenteId, setEditingFuenteId] = useState<string | null>(null);
-  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES as number[], aplIrpf: false, aplIva: false });
+  const [fuenteFormData, setFuenteFormData] = useState({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES as number[], diaCobro: '1', aplIrpf: false, aplIva: false });
 
   const [showGastoRecurrenteForm, setShowGastoRecurrenteForm] = useState(false);
   const [editingGastoId, setEditingGastoId] = useState<string | null>(null);
   const [gastoRecurrenteFormData, setGastoRecurrenteFormData] = useState({
-    descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES as number[]
+    descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES as number[], diaPago: '1'
   });
 
   const selectedAutonomo = autonomos.find(a => a.id === selectedAutonomoId) || null;
@@ -111,7 +111,7 @@ const AutonomoManager: React.FC = () => {
   };
 
   const handleEditFuenteIngreso = (fuente: FuenteIngreso) => {
-    setFuenteFormData({ nombre: fuente.nombre, importeEstimado: fuente.importeEstimado.toString(), meses: fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES, aplIrpf: fuente.aplIrpf ?? false, aplIva: fuente.aplIva ?? false });
+    setFuenteFormData({ nombre: fuente.nombre, importeEstimado: fuente.importeEstimado.toString(), meses: fuente.meses?.length ? fuente.meses : TODOS_LOS_MESES, diaCobro: (fuente.diaCobro ?? 1).toString(), aplIrpf: fuente.aplIrpf ?? false, aplIva: fuente.aplIva ?? false });
     setEditingFuenteId(fuente.id!);
     setShowFuenteForm(true);
   };
@@ -123,10 +123,12 @@ const AutonomoManager: React.FC = () => {
     if (!fuenteFormData.nombre || isNaN(importe) || importe <= 0) { toast.error('Completa todos los campos'); return; }
     if (!fuenteFormData.meses.length) { toast.error('Selecciona al menos un mes'); return; }
     try {
-      const fuente: Omit<FuenteIngreso, 'id'> = { nombre: fuenteFormData.nombre, importeEstimado: importe, meses: fuenteFormData.meses, aplIrpf: fuenteFormData.aplIrpf, aplIva: fuenteFormData.aplIva };
+      const diaCobro = parseInt(fuenteFormData.diaCobro, 10);
+      if (isNaN(diaCobro) || diaCobro < 1 || diaCobro > 31) { toast.error('Indica un día de cobro válido (1-31)'); return; }
+      const fuente: Omit<FuenteIngreso, 'id'> = { nombre: fuenteFormData.nombre, importeEstimado: importe, meses: fuenteFormData.meses, diaCobro, aplIrpf: fuenteFormData.aplIrpf, aplIva: fuenteFormData.aplIva };
       if (editingFuenteId) { await autonomoService.updateFuenteIngreso(selectedAutonomo.id!, editingFuenteId, fuente); toast.success('Concepto actualizado'); }
       else { await autonomoService.addFuenteIngreso(selectedAutonomo.id!, fuente); toast.success('Concepto añadido'); }
-      setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, aplIrpf: false, aplIva: false });
+      setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, diaCobro: '1', aplIrpf: false, aplIva: false });
       setEditingFuenteId(null); setShowFuenteForm(false); loadData();
     } catch { toast.error('Error al guardar concepto de ingreso'); }
   };
@@ -138,10 +140,10 @@ const AutonomoManager: React.FC = () => {
     catch { toast.error('Error al eliminar'); }
   };
 
-  const handleCancelFuenteForm = () => { setShowFuenteForm(false); setEditingFuenteId(null); setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, aplIrpf: false, aplIva: false }); };
+  const handleCancelFuenteForm = () => { setShowFuenteForm(false); setEditingFuenteId(null); setFuenteFormData({ nombre: '', importeEstimado: '', meses: TODOS_LOS_MESES, diaCobro: '1', aplIrpf: false, aplIva: false }); };
 
   const handleEditGastoRecurrente = (gasto: GastoRecurrenteActividad) => {
-    setGastoRecurrenteFormData({ descripcion: gasto.descripcion, importe: gasto.importe.toString(), categoria: gasto.categoria, meses: gasto.meses?.length ? gasto.meses : TODOS_LOS_MESES });
+    setGastoRecurrenteFormData({ descripcion: gasto.descripcion, importe: gasto.importe.toString(), categoria: gasto.categoria, meses: gasto.meses?.length ? gasto.meses : TODOS_LOS_MESES, diaPago: (gasto.diaPago ?? 1).toString() });
     setEditingGastoId(gasto.id!); setShowGastoRecurrenteForm(true);
   };
 
@@ -152,10 +154,12 @@ const AutonomoManager: React.FC = () => {
     if (!gastoRecurrenteFormData.descripcion || isNaN(importe) || importe <= 0) { toast.error('Completa todos los campos'); return; }
     if (!gastoRecurrenteFormData.meses.length) { toast.error('Selecciona al menos un mes'); return; }
     try {
-      const gasto: Omit<GastoRecurrenteActividad, 'id'> = { descripcion: gastoRecurrenteFormData.descripcion, importe, categoria: gastoRecurrenteFormData.categoria, meses: gastoRecurrenteFormData.meses };
+      const diaPago = parseInt(gastoRecurrenteFormData.diaPago, 10);
+      if (isNaN(diaPago) || diaPago < 1 || diaPago > 31) { toast.error('Indica un día de pago válido (1-31)'); return; }
+      const gasto: Omit<GastoRecurrenteActividad, 'id'> = { descripcion: gastoRecurrenteFormData.descripcion, importe, categoria: gastoRecurrenteFormData.categoria, meses: gastoRecurrenteFormData.meses, diaPago };
       if (editingGastoId) { await autonomoService.updateGastoRecurrenteActividad(selectedAutonomo.id!, editingGastoId, gasto); toast.success('Concepto actualizado'); }
       else { await autonomoService.addGastoRecurrenteActividad(selectedAutonomo.id!, gasto); toast.success('Concepto añadido'); }
-      setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES });
+      setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES, diaPago: '1' });
       setEditingGastoId(null); setShowGastoRecurrenteForm(false); loadData();
     } catch { toast.error('Error al guardar concepto de gasto'); }
   };
@@ -167,7 +171,7 @@ const AutonomoManager: React.FC = () => {
     catch { toast.error('Error al eliminar'); }
   };
 
-  const handleCancelGastoForm = () => { setShowGastoRecurrenteForm(false); setEditingGastoId(null); setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES }); };
+  const handleCancelGastoForm = () => { setShowGastoRecurrenteForm(false); setEditingGastoId(null); setGastoRecurrenteFormData({ descripcion: '', importe: '', categoria: 'asesoria', meses: TODOS_LOS_MESES, diaPago: '1' }); };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
@@ -353,7 +357,7 @@ const AutonomoManager: React.FC = () => {
             <form onSubmit={handleAddFuenteIngreso} className="mb-4 p-4 border rounded space-y-3"
                   style={{ borderColor: 'var(--gray-200)', background: 'var(--gray-050)' }}>
               <p className="text-xs font-semibold" style={{ color: 'var(--gray-700)' }}>{editingFuenteId ? 'Editar concepto' : 'Nuevo concepto de ingreso'}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Concepto *</label>
                   <input type="text" value={fuenteFormData.nombre} onChange={e => setFuenteFormData(p => ({ ...p, nombre: e.target.value }))}
@@ -363,6 +367,11 @@ const AutonomoManager: React.FC = () => {
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Importe (€) *</label>
                   <input type="number" step="0.01" value={fuenteFormData.importeEstimado} onChange={e => setFuenteFormData(p => ({ ...p, importeEstimado: e.target.value }))}
                          className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="5000.00" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Día de cobro *</label>
+                  <input type="number" min="1" max="31" value={fuenteFormData.diaCobro} onChange={e => setFuenteFormData(p => ({ ...p, diaCobro: e.target.value }))}
+                         className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="5" required />
                 </div>
               </div>
               <div>
@@ -397,6 +406,8 @@ const AutonomoManager: React.FC = () => {
                       <span className="text-sm" style={{ color: 'var(--gray-600)' }}>{formatCurrency(fuente.importeEstimado)}/vez</span>
                       <span style={{ color: 'var(--gray-300)' }}>·</span>
                       {renderMesesBadges(meses)}
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
+                      <span className="text-xs" style={{ color: 'var(--gray-500)' }}>Día {fuente.diaCobro ?? 1}</span>
                       <span style={{ color: 'var(--gray-300)' }}>·</span>
                       <span className="text-xs font-medium" style={{ color: 'var(--gray-700)' }}>Anual: {formatCurrency(fuente.importeEstimado * meses.length)}</span>
                     </div>
@@ -452,7 +463,7 @@ const AutonomoManager: React.FC = () => {
             <form onSubmit={handleAddGastoRecurrente} className="mb-4 p-4 border rounded space-y-3"
                   style={{ borderColor: 'var(--gray-200)', background: 'var(--gray-050)' }}>
               <p className="text-xs font-semibold" style={{ color: 'var(--gray-700)' }}>{editingGastoId ? 'Editar concepto' : 'Nuevo concepto de gasto'}</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Descripción *</label>
                   <input type="text" value={gastoRecurrenteFormData.descripcion} onChange={e => setGastoRecurrenteFormData(p => ({ ...p, descripcion: e.target.value }))}
@@ -474,6 +485,11 @@ const AutonomoManager: React.FC = () => {
                     <option value="alquiler">Alquiler de local</option>
                     <option value="otros">Otros</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1" style={{ color: 'var(--gray-700)' }}>Día de pago *</label>
+                  <input type="number" min="1" max="31" value={gastoRecurrenteFormData.diaPago} onChange={e => setGastoRecurrenteFormData(p => ({ ...p, diaPago: e.target.value }))}
+                         className="w-full px-3 py-2 border rounded text-sm focus:outline-none" style={inputStyle} placeholder="5" required />
                 </div>
               </div>
               <div>
@@ -498,6 +514,8 @@ const AutonomoManager: React.FC = () => {
                       <span className="text-sm" style={{ color: 'var(--gray-600)' }}>{formatCurrency(gasto.importe)}/vez</span>
                       <span style={{ color: 'var(--gray-300)' }}>·</span>
                       {renderMesesBadges(meses)}
+                      <span style={{ color: 'var(--gray-300)' }}>·</span>
+                      <span className="text-xs" style={{ color: 'var(--gray-500)' }}>Día {gasto.diaPago ?? 1}</span>
                       <span style={{ color: 'var(--gray-300)' }}>·</span>
                       <span className="text-xs font-medium" style={{ color: 'var(--gray-700)' }}>Anual: {formatCurrency(gasto.importe * meses.length)}</span>
                     </div>
