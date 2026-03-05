@@ -5,12 +5,13 @@ import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
-import { getAllContracts, getContractStatus } from '../../../../services/contractService';
+import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
+type ContractFilter = 'all' | 'active' | 'terminated';
 
 const isDetailTab = (value: string | null): value is DetailTab =>
   value === 'resumen' || value === 'contratos' || value === 'presupuesto' || value === 'fiscal';
@@ -59,6 +60,7 @@ const PropertyDetail: React.FC = () => {
   const [occupancyYear, setOccupancyYear] = useState<number>(new Date().getFullYear());
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
+  const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -192,7 +194,37 @@ const PropertyDetail: React.FC = () => {
 
   const totalCost = calculateTotalCost(property);
   const pricePerSqm = calculatePricePerSqm(property);
-  const activeContractsAtQueryDate = contracts.filter((contract) => getContractStatus(contract) === 'active');
+  const contractsWithComputedValues = contracts.map((contract) => {
+    const totalRent = calculateRentPeriodsFromContract(contract)
+      .reduce((sum, period) => sum + period.importe, 0);
+
+    return {
+      contract,
+      status: getContractStatus(contract),
+      monthlyRent: contract.rentaMensual || contract.monthlyRent || 0,
+      totalRent,
+    };
+  });
+
+  const filteredContracts = contractsWithComputedValues.filter(({ status }) => {
+    if (contractFilter === 'all') return true;
+    if (contractFilter === 'active') return status === 'active';
+    return status === 'terminated';
+  });
+
+  const activeContractsTotals = contractsWithComputedValues
+    .filter(({ status }) => status === 'active')
+    .reduce(
+      (acc, current) => ({
+        monthlyRent: acc.monthlyRent + current.monthlyRent,
+        totalRent: acc.totalRent + current.totalRent,
+      }),
+      { monthlyRent: 0, totalRent: 0 }
+    );
+
+  const terminatedContractsTotalRent = contractsWithComputedValues
+    .filter(({ status }) => status === 'terminated')
+    .reduce((acc, current) => acc + current.totalRent, 0);
   const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
   const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
   const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
@@ -215,13 +247,15 @@ const PropertyDetail: React.FC = () => {
             <p className="text-neutral-600">{property.address}</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
-          className="flex items-center px-4 py-2 bg-brand-navy"
-        >
-          <Pencil className="h-5 w-5 mr-2" size={24}  />
-          Editar
-        </button>
+        {activeTab !== 'contratos' && (
+          <button
+            onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
+            className="flex items-center px-4 py-2 bg-brand-navy"
+          >
+            <Pencil className="h-5 w-5 mr-2" size={24}  />
+            Editar
+          </button>
+        )}
       </div>
 
       {/* Tab Navigation */}
@@ -263,25 +297,34 @@ const PropertyDetail: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-neutral-900">Contratos / Ingresos</h3>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/tesoreria')}
-                className="text-sm text-brand-navy hover:text-brand-navy/80"
-              >
-                Ver cobros en Tesorería →
-              </button>
-              <button
-                onClick={() => navigate('/inmuebles/contratos')}
-                className="text-sm text-brand-navy hover:text-brand-navy/80"
-              >
-                Gestionar todos los contratos →
-              </button>
+            <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-full">
+              {([
+                { id: 'all', label: 'Todos' },
+                { id: 'active', label: 'Activos' },
+                { id: 'terminated', label: 'Finalizados' },
+              ] as { id: ContractFilter; label: string }[]).map(({ id, label }) => {
+                const isActive = contractFilter === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setContractFilter(id)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                      isActive
+                        ? 'bg-white text-brand-navy shadow-sm'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          {activeContractsAtQueryDate.length === 0 ? (
+          {filteredContracts.length === 0 ? (
             <div className="bg-white border border-neutral-200 rounded-lg p-8 text-center">
               <Users className="mx-auto h-8 w-8 text-neutral-300 mb-3" />
-              <p className="text-sm text-neutral-600">No hay contratos activos para la fecha de consulta.</p>
+              <p className="text-sm text-neutral-600">No hay contratos para el filtro seleccionado.</p>
             </div>
           ) : (
             <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
@@ -292,11 +335,12 @@ const PropertyDetail: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Inicio</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Fin</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Renta mensual</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Renta total contrato</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
-                  {activeContractsAtQueryDate.map((contract) => (
+                  {filteredContracts.map(({ contract, status, monthlyRent, totalRent }) => (
                     <tr key={contract.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 text-sm text-neutral-900">
                         {contract.inquilino
@@ -310,20 +354,23 @@ const PropertyDetail: React.FC = () => {
                         {formatDate(contract.fechaFin || contract.endDate || '')}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-900">
-                        {formatEuro(contract.rentaMensual || contract.monthlyRent || 0)}
+                        {formatEuro(monthlyRent)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-neutral-900">
+                        {formatEuro(totalRent)}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          contract.estadoContrato === 'activo' || contract.status === 'active'
+                          status === 'active'
                             ? 'bg-success-100 text-success-800'
-                            : contract.estadoContrato === 'rescindido' || contract.status === 'terminated'
+                            : status === 'terminated'
                             ? 'bg-error-100 text-error-800'
                             : 'bg-neutral-100 text-neutral-600'
                         }`}>
-                          {contract.estadoContrato === 'activo' || contract.status === 'active'
+                          {status === 'active'
                             ? 'Activo'
-                            : contract.estadoContrato === 'rescindido' || contract.status === 'terminated'
-                            ? 'Rescindido'
+                            : status === 'terminated'
+                            ? 'Finalizado'
                             : 'Finalizado'}
                         </span>
                       </td>
@@ -333,6 +380,18 @@ const PropertyDetail: React.FC = () => {
               </table>
             </div>
           )}
+          <div className="bg-white border border-neutral-200 rounded-lg p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+              <span className="font-semibold text-neutral-900">Total contratos activos</span>
+              <span className="text-neutral-700">
+                Renta mensual: <span className="font-semibold">{formatEuro(activeContractsTotals.monthlyRent)}</span> · Renta total: <span className="font-semibold">{formatEuro(activeContractsTotals.totalRent)}</span>
+              </span>
+            </div>
+            <div className="border-t border-neutral-200 pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+              <span className="font-semibold text-neutral-900">Renta total generada por contratos finalizados</span>
+              <span className="font-semibold text-neutral-700">{formatEuro(terminatedContractsTotalRent)}</span>
+            </div>
+          </div>
         </div>
       ) : (
         <>
