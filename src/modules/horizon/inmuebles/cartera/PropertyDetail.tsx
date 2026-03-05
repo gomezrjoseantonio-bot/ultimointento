@@ -196,6 +196,8 @@ const PropertyDetail: React.FC = () => {
   const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
   const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
   const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
+  const requestedTab = searchParams.get('tab');
+  const isForcedTabView = isDetailTab(requestedTab);
 
   return (
     <div className="space-y-6">
@@ -223,15 +225,16 @@ const PropertyDetail: React.FC = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
-        {(
+      {!isForcedTabView && (
+        <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
+          {(
           [
             { id: 'resumen', label: 'Operación', Icon: LayoutList },
             { id: 'contratos', label: 'Alquileres', Icon: Users },
             { id: 'presupuesto', label: 'Gastos', Icon: TrendingDown },
             { id: 'fiscal', label: 'Fiscal', Icon: FileText },
           ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
-        ).map(({ id: tabId, label, Icon }) => {
+          ).map(({ id: tabId, label, Icon }) => {
           const isActive = activeTab === tabId;
           return (
             <button
@@ -249,8 +252,9 @@ const PropertyDetail: React.FC = () => {
               {label}
             </button>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'presupuesto' ? (
