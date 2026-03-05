@@ -147,13 +147,16 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
       if (form.type === 'Transferencia') {
         // Create two linked movements for transfers
         const transferGroupId = `transfer_${Date.now()}`;
+        const sourceAccountName = accounts.find(a => a.id?.toString() === form.accountId)?.name || 'cuenta';
+        const targetAccountName = accounts.find(a => a.id?.toString() === form.transferToAccountId)?.name || 'cuenta';
+        const transferDescription = form.description.trim();
         
         // Movement from source account (negative)
         const fromMovement = {
           accountId: Number(form.accountId),
           date: form.date,
           amount: -Math.abs(amount), // Always negative for outgoing
-          description: `Transferencia a ${accounts.find(a => a.id?.toString() === form.transferToAccountId)?.name || 'cuenta'}`,
+          description: transferDescription || `Transferencia a ${targetAccountName}`,
           counterparty: form.counterparty || 'Transferencia interna',
           type: 'Transferencia' as 'Transferencia',
           category: { tipo: 'Transferencias', subtipo: 'Interna' },
@@ -175,7 +178,7 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
           accountId: Number(form.transferToAccountId),
           date: form.date,
           amount: Math.abs(amount), // Always positive for incoming
-          description: `Transferencia desde ${accounts.find(a => a.id?.toString() === form.accountId)?.name || 'cuenta'}`,
+          description: transferDescription || `Transferencia desde ${sourceAccountName}`,
           counterparty: form.counterparty || 'Transferencia interna',
           type: 'Transferencia' as 'Transferencia',
           category: { tipo: 'Transferencias', subtipo: 'Interna' },
@@ -195,6 +198,14 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
         // Save both movements
         await db.add('movements', fromMovement);
         await db.add('movements', toMovement);
+
+        // Recalculate balances for both affected accounts so Treasury cards reflect transfer immediately
+        const { recalculateAccountBalance } = await import('../../../../services/treasuryEventsService');
+        const affectedAccountIds = Array.from(new Set([
+          Number(form.accountId),
+          Number(form.transferToAccountId)
+        ]));
+        await Promise.all(affectedAccountIds.map((accountId) => recalculateAccountBalance(accountId)));
         
         // Track analytics
         trackMovementCreation('manual', 2, { 
@@ -210,6 +221,9 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
             console.log('Navigate to movements with transfer filter');
           }
         });
+
+        onMovementCreated();
+        handleClose();
         
       } else {
         // Create single movement
