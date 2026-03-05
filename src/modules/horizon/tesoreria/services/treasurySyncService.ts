@@ -629,6 +629,7 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
+      // IMPORTANT: cuota and activity expenses must honor reglaPagoDia business-day semantics.
       const predictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, 1);
       const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
