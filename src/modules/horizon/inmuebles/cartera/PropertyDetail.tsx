@@ -51,7 +51,7 @@ const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number)
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,13 +95,10 @@ const PropertyDetail: React.FC = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (!isDetailTab(tab)) return;
-
-    setActiveTab(tab);
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('tab');
-    setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+    if (isDetailTab(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
 
   useEffect(() => {
     const loadOccupancy = async () => {
