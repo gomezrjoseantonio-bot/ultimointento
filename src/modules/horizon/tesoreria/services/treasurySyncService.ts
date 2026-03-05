@@ -61,36 +61,6 @@ function buildDate(year: number, month: number, day: number): string {
   return `${year}-${mm}-${dd}`;
 }
 
-function getAddressStreetLiteral(address: string): string {
-  const firstSegment = address
-    .split(',')[0]
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!firstSegment) return '';
-
-  return firstSegment
-    .replace(/^avda\.?\s+/i, 'Avenida ')
-    .replace(/^av\.?\s+/i, 'Avenida ')
-    .replace(/^c\/?\s*/i, 'Calle ')
-    .trim();
-}
-
-function getPropertyLiteral(property: { id?: number; alias?: string; address?: string }): string {
-  const alias = property.alias?.trim();
-  if (alias) return alias;
-
-  const address = property.address?.trim();
-  if (address) {
-    const streetLiteral = getAddressStreetLiteral(address);
-    if (streetLiteral) return streetLiteral;
-  }
-
-  return `Inmueble #${property.id}`;
-}
-
-
-
 function otrosIngresosAppliesToMonth(
   ingreso: { frecuencia: string; fechaInicio?: string; fechaFin?: string },
   year: number,
