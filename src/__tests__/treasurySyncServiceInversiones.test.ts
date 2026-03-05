@@ -161,10 +161,7 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(source).toContain('accountId: resolvedAccountId');
   });
 
-  it('uses property literal helper to include address when alias is missing', () => {
-    expect(source).toContain('function getPropertyLiteral');
-    expect(source).toContain('function getAddressStreetLiteral');
-    expect(source).toContain(".split(',')[0]");
-    expect(source).toContain(".replace(/^avda\\.?\\s+/i, 'Avenida ')");
+  it('uses property literal helper prioritizing property alias for housing expenses', () => {
+    expect(source).toContain('getPropertyLiteral(inm)');
   });
 });

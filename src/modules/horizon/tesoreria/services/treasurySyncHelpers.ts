@@ -78,12 +78,6 @@ export function getAddressStreetLiteral(address: string): string {
 }
 
 export function getPropertyLiteral(property: { id?: number; alias?: string; address?: string }): string {
-  const address = property.address?.trim();
-  if (address) {
-    const streetLiteral = getAddressStreetLiteral(address);
-    if (streetLiteral) return streetLiteral;
-  }
-
   const alias = property.alias?.trim();
   if (alias) return alias;
 
