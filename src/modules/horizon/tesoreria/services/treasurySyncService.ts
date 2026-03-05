@@ -315,11 +315,19 @@ export async function generateMonthlyForecasts(
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
+    const personalHousingAddress = personalData?.direccion?.trim() || '';
     const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
     const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
     const accounts = await db.getAll('accounts');
     const accountsById = new Map(accounts.map((acc) => [acc.id, acc]));
-    const cardReceipts = new Map<string, { accountId: number; sourceId: number; amount: number; description: string; predictedDate: string }>();
+    const cardReceipts = new Map<string, {
+      accountId: number;
+      sourceId: number;
+      amount: number;
+      description: string;
+      predictedDate: string;
+      hasHousingExpense: boolean;
+    }>();
 
     for (const expense of activePersonalExpenses) {
       if (!personalExpenseAppliesToMonth(expense, month)) continue;
@@ -332,6 +340,11 @@ export async function generateMonthlyForecasts(
 
       const amount = getPersonalExpenseAmountForMonth(expense, month);
       if (amount <= 0) continue;
+      const isHousingCategory = expense.categoria === 'vivienda';
+      const personalExpenseDescription =
+        isHousingCategory && personalHousingAddress
+          ? `${expense.concepto} – ${personalHousingAddress}`
+          : expense.concepto;
 
       const account = expense.accountId ? accountsById.get(expense.accountId) : undefined;
       const isCreditCard = account?.tipo === 'TARJETA_CREDITO' && account.cardConfig;
@@ -346,6 +359,7 @@ export async function generateMonthlyForecasts(
 
         if (existing) {
           existing.amount += amount;
+          existing.hasHousingExpense = existing.hasHousingExpense || isHousingCategory;
         } else {
           cardReceipts.set(key, {
             accountId: resolvedAccountId,
@@ -353,6 +367,7 @@ export async function generateMonthlyForecasts(
             amount,
             description: `Recibo tarjeta ${account.alias || `#${account.id}`}`,
             predictedDate: receiptDate,
+            hasHousingExpense: isHousingCategory,
           });
         }
         continue;
@@ -362,7 +377,7 @@ export async function generateMonthlyForecasts(
         type: 'expense' as const,
         amount,
         predictedDate: buildDate(year, month, expense.diaPago ?? 1),
-        description: expense.concepto,
+        description: personalExpenseDescription,
         sourceType: 'personal_expense' as const,
         sourceId: expense.id,
         accountId: expense.accountId,
@@ -373,11 +388,15 @@ export async function generateMonthlyForecasts(
     }
 
     for (const receipt of Array.from(cardReceipts.values())) {
+      const receiptDescription =
+        receipt.hasHousingExpense && personalHousingAddress
+          ? `${receipt.description} – ${personalHousingAddress}`
+          : receipt.description;
       await insertEvent({
         type: 'expense' as const,
         amount: receipt.amount,
         predictedDate: receipt.predictedDate,
-        description: receipt.description,
+        description: receiptDescription,
         sourceType: 'personal_expense' as const,
         sourceId: receipt.sourceId,
         accountId: receipt.accountId,
