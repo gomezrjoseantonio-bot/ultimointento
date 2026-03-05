@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PatrimonioHeader from './PatrimonioHeader';
 import FlujosGrid from './FlujosGrid';
 import SaludFinanciera from './SaludFinanciera';
 import AlertasSection from './AlertasSection';
+import MesaAtlasCard from './MesaAtlasCard';
 import ActualizacionValoresDrawer from './ActualizacionValoresDrawer';
 import { dashboardService } from '../../services/dashboardService';
+import { calculateMesaAtlasIndex } from '../../services/mesaAtlasService';
 import type { PatrimonioData, FlujosCaja, SaludFinanciera as SaludFinancieraType, Alerta } from '../../types/dashboard';
 import './investor-dashboard.css';
 
@@ -92,6 +94,18 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   const handleAlertClick = (alerta: Alerta) => {
     onNavigate(alerta.link);
   };
+
+
+  const mesaAtlas = useMemo(() => calculateMesaAtlasIndex({
+    ingresos: {
+      trabajo: flujos.trabajo.netoMensual,
+      inmuebles: flujos.inmuebles.cashflow,
+      inversiones: flujos.inversiones.rendimientoMes + flujos.inversiones.dividendosMes
+    },
+    gastoMedioMensual: salud.gastoMedioMensual,
+    colchonMeses: salud.colchonMeses,
+    variacionMensualPorcentaje: patrimonio.variacionPorcentaje
+  }), [flujos, salud, patrimonio.variacionPorcentaje]);
 
   // Show skeleton loader while loading
   if (loading) {
@@ -186,6 +200,14 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
         inversiones={flujos.inversiones}
         onNavigate={onNavigate}
       />
+
+      {/* FASE 1 - Índice Mesa Atlas (módulo opcional en dashboard) */}
+      <div className="mesa-atlas-wrapper">
+        <MesaAtlasCard
+          data={mesaAtlas}
+          onOpenPlan={() => onNavigate('/horizon/personal')}
+        />
+      </div>
 
       {/* Bottom sections: Salud Financiera + Alerts */}
       <div className="bottom-sections">
