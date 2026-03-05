@@ -12,7 +12,6 @@ import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePre
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
 type ContractFilter = 'all' | 'active' | 'terminated';
-type ContractSortKey = 'tenant' | 'start' | 'end' | 'monthlyRent' | 'totalRent' | 'status';
 
 const isDetailTab = (value: string | null): value is DetailTab =>
   value === 'resumen' || value === 'contratos' || value === 'presupuesto' || value === 'fiscal';
@@ -61,11 +60,7 @@ const PropertyDetail: React.FC = () => {
   const [occupancyYear, setOccupancyYear] = useState<number>(new Date().getFullYear());
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
-  const [contractFilter, setContractFilter] = useState<ContractFilter>('active');
-  const [contractSort, setContractSort] = useState<{ key: ContractSortKey; direction: 'asc' | 'desc' }>({
-    key: 'tenant',
-    direction: 'asc',
-  });
+  const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -205,18 +200,6 @@ const PropertyDetail: React.FC = () => {
 
   const totalCost = calculateTotalCost(property);
   const pricePerSqm = calculatePricePerSqm(property);
-
-  const getTenantName = (contract: Contract): string => (
-    contract.inquilino
-      ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim()
-      : (contract.tenant?.name ?? '—')
-  );
-
-  const getStatusLabel = (status: 'active' | 'upcoming' | 'terminated'): string => {
-    if (status === 'active') return 'Activo';
-    if (status === 'terminated') return 'Finalizado';
-    return 'Próximo';
-  };
   const contractsWithComputedValues = contracts.map((contract) => {
     const totalRent = calculateRentPeriodsFromContract(contract)
       .reduce((sum, period) => sum + period.importe, 0);
@@ -234,43 +217,6 @@ const PropertyDetail: React.FC = () => {
     if (contractFilter === 'active') return status === 'active';
     return status === 'terminated';
   });
-
-  const sortedContracts = [...filteredContracts].sort((a, b) => {
-    const directionMultiplier = contractSort.direction === 'asc' ? 1 : -1;
-
-    if (contractSort.key === 'tenant') {
-      return getTenantName(a.contract).localeCompare(getTenantName(b.contract), 'es') * directionMultiplier;
-    }
-
-    if (contractSort.key === 'start') {
-      const aTime = new Date(a.contract.fechaInicio || a.contract.startDate || '').getTime() || 0;
-      const bTime = new Date(b.contract.fechaInicio || b.contract.startDate || '').getTime() || 0;
-      return (aTime - bTime) * directionMultiplier;
-    }
-
-    if (contractSort.key === 'end') {
-      const aTime = new Date(a.contract.fechaFin || a.contract.endDate || '').getTime() || 0;
-      const bTime = new Date(b.contract.fechaFin || b.contract.endDate || '').getTime() || 0;
-      return (aTime - bTime) * directionMultiplier;
-    }
-
-    if (contractSort.key === 'monthlyRent') {
-      return (a.monthlyRent - b.monthlyRent) * directionMultiplier;
-    }
-
-    if (contractSort.key === 'totalRent') {
-      return (a.totalRent - b.totalRent) * directionMultiplier;
-    }
-
-    return getStatusLabel(a.status).localeCompare(getStatusLabel(b.status), 'es') * directionMultiplier;
-  });
-
-  const toggleContractSort = (key: ContractSortKey) => {
-    setContractSort((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-    }));
-  };
 
   const activeContractsTotals = contractsWithComputedValues
     .filter(({ status }) => status === 'active')
@@ -357,7 +303,7 @@ const PropertyDetail: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-base font-semibold text-neutral-900">Contratos / Ingresos</h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-neutral-100 p-1 rounded-full">
               {([
                 { id: 'all', label: 'Todos' },
                 { id: 'active', label: 'Activos' },
@@ -369,10 +315,10 @@ const PropertyDetail: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setContractFilter(id)}
-                    className={`px-5 py-2 text-sm font-medium rounded-full border transition-colors ${
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
                       isActive
-                        ? 'border-brand-navy text-brand-navy bg-primary-50'
-                        : 'border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-700'
+                        ? 'bg-white text-brand-navy shadow-sm'
+                        : 'text-neutral-600 hover:text-neutral-900'
                     }`}
                   >
                     {label}
@@ -391,34 +337,16 @@ const PropertyDetail: React.FC = () => {
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50">
                   <tr>
-                    {([
-                      { key: 'tenant', label: 'Inquilino' },
-                      { key: 'start', label: 'Inicio' },
-                      { key: 'end', label: 'Fin' },
-                      { key: 'monthlyRent', label: 'Renta mensual' },
-                      { key: 'totalRent', label: 'Renta total contrato' },
-                      { key: 'status', label: 'Estado' },
-                    ] as { key: ContractSortKey; label: string }[]).map(({ key, label }) => {
-                      const isActiveSort = contractSort.key === key;
-                      return (
-                        <th key={key} className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                          <button
-                            type="button"
-                            onClick={() => toggleContractSort(key)}
-                            className="inline-flex items-center gap-1 hover:text-neutral-700"
-                          >
-                            {label}
-                            <span className={isActiveSort ? 'text-brand-navy' : 'text-neutral-400'}>
-                              {isActiveSort ? (contractSort.direction === 'asc' ? '↑' : '↓') : '↕'}
-                            </span>
-                          </button>
-                        </th>
-                      );
-                    })}
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Inquilino</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Inicio</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Fin</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Renta mensual</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Renta total contrato</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
-                  {sortedContracts.map(({ contract, status, monthlyRent, totalRent }) => (
+                  {filteredContracts.map(({ contract, status, monthlyRent, totalRent }) => (
                     <tr key={contract.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 text-sm text-neutral-900">
                         {getTenantName(contract)}
@@ -443,7 +371,11 @@ const PropertyDetail: React.FC = () => {
                             ? 'bg-error-100 text-error-800'
                             : 'bg-neutral-100 text-neutral-600'
                         }`}>
-                          {getStatusLabel(status)}
+                          {status === 'active'
+                            ? 'Activo'
+                            : status === 'terminated'
+                            ? 'Finalizado'
+                            : 'Finalizado'}
                         </span>
                       </td>
                     </tr>
