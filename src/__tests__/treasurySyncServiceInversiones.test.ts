@@ -161,6 +161,12 @@ describe('treasurySyncService – treasury detail regressions', () => {
     expect(source).toContain('accountId: resolvedAccountId');
   });
 
+  it('applies reglaPagoDia business-day logic for cuota de autónomos dates', () => {
+    expect(source).toContain('function getBusinessDayForRule');
+    expect(source).toContain("rule.tipo === 'ultimo-habil'");
+    expect(source).toContain('getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, 1)');
+  });
+
   it('uses property literal helper prioritizing address street literal over alias', () => {
     expect(source).toContain('function getPropertyLiteral');
     expect(source).toContain('function getAddressStreetLiteral');

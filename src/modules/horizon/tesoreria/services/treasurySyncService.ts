@@ -30,6 +30,7 @@ import {
   ConfiguracionFiscal,
   TRAMOS_AHORRO_2026,
 } from '../../../../types/inversiones-extended';
+import type { ReglaDia } from '../../../../types/personal';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -55,6 +56,56 @@ function buildDate(year: number, month: number, day: number): string {
   const mm = String(safeMonth).padStart(2, '0');
   const dd = String(effectiveDay).padStart(2, '0');
   return `${year}-${mm}-${dd}`;
+}
+
+
+function isBusinessDay(date: Date): boolean {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function getBusinessDayForRule(year: number, month: number, rule?: ReglaDia, fallbackDay = 1): string {
+  const safeMonth = Math.min(Math.max(month, 1), 12);
+
+  if (!rule || rule.tipo === 'fijo') {
+    const day = rule?.dia ?? fallbackDay;
+    return buildDate(year, safeMonth, day);
+  }
+
+  if (rule.tipo === 'ultimo-habil') {
+    const date = new Date(year, safeMonth, 0);
+    while (!isBusinessDay(date)) {
+      date.setDate(date.getDate() - 1);
+    }
+    return buildDate(year, safeMonth, date.getDate());
+  }
+
+  const position = rule.posicion ?? -1;
+  if (position >= 1) {
+    const date = new Date(year, safeMonth - 1, 1);
+    let count = 0;
+    while (date.getMonth() === safeMonth - 1) {
+      if (isBusinessDay(date)) {
+        count++;
+        if (count === position) return buildDate(year, safeMonth, date.getDate());
+      }
+      date.setDate(date.getDate() + 1);
+    }
+    return buildDate(year, safeMonth, fallbackDay);
+  }
+
+  const targetFromEnd = Math.max(1, Math.abs(position));
+  const date = new Date(year, safeMonth, 0);
+  let count = 0;
+  while (date.getMonth() === safeMonth - 1) {
+    if (isBusinessDay(date)) {
+      count++;
+      if (count === targetFromEnd) return buildDate(year, safeMonth, date.getDate());
+    }
+    date.setDate(date.getDate() - 1);
+  }
+
+  return buildDate(year, safeMonth, fallbackDay);
 }
 
 function getAddressStreetLiteral(address: string): string {
@@ -624,11 +675,11 @@ export async function generateMonthlyForecasts(
         if (alreadyExists) {
           skipped++;
         } else {
-          const day = autonomoActivo.reglaCobroDia?.dia ?? 15;
+          const predictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaCobroDia, 15);
           await insertEvent({
             type: 'income' as const,
             amount: ingresosEsteMes,
-            predictedDate: buildDate(year, month, day),
+            predictedDate,
             description,
             sourceType: 'autonomo_ingreso' as const,
             sourceId: autonomoActivo.id,
@@ -653,8 +704,7 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
-      const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
-      const predictedDate = buildDate(year, month, day);
+      const predictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, 1);
       const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
       const recurrentes = autonomoActivo.gastosRecurrentesActividad ?? [];
