@@ -145,12 +145,13 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     updatedAt: now,
   };
 
-  const saleId = await tx.objectStore('property_sales').add(sale);
+  const rawSaleId = await tx.objectStore('property_sales').add(sale);
+  const saleId = typeof rawSaleId === 'number' ? rawSaleId : undefined;
 
   const updatedProperty: Property = {
     ...property,
     state: 'vendido',
-    notes: [property.notes, `Vendido el ${input.saleDate}. SaleId: ${saleId}.`].filter(Boolean).join(' | '),
+    notes: [property.notes, `Vendido el ${input.saleDate}.${saleId ? ` SaleId: ${saleId}.` : ''}`].filter(Boolean).join(' | '),
   };
 
   await tx.objectStore('properties').put(updatedProperty);
