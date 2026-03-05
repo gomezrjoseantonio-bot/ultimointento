@@ -30,6 +30,10 @@ import {
   ConfiguracionFiscal,
   TRAMOS_AHORRO_2026,
 } from '../../../../types/inversiones-extended';
+import {
+  getBusinessDayForRule,
+  getPropertyLiteral,
+} from './treasurySyncHelpers';
 
 // All months of the year – used as default when a source has no specific month filter
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -624,11 +628,11 @@ export async function generateMonthlyForecasts(
         if (alreadyExists) {
           skipped++;
         } else {
-          const day = autonomoActivo.reglaCobroDia?.dia ?? 15;
+          const predictedDate = getBusinessDayForRule(year, month, autonomoActivo.reglaCobroDia, 15);
           await insertEvent({
             type: 'income' as const,
             amount: ingresosEsteMes,
-            predictedDate: buildDate(year, month, day),
+            predictedDate,
             description,
             sourceType: 'autonomo_ingreso' as const,
             sourceId: autonomoActivo.id,
