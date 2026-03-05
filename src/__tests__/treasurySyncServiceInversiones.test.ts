@@ -146,3 +146,25 @@ describe('treasurySyncService – deposito vencimiento deduplication', () => {
     expect(liquidacionBlock).not.toContain("db.getAll('treasuryEvents')).some(");
   });
 });
+
+// ─── 6. Treasury regressions requested by product feedback ──────────────────
+
+describe('treasurySyncService – treasury detail regressions', () => {
+  it('creates autónomo expenses as separated partidas instead of one aggregated event', () => {
+    expect(source).toContain("sourceType: 'autonomo_gasto'");
+    expect(source).toContain("sourceType: 'autonomo_cuota'");
+    expect(source).not.toContain("sourceType: 'autonomo' as const");
+  });
+
+  it('resolves credit-card receipt bank account through resolveAccountId with numeric fallback', () => {
+    expect(source).toContain('const resolvedAccountId = resolveAccountId(chargeAccountId) ?? account.id');
+    expect(source).toContain('accountId: resolvedAccountId');
+  });
+
+  it('uses property literal helper to include address when alias is missing', () => {
+    expect(source).toContain('function getPropertyLiteral');
+    expect(source).toContain('function getAddressStreetLiteral');
+    expect(source).toContain(".split(',')[0]");
+    expect(source).toContain(".replace(/^avda\\.?\\s+/i, 'Avenida ')");
+  });
+});

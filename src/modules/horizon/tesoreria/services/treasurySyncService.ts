@@ -32,7 +32,7 @@ import {
 } from '../../../../types/inversiones-extended';
 import {
   getBusinessDayForRule,
-  getPropertyLiteral as getPropertyLiteralHelper,
+  getPropertyLiteral,
 } from './treasurySyncHelpers';
 
 // All months of the year – used as default when a source has no specific month filter
@@ -59,6 +59,34 @@ function buildDate(year: number, month: number, day: number): string {
   const mm = String(safeMonth).padStart(2, '0');
   const dd = String(effectiveDay).padStart(2, '0');
   return `${year}-${mm}-${dd}`;
+}
+
+function getAddressStreetLiteral(address: string): string {
+  const firstSegment = address
+    .split(',')[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!firstSegment) return '';
+
+  return firstSegment
+    .replace(/^avda\.?\s+/i, 'Avenida ')
+    .replace(/^av\.?\s+/i, 'Avenida ')
+    .replace(/^c\/?\s*/i, 'Calle ')
+    .trim();
+}
+
+function getPropertyLiteral(property: { id?: number; alias?: string; address?: string }): string {
+  const alias = property.alias?.trim();
+  if (alias) return alias;
+
+  const address = property.address?.trim();
+  if (address) {
+    const streetLiteral = getAddressStreetLiteral(address);
+    if (streetLiteral) return streetLiteral;
+  }
+
+  return `Inmueble #${property.id}`;
 }
 
 
@@ -244,7 +272,7 @@ export async function generateMonthlyForecasts(
       const inmuebles = await db.getAll('properties');
       for (const inm of inmuebles) {
         if (inm.id != null) {
-          propertyAliasMap.set(inm.id, getPropertyLiteralHelper(inm));
+          propertyAliasMap.set(inm.id, getPropertyLiteral(inm));
         }
       }
     } catch {
@@ -630,10 +658,7 @@ export async function generateMonthlyForecasts(
 
     if (autonomoActivo) {
       const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
-      const predictedDate =
-        autonomoActivo.reglaPagoDia?.tipo === 'fijo'
-          ? buildDate(year, month, day)
-          : getBusinessDayForRule(year, month, autonomoActivo.reglaPagoDia, day);
+      const predictedDate = buildDate(year, month, day);
       const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
       const recurrentes = autonomoActivo.gastosRecurrentesActividad ?? [];

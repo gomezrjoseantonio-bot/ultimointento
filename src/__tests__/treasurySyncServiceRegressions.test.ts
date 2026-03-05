@@ -33,7 +33,7 @@ describe('treasurySyncService – treasury detail regressions', () => {
   });
 
   it('uses property literal helper prioritizing address street literal over alias', () => {
-    expect(serviceSource).toContain('getPropertyLiteralHelper(inm)');
+    expect(serviceSource).toContain('getPropertyLiteral(inm)');
     expect(helperSource).toContain('export function getPropertyLiteral');
     expect(helperSource).toContain('export function getAddressStreetLiteral');
     expect(helperSource).toContain(".split(',')[0]");
