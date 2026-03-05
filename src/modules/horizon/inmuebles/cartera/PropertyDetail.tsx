@@ -26,6 +26,16 @@ const getContractDateRange = (contract: Contract): { start: Date; end: Date } | 
   return start <= end ? { start, end } : { start: end, end: start };
 };
 
+const getTenantName = (contract: Contract): string => {
+  const fullName = `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim();
+  if (fullName) return fullName;
+
+  const legacyName = contract.tenant?.name?.trim();
+  if (legacyName) return legacyName;
+
+  return 'Inquilino sin nombre';
+};
+
 const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number): number => {
   const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year, 11, 31);
