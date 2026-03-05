@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
@@ -11,6 +11,9 @@ import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePre
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
+
+const isDetailTab = (value: string | null): value is DetailTab =>
+  value === 'resumen' || value === 'contratos' || value === 'presupuesto' || value === 'fiscal';
 
 const getContractDateRange = (contract: Contract): { start: Date; end: Date } | null => {
   const startRaw = contract.fechaInicio || contract.startDate;
@@ -48,6 +51,7 @@ const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number)
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +92,13 @@ const PropertyDetail: React.FC = () => {
       loadProperty(parseInt(id));
     }
   }, [id, loadProperty]);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (isDetailTab(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
 
   useEffect(() => {
     const loadOccupancy = async () => {
