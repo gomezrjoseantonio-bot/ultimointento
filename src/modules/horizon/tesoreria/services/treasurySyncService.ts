@@ -57,6 +57,16 @@ function buildDate(year: number, month: number, day: number): string {
   return `${year}-${mm}-${dd}`;
 }
 
+function getPropertyLiteral(property: { id?: number; alias?: string; address?: string }): string {
+  const alias = property.alias?.trim();
+  if (alias) return alias;
+
+  const address = property.address?.trim();
+  if (address) return address;
+
+  return `Inmueble #${property.id}`;
+}
+
 
 
 function otrosIngresosAppliesToMonth(
@@ -240,7 +250,7 @@ export async function generateMonthlyForecasts(
       const inmuebles = await db.getAll('properties');
       for (const inm of inmuebles) {
         if (inm.id != null) {
-          propertyAliasMap.set(inm.id, inm.alias ?? `Inmueble #${inm.id}`);
+          propertyAliasMap.set(inm.id, getPropertyLiteral(inm));
         }
       }
     } catch {
@@ -345,7 +355,7 @@ export async function generateMonthlyForecasts(
           existing.amount += amount;
         } else {
           cardReceipts.set(key, {
-            accountId: chargeAccountId,
+            accountId: resolveAccountId(chargeAccountId),
             sourceId: account.id,
             amount,
             description: `Recibo tarjeta ${account.alias || `#${account.id}`}`,
@@ -616,7 +626,7 @@ export async function generateMonthlyForecasts(
   }
 
   // ── 6b. AUTÓNOMO – Gastos actividad + Cuota SS (freelance expenses) ───────
-  // Uses the same calculation logic as proyeccionMensualService (new model)
+  // Create one treasury event per item so the movement list shows full detail.
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
@@ -624,46 +634,77 @@ export async function generateMonthlyForecasts(
     const autonomoActivo = autonomos.find(a => a.activo);
 
     if (autonomoActivo) {
-      const gastosEsteMes = (autonomoActivo.gastosRecurrentesActividad || []).reduce(
-        (total, gasto) => {
-          const activeMeses = gasto.meses?.length ? gasto.meses : ALL_MONTHS;
-          return activeMeses.includes(month) ? total + gasto.importe : total;
-        },
-        0,
-      );
+      const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
+      const predictedDate = buildDate(year, month, day);
+      const paymentAccountId = resolveAccountId(autonomoActivo.cuentaPago);
 
-      const cuotaSS = autonomoActivo.cuotaAutonomos || 0;
-      let gastoFinal = gastosEsteMes + cuotaSS;
+      const recurrentes = autonomoActivo.gastosRecurrentesActividad ?? [];
+      for (const [index, gasto] of recurrentes.entries()) {
+        if (gasto.importe <= 0) continue;
+        const activeMeses = gasto.meses?.length ? gasto.meses : ALL_MONTHS;
+        if (!activeMeses.includes(month)) continue;
 
-      // FALLBACK: if new model arrays are empty, try legacy gastosDeducibles
-      const hasNewModel =
-        (autonomoActivo.gastosRecurrentesActividad ?? []).length > 0 ||
-        (autonomoActivo.cuotaAutonomos ?? 0) > 0;
-      if (!hasNewModel) {
-        const gastosAnualesLegacy = (autonomoActivo.gastosDeducibles || []).reduce(
-          (sum, g) => sum + g.importe,
-          0,
-        );
-        gastoFinal = gastosAnualesLegacy / 12;
+        const sourceId = `${autonomoActivo.id}-gasto-${gasto.id ?? index}`;
+        if (await isDuplicate('autonomo_gasto', sourceId)) {
+          skipped++;
+          continue;
+        }
+
+        await insertEvent({
+          type: 'expense' as const,
+          amount: gasto.importe,
+          predictedDate,
+          description: `${gasto.descripcion || 'Gasto actividad'} – ${autonomoActivo.nombre}`,
+          sourceType: 'autonomo_gasto' as const,
+          sourceId,
+          accountId: paymentAccountId,
+          status: 'predicted' as const,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
 
-      if (gastoFinal > 0 && autonomoActivo.id != null) {
-        const description = `Gastos Autónomo – ${autonomoActivo.nombre}`;
-
-        const alreadyExists = await isDuplicate('autonomo', autonomoActivo.id);
-
-        if (alreadyExists) {
+      if ((autonomoActivo.cuotaAutonomos ?? 0) > 0) {
+        const sourceId = `${autonomoActivo.id}-cuota`;
+        if (await isDuplicate('autonomo_cuota', sourceId)) {
           skipped++;
         } else {
-          const day = autonomoActivo.reglaPagoDia?.dia ?? 1;
           await insertEvent({
             type: 'expense' as const,
-            amount: gastoFinal,
-            predictedDate: buildDate(year, month, day),
-            description,
-            sourceType: 'autonomo' as const,
-            sourceId: autonomoActivo.id,
-            accountId: resolveAccountId(autonomoActivo.cuentaPago),
+            amount: autonomoActivo.cuotaAutonomos,
+            predictedDate,
+            description: `Cuota autónomos – ${autonomoActivo.nombre}`,
+            sourceType: 'autonomo_cuota' as const,
+            sourceId,
+            accountId: paymentAccountId,
+            status: 'predicted' as const,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+
+      // FALLBACK: if new model arrays are empty, emit legacy monthly split per concept
+      const hasNewModel = recurrentes.length > 0 || (autonomoActivo.cuotaAutonomos ?? 0) > 0;
+      if (!hasNewModel) {
+        for (const [index, gasto] of (autonomoActivo.gastosDeducibles ?? []).entries()) {
+          const monthlyAmount = gasto.importe / 12;
+          if (monthlyAmount <= 0) continue;
+
+          const sourceId = `${autonomoActivo.id}-legacy-${gasto.id ?? index}`;
+          if (await isDuplicate('autonomo_gasto_legacy', sourceId)) {
+            skipped++;
+            continue;
+          }
+
+          await insertEvent({
+            type: 'expense' as const,
+            amount: monthlyAmount,
+            predictedDate,
+            description: `${gasto.descripcion || 'Gasto deducible'} – ${autonomoActivo.nombre}`,
+            sourceType: 'autonomo_gasto_legacy' as const,
+            sourceId,
+            accountId: paymentAccountId,
             status: 'predicted' as const,
             createdAt: now,
             updatedAt: now,
