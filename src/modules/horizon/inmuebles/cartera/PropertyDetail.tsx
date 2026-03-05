@@ -103,6 +103,12 @@ const PropertyDetail: React.FC = () => {
   }, [searchParams, activeTab]);
 
   useEffect(() => {
+    if (activeTab === 'contratos') {
+      setContractFilter('active');
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
     const loadOccupancy = async () => {
       if (!property?.id) return;
       try {
@@ -343,9 +349,7 @@ const PropertyDetail: React.FC = () => {
                   {filteredContracts.map(({ contract, status, monthlyRent, totalRent }) => (
                     <tr key={contract.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-3 text-sm text-neutral-900">
-                        {contract.inquilino
-                          ? `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`
-                          : (contract.tenant?.name ?? '—')}
+                        {getTenantName(contract)}
                       </td>
                       <td className="px-4 py-3 text-sm text-neutral-900">
                         {formatDate(contract.fechaInicio || contract.startDate || '')}
