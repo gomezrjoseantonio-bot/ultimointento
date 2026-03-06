@@ -63,6 +63,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   });
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mesaPlanOpen, setMesaPlanOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -222,10 +223,17 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
 
         {/* REQUIERE ATENCIÓN */}
         <AlertasSection
-          alertas={alertas}
+          alertas={alertasCombinadas}
           onAlertClick={handleAlertClick}
         />
       </div>
+
+      <MesaAtlasPlanDrawer
+        isOpen={mesaPlanOpen}
+        onClose={() => setMesaPlanOpen(false)}
+        recommendations={mesaRecommendations}
+        scenarios={mesaScenarios}
+      />
     </div>
   );
 };
