@@ -20,6 +20,7 @@ export interface MesaAtlasRecommendation {
   id: string;
   titulo: string;
   descripcion: string;
+  impacto: 'alto' | 'medio' | 'bajo';
 }
 
 export interface ResilienceScenario {
