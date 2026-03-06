@@ -130,6 +130,44 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
 
   const alertasCombinadas = useMemo(() => [...mesaAlertas, ...alertas], [mesaAlertas, alertas]);
 
+  const alertasCombinadas = useMemo(() => alertas, [alertas]);
+
+  const mesaRecommendations = useMemo(() => ([
+    {
+      id: 'diversificacion',
+      titulo: 'Diversifica ingresos en las patas débiles',
+      descripcion: 'Incrementa la fuente con menor aporte para reducir riesgo de concentración.'
+    },
+    {
+      id: 'liquidez',
+      titulo: 'Construye o protege tu colchón de liquidez',
+      descripcion: 'Prioriza reservas de 3 a 6 meses de gastos para amortiguar volatilidad.'
+    },
+    {
+      id: 'gasto',
+      titulo: 'Revisa gasto fijo mensual',
+      descripcion: 'Ajusta costos recurrentes para mejorar tu margen mensual disponible.'
+    }
+  ]), []);
+
+  const mesaScenarios = useMemo(() => ([
+    {
+      id: 'base',
+      nombre: 'Escenario base',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses))
+    },
+    {
+      id: 'estres',
+      nombre: 'Estrés (-20% ingresos)',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses * 0.8))
+    },
+    {
+      id: 'optimista',
+      nombre: 'Optimista (+10% ingresos)',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses * 1.2))
+    }
+  ]), [salud.colchonMeses]);
+
   // Show skeleton loader while loading
   if (loading) {
     return (
