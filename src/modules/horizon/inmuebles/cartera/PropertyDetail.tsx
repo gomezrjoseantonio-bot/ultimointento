@@ -166,7 +166,6 @@ const PropertyDetail: React.FC = () => {
     if (!property?.id) return;
 
     try {
-      setIsRevertingSale(true);
       const latestSale = await getLatestConfirmedSaleForProperty(property.id);
       if (!latestSale?.id) {
         toast.error('No se encontró una venta confirmada para anular.');
@@ -180,8 +179,6 @@ const PropertyDetail: React.FC = () => {
       console.error(error);
       const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
       toast.error(message);
-    } finally {
-      setIsRevertingSale(false);
     }
   };
 
