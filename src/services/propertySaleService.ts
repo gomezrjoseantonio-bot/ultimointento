@@ -162,3 +162,69 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     id: saleId,
   };
 };
+
+
+export const getLatestConfirmedSaleForProperty = async (propertyId: number): Promise<PropertySale | null> => {
+  const db = await initDB();
+  const sales = await db.getAllFromIndex('property_sales', 'property-status', [propertyId, 'confirmed']);
+
+  if (!sales.length) {
+    return null;
+  }
+
+  return sales
+    .slice()
+    .sort((a, b) => {
+      const aSaleDate = new Date(a.saleDate).getTime();
+      const bSaleDate = new Date(b.saleDate).getTime();
+
+      if (aSaleDate !== bSaleDate) {
+        return bSaleDate - aSaleDate;
+      }
+
+      const aCreatedAt = new Date(a.createdAt).getTime();
+      const bCreatedAt = new Date(b.createdAt).getTime();
+      return bCreatedAt - aCreatedAt;
+    })[0];
+};
+
+export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
+  const db = await initDB();
+  const tx = db.transaction(['properties', 'property_sales'], 'readwrite');
+
+  const saleStore = tx.objectStore('property_sales');
+  const propertyStore = tx.objectStore('properties');
+
+  const sale = await saleStore.get(saleId);
+  if (!sale) {
+    throw new Error('No se encontró la venta seleccionada');
+  }
+
+  if (sale.status !== 'confirmed') {
+    throw new Error('Solo se pueden anular ventas confirmadas');
+  }
+
+  const property = await propertyStore.get(sale.propertyId);
+  if (!property) {
+    throw new Error('Inmueble no encontrado');
+  }
+
+  const now = new Date().toISOString();
+  const revertedSale: PropertySale = {
+    ...sale,
+    status: 'reverted',
+    updatedAt: now,
+    notes: [sale.notes, `Venta anulada el ${now}.`].filter(Boolean).join(' | '),
+  };
+
+  await saleStore.put(revertedSale);
+  await propertyStore.put({
+    ...property,
+    state: 'activo',
+    notes: [property.notes, `Reactivado por anulación de venta (${sale.saleDate}).`].filter(Boolean).join(' | '),
+  });
+
+  await tx.done;
+
+  return revertedSale;
+};
