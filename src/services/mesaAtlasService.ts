@@ -46,7 +46,6 @@ const diversificationScore = (ingresos: MesaAtlasInput['ingresos']): number => {
 };
 
 const liquidityScore = (colchonMeses: number): number => {
-  // 6+ meses se considera óptimo en esta v0
   return toPercent(clamp(colchonMeses, 0, 6) / 6);
 };
 
@@ -63,7 +62,6 @@ const expenseStabilityScore = (gastoMedioMensual: number, totalIngresos: number)
 };
 
 const trendScore = (variacionMensualPorcentaje: number): number => {
-  // Normaliza de -20% a +20%
   const normalized = (clamp(variacionMensualPorcentaje, -20, 20) + 20) / 40;
   return toPercent(normalized);
 };
@@ -114,4 +112,111 @@ export const calculateMesaAtlasIndex = (input: MesaAtlasInput): MesaAtlasResult 
     riesgoConcentracion,
     principalRiesgo: principalRiskLabel(riesgoConcentracion, input.colchonMeses)
   };
+};
+
+export const getMesaAtlasRecommendations = (
+  input: MesaAtlasInput,
+  result: MesaAtlasResult
+): MesaAtlasRecommendation[] => {
+  const recommendations: MesaAtlasRecommendation[] = [];
+
+  if (result.riesgoConcentracion >= 70) {
+    recommendations.push({
+      id: 'diversificacion-ingresos',
+      titulo: 'Diversificar ingresos en 90 días',
+      descripcion: 'Define una segunda fuente con objetivo mínimo de 10% de tus ingresos mensuales.',
+      impacto: 'alto'
+    });
+  }
+
+  if (input.colchonMeses < 3) {
+    recommendations.push({
+      id: 'colchon-liquidez',
+      titulo: 'Subir colchón a 3 meses',
+      descripcion: 'Automatiza ahorro mensual para alcanzar un colchón de liquidez estable.',
+      impacto: 'alto'
+    });
+  }
+
+  const totalIngresos = input.ingresos.trabajo + input.ingresos.inmuebles + input.ingresos.inversiones;
+  if (totalIngresos > 0 && input.gastoMedioMensual / totalIngresos > 0.85) {
+    recommendations.push({
+      id: 'optimizar-gasto',
+      titulo: 'Reducir ratio gasto/ingreso',
+      descripcion: 'Revisa gastos recurrentes para liberar al menos 10% de capacidad de ahorro.',
+      impacto: 'medio'
+    });
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push({
+      id: 'consolidacion',
+      titulo: 'Consolidar la estabilidad actual',
+      descripcion: 'Mantén seguimiento semanal y refuerza la pata más débil con una meta trimestral.',
+      impacto: 'medio'
+    });
+  }
+
+  return recommendations.slice(0, 3);
+};
+
+export const getMesaAtlasInstabilityAlerts = (
+  input: MesaAtlasInput,
+  result: MesaAtlasResult
+): Array<{ id: string; titulo: string; descripcion: string; urgencia: 'alta' | 'media' }> => {
+  const alerts: Array<{ id: string; titulo: string; descripcion: string; urgencia: 'alta' | 'media' }> = [];
+
+  if (result.riesgoConcentracion >= 75) {
+    alerts.push({
+      id: 'mesa-riesgo-concentracion',
+      titulo: 'Dependencia alta de una sola pata',
+      descripcion: `${result.riesgoConcentracion}% de tus ingresos provienen de una sola fuente.`,
+      urgencia: 'alta'
+    });
+  }
+
+  if (input.colchonMeses < 2) {
+    alerts.push({
+      id: 'mesa-colchon-bajo',
+      titulo: 'Colchón por debajo del mínimo',
+      descripcion: 'Tu liquidez está por debajo de 2 meses recomendados para contingencias.',
+      urgencia: 'alta'
+    });
+  }
+
+  if (result.score < 45) {
+    alerts.push({
+      id: 'mesa-score-critico',
+      titulo: 'Estabilidad general en zona crítica',
+      descripcion: 'Activa el plan de 90 días para reforzar patas débiles.',
+      urgencia: 'media'
+    });
+  }
+
+  return alerts;
+};
+
+export const simulateMesaAtlasResilience = (input: MesaAtlasInput): ResilienceScenario[] => {
+  const baseMeses = clamp(input.colchonMeses, 0, 24);
+  const ingresoTotal = input.ingresos.trabajo + input.ingresos.inmuebles + input.ingresos.inversiones;
+  const ingresoSinPrincipal = ingresoTotal - Math.max(input.ingresos.trabajo, input.ingresos.inmuebles, input.ingresos.inversiones);
+  const coberturaSinPrincipal = input.gastoMedioMensual > 0 ? ingresoSinPrincipal / input.gastoMedioMensual : 0;
+
+  return [
+    {
+      id: 'loss-main-income',
+      nombre: 'Pérdida del ingreso principal',
+      mesesEstabilidad: clamp(Math.round(baseMeses + coberturaSinPrincipal * 3), 0, 24)
+    },
+    {
+      id: 'extraordinary-expense',
+      nombre: 'Gasto extraordinario equivalente a 1 mes',
+      mesesEstabilidad: clamp(Math.round(baseMeses - 1), 0, 24)
+    },
+    {
+      id: 'temporary-drop',
+      nombre: 'Caída temporal del 20% de ingresos',
+      mesesEstabilidad: clamp(Math.round(baseMeses - 0.5), 0, 24)
+    }
+  ];
 };
