@@ -45,6 +45,98 @@ const ProyeccionMensual: React.FC = () => {
 
   const currentProjection = proyecciones.find(p => p.year === selectedYear);
 
+  const handleExportToExcel = useCallback(() => {
+    if (!currentProjection) {
+      return;
+    }
+
+    const header = [
+      'Mes',
+      'Ingresos nómina',
+      'Ingresos autónomos',
+      'Pensiones',
+      'Rentas alquiler',
+      'Dividendos inversiones',
+      'Otros ingresos',
+      'Total ingresos',
+      'Gastos operativos',
+      'Gastos personales',
+      'Gastos autónomo',
+      'IRPF devengado',
+      'IRPF a pagar',
+      'Total gastos',
+      'Cuotas hipotecas',
+      'Cuotas préstamos',
+      'Total financiación',
+      'Flujo caja mes',
+      'Caja inicial',
+      'Caja final',
+      'Patrimonio neto',
+    ];
+
+    const rows = currentProjection.months.map(month => [
+      month.month,
+      month.ingresos.nomina,
+      month.ingresos.serviciosFreelance,
+      month.ingresos.pensiones,
+      month.ingresos.rentasAlquiler,
+      month.ingresos.dividendosInversiones,
+      month.ingresos.otrosIngresos,
+      month.ingresos.total,
+      month.gastos.gastosOperativos,
+      month.gastos.gastosPersonales,
+      month.gastos.gastosAutonomo,
+      month.gastos.irpfDevengado,
+      month.gastos.irpfAPagar,
+      month.gastos.total,
+      month.financiacion.cuotasHipotecas,
+      month.financiacion.cuotasPrestamos,
+      month.financiacion.total,
+      month.tesoreria.flujoCajaMes,
+      month.tesoreria.cajaInicial,
+      month.tesoreria.cajaFinal,
+      month.patrimonio.patrimonioNeto,
+    ]);
+
+    const totals = [
+      'Totales anuales',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      currentProjection.totalesAnuales.ingresosTotales,
+      '',
+      '',
+      '',
+      '',
+      '',
+      currentProjection.totalesAnuales.gastosTotales,
+      '',
+      '',
+      currentProjection.totalesAnuales.financiacionTotal,
+      currentProjection.totalesAnuales.flujoNetoAnual,
+      '',
+      '',
+      currentProjection.totalesAnuales.patrimonioNetoFinal,
+    ];
+
+    const csv = [header, ...rows, totals]
+      .map(row => row.map(cell => `"${String(cell)}"`).join(';'))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `proyeccion_mensual_${selectedYear}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [currentProjection, selectedYear]);
+
   return (
     <div className="space-y-6 p-6">
       {/* Page header */}
@@ -89,9 +181,10 @@ const ProyeccionMensual: React.FC = () => {
               onChange={setSelectedYear}
             />
             <button
-              disabled
-              title="Exportación disponible en Fase 2"
-              className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
+              onClick={handleExportToExcel}
+              disabled={!currentProjection}
+              title="Descargar proyección en formato CSV compatible con Excel"
+              className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               Exportar a Excel
