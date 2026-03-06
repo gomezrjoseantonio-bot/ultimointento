@@ -129,8 +129,6 @@ export interface PropertySale {
   netProceeds: number;
   status: 'draft' | 'confirmed' | 'reverted';
   source: 'cartera' | 'detalle' | 'analisis';
-  destinationAccountId?: number;
-  treasuryMovementIds?: number[];
   notes?: string;
   createdAt: string;
   updatedAt: string;

@@ -1,5 +1,4 @@
 import { Contract, Property, initDB, PropertySale } from './db';
-import { recalculateAccountBalance } from './treasuryEventsService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -15,7 +14,6 @@ export interface ConfirmPropertySaleInput extends SaleSimulationInput {
   propertyId: number;
   saleDate: string;
   source: 'cartera' | 'detalle' | 'analisis';
-  destinationAccountId?: number;
   notes?: string;
   autoTerminateContracts?: boolean;
 }
@@ -83,7 +81,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements'], 'readwrite');
+  const tx = db.transaction(['properties', 'contracts', 'property_sales'], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -123,62 +121,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const simulation = simulatePropertySale(input);
   const now = new Date().toISOString();
 
-  const accounts = await tx.objectStore('accounts').getAll();
-  const selectedAccount = input.destinationAccountId
-    ? accounts.find((acc) => acc.id === input.destinationAccountId)
-    : accounts.find((acc) => acc.isDefault && acc.status === 'ACTIVE');
-
-  if (!selectedAccount?.id) {
-    throw new Error('Selecciona una cuenta de tesorería de destino para registrar la venta.');
-  }
-
-  const movementIds: number[] = [];
-  const movementBase = {
-    accountId: selectedAccount.id,
-    date: input.saleDate,
-    valueDate: input.saleDate,
-    status: 'pendiente' as const,
-    unifiedStatus: 'confirmado' as const,
-    source: 'manual' as const,
-    category: { tipo: 'Venta inmueble', subtipo: property.alias },
-    type: 'Ajuste' as const,
-    origin: 'Manual' as const,
-    movementState: 'Confirmado' as const,
-    ambito: 'INMUEBLE' as const,
-    inmuebleId: String(input.propertyId),
-    statusConciliacion: 'sin_match' as const,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const grossMovementId = await tx.objectStore('movements').add({
-    ...movementBase,
-    amount: simulation.grossProceeds,
-    description: `Venta inmueble ${property.alias} (entrada bruta)`,
-    counterparty: 'Comprador inmueble',
-  } as any);
-  if (typeof grossMovementId === 'number') movementIds.push(grossMovementId);
-
-  if (simulation.totalSaleCosts > 0) {
-    const costsMovementId = await tx.objectStore('movements').add({
-      ...movementBase,
-      amount: -Math.abs(simulation.totalSaleCosts),
-      description: `Venta inmueble ${property.alias} (gastos de venta)`,
-      counterparty: 'Gastos compraventa',
-    } as any);
-    if (typeof costsMovementId === 'number') movementIds.push(costsMovementId);
-  }
-
-  if (simulation.totalLoanSettlement > 0) {
-    const debtMovementId = await tx.objectStore('movements').add({
-      ...movementBase,
-      amount: -Math.abs(simulation.totalLoanSettlement),
-      description: `Venta inmueble ${property.alias} (cancelación deuda)`,
-      counterparty: 'Entidad financiera',
-    } as any);
-    if (typeof debtMovementId === 'number') movementIds.push(debtMovementId);
-  }
-
   const sale: Omit<PropertySale, 'id'> = {
     propertyId: input.propertyId,
     saleDate: input.saleDate,
@@ -198,8 +140,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     netProceeds: simulation.netProceeds,
     status: 'confirmed',
     source: input.source,
-    destinationAccountId: selectedAccount.id,
-    treasuryMovementIds: movementIds,
     notes: input.notes,
     createdAt: now,
     updatedAt: now,
@@ -216,8 +156,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
 
   await tx.objectStore('properties').put(updatedProperty);
   await tx.done;
-
-  await recalculateAccountBalance(selectedAccount.id);
 
   return {
     ...sale,

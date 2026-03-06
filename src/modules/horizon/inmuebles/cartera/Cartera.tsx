@@ -8,6 +8,7 @@ import { formatEuro } from '../../../../utils/formatUtils';
 import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../services/confirmationService';
+import type { ValoracionHistorica } from '../../../../types/valoraciones';
 
 const calculateTotalCost = (property: Property): number => {
   const costs = property.acquisitionCosts;
@@ -37,22 +38,31 @@ const getYield = (property: Property, contracts: Contract[]): number => {
   return (getCashflow(property, contracts) * 12 / totalCost) * 100;
 };
 
-const getDisplayState = (property: Property, contracts: Contract[]): string => {
-  if (property.state === 'vendido') return 'Vendido';
-  if (property.state === 'baja') return 'Baja';
-  const hasActiveContract = contracts.some(
-    c => (c.inmuebleId === property.id || c.propertyId === property.id) && isActiveContract(c)
-  );
-  return hasActiveContract ? 'Alquilado' : 'Vacío';
+const getLatestValuation = (property: Property, valuations: ValoracionHistorica[]): number | null => {
+  if (!property.id) return null;
+  const latest = valuations
+    .filter(v => v.tipo_activo === 'inmueble' && v.activo_id === property.id)
+    .sort((a, b) => b.fecha_valoracion.localeCompare(a.fecha_valoracion))[0];
+  return latest?.valor ?? null;
 };
 
-const getStateBadgeClass = (displayState: string): string => {
-  switch (displayState) {
-    case 'Alquilado': return 'bg-teal-100 text-teal-800';
-    case 'Vacío': return 'bg-neutral-100 text-neutral-600';
-    case 'Vendido': return 'bg-primary-100 text-primary-800';
-    default: return 'bg-neutral-100 text-neutral-600';
-  }
+const getTotalRevaluationPct = (property: Property, valuations: ValoracionHistorica[]): number | null => {
+  const totalCost = calculateTotalCost(property);
+  const currentValue = getLatestValuation(property, valuations);
+  if (!currentValue || totalCost <= 0) return null;
+  return ((currentValue - totalCost) / totalCost) * 100;
+};
+
+const getAnnualizedRevaluationPct = (property: Property, valuations: ValoracionHistorica[]): number | null => {
+  const totalCost = calculateTotalCost(property);
+  const currentValue = getLatestValuation(property, valuations);
+  if (!currentValue || totalCost <= 0 || !property.purchaseDate) return null;
+
+  const purchaseDate = new Date(property.purchaseDate);
+  const now = new Date();
+  const years = Math.max(1 / 365, (now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
+
+  return (Math.pow(currentValue / totalCost, 1 / years) - 1) * 100;
 };
 
 const Cartera: React.FC = () => {
@@ -60,6 +70,7 @@ const Cartera: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [properties, setProperties] = useState<Property[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [valuations, setValuations] = useState<ValoracionHistorica[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,17 +109,21 @@ const Cartera: React.FC = () => {
           aValue = calculateTotalCost(a);
           bValue = calculateTotalCost(b);
           break;
-        case 'cashflow':
-          aValue = getCashflow(a, contracts);
-          bValue = getCashflow(b, contracts);
-          break;
         case 'yield':
           aValue = getYield(a, contracts);
           bValue = getYield(b, contracts);
           break;
-        case 'state':
-          aValue = getDisplayState(a, contracts);
-          bValue = getDisplayState(b, contracts);
+        case 'currentValue':
+          aValue = getLatestValuation(a, valuations) ?? -Infinity;
+          bValue = getLatestValuation(b, valuations) ?? -Infinity;
+          break;
+        case 'revaluationTotal':
+          aValue = getTotalRevaluationPct(a, valuations) ?? -Infinity;
+          bValue = getTotalRevaluationPct(b, valuations) ?? -Infinity;
+          break;
+        case 'revaluationAnnualized':
+          aValue = getAnnualizedRevaluationPct(a, valuations) ?? -Infinity;
+          bValue = getAnnualizedRevaluationPct(b, valuations) ?? -Infinity;
           break;
         case 'alias':
         default:
@@ -121,7 +136,7 @@ const Cartera: React.FC = () => {
     });
 
     setFilteredProperties(filtered);
-  }, [properties, contracts, searchTerm, sortField, sortDirection]);
+  }, [properties, contracts, valuations, searchTerm, sortField, sortDirection]);
 
   useEffect(() => {
     filterAndSortProperties();
@@ -133,6 +148,8 @@ const Cartera: React.FC = () => {
       const db = await initDB();
       const allProperties = await db.getAll('properties');
       setProperties(allProperties);
+      const allValuations = await db.getAll('valoraciones_historicas');
+      setValuations(allValuations as ValoracionHistorica[]);
       try {
         const allContracts = await getAllContracts();
         setContracts(allContracts);
@@ -272,15 +289,6 @@ const Cartera: React.FC = () => {
                     </th>
                     <th
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('state')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Estado</span>
-                        {getSortIcon('state')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
                       onClick={() => handleSort('totalCost')}
                     >
                       <div className="flex items-center gap-1">
@@ -290,11 +298,29 @@ const Cartera: React.FC = () => {
                     </th>
                     <th
                       className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('cashflow')}
+                      onClick={() => handleSort('currentValue')}
                     >
                       <div className="flex items-center gap-1">
-                        <span>Cashflow mensual</span>
-                        {getSortIcon('cashflow')}
+                        <span>Valor actual</span>
+                        {getSortIcon('currentValue')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                      onClick={() => handleSort('revaluationTotal')}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>% reval. total</span>
+                        {getSortIcon('revaluationTotal')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
+                      onClick={() => handleSort('revaluationAnnualized')}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>% reval. media anual</span>
+                        {getSortIcon('revaluationAnnualized')}
                       </div>
                     </th>
                     <th
@@ -314,9 +340,10 @@ const Cartera: React.FC = () => {
                 <tbody className="bg-white divide-y divide-neutral-200">
                   {filteredProperties.map((property) => {
                     const totalCost = calculateTotalCost(property);
-                    const cashflow = getCashflow(property, contracts);
                     const yieldPct = getYield(property, contracts);
-                    const displayState = getDisplayState(property, contracts);
+                    const currentValue = getLatestValuation(property, valuations);
+                    const revaluationTotal = getTotalRevaluationPct(property, valuations);
+                    const revaluationAnnualized = getAnnualizedRevaluationPct(property, valuations);
 
                     return (
                       <tr key={property.id} className="hover:bg-neutral-50">
@@ -324,16 +351,21 @@ const Cartera: React.FC = () => {
                           <div className="text-sm font-medium text-neutral-900">{property.alias}</div>
                           <div className="text-xs text-neutral-500">{property.address}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStateBadgeClass(displayState)}`}>
-                            {displayState}
-                          </span>
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {formatEuro(totalCost)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {cashflow > 0 ? formatEuro(cashflow) : <span className="text-neutral-400">—</span>}
+                          {currentValue ? formatEuro(currentValue) : <span className="text-neutral-400">—</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
+                          {revaluationTotal !== null
+                            ? <span className={revaluationTotal >= 0 ? 'text-teal-600 font-medium' : 'text-red-600 font-medium'}>{revaluationTotal.toFixed(2)}%</span>
+                            : <span className="text-neutral-400">—</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
+                          {revaluationAnnualized !== null
+                            ? <span className={revaluationAnnualized >= 0 ? 'text-teal-600 font-medium' : 'text-red-600 font-medium'}>{revaluationAnnualized.toFixed(2)}%</span>
+                            : <span className="text-neutral-400">—</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {yieldPct > 0
@@ -374,27 +406,24 @@ const Cartera: React.FC = () => {
                             </button>
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=contratos`)}
-                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Alquileres"
                             >
-                              <Users className="h-3.5 w-3.5" />
-                              <span>Alquileres</span>
+                              <Users className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=presupuesto`)}
-                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Gastos"
                             >
-                              <TrendingDown className="h-3.5 w-3.5" />
-                              <span>Gastos</span>
+                              <TrendingDown className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=fiscal`)}
-                              className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-neutral-600 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
+                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Fiscal"
                             >
-                              <FileText className="h-3.5 w-3.5" />
-                              <span>Fiscal</span>
+                              <FileText className="h-4 w-4" />
                             </button>
                           </div>
                         </td>

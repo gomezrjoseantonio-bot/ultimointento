@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Account, Property, initDB } from '../../../../services/db';
+import { Property } from '../../../../services/db';
 import {
   confirmPropertySale,
   preparePropertySale,
@@ -35,8 +35,6 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
   const [notes, setNotes] = useState('');
   const [autoTerminateContracts, setAutoTerminateContracts] = useState(false);
   const [activeContractsCount, setActiveContractsCount] = useState(0);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [destinationAccountId, setDestinationAccountId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -58,20 +56,6 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
       .catch((error) => {
         console.error(error);
         toast.error('No se pudieron verificar los contratos activos');
-      });
-
-    void initDB()
-      .then((db) => db.getAll('accounts'))
-      .then((allAccounts) => {
-        const activeAccounts = allAccounts.filter((acc) => acc.status === 'ACTIVE' && acc.activa && acc.id);
-        setAccounts(activeAccounts);
-        const defaultAcc = activeAccounts.find((acc) => acc.isDefault) || activeAccounts[0];
-        setDestinationAccountId(defaultAcc?.id ?? null);
-      })
-      .catch((error) => {
-        console.error(error);
-        setAccounts([]);
-        setDestinationAccountId(null);
       });
   }, [open, property?.id, initialDate]);
 
@@ -106,7 +90,6 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
         loanPayoffAmount,
         loanCancellationFee,
         otherCosts,
-        destinationAccountId: destinationAccountId ?? undefined,
         notes,
         source,
         autoTerminateContracts,
@@ -139,21 +122,6 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
             <label className="text-sm text-neutral-700">
               Precio de venta (€)
               <input type="number" min={0} value={salePrice} onChange={(e) => setSalePrice(Number(e.target.value || 0))} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
-            </label>
-            <label className="text-sm text-neutral-700 md:col-span-2">
-              Cuenta de tesorería destino
-              <select
-                value={destinationAccountId ?? ''}
-                onChange={(e) => setDestinationAccountId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 w-full rounded border border-neutral-300 px-3 py-2"
-              >
-                <option value="">Seleccionar cuenta</option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.alias || acc.name || acc.iban}
-                  </option>
-                ))}
-              </select>
             </label>
             <label className="text-sm text-neutral-700">
               Comisión agencia (€)
@@ -214,7 +182,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading || !saleDate || salePrice <= 0 || !destinationAccountId || (activeContractsCount > 0 && !autoTerminateContracts)}
+            disabled={loading || !saleDate || salePrice <= 0 || (activeContractsCount > 0 && !autoTerminateContracts)}
             className="rounded bg-error-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Confirmar venta
