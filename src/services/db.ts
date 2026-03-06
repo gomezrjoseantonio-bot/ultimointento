@@ -109,15 +109,6 @@ export interface Property {
   };
 }
 
-export interface PropertySaleContractSnapshot {
-  contractId: number;
-  previousFechaFin?: string;
-  previousEndDate?: string;
-  previousEstadoContrato?: Contract['estadoContrato'];
-  previousStatus?: Contract['status'];
-  previousRescision?: Contract['rescision'];
-}
-
 export interface PropertySale {
   id?: number;
   propertyId: number;
@@ -138,11 +129,6 @@ export interface PropertySale {
   netProceeds: number;
   status: 'draft' | 'confirmed' | 'reverted';
   source: 'cartera' | 'detalle' | 'analisis';
-  destinationAccountId?: number;
-  treasuryMovementIds?: number[];
-  autoTerminatedContractSnapshots?: PropertySaleContractSnapshot[];
-  revertedAt?: string;
-  revertedBy?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

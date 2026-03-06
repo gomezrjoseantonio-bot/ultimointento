@@ -74,7 +74,6 @@ const PropertyDetail: React.FC = () => {
   const [savingOccupancy, setSavingOccupancy] = useState(false);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
-  const [isRevertingSale, setIsRevertingSale] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -300,15 +299,6 @@ const PropertyDetail: React.FC = () => {
               >
                 <CircleDollarSign className="h-5 w-5 mr-2" size={24} />
                 Vender inmueble
-              </button>
-            )}
-            {property.state === 'vendido' && (
-              <button
-                onClick={handleRevertSale}
-                disabled={isRevertingSale}
-                className="flex items-center px-4 py-2 border border-warning-300 text-warning-700 disabled:opacity-60"
-              >
-                {isRevertingSale ? 'Anulando venta…' : 'Anular venta'}
               </button>
             )}
             <button

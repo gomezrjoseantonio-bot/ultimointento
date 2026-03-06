@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import PatrimonioHeader from './PatrimonioHeader';
 import FlujosGrid from './FlujosGrid';
 import SaludFinanciera from './SaludFinanciera';
 import AlertasSection from './AlertasSection';
+import MesaAtlasCard from './MesaAtlasCard';
+import MesaAtlasPlanDrawer from './MesaAtlasPlanDrawer';
 import ActualizacionValoresDrawer from './ActualizacionValoresDrawer';
 import { dashboardService } from '../../services/dashboardService';
+import { calculateMesaAtlasIndex, getMesaAtlasInstabilityAlerts, getMesaAtlasRecommendations, simulateMesaAtlasResilience } from '../../services/mesaAtlasService';
 import type { PatrimonioData, FlujosCaja, SaludFinanciera as SaludFinancieraType, Alerta } from '../../types/dashboard';
 import './investor-dashboard.css';
 
@@ -61,6 +64,7 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   });
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mesaPlanOpen, setMesaPlanOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -92,6 +96,77 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
   const handleAlertClick = (alerta: Alerta) => {
     onNavigate(alerta.link);
   };
+
+
+  const mesaAtlasInput = useMemo(() => ({
+    ingresos: {
+      trabajo: flujos.trabajo.netoMensual,
+      inmuebles: flujos.inmuebles.cashflow,
+      inversiones: flujos.inversiones.rendimientoMes + flujos.inversiones.dividendosMes
+    },
+    gastoMedioMensual: salud.gastoMedioMensual,
+    colchonMeses: salud.colchonMeses,
+    variacionMensualPorcentaje: patrimonio.variacionPorcentaje
+  }), [flujos, salud.gastoMedioMensual, salud.colchonMeses, patrimonio.variacionPorcentaje]);
+
+  const mesaAtlas = useMemo(() => calculateMesaAtlasIndex(mesaAtlasInput), [mesaAtlasInput]);
+  const mesaRecommendations = useMemo(
+    () => getMesaAtlasRecommendations(mesaAtlasInput, mesaAtlas),
+    [mesaAtlasInput, mesaAtlas]
+  );
+  const mesaScenarios = useMemo(() => simulateMesaAtlasResilience(mesaAtlasInput), [mesaAtlasInput]);
+
+  const mesaAlertas = useMemo(() => (
+    getMesaAtlasInstabilityAlerts(mesaAtlasInput, mesaAtlas).map((alerta, index) => ({
+      id: alerta.id,
+      tipo: 'documento' as const,
+      titulo: alerta.titulo,
+      descripcion: alerta.descripcion,
+      urgencia: alerta.urgencia,
+      diasVencimiento: index,
+      link: '/panel'
+    }))
+  ), [mesaAtlasInput, mesaAtlas]);
+
+  const alertasCombinadas = useMemo(() => [...mesaAlertas, ...alertas], [mesaAlertas, alertas]);
+
+  const alertasCombinadas = useMemo(() => alertas, [alertas]);
+
+  const mesaRecommendations = useMemo(() => ([
+    {
+      id: 'diversificacion',
+      titulo: 'Diversifica ingresos en las patas débiles',
+      descripcion: 'Incrementa la fuente con menor aporte para reducir riesgo de concentración.'
+    },
+    {
+      id: 'liquidez',
+      titulo: 'Construye o protege tu colchón de liquidez',
+      descripcion: 'Prioriza reservas de 3 a 6 meses de gastos para amortiguar volatilidad.'
+    },
+    {
+      id: 'gasto',
+      titulo: 'Revisa gasto fijo mensual',
+      descripcion: 'Ajusta costos recurrentes para mejorar tu margen mensual disponible.'
+    }
+  ]), []);
+
+  const mesaScenarios = useMemo(() => ([
+    {
+      id: 'base',
+      nombre: 'Escenario base',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses))
+    },
+    {
+      id: 'estres',
+      nombre: 'Estrés (-20% ingresos)',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses * 0.8))
+    },
+    {
+      id: 'optimista',
+      nombre: 'Optimista (+10% ingresos)',
+      mesesEstabilidad: Math.max(0, Math.round(salud.colchonMeses * 1.2))
+    }
+  ]), [salud.colchonMeses]);
 
   // Show skeleton loader while loading
   if (loading) {
@@ -187,6 +262,14 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
         onNavigate={onNavigate}
       />
 
+      {/* FASE 1 - Índice Mesa Atlas (módulo opcional en dashboard) */}
+      <div className="mesa-atlas-wrapper">
+        <MesaAtlasCard
+          data={mesaAtlas}
+          onOpenPlan={() => setMesaPlanOpen(true)}
+        />
+      </div>
+
       {/* Bottom sections: Salud Financiera + Alerts */}
       <div className="bottom-sections">
         {/* SALUD FINANCIERA */}
@@ -200,10 +283,17 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
 
         {/* REQUIERE ATENCIÓN */}
         <AlertasSection
-          alertas={alertas}
+          alertas={alertasCombinadas}
           onAlertClick={handleAlertClick}
         />
       </div>
+
+      <MesaAtlasPlanDrawer
+        isOpen={mesaPlanOpen}
+        onClose={() => setMesaPlanOpen(false)}
+        recommendations={mesaRecommendations}
+        scenarios={mesaScenarios}
+      />
     </div>
   );
 };
