@@ -125,7 +125,8 @@ export const getMesaAtlasRecommendations = (
     recommendations.push({
       id: 'diversificacion-ingresos',
       titulo: 'Diversificar ingresos en 90 días',
-      descripcion: 'Define una segunda fuente con objetivo mínimo de 10% de tus ingresos mensuales.'
+      descripcion: 'Define una segunda fuente con objetivo mínimo de 10% de tus ingresos mensuales.',
+      impacto: 'alto'
     });
   }
 
@@ -133,7 +134,8 @@ export const getMesaAtlasRecommendations = (
     recommendations.push({
       id: 'colchon-liquidez',
       titulo: 'Subir colchón a 3 meses',
-      descripcion: 'Automatiza ahorro mensual para alcanzar un colchón de liquidez estable.'
+      descripcion: 'Automatiza ahorro mensual para alcanzar un colchón de liquidez estable.',
+      impacto: 'alto'
     });
   }
 
@@ -142,7 +144,8 @@ export const getMesaAtlasRecommendations = (
     recommendations.push({
       id: 'optimizar-gasto',
       titulo: 'Reducir ratio gasto/ingreso',
-      descripcion: 'Revisa gastos recurrentes para liberar al menos 10% de capacidad de ahorro.'
+      descripcion: 'Revisa gastos recurrentes para liberar al menos 10% de capacidad de ahorro.',
+      impacto: 'medio'
     });
   }
 
@@ -150,7 +153,8 @@ export const getMesaAtlasRecommendations = (
     recommendations.push({
       id: 'consolidacion',
       titulo: 'Consolidar la estabilidad actual',
-      descripcion: 'Mantén seguimiento semanal y refuerza la pata más débil con una meta trimestral.'
+      descripcion: 'Mantén seguimiento semanal y refuerza la pata más débil con una meta trimestral.',
+      impacto: 'bajo'
     });
   }
 
