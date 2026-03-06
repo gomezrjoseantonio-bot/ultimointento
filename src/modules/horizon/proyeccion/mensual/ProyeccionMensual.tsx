@@ -2,9 +2,10 @@
 // ATLAS HORIZON: Monthly financial projection page (Phase 1)
 
 import React, { useEffect, useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { Download } from 'lucide-react';
 import { generateProyeccionMensual } from './services/proyeccionMensualService';
-import { ProyeccionAnual } from './types/proyeccionMensual';
+import type { ProyeccionAnual, MonthlyProjectionRow } from './types/proyeccionMensual';
 import MonthlyProjectionTable from './components/MonthlyProjectionTable';
 import YearSelector from './components/YearSelector';
 import SummaryCards from './components/SummaryCards';
@@ -16,6 +17,70 @@ const ALL_YEARS = Array.from(
   { length: PROJECTION_YEARS },
   (_, i) => START_YEAR + i,
 );
+
+const MONTH_ABBR = [
+  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+];
+
+type SectionKey = 'ingresos' | 'gastos' | 'financiacion' | 'tesoreria' | 'patrimonio';
+
+interface ExportRowDef {
+  label: string;
+  getValue: (m: MonthlyProjectionRow) => number;
+  isTotal?: boolean;
+}
+
+const EXPORT_SECTION_ROWS: Record<SectionKey, ExportRowDef[]> = {
+  ingresos: [
+    { label: 'Nóminas', getValue: m => m.ingresos.nomina },
+    { label: 'Ingresos Autónomos', getValue: m => m.ingresos.serviciosFreelance },
+    { label: 'Pensiones', getValue: m => m.ingresos.pensiones },
+    { label: 'Rentas alquiler', getValue: m => m.ingresos.rentasAlquiler },
+    { label: 'Intereses Inversiones', getValue: m => m.ingresos.dividendosInversiones },
+    { label: 'Otros ingresos', getValue: m => m.ingresos.otrosIngresos },
+    { label: 'Total ingresos', getValue: m => m.ingresos.total, isTotal: true },
+  ],
+  gastos: [
+    { label: 'Gastos Alquileres', getValue: m => m.gastos.gastosOperativos },
+    { label: 'Gastos personales', getValue: m => m.gastos.gastosPersonales },
+    { label: 'Gastos autónomo', getValue: m => m.gastos.gastosAutonomo },
+    { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
+    { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
+    { label: 'Total gastos', getValue: m => m.gastos.total, isTotal: true },
+  ],
+  financiacion: [
+    { label: 'Cuotas hipotecas', getValue: m => m.financiacion.cuotasHipotecas },
+    { label: 'Cuotas préstamos', getValue: m => m.financiacion.cuotasPrestamos },
+    { label: 'Total financiación', getValue: m => m.financiacion.total, isTotal: true },
+  ],
+  tesoreria: [
+    { label: 'Flujo caja del mes', getValue: m => m.tesoreria.flujoCajaMes },
+    { label: 'Caja inicial', getValue: m => m.tesoreria.cajaInicial },
+    { label: 'Caja final', getValue: m => m.tesoreria.cajaFinal, isTotal: true },
+  ],
+  patrimonio: [
+    { label: 'Caja', getValue: m => m.patrimonio.caja },
+    { label: 'Inmuebles', getValue: m => m.patrimonio.inmuebles },
+    { label: 'Planes de pensión', getValue: m => m.patrimonio.planesPension },
+    { label: 'Otras inversiones', getValue: m => m.patrimonio.otrasInversiones },
+    { label: 'Deuda inmuebles', getValue: m => -m.patrimonio.deudaInmuebles },
+    { label: 'Deuda personal', getValue: m => -m.patrimonio.deudaPersonal },
+    { label: 'Deuda total', getValue: m => -m.patrimonio.deudaTotal },
+    { label: 'Patrimonio neto', getValue: m => m.patrimonio.patrimonioNeto, isTotal: true },
+  ],
+};
+
+
+const SECTION_ORDER: SectionKey[] = ['ingresos', 'gastos', 'financiacion', 'tesoreria', 'patrimonio'];
+
+const SECTION_LABELS: Record<SectionKey, string> = {
+  ingresos: 'INGRESOS',
+  gastos: 'GASTOS',
+  financiacion: 'FINANCIACIÓN',
+  tesoreria: 'TESORERÍA',
+  patrimonio: 'PATRIMONIO',
+};
 
 const ProyeccionMensual: React.FC = () => {
   const [proyecciones, setProyecciones] = useState<ProyeccionAnual[]>([]);
@@ -44,6 +109,56 @@ const ProyeccionMensual: React.FC = () => {
   }, [loadData]);
 
   const currentProjection = proyecciones.find(p => p.year === selectedYear);
+
+  const handleExportToExcel = useCallback(() => {
+    if (!currentProjection) {
+      return;
+    }
+
+    const header = [
+      'ATRIBUTO',
+      ...currentProjection.months.map((_, i) => `${MONTH_ABBR[i]}-${String(selectedYear).slice(2)}`),
+    ];
+
+    const sheetData: (string | number)[][] = [header];
+
+    SECTION_ORDER.forEach(sectionKey => {
+      sheetData.push([SECTION_LABELS[sectionKey], ...Array(currentProjection.months.length).fill('')]);
+
+      EXPORT_SECTION_ROWS[sectionKey].forEach(row => {
+        if (!row.isTotal && currentProjection.months.every(m => row.getValue(m) === 0)) {
+          return;
+        }
+
+        sheetData.push([
+          row.label,
+          ...currentProjection.months.map(m => Math.round(row.getValue(m))),
+        ]);
+      });
+    });
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+    worksheet['!cols'] = [
+      { wch: 24 },
+      ...currentProjection.months.map(() => ({ wch: 12 })),
+    ];
+
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let row = range.s.r + 1; row <= range.e.r; row += 1) {
+      for (let col = range.s.c + 1; col <= range.e.c; col += 1) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = worksheet[cellAddress];
+        if (cell && typeof cell.v === 'number') {
+          cell.z = '#,##0';
+        }
+      }
+    }
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Proyección ${selectedYear}`);
+    XLSX.writeFile(workbook, `proyeccion_mensual_${selectedYear}.xlsx`);
+  }, [currentProjection, selectedYear]);
 
   return (
     <div className="space-y-6 p-6">
@@ -89,9 +204,10 @@ const ProyeccionMensual: React.FC = () => {
               onChange={setSelectedYear}
             />
             <button
-              disabled
-              title="Exportación disponible en Fase 2"
-              className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
+              onClick={handleExportToExcel}
+              disabled={!currentProjection}
+              title="Descargar proyección en formato Excel (.xlsx)"
+              className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               Exportar a Excel
