@@ -7,7 +7,6 @@ import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../.
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
-import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../../../services/propertySaleService';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
 import PropertySaleModal from '../components/PropertySaleModal';
 
@@ -161,26 +160,6 @@ const PropertyDetail: React.FC = () => {
     }
   };
 
-
-  const handleRevertSale = async () => {
-    if (!property?.id) return;
-
-    try {
-      const latestSale = await getLatestConfirmedSaleForProperty(property.id);
-      if (!latestSale?.id) {
-        toast.error('No se encontró una venta confirmada para anular.');
-        return;
-      }
-
-      await cancelPropertySale(latestSale.id);
-      toast.success('Venta anulada y operación revertida correctamente.');
-      await loadProperty(property.id);
-    } catch (error) {
-      console.error(error);
-      const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
-      toast.error(message);
-    }
-  };
 
   const calculateTotalCost = (prop: Property): number => {
     const costs = prop.acquisitionCosts;
