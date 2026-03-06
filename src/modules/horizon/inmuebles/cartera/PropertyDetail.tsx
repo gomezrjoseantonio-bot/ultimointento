@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users, CircleDollarSign } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
+import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../../../services/propertySaleService';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
+import PropertySaleModal from '../components/PropertySaleModal';
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
@@ -71,6 +73,8 @@ const PropertyDetail: React.FC = () => {
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [isRevertingSale, setIsRevertingSale] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -155,6 +159,30 @@ const PropertyDetail: React.FC = () => {
       toast.error('No se pudo guardar la ocupación anual');
     } finally {
       setSavingOccupancy(false);
+    }
+  };
+
+
+  const handleRevertSale = async () => {
+    if (!property?.id) return;
+
+    try {
+      setIsRevertingSale(true);
+      const latestSale = await getLatestConfirmedSaleForProperty(property.id);
+      if (!latestSale?.id) {
+        toast.error('No se encontró una venta confirmada para anular.');
+        return;
+      }
+
+      await cancelPropertySale(latestSale.id);
+      toast.success('Venta anulada y operación revertida correctamente.');
+      await loadProperty(property.id);
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
+      toast.error(message);
+    } finally {
+      setIsRevertingSale(false);
     }
   };
 
@@ -264,13 +292,33 @@ const PropertyDetail: React.FC = () => {
           </div>
         </div>
         {activeTab !== 'contratos' && (
-          <button
-            onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
-            className="flex items-center px-4 py-2 bg-brand-navy"
-          >
-            <Pencil className="h-5 w-5 mr-2" size={24}  />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            {property.state === 'activo' && (
+              <button
+                onClick={() => setIsSaleModalOpen(true)}
+                className="flex items-center px-4 py-2 border border-error-300 text-error-700"
+              >
+                <CircleDollarSign className="h-5 w-5 mr-2" size={24} />
+                Vender inmueble
+              </button>
+            )}
+            {property.state === 'vendido' && (
+              <button
+                onClick={handleRevertSale}
+                disabled={isRevertingSale}
+                className="flex items-center px-4 py-2 border border-warning-300 text-warning-700 disabled:opacity-60"
+              >
+                {isRevertingSale ? 'Anulando venta…' : 'Anular venta'}
+              </button>
+            )}
+            <button
+              onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
+              className="flex items-center px-4 py-2 bg-brand-navy"
+            >
+              <Pencil className="h-5 w-5 mr-2" size={24}  />
+              Editar
+            </button>
+          </div>
         )}
       </div>
 
@@ -740,6 +788,17 @@ const PropertyDetail: React.FC = () => {
       </div>
       </>
       )}
+      <PropertySaleModal
+        open={isSaleModalOpen}
+        property={property}
+        source="detalle"
+        onClose={() => setIsSaleModalOpen(false)}
+        onConfirmed={() => {
+          if (property.id) {
+            void loadProperty(property.id);
+          }
+        }}
+      />
     </div>
   );
 };
