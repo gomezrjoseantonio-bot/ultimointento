@@ -113,48 +113,90 @@ const ProyeccionMensual: React.FC = () => {
     }
 
     const header = [
-      'ATRIBUTO',
-      ...currentProjection.months.map((_, i) => `${MONTH_ABBR[i]}-${String(selectedYear).slice(2)}`),
+      'Mes',
+      'Ingresos nómina',
+      'Ingresos autónomos',
+      'Pensiones',
+      'Rentas alquiler',
+      'Dividendos inversiones',
+      'Otros ingresos',
+      'Total ingresos',
+      'Gastos operativos',
+      'Gastos personales',
+      'Gastos autónomo',
+      'IRPF devengado',
+      'IRPF a pagar',
+      'Total gastos',
+      'Cuotas hipotecas',
+      'Cuotas préstamos',
+      'Total financiación',
+      'Flujo caja mes',
+      'Caja inicial',
+      'Caja final',
+      'Patrimonio neto',
     ];
 
-    const sheetData: (string | number)[][] = [header];
+    const rows = currentProjection.months.map(month => [
+      month.month,
+      month.ingresos.nomina,
+      month.ingresos.serviciosFreelance,
+      month.ingresos.pensiones,
+      month.ingresos.rentasAlquiler,
+      month.ingresos.dividendosInversiones,
+      month.ingresos.otrosIngresos,
+      month.ingresos.total,
+      month.gastos.gastosOperativos,
+      month.gastos.gastosPersonales,
+      month.gastos.gastosAutonomo,
+      month.gastos.irpfDevengado,
+      month.gastos.irpfAPagar,
+      month.gastos.total,
+      month.financiacion.cuotasHipotecas,
+      month.financiacion.cuotasPrestamos,
+      month.financiacion.total,
+      month.tesoreria.flujoCajaMes,
+      month.tesoreria.cajaInicial,
+      month.tesoreria.cajaFinal,
+      month.patrimonio.patrimonioNeto,
+    ]);
 
-    (Object.keys(SECTION_LABELS) as SectionKey[]).forEach(sectionKey => {
-      sheetData.push([SECTION_LABELS[sectionKey], ...Array(currentProjection.months.length).fill('')]);
-
-      EXPORT_SECTION_ROWS[sectionKey].forEach(row => {
-        if (!row.isTotal && currentProjection.months.every(m => row.getValue(m) === 0)) {
-          return;
-        }
-
-        sheetData.push([
-          row.label,
-          ...currentProjection.months.map(m => Math.round(row.getValue(m))),
-        ]);
-      });
-    });
-
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-
-    worksheet['!cols'] = [
-      { wch: 24 },
-      ...currentProjection.months.map(() => ({ wch: 12 })),
+    const totals = [
+      'Totales anuales',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      currentProjection.totalesAnuales.ingresosTotales,
+      '',
+      '',
+      '',
+      '',
+      '',
+      currentProjection.totalesAnuales.gastosTotales,
+      '',
+      '',
+      currentProjection.totalesAnuales.financiacionTotal,
+      currentProjection.totalesAnuales.flujoNetoAnual,
+      '',
+      '',
+      currentProjection.totalesAnuales.patrimonioNetoFinal,
     ];
 
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-    for (let row = range.s.r + 1; row <= range.e.r; row += 1) {
-      for (let col = range.s.c + 1; col <= range.e.c; col += 1) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = worksheet[cellAddress];
-        if (cell && typeof cell.v === 'number') {
-          cell.z = '#,##0';
-        }
-      }
-    }
+    const csv = [header, ...rows, totals]
+      .map(row => row.map(cell => `"${String(cell)}"`).join(';'))
+      .join('\n');
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Proyección ${selectedYear}`);
-    XLSX.writeFile(workbook, `proyeccion_mensual_${selectedYear}.xlsx`);
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `proyeccion_mensual_${selectedYear}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }, [currentProjection, selectedYear]);
 
   return (
@@ -203,7 +245,7 @@ const ProyeccionMensual: React.FC = () => {
             <button
               onClick={handleExportToExcel}
               disabled={!currentProjection}
-              title="Descargar proyección en formato Excel (.xlsx)"
+              title="Descargar proyección en formato CSV compatible con Excel"
               className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
