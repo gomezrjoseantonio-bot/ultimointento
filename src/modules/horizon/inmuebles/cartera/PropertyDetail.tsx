@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users, CircleDollarSign } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
@@ -8,6 +8,7 @@ import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
+import PropertySaleModal from '../components/PropertySaleModal';
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
@@ -71,6 +72,7 @@ const PropertyDetail: React.FC = () => {
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -264,13 +266,24 @@ const PropertyDetail: React.FC = () => {
           </div>
         </div>
         {activeTab !== 'contratos' && (
-          <button
-            onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
-            className="flex items-center px-4 py-2 bg-brand-navy"
-          >
-            <Pencil className="h-5 w-5 mr-2" size={24}  />
-            Editar
-          </button>
+          <div className="flex items-center gap-2">
+            {property.state === 'activo' && (
+              <button
+                onClick={() => setIsSaleModalOpen(true)}
+                className="flex items-center px-4 py-2 border border-error-300 text-error-700"
+              >
+                <CircleDollarSign className="h-5 w-5 mr-2" size={24} />
+                Vender inmueble
+              </button>
+            )}
+            <button
+              onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
+              className="flex items-center px-4 py-2 bg-brand-navy"
+            >
+              <Pencil className="h-5 w-5 mr-2" size={24}  />
+              Editar
+            </button>
+          </div>
         )}
       </div>
 
@@ -740,6 +753,17 @@ const PropertyDetail: React.FC = () => {
       </div>
       </>
       )}
+      <PropertySaleModal
+        open={isSaleModalOpen}
+        property={property}
+        source="detalle"
+        onClose={() => setIsSaleModalOpen(false)}
+        onConfirmed={() => {
+          if (property.id) {
+            void loadProperty(property.id);
+          }
+        }}
+      />
     </div>
   );
 };
