@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText, CircleDollarSign } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, initDB } from '../../../../services/db';
+import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
 import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
@@ -64,6 +65,8 @@ const Cartera: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('alias');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
 
   useEffect(() => {
     loadData();
@@ -353,6 +356,15 @@ const Cartera: React.FC = () => {
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
+                            {property.state === 'activo' && (
+                              <button
+                                onClick={() => setSaleModalProperty(property)}
+                                className="p-1.5 text-neutral-500 hover:text-error-600 hover:bg-neutral-100 rounded transition-colors"
+                                title="Vender inmueble"
+                              >
+                                <CircleDollarSign className="h-4 w-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(property)}
                               className="p-1.5 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded transition-colors"
@@ -395,6 +407,16 @@ const Cartera: React.FC = () => {
           </div>
         )}
       </div>
+
+      <PropertySaleModal
+        open={Boolean(saleModalProperty)}
+        property={saleModalProperty}
+        source="cartera"
+        onClose={() => setSaleModalProperty(null)}
+        onConfirmed={() => {
+          void loadData();
+        }}
+      />
     </PageLayout>
   );
 };
