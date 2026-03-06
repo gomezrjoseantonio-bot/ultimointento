@@ -1,14 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import PatrimonioHeader from './PatrimonioHeader';
 import FlujosGrid from './FlujosGrid';
-import SaludFinanciera from './SaludFinanciera';
-import AlertasSection from './AlertasSection';
-import MesaAtlasCard from './MesaAtlasCard';
-import MesaAtlasPlanDrawer from './MesaAtlasPlanDrawer';
 import ActualizacionValoresDrawer from './ActualizacionValoresDrawer';
+import TesoreriaPanel from './TesoreriaPanel';
 import { dashboardService } from '../../services/dashboardService';
-import { calculateMesaAtlasIndex, getMesaAtlasInstabilityAlerts, getMesaAtlasRecommendations, simulateMesaAtlasResilience } from '../../services/mesaAtlasService';
-import type { PatrimonioData, FlujosCaja, SaludFinanciera as SaludFinancieraType, Alerta } from '../../types/dashboard';
+import type { PatrimonioData, FlujosCaja } from '../../types/dashboard';
 import './investor-dashboard.css';
 
 interface InvestorDashboardProps {
@@ -21,8 +17,7 @@ interface InvestorDashboardProps {
  * Displays complete financial overview in a single screen:
  * 1. PATRIMONIO NETO - Total net worth with breakdown (4 icons)
  * 2. FLUJOS DE CAJA - Three cashflow sources with trends and occupancy
- * 3. SALUD FINANCIERA - Liquidity cushion and 30-day projection
- * 4. REQUIERE ATENCIÓN - Prioritized alerts with amounts
+ * 3. Vista sin ruido: solo cabecera de patrimonio + 3 flujos clave
  * 
  * 100% ATLAS Design Bible compliant:
  * - Lucide icons ONLY (NO emojis)
@@ -51,20 +46,26 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
     inmuebles: { cashflow: 0, ocupacion: 0, tendencia: 'stable' },
     inversiones: { rendimientoMes: 0, dividendosMes: 0, tendencia: 'stable' }
   });
-  const [salud, setSalud] = useState<SaludFinancieraType>({
-    liquidezHoy: 0,
-    gastoMedioMensual: 0,
-    colchonMeses: 0,
-    estado: 'critical',
-    proyeccion30d: {
-      estimado: 0,
-      ingresos: 0,
-      gastos: 0
+  const [tesoreria, setTesoreria] = useState({
+    asOf: new Date().toISOString(),
+    filas: [] as Array<{
+      accountId: number;
+      banco: string;
+      inicioMes: number;
+      hoy: number;
+      porCobrar: number;
+      porPagar: number;
+      proyeccion: number;
+    }>,
+    totales: {
+      inicioMes: 0,
+      hoy: 0,
+      porCobrar: 0,
+      porPagar: 0,
+      proyeccion: 0
     }
   });
-  const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mesaPlanOpen, setMesaPlanOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -75,60 +76,21 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
       setLoading(true);
       
       // Load all dashboard data in parallel
-      const [patrimonioData, flujosData, saludData, alertasData] = await Promise.all([
+      const [patrimonioData, flujosData, tesoreriaData] = await Promise.all([
         dashboardService.getPatrimonioNeto(),
         dashboardService.getFlujosCaja(),
-        dashboardService.getSaludFinanciera(),
-        dashboardService.getAlertas()
+        dashboardService.getTesoreriaPanel()
       ]);
 
       setPatrimonio(patrimonioData);
       setFlujos(flujosData);
-      setSalud(saludData);
-      setAlertas(alertasData);
+      setTesoreria(tesoreriaData);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleAlertClick = (alerta: Alerta) => {
-    onNavigate(alerta.link);
-  };
-
-
-  const mesaAtlasInput = useMemo(() => ({
-    ingresos: {
-      trabajo: flujos.trabajo.netoMensual,
-      inmuebles: flujos.inmuebles.cashflow,
-      inversiones: flujos.inversiones.rendimientoMes + flujos.inversiones.dividendosMes
-    },
-    gastoMedioMensual: salud.gastoMedioMensual,
-    colchonMeses: salud.colchonMeses,
-    variacionMensualPorcentaje: patrimonio.variacionPorcentaje
-  }), [flujos, salud.gastoMedioMensual, salud.colchonMeses, patrimonio.variacionPorcentaje]);
-
-  const mesaAtlas = useMemo(() => calculateMesaAtlasIndex(mesaAtlasInput), [mesaAtlasInput]);
-  const mesaRecommendations = useMemo(
-    () => getMesaAtlasRecommendations(mesaAtlasInput, mesaAtlas),
-    [mesaAtlasInput, mesaAtlas]
-  );
-  const mesaScenarios = useMemo(() => simulateMesaAtlasResilience(mesaAtlasInput), [mesaAtlasInput]);
-
-  const mesaAlertas = useMemo(() => (
-    getMesaAtlasInstabilityAlerts(mesaAtlasInput, mesaAtlas).map((alerta, index) => ({
-      id: alerta.id,
-      tipo: 'documento' as const,
-      titulo: alerta.titulo,
-      descripcion: alerta.descripcion,
-      urgencia: alerta.urgencia,
-      diasVencimiento: index,
-      link: '/panel'
-    }))
-  ), [mesaAtlasInput, mesaAtlas]);
-
-  const alertasCombinadas = useMemo(() => [...mesaAlertas, ...alertas], [mesaAlertas, alertas]);
 
   // Show skeleton loader while loading
   if (loading) {
@@ -176,23 +138,6 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
             ))}
           </div>
 
-          {/* Bottom sections skeleton */}
-          <div className="bottom-sections">
-            <div
-              style={{
-                height: '140px',
-                backgroundColor: 'var(--hz-neutral-300)',
-                borderRadius: '12px'
-              }}
-            />
-            <div
-              style={{
-                height: '140px',
-                backgroundColor: 'var(--hz-neutral-300)',
-                borderRadius: '12px'
-              }}
-            />
-          </div>
         </div>
       </div>
     );
@@ -224,38 +169,15 @@ const InvestorDashboard: React.FC<InvestorDashboardProps> = ({
         onNavigate={onNavigate}
       />
 
-      {/* FASE 1 - Índice Mesa Atlas (módulo opcional en dashboard) */}
-      <div className="mesa-atlas-wrapper">
-        <MesaAtlasCard
-          data={mesaAtlas}
-          onOpenPlan={() => setMesaPlanOpen(true)}
+      <div style={{ padding: '0 24px 24px 24px' }}>
+        <TesoreriaPanel
+          asOf={tesoreria.asOf}
+          filas={tesoreria.filas}
+          totales={tesoreria.totales}
+          onNavigate={onNavigate}
+          onRefresh={loadDashboardData}
         />
       </div>
-
-      {/* Bottom sections: Salud Financiera + Alerts */}
-      <div className="bottom-sections">
-        {/* SALUD FINANCIERA */}
-        <SaludFinanciera
-          liquidezHoy={salud.liquidezHoy}
-          gastoMedioMensual={salud.gastoMedioMensual}
-          colchonMeses={salud.colchonMeses}
-          estado={salud.estado}
-          proyeccion30d={salud.proyeccion30d}
-        />
-
-        {/* REQUIERE ATENCIÓN */}
-        <AlertasSection
-          alertas={alertasCombinadas}
-          onAlertClick={handleAlertClick}
-        />
-      </div>
-
-      <MesaAtlasPlanDrawer
-        isOpen={mesaPlanOpen}
-        onClose={() => setMesaPlanOpen(false)}
-        recommendations={mesaRecommendations}
-        scenarios={mesaScenarios}
-      />
     </div>
   );
 };

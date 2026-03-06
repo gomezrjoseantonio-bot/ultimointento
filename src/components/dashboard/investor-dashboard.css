@@ -14,8 +14,8 @@
  */
 
 .investor-dashboard {
-  height: calc(100vh - 64px); /* Full viewport minus topbar */
-  overflow: hidden; /* NO scroll */
+  min-height: calc(100vh - 64px); /* Full viewport minus topbar */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background-color: var(--bg);
