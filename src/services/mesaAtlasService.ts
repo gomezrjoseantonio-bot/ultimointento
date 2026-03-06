@@ -16,6 +16,18 @@ export interface MesaAtlasResult {
   principalRiesgo: string;
 }
 
+export interface MesaAtlasRecommendation {
+  id: string;
+  titulo: string;
+  descripcion: string;
+}
+
+export interface ResilienceScenario {
+  id: string;
+  nombre: string;
+  mesesEstabilidad: number;
+}
+
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isNaN(value)) return min;
   return Math.max(min, Math.min(max, value));
