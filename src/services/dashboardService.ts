@@ -434,65 +434,71 @@ class DashboardService {
   }> {
     try {
       const db = await initDB();
-      
-      // Get all active properties
-      const properties = await db.getAll('properties');
-      const activeProperties = properties.filter((p: any) => p.state === 'activo');
-      
-      // Calculate real estate value (sum of purchase prices)
-      const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
-        const purchasePrice = prop.acquisitionCosts?.price || 0;
-        return sum + purchasePrice;
-      }, 0);
-      
-      // Get accounts balance
-      const accounts = await db.getAll('accounts');
-      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
-      const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => {
-        return sum + (acc.balance || 0);
-      }, 0);
-      
-      // Calculate debt from prestamos service
-      // Note: prestamos are currently stored in memory in prestamosService
-      // For now, we'll use a placeholder. In production, this would query the prestamos table
-      const deudaViva = 0; // TODO: Integrate with prestamosService.getAllPrestamos()
-      
-      // Inversiones (investments) - get from inversiones table
-      const inversiones = await db.getAll('inversiones');
-      const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => {
-        return sum + (inv.valor_actual || 0);
-      }, 0);
-      
-      // Calculate total net worth
-      const total = valorInmuebles + valorInversiones + saldoCuentas - deudaViva;
-      
-      // Calculate variation vs previous month using snapshots
+
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const previousMonthKey = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
-      
+      const fechaCalculo = now.toISOString();
+
+      const toNumber = (value: unknown): number => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      // Inmuebles: use latest valuation when available, fallback to acquisition price.
+      const properties = await db.getAll('properties');
+      const activeProperties = properties.filter((prop: any) => prop.state === 'activo');
+      const valoraciones = await db.getAll('valoraciones_historicas').catch(() => []);
+
+      const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
+        const propertyValuations = (valoraciones as any[])
+          .filter((val) => val.tipo_activo === 'inmueble' && String(val.activo_id) === String(prop.id))
+          .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
+
+        const ultimaValoracion = propertyValuations[0]?.valor;
+        const fallbackCompra = prop.acquisitionCosts?.price ?? prop.compra?.precio_compra ?? 0;
+        return sum + toNumber(ultimaValoracion ?? fallbackCompra);
+      }, 0);
+
+      // Cuentas: sum active account balances.
+      const accounts = await db.getAll('accounts');
+      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => sum + toNumber(acc.balance), 0);
+
+      // Inversiones: latest current valuation.
+      const inversiones = await db.getAll('inversiones');
+      const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
+      const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.valor_actual), 0);
+
+      // Deuda: include active loans from prestamos store.
+      const prestamos = await db.getAll('prestamos').catch(() => []);
+      const deudaViva = (prestamos as any[])
+        .filter((prestamo) => prestamo?.activo !== false)
+        .reduce((sum, prestamo) => {
+          const principal = prestamo.principalVivo ?? prestamo.capital_pendiente ?? prestamo.capitalPendiente ?? 0;
+          return sum + toNumber(principal);
+        }, 0);
+
+      const total = valorInmuebles + valorInversiones + saldoCuentas - deudaViva;
+
       let variacionMes = 0;
       let variacionPorcentaje = 0;
-      
+
       try {
         const snapshots = await db.getAllFromIndex('patrimonioSnapshots', 'fecha');
-        const previousSnapshot = snapshots.find((s: any) => s.fecha === previousMonthKey);
-        
+        const previousSnapshot = snapshots.find((snapshot: any) => snapshot.fecha === previousMonthKey);
+
         if (previousSnapshot) {
-          variacionMes = total - previousSnapshot.total;
-          variacionPorcentaje = previousSnapshot.total !== 0 
-            ? (variacionMes / previousSnapshot.total) * 100 
+          variacionMes = total - toNumber(previousSnapshot.total);
+          variacionPorcentaje = toNumber(previousSnapshot.total) !== 0
+            ? (variacionMes / toNumber(previousSnapshot.total)) * 100
             : 0;
         }
       } catch (error) {
         console.warn('Could not calculate variation from snapshots:', error);
       }
-      
-      const fechaCalculo = now.toISOString();
-      
-      // Save snapshot for current month (if not exists)
+
       await this.savePatrimonioSnapshot({
         fecha: currentMonth,
         total,
@@ -502,7 +508,7 @@ class DashboardService {
         deuda: deudaViva,
         createdAt: fechaCalculo
       });
-      
+
       return {
         total,
         variacionMes,
@@ -589,39 +595,50 @@ class DashboardService {
   }> {
     try {
       const db = await initDB();
-      
-      // TRABAJO: Calculate net monthly income from personal finance
-      // This would include salaries minus personal expenses
-      const ingresos = await db.getAll('ingresos');
-      const gastos = await db.getAll('gastos');
-      
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
-      
-      // Filter personal income for current month
+
+      const toNumber = (value: unknown): number => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const getDate = (item: any): Date | null => {
+        const raw = item?.fecha ?? item?.fecha_emision ?? item?.fecha_prevista_cobro ?? item?.fecha_pago_prevista;
+        if (!raw) return null;
+        const d = new Date(raw);
+        return Number.isNaN(d.getTime()) ? null : d;
+      };
+
+      const getImporte = (item: any): number => toNumber(item?.importe ?? item?.total ?? item?.amount);
+
+      const isPersonalIngreso = (ing: any): boolean => ing?.esPersonal === true || ing?.destino === 'personal';
+      const isPersonalGasto = (gasto: any): boolean => gasto?.esPersonal === true || gasto?.destino === 'personal';
+      const isInmuebleExpense = (expense: any): boolean => expense?.propertyId != null || expense?.destino === 'inmueble_id' || expense?.destino_id != null;
+
+      const inMonth = (item: any, month: number, year: number): boolean => {
+        const d = getDate(item);
+        return !!d && d.getMonth() === month && d.getFullYear() === year;
+      };
+
+      const ingresos = await db.getAll('ingresos');
+      const gastos = await db.getAll('gastos');
+      const expenses = await db.getAll('expenses');
+      const rentPayments = await db.getAll('rentPayments');
+      const inversiones = await db.getAll('inversiones');
+
+      // TRABAJO (salario/otros ingresos personales - gastos personales + autónomo)
       const ingresosPersonalMes = ingresos
-        .filter((ing: any) => {
-          const fecha = new Date(ing.fecha);
-          return fecha.getMonth() === currentMonth && 
-                 fecha.getFullYear() === currentYear &&
-                 ing.esPersonal === true;
-        })
-        .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
-      
-      // Filter personal expenses for current month
+        .filter((ing: any) => inMonth(ing, currentMonth, currentYear) && isPersonalIngreso(ing))
+        .reduce((sum: number, ing: any) => sum + getImporte(ing), 0);
+
       const gastosPersonalMes = gastos
-        .filter((gasto: any) => {
-          const fecha = new Date(gasto.fecha);
-          return fecha.getMonth() === currentMonth && 
-                 fecha.getFullYear() === currentYear &&
-                 gasto.esPersonal === true;
-        })
-        .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
-      
+        .filter((gasto: any) => inMonth(gasto, currentMonth, currentYear) && isPersonalGasto(gasto))
+        .reduce((sum: number, gasto: any) => sum + getImporte(gasto), 0);
+
       const trabajoBase = ingresosPersonalMes - gastosPersonalMes;
 
-      // Add autonomo net monthly income (rendimientoNeto / 12) to trabajo
       let autonomoNetoMensual = 0;
       try {
         const personalData = await personalDataService.getPersonalData();
@@ -632,134 +649,86 @@ class DashboardService {
           autonomoNetoMensual = annual.rendimientoNeto / 12;
         }
       } catch {
-        // No autonomo data available
+        // No autonomo data
       }
 
       const trabajoMensual = trabajoBase + autonomoNetoMensual;
-      
-      // INMUEBLES: Calculate cashflow from properties
-      // Income from rents minus expenses and mortgages
-      const rentPayments = await db.getAll('rentPayments');
-      const expenses = await db.getAll('expenses');
-      
-      // Get rent income for current month
+
+      // INMUEBLES (rentas cobradas - gastos - cuotas de préstamos de inmueble)
       const rentasMes = rentPayments
-        .filter((payment: any) => {
-          const fecha = new Date(payment.fecha);
-          return fecha.getMonth() === currentMonth && 
-                 fecha.getFullYear() === currentYear &&
-                 payment.estado === 'pagada';
-        })
-        .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
-      
-      // Get property expenses for current month
-      const gastosInmueblesMes = expenses
-        .filter((expense: any) => {
-          const fecha = new Date(expense.fecha);
-          return fecha.getMonth() === currentMonth && 
-                 fecha.getFullYear() === currentYear &&
-                 expense.propertyId != null;
-        })
-        .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
-      
-      // Subtract mortgage payments (if prestamos table existed, we'd query it here)
-      const cuotasHipotecaMes = 0; // TODO: Calculate from prestamos service
-      
+        .filter((payment: any) => inMonth(payment, currentMonth, currentYear) && payment.estado === 'pagada')
+        .reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+
+      const gastosInmueblesMes = [
+        ...expenses.filter((expense: any) => inMonth(expense, currentMonth, currentYear) && isInmuebleExpense(expense)),
+        ...gastos.filter((gasto: any) => inMonth(gasto, currentMonth, currentYear) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
+      ].reduce((sum: number, expense: any) => sum + getImporte(expense), 0);
+
+      const prestamos = await db.getAll('prestamos').catch(() => []);
+      const cuotasHipotecaMes = (prestamos as any[])
+        .filter((prestamo) => prestamo?.activo !== false && prestamo?.ambito === 'INMUEBLE')
+        .reduce((sum, prestamo) => sum + toNumber(prestamo.cuotaMensual ?? prestamo.cuota_mensual ?? 0), 0);
+
       const cashflowInmuebles = rentasMes - gastosInmueblesMes - cuotasHipotecaMes;
-      
-      // Calculate occupancy rate
+
       const properties = await db.getAll('properties');
       const activeProperties = properties.filter((p: any) => p.state === 'activo');
       const contracts = await db.getAll('contracts');
       const activeContracts = contracts.filter((c: any) => c.estado === 'activo');
-      
-      const totalUnidades = activeProperties.length;
-      const unidadesOcupadas = activeContracts.length;
-      const ocupacion = totalUnidades > 0 ? (unidadesOcupadas / totalUnidades) * 100 : 0;
-      
-      // Calculate trends - compare current month vs average of last 3 months
-      const last3Months = [];
-      for (let i = 1; i <= 3; i++) {
-        const pastDate = new Date(currentYear, currentMonth - i, 1);
-        last3Months.push({
-          month: pastDate.getMonth(),
-          year: pastDate.getFullYear()
-        });
-      }
-      
-      // Trabajo trend
-      const ingresosLast3Months = last3Months.map(({month, year}) => {
-        return ingresos
-          .filter((ing: any) => {
-            const fecha = new Date(ing.fecha);
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   ing.esPersonal === true;
-          })
-          .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
+      const ocupacion = activeProperties.length > 0 ? (activeContracts.length / activeProperties.length) * 100 : 0;
+
+      const last3Months = Array.from({ length: 3 }, (_, i) => {
+        const date = new Date(currentYear, currentMonth - (i + 1), 1);
+        return { month: date.getMonth(), year: date.getFullYear() };
       });
-      
-      const gastosLast3Months = last3Months.map(({month, year}) => {
-        return gastos
-          .filter((gasto: any) => {
-            const fecha = new Date(gasto.fecha);
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   gasto.esPersonal === true;
-          })
-          .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
+
+      const trabajoLast3 = last3Months.map(({ month, year }) => {
+        const ing = ingresos
+          .filter((item: any) => inMonth(item, month, year) && isPersonalIngreso(item))
+          .reduce((sum: number, item: any) => sum + getImporte(item), 0);
+        const gas = gastos
+          .filter((item: any) => inMonth(item, month, year) && isPersonalGasto(item))
+          .reduce((sum: number, item: any) => sum + getImporte(item), 0);
+        return ing - gas + autonomoNetoMensual;
       });
-      
-      const trabajoLast3Months = ingresosLast3Months.map((ing, i) => ing - gastosLast3Months[i]);
-      const trabajoAvg = trabajoLast3Months.length > 0 
-        ? trabajoLast3Months.reduce((sum, val) => sum + val, 0) / trabajoLast3Months.length 
-        : 0;
-      const trabajoVariacion = trabajoAvg !== 0 ? ((trabajoMensual - trabajoAvg) / trabajoAvg) * 100 : 0;
-      const trabajoTendencia: 'up' | 'down' | 'stable' = 
-        trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
-      
-      // Inmuebles trend
-      const cashflowLast3Months = last3Months.map(({month, year}) => {
+
+      const trabajoAvg = trabajoLast3.length > 0 ? trabajoLast3.reduce((sum, value) => sum + value, 0) / trabajoLast3.length : 0;
+      const trabajoVariacion = trabajoAvg !== 0 ? ((trabajoMensual - trabajoAvg) / Math.abs(trabajoAvg)) * 100 : 0;
+      const trabajoTendencia: 'up' | 'down' | 'stable' = trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
+
+      const cashflowLast3 = last3Months.map(({ month, year }) => {
         const rentas = rentPayments
-          .filter((payment: any) => {
-            const fecha = new Date(payment.fecha);
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   payment.estado === 'pagada';
-          })
-          .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
-        
-        const gastos = expenses
-          .filter((expense: any) => {
-            const fecha = new Date(expense.fecha);
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   expense.propertyId != null;
-          })
-          .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
-        
-        return rentas - gastos;
+          .filter((payment: any) => inMonth(payment, month, year) && payment.estado === 'pagada')
+          .reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+        const gastosMes = [
+          ...expenses.filter((expense: any) => inMonth(expense, month, year) && isInmuebleExpense(expense)),
+          ...gastos.filter((gasto: any) => inMonth(gasto, month, year) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
+        ].reduce((sum: number, expense: any) => sum + getImporte(expense), 0);
+
+        return rentas - gastosMes - cuotasHipotecaMes;
       });
-      
-      const cashflowAvg = cashflowLast3Months.length > 0 
-        ? cashflowLast3Months.reduce((sum, val) => sum + val, 0) / cashflowLast3Months.length 
-        : 0;
-      const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / cashflowAvg) * 100 : 0;
-      const inmueblesTendencia: 'up' | 'down' | 'stable' = 
-        cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
-      
-      // INVERSIONES: Get from inversiones table
-      const inversiones = await db.getAll('inversiones');
+
+      const cashflowAvg = cashflowLast3.length > 0 ? cashflowLast3.reduce((sum, value) => sum + value, 0) / cashflowLast3.length : 0;
+      const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / Math.abs(cashflowAvg)) * 100 : 0;
+      const inmueblesTendencia: 'up' | 'down' | 'stable' = cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
+
+      // INVERSIONES (rendimientos + dividendos cobrados en el mes)
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      
-      // Calculate monthly return (simplified)
-      const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => {
-        return sum + (inv.rentabilidad_euros || 0);
+      const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.rentabilidad_euros), 0);
+
+      const dividendosMes = inversionesActivas.reduce((sum: number, inv: any) => {
+        const pagos = inv?.dividendos?.dividendos_recibidos ?? inv?.rendimiento?.pagos_generados ?? [];
+        const importePagado = (Array.isArray(pagos) ? pagos : [])
+          .filter((pago: any) => {
+            const fecha = new Date(pago?.fecha_pago);
+            if (Number.isNaN(fecha.getTime())) return false;
+            const estado = pago?.estado;
+            return fecha.getMonth() === currentMonth && fecha.getFullYear() === currentYear && (estado === undefined || estado === 'pagado' || estado === 'reinvertido');
+          })
+          .reduce((acc: number, pago: any) => acc + toNumber(pago?.importe_neto ?? pago?.importe_bruto ?? pago?.importe), 0);
+        return sum + importePagado;
       }, 0);
-      
-      // Calculate dividends for current month
-      const dividendosMes = 0; // TODO: Add dividends tracking to inversiones table
-      
+
       return {
         trabajo: {
           netoMensual: trabajoMensual,
@@ -768,13 +737,13 @@ class DashboardService {
         },
         inmuebles: {
           cashflow: cashflowInmuebles,
-          ocupacion: ocupacion,
+          ocupacion,
           tendencia: inmueblesTendencia
         },
         inversiones: {
-          rendimientoMes: rendimientoMes,
-          dividendosMes: dividendosMes,
-          tendencia: 'stable' // TODO: Calculate trend when we have historical data
+          rendimientoMes,
+          dividendosMes,
+          tendencia: 'stable'
         }
       };
     } catch (error) {
@@ -882,6 +851,106 @@ class DashboardService {
         comprometido30d: 0,
         ingresos30d: 0,
         proyeccion30d: 0
+      };
+    }
+  }
+
+  async getTesoreriaPanel(): Promise<{
+    asOf: string;
+    filas: Array<{
+      accountId: number;
+      banco: string;
+      inicioMes: number;
+      hoy: number;
+      porCobrar: number;
+      porPagar: number;
+      proyeccion: number;
+    }>;
+    totales: {
+      inicioMes: number;
+      hoy: number;
+      porCobrar: number;
+      porPagar: number;
+      proyeccion: number;
+    };
+  }> {
+    try {
+      const db = await initDB();
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      const toNumber = (value: unknown): number => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const accounts = await db.getAll('accounts');
+      const movements = await db.getAll('movements').catch(() => []);
+      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
+
+      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+
+      const filas = activeAccounts.map((account: any) => {
+        const accountId = account.id as number;
+        const hoy = toNumber(account.balance);
+
+        const monthMovements = (movements as any[]).filter((movement) => {
+          if (movement.accountId !== accountId) return false;
+          const movementDate = new Date(movement.date || movement.fecha || movement.valueDate || movement.fechaOperacion);
+          return !Number.isNaN(movementDate.getTime()) && movementDate >= startOfMonth && movementDate <= now;
+        });
+
+        const deltaMes = monthMovements.reduce((sum, movement) => sum + toNumber(movement.amount), 0);
+        const inicioMes = hoy - deltaMes;
+
+        const futurosCuenta = (treasuryEvents as any[]).filter((event) => {
+          if (event.accountId !== accountId) return false;
+          if (event.status === 'executed') return false;
+          const predictedDate = new Date(event.predictedDate);
+          return !Number.isNaN(predictedDate.getTime()) && predictedDate >= now && predictedDate <= endOfMonth;
+        });
+
+        const porCobrar = futurosCuenta
+          .filter((event) => event.type === 'income')
+          .reduce((sum, event) => sum + toNumber(event.amount), 0);
+
+        const porPagar = futurosCuenta
+          .filter((event) => event.type === 'expense')
+          .reduce((sum, event) => sum + toNumber(event.amount), 0);
+
+        const proyeccion = hoy + porCobrar - porPagar;
+
+        return {
+          accountId,
+          banco: account.alias || account.name || account.bank || account.banco?.name || 'Cuenta sin nombre',
+          inicioMes,
+          hoy,
+          porCobrar,
+          porPagar,
+          proyeccion
+        };
+      });
+
+      const totales = filas.reduce((acc, fila) => ({
+        inicioMes: acc.inicioMes + fila.inicioMes,
+        hoy: acc.hoy + fila.hoy,
+        porCobrar: acc.porCobrar + fila.porCobrar,
+        porPagar: acc.porPagar + fila.porPagar,
+        proyeccion: acc.proyeccion + fila.proyeccion
+      }), { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 });
+
+      return {
+        asOf: now.toISOString(),
+        filas: filas.sort((a, b) => a.banco.localeCompare(b.banco)),
+        totales
+      };
+    } catch (error) {
+      console.error('Error getting tesorería panel:', error);
+      return {
+        asOf: new Date().toISOString(),
+        filas: [],
+        totales: { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 }
       };
     }
   }
