@@ -2,9 +2,10 @@
 // ATLAS HORIZON: Monthly financial projection page (Phase 1)
 
 import React, { useEffect, useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
 import { Download } from 'lucide-react';
 import { generateProyeccionMensual } from './services/proyeccionMensualService';
-import { ProyeccionAnual } from './types/proyeccionMensual';
+import { ProyeccionAnual, MonthlyProjectionRow } from './types/proyeccionMensual';
 import MonthlyProjectionTable from './components/MonthlyProjectionTable';
 import YearSelector from './components/YearSelector';
 import SummaryCards from './components/SummaryCards';
@@ -16,6 +17,67 @@ const ALL_YEARS = Array.from(
   { length: PROJECTION_YEARS },
   (_, i) => START_YEAR + i,
 );
+
+const MONTH_ABBR = [
+  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+];
+
+type SectionKey = 'ingresos' | 'gastos' | 'financiacion' | 'tesoreria' | 'patrimonio';
+
+interface ExportRowDef {
+  label: string;
+  getValue: (m: MonthlyProjectionRow) => number;
+  isTotal?: boolean;
+}
+
+const EXPORT_SECTION_ROWS: Record<SectionKey, ExportRowDef[]> = {
+  ingresos: [
+    { label: 'Nóminas', getValue: m => m.ingresos.nomina },
+    { label: 'Ingresos Autónomos', getValue: m => m.ingresos.serviciosFreelance },
+    { label: 'Pensiones', getValue: m => m.ingresos.pensiones },
+    { label: 'Rentas alquiler', getValue: m => m.ingresos.rentasAlquiler },
+    { label: 'Intereses Inversiones', getValue: m => m.ingresos.dividendosInversiones },
+    { label: 'Otros ingresos', getValue: m => m.ingresos.otrosIngresos },
+    { label: 'Total ingresos', getValue: m => m.ingresos.total, isTotal: true },
+  ],
+  gastos: [
+    { label: 'Gastos Alquileres', getValue: m => m.gastos.gastosOperativos },
+    { label: 'Gastos personales', getValue: m => m.gastos.gastosPersonales },
+    { label: 'Gastos autónomo', getValue: m => m.gastos.gastosAutonomo },
+    { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
+    { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
+    { label: 'Total gastos', getValue: m => m.gastos.total, isTotal: true },
+  ],
+  financiacion: [
+    { label: 'Cuotas hipotecas', getValue: m => m.financiacion.cuotasHipotecas },
+    { label: 'Cuotas préstamos', getValue: m => m.financiacion.cuotasPrestamos },
+    { label: 'Total financiación', getValue: m => m.financiacion.total, isTotal: true },
+  ],
+  tesoreria: [
+    { label: 'Flujo caja del mes', getValue: m => m.tesoreria.flujoCajaMes },
+    { label: 'Caja inicial', getValue: m => m.tesoreria.cajaInicial },
+    { label: 'Caja final', getValue: m => m.tesoreria.cajaFinal, isTotal: true },
+  ],
+  patrimonio: [
+    { label: 'Caja', getValue: m => m.patrimonio.caja },
+    { label: 'Inmuebles', getValue: m => m.patrimonio.inmuebles },
+    { label: 'Planes de pensión', getValue: m => m.patrimonio.planesPension },
+    { label: 'Otras inversiones', getValue: m => m.patrimonio.otrasInversiones },
+    { label: 'Deuda inmuebles', getValue: m => -m.patrimonio.deudaInmuebles },
+    { label: 'Deuda personal', getValue: m => -m.patrimonio.deudaPersonal },
+    { label: 'Deuda total', getValue: m => -m.patrimonio.deudaTotal },
+    { label: 'Patrimonio neto', getValue: m => m.patrimonio.patrimonioNeto, isTotal: true },
+  ],
+};
+
+const SECTION_LABELS: Record<SectionKey, string> = {
+  ingresos: 'INGRESOS',
+  gastos: 'GASTOS',
+  financiacion: 'FINANCIACIÓN',
+  tesoreria: 'TESORERÍA',
+  patrimonio: 'PATRIMONIO',
+};
 
 const ProyeccionMensual: React.FC = () => {
   const [proyecciones, setProyecciones] = useState<ProyeccionAnual[]>([]);
