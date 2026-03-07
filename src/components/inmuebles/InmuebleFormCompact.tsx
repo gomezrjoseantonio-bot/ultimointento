@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronUp, Home, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Home } from 'lucide-react';
 
 import { initDB, Property } from '../../services/db';
 import { getLocationFromPostalCode, inferLocationFromPostalCodeRange, calculateITP, calculateIVA } from '../../utils/locationUtils';
@@ -429,26 +429,10 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
               {mode === 'edit' ? 'Editar Inmueble' : 'Nuevo Inmueble'}
             </h1>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? 'Guardando...' : 'Guardar'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="p-2 text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-gray-300 rounded-md transition-colors"
-              aria-label="Cerrar"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
         </div>
         
         {/* Form Content - Compact Layout */}
-        <div className="p-6 space-y-4 inmueble-form-compact">
+        <div className={`p-6 space-y-4 ${embedded ? '' : 'inmueble-form-compact'}`}>
           {/* Section 1: IDENTIFICACIÓN */}
           <section className="border border-gray-200 rounded-lg bg-white">
             <button
@@ -797,7 +781,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         </div>
         
         {/* Footer Actions */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between sticky bottom-0 shadow-lg">
+        <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition-colors"
