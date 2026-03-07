@@ -29,24 +29,18 @@ interface DashboardKpi {
   purchaseStartDate: string;
 }
 
-interface PropertyAuditRow {
-  propertyId: number;
-  alias: string;
-  monthlyIncome: number;
-  annualIncome: number;
-  annualOpex: number;
-  annualDebtService: number;
-  annualNetCashflow: number;
-  totalCost: number;
-  currentValue: number;
-  pendingDebt: number;
-}
-
 const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(value);
 
 const formatPercent = (value: number): string =>
   `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
+
+const chartPalette = {
+  grid: 'var(--hz-neutral-200, #D1D5DB)',
+  axis: 'var(--hz-neutral-700, #374151)',
+  portfolioValue: 'var(--hz-primary, #1D4ED8)',
+  equityValue: 'var(--hz-success, #059669)',
+};
 
 const calculateYearsSince = (isoDate: string): number => {
   const from = new Date(isoDate);
@@ -191,38 +185,6 @@ const Analisis: React.FC = () => {
     };
   }, [properties, contracts, ingresos, prestamos, valoraciones, annualOpexMap]);
 
-  const propertyAuditRows = useMemo<PropertyAuditRow[]>(() => {
-    return properties
-      .filter((property): property is Property & { id: number } => typeof property.id === 'number')
-      .map((property) => {
-        const annualPropertyOpex = annualOpexMap[property.id] || 0;
-        const { inputs } = buildPropertyAnalysisInputs({
-          property,
-          contracts,
-          ingresos,
-          gastosOperativosOverride: annualPropertyOpex / 12,
-          prestamos,
-          valoraciones,
-        });
-
-        const annualIncome = inputs.ingresosMensuales * 12;
-        const annualDebtService = inputs.cuotaHipoteca * 12;
-
-        return {
-          propertyId: property.id,
-          alias: property.alias,
-          monthlyIncome: inputs.ingresosMensuales,
-          annualIncome,
-          annualOpex: annualPropertyOpex,
-          annualDebtService,
-          annualNetCashflow: annualIncome - annualPropertyOpex - annualDebtService,
-          totalCost: inputs.precioTotalCompra,
-          currentValue: inputs.valorActualActivo,
-          pendingDebt: inputs.deudaPendiente,
-        };
-      });
-  }, [properties, annualOpexMap, contracts, ingresos, prestamos, valoraciones]);
-
   const chartData = useMemo(() => {
     if (!metrics) return [];
 
@@ -319,12 +281,12 @@ const Analisis: React.FC = () => {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 8, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hz-neutral-200)" />
-                  <XAxis dataKey="year" tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
-                  <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                  <XAxis dataKey="year" tick={{ fill: chartPalette.axis, fontSize: 12 }} />
+                  <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: chartPalette.axis, fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Line type="monotone" dataKey="valor" stroke="var(--hz-primary)" strokeWidth={3} dot={{ r: 4 }} name="Valor cartera" />
-                  <Line type="monotone" dataKey="equity" stroke="var(--hz-success)" strokeWidth={3} dot={{ r: 4 }} name="Equity estimado" />
+                  <Line type="monotone" dataKey="valor" stroke={chartPalette.portfolioValue} strokeWidth={3} dot={{ r: 4 }} name="Valor cartera" />
+                  <Line type="monotone" dataKey="equity" stroke={chartPalette.equityValue} strokeWidth={3} dot={{ r: 4 }} name="Equity estimado" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -375,83 +337,6 @@ const Analisis: React.FC = () => {
                 <p className="text-2xl font-semibold" style={{ color: 'var(--hz-neutral-900)' }}>{item.value}</p>
               </article>
             ))}
-          </div>
-        </section>
-
-        <section className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
-          <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--hz-neutral-900)' }}>Auditoría numérica del cálculo</h3>
-          <p className="text-sm mb-4" style={{ color: 'var(--hz-neutral-700)' }}>
-            Este bloque muestra la fórmula exacta y los valores reales usados en el cálculo actual de cartera.
-          </p>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
-            {[{
-              label: 'Cashflow neto anual',
-              formula: 'Ingresos anuales − Gastos anuales − Cuotas deuda anuales',
-              detail: `${formatCurrency(metrics.annualIncome)} − ${formatCurrency(metrics.annualOpex)} − ${formatCurrency(metrics.annualDebtService)} = ${formatCurrency(metrics.annualNetCashflow)}`,
-            }, {
-              label: 'Rentabilidad bruta',
-              formula: '(Ingresos anuales / Coste total) × 100',
-              detail: `(${formatCurrency(metrics.annualIncome)} / ${formatCurrency(metrics.totalCost)}) × 100 = ${formatPercent(metrics.annualGrossYield)}`,
-            }, {
-              label: 'Rentabilidad neta sobre activo',
-              formula: '(Cashflow neto anual / Coste total) × 100',
-              detail: `(${formatCurrency(metrics.annualNetCashflow)} / ${formatCurrency(metrics.totalCost)}) × 100 = ${formatPercent(metrics.annualNetYieldOverCost)}`,
-            }, {
-              label: 'Equity actual',
-              formula: 'Valor actual − Deuda pendiente',
-              detail: `${formatCurrency(metrics.currentValue)} − ${formatCurrency(metrics.pendingDebt)} = ${formatCurrency(metrics.totalEquity)}`,
-            }, {
-              label: 'Beneficio total si vendes hoy',
-              formula: 'Cashflow neto acumulado + Plusvalía latente',
-              detail: `${formatCurrency(metrics.accumulatedCashflow)} + ${formatCurrency(metrics.latentGain)} = ${formatCurrency(metrics.accumulatedCashflow + metrics.latentGain)}`,
-            }, {
-              label: 'Múltiplo sobre capital',
-              formula: '(Valor actual + Cashflow acumulado) / Coste total',
-              detail: `(${formatCurrency(metrics.currentValue)} + ${formatCurrency(metrics.accumulatedCashflow)}) / ${formatCurrency(metrics.totalCost)} = x${(metrics.totalCost > 0 ? (metrics.currentValue + metrics.accumulatedCashflow) / metrics.totalCost : 0).toFixed(2)}`,
-            }].map((item) => (
-              <article key={item.label} className="rounded-lg border p-4" style={{ borderColor: 'var(--hz-neutral-200)' }}>
-                <p className="font-semibold mb-1" style={{ color: 'var(--hz-neutral-900)' }}>{item.label}</p>
-                <p className="text-xs mb-2" style={{ color: 'var(--hz-neutral-700)' }}>{item.formula}</p>
-                <p className="text-sm" style={{ color: 'var(--hz-primary)' }}>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm border-separate border-spacing-0">
-              <thead>
-                <tr>
-                  {['Inmueble', 'Ingresos anuales', 'Gastos anuales', 'Cuotas deuda', 'Cashflow neto anual', 'Coste total', 'Valor actual', 'Deuda', 'Equity'].map((head) => (
-                    <th
-                      key={head}
-                      className="text-left px-3 py-2 border-b"
-                      style={{ color: 'var(--hz-neutral-700)', borderColor: 'var(--hz-neutral-200)' }}
-                    >
-                      {head}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {propertyAuditRows.map((row) => {
-                  const equity = row.currentValue - row.pendingDebt;
-                  return (
-                    <tr key={row.propertyId}>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{row.alias}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualIncome)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualOpex)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualDebtService)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualNetCashflow)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.totalCost)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.currentValue)}</td>
-                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.pendingDebt)}</td>
-                      <td className="px-3 py-2 border-b font-medium" style={{ borderColor: 'var(--hz-neutral-200)', color: 'var(--hz-primary)' }}>{formatCurrency(equity)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
         </section>
       </div>

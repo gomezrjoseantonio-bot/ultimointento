@@ -111,28 +111,16 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                     Perfil
                   </button>
                   <button
-                    onClick={() => { navigate('/cuenta/seguridad'); setAccountMenuOpen(false); }}
-                    className="block px-4 py-2 text-sm text-atlas-navy-1 hover:bg-hz-neutral-100 w-full text-left"
-                  >
-                    Seguridad
-                  </button>
-                  <button
                     onClick={() => { navigate('/cuenta/plan'); setAccountMenuOpen(false); }}
                     className="block px-4 py-2 text-sm text-atlas-navy-1 hover:bg-hz-neutral-100 w-full text-left"
                   >
                     Plan & Facturación
                   </button>
                   <button
-                    onClick={() => { navigate('/cuenta/privacidad'); setAccountMenuOpen(false); }}
-                    className="block px-4 py-2 text-sm text-atlas-navy-1 hover:bg-hz-neutral-100 w-full text-left"
-                  >
-                    Privacidad & Datos
-                  </button>
-                  <button
                     onClick={() => { navigate('/cuenta/cuentas'); setAccountMenuOpen(false); }}
                     className="block px-4 py-2 text-sm text-atlas-navy-1 hover:bg-hz-neutral-100 w-full text-left"
                   >
-                    Cuentas Bancarias
+                    Métodos de pago
                   </button>
                   <div className="border-t border-hz-neutral-300 my-1"></div>
                   <button

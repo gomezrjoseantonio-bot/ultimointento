@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronUp, Home, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Home } from 'lucide-react';
 
 import { initDB, Property } from '../../services/db';
 import { getLocationFromPostalCode, inferLocationFromPostalCodeRange, calculateITP, calculateIVA } from '../../utils/locationUtils';
@@ -13,6 +13,10 @@ import { AJD_RATE } from '../../utils/inmuebleUtils';
 
 interface InmuebleFormCompactProps {
   mode: 'create' | 'edit';
+  propertyId?: number;
+  embedded?: boolean;
+  onCancel?: () => void;
+  onSaved?: (propertyId: number) => void;
 }
 
 interface FormData {
@@ -45,9 +49,10 @@ interface FormData {
   valorCatastralConstruccion: number;
 }
 
-const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
+const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propertyId, embedded = false, onCancel, onSaved }) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const resolvedPropertyId = propertyId ?? (id ? parseInt(id, 10) : undefined);
   
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -56,7 +61,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
     caracteristicas: true
   });
   
-  const [isLoading, setIsLoading] = useState(mode === 'edit' && !!id);
+  const [isLoading, setIsLoading] = useState(mode === 'edit' && !!resolvedPropertyId);
   const [isSaving, setIsSaving] = useState(false);
   
   // Form data
@@ -91,29 +96,23 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   
   // Load existing property for edit mode
   useEffect(() => {
-    if (mode === 'edit' && id) {
-      loadProperty();
+    if (mode === 'edit' && resolvedPropertyId) {
+      loadProperty(resolvedPropertyId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, id]);
-  
-  const loadProperty = async () => {
+  }, [mode, resolvedPropertyId]);
+
+  const loadProperty = async (targetPropertyId: number) => {
     try {
       setIsLoading(true);
       const db = await initDB();
-      const propertyId = parseInt(id!, 10);
-      
-      if (isNaN(propertyId)) {
-        toast.error('ID de inmueble inválido');
-        navigate('/inmuebles/cartera');
-        return;
-      }
-      
-      const property = await db.get('properties', propertyId);
+      const property = await db.get('properties', targetPropertyId);
       
       if (!property) {
         toast.error('Inmueble no encontrado');
-        navigate('/inmuebles/cartera');
+        if (!embedded) {
+          navigate('/inmuebles/cartera');
+        }
         return;
       }
       
@@ -153,7 +152,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
     } catch (error) {
       console.error('Error loading property:', error);
       toast.error('Error al cargar el inmueble');
-      navigate('/inmuebles/cartera');
+      if (!embedded) {
+        navigate('/inmuebles/cartera');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -367,16 +368,19 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
       const propertyData = mapToProperty();
       const db = await initDB();
       
-      if (mode === 'edit' && id) {
-        const propertyId = parseInt(id, 10);
-        await db.put('properties', { ...propertyData, id: propertyId });
+      if (mode === 'edit' && resolvedPropertyId) {
+        await db.put('properties', { ...propertyData, id: resolvedPropertyId });
         toast.success('Inmueble actualizado correctamente');
+        onSaved?.(resolvedPropertyId);
       } else {
-        await db.add('properties', propertyData);
+        const createdPropertyId = Number(await db.add('properties', propertyData));
         toast.success('Inmueble guardado correctamente');
+        onSaved?.(createdPropertyId);
       }
-      
-      navigate('/inmuebles/cartera?refresh=1');
+
+      if (!embedded) {
+        navigate('/inmuebles/cartera?refresh=1');
+      }
     } catch (error) {
       console.error('Error saving property:', error);
       toast.error('Error al guardar el inmueble');
@@ -387,6 +391,11 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   
   // Cancel and go back
   const handleCancel = () => {
+    if (embedded) {
+      onCancel?.();
+      return;
+    }
+
     navigate('/inmuebles/cartera');
   };
   
@@ -410,36 +419,20 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   }
   
   return (
-    <div className="min-h-screen bg-hz-bg">
-      <div className="max-w-5xl mx-auto">
+    <div className={embedded ? '' : 'min-h-screen bg-hz-bg'}>
+      <div className={embedded ? '' : 'max-w-5xl mx-auto'}>
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className={`bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between ${embedded ? '' : 'sticky top-0 z-10 shadow-sm'}`}>
           <div className="flex items-center space-x-3">
             <Home className="w-6 h-6 text-atlas-blue" />
             <h1 className="text-xl font-semibold text-gray-900">
               {mode === 'edit' ? 'Editar Inmueble' : 'Nuevo Inmueble'}
             </h1>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-4 py-2 bg-atlas-blue text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? 'Guardando...' : 'Guardar'}
-            </button>
-            <button
-              onClick={handleCancel}
-              className="p-2 text-gray-500 hover:text-gray-700 focus:ring-2 focus:ring-gray-300 rounded-md transition-colors"
-              aria-label="Cerrar"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
         </div>
         
         {/* Form Content - Compact Layout */}
-        <div className="p-6 space-y-4 inmueble-form-compact">
+        <div className={`p-6 space-y-4 ${embedded ? '' : 'inmueble-form-compact'}`}>
           {/* Section 1: IDENTIFICACIÓN */}
           <section className="border border-gray-200 rounded-lg bg-white">
             <button
@@ -788,7 +781,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
         </div>
         
         {/* Footer Actions */}
-        <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between sticky bottom-0 shadow-lg">
+        <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between">
           <button
             onClick={handleCancel}
             className="px-4 py-2 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 transition-colors"
