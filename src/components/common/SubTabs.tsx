@@ -16,7 +16,7 @@ interface SubTabsConfig {
 const HORIZON_SUBTABS: SubTabsConfig = {
   inmuebles: [
     { label: 'Cartera', path: '/inmuebles/cartera' },
-    { label: 'Análisis', path: '/inmuebles/analisis' },
+    { label: 'Evolución', path: '/inmuebles/analisis' },
   ],
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
