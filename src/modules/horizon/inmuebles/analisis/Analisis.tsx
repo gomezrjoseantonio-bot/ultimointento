@@ -1,413 +1,460 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { TrendingUp, Building2, Wallet, PiggyBank, Euro, BarChart3, Landmark, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PageLayout from '../../../../components/common/PageLayout';
 import EmptyState from '../../../../components/common/EmptyState';
-import { BarChart3 } from 'lucide-react';
 import { Property, initDB } from '../../../../services/db';
 import type { Contract, Ingreso } from '../../../../services/db';
 import type { Prestamo } from '../../../../types/prestamos';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
-import {
-  getAnnualOpexForProperty,
-  getExpenseDiagnosticsForProperty,
-} from '../../../../services/propertyExpenses';
-import { 
-  PropertyAnalysis, 
-  PropertyDecision,
-  DEFAULT_ANALYSIS_CONFIG 
-} from '../../../../types/propertyAnalysis';
-import {
-  calculateOperationalPerformance,
-  calculateFinancialProfitability,
-  calculateFiscalROI,
-  calculateSaleSimulation,
-  buildPropertyAnalysisInputs,
-} from '../../../../utils/propertyAnalysisUtils';
-import PropertyHeader from './components/PropertyHeader';
-import OperationalPerformanceSection from './components/OperationalPerformanceSection';
-import FinancialProfitabilitySection from './components/FinancialProfitabilitySection';
-import FiscalROISection from './components/FiscalROISection';
-import SaleSimulationSection from './components/SaleSimulationSection';
-import RecommendationActionSection from './components/RecommendationActionSection';
-import PropertySaleModal from '../components/PropertySaleModal';
-import toast from 'react-hot-toast';
+import { getAnnualOpexForProperty } from '../../../../services/propertyExpenses';
+import { buildPropertyAnalysisInputs } from '../../../../utils/propertyAnalysisUtils';
+
+interface DashboardKpi {
+  totalCost: number;
+  currentValue: number;
+  annualIncome: number;
+  annualOpex: number;
+  annualDebtService: number;
+  annualNetCashflow: number;
+  monthlyNetCashflow: number;
+  pendingDebt: number;
+  latentGain: number;
+  totalEquity: number;
+  annualGrossYield: number;
+  annualNetYieldOverCost: number;
+  annualNetYieldOverEquity: number;
+  accumulatedCashflow: number;
+  annualRevaluationRate: number;
+  purchaseStartDate: string;
+}
+
+interface PropertyAuditRow {
+  propertyId: number;
+  alias: string;
+  monthlyIncome: number;
+  annualIncome: number;
+  annualOpex: number;
+  annualDebtService: number;
+  annualNetCashflow: number;
+  totalCost: number;
+  currentValue: number;
+  pendingDebt: number;
+}
+
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(value);
+
+const formatPercent = (value: number): string =>
+  `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
+
+const calculateYearsSince = (isoDate: string): number => {
+  const from = new Date(isoDate);
+  const now = new Date();
+  const years = (now.getTime() - from.getTime()) / (1000 * 60 * 60 * 24 * 365);
+  return Math.max(0.1, years);
+};
+
+const estimateRemainingYears = (loan: Prestamo): number => {
+  if (!loan.fechaFirma || !loan.plazoMesesTotal) return 0;
+  const signedAt = new Date(loan.fechaFirma);
+  const elapsedMonths = Math.max(
+    0,
+    (new Date().getFullYear() - signedAt.getFullYear()) * 12 + (new Date().getMonth() - signedAt.getMonth())
+  );
+  return Math.max(0, (loan.plazoMesesTotal - elapsedMonths) / 12);
+};
 
 const Analisis: React.FC = () => {
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-  const [analysis, setAnalysis] = useState<PropertyAnalysis | null>(null);
-  const [saleOverrides, setSaleOverrides] = useState<{ precioVenta: number; comisionVenta: number } | null>(null);
-  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [ingresos, setIngresos] = useState<Ingreso[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
-  const [gastosOperativosMensuales, setGastosOperativosMensuales] = useState<number>(0);
-  const [expenseWarning, setExpenseWarning] = useState<string | null>(null);
-  const [mortgageWarning, setMortgageWarning] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [annualOpexMap, setAnnualOpexMap] = useState<Record<number, number>>({});
 
-  const loadProperties = useCallback(async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const db = await initDB();
-      const [
-        allProperties,
-        contractsData,
-        ingresosData,
-        prestamosData,
-        valoracionesData,
-      ] = await Promise.all([
+      const [allProperties, contractsData, ingresosData, prestamosData, valoracionesData] = await Promise.all([
         db.getAll('properties'),
         db.getAll('contracts'),
         db.getAll('ingresos'),
         db.getAll('prestamos'),
         db.getAll('valoraciones_historicas'),
       ]);
-      const activeProperties = allProperties.filter(p => p.state === 'activo');
+
+      const activeProperties = (allProperties as Property[]).filter((p) => p.state === 'activo');
       setProperties(activeProperties);
-      setContracts(contractsData);
-      setIngresos(ingresosData);
+      setContracts(contractsData as Contract[]);
+      setIngresos(ingresosData as Ingreso[]);
       setPrestamos(prestamosData as Prestamo[]);
       setValoraciones(valoracionesData as ValoracionHistorica[]);
-      
-      if (activeProperties.length > 0 && !selectedPropertyId) {
-        setSelectedPropertyId(activeProperties[0].id!);
-      }
-    } catch (error) {
-      console.error('Error loading properties:', error);
-      toast.error('Error al cargar los inmuebles');
+
+      const opexEntries = await Promise.all(
+        activeProperties.map(async (property) => {
+          if (!property.id) return [0, 0] as const;
+          const annual = await getAnnualOpexForProperty(property.id);
+          return [property.id, annual] as const;
+        })
+      );
+
+      setAnnualOpexMap(
+        opexEntries.reduce<Record<number, number>>((acc, [propertyId, annual]) => {
+          if (propertyId > 0) acc[propertyId] = annual;
+          return acc;
+        }, {})
+      );
     } finally {
       setLoading(false);
     }
-  }, [selectedPropertyId]);
+  }, []);
 
   useEffect(() => {
-    loadProperties();
-  }, [loadProperties]);
+    void loadData();
+  }, [loadData]);
 
-  useEffect(() => {
-    if (selectedPropertyId && properties.length > 0) {
-      void calculateAnalysis();
+  const metrics = useMemo<DashboardKpi | null>(() => {
+    if (!properties.length) return null;
+
+    let totalCost = 0;
+    let currentValue = 0;
+    let annualIncome = 0;
+    let annualOpex = 0;
+    let annualDebtService = 0;
+    let pendingDebt = 0;
+    let weightedAnnualRevaluation = 0;
+    let weightedCostForRevaluation = 0;
+    let accumulatedCashflow = 0;
+    let oldestPurchaseDate = properties[0].purchaseDate;
+
+    for (const property of properties) {
+      const propertyId = property.id;
+      if (!propertyId) continue;
+
+      const annualPropertyOpex = annualOpexMap[propertyId] || 0;
+      const { inputs } = buildPropertyAnalysisInputs({
+        property,
+        contracts,
+        ingresos,
+        gastosOperativosOverride: annualPropertyOpex / 12,
+        prestamos,
+        valoraciones,
+      });
+
+      totalCost += inputs.precioTotalCompra;
+      currentValue += inputs.valorActualActivo;
+      annualIncome += inputs.ingresosMensuales * 12;
+      annualOpex += annualPropertyOpex;
+      annualDebtService += inputs.cuotaHipoteca * 12;
+      pendingDebt += inputs.deudaPendiente;
+
+      const years = calculateYearsSince(property.purchaseDate);
+      const appreciationRate = inputs.precioTotalCompra > 0 && inputs.valorActualActivo > 0
+        ? (Math.pow(inputs.valorActualActivo / inputs.precioTotalCompra, 1 / years) - 1)
+        : 0;
+
+      if (inputs.precioTotalCompra > 0 && Number.isFinite(appreciationRate)) {
+        weightedAnnualRevaluation += appreciationRate * inputs.precioTotalCompra;
+        weightedCostForRevaluation += inputs.precioTotalCompra;
+      }
+
+      accumulatedCashflow += (inputs.ingresosMensuales - inputs.gastosOperativos - inputs.cuotaHipoteca) * years * 12;
+      if (new Date(property.purchaseDate).getTime() < new Date(oldestPurchaseDate).getTime()) {
+        oldestPurchaseDate = property.purchaseDate;
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPropertyId, properties, contracts, ingresos, prestamos, valoraciones, saleOverrides]);
 
-  const calculateAnalysis = async () => {
-    const property = properties.find(p => p.id === selectedPropertyId);
-    if (!property) return;
+    const annualNetCashflow = annualIncome - annualOpex - annualDebtService;
+    const totalEquity = currentValue - pendingDebt;
+    const annualRevaluationRate = weightedCostForRevaluation > 0 ? weightedAnnualRevaluation / weightedCostForRevaluation : 0.03;
 
-    const propertyId = property.id!;
-    const annualOpex = await getAnnualOpexForProperty(propertyId);
-    const diagnostics = await getExpenseDiagnosticsForProperty(propertyId);
-    const monthlyOpex = annualOpex / 12;
+    return {
+      totalCost,
+      currentValue,
+      annualIncome,
+      annualOpex,
+      annualDebtService,
+      annualNetCashflow,
+      monthlyNetCashflow: annualNetCashflow / 12,
+      pendingDebt,
+      latentGain: currentValue - totalCost,
+      totalEquity,
+      annualGrossYield: totalCost > 0 ? (annualIncome / totalCost) * 100 : 0,
+      annualNetYieldOverCost: totalCost > 0 ? (annualNetCashflow / totalCost) * 100 : 0,
+      annualNetYieldOverEquity: totalEquity > 0 ? (annualNetCashflow / totalEquity) * 100 : 0,
+      accumulatedCashflow,
+      annualRevaluationRate,
+      purchaseStartDate: oldestPurchaseDate,
+    };
+  }, [properties, contracts, ingresos, prestamos, valoraciones, annualOpexMap]);
 
-    setGastosOperativosMensuales(monthlyOpex);
-    setExpenseWarning(diagnostics.warning || null);
+  const propertyAuditRows = useMemo<PropertyAuditRow[]>(() => {
+    return properties
+      .filter((property): property is Property & { id: number } => typeof property.id === 'number')
+      .map((property) => {
+        const annualPropertyOpex = annualOpexMap[property.id] || 0;
+        const { inputs } = buildPropertyAnalysisInputs({
+          property,
+          contracts,
+          ingresos,
+          gastosOperativosOverride: annualPropertyOpex / 12,
+          prestamos,
+          valoraciones,
+        });
 
-    const { inputs, missingFields: missingData, warnings } = buildPropertyAnalysisInputs({
-      property,
-      contracts,
-      ingresos,
-      gastosOperativosOverride: monthlyOpex,
-      prestamos,
-      valoraciones,
+        const annualIncome = inputs.ingresosMensuales * 12;
+        const annualDebtService = inputs.cuotaHipoteca * 12;
+
+        return {
+          propertyId: property.id,
+          alias: property.alias,
+          monthlyIncome: inputs.ingresosMensuales,
+          annualIncome,
+          annualOpex: annualPropertyOpex,
+          annualDebtService,
+          annualNetCashflow: annualIncome - annualPropertyOpex - annualDebtService,
+          totalCost: inputs.precioTotalCompra,
+          currentValue: inputs.valorActualActivo,
+          pendingDebt: inputs.deudaPendiente,
+        };
+      });
+  }, [properties, annualOpexMap, contracts, ingresos, prestamos, valoraciones]);
+
+  const chartData = useMemo(() => {
+    if (!metrics) return [];
+
+    const currentYear = new Date().getFullYear();
+    const portfolioLoans = prestamos.filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo);
+
+    return Array.from({ length: 10 }, (_, index) => {
+      const yearsAhead = index + 1;
+      const year = currentYear + yearsAhead;
+
+      const projectedValue = metrics.currentValue * Math.pow(1 + metrics.annualRevaluationRate, yearsAhead);
+      const projectedDebt = portfolioLoans.reduce((sum, loan) => {
+        const remainingYears = estimateRemainingYears(loan);
+        if (remainingYears <= 0) return sum;
+        const projectedOutstanding = Math.max(0, (loan.principalVivo || 0) * (1 - yearsAhead / remainingYears));
+        return sum + projectedOutstanding;
+      }, 0);
+
+      const projectedEquity = projectedValue - projectedDebt;
+      return {
+        year: String(year),
+        valor: projectedValue,
+        equity: projectedEquity,
+      };
     });
-
-    const mergedInputs = {
-      ...inputs,
-      ...(saleOverrides ? {
-        precioVenta: saleOverrides.precioVenta,
-        comisionVenta: saleOverrides.comisionVenta,
-      } : {}),
-    };
-
-    setMissingFields(missingData);
-    setMortgageWarning(warnings.length > 0 ? warnings.join(' ') : null);
-
-    // Calculate operational performance
-    const operational = calculateOperationalPerformance(
-      mergedInputs.ingresosMensuales,
-      mergedInputs.gastosOperativos,
-      mergedInputs.cuotaHipoteca
-    );
-
-    // Calculate financial profitability
-    const financial = calculateFinancialProfitability(
-      mergedInputs.valorActualActivo,
-      mergedInputs.deudaPendiente,
-      mergedInputs.precioTotalCompra,
-      operational.ingresosMensuales * 12,
-      mergedInputs.noi,
-      operational.cashflowAnual,
-      mergedInputs.amortizacionAnual,
-      mergedInputs.revalorizacionAnual
-    );
-
-    // Calculate fiscal ROI
-    const fiscal = calculateFiscalROI(
-      operational.cashflowAnual,
-      financial.equityActual,
-      DEFAULT_ANALYSIS_CONFIG
-    );
-
-    // Calculate sale simulation
-    const saleSimulation = calculateSaleSimulation(
-      mergedInputs.precioVenta,
-      mergedInputs.comisionVenta,
-      mergedInputs.deudaPendiente,
-      mergedInputs.comisionCancelacion,
-      mergedInputs.precioTotalCompra,
-      mergedInputs.itpOIva,
-      mergedInputs.reformaTotal,
-      mergedInputs.gastosCompra,
-      DEFAULT_ANALYSIS_CONFIG
-    );
-
-    const newAnalysis: PropertyAnalysis = {
-      propertyId: property.id!,
-      propertyAlias: property.alias,
-      location: `${property.municipality}, ${property.province}`,
-      purchaseDate: new Date(property.purchaseDate).toLocaleDateString('es-ES'),
-      operational,
-      financial,
-      fiscal,
-      saleSimulation,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    setAnalysis(newAnalysis);
-  };
-
-  const handleUpdateSalePrice = (value: number) => {
-    setSaleOverrides(prev => ({
-      precioVenta: value,
-      comisionVenta: prev?.comisionVenta ?? analysis?.saleSimulation.comisionVenta ?? 0,
-    }));
-  };
-
-  const handleUpdateCommission = (value: number) => {
-    setSaleOverrides(prev => ({
-      precioVenta: prev?.precioVenta ?? analysis?.saleSimulation.precioVenta ?? 0,
-      comisionVenta: value,
-    }));
-  };
-
-  useEffect(() => {
-    setSaleOverrides(null);
-  }, [selectedPropertyId]);
-
-  const handleDecision = (decision: PropertyDecision, targetDate?: string) => {
-    if (!analysis) return;
-
-    if (decision === 'VENDER') {
-      setIsSaleModalOpen(true);
-      return;
-    }
-
-    const updatedAnalysis: PropertyAnalysis = {
-      ...analysis,
-      decision,
-      decisionDate: new Date().toISOString(),
-      ...(decision === 'REVISAR' && targetDate && { reviewScheduledDate: targetDate }),
-    };
-
-    setAnalysis(updatedAnalysis);
-
-    const message = decision === 'MANTENER'
-      ? 'Estado guardado: Mantener activo'
-      : `Revisión agendada para ${targetDate}`;
-
-    toast.success(message);
-  };
+  }, [metrics, prestamos]);
 
   if (loading) {
     return (
-      <PageLayout
-        title="Análisis"
-        subtitle="Análisis de rentabilidad y rendimiento con métricas avanzadas"
-      >
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-neutral-600">Cargando análisis...</div>
-        </div>
+      <PageLayout title="Evolución" subtitle="Visión agregada de la evolución de todos tus inmuebles desde la compra.">
+        <div className="flex items-center justify-center min-h-96 text-neutral-600">Cargando evolución de cartera…</div>
       </PageLayout>
     );
   }
 
-  const hasMissingData = missingFields.length > 0;
-
-  if (properties.length === 0) {
+  if (!metrics || properties.length === 0) {
     return (
-      <PageLayout
-        title="Análisis"
-        subtitle="Análisis de rentabilidad y rendimiento con métricas avanzadas"
-      >
+      <PageLayout title="Evolución" subtitle="Visión agregada de la evolución de todos tus inmuebles desde la compra.">
         <EmptyState
           icon={<BarChart3 className="h-12 w-12 text-gray-400" />}
           title="Sin inmuebles activos"
-          description="No tienes inmuebles activos en cartera. Añade un inmueble para comenzar el análisis."
-          action={{
-            label: "Ir a Cartera",
-            onClick: () => navigate('/inmuebles/cartera')
-          }}
+          description="Añade inmuebles en cartera para activar el dashboard de evolución."
         />
-      </PageLayout>
-    );
-  }
-
-  if (!analysis) {
-    return (
-      <PageLayout
-        title="Análisis"
-        subtitle="Análisis de rentabilidad y rendimiento con métricas avanzadas"
-      >
-        <div className="flex items-center justify-center min-h-96">
-          <div className="text-neutral-600">Calculando análisis...</div>
-        </div>
       </PageLayout>
     );
   }
 
   return (
-    <PageLayout
-      title="Análisis"
-      subtitle="Análisis de rentabilidad y rendimiento con métricas avanzadas"
-    >
-      <div className="space-y-6">
-        {hasMissingData && (
-          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--error)', backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-              <strong>Faltan datos para calcular la rentabilidad.</strong> Completa: {missingFields.join(', ')}.
+    <PageLayout title="Evolución" subtitle="Dashboard visual con la evolución global de la cartera inmobiliaria.">
+      <div className="space-y-8">
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[
+            { label: 'Coste total', value: formatCurrency(metrics.totalCost), icon: Landmark },
+            { label: 'Valor actual', value: formatCurrency(metrics.currentValue), icon: Building2 },
+            { label: 'Cashflow neto / mes', value: formatCurrency(metrics.monthlyNetCashflow), icon: Wallet },
+            { label: 'Plusvalía latente', value: formatCurrency(metrics.latentGain), icon: TrendingUp },
+          ].map((item) => (
+            <article key={item.label} className="rounded-xl border p-5 bg-white shadow-sm" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm" style={{ color: 'var(--hz-neutral-700)' }}>{item.label}</p>
+                <item.icon size={18} style={{ color: 'var(--hz-primary)' }} />
+              </div>
+              <p className="text-3xl font-semibold" style={{ color: 'var(--hz-primary)' }}>{item.value}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <article className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+            <p className="text-sm mb-2" style={{ color: 'var(--hz-neutral-700)' }}>Rentabilidad bruta</p>
+            <p className="text-4xl font-semibold text-atlas-blue">{formatPercent(metrics.annualGrossYield)} / año</p>
+            <p className="text-sm mt-2" style={{ color: 'var(--hz-neutral-600)' }}>Ingresos anuales / Coste total</p>
+          </article>
+
+          <article className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+            <p className="text-sm mb-2" style={{ color: 'var(--hz-neutral-700)' }}>Rentabilidad neta sobre activo</p>
+            <p className="text-4xl font-semibold text-atlas-blue">{formatPercent(metrics.annualNetYieldOverCost)} / año</p>
+            <p className="text-sm mt-2" style={{ color: 'var(--hz-neutral-600)' }}>Cashflow neto anual / Coste total</p>
+          </article>
+
+          <article className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+            <p className="text-sm mb-2" style={{ color: 'var(--hz-neutral-700)' }}>Rentabilidad neta sobre equity</p>
+            <p className="text-4xl font-semibold text-atlas-blue">{formatPercent(metrics.annualNetYieldOverEquity)} / año</p>
+            <p className="text-sm mt-2" style={{ color: 'var(--hz-neutral-600)' }}>Cashflow neto anual / Capital propio</p>
+          </article>
+        </section>
+
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <article className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold" style={{ color: 'var(--hz-neutral-900)' }}>Proyección de cartera</h3>
+              <PiggyBank size={18} style={{ color: 'var(--hz-primary)' }} />
             </div>
-          </div>
-        )}
-
-        {expenseWarning && (
-          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-              <strong>Gastos OPEX.</strong> {expenseWarning} (estimado mensual: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(gastosOperativosMensuales)}).
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 8, left: 8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hz-neutral-200)" />
+                  <XAxis dataKey="year" tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
+                  <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Line type="monotone" dataKey="valor" stroke="var(--hz-primary)" strokeWidth={3} dot={{ r: 4 }} name="Valor cartera" />
+                  <Line type="monotone" dataKey="equity" stroke="var(--hz-success)" strokeWidth={3} dot={{ r: 4 }} name="Equity estimado" />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        )}
+            <p className="text-sm mt-3" style={{ color: 'var(--hz-neutral-600)' }}>
+              Tasa media anual de revalorización: <strong>{formatPercent(metrics.annualRevaluationRate * 100)}</strong>
+            </p>
+          </article>
 
-
-        {mortgageWarning && (
-          <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--warning)', backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-              <strong>Hipoteca.</strong> {mortgageWarning}
+          <article className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+            <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--hz-neutral-900)' }}>Resultado global y equity</h3>
+            <div className="space-y-3 text-base">
+              <div className="flex justify-between"><span style={{ color: 'var(--hz-neutral-700)' }}>Cashflow neto acumulado</span><strong>{formatCurrency(metrics.accumulatedCashflow)}</strong></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--hz-neutral-700)' }}>Beneficio total si vendes hoy</span><strong>{formatCurrency(metrics.accumulatedCashflow + metrics.latentGain)}</strong></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--hz-neutral-700)' }}>Múltiplo sobre capital</span><strong>x{(metrics.totalCost > 0 ? (metrics.currentValue + metrics.accumulatedCashflow) / metrics.totalCost : 0).toFixed(2)}</strong></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--hz-neutral-700)' }}>Rentabilidad anualizada</span><strong>{formatPercent(metrics.annualNetYieldOverCost + metrics.annualRevaluationRate * 100)}</strong></div>
             </div>
-          </div>
-        )}
-
-        {/* Property selector */}
-        {properties.length > 1 && (
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-              Seleccionar inmueble
-            </label>
-            <select
-              value={selectedPropertyId || ''}
-              onChange={(e) => setSelectedPropertyId(parseInt(e.target.value))}
-              className="px-3 py-2 border rounded-md text-sm"
-              style={{ fontSize: '14px' }}
-            >
-              {properties.map(property => (
-                <option key={property.id} value={property.id}>
-                  {property.alias}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Header with traffic light */}
-        <PropertyHeader
-          propertyAlias={analysis.propertyAlias}
-          location={analysis.location}
-          purchaseDate={analysis.purchaseDate}
-          fiscalROI={analysis.fiscal}
-        />
-
-        {/* BLOQUE 1 - Current Performance and Fiscal ROI */}
-        <div
-          className="p-6 rounded-lg border"
-          style={{
-            borderColor: 'var(--border-color)',
-            opacity: hasMissingData ? 0.65 : 1,
-          }}
-        >
-          <h2 className="text-base font-semibold mb-6" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            BLOQUE 1 — Rendimiento actual y ROI fiscal
-          </h2>
-          
-          <div className="space-y-8">
-            <OperationalPerformanceSection data={analysis.operational} />
-            
-            <div className="border-t" style={{ borderColor: 'var(--border-color)' }} />
-            
-            <FinancialProfitabilitySection data={analysis.financial} />
-            
-            <div className="border-t" style={{ borderColor: 'var(--border-color)' }} />
-            
-            <FiscalROISection data={analysis.fiscal} />
-          </div>
-        </div>
-
-        {/* BLOQUE 3 - Sale Simulation + Recommendation + Action */}
-        <div
-          className="p-6 rounded-lg border"
-          style={{
-            borderColor: 'var(--border-color)',
-            opacity: hasMissingData ? 0.65 : 1,
-          }}
-        >
-          <h2 className="text-base font-semibold mb-6" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-            BLOQUE 3 — Simulación de venta + Recomendación + Acción
-          </h2>
-          
-          <div className="space-y-8">
-            <SaleSimulationSection
-              data={analysis.saleSimulation}
-              onUpdateSalePrice={handleUpdateSalePrice}
-              onUpdateCommission={handleUpdateCommission}
-              disabled={hasMissingData}
-            />
-            
-            <div className="border-t" style={{ borderColor: 'var(--border-color)' }} />
-            
-            <RecommendationActionSection
-              fiscalROI={analysis.fiscal}
-              capitalNetoFinal={analysis.saleSimulation.capitalNetoFinal}
-              onDecision={handleDecision}
-              disabled={hasMissingData}
-            />
-          </div>
-        </div>
-
-        {/* Decision status (if any) */}
-        {analysis.decision && (
-          <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-            <div className="text-sm" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
-              <strong>Última decisión:</strong> {analysis.decision}
-              {analysis.reviewScheduledDate && ` - Revisión programada: ${analysis.reviewScheduledDate}`}
-              {analysis.targetSaleDate && ` - Venta objetivo: ${analysis.targetSaleDate}`}
+            <div className="border-t mt-4 pt-4" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2" style={{ color: 'var(--hz-neutral-700)' }}><ArrowDownRight size={16} /> Deuda pendiente</span>
+                <strong>{formatCurrency(metrics.pendingDebt)}</strong>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="inline-flex items-center gap-2" style={{ color: 'var(--hz-neutral-700)' }}><ArrowUpRight size={16} /> Equity actual</span>
+                <strong style={{ color: 'var(--hz-primary)' }}>{formatCurrency(metrics.totalEquity)}</strong>
+              </div>
             </div>
+            <p className="text-xs mt-4" style={{ color: 'var(--hz-neutral-600)' }}>
+              Histórico agregado desde la primera compra: {new Date(metrics.purchaseStartDate).toLocaleDateString('es-ES')}.
+            </p>
+          </article>
+        </section>
+
+        <section>
+          <h3 className="text-xl font-semibold mb-3" style={{ color: 'var(--hz-neutral-900)' }}>Datos base agregados</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+            {[
+              { label: 'Ingresos anuales', value: formatCurrency(metrics.annualIncome), icon: Euro },
+              { label: 'Gastos anuales', value: formatCurrency(metrics.annualOpex), icon: Wallet },
+              { label: 'Cuotas deuda anuales', value: formatCurrency(metrics.annualDebtService), icon: Landmark },
+              { label: 'Cashflow neto anual', value: formatCurrency(metrics.annualNetCashflow), icon: TrendingUp },
+              { label: 'Inmuebles activos', value: `${properties.length}`, icon: Building2 },
+            ].map((item) => (
+              <article key={item.label} className="rounded-xl border p-4 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <item.icon size={14} style={{ color: 'var(--hz-primary)' }} />
+                  <p className="text-xs" style={{ color: 'var(--hz-neutral-700)' }}>{item.label}</p>
+                </div>
+                <p className="text-2xl font-semibold" style={{ color: 'var(--hz-neutral-900)' }}>{item.value}</p>
+              </article>
+            ))}
           </div>
-        )}
+        </section>
+
+        <section className="rounded-xl border p-5 bg-white" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+          <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--hz-neutral-900)' }}>Auditoría numérica del cálculo</h3>
+          <p className="text-sm mb-4" style={{ color: 'var(--hz-neutral-700)' }}>
+            Este bloque muestra la fórmula exacta y los valores reales usados en el cálculo actual de cartera.
+          </p>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+            {[{
+              label: 'Cashflow neto anual',
+              formula: 'Ingresos anuales − Gastos anuales − Cuotas deuda anuales',
+              detail: `${formatCurrency(metrics.annualIncome)} − ${formatCurrency(metrics.annualOpex)} − ${formatCurrency(metrics.annualDebtService)} = ${formatCurrency(metrics.annualNetCashflow)}`,
+            }, {
+              label: 'Rentabilidad bruta',
+              formula: '(Ingresos anuales / Coste total) × 100',
+              detail: `(${formatCurrency(metrics.annualIncome)} / ${formatCurrency(metrics.totalCost)}) × 100 = ${formatPercent(metrics.annualGrossYield)}`,
+            }, {
+              label: 'Rentabilidad neta sobre activo',
+              formula: '(Cashflow neto anual / Coste total) × 100',
+              detail: `(${formatCurrency(metrics.annualNetCashflow)} / ${formatCurrency(metrics.totalCost)}) × 100 = ${formatPercent(metrics.annualNetYieldOverCost)}`,
+            }, {
+              label: 'Equity actual',
+              formula: 'Valor actual − Deuda pendiente',
+              detail: `${formatCurrency(metrics.currentValue)} − ${formatCurrency(metrics.pendingDebt)} = ${formatCurrency(metrics.totalEquity)}`,
+            }, {
+              label: 'Beneficio total si vendes hoy',
+              formula: 'Cashflow neto acumulado + Plusvalía latente',
+              detail: `${formatCurrency(metrics.accumulatedCashflow)} + ${formatCurrency(metrics.latentGain)} = ${formatCurrency(metrics.accumulatedCashflow + metrics.latentGain)}`,
+            }, {
+              label: 'Múltiplo sobre capital',
+              formula: '(Valor actual + Cashflow acumulado) / Coste total',
+              detail: `(${formatCurrency(metrics.currentValue)} + ${formatCurrency(metrics.accumulatedCashflow)}) / ${formatCurrency(metrics.totalCost)} = x${(metrics.totalCost > 0 ? (metrics.currentValue + metrics.accumulatedCashflow) / metrics.totalCost : 0).toFixed(2)}`,
+            }].map((item) => (
+              <article key={item.label} className="rounded-lg border p-4" style={{ borderColor: 'var(--hz-neutral-200)' }}>
+                <p className="font-semibold mb-1" style={{ color: 'var(--hz-neutral-900)' }}>{item.label}</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--hz-neutral-700)' }}>{item.formula}</p>
+                <p className="text-sm" style={{ color: 'var(--hz-primary)' }}>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border-separate border-spacing-0">
+              <thead>
+                <tr>
+                  {['Inmueble', 'Ingresos anuales', 'Gastos anuales', 'Cuotas deuda', 'Cashflow neto anual', 'Coste total', 'Valor actual', 'Deuda', 'Equity'].map((head) => (
+                    <th
+                      key={head}
+                      className="text-left px-3 py-2 border-b"
+                      style={{ color: 'var(--hz-neutral-700)', borderColor: 'var(--hz-neutral-200)' }}
+                    >
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {propertyAuditRows.map((row) => {
+                  const equity = row.currentValue - row.pendingDebt;
+                  return (
+                    <tr key={row.propertyId}>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{row.alias}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualIncome)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualOpex)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualDebtService)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.annualNetCashflow)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.totalCost)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.currentValue)}</td>
+                      <td className="px-3 py-2 border-b" style={{ borderColor: 'var(--hz-neutral-200)' }}>{formatCurrency(row.pendingDebt)}</td>
+                      <td className="px-3 py-2 border-b font-medium" style={{ borderColor: 'var(--hz-neutral-200)', color: 'var(--hz-primary)' }}>{formatCurrency(equity)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
-
-      <PropertySaleModal
-        open={isSaleModalOpen}
-        property={properties.find((p) => p.id === selectedPropertyId) || null}
-        source="analisis"
-        onClose={() => setIsSaleModalOpen(false)}
-        onConfirmed={() => {
-          setIsSaleModalOpen(false);
-          void loadProperties();
-        }}
-      />
     </PageLayout>
   );
 };
