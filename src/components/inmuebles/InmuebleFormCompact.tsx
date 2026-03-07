@@ -422,7 +422,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     <div className={embedded ? '' : 'min-h-screen bg-hz-bg'}>
       <div className={embedded ? '' : 'max-w-5xl mx-auto'}>
         {/* Header */}
-        <div className={`bg-white border-b border-gray-200 px-6 py-4 flex items-center ${embedded ? '' : 'sticky top-0 z-10 shadow-sm'}`}>
+        <div className={`bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between ${embedded ? '' : 'sticky top-0 z-10 shadow-sm'}`}>
           <div className="flex items-center space-x-3">
             <Home className="w-6 h-6 text-atlas-blue" />
             <h1 className="text-xl font-semibold text-gray-900">
