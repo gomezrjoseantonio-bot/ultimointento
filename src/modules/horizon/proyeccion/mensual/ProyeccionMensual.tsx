@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Download } from 'lucide-react';
 import { generateProyeccionMensual } from './services/proyeccionMensualService';
-import type { ProyeccionAnual } from './types/proyeccionMensual';
+import type { MonthlyProjectionRow, ProyeccionAnual } from './types/proyeccionMensual';
 import MonthlyProjectionTable from './components/MonthlyProjectionTable';
 import YearSelector from './components/YearSelector';
 import SummaryCards from './components/SummaryCards';
@@ -16,6 +16,89 @@ const ALL_YEARS = Array.from(
   { length: PROJECTION_YEARS },
   (_, i) => START_YEAR + i,
 );
+
+const MONTH_ABBR = [
+  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
+  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+];
+
+interface ExportRowDef {
+  label: string;
+  getValue: (m: MonthlyProjectionRow) => number;
+  isTotal?: boolean;
+  specialBg?: 'total' | 'highlight';
+  highlight?: 'positive-negative';
+}
+
+interface ExportSectionDef {
+  label: string;
+  rows: ExportRowDef[];
+}
+
+const EXPORT_SECTIONS: ExportSectionDef[] = [
+  {
+    label: 'INGRESOS',
+    rows: [
+      { label: 'Nóminas', getValue: m => m.ingresos.nomina },
+      { label: 'Ingresos Autónomos', getValue: m => m.ingresos.serviciosFreelance },
+      { label: 'Pensiones', getValue: m => m.ingresos.pensiones },
+      { label: 'Rentas alquiler', getValue: m => m.ingresos.rentasAlquiler },
+      { label: 'Intereses Inversiones', getValue: m => m.ingresos.dividendosInversiones },
+      { label: 'Otros ingresos', getValue: m => m.ingresos.otrosIngresos },
+      { label: 'Total ingresos', getValue: m => m.ingresos.total, isTotal: true, specialBg: 'total' },
+    ],
+  },
+  {
+    label: 'GASTOS',
+    rows: [
+      { label: 'Gastos Alquileres', getValue: m => m.gastos.gastosOperativos },
+      { label: 'Gastos personales', getValue: m => m.gastos.gastosPersonales },
+      { label: 'Gastos autónomo', getValue: m => m.gastos.gastosAutonomo },
+      { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
+      { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
+      { label: 'Total gastos', getValue: m => m.gastos.total, isTotal: true, specialBg: 'total' },
+    ],
+  },
+  {
+    label: 'FINANCIACIÓN',
+    rows: [
+      { label: 'Cuotas hipotecas', getValue: m => m.financiacion.cuotasHipotecas },
+      { label: 'Cuotas préstamos', getValue: m => m.financiacion.cuotasPrestamos },
+      { label: 'Total financiación', getValue: m => m.financiacion.total, isTotal: true, specialBg: 'total' },
+    ],
+  },
+  {
+    label: 'TESORERÍA',
+    rows: [
+      {
+        label: 'Flujo caja del mes',
+        getValue: m => m.tesoreria.flujoCajaMes,
+        highlight: 'positive-negative',
+      },
+      { label: 'Caja inicial', getValue: m => m.tesoreria.cajaInicial },
+      { label: 'Caja final', getValue: m => m.tesoreria.cajaFinal, isTotal: true, specialBg: 'highlight' },
+    ],
+  },
+  {
+    label: 'PATRIMONIO',
+    rows: [
+      { label: 'Caja', getValue: m => m.patrimonio.caja },
+      { label: 'Inmuebles', getValue: m => m.patrimonio.inmuebles },
+      { label: 'Planes de pensión', getValue: m => m.patrimonio.planesPension },
+      { label: 'Otras inversiones', getValue: m => m.patrimonio.otrasInversiones },
+      { label: 'Deuda inmuebles', getValue: m => -m.patrimonio.deudaInmuebles },
+      { label: 'Deuda personal', getValue: m => -m.patrimonio.deudaPersonal },
+      { label: 'Deuda total', getValue: m => -m.patrimonio.deudaTotal },
+      {
+        label: 'Patrimonio neto',
+        getValue: m => m.patrimonio.patrimonioNeto,
+        isTotal: true,
+        specialBg: 'highlight',
+        highlight: 'positive-negative',
+      },
+    ],
+  },
+];
 
 const ProyeccionMensual: React.FC = () => {
   const [proyecciones, setProyecciones] = useState<ProyeccionAnual[]>([]);
@@ -45,96 +128,128 @@ const ProyeccionMensual: React.FC = () => {
 
   const currentProjection = proyecciones.find(p => p.year === selectedYear);
 
-  const handleExportToExcel = useCallback(() => {
+  const handleExportToExcel = useCallback(async () => {
     if (!currentProjection) {
       return;
     }
 
-    const header = [
-      'Mes',
-      'Ingresos nómina',
-      'Ingresos autónomos',
-      'Pensiones',
-      'Rentas alquiler',
-      'Dividendos inversiones',
-      'Otros ingresos',
-      'Total ingresos',
-      'Gastos operativos',
-      'Gastos personales',
-      'Gastos autónomo',
-      'IRPF devengado',
-      'IRPF a pagar',
-      'Total gastos',
-      'Cuotas hipotecas',
-      'Cuotas préstamos',
-      'Total financiación',
-      'Flujo caja mes',
-      'Caja inicial',
-      'Caja final',
-      'Patrimonio neto',
+    const XLSXStyle = await import('sheetjs-style');
+    const XLSX = (XLSXStyle.default ?? XLSXStyle) as any;
+
+    const headerRow = [
+      'ATRIBUTO',
+      ...currentProjection.months.map((_, i) => `${MONTH_ABBR[i]}-${String(selectedYear).slice(2)}`),
     ];
 
-    const rows = currentProjection.months.map(month => [
-      month.month,
-      month.ingresos.nomina,
-      month.ingresos.serviciosFreelance,
-      month.ingresos.pensiones,
-      month.ingresos.rentasAlquiler,
-      month.ingresos.dividendosInversiones,
-      month.ingresos.otrosIngresos,
-      month.ingresos.total,
-      month.gastos.gastosOperativos,
-      month.gastos.gastosPersonales,
-      month.gastos.gastosAutonomo,
-      month.gastos.irpfDevengado,
-      month.gastos.irpfAPagar,
-      month.gastos.total,
-      month.financiacion.cuotasHipotecas,
-      month.financiacion.cuotasPrestamos,
-      month.financiacion.total,
-      month.tesoreria.flujoCajaMes,
-      month.tesoreria.cajaInicial,
-      month.tesoreria.cajaFinal,
-      month.patrimonio.patrimonioNeto,
-    ]);
-
-    const totals = [
-      'Totales anuales',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      currentProjection.totalesAnuales.ingresosTotales,
-      '',
-      '',
-      '',
-      '',
-      '',
-      currentProjection.totalesAnuales.gastosTotales,
-      '',
-      '',
-      currentProjection.totalesAnuales.financiacionTotal,
-      currentProjection.totalesAnuales.flujoNetoAnual,
-      '',
-      '',
-      currentProjection.totalesAnuales.patrimonioNetoFinal,
+    const sheetData: (string | number)[][] = [headerRow];
+    const rowMeta: Array<{ kind: 'header' | 'section' | 'value'; rowDef?: ExportRowDef }> = [
+      { kind: 'header' },
     ];
 
-    const csv = [header, ...rows, totals]
-      .map(row => row.map(cell => `"${String(cell)}"`).join(';'))
-      .join('\n');
+    EXPORT_SECTIONS.forEach(section => {
+      sheetData.push([section.label, ...Array(currentProjection.months.length).fill('')]);
+      rowMeta.push({ kind: 'section' });
 
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `proyeccion_mensual_${selectedYear}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      section.rows.forEach(row => {
+        if (!row.isTotal && currentProjection.months.every(m => row.getValue(m) === 0)) {
+          return;
+        }
+
+        sheetData.push([row.label, ...currentProjection.months.map(m => row.getValue(m))]);
+        rowMeta.push({ kind: 'value', rowDef: row });
+      });
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+    const monthCols = currentProjection.months.length;
+    const totalCols = monthCols + 1;
+    worksheet['!cols'] = [{ wch: 32 }, ...Array(monthCols).fill({ wch: 12 })];
+
+    const borders = {
+      top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+      right: { style: 'thin', color: { rgb: 'D1D5DB' } },
+    };
+
+    const baseStyle = {
+      border: borders,
+      font: { name: 'Calibri', sz: 11, color: { rgb: '1F2937' } },
+      alignment: { vertical: 'center', horizontal: 'right' },
+    };
+
+    rowMeta.forEach((meta, rowIndex) => {
+      const excelRow = rowIndex + 1;
+      for (let colIndex = 0; colIndex < totalCols; colIndex += 1) {
+        const ref = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex });
+        const cell = worksheet[ref] ?? { t: 's', v: '' };
+        const isLabelCol = colIndex === 0;
+
+        const style: any = {
+          ...baseStyle,
+          alignment: {
+            ...baseStyle.alignment,
+            horizontal: isLabelCol ? 'left' : 'right',
+          },
+        };
+
+        if (!isLabelCol && meta.kind === 'value') {
+          style.numFmt = '#,##0';
+        }
+
+        if (meta.kind === 'header') {
+          style.font = { ...style.font, bold: true, color: { rgb: '374151' } };
+          style.fill = { patternType: 'solid', fgColor: { rgb: 'F3F4F6' } };
+        }
+
+        if (meta.kind === 'section') {
+          style.font = { ...style.font, bold: true, color: { rgb: '374151' } };
+          style.fill = { patternType: 'solid', fgColor: { rgb: 'F9FAFB' } };
+          style.border = {
+            ...borders,
+            top: { style: 'medium', color: { rgb: 'D1D5DB' } },
+          };
+        }
+
+        if (meta.kind === 'value' && meta.rowDef?.specialBg === 'total') {
+          style.fill = { patternType: 'solid', fgColor: { rgb: 'F3F4F6' } };
+          style.font = { ...style.font, bold: true };
+        }
+
+        if (meta.kind === 'value' && meta.rowDef?.specialBg === 'highlight') {
+          style.fill = { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } };
+          style.font = { ...style.font, bold: true };
+        }
+
+        if (meta.kind === 'value' && !meta.rowDef?.specialBg && meta.rowDef?.isTotal) {
+          style.font = { ...style.font, bold: true };
+        }
+
+        if (meta.kind === 'value' && !isLabelCol && meta.rowDef?.highlight === 'positive-negative') {
+          const value = Number(cell.v ?? 0);
+          if (value > 0) {
+            style.font = { ...style.font, color: { rgb: '15803D' }, bold: true };
+          } else if (value < 0) {
+            style.font = { ...style.font, color: { rgb: 'DC2626' }, bold: true };
+          }
+        }
+
+        if (meta.kind === 'value' && !isLabelCol && Number(cell.v ?? 0) < 0 && meta.rowDef?.highlight !== 'positive-negative') {
+          style.font = { ...style.font, color: { rgb: 'DC2626' }, bold: style.font?.bold };
+        }
+
+        cell.s = style;
+        worksheet[ref] = cell;
+      }
+
+      worksheet['!rows'] = worksheet['!rows'] || [];
+      worksheet['!rows'][rowIndex] = { hpt: excelRow === 1 ? 22 : 20 };
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `${selectedYear}`);
+    XLSX.writeFile(workbook, `proyeccion_mensual_${selectedYear}.xlsx`);
   }, [currentProjection, selectedYear]);
 
   return (
@@ -183,7 +298,7 @@ const ProyeccionMensual: React.FC = () => {
             <button
               onClick={handleExportToExcel}
               disabled={!currentProjection}
-              title="Descargar proyección en formato CSV compatible con Excel"
+              title="Descargar proyección en formato Excel"
               className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
