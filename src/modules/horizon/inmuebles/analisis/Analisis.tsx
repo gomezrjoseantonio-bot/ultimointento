@@ -35,6 +35,13 @@ const formatCurrency = (value: number): string =>
 const formatPercent = (value: number): string =>
   `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
 
+const chartPalette = {
+  grid: 'var(--hz-neutral-200, #D1D5DB)',
+  axis: 'var(--hz-neutral-700, #374151)',
+  portfolioValue: 'var(--hz-primary, #1D4ED8)',
+  equityValue: 'var(--hz-success, #059669)',
+};
+
 const calculateYearsSince = (isoDate: string): number => {
   const from = new Date(isoDate);
   const now = new Date();
@@ -274,12 +281,12 @@ const Analisis: React.FC = () => {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 8, left: 8, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--hz-neutral-200)" />
-                  <XAxis dataKey="year" tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
-                  <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartPalette.grid} />
+                  <XAxis dataKey="year" tick={{ fill: chartPalette.axis, fontSize: 12 }} />
+                  <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} tick={{ fill: chartPalette.axis, fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Line type="monotone" dataKey="valor" stroke="var(--hz-primary)" strokeWidth={3} dot={{ r: 4 }} name="Valor cartera" />
-                  <Line type="monotone" dataKey="equity" stroke="var(--hz-success)" strokeWidth={3} dot={{ r: 4 }} name="Equity estimado" />
+                  <Line type="monotone" dataKey="valor" stroke={chartPalette.portfolioValue} strokeWidth={3} dot={{ r: 4 }} name="Valor cartera" />
+                  <Line type="monotone" dataKey="equity" stroke={chartPalette.equityValue} strokeWidth={3} dot={{ r: 4 }} name="Equity estimado" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
