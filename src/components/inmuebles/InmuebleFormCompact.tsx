@@ -13,6 +13,10 @@ import { AJD_RATE } from '../../utils/inmuebleUtils';
 
 interface InmuebleFormCompactProps {
   mode: 'create' | 'edit';
+  propertyId?: number;
+  embedded?: boolean;
+  onCancel?: () => void;
+  onSaved?: (propertyId: number) => void;
 }
 
 interface FormData {
@@ -45,9 +49,10 @@ interface FormData {
   valorCatastralConstruccion: number;
 }
 
-const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
+const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propertyId, embedded = false, onCancel, onSaved }) => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const resolvedPropertyId = propertyId ?? (id ? parseInt(id, 10) : undefined);
   
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -56,7 +61,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
     caracteristicas: true
   });
   
-  const [isLoading, setIsLoading] = useState(mode === 'edit' && !!id);
+  const [isLoading, setIsLoading] = useState(mode === 'edit' && !!resolvedPropertyId);
   const [isSaving, setIsSaving] = useState(false);
   
   // Form data
@@ -91,29 +96,23 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   
   // Load existing property for edit mode
   useEffect(() => {
-    if (mode === 'edit' && id) {
-      loadProperty();
+    if (mode === 'edit' && resolvedPropertyId) {
+      loadProperty(resolvedPropertyId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, id]);
-  
-  const loadProperty = async () => {
+  }, [mode, resolvedPropertyId]);
+
+  const loadProperty = async (targetPropertyId: number) => {
     try {
       setIsLoading(true);
       const db = await initDB();
-      const propertyId = parseInt(id!, 10);
-      
-      if (isNaN(propertyId)) {
-        toast.error('ID de inmueble inválido');
-        navigate('/inmuebles/cartera');
-        return;
-      }
-      
-      const property = await db.get('properties', propertyId);
+      const property = await db.get('properties', targetPropertyId);
       
       if (!property) {
         toast.error('Inmueble no encontrado');
-        navigate('/inmuebles/cartera');
+        if (!embedded) {
+          navigate('/inmuebles/cartera');
+        }
         return;
       }
       
@@ -153,7 +152,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
     } catch (error) {
       console.error('Error loading property:', error);
       toast.error('Error al cargar el inmueble');
-      navigate('/inmuebles/cartera');
+      if (!embedded) {
+        navigate('/inmuebles/cartera');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -367,16 +368,19 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
       const propertyData = mapToProperty();
       const db = await initDB();
       
-      if (mode === 'edit' && id) {
-        const propertyId = parseInt(id, 10);
-        await db.put('properties', { ...propertyData, id: propertyId });
+      if (mode === 'edit' && resolvedPropertyId) {
+        await db.put('properties', { ...propertyData, id: resolvedPropertyId });
         toast.success('Inmueble actualizado correctamente');
+        onSaved?.(resolvedPropertyId);
       } else {
-        await db.add('properties', propertyData);
+        const createdPropertyId = Number(await db.add('properties', propertyData));
         toast.success('Inmueble guardado correctamente');
+        onSaved?.(createdPropertyId);
       }
-      
-      navigate('/inmuebles/cartera?refresh=1');
+
+      if (!embedded) {
+        navigate('/inmuebles/cartera?refresh=1');
+      }
     } catch (error) {
       console.error('Error saving property:', error);
       toast.error('Error al guardar el inmueble');
@@ -387,6 +391,11 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   
   // Cancel and go back
   const handleCancel = () => {
+    if (embedded) {
+      onCancel?.();
+      return;
+    }
+
     navigate('/inmuebles/cartera');
   };
   
@@ -410,10 +419,10 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode }) => {
   }
   
   return (
-    <div className="min-h-screen bg-hz-bg">
-      <div className="max-w-5xl mx-auto">
+    <div className={embedded ? '' : 'min-h-screen bg-hz-bg'}>
+      <div className={embedded ? '' : 'max-w-5xl mx-auto'}>
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className={`bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between ${embedded ? '' : 'sticky top-0 z-10 shadow-sm'}`}>
           <div className="flex items-center space-x-3">
             <Home className="w-6 h-6 text-atlas-blue" />
             <h1 className="text-xl font-semibold text-gray-900">
