@@ -225,6 +225,62 @@
 .pulso-badge svg { width: 10px; height: 10px; }
 
 .exec-zone3 { display:grid; grid-template-columns:1fr 1.05fr; gap:20px; }
+
+.exec-section-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--n-500);
+  padding: 2px 4px;
+}
+.exec-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--n-100);
+}
+.exec-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--n-900);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.exec-card-subtitle {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--n-500);
+}
+.exec-card-link {
+  border: none;
+  background: transparent;
+  color: var(--blue);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 0.9375rem var(--font);
+  cursor: pointer;
+}
+.exec-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--s-warn-bg);
+  color: var(--s-warn);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
 .exec-card { background:#fff; border:1px solid var(--n-300); border-radius:12px; overflow:hidden; }
 .flujo-card {
   background: var(--white);
