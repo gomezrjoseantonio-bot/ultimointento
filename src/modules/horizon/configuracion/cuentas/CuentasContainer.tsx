@@ -16,12 +16,12 @@ const Cuentas: React.FC = () => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       <PageHeader
-        title="Cuentas Bancarias"
+        title="Métodos de pago"
         subtitle="Gestión de cuentas bancarias con validaciones IBAN, branding persistente y activar/inactivar simétrico"
         breadcrumb={[
           { name: 'Cuenta', href: '/cuenta' },
           { name: 'Configuración', href: '/cuenta' },
-          { name: 'Cuentas Bancarias', href: '/cuenta/cuentas' }
+          { name: 'Métodos de pago', href: '/cuenta/cuentas' }
         ]}
         primaryAction={{
           label: "Nueva cuenta",

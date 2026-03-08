@@ -4,11 +4,12 @@ import PageLayout from '../../components/common/PageLayout';
 import ProfileView from '../../modules/personal/components/ProfileView';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import MigracionTab from './MigracionTab';
-import { User, Shield, CreditCard, Database, Settings, Upload } from 'lucide-react';
+import Cuentas from '../../modules/horizon/configuracion/cuentas/CuentasContainer';
+import { User, CreditCard, Settings, Upload } from 'lucide-react';
 
 const PandaDocTemplateBuilder = React.lazy(() => import('../../modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 
-type AccountTab = 'perfil' | 'seguridad' | 'plan' | 'privacidad' | 'configuracion' | 'migracion';
+type AccountTab = 'perfil' | 'plan' | 'cuentas' | 'configuracion' | 'migracion';
 
 const AccountPage: React.FC = () => {
   const location = useLocation();
@@ -18,16 +19,15 @@ const AccountPage: React.FC = () => {
   useEffect(() => {
     const pathSegments = location.pathname.split('/');
     const tabFromPath = pathSegments[2] as AccountTab;
-    if (['perfil', 'seguridad', 'plan', 'privacidad', 'configuracion', 'migracion'].includes(tabFromPath)) {
+    if (['perfil', 'plan', 'cuentas', 'configuracion', 'migracion'].includes(tabFromPath)) {
       setActiveTab(tabFromPath);
     }
   }, [location.pathname]);
 
   const tabs = [
     { key: 'perfil', label: 'Perfil', icon: User },
-    { key: 'seguridad', label: 'Seguridad', icon: Shield },
     { key: 'plan', label: 'Plan & Facturación', icon: CreditCard },
-    { key: 'privacidad', label: 'Privacidad & Datos', icon: Database },
+    { key: 'cuentas', label: 'Métodos de pago', icon: CreditCard },
     { key: 'configuracion', label: 'Configuración', icon: Settings },
     { key: 'migracion', label: 'Migración de Datos', icon: Upload },
   ];
@@ -62,48 +62,11 @@ const AccountPage: React.FC = () => {
         <ProfileView />
       )}
 
-      {activeTab === 'seguridad' && (
-        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
-          <h2 className="text-lg font-semibold text-atlas-navy-1 mb-4">Seguridad</h2>
-          <p className="text-hz-neutral-700">
-            En construcción. Próximo hito: configuración de seguridad y autenticación.
-          </p>
-        </div>
-      )}
-
       {activeTab === 'plan' && (
         <PlanFacturacion />
       )}
 
-      {activeTab === 'privacidad' && (
-        <div className="bg-white rounded-lg border border-hz-neutral-300 p-6">
-          <h2 className="text-lg font-semibold text-atlas-navy-1 mb-4">Privacidad & Datos</h2>
-          <p className="text-hz-neutral-700 mb-4">
-            Configuración de privacidad y gestión de datos personales.
-          </p>
-          <div className="space-y-4">
-            <div className="border border-hz-neutral-300 rounded-lg p-4">
-              <h3 className="font-medium text-atlas-navy-1 mb-2">Exportación de datos</h3>
-              <p className="text-sm text-hz-neutral-700 mb-3">
-                Exporta todos tus datos personales en un formato legible.
-              </p>
-              <button className="px-4 py-2 bg-hz-neutral-700 text-white text-sm rounded-lg hover:bg-atlas-navy-1 transition-colors">
-                Solicitar exportación
-              </button>
-            </div>
-            
-            <div className="border border-error rounded-lg p-4 bg-error-50">
-              <h3 className="font-medium text-error-900 mb-2">Eliminación de cuenta</h3>
-              <p className="text-sm text-error-700 mb-3">
-                Elimina permanentemente tu cuenta y todos los datos asociados.
-              </p>
-              <button className="px-4 py-2 bg-error text-white text-sm rounded-lg hover:bg-error-700 transition-colors">
-                Eliminar cuenta
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === 'cuentas' && <Cuentas />}
 
       {activeTab === 'configuracion' && (
         <React.Suspense fallback={
