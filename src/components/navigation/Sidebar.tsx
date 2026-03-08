@@ -41,11 +41,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
   return (
     <>
-      <div
+      <button
+        type="button"
         className={`fixed inset-0 z-40 bg-[color:var(--n-300)]/60 transition-opacity md:hidden ${
-          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         onClick={() => setSidebarOpen(false)}
+        aria-label="Cerrar menú lateral"
       />
 
       <div
@@ -54,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         } ${collapsed ? 'w-16' : 'w-64'}`}
         style={{ backgroundColor: 'var(--n-900)' }}
       >
-        <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid color-mix(in srgb, var(--white) 8%, transparent)' }}>
           {!collapsed && (
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: 'var(--blue)' }}>
@@ -70,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           )}
 
           <button
-            className="hidden md:block text-white/40 hover:text-white/80 transition-colors focus:outline-none"
+            className="hidden md:block text-white/40 transition-colors duration-150 ease-in-out hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2"
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
@@ -83,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </button>
 
           <button
-            className="md:hidden text-white/60 hover:text-white"
+            className="md:hidden text-white/60 transition-colors duration-150 ease-in-out hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2"
             onClick={() => setSidebarOpen(false)}
             aria-label="Cerrar menú"
           >
