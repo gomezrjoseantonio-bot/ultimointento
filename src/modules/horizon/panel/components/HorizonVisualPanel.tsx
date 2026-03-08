@@ -19,6 +19,7 @@ export interface PanelFilters {
 }
 
 type HorizonId = 'corto' | 'medio' | 'largo';
+type RiskLevel = 'bajo' | 'medio' | 'alto';
 
 interface HorizonCard {
   id: HorizonId;
@@ -27,7 +28,7 @@ interface HorizonCard {
   objetivo: string;
   foco: string;
   progreso: number;
-  riesgo: 'bajo' | 'medio' | 'alto';
+  riesgo: RiskLevel;
 }
 
 interface LifeLayer {
@@ -146,7 +147,7 @@ const HorizonVisualPanel: React.FC = () => {
     navigate('/configuracion/preferencias-datos#panel');
   }, [navigate]);
 
-  const riskBadgeStyles: Record<HorizonCard['riesgo'], string> = {
+  const riskBadgeStyles: Record<RiskLevel, string> = {
     bajo: 'bg-emerald-100 text-emerald-700',
     medio: 'bg-amber-100 text-amber-700',
     alto: 'bg-red-100 text-red-700'
