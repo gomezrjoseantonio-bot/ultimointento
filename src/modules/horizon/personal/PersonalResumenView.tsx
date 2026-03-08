@@ -88,7 +88,7 @@ interface KpiCardProps {
   title: string;
   amount: number;
   icon: React.ElementType;
-  accent?: 'navy' | 'teal' | 'default';
+  accent?: 'navy' | 'positive' | 'default';
   sub?: React.ReactNode;
 }
 
@@ -96,16 +96,16 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = '
   const amountClass =
     accent === 'navy'
       ? 'text-blue-900'
-      : accent === 'teal'
-      ? 'text-teal-500'
+      : accent === 'positive'
+      ? 'text-[var(--s-pos)]'
       : 'text-gray-900';
 
   return (
     <div className="bg-white border border-gray-200 p-6 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{title}</p>
-        <div className={`p-2 rounded-full ${accent === 'teal' ? 'bg-teal-50' : 'bg-gray-50'}`}>
-          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'teal' ? 'text-teal-500' : 'text-gray-400'}`} />
+        <div className={`p-2 rounded-full ${accent === 'positive' ? 'bg-[var(--s-pos-bg)]' : 'bg-gray-50'}`}>
+          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-[var(--s-pos)]' : 'text-gray-400'}`} />
         </div>
       </div>
       <p className={`text-3xl font-bold tracking-tight ${amountClass}`}>{fmt(amount)}</p>
@@ -459,9 +459,9 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
           title="Ahorro Neto Anual"
           amount={netSavings}
           icon={PiggyBank}
-          accent="teal"
+          accent="positive"
           sub={
-            <span className="text-teal-500 font-semibold text-sm">
+            <span className="font-semibold text-sm" style={{ color: 'var(--s-pos)' }}>
               Tasa de ahorro: {pct(savingsRate)}
             </span>
           }

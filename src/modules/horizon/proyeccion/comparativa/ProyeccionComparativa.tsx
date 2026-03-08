@@ -50,7 +50,7 @@ const ProyeccionComparativa: React.FC = () => {
     return (
       <PageLayout title="Real vs Previsto" subtitle="Cargando datos...">
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-atlas-blue"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--c1)]"></div>
         </div>
       </PageLayout>
     );
@@ -61,10 +61,10 @@ const ProyeccionComparativa: React.FC = () => {
       <PageLayout title="Real vs Previsto" subtitle="No hay datos disponibles">
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-[var(--n-700)] mb-2">
             No hay datos para mostrar
           </h3>
-          <p className="text-gray-600">
+          <p className="text-[var(--n-500)]">
             Asegúrate de tener presupuestos confirmados para el año seleccionado
           </p>
         </div>
@@ -77,16 +77,16 @@ const ProyeccionComparativa: React.FC = () => {
       <div className="space-y-6">
         {/* Header Controls */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Real vs Previsto</h1>
+          <h1 className="text-2xl font-semibold text-[var(--n-700)]">Real vs Previsto</h1>
           
           <div className="flex items-center space-x-4">
             {/* Year Selector */}
             <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
+              <Calendar className="h-4 w-4 text-[var(--n-500)]" />
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-[var(--c1)]"
               >
                 {availableYears.map(year => (
                   <option key={year} value={year}>{year}</option>
@@ -96,14 +96,14 @@ const ProyeccionComparativa: React.FC = () => {
 
             {/* Scope Selector */}
             <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4 text-gray-500" />
+              <Building className="h-4 w-4 text-[var(--n-500)]" />
               <select
                 value={selectedScope}
                 onChange={(e) => {
                   setSelectedScope(e.target.value as 'consolidado' | 'inmueble');
                   setSelectedPropertyId(null);
                 }}
-                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-[var(--c1)]"
               >
                 <option value="consolidado">Consolidado</option>
                 <option value="inmueble">Por inmueble</option>
@@ -115,7 +115,7 @@ const ProyeccionComparativa: React.FC = () => {
               <select
                 value={selectedPropertyId || ''}
                 onChange={(e) => setSelectedPropertyId(Number(e.target.value))}
-                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-atlas-blue"
+                className="rounded-lg border-gray-300 text-sm focus:ring-atlas-blue focus:border-[var(--c1)]"
               >
                 <option value="">Seleccionar inmueble</option>
                 {data.availableProperties.map(property => (
@@ -129,7 +129,7 @@ const ProyeccionComparativa: React.FC = () => {
             {/* Export Button */}
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center space-x-2 bg-primary-800 text-white px-4 py-2 rounded-lg hover:bg-primary-900 transition-colors"
+              className="flex items-center space-x-2 bg-[var(--blue)] text-white px-4 py-2 rounded-lg hover:bg-[#031F47] transition-colors"
             >
               <Download className="h-4 w-4" />
               <span>Exportar</span>
@@ -140,56 +140,56 @@ const ProyeccionComparativa: React.FC = () => {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Ingresos YTD */}
-          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-atlas-blue">
-            <p className="text-sm font-medium text-gray-600">Ingresos YTD</p>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c1)]">
+            <p className="text-sm font-medium text-[var(--n-500)]">Ingresos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Budget:</span>
-                <span className="text-gray-900 tabular-nums">{formatEuro(data.kpis.ingresosYTD.budget)}</span>
+                <span className="text-[var(--n-500)]">Budget:</span>
+                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.budget)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Forecast:</span>
-                <span className="text-gray-900 tabular-nums">{formatEuro(data.kpis.ingresosYTD.forecast)}</span>
+                <span className="text-[var(--n-500)]">Forecast:</span>
+                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.forecast)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span className="text-gray-700">Actual:</span>
-                <span className="text-primary-700 tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
+                <span className="text-[var(--n-700)]">Actual:</span>
+                <span className="text-[var(--blue)] tabular-nums">{formatEuro(data.kpis.ingresosYTD.actual)}</span>
               </div>
             </div>
           </div>
           
           {/* Gastos YTD */}
-          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-atlas-blue">
-            <p className="text-sm font-medium text-gray-600">Gastos YTD</p>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c1)]">
+            <p className="text-sm font-medium text-[var(--n-500)]">Gastos YTD</p>
             <div className="space-y-1 mt-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Budget:</span>
-                <span className="text-gray-900 tabular-nums">{formatEuro(data.kpis.gastosYTD.budget)}</span>
+                <span className="text-[var(--n-500)]">Budget:</span>
+                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.gastosYTD.budget)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Forecast:</span>
-                <span className="text-gray-900 tabular-nums">{formatEuro(data.kpis.gastosYTD.forecast)}</span>
+                <span className="text-[var(--n-500)]">Forecast:</span>
+                <span className="text-[var(--n-700)] tabular-nums">{formatEuro(data.kpis.gastosYTD.forecast)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span className="text-gray-700">Actual:</span>
-                <span className="text-primary-700 tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
+                <span className="text-[var(--n-700)]">Actual:</span>
+                <span className="text-[var(--blue)] tabular-nums">{formatEuro(data.kpis.gastosYTD.actual)}</span>
               </div>
             </div>
           </div>
           
           {/* Resultado neto YTD */}
-          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-teal-500">
-            <p className="text-sm font-medium text-gray-600">Resultado neto YTD</p>
-            <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.resultadoNetoYTD >= 0 ? 'text-success-600' : 'text-error-600'}`}>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c3)]">
+            <p className="text-sm font-medium text-[var(--n-500)]">Resultado neto YTD</p>
+            <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.resultadoNetoYTD >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>
               {formatEuro(data.kpis.resultadoNetoYTD)}
             </p>
           </div>
           
           {/* DSCR YTD (if applicable) */}
           {data.kpis.dscrYTD !== null && (
-            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-teal-500">
-              <p className="text-sm font-medium text-gray-600">DSCR YTD</p>
-              <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.dscrYTD >= 1.25 ? 'text-success-600' : 'text-error-600'}`}>
+            <div className="bg-white p-4 rounded-lg shadow border-l-4 border-[var(--c3)]">
+              <p className="text-sm font-medium text-[var(--n-500)]">DSCR YTD</p>
+              <p className={`text-2xl font-semibold tabular-nums mt-2 ${data.kpis.dscrYTD >= 1.25 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>
                 {data.kpis.dscrYTD.toFixed(2)} x
               </p>
             </div>
@@ -197,10 +197,10 @@ const ProyeccionComparativa: React.FC = () => {
         </div>
 
         {/* Main Comparison Table */}
-        <div className="bg-white border border-gray-200 rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Comparativa mensual</h3>
-            <p className="text-sm text-gray-600">
+        <div className="bg-white border border-[var(--n-200)] rounded-lg">
+          <div className="px-6 py-4 border-b border-[var(--n-200)]">
+            <h3 className="font-semibold text-[var(--n-700)]">Comparativa mensual</h3>
+            <p className="text-sm text-[var(--n-500)]">
               Budget (presupuesto) vs Forecast (proyección) vs Actual (real conciliado)
             </p>
           </div>

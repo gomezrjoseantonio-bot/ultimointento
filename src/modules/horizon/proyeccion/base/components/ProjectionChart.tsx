@@ -20,12 +20,14 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const filteredData = data.slice(0, timeHorizon + 1);
 
   const palette = useMemo(() => ({
-    success: cssVar('--ok', '#10b981'),
-    error: cssVar('--error', '#ef4444'),
-    warning: cssVar('--warn', '#f59e0b'),
-    primary: cssVar('--atlas-blue', '#3b82f6'),
-    text: cssVar('--text-gray', '#6b7280'),
-    neutral100: cssVar('--hz-neutral-100', '#f3f4f6'),
+    c1: cssVar('--c1', '#042C5E'),
+    c2: cssVar('--c2', '#5B8DB8'),
+    c3: cssVar('--c3', '#1DA0BA'),
+    c5: cssVar('--c5', '#C8D0DC'),
+    text: cssVar('--n-500', '#6C757D'),
+    neutral100: cssVar('--n-100', '#EEF1F5'),
+    white: cssVar('--white', '#FFFFFF'),
+    border: cssVar('--n-300', '#C8D0DC'),
   }), []);
 
   // Transform data for recharts format
@@ -41,7 +43,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-800 text-white p-3 rounded-lg border border-gray-600 shadow-lg">
+        <div className="p-3 rounded-lg border shadow-lg" style={{ background: palette.white, borderColor: palette.border, color: 'var(--n-700)' }}>
           <p className="font-semibold mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ color: entry.color }}>
@@ -59,7 +61,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       {/* Time Horizon Selector */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-medium text-gray-500">Horizonte temporal:</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--n-500)' }}>Horizonte temporal:</span>
           <div className="flex space-x-1">
             {[5, 10, 20].map((years) => (
               <button
@@ -67,9 +69,13 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
                 onClick={() => setTimeHorizon(years as 5 | 10 | 20)}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   timeHorizon === years
-                    ? 'bg-primary-700 text-white'
-                    : 'bg-hz-neutral-100 text-gray-500 hover:bg-hz-neutral-300'
+                    ? 'text-white'
+                    : 'hover:opacity-90'
                 }`}
+              style={{
+                background: timeHorizon === years ? 'var(--blue)' : 'var(--n-100)',
+                color: timeHorizon === years ? 'var(--white)' : 'var(--n-500)',
+              }}
               >
                 {years} años
               </button>
@@ -86,22 +92,22 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             <XAxis 
               dataKey="year" 
               stroke={palette.text}
-              style={{ fontFamily: 'Inter', fontSize: 11 }}
+              style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', fontSize: 11 }}
             />
             <YAxis 
               stroke={palette.text}
-              style={{ fontFamily: 'Inter', fontSize: 11 }}
+              style={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', fontSize: 11 }}
               tickFormatter={(value) => formatEuro(value)}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend 
-              wrapperStyle={{ fontFamily: 'Inter', fontSize: 12 }} 
+              wrapperStyle={{ fontFamily: 'IBM Plex Sans, system-ui, sans-serif', fontSize: 12 }} 
               iconType="circle"
             />
             <Line 
               type="monotone" 
               dataKey="Ingresos de alquiler (netos)" 
-              stroke={palette.success} 
+              stroke={palette.c1} 
               strokeWidth={2}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
@@ -109,7 +115,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             <Line 
               type="monotone" 
               dataKey="Gastos (operativos + impuestos + seguros + comunidad)" 
-              stroke={palette.error} 
+              stroke={palette.c5} 
               strokeWidth={2}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
@@ -117,7 +123,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             <Line 
               type="monotone" 
               dataKey="Servicio de deuda" 
-              stroke={palette.warning} 
+              stroke={palette.c2} 
               strokeWidth={2}
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
@@ -125,7 +131,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
             <Line 
               type="monotone" 
               dataKey="Flujo neto" 
-              stroke={palette.primary} 
+              stroke={palette.c3} 
               strokeWidth={3}
               dot={{ r: 4 }}
               activeDot={{ r: 6 }}
@@ -135,7 +141,7 @@ const ProjectionChart: React.FC<ProjectionChartProps> = ({ data }) => {
       </div>
 
       {/* Chart Legend Description */}
-      <div className="mt-4 text-xs text-gray-500">
+      <div className="mt-4 text-xs" style={{ color: 'var(--n-500)' }}>
         <p>
           * Los gastos y servicio de deuda se muestran como valores negativos para mejor visualización del impacto en el flujo neto.
         </p>

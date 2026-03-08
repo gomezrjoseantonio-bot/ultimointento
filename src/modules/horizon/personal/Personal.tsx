@@ -218,9 +218,9 @@ const Personal: React.FC = () => {
       subtitle="Gestión completa de finanzas personales"
     >
       <div className="space-y-6">
-        {/* Tab Navigation - Dynamic based on configuration */}
-        <div className="bg-white border rounded-lg p-1" style={{ borderColor: 'var(--n-300)' }}>
-          <div className={`grid gap-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        {/* Tab Navigation - Underline pattern (v3) */}
+        <div className="border-b" style={{ borderColor: 'var(--n-200)' }}>
+          <div className="flex flex-wrap">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -228,11 +228,12 @@ const Personal: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab)}
-                  className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium ${
-                    isActive
-                      ? 'bg-[var(--n-100)] text-[var(--n-700)] border-b-2 border-[var(--blue)]'
-                      : 'text-[var(--n-500)] hover:text-[var(--n-700)]'
-                  }`}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 -mb-px transition-colors duration-150"
+                  style={{
+                    color: isActive ? 'var(--blue)' : 'var(--n-500)',
+                    borderColor: isActive ? 'var(--blue)' : 'transparent',
+                    fontWeight: isActive ? 600 : 500,
+                  }}
                 >
                   <Icon className="w-4 h-4" />
                   {tab.name}

@@ -9,7 +9,7 @@ const DesignBiblePage: React.FC = () => {
       description: 'Tokens y fundamentos (colores, tipografía, iconos, espaciado)',
       items: [
         'Color Tokens ATLAS',
-        'Typography (Inter)',
+        'Typography (IBM Plex)',
         'Iconography (Lucide)',
         'Spacing System (4px grid)',
         'Formatos ES'
@@ -94,7 +94,7 @@ const DesignBiblePage: React.FC = () => {
       items: [
         'No hardcoded colors',
         'Solo iconos Lucide',
-        'Solo font Inter',
+        'Solo tipografía IBM Plex',
         'No dark themes',
         'Sidebar order correcto'
       ]
@@ -114,7 +114,7 @@ const DesignBiblePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-atlas-teal flex items-center justify-center text-white font-bold">
+              <div className="h-10 w-10 rounded-full bg-atlas-blue flex items-center justify-center text-white font-bold">
                 A
               </div>
               <div>
@@ -128,11 +128,11 @@ const DesignBiblePage: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <span className="px-3 py-1 bg-ok/10 text-ok text-sm font-medium rounded-full">
-                v1.0.0
+                v3.0.0
               </span>
               <button
                 onClick={() => window.close()}
-                className="atlas-atlas-atlas-atlas-atlas-atlas-btn-secondary"
+                className="atlas-btn-secondary"
               >
                 Cerrar
               </button>
@@ -329,7 +329,7 @@ const DesignBiblePage: React.FC = () => {
         {/* Footer */}
         <footer className="mt-12 text-center text-sm text-text-gray">
           <p>
-            Mantenido por ATLAS Design System Team • Última actualización: Marzo 2024
+            Mantenido por ATLAS Design System Team • Última actualización: Marzo 2026
           </p>
           <p className="mt-1">
             ¿Encontraste un error? 
