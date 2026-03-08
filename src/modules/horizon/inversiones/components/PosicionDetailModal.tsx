@@ -1,14 +1,16 @@
 // PosicionDetailModal.tsx
 // ATLAS HORIZON: Detailed modal for an investment position showing aportaciones history
 
-import React from 'react';
-import { X, Plus, RefreshCw, Edit } from 'lucide-react';
+import React, { useRef } from 'react';
+import { X, Plus, RefreshCw, Edit, Upload, Download } from 'lucide-react';
 import { PosicionInversion } from '../../../../types/inversiones';
 
 interface PosicionDetailModalProps {
   posicion: PosicionInversion;
   onClose: () => void;
   onAddAportacion: () => void;
+  onImportAportaciones: (file: File) => Promise<void>;
+  onDownloadPlantillaImportacion: () => void;
   onActualizarValor: () => void;
   onEditarPosicion: () => void;
 }
@@ -17,9 +19,13 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   posicion,
   onClose,
   onAddAportacion,
+  onImportAportaciones,
+  onDownloadPlantillaImportacion,
   onActualizarValor,
   onEditarPosicion,
 }) => {
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -63,6 +69,13 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   const aportacionesOrdenadas = [...posicion.aportaciones].sort(
     (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
   );
+
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await onImportAportaciones(file);
+    event.target.value = '';
+  };
 
   return (
     <div style={{
@@ -236,26 +249,78 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               }}>
                 Histórico de aportaciones
               </h3>
-              <button
-                onClick={onAddAportacion}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                  padding: '0.5rem 1rem',
-                  background: 'var(--atlas-blue)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: 'var(--text-caption)',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                <Plus size={14} />
-                Añadir aportación
-              </button>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileSelected}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={onDownloadPlantillaImportacion}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--surface-card, var(--white))',
+                    color: 'var(--atlas-navy-1)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: 'var(--text-caption)',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                >
+                  <Download size={14} />
+                  Plantilla Excel
+                </button>
+                <button
+                  onClick={() => importInputRef.current?.click()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--n-100)',
+                    color: 'var(--atlas-navy-1)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: 'var(--text-caption)',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                >
+                  <Upload size={14} />
+                  Importar Excel
+                </button>
+                <button
+                  onClick={onAddAportacion}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    padding: '0.5rem 1rem',
+                    background: 'var(--atlas-blue)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: 'var(--text-caption)',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                  }}
+                >
+                  <Plus size={14} />
+                  Añadir aportación
+                </button>
+              </div>
             </div>
 
             {aportacionesOrdenadas.length === 0 ? (
