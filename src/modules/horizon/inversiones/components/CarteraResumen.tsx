@@ -31,7 +31,7 @@ const tipoColors: Record<string, string> = {
   crypto: '#64748b',
   deposito: '#0d9488',
   plan_empleo: '#1e40af',
-  otro: '#6b7280',
+  otro: 'var(--n-500)',
 };
 
 const CarteraResumen: React.FC<CarteraResumenProps> = ({
@@ -74,7 +74,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             width: '40px', 
             height: '40px', 
             borderRadius: '10px', 
-            background: 'var(--hz-info-soft)',
+            background: 'rgba(4, 44, 94, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -83,8 +83,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             <DollarSign size={20} style={{ color: 'var(--atlas-blue)' }} />
           </div>
           <span style={{ 
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-caption)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 500,
             color: 'var(--text-gray)' 
           }}>
@@ -92,8 +92,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
           </span>
         </div>
         <div style={{ 
-          fontFamily: 'var(--font-inter)',
-          fontSize: 'var(--text-kpi)',
+          fontFamily: 'var(--font-base)',
+          fontSize: 'var(--text-xl)',
           fontWeight: 600,
           color: 'var(--atlas-navy-1)',
           fontVariantNumeric: 'tabular-nums'
@@ -114,7 +114,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             width: '40px', 
             height: '40px', 
             borderRadius: '10px', 
-            background: rentabilidadEuros >= 0 ? 'var(--hz-success-soft)' : 'var(--hz-error-soft)',
+            background: rentabilidadEuros >= 0 ? 'var(--s-positive-bg)' : 'var(--s-negative-bg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -123,8 +123,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             <TrendingUp size={20} style={{ color: rentabilidadColor }} />
           </div>
           <span style={{ 
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-caption)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 500,
             color: 'var(--text-gray)' 
           }}>
@@ -132,8 +132,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
           </span>
         </div>
         <div style={{ 
-          fontFamily: 'var(--font-inter)',
-          fontSize: 'var(--text-kpi)',
+          fontFamily: 'var(--font-base)',
+          fontSize: 'var(--text-xl)',
           fontWeight: 600,
           color: rentabilidadColor,
           fontVariantNumeric: 'tabular-nums'
@@ -141,8 +141,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
           {formatPercentage(rentabilidadPorcentaje)}
         </div>
         <div style={{ 
-          fontFamily: 'var(--font-inter)',
-          fontSize: 'var(--text-caption)',
+          fontFamily: 'var(--font-base)',
+          fontSize: 'var(--text-sm)',
           color: 'var(--text-gray)',
           marginTop: '0.25rem',
           fontVariantNumeric: 'tabular-nums'
@@ -160,8 +160,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
           <span style={{ 
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-caption)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 500,
             color: 'var(--text-gray)' 
           }}>
@@ -185,7 +185,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
                 dataKey="value"
               >
                 {Object.entries(porTipo).map(([tipo]) => (
-                  <Cell key={tipo} fill={tipoColors[tipo] || '#6b7280'} />
+                  <Cell key={tipo} fill={tipoColors[tipo] || 'var(--n-500)'} />
                 ))}
               </Pie>
               <Tooltip
@@ -197,7 +197,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
                 iconType="circle"
                 iconSize={8}
                 formatter={(value) => (
-                  <span style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', color: 'var(--atlas-navy-1)' }}>
+                  <span style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--atlas-navy-1)' }}>
                     {value}
                   </span>
                 )}
@@ -206,8 +206,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
           </ResponsiveContainer>
         ) : (
           <div style={{ 
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-caption)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-sm)',
             color: 'var(--text-gray)',
             textAlign: 'center',
             paddingTop: '1rem',

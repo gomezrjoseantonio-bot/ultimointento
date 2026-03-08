@@ -122,14 +122,14 @@ const Personal: React.FC = () => {
   const renderTabContent = () => {
     if (!config) {
       return (
-        <div className="bg-white border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración pendiente</h3>
-          <p className="text-gray-500 mb-4">
+        <div className="atlas-card">
+          <h3 className="atlas-h3 mb-4">Configuración pendiente</h3>
+          <p className="atlas-body text-secondary mb-4">
             Para usar el módulo Personal, primero configura tus datos personales.
           </p>
           <button 
             onClick={() => navigate('/cuenta/perfil')}
-            className="px-4 py-2 bg-brand-navy"
+            className="atlas-btn-primary"
           >
             Configurar Datos Personales
           </button>
@@ -160,7 +160,7 @@ const Personal: React.FC = () => {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent rounded-full"></div>
-          <span className="ml-2 text-neutral-600">Cargando resumen...</span>
+          <span className="ml-2 text-[var(--n-500)]">Cargando resumen...</span>
         </div>
       );
     }
@@ -205,8 +205,8 @@ const Personal: React.FC = () => {
         subtitle="Gestión completa de finanzas personales"
       >
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin h-8 w-8 border-2 border-brand-navy border-t-transparent"></div>
-          <span className="ml-2 text-neutral-600">Cargando configuración...</span>
+          <div className="animate-spin h-8 w-8 border-2 border-[var(--blue)] border-t-transparent rounded-full"></div>
+          <span className="ml-2 text-[var(--n-500)]">Cargando configuración...</span>
         </div>
       </PageLayout>
     );
@@ -219,7 +219,7 @@ const Personal: React.FC = () => {
     >
       <div className="space-y-6">
         {/* Tab Navigation - Dynamic based on configuration */}
-        <div className="bg-white border border-gray-200 p-1">
+        <div className="bg-white border rounded-lg p-1" style={{ borderColor: 'var(--n-300)' }}>
           <div className={`grid gap-1`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -230,8 +230,8 @@ const Personal: React.FC = () => {
                   onClick={() => handleTabClick(tab)}
                   className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium ${
                     isActive
-                      ? 'bg-gray-100 text-gray-900 border-b-2 border-gray-500'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-[var(--n-100)] text-[var(--n-700)] border-b-2 border-[var(--blue)]'
+                      : 'text-[var(--n-500)] hover:text-[var(--n-700)]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />

@@ -26,7 +26,7 @@ const RendimientosTab: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-gray)', fontFamily: 'var(--font-inter)' }}>
+      <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-gray)', fontFamily: 'var(--font-base)' }}>
         Cargando rendimientos...
       </div>
     );
@@ -41,7 +41,7 @@ const RendimientosTab: React.FC = () => {
         padding: '3rem 2rem',
         textAlign: 'center',
       }}>
-        <p style={{ fontFamily: 'var(--font-inter)', color: 'var(--text-gray)', margin: 0 }}>
+        <p style={{ fontFamily: 'var(--font-base)', color: 'var(--text-gray)', margin: 0 }}>
           No hay rendimientos generados todavía. Crea una inversión con rendimiento periódico para empezar.
         </p>
       </div>
@@ -72,10 +72,10 @@ const RendimientosTab: React.FC = () => {
             borderRadius: '10px',
             padding: '1rem 1.25rem',
           }}>
-            <div style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
+            <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
               {item.label}
             </div>
-            <div style={{ fontFamily: 'var(--font-inter)', fontSize: '1.25rem', fontWeight: 700, color: item.color }}>
+            <div style={{ fontFamily: 'var(--font-base)', fontSize: '1.25rem', fontWeight: 700, color: item.color }}>
               {formatEuro(item.value)}
             </div>
           </div>
@@ -90,14 +90,14 @@ const RendimientosTab: React.FC = () => {
         overflow: 'hidden',
       }}>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-inter)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-base)' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)', background: '#f9fafb' }}>
+              <tr style={{ borderBottom: '1px solid var(--hz-neutral-300)', background: 'var(--n-100)' }}>
                 {['Fecha', 'Posición', 'Tipo', 'Importe Bruto', `IRPF (${IRPF_RATE * 100}%)`, 'Neto', 'Estado'].map(th => (
                   <th key={th} style={{
                     padding: '0.75rem 1rem',
                     textAlign: 'left',
-                    fontSize: 'var(--text-caption)',
+                    fontSize: 'var(--text-sm)',
                     fontWeight: 600,
                     color: 'var(--atlas-navy-1)',
                     whiteSpace: 'nowrap',
@@ -112,7 +112,7 @@ const RendimientosTab: React.FC = () => {
                 <tr
                   key={r.id}
                   style={{ borderBottom: '1px solid var(--hz-neutral-300)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-100)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <td style={{ padding: '0.75rem 1rem', fontSize: '0.9375rem', color: 'var(--atlas-navy-1)' }}>
@@ -128,7 +128,7 @@ const RendimientosTab: React.FC = () => {
                       borderRadius: '999px',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      background: 'var(--hz-info-soft)',
+                      background: 'rgba(4, 44, 94, 0.1)',
                       color: 'var(--atlas-blue)',
                     }}>
                       Interés periódico
