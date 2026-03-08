@@ -145,7 +145,7 @@ const InversionesPage: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '400px',
-        fontFamily: 'var(--font-inter)',
+        fontFamily: 'var(--font-base)',
         color: 'var(--text-gray)',
       }}>
         Cargando...
@@ -159,24 +159,24 @@ const InversionesPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: 'var(--space-6)', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{
             width: '48px',
             height: '48px',
-            borderRadius: '12px',
-            background: 'var(--hz-info-soft)',
+            borderRadius: 'var(--r-lg)',
+            background: 'rgba(4, 44, 94, 0.1)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <TrendingUp size={24} style={{ color: 'var(--atlas-blue)' }} />
+            <TrendingUp size={24} style={{ color: 'var(--blue)' }} />
           </div>
           <h1 style={{
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-h1-large)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-xl)',
             fontWeight: 600,
             color: 'var(--atlas-navy-1)',
             margin: 0,
@@ -191,18 +191,18 @@ const InversionesPage: React.FC = () => {
             alignItems: 'center',
             gap: '0.5rem',
             padding: '0.75rem 1.5rem',
-            background: 'var(--atlas-blue)',
+            background: 'var(--blue)',
             color: 'white',
             border: 'none',
-            borderRadius: '10px',
-            fontFamily: 'var(--font-inter)',
+            borderRadius: 'var(--r-md)',
+            fontFamily: 'var(--font-base)',
             fontSize: '1rem',
             fontWeight: 500,
             cursor: 'pointer',
             transition: 'background 0.2s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#03234a'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--atlas-blue)'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)'; }}
         >
           <Plus size={20} />
           Nueva posición
@@ -216,17 +216,17 @@ const InversionesPage: React.FC = () => {
           alignItems: 'center',
           gap: '0.75rem',
           padding: '0.875rem 1.25rem',
-          background: '#fef9c3',
-          border: '1px solid #fde047',
-          borderRadius: '10px',
+          background: 'var(--s-warning-bg)',
+          border: '1px solid var(--s-warning)',
+          borderRadius: 'var(--r-md)',
           marginBottom: '1.5rem',
         }}>
-          <AlertCircle size={18} style={{ color: '#854d0e', flexShrink: 0 }} />
-          <p style={{ fontFamily: 'var(--font-inter)', fontSize: '0.9375rem', color: '#854d0e', margin: 0 }}>
+          <AlertCircle size={18} style={{ color: 'var(--s-warning)', flexShrink: 0 }} />
+          <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', color: 'var(--s-warning)', margin: 0 }}>
             Tienes <strong>{pendingRendimientos}</strong> {pendingRendimientos === 1 ? 'rendimiento pendiente' : 'rendimientos pendientes'} de cobrar.{' '}
             <button
               onClick={() => setActiveTab('rendimientos')}
-              style={{ background: 'none', border: 'none', color: '#854d0e', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-inter)', fontSize: '0.9375rem', padding: 0 }}
+              style={{ background: 'none', border: 'none', color: 'var(--s-warning)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', padding: 0 }}
             >
               Ver rendimientos
             </button>
@@ -235,7 +235,7 @@ const InversionesPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--hz-neutral-300)', paddingBottom: '0' }}>
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--n-300)', paddingBottom: '0' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -247,10 +247,10 @@ const InversionesPage: React.FC = () => {
               padding: '0.75rem 1.25rem',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--atlas-blue)' : '2px solid transparent',
-              color: activeTab === tab.id ? 'var(--atlas-blue)' : 'var(--text-gray)',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '0.9375rem',
+              borderBottom: activeTab === tab.id ? '2px solid var(--blue)' : '2px solid transparent',
+              color: activeTab === tab.id ? 'var(--blue)' : 'var(--text-gray)',
+              fontFamily: 'var(--font-base)',
+              fontSize: 'var(--text-base)',
               fontWeight: activeTab === tab.id ? 600 : 400,
               cursor: 'pointer',
               marginBottom: '-1px',
@@ -288,8 +288,8 @@ const InversionesPage: React.FC = () => {
           />
 
           <h2 style={{
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-h2)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-lg)',
             fontWeight: 600,
             color: 'var(--atlas-navy-1)',
             margin: '0 0 1rem 0',
@@ -300,8 +300,8 @@ const InversionesPage: React.FC = () => {
           {posiciones.length === 0 ? (
             <div style={{
               background: 'var(--hz-card-bg)',
-              border: '1px solid var(--hz-neutral-300)',
-              borderRadius: '12px',
+              border: '1px solid var(--n-300)',
+              borderRadius: 'var(--r-lg)',
               padding: '3rem 2rem',
               textAlign: 'center',
             }}>
@@ -309,7 +309,7 @@ const InversionesPage: React.FC = () => {
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: 'var(--hz-neutral-100)',
+                background: 'var(--n-100)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -318,7 +318,7 @@ const InversionesPage: React.FC = () => {
                 <TrendingUp size={32} style={{ color: 'var(--text-gray)' }} />
               </div>
               <h3 style={{
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-base)',
                 fontSize: '1.125rem',
                 fontWeight: 600,
                 color: 'var(--atlas-navy-1)',
@@ -327,8 +327,8 @@ const InversionesPage: React.FC = () => {
                 No hay posiciones todavía
               </h3>
               <p style={{
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
+                fontFamily: 'var(--font-base)',
+                fontSize: 'var(--text-sm)',
                 color: 'var(--text-gray)',
                 margin: '0 0 1.5rem 0',
               }}>
@@ -341,11 +341,11 @@ const InversionesPage: React.FC = () => {
                   alignItems: 'center',
                   gap: '0.5rem',
                   padding: '0.75rem 1.5rem',
-                  background: 'var(--atlas-blue)',
+                  background: 'var(--blue)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '10px',
-                  fontFamily: 'var(--font-inter)',
+                  borderRadius: 'var(--r-md)',
+                  fontFamily: 'var(--font-base)',
                   fontSize: '1rem',
                   fontWeight: 500,
                   cursor: 'pointer',

@@ -121,7 +121,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
               width: '40px',
               height: '40px',
               borderRadius: '10px',
-              background: 'var(--hz-info-soft)',
+              background: 'rgba(4, 44, 94, 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -132,7 +132,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
             </div>
             <div>
               <h3 style={{
-                fontFamily: 'var(--font-inter)',
+                fontFamily: 'var(--font-base)',
                 fontSize: '1.125rem',
                 fontWeight: 600,
                 color: 'var(--atlas-navy-1)',
@@ -141,8 +141,8 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
                 {posicion.nombre}
               </h3>
               <div style={{
-                fontFamily: 'var(--font-inter)',
-                fontSize: 'var(--text-caption)',
+                fontFamily: 'var(--font-base)',
+                fontSize: 'var(--text-sm)',
                 color: 'var(--text-gray)',
                 marginTop: '0.125rem',
                 display: 'flex',
@@ -168,26 +168,26 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
           {/* Stats */}
           <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
                 Valor
               </div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 600, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: '1rem', fontWeight: 600, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
                 {formatCurrency(posicion.valor_actual)}
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
                 Aportado
               </div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 600, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: '1rem', fontWeight: 600, color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
                 {formatCurrency(posicion.total_aportado)}
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--text-gray)', marginBottom: '0.25rem' }}>
                 Rentabilidad
               </div>
-              <div style={{ fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 600, color: rentabilidadColor, fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontFamily: 'var(--font-base)', fontSize: '1rem', fontWeight: 600, color: rentabilidadColor, fontVariantNumeric: 'tabular-nums' }}>
                 {formatPercentage(posicion.rentabilidad_porcentaje)}
               </div>
             </div>
@@ -206,8 +206,8 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
             border: 'none',
             borderRadius: '8px',
             padding: '0.5rem 1rem',
-            fontFamily: 'var(--font-inter)',
-            fontSize: 'var(--text-caption)',
+            fontFamily: 'var(--font-base)',
+            fontSize: 'var(--text-sm)',
             fontWeight: 500,
             cursor: 'pointer',
             display: 'flex',
@@ -215,7 +215,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
             gap: '0.5rem',
             transition: 'background 0.2s',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#03234a'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-hover)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--atlas-blue)'; }}
         >
           <Eye size={16} />

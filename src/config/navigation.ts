@@ -1,4 +1,20 @@
-import { Home, Building, Banknote, Calculator, TrendingUp, Settings, DollarSign, CreditCard, Users, Inbox, Receipt, FileText, Book, Calendar } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Building2,
+  Wallet,
+  Receipt,
+  TrendingUp,
+  Settings2,
+  DollarSign,
+  CreditCard,
+  UserCircle,
+  Upload,
+  Landmark,
+  FolderOpen,
+  Book,
+  Calendar,
+  KeyRound,
+} from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
 export interface NavigationItem {
@@ -10,26 +26,24 @@ export interface NavigationItem {
   section?: 'horizon' | 'pulse' | 'documentation';
 }
 
-// ATLAS Unified Navigation - exactly 9 entries as specified
 export const navigationConfig: NavigationItem[] = [
-  // HORIZON — Supervisión (items 1-7)
   {
     name: 'Dashboard',
     href: '/panel',
-    icon: Home,
+    icon: LayoutDashboard,
     module: 'shared',
     section: 'horizon'
   },
   {
     name: 'Personal',
     href: '/personal',
-    icon: Users,
+    icon: UserCircle,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Resumen', href: '/personal/resumen', icon: Home, module: 'horizon' },
-      { name: 'Nómina', href: '/personal/nomina', icon: Banknote, module: 'horizon' },
-      { name: 'Autónomo', href: '/personal/autonomo', icon: Users, module: 'horizon' },
+      { name: 'Resumen', href: '/personal/resumen', icon: LayoutDashboard, module: 'horizon' },
+      { name: 'Nómina', href: '/personal/nomina', icon: Wallet, module: 'horizon' },
+      { name: 'Autónomo', href: '/personal/autonomo', icon: UserCircle, module: 'horizon' },
       { name: 'Pensiones e Inversiones', href: '/personal/pensiones-inversiones', icon: TrendingUp, module: 'horizon' },
       { name: 'Otros Ingresos', href: '/personal/otros-ingresos', icon: DollarSign, module: 'horizon' },
     ]
@@ -37,11 +51,11 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Inmuebles',
     href: '/inmuebles',
-    icon: Building,
+    icon: Building2,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Cartera', href: '/inmuebles/cartera', icon: Building, module: 'horizon' },
+      { name: 'Cartera', href: '/inmuebles/cartera', icon: Building2, module: 'horizon' },
       { name: 'Evolución', href: '/inmuebles/analisis', icon: TrendingUp, module: 'horizon' },
     ]
   },
@@ -55,13 +69,13 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Tesorería',
     href: '/tesoreria',
-    icon: Banknote,
+    icon: Wallet,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Resumen', href: '/tesoreria', icon: Banknote, module: 'horizon' },
+      { name: 'Resumen', href: '/tesoreria', icon: Wallet, module: 'horizon' },
       { name: 'Movimientos', href: '/tesoreria/cobros-pagos', icon: DollarSign, module: 'horizon' },
-      { name: 'Importar', href: '/tesoreria/importar', icon: Inbox, module: 'horizon' },
+      { name: 'Importar', href: '/tesoreria/importar', icon: Upload, module: 'horizon' },
     ]
   },
   {
@@ -71,7 +85,7 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Calculator, module: 'horizon' },
+      { name: 'Presupuesto', href: '/proyeccion/presupuesto', icon: Receipt, module: 'horizon' },
       { name: 'Real vs Previsto', href: '/proyeccion/comparativa', icon: TrendingUp, module: 'horizon' },
       { name: 'Escenarios', href: '/proyeccion/escenarios', icon: TrendingUp, module: 'horizon' },
       { name: 'Valoraciones', href: '/proyeccion/valoraciones', icon: TrendingUp, module: 'horizon' },
@@ -81,57 +95,51 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Impuestos',
     href: '/fiscalidad',
-    icon: Calculator,
+    icon: Receipt,
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Dashboard', href: '/fiscalidad/dashboard', icon: Home, module: 'horizon' },
-      { name: 'Declaración', href: '/fiscalidad/declaracion', icon: FileText, module: 'horizon' },
+      { name: 'Dashboard', href: '/fiscalidad/dashboard', icon: LayoutDashboard, module: 'horizon' },
+      { name: 'Declaración', href: '/fiscalidad/declaracion', icon: Receipt, module: 'horizon' },
       { name: 'Simulador', href: '/fiscalidad/simulador', icon: TrendingUp, module: 'horizon' },
       { name: 'Pagos', href: '/fiscalidad/pagos', icon: Calendar, module: 'horizon' },
-      { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings, module: 'horizon' },
+      { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings2, module: 'horizon' },
     ]
   },
   {
     name: 'Financiación',
     href: '/financiacion',
-    icon: Receipt,
+    icon: Landmark,
     module: 'horizon',
     section: 'horizon'
   },
-  
-  // PULSE — Gestión (item 8)
   {
     name: 'Alquileres',
     href: '/contratos',
-    icon: Users,
+    icon: KeyRound,
     module: 'pulse',
     section: 'pulse',
     subTabs: [
-      { name: 'Lista', href: '/contratos/lista', icon: Users, module: 'pulse' },
-      { name: 'Nuevo', href: '/contratos/nuevo', icon: Users, module: 'pulse' },
-      { name: 'Renovación', href: '/contratos/renovacion', icon: Settings, module: 'pulse' },
+      { name: 'Lista', href: '/contratos/lista', icon: KeyRound, module: 'pulse' },
+      { name: 'Nuevo', href: '/contratos/nuevo', icon: KeyRound, module: 'pulse' },
+      { name: 'Renovación', href: '/contratos/renovacion', icon: Settings2, module: 'pulse' },
       { name: 'Subidas', href: '/contratos/subidas', icon: TrendingUp, module: 'pulse' },
       { name: 'Envío a firmar', href: '/firmas', icon: CreditCard, module: 'pulse' },
     ]
   },
-  
-  // DOCUMENTACIÓN (item 9)
   {
     name: 'Documentación',
     href: '/documentacion',
-    icon: FileText,
+    icon: FolderOpen,
     module: 'shared',
     section: 'documentation',
     subTabs: [
-      { name: 'Repositorio', href: '/documentacion', icon: FileText, module: 'shared' },
-      { name: 'Filtros', href: '/documentacion/filtros', icon: Settings, module: 'shared' },
-      { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Calculator, module: 'shared' },
-      { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: Users, module: 'shared' },
+      { name: 'Repositorio', href: '/documentacion', icon: FolderOpen, module: 'shared' },
+      { name: 'Filtros', href: '/documentacion/filtros', icon: Settings2, module: 'shared' },
+      { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Receipt, module: 'shared' },
+      { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: UserCircle, module: 'shared' },
     ]
   },
-  
-  // GLOSARIO - Sprint 3: Accessible technical terms
   {
     name: 'Glosario',
     href: '/glosario',
@@ -141,7 +149,4 @@ export const navigationConfig: NavigationItem[] = [
   },
 ];
 
-export const getNavigationForModule = (): NavigationItem[] => {
-  // Return all navigation items - unified sidebar
-  return navigationConfig;
-};
+export const getNavigationForModule = (): NavigationItem[] => navigationConfig;

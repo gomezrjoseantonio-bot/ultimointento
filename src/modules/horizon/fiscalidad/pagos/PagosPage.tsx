@@ -90,31 +90,31 @@ const PagosPage: React.FC = () => {
         <select
           value={ejercicio}
           onChange={e => setEjercicio(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="atlas-field max-w-40"
         >
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
       {loading ? (
         <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--blue)] border-t-transparent" />
         </div>
       ) : (
         <div className="space-y-6">
           {/* KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total pendiente</p>
-              <p className="text-2xl font-bold text-blue-700 mt-1">{fmt(totalPendiente)}</p>
-              <p className="text-xs text-gray-500 mt-1">{pendientes.length} pago(s) pendiente(s)</p>
+            <div className="bg-white border rounded-lg p-5 shadow-sm" style={{ borderColor: "var(--n-300)" }}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--n-500)]">Total pendiente</p>
+              <p className="text-2xl font-bold mt-1 text-[var(--blue)]">{fmt(totalPendiente)}</p>
+              <p className="text-xs mt-1 text-[var(--n-500)]">{pendientes.length} pago(s) pendiente(s)</p>
             </div>
             {proximoEvento && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-5">
-                <p className="text-xs text-gray-700 font-medium uppercase tracking-wide flex items-center gap-1">
+              <div className="bg-[var(--n-100)] border rounded-lg p-5" style={{ borderColor: "var(--n-300)" }}>
+                <p className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1 text-[var(--n-700)]">
                   <Calendar className="w-3 h-3" /> Próximo pago
                 </p>
-                <p className="text-lg font-bold text-gray-900 mt-1">{proximoEvento.descripcion}</p>
-                <p className="text-sm text-gray-700 mt-0.5">
+                <p className="text-lg font-bold mt-1 text-[var(--n-700)]">{proximoEvento.descripcion}</p>
+                <p className="text-sm mt-0.5 text-[var(--n-700)]">
                   {new Date(proximoEvento.fechaLimite).toLocaleDateString('es-ES')} — {fmt(proximoEvento.importe)}
                 </p>
               </div>
@@ -123,19 +123,19 @@ const PagosPage: React.FC = () => {
 
           {/* Configuración */}
           {config && (
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Configuración fiscal</h3>
-              <div className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
+            <div className="bg-white border rounded-lg p-5 shadow-sm" style={{ borderColor: "var(--n-300)" }}>
+              <h3 className="text-sm font-semibold mb-3 text-[var(--n-700)]">Configuración fiscal</h3>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Fraccionar pago IRPF</p>
-                  <p className="text-xs text-gray-500 mt-0.5">60% en junio + 40% en noviembre</p>
+                  <p className="text-sm font-medium text-[var(--n-700)]">Fraccionar pago IRPF</p>
+                  <p className="text-xs mt-0.5 text-[var(--n-500)]">60% en junio + 40% en noviembre</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleToggleFraccionar}
                   disabled={saving}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                    config.fraccionarPago ? 'bg-blue-600' : 'bg-gray-200'
+                    config.fraccionarPago ? 'bg-[var(--blue)]' : 'bg-[var(--n-300)]'
                   }`}
                 >
                   <span
@@ -149,38 +149,38 @@ const PagosPage: React.FC = () => {
           )}
 
           {/* Tabla de pagos */}
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-5 text-xs font-semibold text-gray-600 uppercase tracking-wide bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <div className="bg-white border rounded-lg shadow-sm overflow-hidden" style={{ borderColor: "var(--n-300)" }}>
+            <div className="grid grid-cols-5 text-xs font-semibold uppercase tracking-wide bg-[var(--n-100)] px-4 py-3 border-b">
               <span className="col-span-2">Descripción</span>
               <span>Fecha límite</span>
               <span>Importe</span>
               <span>Estado</span>
             </div>
             {eventos.length === 0 ? (
-              <p className="text-sm text-gray-500 px-4 py-6">No hay pagos fiscales para este ejercicio.</p>
+              <p className="text-sm text-[var(--n-500)] px-4 py-6">No hay pagos fiscales para este ejercicio.</p>
             ) : (
               eventos.map((e, i) => (
-                <div key={i} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-gray-100 last:border-0 items-center">
-                  <span className="col-span-2 text-gray-700">{e.descripcion}</span>
-                  <span className="text-gray-600">{new Date(e.fechaLimite).toLocaleDateString('es-ES')}</span>
-                  <span className={`font-medium ${e.importe < 0 ? 'text-cyan-700' : 'text-blue-800'}`}>
+                <div key={i} className="grid grid-cols-5 text-sm px-4 py-3 border-b last:border-0 items-center" style={{ borderColor: "var(--n-100)" }}>
+                  <span className="col-span-2 text-[var(--n-700)]">{e.descripcion}</span>
+                  <span className="text-[var(--n-500)]">{new Date(e.fechaLimite).toLocaleDateString('es-ES')}</span>
+                  <span className={`font-medium ${e.importe < 0 ? 'text-[var(--s-positive)]' : 'text-[var(--blue)]'}`}>
                     {fmt(Math.abs(e.importe))}
                   </span>
                   <div className="flex items-center gap-2">
                     {e.pagado ? (
-                      <span className="flex items-center gap-1 text-cyan-700 text-xs font-medium">
+                      <span className="flex items-center gap-1 text-[var(--s-positive)] text-xs font-medium">
                         <CheckCircle className="w-4 h-4" /> Pagado
                       </span>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-1 text-gray-600 text-xs">
+                        <span className="flex items-center gap-1 text-[var(--n-500)] text-xs">
                           <Circle className="w-4 h-4" /> Pendiente
                         </span>
                         {e.trimestre && (
                           <button
                             onClick={() => handleMarcarPagado(e)}
                             disabled={saving}
-                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                            className="text-xs text-[var(--blue)] hover:underline disabled:opacity-50"
                           >
                             Marcar pagado
                           </button>
