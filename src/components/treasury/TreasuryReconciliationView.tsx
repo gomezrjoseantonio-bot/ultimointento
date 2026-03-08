@@ -1032,11 +1032,10 @@ const TreasuryReconciliationView: React.FC = () => {
           accounts.map(account => {
             const isActive = selectedBankFilter === account.id;
             const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
-            const acctNetPrevisto = account.balance + acctEvents.reduce((sum, e) =>
+            const pendingMonthEvents = acctEvents.filter(e => e.status === 'previsto');
+            const acctNetPrevisto = account.balance + pendingMonthEvents.reduce((sum, e) =>
               e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
-            const acctNetReal = account.balance + acctEvents
-              .filter(e => e.status === 'confirmado')
-              .reduce((sum, e) => e.type === 'income' ? sum + e.amount : sum - e.amount, 0);
+            const acctNetReal = account.balance;
             return (
               <button
                 key={account.id}
@@ -1049,7 +1048,7 @@ const TreasuryReconciliationView: React.FC = () => {
                   {account.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="bank-filter-card__name">{account.name}</span>
-                <span className="bank-filter-card__saldo">{formatAmount(acctNetPrevisto)} € / {formatAmount(acctNetReal)} €</span>
+                <span className="bank-filter-card__saldo">Mes: {formatAmount(acctNetPrevisto)} € / Hoy: {formatAmount(acctNetReal)} €</span>
               </button>
             );
           })
