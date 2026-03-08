@@ -235,7 +235,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
           
           <div className="atlas-btn-success p-4 border">
             <p className="text-green-200 text-sm">
-              ✅ Puedes volver a ver este tour en cualquier momento desde el menú de ayuda
+              ✅ Puedes rehacer la configuración inicial cuando lo necesites desde tu cuenta
             </p>
           </div>
         </div>
