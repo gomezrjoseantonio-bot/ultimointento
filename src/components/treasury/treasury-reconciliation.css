@@ -516,9 +516,8 @@
 }
 
 .tv3-mov-list {
-  max-height: min(56vh, 560px);
-  overflow-y: auto;
-  min-height: 0;
+  max-height: none;
+  overflow: visible;
 }
 
 .tv3-mov-toolbar {
