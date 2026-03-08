@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
-import PageHeader from '../../../../components/common/PageHeader';
-import AtlasBancosManagement, { AtlasBancosManagementRef } from './components/AtlasBancosManagement';
+import React from 'react';
+import AtlasBancosManagement from './components/AtlasBancosManagement';
 
 /**
  * Cuentas - ATLAS Design System
@@ -11,29 +10,11 @@ import AtlasBancosManagement, { AtlasBancosManagementRef } from './components/At
  * - Canonical route: /cuenta/cuentas
  */
 const Cuentas: React.FC = () => {
-  const bancosRef = useRef<AtlasBancosManagementRef>(null);
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-      <PageHeader
-        title="Métodos de pago"
-        subtitle="Gestión de cuentas bancarias con validaciones IBAN, branding persistente y activar/inactivar simétrico"
-        breadcrumb={[
-          { name: 'Cuenta', href: '/cuenta' },
-          { name: 'Configuración', href: '/cuenta' },
-          { name: 'Métodos de pago', href: '/cuenta/cuentas' }
-        ]}
-        primaryAction={{
-          label: "Nueva cuenta",
-          onClick: () => {
-            bancosRef.current?.triggerNewAccount();
-          }
-        }}
-      />
-
       {/* Content - Direct bank management, no tabs */}
       <div className="py-8">
-        <AtlasBancosManagement ref={bancosRef} />
+        <AtlasBancosManagement />
       </div>
     </div>
   );
