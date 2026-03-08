@@ -773,10 +773,32 @@ class DashboardService {
       const cashflowInmuebles = rentasMes - gastosInmueblesMes - cuotasHipotecaMes;
 
       const properties = await db.getAll('properties');
-      const activeProperties = properties.filter((p: any) => p.state === 'activo');
+      const activeProperties = properties.filter((p: any) => {
+        const status = String(p?.state ?? p?.status ?? p?.estado ?? '').toLowerCase();
+        return status === '' || status === 'activo' || status === 'active';
+      });
       const contracts = await db.getAll('contracts');
-      const activeContracts = contracts.filter((c: any) => c.estado === 'activo');
-      const ocupacion = activeProperties.length > 0 ? (activeContracts.length / activeProperties.length) * 100 : 0;
+      const activeContracts = contracts.filter((c: any) => {
+        const status = String(c?.estado ?? c?.estadoContrato ?? c?.status ?? '').toLowerCase();
+        return status === 'activo' || status === 'active';
+      });
+
+      const activePropertyIds = new Set(
+        activeProperties
+          .map((p: any) => toNumericId(p?.id ?? p?.propertyId ?? p?.inmueble_id))
+          .filter((id): id is number => id != null)
+      );
+
+      const occupiedPropertyIds = new Set(
+        activeContracts
+          .map((c: any) => toNumericId(c?.inmuebleId ?? c?.inmueble_id ?? c?.propertyId ?? c?.property_id))
+          .filter((id): id is number => id != null && activePropertyIds.has(id))
+      );
+
+      const ocupacionBase = activePropertyIds.size > 0
+        ? (occupiedPropertyIds.size / activePropertyIds.size) * 100
+        : 0;
+      const ocupacion = Math.max(0, Math.min(100, ocupacionBase));
 
       const last3Months = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentYear, currentMonth - (i + 1), 1);
@@ -813,12 +835,23 @@ class DashboardService {
       const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / Math.abs(cashflowAvg)) * 100 : 0;
       const inmueblesTendencia: 'up' | 'down' | 'stable' = cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
 
-      // INVERSIONES (rendimientos + dividendos cobrados en el mes)
+      // INVERSIONES (solo flujos cobrados en el mes; no plusvalía latente)
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
-      const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.rentabilidad_euros), 0);
+      const rendimientoMes = inversionesActivas.reduce((sum: number, inv: any) => {
+        const pagos = inv?.rendimiento?.pagos_generados ?? [];
+        const importePagado = (Array.isArray(pagos) ? pagos : [])
+          .filter((pago: any) => {
+            const fecha = new Date(pago?.fecha_pago);
+            if (Number.isNaN(fecha.getTime())) return false;
+            const estado = pago?.estado;
+            return fecha.getMonth() === currentMonth && fecha.getFullYear() === currentYear && (estado === undefined || estado === 'pagado' || estado === 'reinvertido');
+          })
+          .reduce((acc: number, pago: any) => acc + toNumber(pago?.importe_neto ?? pago?.importe_bruto ?? pago?.importe), 0);
+        return sum + importePagado;
+      }, 0);
 
       const dividendosMes = inversionesActivas.reduce((sum: number, inv: any) => {
-        const pagos = inv?.dividendos?.dividendos_recibidos ?? inv?.rendimiento?.pagos_generados ?? [];
+        const pagos = inv?.dividendos?.dividendos_recibidos ?? [];
         const importePagado = (Array.isArray(pagos) ? pagos : [])
           .filter((pago: any) => {
             const fecha = new Date(pago?.fecha_pago);
@@ -1129,27 +1162,23 @@ class DashboardService {
         const month = pastDate.getMonth();
         const year = pastDate.getFullYear();
         
-        // Personal expenses from gastos
-        const gastosPersonales = gastos
+        // All expenses in `gastos` for the month (personal + non-personal)
+        const gastosMes = gastos
           .filter((gasto: any) => {
             const fecha = parseDateValue(gasto.fecha);
             if (!fecha) return false;
             if (fecha > now) return false;
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   gasto.esPersonal === true;
+            return fecha.getMonth() === month && fecha.getFullYear() === year;
           })
           .reduce((sum: number, gasto: any) => sum + parseNumericValue(gasto.importe), 0);
         
-        // Property expenses
+        // All property expenses registered in `expenses`
         const gastosInmuebles = expenses
           .filter((expense: any) => {
             const fecha = parseDateValue(expense.fecha);
             if (!fecha) return false;
             if (fecha > now) return false;
-            return fecha.getMonth() === month && 
-                   fecha.getFullYear() === year &&
-                   expense.propertyId != null;
+            return fecha.getMonth() === month && fecha.getFullYear() === year;
           })
           .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
@@ -1163,7 +1192,7 @@ class DashboardService {
           })
           .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
         
-        last3MonthsExpenses.push(gastosPersonales + gastosInmuebles + gastosProgramados);
+        last3MonthsExpenses.push(gastosMes + gastosInmuebles + gastosProgramados);
       }
       
       const gastoMedioMensual = last3MonthsExpenses.length > 0
@@ -1187,7 +1216,11 @@ class DashboardService {
       const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       
       // Expected expenses in next 30 days
-      const gastosEsperados = expenses
+      const gastosEsperadosGastos = gastos
+        .filter((gasto: any) => isDateWithinRange(gasto.fecha, now, next30Days))
+        .reduce((sum: number, gasto: any) => sum + parseNumericValue(gasto.importe), 0);
+
+      const gastosEsperadosExpenses = expenses
         .filter((expense: any) => isDateWithinRange(expense.fecha, now, next30Days))
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
@@ -1213,7 +1246,7 @@ class DashboardService {
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
 
-      const gastosTotal = gastosEsperados + gastosEventosTesoreria;
+      const gastosTotal = gastosEsperadosGastos + gastosEsperadosExpenses + gastosEventosTesoreria;
       const ingresosTotal = ingresosEsperados + rentasEsperadas + ingresosEventosTesoreria;
       const estimado30d = liquidezHoy + ingresosTotal - gastosTotal;
       
