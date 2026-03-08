@@ -6,8 +6,9 @@ import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, Luci
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
+import ImportarAportaciones from './migracion/ImportarAportaciones';
 
-type MigracionView = 'menu' | 'valoraciones' | 'movimientos' | 'contratos';
+type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos';
 
 const MigracionTab: React.FC = () => {
   const [view, setView] = useState<MigracionView>('menu');
@@ -35,6 +36,14 @@ const MigracionTab: React.FC = () => {
     return (
       <ImportarMovimientos
         onComplete={() => markCompleted('movimientos')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'aportaciones') {
+    return (
+      <ImportarAportaciones
+        onComplete={() => markCompleted('aportaciones')}
         onBack={() => setView('menu')}
       />
     );
@@ -85,6 +94,14 @@ const MigracionTab: React.FC = () => {
           color="var(--atlas-blue)"
           completed={completados.has('valoraciones')}
           onClick={() => setView('valoraciones')}
+        />
+        <MigracionCard
+          icon={TrendingUp}
+          title="Aportaciones inversiones"
+          description="Importa aportaciones históricas (fecha e importe) para cualquier posición financiera desde Excel."
+          color="var(--atlas-blue)"
+          completed={completados.has('aportaciones')}
+          onClick={() => setView('aportaciones')}
         />
         <MigracionCard
           icon={Banknote}

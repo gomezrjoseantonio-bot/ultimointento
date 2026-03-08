@@ -10,6 +10,13 @@ export interface ImportAportacionesResult {
 
 type RawRow = Record<string, unknown>;
 
+type ParsedAportacionRow = {
+  posicionId?: number;
+  posicionNombre?: string;
+  entidad?: string;
+  aportacion: Omit<Aportacion, 'id'>;
+};
+
 const normalizeHeader = (value: string): string =>
   value
     .normalize('NFD')
@@ -29,7 +36,6 @@ const parseAmount = (raw: unknown): number => {
   const lastComma = value.lastIndexOf(',');
   const lastDot = value.lastIndexOf('.');
 
-  // Use the last decimal separator if present, and strip the rest as thousand separators.
   if (lastComma > -1 || lastDot > -1) {
     const decimalIndex = Math.max(lastComma, lastDot);
     const integerPart = value.slice(0, decimalIndex).replace(/[.,]/g, '');
@@ -88,16 +94,29 @@ const getRowValue = (row: RawRow, aliases: string[]): unknown => {
   return undefined;
 };
 
-async function buildAportacionesFromFile(file: File, posicion: PosicionInversion): Promise<ImportAportacionesResult & { aportaciones: Omit<Aportacion, 'id'>[] }> {
+const parsePosicionId = (raw: unknown): number | undefined => {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.trunc(raw);
+  }
+  if (typeof raw === 'string') {
+    const parsed = parseInt(raw.trim(), 10);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+async function parseRows(file: File): Promise<{ rows: RawRow[]; errors: string[] }> {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
+
   if (!firstSheetName) {
-    return { imported: 0, skipped: 1, errors: ['El archivo no contiene hojas.'], aportaciones: [] };
+    return { rows: [], errors: ['El archivo no contiene hojas.'] };
   }
 
   const sheet = workbook.Sheets[firstSheetName];
   const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+
   const rows = rawRows.map((row) => {
     const normalized: RawRow = {};
     Object.entries(row).forEach(([key, value]) => {
@@ -106,7 +125,11 @@ async function buildAportacionesFromFile(file: File, posicion: PosicionInversion
     return normalized;
   });
 
-  const aportaciones: Omit<Aportacion, 'id'>[] = [];
+  return { rows, errors: [] };
+}
+
+function mapRowsToAportaciones(rows: RawRow[], posicionesById: Map<number, PosicionInversion>): { aportaciones: ParsedAportacionRow[]; skipped: number; errors: string[] } {
+  const aportaciones: ParsedAportacionRow[] = [];
   const errors: string[] = [];
   let skipped = 0;
 
@@ -120,12 +143,25 @@ async function buildAportacionesFromFile(file: File, posicion: PosicionInversion
       return;
     }
 
+    const posicionId = parsePosicionId(getRowValue(row, ['posicion_id', 'id_posicion']));
+    const posicionNombre = String(getRowValue(row, ['posicion_nombre', 'nombre_posicion', 'posicion']) ?? '').trim();
+    const entidad = String(getRowValue(row, ['entidad', 'broker', 'banco']) ?? '').trim();
+
+    if (!posicionId && !posicionNombre) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: indica posicion_id o posicion_nombre.`);
+      return;
+    }
+
     const notasRaw = getRowValue(row, ['notas', 'nota', 'comentario', 'descripcion']);
     const notasBase = typeof notasRaw === 'string' && notasRaw.trim()
       ? notasRaw.trim()
       : 'Importación histórica';
 
-    if (posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo') {
+    const tipoPosicion = posicionId ? posicionesById.get(posicionId)?.tipo : undefined;
+    const esPlanPensiones = tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo';
+
+    if (esPlanPensiones) {
       const importeEmpresa = parseAmount(getRowValue(row, ['importe_empresa', 'aportacion_empresa', 'empresa']));
       const importeIndividuo = parseAmount(getRowValue(row, ['importe_individuo', 'aportacion_individuo', 'individuo', 'importe']));
 
@@ -137,19 +173,19 @@ async function buildAportacionesFromFile(file: File, posicion: PosicionInversion
 
       if (importeEmpresa > 0) {
         aportaciones.push({
-          fecha,
-          importe: importeEmpresa,
-          tipo: 'aportacion',
-          notas: `${notasBase} · Empresa`,
+          posicionId,
+          posicionNombre,
+          entidad,
+          aportacion: { fecha, importe: importeEmpresa, tipo: 'aportacion', notas: `${notasBase} · Empresa` },
         });
       }
 
       if (importeIndividuo > 0) {
         aportaciones.push({
-          fecha,
-          importe: importeIndividuo,
-          tipo: 'aportacion',
-          notas: `${notasBase} · Individuo`,
+          posicionId,
+          posicionNombre,
+          entidad,
+          aportacion: { fecha, importe: importeIndividuo, tipo: 'aportacion', notas: `${notasBase} · Individuo` },
         });
       }
 
@@ -164,22 +200,39 @@ async function buildAportacionesFromFile(file: File, posicion: PosicionInversion
     }
 
     aportaciones.push({
-      fecha,
-      importe,
-      tipo: 'aportacion',
-      notas: notasBase,
+      posicionId,
+      posicionNombre,
+      entidad,
+      aportacion: { fecha, importe, tipo: 'aportacion', notas: notasBase },
     });
   });
 
-  return {
-    imported: 0,
-    skipped,
-    errors,
-    aportaciones,
-  };
+  return { aportaciones, skipped, errors };
 }
 
-export async function importarAportacionesHistoricas(file: File, posicion: PosicionInversion): Promise<ImportAportacionesResult> {
+const findPosicion = (
+  row: ParsedAportacionRow,
+  posicionesById: Map<number, PosicionInversion>,
+  posiciones: PosicionInversion[]
+): PosicionInversion | undefined => {
+  if (row.posicionId) {
+    return posicionesById.get(row.posicionId);
+  }
+
+  const nombreNorm = (row.posicionNombre ?? '').toLowerCase();
+  const entidadNorm = (row.entidad ?? '').toLowerCase();
+
+  const matches = posiciones.filter((p) => {
+    if (p.nombre.toLowerCase() !== nombreNorm) return false;
+    if (!entidadNorm) return true;
+    return p.entidad.toLowerCase() === entidadNorm;
+  });
+
+  if (matches.length === 1) return matches[0];
+  return undefined;
+};
+
+export async function importarAportacionesHistoricasMasivas(file: File): Promise<ImportAportacionesResult> {
   const filename = file.name.toLowerCase();
   if (!filename.endsWith('.xlsx') && !filename.endsWith('.xls')) {
     return {
@@ -189,28 +242,46 @@ export async function importarAportacionesHistoricas(file: File, posicion: Posic
     };
   }
 
-  const parsingResult = await buildAportacionesFromFile(file, posicion);
+  const posiciones = await inversionesService.getPosiciones();
+  const posicionesById = new Map<number, PosicionInversion>(posiciones.map((p) => [p.id, p]));
 
-  const aportacionesOrdenadas = [...parsingResult.aportaciones].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-  );
-
-  for (const aportacion of aportacionesOrdenadas) {
-    await inversionesService.addAportacion(posicion.id, aportacion);
+  const parsed = await parseRows(file);
+  if (parsed.errors.length > 0) {
+    return { imported: 0, skipped: parsed.errors.length, errors: parsed.errors };
   }
 
-  return {
-    imported: aportacionesOrdenadas.length,
-    skipped: parsingResult.skipped,
-    errors: parsingResult.errors,
-  };
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById);
+  const ordered = [...mapped.aportaciones].sort(
+    (a, b) => new Date(a.aportacion.fecha).getTime() - new Date(b.aportacion.fecha).getTime()
+  );
+
+  let imported = 0;
+  let skipped = mapped.skipped;
+  const errors = [...mapped.errors];
+
+  for (const row of ordered) {
+    const posicion = findPosicion(row, posicionesById, posiciones);
+    if (!posicion) {
+      skipped += 1;
+      const referencia = row.posicionId
+        ? `posicion_id ${row.posicionId}`
+        : `posición "${row.posicionNombre}"${row.entidad ? ` (${row.entidad})` : ''}`;
+      errors.push(`No se encontró una coincidencia única para ${referencia}.`);
+      continue;
+    }
+
+    await inversionesService.addAportacion(posicion.id, row.aportacion);
+    imported += 1;
+  }
+
+  return { imported, skipped, errors };
 }
 
 export function descargarPlantillaImportacionAportaciones(): void {
   const worksheet = XLSX.utils.aoa_to_sheet([
-    ['Fecha', 'Importe', 'Importe Empresa', 'Importe Individuo', 'Notas'],
-    ['2024-01-15', '1500', '', '', 'Aportación inicial antes de Atlas'],
-    ['2024-02-15', '', '100', '80', 'Plan pensiones febrero'],
+    ['posicion_id', 'posicion_nombre', 'entidad', 'fecha', 'importe', 'importe_empresa', 'importe_individuo', 'notas'],
+    ['1', 'Plan pensiones indexado', 'MyInvestor', '2024-01-15', '', '100', '80', 'Aportación previa app'],
+    ['2', 'Fondo renta variable', 'BBVA', '2024-02-15', '1500', '', '', 'Aportación puntual'],
   ]);
 
   const workbook = XLSX.utils.book_new();
