@@ -14,6 +14,13 @@ import InmuebleFormCompact from '../../../../components/inmuebles/InmuebleFormCo
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
 type ContractFilter = 'all' | 'active' | 'terminated';
 
+
+const DETAIL_TABS: DetailTab[] = ['resumen', 'contratos', 'presupuesto', 'fiscal'];
+
+const isDetailTab = (value: string | null): value is DetailTab => {
+  return value !== null && DETAIL_TABS.includes(value as DetailTab);
+};
+
 const getContractDateRange = (contract: Contract): { start: Date; end: Date } | null => {
   const startRaw = contract.fechaInicio || contract.startDate;
   const endRaw = contract.fechaFin || contract.endDate;
@@ -60,10 +67,11 @@ const calculateOccupiedDaysFromContracts = (contracts: Contract[], year: number)
 const PropertyDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab] = useState<DetailTab>('resumen');
+  const [activeTab, setActiveTab] = useState<DetailTab>('resumen');
   const [occupancyYear, setOccupancyYear] = useState<number>(new Date().getFullYear());
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
