@@ -31,6 +31,7 @@ describe('dashboardService financial metrics', () => {
       treasuryEvents: [
         { type: 'expense', status: 'pending', amount: '315', predictedDate: '2026-03-15' },
         { type: 'financing', status: 'pending', amount: '200', predictedDate: '2026-03-16' },
+        { type: 'expense', status: 'confirmed', amount: '999', predictedDate: '2026-03-17' },
         { type: 'expense', status: 'pending', amount: '120', predictedDate: '2026-03-01' },
         { type: 'expense', status: 'pending', amount: '100', predictedDate: '2026-02-15' },
         { type: 'financing', status: 'pending', amount: '80', predictedDate: '2026-02-20' },
@@ -79,9 +80,11 @@ describe('dashboardService financial metrics', () => {
       ],
       movements: [],
       treasuryEvents: [
+        { accountId: 1, type: 'expense', status: 'predicted', amount: 25, predictedDate: '2026-03-02' },
         { accountId: 1, type: 'income', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
         { accountId: 1, type: 'expense', status: 'predicted', amount: 100, predictedDate: '2026-03-21' },
         { accountId: 1, type: 'financing', status: 'predicted', amount: 300, predictedDate: '2026-03-22' },
+        { accountId: 1, type: 'expense', status: 'confirmed', amount: 400, predictedDate: '2026-03-24' },
         { accountId: 2, type: 'expense', status: 'predicted', amount: 50, predictedDate: '2026-03-23' }
       ]
     };
@@ -93,9 +96,11 @@ describe('dashboardService financial metrics', () => {
     const panel = await dashboardService.getTesoreriaPanel();
 
     expect(panel.filas).toHaveLength(1);
+    expect(panel.filas[0].hoy).toBe(600);
     expect(panel.filas[0].porCobrar).toBe(500);
-    expect(panel.filas[0].porPagar).toBe(450);
-    expect(panel.filas[0].proyeccion).toBe(1050);
-    expect(panel.totales.porPagar).toBe(450);
+    expect(panel.filas[0].porPagar).toBe(475);
+    expect(panel.filas[0].proyeccion).toBe(625);
+    expect(panel.totales.hoy).toBe(600);
+    expect(panel.totales.porPagar).toBe(475);
   });
 });

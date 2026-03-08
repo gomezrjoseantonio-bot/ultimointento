@@ -14,6 +14,7 @@ import PosicionDetailModal from './components/PosicionDetailModal';
 import ActualizarValorModal from './components/ActualizarValorModal';
 import AportacionForm from './components/AportacionForm';
 import RendimientosTab from './components/RendimientosTab';
+import { descargarPlantillaImportacionAportaciones, importarAportacionesHistoricas } from '../../../services/inversionesAportacionesImportService';
 import toast from 'react-hot-toast';
 
 type Tab = 'cartera' | 'rendimientos';
@@ -130,6 +131,32 @@ const InversionesPage: React.FC = () => {
     } catch (error) {
       console.error('Error adding aportacion:', error);
       toast.error('Error al añadir la aportación');
+    }
+  };
+
+  const handleImportAportaciones = async (file: File) => {
+    if (!editingPosicion) return;
+
+    try {
+      const result = await importarAportacionesHistoricas(file, editingPosicion);
+      await loadData();
+      const updated = await inversionesService.getPosicion(editingPosicion.id);
+      setEditingPosicion(updated);
+
+      if (result.imported > 0) {
+        toast.success(`Importadas ${result.imported} aportaciones históricas.`);
+      }
+
+      if (result.errors.length > 0) {
+        toast(result.errors[0], { icon: '⚠️' });
+      }
+
+      if (result.imported === 0 && result.errors.length === 0) {
+        toast('No se detectaron filas para importar.', { icon: 'ℹ️' });
+      }
+    } catch (error) {
+      console.error('Error importing aportaciones:', error);
+      toast.error('Error al importar aportaciones desde Excel');
     }
   };
 
@@ -380,6 +407,8 @@ const InversionesPage: React.FC = () => {
             setEditingPosicion(undefined);
           }}
           onAddAportacion={() => setShowAportacionForm(true)}
+          onImportAportaciones={handleImportAportaciones}
+          onDownloadPlantillaImportacion={descargarPlantillaImportacionAportaciones}
           onActualizarValor={() => setShowActualizarValor(true)}
           onEditarPosicion={() => {
             setShowDetail(false);
