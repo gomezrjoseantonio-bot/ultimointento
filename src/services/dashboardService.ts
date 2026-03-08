@@ -1,6 +1,7 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
 import { personalDataService } from './personalDataService';
+import { calculateAccountBalanceAtDate } from './accountBalanceService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -128,6 +129,13 @@ const parseDateValue = (value: unknown): Date | null => {
 const isDateWithinRange = (value: unknown, start: Date, end: Date): boolean => {
   const date = parseDateValue(value);
   return Boolean(date && date >= start && date <= end);
+};
+
+const isCardAccount = (acc: any): boolean => {
+  const explicitCardType = acc?.tipo === 'TARJETA_CREDITO' || acc?.type === 'card';
+  const normalizedName = String(acc?.alias || acc?.name || acc?.bank || acc?.banco?.name || '').toLowerCase();
+  const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
+  return explicitCardType || inferredFromName;
 };
 
 // Default configurations
@@ -516,7 +524,11 @@ class DashboardService {
 
       // Cuentas: sum active account balances.
       const accounts = await db.getAll('accounts');
-      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const activeAccounts = accounts.filter((acc: any) => (
+        acc.isActive !== false
+        && !acc.deleted_at
+        && !isCardAccount(acc)
+      ));
       const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => sum + toNumber(acc.balance), 0);
 
       // Inversiones: latest current valuation.
@@ -945,11 +957,24 @@ class DashboardService {
       const movements = await db.getAll('movements').catch(() => []);
       const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
 
-      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const activeAccounts = accounts.filter((acc: any) => (
+        acc.isActive !== false
+        && !acc.deleted_at
+        && !isCardAccount(acc)
+      ));
+
+      const endOfTodayCutoff = new Date(now);
+      endOfTodayCutoff.setDate(endOfTodayCutoff.getDate() + 1);
+      const cutoffDate = `${endOfTodayCutoff.getFullYear()}-${String(endOfTodayCutoff.getMonth() + 1).padStart(2, '0')}-${String(endOfTodayCutoff.getDate()).padStart(2, '0')}`;
 
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;
-        const hoy = toNumber(account.balance);
+        const hoy = calculateAccountBalanceAtDate({
+          account,
+          cutoffDate,
+          treasuryEvents: treasuryEvents as any,
+          movements: movements as any,
+        });
 
         const monthMovements = (movements as any[]).filter((movement) => {
           if (movement.accountId !== accountId) return false;
