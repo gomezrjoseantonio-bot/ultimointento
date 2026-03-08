@@ -74,15 +74,22 @@ const parseAmount = (raw: unknown): number => {
 const parseDate = (raw: unknown): string | null => {
   if (!raw && raw !== 0) return null;
 
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return raw.toISOString().split('T')[0];
+    return formatLocalDate(raw);
   }
 
   if (typeof raw === 'number') {
     const parsedCode = XLSX.SSF.parse_date_code(raw);
     if (parsedCode) {
       const jsDate = new Date(parsedCode.y, parsedCode.m - 1, parsedCode.d);
-      return jsDate.toISOString().split('T')[0];
+      return formatLocalDate(jsDate);
     }
   }
 
@@ -91,7 +98,7 @@ const parseDate = (raw: unknown): string | null => {
     if (!trimmed) return null;
 
     const isoDate = new Date(trimmed);
-    if (!Number.isNaN(isoDate.getTime())) return isoDate.toISOString().split('T')[0];
+    if (!Number.isNaN(isoDate.getTime())) return formatLocalDate(isoDate);
 
     const match = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
     if (match) {
@@ -100,7 +107,7 @@ const parseDate = (raw: unknown): string | null => {
       const year = parseInt(match[3], 10);
       const normalizedYear = year < 100 ? 2000 + year : year;
       const parsed = new Date(normalizedYear, month - 1, day);
-      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+      if (!Number.isNaN(parsed.getTime())) return formatLocalDate(parsed);
     }
   }
 
@@ -197,25 +204,24 @@ function mapRowsToAportaciones(
         return;
       }
 
-      if (importeEmpresa > 0) {
-        aportaciones.push({
-          sourceRow: rowNumber,
-          posicionId,
-          posicionNombre,
-          entidad,
-          aportacion: { fecha, importe: importeEmpresa, tipo: 'aportacion', notas: `${notasBase} · Empresa` },
-        });
-      }
+      const importeTotal = importeEmpresa + importeIndividuo;
+      const detalleAportacion = [
+        importeEmpresa > 0 ? `Empresa: ${importeEmpresa.toFixed(2)}€` : null,
+        importeIndividuo > 0 ? `Individuo: ${importeIndividuo.toFixed(2)}€` : null,
+      ].filter(Boolean).join(' · ');
 
-      if (importeIndividuo > 0) {
-        aportaciones.push({
-          sourceRow: rowNumber,
-          posicionId,
-          posicionNombre,
-          entidad,
-          aportacion: { fecha, importe: importeIndividuo, tipo: 'aportacion', notas: `${notasBase} · Individuo` },
-        });
-      }
+      aportaciones.push({
+        sourceRow: rowNumber,
+        posicionId,
+        posicionNombre,
+        entidad,
+        aportacion: {
+          fecha,
+          importe: importeTotal,
+          tipo: 'aportacion',
+          notas: detalleAportacion ? `${notasBase} · ${detalleAportacion}` : notasBase,
+        },
+      });
 
       return;
     }
@@ -306,8 +312,8 @@ export async function previsualizarImportacionAportaciones(
       fila: row.sourceRow,
       fecha: row.aportacion.fecha,
       posicionId: posicion.id,
-      posicionNombre: posicion.nombre,
-      entidad: posicion.entidad,
+      posicionNombre: row.posicionNombre || posicion.nombre,
+      entidad: row.entidad || posicion.entidad,
       importe: row.aportacion.importe,
       notas: row.aportacion.notas ?? '',
       estado: 'valida',
