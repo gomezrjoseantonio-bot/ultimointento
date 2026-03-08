@@ -852,29 +852,45 @@ const TreasuryReconciliationView: React.FC = () => {
                     ].join(' ')}
                     onClick={() => handleBankFilterClick(account.id)}
                   >
+                    {/* Cabecera */}
                     <div className="tv3-bank-chip-head">
-                      <span className="tv3-bank-letter">{account.name.charAt(0).toUpperCase()}</span>
+                      <span className="tv3-bank-letter">
+                        {account.name.charAt(0).toUpperCase()}
+                      </span>
                       <span className="tv3-bank-name">{account.name}</span>
                       <span className={`tv3-bank-status ${isFull ? 'ok' : isNeg ? 'warn' : 'pending'}`}>
-                        {isFull ? <CheckCircle2 size={14} /> : isNeg ? <AlertTriangle size={14} /> : <Circle size={14} />}
+                        {isFull
+                          ? <CheckCircle2 size={14} />
+                          : isNeg
+                            ? <AlertTriangle size={14} />
+                            : <Circle size={14} />
+                        }
                       </span>
                     </div>
-                    <div>
-                      <span className="tv3-bank-saldo" style={isNeg ? { color: 'var(--s-neg)' } : undefined}>
-                        {formatAmount(bd?.saldoFinalReal ?? account.balance)} €
-                      </span>
-                      {!isNeg && <span className="tv3-bank-saldo-label"> fin mes</span>}
+
+                    {/* Importes — dos filas separadas */}
+                    <div className="tv3-bank-amounts">
+                      <div className="tv3-bank-hoy">
+                        Hoy&nbsp;<span>{formatAmount(account.balance)} €</span>
+                      </div>
+                      <div className={`tv3-bank-finmes ${isNeg ? 'tv3-bank-finmes--neg' : ''}`}>
+                        Fin mes&nbsp;<span>{formatAmount(bd?.saldoFinalReal ?? account.balance)} €</span>
+                      </div>
                     </div>
+
+                    {/* Barra progreso */}
                     <div className="tv3-bank-track">
                       <div
                         className={[
                           'tv3-bank-fill',
                           isFull ? 'tv3-bank-fill--full' : '',
-                          isNeg ? 'tv3-bank-fill--neg' : 'tv3-bank-fill--blue',
-                        ].join(' ')}
+                          isNeg  ? 'tv3-bank-fill--neg'  : 'tv3-bank-fill--blue',
+                        ].filter(Boolean).join(' ')}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
+
+                    {/* Badge */}
                     <span className={`tv3-bank-badge ${isFull ? 'tv3-bank-badge--done' : 'tv3-bank-badge--pend'}`}>
                       {isFull ? '100% ✓' : `${doneEvts} / ${totalEvts}`}
                     </span>
