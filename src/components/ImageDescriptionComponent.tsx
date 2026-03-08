@@ -125,59 +125,62 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
-          <div className="atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
-            <Eye className="h-6 w-6 text-atlas-blue" />
+          <div className="rounded-[var(--r-md)] bg-[var(--n-100)] p-3">
+            <Eye className="h-6 w-6 text-[var(--blue)]" />
           </div>
         </div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+        <h2 className="mb-2 text-2xl font-semibold text-[var(--n-900)]">
           Describe esta imagen
         </h2>
-        <p className="text-gray-600">
+        <p className="text-[var(--n-500)]">
           Sube una imagen y obtendrás una descripción detallada usando inteligencia artificial
         </p>
       </div>
 
       {/* File Upload Area */}
       {!selectedImage ? (
-        <div 
-          className="border-2 border-dashed border-gray-300 p-8 text-center hover:border-gray-400 cursor-pointer"
+        <button
+          type="button"
+          className="w-full rounded-[var(--r-md)] border-2 border-dashed border-[var(--n-300)] p-8 text-center transition-all duration-150 ease-in-out hover:border-[var(--n-500)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2"
           onClick={() => fileInputRef.current?.click()}
         >
           <div className="flex flex-col items-center space-y-4">
-            <div className="bg-gray-100 p-4">
-              <Upload className="h-8 w-8 text-gray-400" />
+            <div className="rounded-[var(--r-md)] bg-[var(--n-100)] p-4">
+              <Upload className="h-8 w-8 text-[var(--n-500)]" />
             </div>
             <div>
-              <p className="text-lg font-medium text-gray-900">
+              <p className="text-lg font-medium text-[var(--n-900)]">
                 Selecciona una imagen
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--n-500)]">
                 O arrastra y suelta aquí
               </p>
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="mt-2 text-xs text-[var(--n-500)]">
                 Formatos soportados: JPG, PNG, GIF, WebP, BMP (máx. 10MB)
               </p>
             </div>
           </div>
-        </div>
+        </button>
       ) : (
         /* Image Preview */
-        <div className="border border-gray-200 overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <div className="overflow-hidden rounded-[var(--r-md)] border border-[var(--n-200)]">
+          <div className="flex items-center justify-between border-b border-[var(--n-200)] bg-[var(--n-50)] px-4 py-3">
             <div className="flex items-center space-x-2">
-              <ImageIcon className="h-5 w-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-900">
+              <ImageIcon className="h-5 w-5 text-[var(--n-500)]" />
+              <span className="text-sm font-medium text-[var(--n-900)]">
                 {selectedImage.name}
               </span>
               {metadata && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[var(--n-500)]">
                   ({formatFileSize(metadata.fileSize)})
                 </span>
               )}
             </div>
             <button
+              type="button"
               onClick={handleClearImage}
-              className="text-gray-400 hover:text-gray-600"
+              aria-label="Eliminar imagen seleccionada"
+              className="min-h-11 min-w-11 text-[var(--n-500)] transition-all duration-150 ease-in-out hover:text-[var(--n-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2"
             >
               <X className="h-5 w-5" />
             </button>
@@ -206,19 +209,19 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
       {/* Options */}
       {selectedImage && (
-        <div className="bg-gray-50 p-4">
-          <h3 className="font-medium text-gray-900 mb-3">Opciones de descripción</h3>
+        <div className="rounded-[var(--r-md)] bg-[var(--n-50)] p-4">
+          <h3 className="mb-3 font-medium text-[var(--n-900)]">Opciones de descripción</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Language */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-[var(--n-700)]">
                 Idioma
               </label>
               <select
                 value={options?.language || 'es'}
                 onChange={(e) => setOptions({...options, language: e.target.value as 'es' | 'en'})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
+                className="w-full rounded-[var(--r-md)] border border-[var(--n-300)] px-3 py-2 text-sm focus:border-[var(--blue)] focus:outline focus:outline-2 focus:outline-[var(--blue)] focus:outline-offset-2 focus:shadow-[0_0_0_4px_var(--focus-ring)]"
               >
                 <option value="es">Español</option>
                 <option value="en">English</option>
@@ -227,13 +230,13 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
             {/* Style */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-[var(--n-700)]">
                 Estilo
               </label>
               <select
                 value={options?.style || 'detailed'}
                 onChange={(e) => setOptions({...options, style: e.target.value as 'detailed' | 'brief' | 'technical'})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
+                className="w-full rounded-[var(--r-md)] border border-[var(--n-300)] px-3 py-2 text-sm focus:border-[var(--blue)] focus:outline focus:outline-2 focus:outline-[var(--blue)] focus:outline-offset-2 focus:shadow-[0_0_0_4px_var(--focus-ring)]"
               >
                 <option value="detailed">Detallado</option>
                 <option value="brief">Breve</option>
@@ -243,13 +246,13 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
             {/* Max Length */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-1 block text-sm font-medium text-[var(--n-700)]">
                 Longitud máx.
               </label>
               <select
                 value={options?.maxLength || 500}
                 onChange={(e) => setOptions({...options, maxLength: parseInt(e.target.value)})}
-                className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-atlas-blue"
+                className="w-full rounded-[var(--r-md)] border border-[var(--n-300)] px-3 py-2 text-sm focus:border-[var(--blue)] focus:outline focus:outline-2 focus:outline-[var(--blue)] focus:outline-offset-2 focus:shadow-[0_0_0_4px_var(--focus-ring)]"
               >
                 <option value={200}>200 caracteres</option>
                 <option value={500}>500 caracteres</option>
@@ -264,9 +267,10 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
       {selectedImage && (
         <div className="flex justify-center">
           <button
+            type="button"
             onClick={handleDescribeImage}
             disabled={isProcessing}
-            className="atlas-atlas-atlas-atlas-atlas-btn-primary atlas-atlas-atlas-atlas-atlas-btn-primary disabled: px-6 py-2 font-medium flex items-center space-x-2"
+            className="flex items-center space-x-2 rounded-[var(--r-md)] bg-[var(--blue)] px-6 py-2 font-medium text-[var(--white)] transition-all duration-150 ease-in-out hover:bg-[var(--blue-hover)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isProcessing ? (
               <>
@@ -285,18 +289,20 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
 
       {/* Description Result */}
       {description && (
-        <div className="bg-white border border-gray-200 p-6">
+        <div className="rounded-[var(--r-md)] border border-[var(--n-200)] bg-[var(--white)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Descripción generada</h3>
+            <h3 className="font-semibold text-[var(--n-900)]">Descripción generada</h3>
             <div className="flex items-center space-x-2">
               {metadata?.processingTime && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-[var(--n-500)]">
                   {metadata.processingTime}ms
                 </span>
               )}
               <button
+                type="button"
                 onClick={handleCopyDescription}
-                className="text-gray-400 hover:text-gray-600"
+                aria-label="Copiar descripción generada"
+                className="min-h-11 min-w-11 text-[var(--n-500)] transition-all duration-150 ease-in-out hover:text-[var(--n-700)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2"
                 title="Copiar descripción"
               >
                 {copied ? (
@@ -308,14 +314,14 @@ const ImageDescriptionComponent: React.FC<ImageDescriptionComponentProps> = ({
             </div>
           </div>
           
-          <div className="bg-gray-50 p-4">
-            <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+          <div className="rounded-[var(--r-md)] bg-[var(--n-50)] p-4">
+            <p className="whitespace-pre-wrap leading-relaxed text-[var(--n-800)]">
               {description}
             </p>
           </div>
 
           {metadata && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-[var(--n-500)] md:grid-cols-4">
               <div>
                 <span className="font-medium">Tamaño:</span> {formatFileSize(metadata.fileSize)}
               </div>

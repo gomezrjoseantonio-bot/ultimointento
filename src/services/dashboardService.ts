@@ -146,10 +146,7 @@ const toNumericId = (value: unknown): number | undefined => {
   return undefined;
 };
 
-const isForecastTreasuryEvent = (event: any): boolean => {
-  const status = String(event?.status || '').toLowerCase();
-  return status === 'predicted' || status === 'pending';
-};
+const isPendingTreasuryEvent = (event: any): boolean => event?.status !== 'executed';
 
 const resolveTreasuryEventDisplayAccountId = (
   event: any,
@@ -914,7 +911,7 @@ class DashboardService {
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
       const gastosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isPendingTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
 
@@ -1029,7 +1026,7 @@ class DashboardService {
         const futurosCuenta = (treasuryEvents as any[]).filter((event) => {
           const displayAccountId = resolveTreasuryEventDisplayAccountId(event, cardSettlementByAccountId);
           if (displayAccountId !== accountId) return false;
-          if (!isForecastTreasuryEvent(event)) return false;
+          if (!isPendingTreasuryEvent(event)) return false;
           const predictedDateOnly = toDateOnly(event.predictedDate);
           if (!predictedDateOnly) return false;
           return predictedDateOnly >= todayDateOnly && predictedDateOnly <= endOfMonthDateOnly;
@@ -1147,7 +1144,7 @@ class DashboardService {
           .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
         const gastosProgramados = (treasuryEvents as any[])
-          .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+          .filter((event) => (event.type === 'expense' || event.type === 'financing') && isPendingTreasuryEvent(event))
           .filter((event) => {
             const fecha = parseDateValue(event.predictedDate);
             if (!fecha) return false;
@@ -1185,7 +1182,7 @@ class DashboardService {
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
 
       const gastosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isForecastTreasuryEvent(event))
+        .filter((event) => (event.type === 'expense' || event.type === 'financing') && isPendingTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
