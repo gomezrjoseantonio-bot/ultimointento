@@ -129,6 +129,10 @@ const HorizonVisualPanel: React.FC = () => {
               <div style={{ fontSize: 12, color: '#6c757d' }}>KPIs reales de patrimonio, liquidez, riesgo y alertas</div>
             </div>
           </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="exec-btn ghost" onClick={toggleDrawer}><Zap size={14} /> Actualizar valores</button>
+            <button className="exec-btn ghost"><Settings2 size={14} /> Configurar</button>
+          </div>
         </header>
 
         <main className="exec-content">
