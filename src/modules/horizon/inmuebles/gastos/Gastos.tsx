@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
@@ -21,6 +22,8 @@ interface GastoFormData {
 }
 
 const Gastos: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +74,18 @@ const Gastos: React.FC = () => {
   };
 
   useEffect(() => {
+    const propertyIdParam = searchParams.get('propertyId');
+    if (propertyIdParam) {
+      const propertyId = Number(propertyIdParam);
+      if (!Number.isNaN(propertyId)) {
+        toast('Te llevamos al presupuesto del inmueble (OPEX rules).');
+        navigate(`/inmuebles/cartera/${propertyId}?tab=presupuesto`, { replace: true });
+        return;
+      }
+    }
+
     loadData();
-  }, []);
+  }, [navigate, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
