@@ -76,6 +76,60 @@ const DEFAULT_PREFERENCES: DashboardPreferences = {
   excludePersonalFromAnalytics: false
 };
 
+const parseNumericValue = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value
+      .trim()
+      .replace(/\s+/g, '')
+      .replace(/[€$£]/g, '');
+
+    if (!normalized) return 0;
+
+    // Handle both ES (1.234,56) and EN (1,234.56) formats
+    const hasComma = normalized.includes(',');
+    const hasDot = normalized.includes('.');
+
+    if (hasComma && hasDot) {
+      const commaIndex = normalized.lastIndexOf(',');
+      const dotIndex = normalized.lastIndexOf('.');
+      const decimalSeparator = commaIndex > dotIndex ? ',' : '.';
+      const thousandSeparator = decimalSeparator === ',' ? '.' : ',';
+      const candidate = normalized
+        .replace(new RegExp(`\\${thousandSeparator}`, 'g'), '')
+        .replace(decimalSeparator, '.');
+      const parsed = Number(candidate);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    if (hasComma) {
+      const candidate = normalized.replace(/\./g, '').replace(',', '.');
+      const parsed = Number(candidate);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    const parsed = Number(normalized.replace(/,/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const parseDateValue = (value: unknown): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isDateWithinRange = (value: unknown, start: Date, end: Date): boolean => {
+  const date = parseDateValue(value);
+  return Boolean(date && date >= start && date <= end);
+};
+
 // Default configurations
 const PRESET_A_BLOCKS: DashboardBlockConfig[] = [
   {
@@ -442,8 +496,7 @@ class DashboardService {
       const fechaCalculo = now.toISOString();
 
       const toNumber = (value: unknown): number => {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
+        return parseNumericValue(value);
       };
 
       // Inmuebles: use latest valuation when available, fallback to acquisition price.
@@ -798,21 +851,26 @@ class DashboardService {
       const accounts = await db.getAll('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
       const disponibleHoy = activeAccounts.reduce((sum: number, acc: any) => {
-        return sum + (acc.balance || 0);
+        return sum + parseNumericValue(acc.balance);
       }, 0);
       
       const now = new Date();
       const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
       
       // Calculate committed expenses in next 30 days
       // Include recurring expenses, mortgage payments, etc.
       const expenses = await db.getAll('expenses');
-      const comprometido30d = expenses
-        .filter((expense: any) => {
-          const fecha = new Date(expense.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+      const gastosExpenses = expenses
+        .filter((expense: any) => isDateWithinRange(expense.fecha, now, next30Days))
+        .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
+
+      const gastosEventosTesoreria = (treasuryEvents as any[])
+        .filter((event) => event.type === 'expense' && event.status !== 'executed')
+        .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
+        .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
+
+      const comprometido30d = gastosExpenses + gastosEventosTesoreria;
       
       // Calculate expected income in next 30 days
       // Include rent payments, salaries, etc.
@@ -820,20 +878,19 @@ class DashboardService {
       const ingresos = await db.getAll('ingresos');
       
       const rentasEsperadas = rentPayments
-        .filter((payment: any) => {
-          const fecha = new Date(payment.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
+        .filter((payment: any) => isDateWithinRange(payment.fecha, now, next30Days))
+        .reduce((sum: number, payment: any) => sum + parseNumericValue(payment.importe), 0);
       
       const ingresosEsperados = ingresos
-        .filter((ing: any) => {
-          const fecha = new Date(ing.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
+        .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
+        .reduce((sum: number, ing: any) => sum + parseNumericValue(ing.importe), 0);
+
+      const ingresosEventosTesoreria = (treasuryEvents as any[])
+        .filter((event) => event.type === 'income' && event.status !== 'executed')
+        .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
+        .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
-      const ingresos30d = rentasEsperadas + ingresosEsperados;
+      const ingresos30d = rentasEsperadas + ingresosEsperados + ingresosEventosTesoreria;
       
       // Calculate projection
       const proyeccion30d = disponibleHoy + ingresos30d - comprometido30d;
@@ -881,8 +938,7 @@ class DashboardService {
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
       const toNumber = (value: unknown): number => {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : 0;
+        return parseNumericValue(value);
       };
 
       const accounts = await db.getAll('accounts');
@@ -983,13 +1039,14 @@ class DashboardService {
       const accounts = await db.getAll('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
       const liquidezHoy = activeAccounts.reduce((sum: number, acc: any) => {
-        return sum + (acc.balance || 0);
+        return sum + parseNumericValue(acc.balance);
       }, 0);
       
       // Calculate average monthly expenses from last 3 months
       const now = new Date();
       const gastos = await db.getAll('gastos');
       const expenses = await db.getAll('expenses');
+      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
       
       const last3MonthsExpenses: number[] = [];
       for (let i = 0; i < 3; i++) {
@@ -1000,24 +1057,38 @@ class DashboardService {
         // Personal expenses from gastos
         const gastosPersonales = gastos
           .filter((gasto: any) => {
-            const fecha = new Date(gasto.fecha);
+            const fecha = parseDateValue(gasto.fecha);
+            if (!fecha) return false;
+            if (fecha > now) return false;
             return fecha.getMonth() === month && 
                    fecha.getFullYear() === year &&
                    gasto.esPersonal === true;
           })
-          .reduce((sum: number, gasto: any) => sum + (gasto.importe || 0), 0);
+          .reduce((sum: number, gasto: any) => sum + parseNumericValue(gasto.importe), 0);
         
         // Property expenses
         const gastosInmuebles = expenses
           .filter((expense: any) => {
-            const fecha = new Date(expense.fecha);
+            const fecha = parseDateValue(expense.fecha);
+            if (!fecha) return false;
+            if (fecha > now) return false;
             return fecha.getMonth() === month && 
                    fecha.getFullYear() === year &&
                    expense.propertyId != null;
           })
-          .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+          .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
+
+        const gastosProgramados = (treasuryEvents as any[])
+          .filter((event) => event.type === 'expense' && event.status !== 'executed')
+          .filter((event) => {
+            const fecha = parseDateValue(event.predictedDate);
+            if (!fecha) return false;
+            if (fecha > now) return false;
+            return fecha.getMonth() === month && fecha.getFullYear() === year;
+          })
+          .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
         
-        last3MonthsExpenses.push(gastosPersonales + gastosInmuebles);
+        last3MonthsExpenses.push(gastosPersonales + gastosInmuebles + gastosProgramados);
       }
       
       const gastoMedioMensual = last3MonthsExpenses.length > 0
@@ -1042,32 +1113,34 @@ class DashboardService {
       
       // Expected expenses in next 30 days
       const gastosEsperados = expenses
-        .filter((expense: any) => {
-          const fecha = new Date(expense.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, expense: any) => sum + (expense.importe || 0), 0);
+        .filter((expense: any) => isDateWithinRange(expense.fecha, now, next30Days))
+        .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
+
+      const gastosEventosTesoreria = (treasuryEvents as any[])
+        .filter((event) => event.type === 'expense' && event.status !== 'executed')
+        .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
+        .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
       // Expected income in next 30 days
       const ingresos = await db.getAll('ingresos');
       const rentPayments = await db.getAll('rentPayments');
       
       const ingresosEsperados = ingresos
-        .filter((ing: any) => {
-          const fecha = new Date(ing.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, ing: any) => sum + (ing.importe || 0), 0);
+        .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
+        .reduce((sum: number, ing: any) => sum + parseNumericValue(ing.importe), 0);
       
       const rentasEsperadas = rentPayments
-        .filter((payment: any) => {
-          const fecha = new Date(payment.fecha);
-          return fecha >= now && fecha <= next30Days;
-        })
-        .reduce((sum: number, payment: any) => sum + (payment.importe || 0), 0);
-      
-      const ingresosTotal = ingresosEsperados + rentasEsperadas;
-      const estimado30d = liquidezHoy + ingresosTotal - gastosEsperados;
+        .filter((payment: any) => isDateWithinRange(payment.fecha, now, next30Days))
+        .reduce((sum: number, payment: any) => sum + parseNumericValue(payment.importe), 0);
+
+      const ingresosEventosTesoreria = (treasuryEvents as any[])
+        .filter((event) => event.type === 'income' && event.status !== 'executed')
+        .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
+        .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
+
+      const gastosTotal = gastosEsperados + gastosEventosTesoreria;
+      const ingresosTotal = ingresosEsperados + rentasEsperadas + ingresosEventosTesoreria;
+      const estimado30d = liquidezHoy + ingresosTotal - gastosTotal;
       
       return {
         liquidezHoy,
@@ -1077,7 +1150,7 @@ class DashboardService {
         proyeccion30d: {
           estimado: estimado30d,
           ingresos: ingresosTotal,
-          gastos: gastosEsperados
+          gastos: gastosTotal
         }
       };
     } catch (error) {

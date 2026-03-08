@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Bell, CalendarRange, RefreshCw, Settings, Wallet } from 'lucide-react';
+import { AlertTriangle, Bell, ChevronDown, ChevronUp, RefreshCw, Settings, Wallet } from 'lucide-react';
 import { dashboardService } from '../../../../services/dashboardService';
 import type { DashboardSnapshot } from '../../../../services/dashboardService';
+import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
 
 export interface PanelFilters {
-  excludePersonal: boolean;
+  excludePersonal?: boolean;
   dateRange: 'today' | '7days' | '30days';
 }
 
-type HorizonId = 'corto' | 'medio' | 'largo';
+type SortColumn = 'banco' | 'hoy' | 'porCobrar' | 'porPagar' | 'proyeccion';
+type SortDirection = 'asc' | 'desc';
 const DEFAULT_DATA: DashboardSnapshot = {
   patrimonio: {
     total: 0,
@@ -40,61 +42,77 @@ const DEFAULT_DATA: DashboardSnapshot = {
 };
 
 const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-const percent = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
 
 const HorizonVisualPanel: React.FC = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<PanelFilters>({ excludePersonal: true, dateRange: '30days' });
-  const [activeHorizon, setActiveHorizon] = useState<HorizonId>('corto');
+  const [filters] = useState<PanelFilters>({ excludePersonal: false, dateRange: '30days' });
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
+  const [sortBy, setSortBy] = useState<SortColumn>('banco');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const pageSize = 6;
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
+      dashboardService.getPatrimonioNeto(),
+      dashboardService.getLiquidez(),
+      dashboardService.getSaludFinanciera(),
+      dashboardService.getTesoreriaPanel(),
+      dashboardService.getAlertas()
+    ]);
+    setData({ patrimonio, liquidez, salud, tesoreria, alertas });
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
-        dashboardService.getPatrimonioNeto(),
-        dashboardService.getLiquidez(),
-        dashboardService.getSaludFinanciera(),
-        dashboardService.getTesoreriaPanel(),
-        dashboardService.getAlertas()
-      ]);
-      setData({ patrimonio, liquidez, salud, tesoreria, alertas });
-      setLoading(false);
-    };
+    void loadDashboardData();
+  }, [filters.dateRange]);
 
-    void load();
-  }, [filters.excludePersonal, filters.dateRange]);
+  const sortedRows = useMemo(() => {
+    const rows = [...data.tesoreria.filas];
+    rows.sort((a, b) => {
+      const direction = sortDirection === 'asc' ? 1 : -1;
 
-  const horizonKpis = useMemo(() => {
-    const deudaRatio = data.patrimonio.total > 0
-      ? Math.abs(data.patrimonio.desglose.deuda) / data.patrimonio.total * 100
-      : 0;
-
-    return {
-      corto: {
-        titulo: 'Corto plazo (0-90 días)',
-        metricaPrincipal: euro.format(data.liquidez.disponibleHoy),
-        detalle: `Caja disponible hoy`,
-        kpi2: `${data.salud.colchonMeses.toFixed(1)} meses de colchón`,
-        kpi3: `${data.tesoreria.filas.length} cuentas monitorizadas`
-      },
-      medio: {
-        titulo: 'Medio plazo (3-18 meses)',
-        metricaPrincipal: `${data.patrimonio.variacionMes >= 0 ? '+' : ''}${euro.format(data.patrimonio.variacionMes)}`,
-        detalle: 'Variación mensual de patrimonio',
-        kpi2: `${data.patrimonio.variacionPorcentaje >= 0 ? '+' : ''}${percent.format(data.patrimonio.variacionPorcentaje)}%`,
-        kpi3: `${euro.format(data.salud.gastoMedioMensual)} gasto medio mensual`
-      },
-      largo: {
-        titulo: 'Largo plazo (18+ meses)',
-        metricaPrincipal: euro.format(data.patrimonio.total),
-        detalle: 'Patrimonio neto consolidado',
-        kpi2: `${percent.format(deudaRatio)}% ratio de deuda`,
-        kpi3: `${euro.format(data.patrimonio.desglose.inversiones)} en inversiones`
+      if (sortBy === 'banco') {
+        return a.banco.localeCompare(b.banco) * direction;
       }
-    };
-  }, [data]);
+
+      return (a[sortBy] - b[sortBy]) * direction;
+    });
+    return rows;
+  }, [data.tesoreria.filas, sortBy, sortDirection]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const handleSort = (column: SortColumn) => {
+    setCurrentPage(1);
+    if (sortBy === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortBy(column);
+    setSortDirection('asc');
+  };
+
+  const renderSortIcon = (column: SortColumn) => {
+    if (sortBy !== column) return <ChevronDown className="w-3 h-3 opacity-40" />;
+    return sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
+  };
 
   const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
 
@@ -109,10 +127,10 @@ const HorizonVisualPanel: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setFilters((prev) => ({ ...prev, excludePersonal: !prev.excludePersonal }))}
-                className="px-3 py-2 text-sm rounded-lg bg-hz-neutral-100 text-hz-neutral-900"
+                onClick={() => setDrawerOpen(true)}
+                className="px-3 py-2 text-sm rounded-lg bg-hz-primary text-white hover:opacity-90"
               >
-                {filters.excludePersonal ? 'Personal excluido' : 'Personal incluido'}
+                Actualizar valores
               </button>
               <button
                 onClick={handleConfigureClick}
@@ -126,73 +144,44 @@ const HorizonVisualPanel: React.FC = () => {
         </header>
 
         <section className="grid grid-cols-12 gap-4">
-          <article className="col-span-12 md:col-span-3 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-xs text-hz-neutral-600">Patrimonio neto</p>
-            <p className="text-2xl font-bold text-hz-neutral-900">{euro.format(data.patrimonio.total)}</p>
-            <p className={`text-sm ${data.patrimonio.variacionMes >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {data.patrimonio.variacionMes >= 0 ? '+' : ''}{euro.format(data.patrimonio.variacionMes)} ({percent.format(data.patrimonio.variacionPorcentaje)}%)
-            </p>
-          </article>
-          <article className="col-span-12 md:col-span-3 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-xs text-hz-neutral-600">Liquidez hoy</p>
-            <p className="text-2xl font-bold text-hz-neutral-900">{euro.format(data.liquidez.disponibleHoy)}</p>
-            <p className="text-sm text-hz-neutral-700">Comprometido 30d: {euro.format(data.liquidez.comprometido30d)}</p>
-          </article>
-          <article className="col-span-12 md:col-span-3 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-xs text-hz-neutral-600">Proyección 30 días</p>
-            <p className={`text-2xl font-bold ${data.liquidez.proyeccion30d >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-              {euro.format(data.liquidez.proyeccion30d)}
-            </p>
-            <p className="text-sm text-hz-neutral-700">Ingresos esperados: {euro.format(data.liquidez.ingresos30d)}</p>
-          </article>
-          <article className="col-span-12 md:col-span-3 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-xs text-hz-neutral-600">Alertas activas</p>
-            <p className="text-2xl font-bold text-hz-neutral-900">{data.alertas.length}</p>
-            <p className="text-sm text-hz-neutral-700">Alta: {data.alertas.filter((a) => a.urgencia === 'alta').length} · Media: {data.alertas.filter((a) => a.urgencia === 'media').length}</p>
-          </article>
-        </section>
-
-        <section className="bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarRange className="w-4 h-4 text-hz-neutral-700" />
-            <p className="text-sm font-semibold text-hz-neutral-900">Seguimiento por horizonte</p>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            {(['corto', 'medio', 'largo'] as HorizonId[]).map((h) => (
-              <button
-                key={h}
-                onClick={() => setActiveHorizon(h)}
-                className={`text-left rounded-lg border p-4 ${activeHorizon === h ? 'border-hz-primary bg-blue-50' : 'border-hz-neutral-300 bg-white'}`}
-              >
-                <p className="text-sm font-semibold text-hz-neutral-900">{horizonKpis[h].titulo}</p>
-                <p className="text-xl font-bold text-hz-neutral-900 mt-1">{horizonKpis[h].metricaPrincipal}</p>
-                <p className="text-sm text-hz-neutral-700">{horizonKpis[h].detalle}</p>
-                <p className="text-xs text-hz-neutral-600 mt-2">{horizonKpis[h].kpi2}</p>
-                <p className="text-xs text-hz-neutral-600">{horizonKpis[h].kpi3}</p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid grid-cols-12 gap-4">
           <article className="col-span-12 xl:col-span-7 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Tesorería por cuenta</p>
+              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario</p>
               <span className="text-xs text-hz-neutral-600">{new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')}</span>
             </div>
             <div className="overflow-auto">
               <table className="w-full text-sm">
                 <thead className="text-hz-neutral-600">
                   <tr>
-                    <th className="text-left py-2">Banco</th>
-                    <th className="text-right py-2">Hoy</th>
-                    <th className="text-right py-2">Por cobrar</th>
-                    <th className="text-right py-2">Por pagar</th>
-                    <th className="text-right py-2">Proyección</th>
+                    <th className="text-left py-2">
+                      <button onClick={() => handleSort('banco')} className="inline-flex items-center gap-1 font-semibold">
+                        Banco {renderSortIcon('banco')}
+                      </button>
+                    </th>
+                    <th className="text-right py-2">
+                      <button onClick={() => handleSort('hoy')} className="inline-flex items-center gap-1 font-semibold">
+                        Hoy {renderSortIcon('hoy')}
+                      </button>
+                    </th>
+                    <th className="text-right py-2">
+                      <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
+                        Por cobrar {renderSortIcon('porCobrar')}
+                      </button>
+                    </th>
+                    <th className="text-right py-2">
+                      <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
+                        Por pagar {renderSortIcon('porPagar')}
+                      </button>
+                    </th>
+                    <th className="text-right py-2">
+                      <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
+                        Proyección {renderSortIcon('proyeccion')}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.tesoreria.filas.slice(0, 6).map((fila) => (
+                  {paginatedRows.map((fila) => (
                     <tr key={fila.accountId} className="border-t border-hz-neutral-200">
                       <td className="py-2">{fila.banco}</td>
                       <td className="text-right">{euro.format(fila.hoy)}</td>
@@ -203,6 +192,25 @@ const HorizonVisualPanel: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs text-hz-neutral-700">
+              <span>Página {currentPage} de {totalPages} · {sortedRows.length} cuentas</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
           </article>
 
@@ -234,6 +242,15 @@ const HorizonVisualPanel: React.FC = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar KPIs
           </button>
         </footer>
+
+        <ActualizacionValoresDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSaved={() => {
+            setDrawerOpen(false);
+            void loadDashboardData();
+          }}
+        />
       </div>
     </div>
   );
