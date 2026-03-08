@@ -277,6 +277,11 @@ export async function importarAportacionesHistoricasMasivas(file: File): Promise
   return { imported, skipped, errors };
 }
 
+// Backward-compatible export name used by previous integrations/builds.
+export async function importarAportacionesHistoricas(file: File): Promise<ImportAportacionesResult> {
+  return importarAportacionesHistoricasMasivas(file);
+}
+
 export function descargarPlantillaImportacionAportaciones(): void {
   const worksheet = XLSX.utils.aoa_to_sheet([
     ['posicion_id', 'posicion_nombre', 'entidad', 'fecha', 'importe', 'importe_empresa', 'importe_individuo', 'notas'],
