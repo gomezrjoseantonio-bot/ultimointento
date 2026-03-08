@@ -171,22 +171,29 @@ const HorizonVisualPanel: React.FC = () => {
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por cobrar (resto mes) {renderSortIcon('porCobrar')}
+                        Por cobrar {renderSortIcon('porCobrar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por pagar (resto mes) {renderSortIcon('porPagar')}
+                        Por pagar {renderSortIcon('porPagar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
-                        Proyección fin de mes {renderSortIcon('proyeccion')}
+                        Fin mes {renderSortIcon('proyeccion')}
                       </button>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="border-t border-hz-neutral-200 bg-hz-neutral-100 font-semibold">
+                    <td className="py-2">Totales</td>
+                    <td className="text-right">{euro.format(data.tesoreria.totales.hoy)}</td>
+                    <td className="text-right text-emerald-700">{euro.format(data.tesoreria.totales.porCobrar)}</td>
+                    <td className="text-right text-red-700">{euro.format(data.tesoreria.totales.porPagar)}</td>
+                    <td className={`text-right ${data.tesoreria.totales.proyeccion >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{euro.format(data.tesoreria.totales.proyeccion)}</td>
+                  </tr>
                   {paginatedRows.map((fila) => (
                     <tr key={fila.accountId} className="border-t border-hz-neutral-200">
                       <td className="py-2">{fila.banco}</td>
