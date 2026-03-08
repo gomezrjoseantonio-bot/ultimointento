@@ -106,6 +106,17 @@ const HorizonVisualPanel: React.FC = () => {
 
   const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
 
+  const riskBadgeStyles: Record<HorizonCard['riesgo'], string> = {
+    bajo: 'bg-emerald-100 text-emerald-700',
+    medio: 'bg-amber-100 text-amber-700',
+    alto: 'bg-red-100 text-red-700'
+  };
+
+  const activeNarrative = useMemo(
+    () => HORIZON_CARDS.find((card) => card.id === activeHorizon),
+    [activeHorizon]
+  );
+
   return (
     <div className="min-h-screen bg-hz-bg">
       <div className="max-w-[1320px] mx-auto p-6 space-y-5">
