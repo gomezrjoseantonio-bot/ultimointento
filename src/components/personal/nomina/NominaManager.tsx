@@ -237,35 +237,38 @@ const NominaManager: React.FC = () => {
                   </div>
                 )}
 
-                {/* Gráfico barras — c1 base, c2 meses con paga extra */}
+                {/* Gráfico barras apiladas — 4 conceptos de nómina según Design Bible */}
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--gray-100)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--gray-500)' }}>
-                      Distribución Mensual Neto
+                      Distribución mensual bruto
                     </p>
-                    <div className="flex items-end justify-between gap-1" style={{ height: '160px' }}>
+                    <div className="flex items-end justify-between gap-1" style={{ height: '170px' }}>
                       {(() => {
-                        const maxNeto = Math.max(...calculo.distribucionMensual.map(m => m.netoTotal));
+                        const maxDevengado = Math.max(...calculo.distribucionMensual.map(m => m.totalDevengado));
                         return calculo.distribucionMensual.map((m) => {
-                          const barHeight = maxNeto > 0 ? (m.netoTotal / maxNeto) * 120 : 0;
-                          const hasPagaExtra = m.pagaExtra > 0;
+                          const totalHeight = maxDevengado > 0 ? (m.totalDevengado / maxDevengado) * 124 : 0;
+                          const basePct = m.totalDevengado > 0 ? m.salarioBase / m.totalDevengado : 0;
+                          const extrasPct = m.totalDevengado > 0 ? m.pagaExtra / m.totalDevengado : 0;
+                          const variablesPct = m.totalDevengado > 0 ? m.variables / m.totalDevengado : 0;
+                          const bonusPct = m.totalDevengado > 0 ? m.bonus / m.totalDevengado : 0;
+
                           return (
-                            <div key={m.mes} className="flex-1 flex flex-col items-center justify-end h-full">
-                              <span className="text-[10px] leading-none text-center w-full truncate mb-0.5"
-                                    style={{ color: 'var(--gray-500)' }}>
-                                {m.netoTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
+                            <div key={m.mes} className="flex h-full flex-1 flex-col items-center justify-end">
+                              <span className="mb-0.5 w-full truncate text-center text-[10px] leading-none" style={{ color: 'var(--gray-500)' }}>
+                                {m.totalDevengado.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
                               </span>
                               <div
-                                className="w-full rounded-t"
-                                style={{
-                                  height: `${barHeight}px`,
-                                  minHeight: '2px',
-                                  // c2 = meses con paga extra / bonus; c1 = base
-                                  backgroundColor: hasPagaExtra ? 'var(--c2)' : 'var(--c1)'
-                                }}
-                                title={formatCurrency(m.netoTotal)}
-                              />
-                              <span className="text-xs mt-1" style={{ color: 'var(--gray-400)' }}>
+                                className="flex w-full flex-col overflow-hidden rounded-t"
+                                style={{ height: `${totalHeight}px`, minHeight: '2px' }}
+                                title={formatCurrency(m.totalDevengado)}
+                              >
+                                <div style={{ height: `${basePct * 100}%`, backgroundColor: 'var(--c1)' }} />
+                                <div style={{ height: `${extrasPct * 100}%`, backgroundColor: 'var(--c2)' }} />
+                                <div style={{ height: `${variablesPct * 100}%`, backgroundColor: 'var(--c3)' }} />
+                                <div style={{ height: `${bonusPct * 100}%`, backgroundColor: 'var(--c4)' }} />
+                              </div>
+                              <span className="mt-1 text-xs" style={{ color: 'var(--gray-400)' }}>
                                 {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][m.mes - 1]}
                               </span>
                             </div>
@@ -273,16 +276,12 @@ const NominaManager: React.FC = () => {
                         });
                       })()}
                     </div>
-                    {/* Leyenda */}
-                    <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--gray-500)' }}>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--c1)' }} />
-                        Neto base
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--c2)' }} />
-                        Con bonus / paga extra
-                      </span>
+                    {/* Leyenda 4 colores: base, pagas extra, variables y bonus */}
+                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs" style={{ color: 'var(--gray-500)' }}>
+                      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: 'var(--c1)' }} />Salario base</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: 'var(--c2)' }} />Pagas extra</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: 'var(--c3)' }} />Variables</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: 'var(--c4)' }} />Bonus</span>
                     </div>
                   </div>
                 )}

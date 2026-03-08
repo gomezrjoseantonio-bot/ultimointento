@@ -167,7 +167,7 @@ const InversionesPage: React.FC = () => {
             width: '48px',
             height: '48px',
             borderRadius: 'var(--r-lg)',
-            background: 'rgba(4, 44, 94, 0.1)',
+            background: 'var(--n-100)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
