@@ -1,6 +1,6 @@
 import React from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'icon';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface AtlasButtonProps {
@@ -14,13 +14,14 @@ interface AtlasButtonProps {
   children: React.ReactNode;
 }
 
-const baseClasses = 'inline-flex items-center justify-center font-medium transition-all rounded-atlas disabled:opacity-50 disabled:cursor-not-allowed';
+const baseClasses = 'inline-flex min-h-11 items-center justify-center font-medium transition-all duration-150 ease-in-out rounded-[var(--r-md)] disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--blue)] focus-visible:outline-offset-2 focus-visible:shadow-[0_0_0_4px_var(--focus-ring)]';
 
 const variantClasses: Record<ButtonVariant, string> = {
-  'primary': 'bg-atlas-blue text-white hover:bg-atlas-blue-dark active:bg-[#021530]',
-  'secondary': 'bg-white text-atlas-blue border-2 border-atlas-blue hover:bg-primary-50',
-  'danger': 'bg-error text-white hover:bg-[#b02a37] active:bg-[#8b1f2a]',
-  'ghost': 'bg-transparent text-atlas-blue hover:bg-primary-50'
+  'primary': 'bg-[var(--blue)] text-[var(--white)] hover:bg-[var(--blue-hover)]',
+  'secondary': 'border border-[var(--blue)] bg-[var(--white)] text-[var(--blue)] hover:bg-[var(--n-100)]',
+  'danger': 'border border-[var(--s-neg)] bg-[var(--s-neg)] text-[var(--white)] hover:bg-[color-mix(in_srgb,var(--s-neg)_85%,black)]',
+  'ghost': 'bg-transparent text-[var(--blue)] hover:bg-[var(--n-100)]',
+  'icon': 'min-w-11 bg-transparent text-[var(--blue)] hover:bg-[var(--n-100)]'
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
