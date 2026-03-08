@@ -63,12 +63,12 @@ const fmt = (n: number) =>
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const PROPERTIES = [
-  { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68, deudaPendiente: 273921 },
-  { id: 'manresa',      alias: 'Manresa',         addr: "Sant Joan d'en Coll, 53 3-6",   coste: 93200,  valor: 135000, revalTotal: 44.85, revalAnual: 8.44,  yield: 0, deudaPendiente: 0 },
-  { id: 'santfruitos',  alias: 'Sant Fruitós',    addr: 'Carles Buigas, 15-17 BJ 2',     coste: 114500, valor: 230000, revalTotal: 100.87,revalAnual: 3.48,  yield: 3.46, deudaPendiente: 0 },
-  { id: 'tenderina4d',  alias: 'Tenderina 64 4D', addr: 'Tenderina, 64 4D',              coste: 94920,  valor: 150000, revalTotal: 58.03, revalAnual: 19.70, yield: 15.87, deudaPendiente: 0 },
-  { id: 'tenderina4i',  alias: 'Tenderina 64 4I', addr: 'Tenderina, 64 4I',              coste: 98760,  valor: 150000, revalTotal: 51.88, revalAnual: 12.86, yield: 19.68, deudaPendiente: 0 },
-  { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',              coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0, deudaPendiente: 0 },
+  { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68, deudaPendiente: 115400, cashflowMes: 620, gastosMes: 280 },
+  { id: 'manresa',      alias: 'Manresa',        addr: "Sant Joan d'en Coll, 53 3-6",   coste: 93200,  valor: 135000, revalTotal: 44.85, revalAnual: 8.44,  yield: 0, deudaPendiente: 68400, cashflowMes: -90, gastosMes: 210 },
+  { id: 'santfruitos',  alias: 'Sant Fruitós',   addr: 'Carles Buigas, 15-17 BJ 2',     coste: 114500, valor: 230000, revalTotal: 100.87,revalAnual: 3.48,  yield: 3.46, deudaPendiente: 0, cashflowMes: 310, gastosMes: 190 },
+  { id: 'tenderina4d',  alias: 'Tenderina 64 4D', addr: 'Tenderina, 64 4D',             coste: 94920,  valor: 150000, revalTotal: 58.03, revalAnual: 19.70, yield: 15.87, deudaPendiente: 42100, cashflowMes: 540, gastosMes: 220 },
+  { id: 'tenderina4i',  alias: 'Tenderina 64 4I', addr: 'Tenderina, 64 4I',             coste: 98760,  valor: 150000, revalTotal: 51.88, revalAnual: 12.86, yield: 19.68, deudaPendiente: 48021, cashflowMes: 585, gastosMes: 235 },
+  { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',             coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0, deudaPendiente: 0, cashflowMes: -15, gastosMes: 30 },
 ];
 
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
@@ -103,32 +103,40 @@ const buildProyeccion = (years: number) => {
   }));
 };
 
-const INDIV_DATA = [
-  { year: '2005', hist: 128500, proy: null },
-  { year: '2008', hist: 145000, proy: null },
-  { year: '2010', hist: 160000, proy: null },
-  { year: '2013', hist: 175000, proy: null },
-  { year: '2015', hist: 185000, proy: null },
-  { year: '2018', hist: 200000, proy: null },
-  { year: '2020', hist: 210000, proy: null },
-  { year: '2022', hist: 222000, proy: null },
-  { year: '2024', hist: 230000, proy: null },
-  { year: '2026', hist: 240000, proy: 240000 },
-  { year: '2028', hist: null,   proy: 271000 },
-  { year: '2030', hist: null,   proy: 306000 },
-  { year: '2032', hist: null,   proy: 346000 },
-  { year: '2034', hist: null,   proy: 390000 },
-  { year: '2036', hist: null,   proy: 441000 },
-];
+const buildIndividualValueSeries = (property: typeof PROPERTIES[number]) => {
+  const pastYears = ['2005', '2008', '2010', '2013', '2015', '2018', '2020', '2022', '2024', '2026'];
+  const growth = Math.max(0.004, property.revalAnual / 100);
+  const past = pastYears.map((year, index) => {
+    const progress = index / (pastYears.length - 1);
+    const hist = Math.round(property.coste + (property.valor - property.coste) * progress);
+    return { year, hist, proy: null as number | null };
+  });
 
-const CF_INDIV = [
-  { year: '2006', ing: 6000, gas: 2000 }, { year: '2008', ing: 6200, gas: 2100 },
-  { year: '2010', ing: 6500, gas: 2200 }, { year: '2012', ing: 7000, gas: 2400 },
-  { year: '2014', ing: 7500, gas: 2500 }, { year: '2016', ing: 8000, gas: 2600 },
-  { year: '2018', ing: 9000, gas: 2800 }, { year: '2020', ing: 9500, gas: 2900 },
-  { year: '2022', ing:10000, gas: 3000 }, { year: '2024', ing:10500, gas: 3100 },
-  { year: '2026', ing:11000, gas: 3200 },
-];
+  const proyYears = ['2028', '2030', '2032', '2034', '2036'];
+  const projection = proyYears.map((year, index) => ({
+    year,
+    hist: null as number | null,
+    proy: Math.round(property.valor * Math.pow(1 + growth, index + 1)),
+  }));
+
+  past[past.length - 1].proy = property.valor;
+  return [...past, ...projection];
+};
+
+const buildIndividualCashflowSeries = (property: typeof PROPERTIES[number]) => {
+  const years = ['2006', '2008', '2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024', '2026'];
+  const yearlyIncome = Math.max(0, Math.round((property.cashflowMes + property.gastosMes) * 12));
+  const yearlyExpenses = Math.max(0, Math.round(property.gastosMes * 12));
+
+  return years.map((year, index) => {
+    const ratio = 0.72 + index * 0.03;
+    return {
+      year,
+      ing: Math.round(yearlyIncome * ratio),
+      gas: Math.round(yearlyExpenses * (0.8 + index * 0.02)),
+    };
+  });
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -437,6 +445,12 @@ function TabEvolucion() {
 function TabIndividual({ selectedId }: { selectedId: string }) {
   const [propId, setPropId] = useState(selectedId || 'acevedo');
   const prop = PROPERTIES.find(p => p.id === propId) ?? PROPERTIES[0];
+  const indivData = useMemo(() => buildIndividualValueSeries(prop), [prop]);
+  const cashflowData = useMemo(() => buildIndividualCashflowSeries(prop), [prop]);
+  const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '0 €';
+  const cashflowColor = prop.cashflowMes > 0 ? C.pos : prop.cashflowMes < 0 ? C.neg : C.n500;
+  const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
+  const cashflowAcumulado = prop.cashflowMes * 12 * 10;
 
   return (
     <div>
@@ -474,7 +488,7 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
           { label: 'Plusvalía latente', val: `+${fmt(prop.valor - prop.coste)}`, meta: `+${prop.revalTotal.toFixed(2)}% total`, color: C.pos },
           { label: 'Reval. anual', val: `${prop.revalAnual.toFixed(2)}%`, meta: 'Media desde compra', color: C.blue },
           { label: 'Yield bruto', val: prop.yield > 0 ? `${prop.yield.toFixed(2)}%` : '—', meta: 'Ingresos / coste', color: C.blue },
-          { label: 'Cashflow / mes', val: prop.yield > 0 ? '+620 €' : '—', meta: 'Neto tras gastos', color: C.pos },
+          { label: 'Cashflow / mes', val: cashflowLabel, meta: cashflowMeta, color: cashflowColor },
           {
             label: 'Deuda pendiente',
             val: prop.deudaPendiente > 0 ? `-${fmt(prop.deudaPendiente)}` : '0 €',
@@ -494,7 +508,7 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
         <ChartCard title={`${prop.alias} — Evolución y proyección de valor`} sub="Valor histórico estimado + proyección a 10 años">
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={INDIV_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <LineChart data={indivData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" />
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
@@ -511,18 +525,18 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
             <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Rentabilidad acumulada</div>
             <ResultRow label="Inversión inicial" value={fmt(prop.coste)} />
             <ResultRow label="Valor actual" value={fmt(prop.valor)} />
-            <ResultRow label="Cashflow acumulado" value="+68.000 €" valueColor={C.pos} />
-            <ResultRow label="Beneficio total" value={`+${fmt(prop.valor - prop.coste + 68000)}`} valueColor={C.pos} />
+            <ResultRow label="Cashflow acumulado" value={`${cashflowAcumulado >= 0 ? '+' : '-'}${fmt(Math.abs(cashflowAcumulado))}`} valueColor={cashflowAcumulado >= 0 ? C.pos : C.neg} />
+            <ResultRow label="Beneficio total" value={`${(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? '+' : '-'}${fmt(Math.abs(prop.valor - prop.coste + cashflowAcumulado))}`} valueColor={(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? C.pos : C.neg} />
             <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Múltiplo s/ capital</span>
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× {((prop.valor + 68000) / prop.coste).toFixed(2)}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× {((prop.valor + cashflowAcumulado) / prop.coste).toFixed(2)}</span>
             </div>
           </div>
 
           <ChartCard title="Cashflow mensual histórico" sub="Ingresos vs gastos por año">
             <ResponsiveContainer width="100%" height={140}>
-              <BarChart data={CF_INDIV} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <BarChart data={cashflowData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v / 1000}k`} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
