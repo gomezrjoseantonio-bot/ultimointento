@@ -19,7 +19,7 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg);
-  font-family: var(--font-inter);
+  font-family: var(--font-base);
 }
 
 /* Bolsillos Grid - Fixed height, equal 3 columns */

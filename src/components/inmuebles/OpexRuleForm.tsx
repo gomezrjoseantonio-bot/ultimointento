@@ -111,7 +111,7 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -149,7 +149,7 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
                   onClick={() => handleChange('categoria', value)}
                   className={`flex flex-col items-center gap-1 px-2 py-2 text-xs rounded-md border transition-colors ${
                     form.categoria === value
-                      ? 'bg-gray-900 text-white border-gray-900'
+                      ? 'bg-[color:var(--n-700)] text-white border-[color:var(--n-700)]'
                       : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
                   }`}
                 >

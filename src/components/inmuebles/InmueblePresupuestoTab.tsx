@@ -451,7 +451,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       )}
 
       {showTypePicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60 px-4">
           <div className="w-full max-w-lg bg-white rounded-lg shadow-xl p-5">
             <h3 className="text-lg font-semibold text-gray-900">Selecciona tipo de gasto</h3>
             <p className="text-sm text-gray-500 mt-1">Elige cómo quieres registrar el gasto.</p>
@@ -485,7 +485,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       )}
 
       {showOneOffForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60 px-4">
           <div className="w-full max-w-lg bg-white rounded-lg shadow-xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
               <h3 className="text-base font-semibold text-gray-900">
@@ -556,7 +556,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       )}
 
       {selectedRule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60 px-4">
           <div className="w-full max-w-md bg-white rounded-lg shadow-xl p-5">
             <h3 className="text-base font-semibold text-gray-900">Detalle del gasto</h3>
             <div className="mt-4 space-y-2 text-sm">

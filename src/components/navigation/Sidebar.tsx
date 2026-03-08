@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   return (
     <>
       <div
-        className={`fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-40 bg-[color:var(--n-300)]/60 transition-opacity md:hidden ${
           sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setSidebarOpen(false)}
