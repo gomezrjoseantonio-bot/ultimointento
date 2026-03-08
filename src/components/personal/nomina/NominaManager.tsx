@@ -241,27 +241,35 @@ const NominaManager: React.FC = () => {
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--gray-100)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--gray-500)' }}>
-                      Distribución mensual bruto
+                      Distribución mensual neto
                     </p>
                     <div className="flex items-end justify-between gap-1" style={{ height: '170px' }}>
                       {(() => {
-                        const maxDevengado = Math.max(...calculo.distribucionMensual.map(m => m.totalDevengado));
+                        const maxNeto = Math.max(...calculo.distribucionMensual.map(m => Math.max(m.netoTotal, 0)));
                         return calculo.distribucionMensual.map((m) => {
-                          const totalHeight = maxDevengado > 0 ? (m.totalDevengado / maxDevengado) * 124 : 0;
-                          const basePct = m.totalDevengado > 0 ? m.salarioBase / m.totalDevengado : 0;
-                          const extrasPct = m.totalDevengado > 0 ? m.pagaExtra / m.totalDevengado : 0;
-                          const variablesPct = m.totalDevengado > 0 ? m.variables / m.totalDevengado : 0;
-                          const bonusPct = m.totalDevengado > 0 ? m.bonus / m.totalDevengado : 0;
+                          const netoTotalMes = Math.max(m.netoTotal, 0);
+                          const netoRatio = m.totalDevengado > 0 ? netoTotalMes / m.totalDevengado : 0;
+
+                          const salarioBaseNeto = m.salarioBase * netoRatio;
+                          const pagaExtraNeta = m.pagaExtra * netoRatio;
+                          const variablesNetas = m.variables * netoRatio;
+                          const bonusNeto = m.bonus * netoRatio;
+
+                          const totalHeight = maxNeto > 0 ? (netoTotalMes / maxNeto) * 124 : 0;
+                          const basePct = netoTotalMes > 0 ? salarioBaseNeto / netoTotalMes : 0;
+                          const extrasPct = netoTotalMes > 0 ? pagaExtraNeta / netoTotalMes : 0;
+                          const variablesPct = netoTotalMes > 0 ? variablesNetas / netoTotalMes : 0;
+                          const bonusPct = netoTotalMes > 0 ? bonusNeto / netoTotalMes : 0;
 
                           return (
                             <div key={m.mes} className="flex h-full flex-1 flex-col items-center justify-end">
                               <span className="mb-0.5 w-full truncate text-center text-[10px] leading-none" style={{ color: 'var(--gray-500)' }}>
-                                {m.totalDevengado.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
+                                {netoTotalMes.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
                               </span>
                               <div
                                 className="flex w-full flex-col overflow-hidden rounded-t"
                                 style={{ height: `${totalHeight}px`, minHeight: '2px' }}
-                                title={formatCurrency(m.totalDevengado)}
+                                title={formatCurrency(netoTotalMes)}
                               >
                                 <div style={{ height: `${basePct * 100}%`, backgroundColor: 'var(--c1)' }} />
                                 <div style={{ height: `${extrasPct * 100}%`, backgroundColor: 'var(--c2)' }} />
