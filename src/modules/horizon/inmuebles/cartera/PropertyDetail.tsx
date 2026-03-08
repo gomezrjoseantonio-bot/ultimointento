@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, FileText, Clipboard, LayoutList, TrendingDown, Users, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, Pencil, FileText, Clipboard, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
@@ -8,7 +8,7 @@ import { getITPRateForCCAA } from '../../../../utils/locationUtils';
 import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
-import PropertySaleModal from '../components/PropertySaleModal';
+import InmuebleFormCompact from '../../../../components/inmuebles/InmuebleFormCompact';
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
@@ -72,7 +72,7 @@ const PropertyDetail: React.FC = () => {
   const [occupancy, setOccupancy] = useState<{ daysUnderRenovation: number; daysAvailable: number; notes: string }>({ daysUnderRenovation: 0, daysAvailable: 365, notes: '' });
   const [savingOccupancy, setSavingOccupancy] = useState(false);
   const [contractFilter, setContractFilter] = useState<ContractFilter>('all');
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [isEditingInline, setIsEditingInline] = useState(false);
 
   const loadProperty = useCallback(async (propertyId: number) => {
     try {
@@ -108,9 +108,12 @@ const PropertyDetail: React.FC = () => {
   }, [id, loadProperty]);
 
   useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (isDetailTab(tab) && tab !== activeTab) {
-      setActiveTab(tab);
+    const requestedTab = searchParams.get('tab');
+    if (isDetailTab(requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    }
+    if (!requestedTab && activeTab !== 'resumen') {
+      setActiveTab('resumen');
     }
   }, [searchParams, activeTab]);
 
@@ -247,9 +250,6 @@ const PropertyDetail: React.FC = () => {
   const calculatedOccupiedDays = calculateOccupiedDaysFromContracts(contracts, occupancyYear);
   const daysAtDisposal = Math.max(0, occupancy.daysAvailable - calculatedOccupiedDays - occupancy.daysUnderRenovation);
   const occupancyRate = occupancy.daysAvailable > 0 ? (calculatedOccupiedDays / occupancy.daysAvailable) * 100 : 0;
-  const requestedTab = searchParams.get('tab');
-  const isForcedTabView = isDetailTab(requestedTab);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -266,60 +266,34 @@ const PropertyDetail: React.FC = () => {
             <p className="text-neutral-600">{property.address}</p>
           </div>
         </div>
-        {activeTab !== 'contratos' && (
-          <div className="flex items-center gap-2">
-            {property.state === 'activo' && (
-              <button
-                onClick={() => setIsSaleModalOpen(true)}
-                className="flex items-center px-4 py-2 border border-error-300 text-error-700"
-              >
-                <CircleDollarSign className="h-5 w-5 mr-2" size={24} />
-                Vender inmueble
-              </button>
-            )}
-            <button
-              onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
-              className="flex items-center px-4 py-2 bg-brand-navy"
-            >
-              <Pencil className="h-5 w-5 mr-2" size={24}  />
-              Editar
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsEditingInline(true)}
+            className="flex items-center px-4 py-2 bg-brand-navy text-white"
+          >
+            <Pencil className="h-5 w-5 mr-2" size={24}  />
+            Editar
+          </button>
+        </div>
       </div>
 
-      {/* Tab Navigation */}
-      {!isForcedTabView && (
-        <div className="flex bg-gray-100 rounded-lg p-1 w-fit" role="tablist">
-          {(
-          [
-            { id: 'resumen', label: 'Operación', Icon: LayoutList },
-            { id: 'contratos', label: 'Alquileres', Icon: Users },
-            { id: 'presupuesto', label: 'Gastos', Icon: TrendingDown },
-            { id: 'fiscal', label: 'Fiscal', Icon: FileText },
-          ] as { id: DetailTab; label: string; Icon: React.ElementType }[]
-          ).map(({ id: tabId, label, Icon }) => {
-          const isActive = activeTab === tabId;
-          return (
-            <button
-              key={tabId}
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActiveTab(tabId)}
-              className={`inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                isActive
-                  ? 'bg-white text-atlas-blue shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${isActive ? 'text-atlas-blue' : 'text-gray-400'}`} />
-              {label}
-            </button>
-          );
-          })}
+      {isEditingInline ? (
+        <div className="bg-white border border-neutral-200 rounded-lg">
+          <InmuebleFormCompact
+            mode="edit"
+            propertyId={property.id}
+            embedded
+            onCancel={() => setIsEditingInline(false)}
+            onSaved={() => {
+              if (property.id) {
+                void loadProperty(property.id);
+              }
+              setIsEditingInline(false);
+            }}
+          />
         </div>
-      )}
-
+      ) : (
+        <>
       {/* Tab Content */}
       {activeTab === 'presupuesto' ? (
         <InmueblePresupuestoTab propertyId={property.id!} />
@@ -754,17 +728,8 @@ const PropertyDetail: React.FC = () => {
       </div>
       </>
       )}
-      <PropertySaleModal
-        open={isSaleModalOpen}
-        property={property}
-        source="detalle"
-        onClose={() => setIsSaleModalOpen(false)}
-        onConfirmed={() => {
-          if (property.id) {
-            void loadProperty(property.id);
-          }
-        }}
-      />
+      </>
+      )}
     </div>
   );
 };
