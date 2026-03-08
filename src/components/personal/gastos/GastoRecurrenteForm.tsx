@@ -233,7 +233,7 @@ const GastoRecurrenteForm: React.FC<GastoRecurrenteFormProps> = ({
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-opacity-90"
+            className="px-4 py-2 bg-brand-navy text-white rounded-md hover:opacity-90"
           >
             {gasto ? 'Actualizar' : 'Crear'} Gasto
           </button>

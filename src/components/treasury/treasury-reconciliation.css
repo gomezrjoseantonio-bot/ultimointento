@@ -161,7 +161,7 @@
 }
 
 .summary-panel-col__val {
-  font-family: var(--font-inter);
+  font-family: var(--font-base);
   font-feature-settings: 'tnum';
   font-size: 15px;
   font-weight: 600;
@@ -291,7 +291,7 @@
 }
 
 .summary-flip-card__value-decision {
-  font-family: var(--font-inter);
+  font-family: var(--font-base);
   font-feature-settings: 'tnum';
   font-size: 24px;
   font-weight: 600;
@@ -424,7 +424,7 @@
 }
 
 .summary-flip-card__value {
-  font-family: var(--font-inter);
+  font-family: var(--font-base);
   font-feature-settings: 'tnum';
   font-size: 16px;
   font-weight: var(--font-semibold);
@@ -594,7 +594,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(48, 58, 76, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1236,7 +1236,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(48, 58, 76, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1399,7 +1399,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(48, 58, 76, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;

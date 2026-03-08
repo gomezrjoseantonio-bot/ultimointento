@@ -106,7 +106,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60 p-4">
       <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
         <div className="border-b border-neutral-200 p-4">
           <h3 className="text-lg font-semibold text-neutral-900">Vender inmueble</h3>

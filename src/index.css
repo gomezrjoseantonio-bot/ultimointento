@@ -1,8 +1,3 @@
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/inter/700.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -208,7 +203,7 @@ html, #root { min-height: 100vh; }
 /* ── Color helpers ── */
 .text-secondary { color: var(--gray-500); }
 .text-muted     { color: var(--gray-400); }
-.text-positive  { color: var(--teal-500); }
+.text-positive  { color: var(--s-positive); }
 .text-negative  { color: var(--gray-500); }
 .text-alert     { color: var(--alert);    }
 
@@ -359,7 +354,7 @@ html, #root { min-height: 100vh; }
    ESTADOS DE MOVIMIENTOS FINANCIEROS
    Sin semáforos. Turquesa = positivo/confirmado. Gris = negativo/pendiente.
    ============================================================ */
-.movement-ingreso   { color: var(--teal-500); font-weight: var(--font-semibold); }
+.movement-ingreso   { color: var(--s-positive); font-weight: var(--font-semibold); }
 .movement-gasto     { color: var(--gray-500); }
 .movement-confirmado{ color: var(--blue-800); font-weight: var(--font-semibold); }
 .movement-vencido   { color: var(--caution);  }

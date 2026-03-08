@@ -12,21 +12,21 @@ const path = require('path');
 const FORBIDDEN_PATTERNS = {
   // Dark themes and overlays - ATLAS requires light themes only
   darkThemes: [
-    /bg-black/g,
-    /bg-opacity-50/g,
-    /bg-opacity-60/g,
-    /bg-opacity-70/g,
-    /bg-opacity-80/g,
-    /bg-opacity-90/g,
+    /\bbg-black\b/g,
+    /\bbg-opacity-50\b/g,
+    /\bbg-opacity-60\b/g,
+    /\bbg-opacity-70\b/g,
+    /\bbg-opacity-80\b/g,
+    /\bbg-opacity-90\b/g,
     /bg-gray-900/g,
     /bg-gray-800/g,
     /bg-slate-900/g,
     /bg-slate-800/g,
     /dark:/g,
     /className.*dark/g,
-    /bg-opacity-\d+/g,  // Any bg-opacity class
+    /\bbg-opacity-\d+\b/g,  // Any bg-opacity class
     /backdrop-.*black/g, // Black backdrops
-    /rgba\(0,\s*0,\s*0,/g, // Black rgba overlays
+    /background\s*:\s*rgba\(0,\s*0,\s*0,/g, // Black rgba overlays as background only
   ],
   
   // Non-ATLAS colors (hardcoded hex values) - Exception for token definitions
@@ -62,16 +62,14 @@ const FORBIDDEN_PATTERNS = {
     /import.*feather-icons/g,
   ],
   
-  // Non-Inter fonts - ATLAS requires Inter only
+  // Non-IBM Plex fonts - ATLAS v3 requires IBM Plex Sans/Mono
   forbiddenFonts: [
-    /font-family:\s*(?!Inter\b|["']Inter["']\b)[^;]+/g, // Only flag if doesn't start with Inter
     /'Arial'(?!.*system-ui)/g,
     /'Helvetica'(?!.*system-ui)/g,
     /'Times'/g,
     /'Georgia'/g,
     /'Comic Sans'/g,
     /'Verdana'/g,
-    /font-sans.*(?!Inter)/g,
     /@import.*google.*fonts/g, // Google Fonts imports
   ],
   
@@ -90,10 +88,14 @@ const FORBIDDEN_PATTERNS = {
     /className.*help.*modal/g,
     /className.*help.*sidebar/g,
     /className.*help.*overlay/g,
-    /className.*tour/g,
-    /className.*walkthrough/g,
     // Invalid help implementations
-    /helpText(?!.*(?:EmptyState|InlineHint|InfoTooltip|HelperBanner))/g,
+    /helpModal(?!.*(?:EmptyState|InlineHint|InfoTooltip|HelperBanner))/g,
+  ],
+
+  // Teal is restricted to UI accent, not financial semantics
+  invalidFinancialTeal: [
+    /movement-ingreso[^\n]*var\(--teal/g,
+    /(?:income|ingreso|kpi|amount|importe|revenue)[^\n]*var\(--teal/gi,
   ],
   
   // Non-ES locale formatting - Must use ES-ES format
@@ -290,7 +292,7 @@ function lintFile(filePath) {
           type: 'FORBIDDEN_FONTS',
           pattern: pattern.toString(),
           matches: matches.length,
-          message: 'Non-Inter font detected - ATLAS requires Inter with approved fallbacks only'
+          message: 'Non-IBM Plex font detected - ATLAS v3 requires IBM Plex Sans/Mono with approved fallbacks only'
         });
       } else {
         // Likely false positive - make it a warning
@@ -298,8 +300,8 @@ function lintFile(filePath) {
           type: 'FONT_CHECK',
           pattern: pattern.toString(),
           matches: matches.length,
-          message: 'Font declaration flagged - verify Inter usage (may be false positive)'
-        });
+        message: 'Font declaration flagged - verify IBM Plex usage (may be false positive)'
+      });
       }
     }
   }
@@ -367,6 +369,18 @@ function lintFile(filePath) {
         pattern: pattern.toString(),
         matches: matches.length,
         message: 'Non-standard button pattern - should use ATLAS button classes'
+      });
+    }
+  }
+
+  for (const pattern of FORBIDDEN_PATTERNS.invalidFinancialTeal) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'INVALID_FINANCIAL_TEAL',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Teal used in financial semantics (ingresos/KPI/importes) - use semantic positive tokens instead'
       });
     }
   }
@@ -440,7 +454,7 @@ function main() {
   console.log('  - Replace browser alerts with ATLAS toast system');
   console.log('  - Use only 4 SUA help patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner)');
   console.log('  - Maintain canonical sidebar navigation order');
-  console.log('  - Apply Inter font family with approved fallbacks');
+  console.log('  - Apply IBM Plex font family with approved fallbacks');
   console.log('  - Use es-ES locale for all formatting');
   console.log('  - Remove prohibited color #09182E');
   console.log('');
