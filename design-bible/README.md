@@ -4,7 +4,7 @@
 
 ## 📘 Navegación
 
-- **[Guía definitiva v2](./GUIA_DISENO_DEFINITIVA_V2.md)** → Estándar visual obligatorio de la app
+- **[Guía definitiva v3](./GUIA_DISENO_DEFINITIVA_V3.md)** → Estándar visual obligatorio de la app
 - **[Foundations](./foundations/)** → Tokens y fundamentos (colores, tipografía, iconos, espaciado)
 - **[Components](./components/)** → Guías de cada componente UI
 - **[Patterns](./patterns/)** → Patrones de interacción y UX
@@ -40,4 +40,4 @@ Todo cambio visual debe:
 3. Actualizar [changelog.md](./changelog.md)
 4. Pasar auditoría CI bloqueante
 
-**Versión actual**: v1.0.0
+**Versión actual**: v3.0.0
