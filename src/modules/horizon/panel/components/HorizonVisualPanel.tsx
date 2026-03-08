@@ -9,13 +9,16 @@ export interface PanelFilters {
 }
 
 type HorizonId = 'corto' | 'medio' | 'largo';
+type RiskLevel = 'bajo' | 'medio' | 'alto';
 
-interface DashboardSnapshot {
-  patrimonio: Awaited<ReturnType<typeof dashboardService.getPatrimonioNeto>>;
-  liquidez: Awaited<ReturnType<typeof dashboardService.getLiquidez>>;
-  salud: Awaited<ReturnType<typeof dashboardService.getSaludFinanciera>>;
-  tesoreria: Awaited<ReturnType<typeof dashboardService.getTesoreriaPanel>>;
-  alertas: Awaited<ReturnType<typeof dashboardService.getAlertas>>;
+interface HorizonCard {
+  id: HorizonId;
+  titulo: string;
+  periodo: string;
+  objetivo: string;
+  foco: string;
+  progreso: number;
+  riesgo: RiskLevel;
 }
 
 const DEFAULT_DATA: DashboardSnapshot = {
@@ -106,7 +109,7 @@ const HorizonVisualPanel: React.FC = () => {
 
   const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
 
-  const riskBadgeStyles: Record<HorizonCard['riesgo'], string> = {
+  const riskBadgeStyles: Record<RiskLevel, string> = {
     bajo: 'bg-emerald-100 text-emerald-700',
     medio: 'bg-amber-100 text-amber-700',
     alto: 'bg-red-100 text-red-700'
