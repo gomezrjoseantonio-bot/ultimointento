@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
-import OnboardingWizard from '../components/onboarding/OnboardingWizard';
 import CommandPalette from '../components/common/CommandPalette';
 import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { useCommandPalette } from '../hooks/useCommandPalette';
@@ -10,7 +9,6 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   
   // Sprint 5: Command Palette (Cmd+K)
@@ -21,17 +19,6 @@ const MainLayout: React.FC = () => {
     onShowShortcuts: () => setShowShortcuts(true),
   });
   
-  // Check if user has completed onboarding
-  useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('atlas_onboarding_completed');
-    if (!hasCompletedOnboarding) {
-      // Show onboarding after a short delay for better UX
-      const timer = setTimeout(() => {
-        setShowOnboarding(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
   
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
@@ -40,14 +27,6 @@ const MainLayout: React.FC = () => {
       
       {/* Sprint 5: Keyboard Shortcuts Help Modal */}
       <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-      
-      {/* Sprint 4: Onboarding Wizard for new users */}
-      {showOnboarding && (
-        <OnboardingWizard
-          onComplete={() => setShowOnboarding(false)}
-          onSkip={() => setShowOnboarding(false)}
-        />
-      )}
       
       {/* Skip Link - Sprint 3: Accessibility improvement */}
       <a
