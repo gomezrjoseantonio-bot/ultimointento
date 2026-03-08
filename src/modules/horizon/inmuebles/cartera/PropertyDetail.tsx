@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, FileText, Clipboard, Users } from 'lucide-react';
 import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
@@ -102,6 +102,22 @@ const PropertyDetail: React.FC = () => {
       loadProperty(parseInt(id));
     }
   }, [id, loadProperty]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab');
+    if (isDetailTab(requestedTab) && requestedTab !== activeTab) {
+      setActiveTab(requestedTab);
+    }
+    if (!requestedTab && activeTab !== 'resumen') {
+      setActiveTab('resumen');
+    }
+  }, [searchParams, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'contratos') {
+      setContractFilter('active');
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const loadOccupancy = async () => {
