@@ -38,6 +38,7 @@ const Capex = React.lazy(() => import('./modules/horizon/inmuebles/capex/CAPEX')
 
 // Inversiones Module
 const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
+const AnalisisCartera = React.lazy(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
@@ -260,11 +261,17 @@ function App() {
                   <GastosCapex />
                 </React.Suspense>
               } />
-              <Route path="analisis" element={
+              <Route path="evolucion" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Analisis />
                 </React.Suspense>
               } />
+              <Route path="analisis" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AnalisisCartera scope="inmuebles" />
+                </React.Suspense>
+              } />
+              <Route path="analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
               <Route path="ingresos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Ingresos />
@@ -283,11 +290,24 @@ function App() {
             </Route>
             
             {/* Inversiones Module */}
-            <Route path="inversiones" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <InversionesPage />
-              </React.Suspense>
-            } />
+            <Route path="inversiones">
+              <Route index element={<Navigate to="/inversiones/cartera" replace />} />
+              <Route path="cartera" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesPage initialTab="cartera" />
+                </React.Suspense>
+              } />
+              <Route path="rendimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesPage initialTab="rendimientos" />
+                </React.Suspense>
+              } />
+              <Route path="analisis" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AnalisisCartera scope="inversiones" />
+                </React.Suspense>
+              } />
+            </Route>
             
             <Route path="tesoreria">
               <Route index element={
