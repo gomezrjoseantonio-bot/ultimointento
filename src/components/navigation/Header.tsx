@@ -31,12 +31,19 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         <TourManager onClose={() => setShowTourManager(false)} />
       )}
       
-      <header className="sticky top-0 z-30 bg-white shadow-sm border-b border-hz-neutral-300">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <header
+        className="sticky top-0 z-30 border-b"
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.92)',
+          borderColor: 'var(--gray-200)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+      <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between min-h-[72px]">
         <div className="flex items-center space-x-4">
           <button
             type="button"
-            className="md:hidden text-hz-neutral-700 hover:text-atlas-navy-1 focus:outline-none"
+            className="md:hidden atlas-btn-ghost"
             onClick={() => setSidebarOpen(true)}
             aria-label="Abrir menú lateral"
           >
@@ -44,13 +51,14 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           </button>
           
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-full bg-atlas-blue flex items-center justify-center text-white font-bold text-sm">
+            <div className="h-9 w-9 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm" style={{ backgroundColor: 'var(--blue-800)' }}>
               A
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-semibold text-atlas-navy-1">
+              <h1 className="atlas-h3">
                 ATLAS
               </h1>
+              <p className="atlas-caption -mt-0.5">Panel financiero</p>
             </div>
           </div>
         </div>
@@ -59,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           {/* Sprint 4: Help/Tours button */}
           <button
             onClick={() => setShowTourManager(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="atlas-btn-ghost"
             aria-label="Ver tours guiados"
             title="Tours guiados"
           >
@@ -68,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           
           {/* User Plan Badge */}
           {user && (
-            <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium text-atlas-blue" style={{ backgroundColor: 'rgba(4, 44, 94, 0.1)' }}>
+            <div className="hidden lg:flex items-center px-3 py-1 rounded-full text-xs font-medium border" style={{ color: 'var(--blue-800)', backgroundColor: 'var(--blue-050)', borderColor: 'var(--blue-200)' }}>
               Plan {user.subscriptionPlan.toUpperCase()}
             </div>
           )}
@@ -78,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
               onClick={handleAccountClick}
               onMouseEnter={() => setAccountMenuOpen(true)}
               onMouseLeave={() => setAccountMenuOpen(false)}
-              className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 rounded-atlas p-1"
+              className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:ring-offset-2 rounded-lg p-1.5"
               aria-label="Menú de cuenta"
             >
               <UserCircle className="h-8 w-8 text-hz-neutral-700" />
