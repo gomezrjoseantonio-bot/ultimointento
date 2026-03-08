@@ -405,14 +405,14 @@ const Cartera: React.FC = () => {
                               <Trash2 className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=contratos`)}
+                              onClick={() => navigate(`/inmuebles/contratos?propertyId=${property.id}`)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Alquileres"
                             >
                               <Users className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=presupuesto`)}
+                              onClick={() => navigate(`/inmuebles/gastos?propertyId=${property.id}`)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Gastos"
                             >
