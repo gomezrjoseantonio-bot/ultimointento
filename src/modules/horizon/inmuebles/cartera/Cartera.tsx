@@ -412,7 +412,7 @@ const Cartera: React.FC = () => {
                               <Users className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/inmuebles/gastos-capex?propertyId=${property.id}`)}
+                              onClick={() => navigate(`/inmuebles/gastos?propertyId=${property.id}`)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
                               title="Gastos"
                             >
