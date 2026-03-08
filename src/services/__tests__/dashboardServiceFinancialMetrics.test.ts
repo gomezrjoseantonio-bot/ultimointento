@@ -96,9 +96,11 @@ describe('dashboardService financial metrics', () => {
     const panel = await dashboardService.getTesoreriaPanel();
 
     expect(panel.filas).toHaveLength(1);
+    expect(panel.filas[0].hoy).toBe(600);
     expect(panel.filas[0].porCobrar).toBe(500);
     expect(panel.filas[0].porPagar).toBe(475);
-    expect(panel.filas[0].proyeccion).toBe(1025);
+    expect(panel.filas[0].proyeccion).toBe(625);
+    expect(panel.totales.hoy).toBe(600);
     expect(panel.totales.porPagar).toBe(475);
   });
 });

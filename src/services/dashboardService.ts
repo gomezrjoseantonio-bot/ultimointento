@@ -1015,7 +1015,7 @@ class DashboardService {
 
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;
-        const hoy = toNumber(account.balance);
+        const currentBalance = toNumber(account.balance);
 
         const monthMovements = (movements as any[]).filter((movement) => {
           if (movement.accountId !== accountId) return false;
@@ -1024,16 +1024,23 @@ class DashboardService {
         });
 
         const deltaMes = monthMovements.reduce((sum, movement) => sum + toNumber(movement.amount), 0);
-        const inicioMes = hoy - deltaMes;
+        const inicioMes = currentBalance - deltaMes;
 
-        const futurosCuenta = (treasuryEvents as any[]).filter((event) => {
+        const eventosMesCuenta = (treasuryEvents as any[]).filter((event) => {
           const displayAccountId = resolveTreasuryEventDisplayAccountId(event, cardSettlementByAccountId);
           if (displayAccountId !== accountId) return false;
-          if (!isForecastTreasuryEvent(event)) return false;
           const predictedDateOnly = toDateOnly(event.predictedDate);
           if (!predictedDateOnly) return false;
           return predictedDateOnly >= startOfMonthDateOnly && predictedDateOnly <= endOfMonthDateOnly;
         });
+
+        const deltaRealMes = eventosMesCuenta
+          .filter((event) => !isForecastTreasuryEvent(event))
+          .reduce((sum, event) => sum + (event.type === 'income' ? toNumber(event.amount) : -toNumber(event.amount)), 0);
+
+        const hoy = currentBalance + deltaRealMes;
+
+        const futurosCuenta = eventosMesCuenta.filter((event) => isForecastTreasuryEvent(event));
 
         const porCobrar = futurosCuenta
           .filter((event) => event.type === 'income')
