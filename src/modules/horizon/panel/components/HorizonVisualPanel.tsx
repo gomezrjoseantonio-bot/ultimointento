@@ -1,270 +1,140 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Bell, ChevronDown, ChevronUp, RefreshCw, Settings, Wallet } from 'lucide-react';
-import { dashboardService } from '../../../../services/dashboardService';
-import type { DashboardSnapshot } from '../../../../services/dashboardService';
-import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
+import React, { useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  Building2,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CreditCard,
+  Home,
+  Landmark,
+  LayoutDashboard,
+  LineChart,
+  Percent,
+  Receipt,
+  Settings2,
+  ShieldCheck,
+  TrendingUp,
+  Wallet,
+  X,
+  Zap
+} from 'lucide-react';
+import './horizonExecutiveDashboard.css';
 
 export interface PanelFilters {
   excludePersonal?: boolean;
   dateRange: 'today' | '7days' | '30days';
 }
 
-type SortColumn = 'banco' | 'hoy' | 'porCobrar' | 'porPagar' | 'proyeccion';
-type SortDirection = 'asc' | 'desc';
-const DEFAULT_DATA: DashboardSnapshot = {
-  patrimonio: {
-    total: 0,
-    variacionMes: 0,
-    variacionPorcentaje: 0,
-    fechaCalculo: new Date().toISOString(),
-    desglose: { inmuebles: 0, inversiones: 0, cuentas: 0, deuda: 0 }
-  },
-  liquidez: {
-    disponibleHoy: 0,
-    comprometido30d: 0,
-    ingresos30d: 0,
-    proyeccion30d: 0
-  },
-  salud: {
-    liquidezHoy: 0,
-    gastoMedioMensual: 0,
-    colchonMeses: 0,
-    estado: 'critical',
-    proyeccion30d: { estimado: 0, ingresos: 0, gastos: 0 }
-  },
-  tesoreria: {
-    asOf: new Date().toISOString(),
-    filas: [],
-    totales: { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 }
-  },
-  alertas: []
-};
-
-const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-
 const HorizonVisualPanel: React.FC = () => {
-  const navigate = useNavigate();
-  const [filters] = useState<PanelFilters>({ excludePersonal: false, dateRange: '30days' });
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
-  const [sortBy, setSortBy] = useState<SortColumn>('banco');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const pageSize = 6;
-
-  const loadDashboardData = async () => {
-    setLoading(true);
-    const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
-      dashboardService.getPatrimonioNeto(),
-      dashboardService.getLiquidez(),
-      dashboardService.getSaludFinanciera(),
-      dashboardService.getTesoreriaPanel(),
-      dashboardService.getAlertas()
-    ]);
-    setData({ patrimonio, liquidez, salud, tesoreria, alertas });
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void loadDashboardData();
-  }, [filters.dateRange]);
-
-  const sortedRows = useMemo(() => {
-    const rows = [...data.tesoreria.filas];
-    rows.sort((a, b) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
-
-      if (sortBy === 'banco') {
-        return a.banco.localeCompare(b.banco) * direction;
-      }
-
-      return (a[sortBy] - b[sortBy]) * direction;
-    });
-    return rows;
-  }, [data.tesoreria.filas, sortBy, sortDirection]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, currentPage]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const handleSort = (column: SortColumn) => {
-    setCurrentPage(1);
-    if (sortBy === column) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortBy(column);
-    setSortDirection('asc');
-  };
-
-  const renderSortIcon = (column: SortColumn) => {
-    if (sortBy !== column) return <ChevronDown className="w-3 h-3 opacity-40" />;
-    return sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
-  };
-
-  const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
-
-  const panelMonthLabel = new Date(data.tesoreria.asOf).toLocaleDateString('es-ES', {
-    month: 'long',
-    year: 'numeric'
-  });
-  const panelMonthTitle = `${panelMonthLabel.charAt(0).toUpperCase()}${panelMonthLabel.slice(1)}`;
+  const toggleDrawer = () => setDrawerOpen((v) => !v);
 
   return (
-    <div className="min-h-screen bg-hz-bg">
-      <div className="max-w-[1320px] mx-auto p-6 space-y-5">
-        <header className="bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="exec-shell">
+      <aside className="exec-sidebar">
+        <div className="exec-logo">
+          <div className="exec-mark">A</div>
+          <div>
+            <div style={{ fontWeight: 700 }}>ATLAS</div>
+            <div style={{ fontSize: 10, color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '.12em' }}>Horizon</div>
+          </div>
+        </div>
+        <div className="exec-nav-group">Supervisión</div>
+        <a className="exec-nav-item active" href="/panel"><LayoutDashboard size={16} /> Dashboard</a>
+        <a className="exec-nav-item" href="/personal/resumen"><Home size={16} /> Personal</a>
+        <a className="exec-nav-item" href="/inmuebles"><Building2 size={16} /> Inmuebles</a>
+        <a className="exec-nav-item" href="/inversiones"><LineChart size={16} /> Inversiones</a>
+      </aside>
+
+      <div className="exec-main">
+        <header className="exec-topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <LayoutDashboard size={18} color="#042c5e" />
             <div>
-              <h1 className="text-2xl font-semibold text-hz-neutral-900">Dashboard ejecutivo</h1>
-              <p className="text-sm text-hz-neutral-700">KPIs reales de patrimonio, liquidez, riesgo y alertas en corto, medio y largo plazo.</p>
+              <div style={{ fontWeight: 600 }}>Dashboard ejecutivo</div>
+              <div style={{ fontSize: 12, color: '#6c757d' }}>KPIs reales de patrimonio, liquidez, riesgo y alertas</div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="px-3 py-2 text-sm rounded-lg bg-hz-primary text-white hover:opacity-90"
-              >
-                Actualizar valores
-              </button>
-              <button
-                onClick={handleConfigureClick}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-hz-neutral-900 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100"
-              >
-                <Settings className="w-4 h-4" />
-                Configurar
-              </button>
-            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="exec-btn ghost" onClick={toggleDrawer}><Zap size={14} /> Actualizar valores</button>
+            <button className="exec-btn ghost"><Settings2 size={14} /> Configurar</button>
           </div>
         </header>
 
-        <section className="grid grid-cols-12 gap-4">
-          <article className="col-span-12 xl:col-span-7 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario · {panelMonthTitle}</p>
-              <span className="text-xs text-hz-neutral-600">Actualizado a {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')}</span>
+        <main className="exec-content">
+          <section className="exec-hero">
+            <div className="exec-row">
+              <div>
+                <div className="exec-muted">Patrimonio neto · Mar 2026</div>
+                <div className="exec-hero-title">450.800 €</div>
+                <div className="exec-pills">
+                  <span className="exec-pill"><TrendingUp size={12} /> +1,2% este mes</span>
+                  <span className="exec-pill"><TrendingUp size={12} /> +8,4% este año</span>
+                </div>
+              </div>
+              <button className="exec-btn ghost" onClick={toggleDrawer} style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}><Zap size={14} /> Actualizar valores</button>
             </div>
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="text-hz-neutral-600">
-                  <tr>
-                    <th className="text-left py-2">
-                      <button onClick={() => handleSort('banco')} className="inline-flex items-center gap-1 font-semibold">
-                        Banco {renderSortIcon('banco')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('hoy')} className="inline-flex items-center gap-1 font-semibold">
-                        Hoy {renderSortIcon('hoy')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por cobrar {renderSortIcon('porCobrar')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por pagar {renderSortIcon('porPagar')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
-                        Fin mes {renderSortIcon('proyeccion')}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
+            <div className="exec-pills" style={{ marginTop: 16 }}>
+              <span className="exec-muted"><Building2 size={12} /> 386.000 € Inmuebles</span>
+              <span className="exec-muted"><LineChart size={12} /> 95.400 € Inversiones</span>
+              <span className="exec-muted"><Landmark size={12} /> 6.017 € Cuentas</span>
+              <span className="exec-muted"><CreditCard size={12} /> −36.617 € Deuda</span>
+            </div>
+          </section>
+
+          <section className="exec-pulso">
+            <div className="exec-chip"><div className="label">Colchón emerg.</div><div className="value" style={{ color: 'var(--s-pos)' }}>8,4 m</div><div style={{ fontSize: 12 }}><ShieldCheck size={12} /> Seguro</div></div>
+            <div className="exec-chip"><div className="label">Ocupación</div><div className="value" style={{ color: 'var(--s-warn)' }}>87,5%</div><div style={{ fontSize: 12 }}><AlertTriangle size={12} /> 1 vacío</div></div>
+            <div className="exec-chip"><div className="label">IRPF estimado</div><div className="value" style={{ color: 'var(--s-neg)' }}>−3.240 €</div><div style={{ fontSize: 12 }}><Receipt size={12} /> A pagar · 2025</div></div>
+            <div className="exec-chip"><div className="label">Cashflow neto</div><div className="value" style={{ color: 'var(--s-pos)' }}>+1.820 €</div><div style={{ fontSize: 12 }}><Wallet size={12} /> +340 vs feb</div></div>
+          </section>
+
+          <section className="exec-zone3">
+            <div className="exec-card">
+              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Economía familiar</div><strong style={{ color: 'var(--s-pos)' }}>+3.200 €/mes</strong></div><ChevronRight size={16} /></div>
+              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inmuebles</div><strong style={{ color: 'var(--s-pos)' }}>+2.800 €/mes</strong></div><ChevronRight size={16} /></div>
+              <div className="exec-flujo" style={{ borderBottom: 'none' }}><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inversiones</div><strong style={{ color: 'var(--s-pos)' }}>+380 €/mes</strong></div><ChevronRight size={16} /></div>
+            </div>
+            <div className="exec-card">
+              <table className="exec-table">
+                <thead><tr><th>Banco</th><th>Hoy</th><th>Fin mes</th></tr></thead>
                 <tbody>
-                  <tr className="border-t border-hz-neutral-200 bg-hz-neutral-100 font-semibold">
-                    <td className="py-2">Totales</td>
-                    <td className="text-right">{euro.format(data.tesoreria.totales.hoy)}</td>
-                    <td className="text-right text-emerald-700">{euro.format(data.tesoreria.totales.porCobrar)}</td>
-                    <td className="text-right text-red-700">{euro.format(data.tesoreria.totales.porPagar)}</td>
-                    <td className={`text-right ${data.tesoreria.totales.proyeccion >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{euro.format(data.tesoreria.totales.proyeccion)}</td>
-                  </tr>
-                  {paginatedRows.map((fila) => (
-                    <tr key={fila.accountId} className="border-t border-hz-neutral-200">
-                      <td className="py-2">{fila.banco}</td>
-                      <td className="text-right">{euro.format(fila.hoy)}</td>
-                      <td className="text-right text-emerald-700">{euro.format(fila.porCobrar)}</td>
-                      <td className="text-right text-red-700">{euro.format(fila.porPagar)}</td>
-                      <td className={`text-right font-medium ${fila.proyeccion >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{euro.format(fila.proyeccion)}</td>
-                    </tr>
-                  ))}
+                  <tr><td>Santander</td><td>3.424 €</td><td style={{ color: 'var(--s-pos)' }}>16.122 €</td></tr>
+                  <tr><td>Unicaja</td><td>857 €</td><td>62 €</td></tr>
+                  <tr><td>BBVA</td><td>392 €</td><td style={{ color: 'var(--s-neg)' }}>−132 €</td></tr>
+                  <tr><td><strong>Total</strong></td><td><strong>6.017 €</strong></td><td style={{ color: 'var(--s-pos)' }}><strong>15.688 €</strong></td></tr>
                 </tbody>
               </table>
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-hz-neutral-700">
-              <span>Página {currentPage} de {totalPages} · {sortedRows.length} cuentas</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          </article>
+          </section>
 
-          <article className="col-span-12 xl:col-span-5 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2 mb-3"><Bell className="w-4 h-4" />Alertas prioritarias</p>
-            <div className="space-y-2">
-              {data.alertas.slice(0, 5).map((alerta) => (
-                <div key={alerta.id} className="rounded-md border border-hz-neutral-200 p-3">
-                  <p className="text-sm font-medium text-hz-neutral-900">{alerta.titulo}</p>
-                  <p className="text-xs text-hz-neutral-700">{alerta.descripcion}</p>
-                </div>
-              ))}
-              {data.alertas.length === 0 && (
-                <div className="rounded-md bg-emerald-50 text-emerald-700 p-3 text-sm">Sin alertas activas.</div>
-              )}
-            </div>
-          </article>
-        </section>
-
-        <footer className="bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-sm text-hz-neutral-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            Estado financiero: <span className="font-semibold uppercase">{data.salud.estado}</span> · Colchón {data.salud.colchonMeses.toFixed(1)} meses
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm px-3 py-2 rounded-lg bg-hz-neutral-100 text-hz-neutral-900 flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar KPIs
-          </button>
-        </footer>
-
-        <ActualizacionValoresDrawer
-          isOpen={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          onSaved={() => {
-            setDrawerOpen(false);
-            void loadDashboardData();
-          }}
-        />
+          <section className="exec-card">
+            <div className="exec-alert"><Bell size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Contrato próximo a vencer</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Calle Mayor 14 · Renovación pendiente</div></div><span style={{ fontSize: 12, background: '#fee9e9', color: '#b91c1c', padding: '4px 8px', borderRadius: 4 }}>En 12d</span></div>
+            <div className="exec-alert"><CalendarDays size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Cobro pendiente</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Avenida Norte 3 · Alquiler marzo 2026</div></div><span>850 €</span></div>
+            <div className="exec-alert"><Percent size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Revisión IPC pendiente</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Paseo Colón 7 · IPC 2025 +3,1%</div></div><ArrowRight size={14} /></div>
+          </section>
+        </main>
       </div>
+
+      <div className={`exec-overlay ${drawerOpen ? 'open' : ''}`} onClick={toggleDrawer} />
+      <aside className={`exec-drawer ${drawerOpen ? 'open' : ''}`} aria-modal="true" role="dialog">
+        <div className="exec-drawer-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><strong>Actualizar valores</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Introduce los valores de cierre del mes</div></div>
+          <button className="exec-btn ghost" onClick={toggleDrawer}><X size={14} /></button>
+        </div>
+        <div className="exec-drawer-body">
+          <div style={{ marginBottom: 12 }}>Calle Mayor 14 <input className="exec-input" type="number" defaultValue={185000} /></div>
+          <div style={{ marginBottom: 12 }}>Avenida Norte 3 <input className="exec-input" type="number" defaultValue={124000} /></div>
+          <div style={{ marginBottom: 12 }}>Paseo Colón 7 <input className="exec-input" type="number" defaultValue={77000} /></div>
+        </div>
+        <div className="exec-drawer-foot">
+          <button className="exec-btn ghost" onClick={toggleDrawer}>Cancelar</button>
+          <button className="exec-btn primary" onClick={toggleDrawer}><Check size={14} /> Guardar valores</button>
+        </div>
+      </aside>
     </div>
   );
 };
