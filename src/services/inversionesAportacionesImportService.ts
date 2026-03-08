@@ -8,9 +8,31 @@ export interface ImportAportacionesResult {
   errors: string[];
 }
 
+export interface AportacionImportPreviewRow {
+  fila: number;
+  fecha: string;
+  posicionId?: number;
+  posicionNombre: string;
+  entidad: string;
+  importe: number;
+  notas: string;
+  estado: 'valida' | 'error';
+  error?: string;
+}
+
+export interface AportacionesImportPreview {
+  totalFilasArchivo: number;
+  totalAportacionesDetectadas: number;
+  totalValidas: number;
+  totalConError: number;
+  rows: AportacionImportPreviewRow[];
+  errors: string[];
+}
+
 type RawRow = Record<string, unknown>;
 
 type ParsedAportacionRow = {
+  sourceRow: number;
   posicionId?: number;
   posicionNombre?: string;
   entidad?: string;
@@ -52,15 +74,22 @@ const parseAmount = (raw: unknown): number => {
 const parseDate = (raw: unknown): string | null => {
   if (!raw && raw !== 0) return null;
 
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return raw.toISOString().split('T')[0];
+    return formatLocalDate(raw);
   }
 
   if (typeof raw === 'number') {
     const parsedCode = XLSX.SSF.parse_date_code(raw);
     if (parsedCode) {
       const jsDate = new Date(parsedCode.y, parsedCode.m - 1, parsedCode.d);
-      return jsDate.toISOString().split('T')[0];
+      return formatLocalDate(jsDate);
     }
   }
 
@@ -69,7 +98,7 @@ const parseDate = (raw: unknown): string | null => {
     if (!trimmed) return null;
 
     const isoDate = new Date(trimmed);
-    if (!Number.isNaN(isoDate.getTime())) return isoDate.toISOString().split('T')[0];
+    if (!Number.isNaN(isoDate.getTime())) return formatLocalDate(isoDate);
 
     const match = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
     if (match) {
@@ -78,7 +107,7 @@ const parseDate = (raw: unknown): string | null => {
       const year = parseInt(match[3], 10);
       const normalizedYear = year < 100 ? 2000 + year : year;
       const parsed = new Date(normalizedYear, month - 1, day);
-      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+      if (!Number.isNaN(parsed.getTime())) return formatLocalDate(parsed);
     }
   }
 
@@ -175,23 +204,24 @@ function mapRowsToAportaciones(
         return;
       }
 
-      if (importeEmpresa > 0) {
-        aportaciones.push({
-          posicionId,
-          posicionNombre,
-          entidad,
-          aportacion: { fecha, importe: importeEmpresa, tipo: 'aportacion', notas: `${notasBase} · Empresa` },
-        });
-      }
+      const importeTotal = importeEmpresa + importeIndividuo;
+      const detalleAportacion = [
+        importeEmpresa > 0 ? `Empresa: ${importeEmpresa.toFixed(2)}€` : null,
+        importeIndividuo > 0 ? `Individuo: ${importeIndividuo.toFixed(2)}€` : null,
+      ].filter(Boolean).join(' · ');
 
-      if (importeIndividuo > 0) {
-        aportaciones.push({
-          posicionId,
-          posicionNombre,
-          entidad,
-          aportacion: { fecha, importe: importeIndividuo, tipo: 'aportacion', notas: `${notasBase} · Individuo` },
-        });
-      }
+      aportaciones.push({
+        sourceRow: rowNumber,
+        posicionId,
+        posicionNombre,
+        entidad,
+        aportacion: {
+          fecha,
+          importe: importeTotal,
+          tipo: 'aportacion',
+          notas: detalleAportacion ? `${notasBase} · ${detalleAportacion}` : notasBase,
+        },
+      });
 
       return;
     }
@@ -204,6 +234,7 @@ function mapRowsToAportaciones(
     }
 
     aportaciones.push({
+      sourceRow: rowNumber,
       posicionId,
       posicionNombre,
       entidad,
@@ -220,11 +251,12 @@ const findPosicion = (
   posiciones: PosicionInversion[]
 ): PosicionInversion | undefined => {
   if (row.posicionId) {
-    return posicionesById.get(row.posicionId);
+    const byId = posicionesById.get(row.posicionId);
+    if (byId) return byId;
   }
 
-  const nombreNorm = (row.posicionNombre ?? '').toLowerCase();
-  const entidadNorm = (row.entidad ?? '').toLowerCase();
+  const nombreNorm = (row.posicionNombre ?? '').toLowerCase().trim();
+  const entidadNorm = (row.entidad ?? '').toLowerCase().trim();
 
   const matches = posiciones.filter((p) => {
     if (p.nombre.toLowerCase() !== nombreNorm) return false;
@@ -235,6 +267,71 @@ const findPosicion = (
   if (matches.length === 1) return matches[0];
   return undefined;
 };
+
+export async function previsualizarImportacionAportaciones(
+  file: File,
+  posicionPorDefecto?: PosicionInversion
+): Promise<AportacionesImportPreview> {
+  const posiciones = await inversionesService.getPosiciones();
+  const posicionesById = new Map<number, PosicionInversion>(posiciones.map((p) => [p.id, p]));
+
+  const parsed = await parseRows(file);
+  if (parsed.errors.length > 0) {
+    return {
+      totalFilasArchivo: 0,
+      totalAportacionesDetectadas: 0,
+      totalValidas: 0,
+      totalConError: parsed.errors.length,
+      rows: [],
+      errors: parsed.errors,
+    };
+  }
+
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, posicionPorDefecto);
+  const previewRows: AportacionImportPreviewRow[] = mapped.aportaciones.map((row) => {
+    const posicion = findPosicion(row, posicionesById, posiciones);
+    if (!posicion) {
+      const referencia = row.posicionId
+        ? `No se encontró una coincidencia única para posicion_id ${row.posicionId}.`
+        : `No se encontró una coincidencia única para posición "${row.posicionNombre}"${row.entidad ? ` (${row.entidad})` : ''}.`;
+
+      return {
+        fila: row.sourceRow,
+        fecha: row.aportacion.fecha,
+        posicionId: row.posicionId,
+        posicionNombre: row.posicionNombre ?? '',
+        entidad: row.entidad ?? '',
+        importe: row.aportacion.importe,
+        notas: row.aportacion.notas ?? '',
+        estado: 'error',
+        error: referencia,
+      };
+    }
+
+    return {
+      fila: row.sourceRow,
+      fecha: row.aportacion.fecha,
+      posicionId: posicion.id,
+      posicionNombre: row.posicionNombre || posicion.nombre,
+      entidad: row.entidad || posicion.entidad,
+      importe: row.aportacion.importe,
+      notas: row.aportacion.notas ?? '',
+      estado: 'valida',
+    };
+  });
+
+  const totalConError = mapped.skipped + previewRows.filter((r) => r.estado === 'error').length;
+  const totalValidas = previewRows.filter((r) => r.estado === 'valida').length;
+
+  return {
+    totalFilasArchivo: parsed.rows.length,
+    totalAportacionesDetectadas: previewRows.length,
+    totalValidas,
+    totalConError,
+    rows: previewRows,
+    errors: [...mapped.errors, ...previewRows.filter((r) => r.error).map((r) => r.error as string)],
+  };
+}
 
 export async function importarAportacionesHistoricasMasivas(
   file: File,

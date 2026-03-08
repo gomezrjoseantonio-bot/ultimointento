@@ -445,7 +445,16 @@ function getAnnualRate(prestamo: Prestamo): number {
   if (prestamo.tipo === 'MIXTO') {
     return prestamo.tipoNominalAnualMixtoFijo || 0;
   }
-  return ((prestamo.valorIndiceActual || 0) + (prestamo.diferencial || 0)) * 100;
+  return normalizeRateToPercentage((prestamo.valorIndiceActual || 0) + (prestamo.diferencial || 0));
+}
+
+function normalizeRateToPercentage(rate: number): number {
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+
+  // Se aceptan dos formatos de entrada:
+  // - decimal (0.037 => 3.7%)
+  // - porcentaje directo (3.7 => 3.7%)
+  return rate <= 1 ? rate * 100 : rate;
 }
 
 function getMonthsDifference(startDateIso: string, endDate: Date): number {

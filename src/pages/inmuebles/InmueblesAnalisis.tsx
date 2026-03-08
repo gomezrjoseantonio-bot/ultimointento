@@ -63,12 +63,12 @@ const fmt = (n: number) =>
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const PROPERTIES = [
-  { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68 },
-  { id: 'manresa',      alias: 'Manresa',         addr: "Sant Joan d'en Coll, 53 3-6",   coste: 93200,  valor: 135000, revalTotal: 44.85, revalAnual: 8.44,  yield: 0 },
-  { id: 'santfruitos',  alias: 'Sant Fruitós',    addr: 'Carles Buigas, 15-17 BJ 2',     coste: 114500, valor: 230000, revalTotal: 100.87,revalAnual: 3.48,  yield: 3.46 },
-  { id: 'tenderina4d',  alias: 'Tenderina 64 4D', addr: 'Tenderina, 64 4D',              coste: 94920,  valor: 150000, revalTotal: 58.03, revalAnual: 19.70, yield: 15.87 },
-  { id: 'tenderina4i',  alias: 'Tenderina 64 4I', addr: 'Tenderina, 64 4I',              coste: 98760,  valor: 150000, revalTotal: 51.88, revalAnual: 12.86, yield: 19.68 },
-  { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',              coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0 },
+  { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68, deudaPendiente: 273921 },
+  { id: 'manresa',      alias: 'Manresa',         addr: "Sant Joan d'en Coll, 53 3-6",   coste: 93200,  valor: 135000, revalTotal: 44.85, revalAnual: 8.44,  yield: 0, deudaPendiente: 0 },
+  { id: 'santfruitos',  alias: 'Sant Fruitós',    addr: 'Carles Buigas, 15-17 BJ 2',     coste: 114500, valor: 230000, revalTotal: 100.87,revalAnual: 3.48,  yield: 3.46, deudaPendiente: 0 },
+  { id: 'tenderina4d',  alias: 'Tenderina 64 4D', addr: 'Tenderina, 64 4D',              coste: 94920,  valor: 150000, revalTotal: 58.03, revalAnual: 19.70, yield: 15.87, deudaPendiente: 0 },
+  { id: 'tenderina4i',  alias: 'Tenderina 64 4I', addr: 'Tenderina, 64 4I',              coste: 98760,  valor: 150000, revalTotal: 51.88, revalAnual: 12.86, yield: 19.68, deudaPendiente: 0 },
+  { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',              coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0, deudaPendiente: 0 },
 ];
 
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
@@ -475,7 +475,12 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
           { label: 'Reval. anual', val: `${prop.revalAnual.toFixed(2)}%`, meta: 'Media desde compra', color: C.blue },
           { label: 'Yield bruto', val: prop.yield > 0 ? `${prop.yield.toFixed(2)}%` : '—', meta: 'Ingresos / coste', color: C.blue },
           { label: 'Cashflow / mes', val: prop.yield > 0 ? '+620 €' : '—', meta: 'Neto tras gastos', color: C.pos },
-          { label: 'Deuda pendiente', val: '—', meta: 'Sin hipoteca activa', color: C.neg },
+          {
+            label: 'Deuda pendiente',
+            val: prop.deudaPendiente > 0 ? `-${fmt(prop.deudaPendiente)}` : '0 €',
+            meta: prop.deudaPendiente > 0 ? 'Hipoteca activa' : 'Sin hipoteca activa',
+            color: prop.deudaPendiente > 0 ? C.neg : C.n500,
+          },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14, flexShrink: 0, minWidth: 130 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
@@ -554,28 +559,6 @@ export default function InmueblesAnalisis() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
-
-      {/* Topbar */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 90, background: '#fff', borderBottom: `1px solid ${C.n200}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blue }}>
-            <Building2 size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: C.n700 }}>Inmuebles</div>
-            <div style={{ fontSize: 11, color: C.n500 }}>6 propiedades · Valor total 916.000 €</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
-            Exportar
-          </button>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
-            <Plus size={13} /> Nuevo inmueble
-          </button>
-        </div>
-      </header>
-
       <div style={{ padding: 24 }}>
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
