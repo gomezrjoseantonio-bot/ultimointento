@@ -116,6 +116,12 @@ const HorizonVisualPanel: React.FC = () => {
 
   const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
 
+  const panelMonthLabel = new Date(data.tesoreria.asOf).toLocaleDateString('es-ES', {
+    month: 'long',
+    year: 'numeric'
+  });
+  const panelMonthTitle = `${panelMonthLabel.charAt(0).toUpperCase()}${panelMonthLabel.slice(1)}`;
+
   return (
     <div className="min-h-screen bg-hz-bg">
       <div className="max-w-[1320px] mx-auto p-6 space-y-5">
@@ -146,8 +152,8 @@ const HorizonVisualPanel: React.FC = () => {
         <section className="grid grid-cols-12 gap-4">
           <article className="col-span-12 xl:col-span-7 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario</p>
-              <span className="text-xs text-hz-neutral-600">Corte hoy: {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')} · Mes {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
+              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario · {panelMonthTitle}</p>
+              <span className="text-xs text-hz-neutral-600">Actualizado a {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')}</span>
             </div>
             <div className="overflow-auto">
               <table className="w-full text-sm">

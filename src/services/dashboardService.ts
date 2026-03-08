@@ -1,6 +1,7 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
 import { personalDataService } from './personalDataService';
+import { calculateAccountBalanceAtDate } from './accountBalanceService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -962,9 +963,18 @@ class DashboardService {
         && !isCardAccount(acc)
       ));
 
+      const endOfTodayCutoff = new Date(now);
+      endOfTodayCutoff.setDate(endOfTodayCutoff.getDate() + 1);
+      const cutoffDate = `${endOfTodayCutoff.getFullYear()}-${String(endOfTodayCutoff.getMonth() + 1).padStart(2, '0')}-${String(endOfTodayCutoff.getDate()).padStart(2, '0')}`;
+
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;
-        const hoy = toNumber(account.balance);
+        const hoy = calculateAccountBalanceAtDate({
+          account,
+          cutoffDate,
+          treasuryEvents: treasuryEvents as any,
+          movements: movements as any,
+        });
 
         const monthMovements = (movements as any[]).filter((movement) => {
           if (movement.accountId !== accountId) return false;
