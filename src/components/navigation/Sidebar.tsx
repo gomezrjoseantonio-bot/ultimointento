@@ -21,10 +21,11 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           isActive
             ? 'text-white'
             : 'text-gray-300 hover:text-white hover:opacity-90'
-        } group flex items-center ${collapsed ? 'justify-center' : ''} px-2 py-2 text-sm font-medium rounded-lg transition-colors duration-200`
+        } group flex items-center ${collapsed ? 'justify-center' : ''} px-2.5 py-2 text-sm font-medium rounded-lg transition-all duration-200 border border-transparent`
       }
       style={({ isActive }) => ({
-        backgroundColor: isActive ? 'var(--blue-800)' : 'transparent',
+        backgroundColor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+        borderColor: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
       })}
       title={collapsed ? item.name : undefined}
     >
@@ -43,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
 
   const SectionLabel = ({ label }: { label: string }) => collapsed ? null : (
     <p className="px-2 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest"
-       style={{ color: 'rgba(255,255,255,0.28)' }}>
+       style={{ color: 'rgba(255,255,255,0.45)' }}>
       {label}
     </p>
   );
@@ -62,7 +63,9 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         className={`fixed inset-y-0 left-0 z-[100] transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${collapsed ? 'w-16' : 'w-60'}`}
-        style={{ backgroundColor: 'var(--blue-900)' }}
+        style={{
+          background: 'linear-gradient(180deg, #021E3F 0%, #042C5E 100%)',
+        }}
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-4 py-5"
@@ -70,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           {!collapsed && (
             <div className="flex items-center space-x-2">
               <div
-                className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
                 style={{ backgroundColor: 'var(--teal-500)' }}
               >
                 A
@@ -80,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           )}
           {collapsed && (
             <div
-              className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-sm mx-auto"
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm mx-auto"
               style={{ backgroundColor: 'var(--teal-500)' }}
               title="ATLAS"
             >
