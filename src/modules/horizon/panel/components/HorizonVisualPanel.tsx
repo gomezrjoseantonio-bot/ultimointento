@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, ChevronDown, ChevronUp, RefreshCw, Settings, Wallet } from 'lucide-react';
 import { dashboardService } from '../../../../services/dashboardService';
 import type { DashboardSnapshot } from '../../../../services/dashboardService';
+import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
 
 export interface PanelFilters {
   excludePersonal: boolean;
@@ -50,23 +51,24 @@ const HorizonVisualPanel: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortColumn>('banco');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const pageSize = 6;
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
-        dashboardService.getPatrimonioNeto(),
-        dashboardService.getLiquidez(),
-        dashboardService.getSaludFinanciera(),
-        dashboardService.getTesoreriaPanel(),
-        dashboardService.getAlertas()
-      ]);
-      setData({ patrimonio, liquidez, salud, tesoreria, alertas });
-      setLoading(false);
-    };
+  const loadDashboardData = async () => {
+    setLoading(true);
+    const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
+      dashboardService.getPatrimonioNeto(),
+      dashboardService.getLiquidez(),
+      dashboardService.getSaludFinanciera(),
+      dashboardService.getTesoreriaPanel(),
+      dashboardService.getAlertas()
+    ]);
+    setData({ patrimonio, liquidez, salud, tesoreria, alertas });
+    setLoading(false);
+  };
 
-    void load();
+  useEffect(() => {
+    void loadDashboardData();
   }, [filters.excludePersonal, filters.dateRange]);
 
   const sortedRows = useMemo(() => {
@@ -124,6 +126,12 @@ const HorizonVisualPanel: React.FC = () => {
               <p className="text-sm text-hz-neutral-700">KPIs reales de patrimonio, liquidez, riesgo y alertas en corto, medio y largo plazo.</p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="px-3 py-2 text-sm rounded-lg bg-hz-primary text-white hover:opacity-90"
+              >
+                Actualizar valores
+              </button>
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, excludePersonal: !prev.excludePersonal }))}
                 className="px-3 py-2 text-sm rounded-lg bg-hz-neutral-100 text-hz-neutral-900"
@@ -240,6 +248,15 @@ const HorizonVisualPanel: React.FC = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar KPIs
           </button>
         </footer>
+
+        <ActualizacionValoresDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSaved={() => {
+            setDrawerOpen(false);
+            void loadDashboardData();
+          }}
+        />
       </div>
     </div>
   );
