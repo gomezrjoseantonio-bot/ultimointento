@@ -114,7 +114,7 @@ const DesignBiblePage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-atlas-teal flex items-center justify-center text-white font-bold">
+              <div className="h-10 w-10 rounded-full bg-atlas-blue flex items-center justify-center text-white font-bold">
                 A
               </div>
               <div>
@@ -132,7 +132,7 @@ const DesignBiblePage: React.FC = () => {
               </span>
               <button
                 onClick={() => window.close()}
-                className="atlas-atlas-atlas-atlas-atlas-atlas-btn-secondary"
+                className="atlas-btn-secondary"
               >
                 Cerrar
               </button>

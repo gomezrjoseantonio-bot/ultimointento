@@ -9,6 +9,7 @@ interface BreadcrumbItem {
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  infoText?: string;
   breadcrumb?: BreadcrumbItem[];
   showInfoIcon?: boolean;
   primaryAction?: {
@@ -26,6 +27,7 @@ interface PageHeaderProps {
 const PageHeader: React.FC<PageHeaderProps> = ({ 
   title, 
   subtitle, 
+  infoText,
   breadcrumb,
   showInfoIcon = false,
   primaryAction,
@@ -60,31 +62,34 @@ const PageHeader: React.FC<PageHeaderProps> = ({
         </nav>
       )}
       
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 min-w-0">
           <h1 
             className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
-            style={{ color: 'var(--hz-text)' }}
+            style={{ color: 'var(--n-700)' }}
           >
             {title}
           </h1>
-          {showInfoIcon && subtitle && (
+          {showInfoIcon && infoText && !subtitle && (
             <div className="relative">
               <button
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="text-neutral-400 hover:text-neutral-600 transition-colors"
+                className="inline-flex items-center justify-center h-4 w-4 rounded-full border transition-colors"
+                style={{ borderColor: 'var(--n-300)', color: 'var(--n-500)' }}
                 aria-describedby="page-info-tooltip"
+                aria-label="Más información"
               >
-                <Info className="h-4 w-4" />
+                <Info className="h-3 w-3" />
               </button>
               {showTooltip && (
                 <div 
                   id="page-info-tooltip"
-                  className="absolute top-6 left-0 bg-neutral-800 text-white text-sm rounded-lg px-3 py-2 z-10 whitespace-nowrap max-w-xs"
+                  className="absolute top-6 left-0 text-sm rounded-md px-3 py-2 z-10 max-w-xs border shadow-md"
+                  style={{ background: 'var(--white)', color: 'var(--n-700)', borderColor: 'var(--n-300)' }}
                   role="tooltip"
                 >
-                  {subtitle}
+                  {infoText}
                 </div>
               )}
             </div>
