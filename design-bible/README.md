@@ -4,6 +4,7 @@
 
 ## 📘 Navegación
 
+- **[Guía definitiva v2](./GUIA_DISENO_DEFINITIVA_V2.md)** → Estándar visual obligatorio de la app
 - **[Foundations](./foundations/)** → Tokens y fundamentos (colores, tipografía, iconos, espaciado)
 - **[Components](./components/)** → Guías de cada componente UI
 - **[Patterns](./patterns/)** → Patrones de interacción y UX
