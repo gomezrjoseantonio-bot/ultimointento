@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LineChart,
   Receipt,
+  Settings2,
   ShieldCheck,
   TrendingDown,
   TrendingUp,
@@ -130,7 +131,7 @@ const HorizonVisualPanel: React.FC = () => {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="exec-btn ghost" onClick={toggleDrawer}><Zap size={14} /> Actualizar valores</button>
+            <button className="exec-btn ghost" onClick={() => setDrawerOpen(true)}><Zap size={14} /> Actualizar valores</button>
             <button className="exec-btn ghost"><Settings2 size={14} /> Configurar</button>
           </div>
         </header>
