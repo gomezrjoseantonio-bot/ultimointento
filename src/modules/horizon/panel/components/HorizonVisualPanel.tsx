@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Bell, CalendarRange, RefreshCw, Settings, Wallet } from 'lucide-react';
 import { dashboardService } from '../../../../services/dashboardService';
+import type { DashboardSnapshot } from '../../../../services/dashboardService';
 
 export interface PanelFilters {
   excludePersonal: boolean;
