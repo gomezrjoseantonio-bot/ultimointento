@@ -130,6 +130,13 @@ const isDateWithinRange = (value: unknown, start: Date, end: Date): boolean => {
   return Boolean(date && date >= start && date <= end);
 };
 
+const isCardAccount = (acc: any): boolean => {
+  const explicitCardType = acc?.tipo === 'TARJETA_CREDITO' || acc?.type === 'card';
+  const normalizedName = String(acc?.alias || acc?.name || acc?.bank || acc?.banco?.name || '').toLowerCase();
+  const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
+  return explicitCardType || inferredFromName;
+};
+
 // Default configurations
 const PRESET_A_BLOCKS: DashboardBlockConfig[] = [
   {
@@ -516,13 +523,6 @@ class DashboardService {
 
       // Cuentas: sum active account balances.
       const accounts = await db.getAll('accounts');
-      const isCardAccount = (acc: any): boolean => {
-        const explicitCardType = acc.tipo === 'TARJETA_CREDITO' || acc.type === 'card';
-        const normalizedName = String(acc.alias || acc.name || acc.bank || acc.banco?.name || '').toLowerCase();
-        const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
-        return explicitCardType || inferredFromName;
-      };
-
       const activeAccounts = accounts.filter((acc: any) => (
         acc.isActive !== false
         && !acc.deleted_at
@@ -955,13 +955,6 @@ class DashboardService {
       const accounts = await db.getAll('accounts');
       const movements = await db.getAll('movements').catch(() => []);
       const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
-
-      const isCardAccount = (acc: any): boolean => {
-        const explicitCardType = acc.tipo === 'TARJETA_CREDITO' || acc.type === 'card';
-        const normalizedName = String(acc.alias || acc.name || acc.bank || acc.banco?.name || '').toLowerCase();
-        const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
-        return explicitCardType || inferredFromName;
-      };
 
       const activeAccounts = accounts.filter((acc: any) => (
         acc.isActive !== false
