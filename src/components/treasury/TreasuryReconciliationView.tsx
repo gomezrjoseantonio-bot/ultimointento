@@ -20,7 +20,6 @@ import {
   Upload,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatDateDDMMYYYY } from '../../utils/formatUtils';
 import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
@@ -118,6 +117,21 @@ const DEFAULT_NEW_MOVEMENT: NewMovementForm = {
 
 const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
+
+
+function formatGroupDate(dateStr: string): string {
+  const d = new Date(dateStr.includes('/')
+    ? dateStr.split('/').reverse().join('-')
+    : dateStr
+  );
+  if (isNaN(d.getTime())) return dateStr;
+
+  return d.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).replace('.', '');
+}
 
 const getAccountType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
   const name = normalizeText(acc.alias || acc.banco?.name || acc.name || '');
@@ -609,7 +623,7 @@ const TreasuryReconciliationView: React.FC = () => {
         </button>
 
         {/* Tipo icono */}
-        <div className={`tv3-tipo-icon tv3-tipo-icon--${event.type}`}>
+        <div className={`tv3-evt-icon tv3-evt-icon--${event.type}`}>
           <EventTypeIcon size={13} />
         </div>
 
@@ -759,7 +773,7 @@ const TreasuryReconciliationView: React.FC = () => {
                   <div className="tv3-hero-col-prev">{formatAmount(globalTotals[key].previsto)} €</div>
                   <div className="tv3-hero-col-real">{formatAmount(globalTotals[key].real)} €</div>
                   <div className="tv3-hero-col-bar">
-                    <div className="tv3-hero-col-bar-fill" style={{ width: `${pct}%` }} />
+                    <div className="tv3-hero-col-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} />
                   </div>
                 </div>
               );
@@ -808,27 +822,6 @@ const TreasuryReconciliationView: React.FC = () => {
           </div>
 
           <div className="tv3-banks">
-            {/* Chip "Todos" */}
-            <div
-              className={`tv3-bank-chip ${!selectedBankFilter ? 'tv3-bank-chip--active' : ''}`}
-              onClick={() => setSelectedBankFilter(null)}
-              style={{ minWidth: 100 }}
-            >
-              <div className="tv3-bank-chip-head">
-                <span className="tv3-bank-letter">∑</span>
-                <span className="tv3-bank-name">Todos</span>
-              </div>
-              <div>
-                <span className="tv3-bank-saldo">{formatAmount(totalGlobalPunteado)} €</span>
-              </div>
-              <div className="tv3-bank-track">
-                <div className="tv3-bank-fill tv3-bank-fill--blue" style={{ width: `${pctConciliado}%` }} />
-              </div>
-              <span className={`tv3-bank-badge ${pctConciliado === 100 ? 'tv3-bank-badge--done' : 'tv3-bank-badge--pend'}`}>
-                {pctConciliado}%
-              </span>
-            </div>
-
             {loading ? (
               <span className="tv3-loading-msg">Cargando cuentas…</span>
             ) : (
@@ -854,9 +847,6 @@ const TreasuryReconciliationView: React.FC = () => {
                   >
                     {/* Cabecera */}
                     <div className="tv3-bank-chip-head">
-                      <span className="tv3-bank-letter">
-                        {account.name.charAt(0).toUpperCase()}
-                      </span>
                       <span className="tv3-bank-name">{account.name}</span>
                       <span className={`tv3-bank-status ${isFull ? 'ok' : isNeg ? 'warn' : 'pending'}`}>
                         {isFull
@@ -886,7 +876,7 @@ const TreasuryReconciliationView: React.FC = () => {
                           isFull ? 'tv3-bank-fill--full' : '',
                           isNeg  ? 'tv3-bank-fill--neg'  : 'tv3-bank-fill--blue',
                         ].filter(Boolean).join(' ')}
-                        style={{ width: `${pct}%` }}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
                       />
                     </div>
 
@@ -960,20 +950,10 @@ const TreasuryReconciliationView: React.FC = () => {
                 return (
                   <React.Fragment key={date}>
                     {/* Cabecera fecha */}
-                    <div className="tv3-date-head">
-                      <div className="tv3-date-label"><Calendar size={11} /> {formatDateDDMMYYYY(date)}</div>
-                      <div className="tv3-date-line" />
-                      <div className="tv3-date-totals">
-                        {dayIncome > 0 && (
-                          <span className="tv3-date-tot">
-                            <TrendingUp size={10} /> +{formatAmount(dayIncome)} €
-                          </span>
-                        )}
-                        {dayExpense > 0 && (
-                          <span className="tv3-date-tot">
-                            <TrendingDown size={10} /> −{formatAmount(dayExpense)} €
-                          </span>
-                        )}
+                    <div className="tv3-group-header">
+                      <div className="tv3-group-date"><Calendar size={13} /> {formatGroupDate(date)}</div>
+                      <div className="tv3-group-total">
+                        {dayIncome - dayExpense >= 0 ? '+' : "−"}{formatAmount(Math.abs(dayIncome - dayExpense))} €
                       </div>
                     </div>
 
@@ -1001,7 +981,7 @@ const TreasuryReconciliationView: React.FC = () => {
                             <div className="tv3-rental-icon"><Home size={13} /></div>
                             <div className="tv3-rental-body">
                               <div className="tv3-rental-label">Rentas alquiler — {row.propertyAlias}</div>
-                              <div className="tv3-rental-sub">{row.events.length} habitaciones · {formatDateDDMMYYYY(row.events[0]?.date ?? '')}</div>
+                              <div className="tv3-rental-sub">{row.events.length} habitaciones · {formatGroupDate(row.events[0]?.date ?? '')}</div>
                             </div>
                             <span className="tv3-rental-total">+{formatAmount(totalAmount)} €</span>
                             <span className={`tv3-bank-badge ${allConfirmed ? 'tv3-bank-badge--done' : 'tv3-bank-badge--pend'}`} style={{ marginLeft: 10 }}>
