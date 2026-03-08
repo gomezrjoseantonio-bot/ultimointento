@@ -2,7 +2,7 @@
 // Página de análisis de portfolio de inversiones
 // Tabs: Resumen · Cartera · Rendimientos · Individual
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   LayoutDashboard,
   Table2,
@@ -36,6 +36,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
+import { inversionesService } from '../../services/inversionesService';
+import { PosicionInversion } from '../../types/inversiones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -64,7 +66,21 @@ const fmt = (n: number) =>
 const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const POSITIONS = [
+type PositionRow = {
+  id: string;
+  alias: string;
+  broker: string;
+  tipo: string;
+  aportado: number;
+  valor: number;
+  rentPct: number;
+  rentAnual: number;
+  peso: number;
+  color: string;
+  tag: string | null;
+};
+
+const MOCK_POSITIONS: PositionRow[] = [
   {
     id: 'sp500',
     alias: 'Indexado SP500',
@@ -119,8 +135,6 @@ const POSITIONS = [
   },
 ];
 
-const DONUT_COLORS = POSITIONS.map(p => p.color);
-
 const EVOLUCION_INV = [
   { year: '2017', valor: 30000,  aportado: 28000  },
   { year: '2018', valor: 35000,  aportado: 35000  },
@@ -133,8 +147,6 @@ const EVOLUCION_INV = [
   { year: '2025', valor: 215000, aportado: 170000 },
   { year: '2026', valor: 226352, aportado: 173356 },
 ];
-
-const RENT_DATA = POSITIONS.map(p => ({ name: p.alias, rentPct: p.rentPct, rentAnual: p.rentAnual }));
 
 const buildProyInv = (years: number) => {
   const base = 226352, aport = 173356, rate = 0.15;
@@ -244,10 +256,14 @@ function ChartCard({ title, sub, children, right }: { title: string; sub?: strin
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
-function TabResumen() {
+function TabResumen({ positions }: { positions: PositionRow[] }) {
   const [horizon, setHorizon] = useState(10);
+  const totalAportado = positions.reduce((sum, p) => sum + p.aportado, 0);
+  const valorTotal = positions.reduce((sum, p) => sum + p.valor, 0);
+  const ganancia = valorTotal - totalAportado;
+  const rentabilidadTotal = totalAportado > 0 ? (ganancia / totalAportado) * 100 : 0;
   const proyData = useMemo(() => buildProyInv(horizon), [horizon]);
-  const best = POSITIONS.reduce((a, b) => (a.rentPct > b.rentPct ? a : b));
+  const best = positions.reduce((a, b) => (a.rentPct > b.rentPct ? a : b), positions[0]);
 
   return (
     <div>
@@ -267,16 +283,16 @@ function TabResumen() {
 
       {/* KPI row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
-        <KpiCard label="Valor total portfolio" value="226.352 €" meta={<><Chip color={C.pos} bg={C.posBg}><TrendingUp size={10} /> +30,57%</Chip> sobre aportado</>} accentColor={C.blue} icon={Wallet} />
-        <KpiCard label="Capital aportado" value="173.356 €" meta="Inversión acumulada total" accentColor={C.c2} icon={ArrowUpRight} />
-        <KpiCard label="Ganancia no realizada" value="+52.996 €" meta="Si liquidas hoy (antes de impuestos)" accentColor={C.pos} valueColor={C.pos} icon={TrendingUp} iconBg={C.posBg} />
-        <KpiCard label="Posiciones activas" value="4" meta="En 4 brokers / plataformas" accentColor={C.teal} icon={Activity} />
+        <KpiCard label="Valor total portfolio" value={fmt(valorTotal)} meta={<><Chip color={C.pos} bg={C.posBg}><TrendingUp size={10} /> {fmtPct(rentabilidadTotal)}</Chip> sobre aportado</>} accentColor={C.blue} icon={Wallet} />
+        <KpiCard label="Capital aportado" value={fmt(totalAportado)} meta="Inversión acumulada total" accentColor={C.c2} icon={ArrowUpRight} />
+        <KpiCard label="Ganancia no realizada" value={`${ganancia >= 0 ? '+' : ''}${fmt(ganancia)}`} meta="Si liquidas hoy (antes de impuestos)" accentColor={C.pos} valueColor={C.pos} icon={TrendingUp} iconBg={C.posBg} />
+        <KpiCard label="Posiciones activas" value={`${positions.length}`} meta="Posiciones en cartera" accentColor={C.teal} icon={Activity} />
       </div>
 
       {/* KPI row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 16 }}>
         {[
-          { label: 'Rentabilidad total portfolio', val: '+30,57%', meta: 'Desde primera aportación (2017)' },
+          { label: 'Rentabilidad total portfolio', val: fmtPct(rentabilidadTotal), meta: 'Desde primera aportación' },
           { label: 'Rentabilidad anualizada', val: '+8,2%', meta: '/ año · CAGR estimado' },
           { label: 'Mejor posición', val: `${best.alias} +${best.rentPct.toFixed(1)}%`, meta: `${best.rentAnual.toFixed(2)}% / año · ${best.broker}` },
         ].map(k => (
@@ -316,10 +332,10 @@ function TabResumen() {
 
         <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Resumen del portfolio</div>
-          <ResultRow label="Total aportado" value={fmt(173356)} />
-          <ResultRow label="Valor actual" value={fmt(226352)} />
-          <ResultRow label="Ganancia no realizada" value={`+${fmt(52996)}`} valueColor={C.pos} />
-          <ResultRow label="Rentabilidad total" value="+30,57%" valueColor={C.pos} />
+          <ResultRow label="Total aportado" value={fmt(totalAportado)} />
+          <ResultRow label="Valor actual" value={fmt(valorTotal)} />
+          <ResultRow label="Ganancia no realizada" value={`${ganancia >= 0 ? '+' : ''}${fmt(ganancia)}`} valueColor={C.pos} />
+          <ResultRow label="Rentabilidad total" value={fmtPct(rentabilidadTotal)} valueColor={C.pos} />
           <ResultRow label="Mejor posición" value={`${best.alias}`} />
           <ResultRow label="Posición más estable" value="Smartflip P2P" />
           <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
@@ -335,24 +351,24 @@ function TabResumen() {
 
 // ─── Tab: Cartera ─────────────────────────────────────────────────────────────
 
-function TabCartera({ onSelectPosition }: { onSelectPosition: (id: string) => void }) {
+function TabCartera({ onSelectPosition, positions }: { onSelectPosition: (id: string) => void; positions: PositionRow[] }) {
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState<keyof typeof POSITIONS[0]>('alias');
+  const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return POSITIONS
+    return positions
       .filter(p => p.alias.toLowerCase().includes(q) || p.broker.toLowerCase().includes(q) || p.tipo.toLowerCase().includes(q))
       .sort((a: any, b: any) => sortAsc ? (a[sortKey] > b[sortKey] ? 1 : -1) : (a[sortKey] < b[sortKey] ? 1 : -1));
-  }, [query, sortKey, sortAsc]);
+  }, [query, sortKey, sortAsc, positions]);
 
-  const handleSort = (key: keyof typeof POSITIONS[0]) => {
+  const handleSort = (key: keyof PositionRow) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const SortIcon = ({ k }: { k: keyof typeof POSITIONS[0] }) =>
+  const SortIcon = ({ k }: { k: keyof PositionRow }) =>
     sortKey === k ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
 
   return (
@@ -478,8 +494,10 @@ function TabCartera({ onSelectPosition }: { onSelectPosition: (id: string) => vo
 
 // ─── Tab: Rendimientos ────────────────────────────────────────────────────────
 
-function TabRendimientos() {
-  const donutData = POSITIONS.map(p => ({ name: p.alias, value: p.valor }));
+function TabRendimientos({ positions }: { positions: PositionRow[] }) {
+  const donutData = positions.map(p => ({ name: p.alias, value: p.valor }));
+  const donutColors = positions.map(p => p.color);
+  const rentData = positions.map(p => ({ name: p.alias, rentPct: p.rentPct, rentAnual: p.rentAnual }));
 
   return (
     <div>
@@ -500,14 +518,14 @@ function TabRendimientos() {
 
         <ChartCard title="Rentabilidad por posición" sub="% total acumulado desde primera aportación">
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={RENT_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <BarChart data={rentData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
               <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <ReferenceLine y={0} stroke={C.n300} />
               <Bar dataKey="rentPct" name="Rentabilidad total %" radius={[4, 4, 0, 0]}>
-                {RENT_DATA.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+                {rentData.map((_, i) => <Cell key={i} fill={donutColors[i]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -519,14 +537,14 @@ function TabRendimientos() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <PieChart width={180} height={180}>
               <Pie data={donutData} dataKey="value" cx={90} cy={90} innerRadius={58} outerRadius={86} paddingAngle={1}>
-                {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+                {donutData.map((_, i) => <Cell key={i} fill={donutColors[i]} />)}
               </Pie>
               <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12 }} />
             </PieChart>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {POSITIONS.map((p, i) => (
+              {positions.map((p, i) => (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.n700 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: DONUT_COLORS[i], flexShrink: 0 }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: donutColors[i], flexShrink: 0 }} />
                   <span style={{ flex: 1 }}>{p.alias}</span>
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>{p.peso}%</span>
                 </div>
@@ -537,13 +555,13 @@ function TabRendimientos() {
 
         <ChartCard title="Rentabilidad anualizada por posición" sub="% rent. anual estimada (CAGR)">
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={RENT_DATA} layout="vertical" margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+            <BarChart data={rentData} layout="vertical" margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} width={110} />
               <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%/año`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Bar dataKey="rentAnual" name="Rent. anual %" radius={[0, 4, 4, 0]}>
-                {RENT_DATA.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+                {rentData.map((_, i) => <Cell key={i} fill={donutColors[i]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -555,9 +573,9 @@ function TabRendimientos() {
 
 // ─── Tab: Individual ──────────────────────────────────────────────────────────
 
-function TabIndividual({ selectedId }: { selectedId: string }) {
+function TabIndividual({ selectedId, positions }: { selectedId: string; positions: PositionRow[] }) {
   const [posId, setPosId] = useState(selectedId || 'sp500');
-  const pos = POSITIONS.find(p => p.id === posId) ?? POSITIONS[0];
+  const pos = positions.find(p => p.id === posId) ?? positions[0];
   const evolData = INDIV_EVOL[posId] ?? INDIV_EVOL['sp500'];
 
   return (
@@ -566,7 +584,7 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
         <select value={posId} onChange={e => setPosId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 280, fontFamily: 'inherit' }}>
-          {POSITIONS.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.broker}</option>)}
+          {positions.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.broker}</option>)}
         </select>
       </div>
 
@@ -657,6 +675,47 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 export default function InversionesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [selectedPositionId, setSelectedPositionId] = useState('sp500');
+  const [positions, setPositions] = useState<PositionRow[]>(MOCK_POSITIONS);
+
+  useEffect(() => {
+    const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
+    const loadPosiciones = async () => {
+      try {
+        const data = await inversionesService.getPosiciones();
+        if (!data.length) return;
+
+        const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
+        const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
+          const rentabilidadAnual = Number((p as any).rendimiento || 0);
+          const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
+          return {
+            id: String(p.id),
+            alias: p.nombre,
+            broker: p.entidad,
+            tipo: p.tipo,
+            aportado: p.total_aportado,
+            valor: p.valor_actual,
+            rentPct: p.rentabilidad_porcentaje,
+            rentAnual: Number.isFinite(rentabilidadAnual) ? rentabilidadAnual : 0,
+            peso: Number(peso.toFixed(1)),
+            color: colorPalette[index % colorPalette.length],
+            tag: null,
+          };
+        });
+
+        const bestIdx = mapped.reduce((best, item, index, arr) => (item.rentPct > arr[best].rentPct ? index : best), 0);
+        mapped[bestIdx] = { ...mapped[bestIdx], tag: 'Top performer' };
+        setPositions(mapped);
+        if (!mapped.some((p) => p.id === selectedPositionId)) {
+          setSelectedPositionId(mapped[0].id);
+        }
+      } catch (error) {
+        console.error('Error cargando posiciones de inversiones:', error);
+      }
+    };
+
+    loadPosiciones();
+  }, [selectedPositionId]);
 
   const handleSelectPosition = (id: string) => {
     setSelectedPositionId(id);
@@ -665,27 +724,6 @@ export default function InversionesAnalisis() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
-
-      {/* Topbar */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 90, background: '#fff', borderBottom: `1px solid ${C.n200}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blue }}>
-            <TrendingUp size={18} />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: C.n700 }}>Inversiones</div>
-            <div style={{ fontSize: 11, color: C.n500 }}>4 posiciones · Valor total 226.352 €</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
-            Exportar
-          </button>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
-            <Plus size={13} /> Nueva posición
-          </button>
-        </div>
-      </header>
 
       <div style={{ padding: 24 }}>
         {/* Page header */}
@@ -713,10 +751,10 @@ export default function InversionesAnalisis() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'resumen'      && <TabResumen />}
-        {activeTab === 'cartera'      && <TabCartera onSelectPosition={handleSelectPosition} />}
-        {activeTab === 'rendimientos' && <TabRendimientos />}
-        {activeTab === 'individual'   && <TabIndividual selectedId={selectedPositionId} />}
+        {activeTab === 'resumen'      && <TabResumen positions={positions} />}
+        {activeTab === 'cartera'      && <TabCartera onSelectPosition={handleSelectPosition} positions={positions} />}
+        {activeTab === 'rendimientos' && <TabRendimientos positions={positions} />}
+        {activeTab === 'individual'   && <TabIndividual selectedId={selectedPositionId} positions={positions} />}
       </div>
     </div>
   );
