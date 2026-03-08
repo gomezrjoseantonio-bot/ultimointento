@@ -118,6 +118,11 @@ const DEFAULT_NEW_MOVEMENT: NewMovementForm = {
 const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
 
+const toDateOnly = (value: string): Date => {
+  const [y, m, d] = value.substring(0, 10).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
+
 
 function formatGroupDate(dateStr: string): string {
   const d = new Date(dateStr.includes('/')
@@ -520,18 +525,41 @@ const TreasuryReconciliationView: React.FC = () => {
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
   const accountBreakdown = useMemo(() => {
+    const [selectedYear, selectedMonth] = currentMonth.split('-').map(Number);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const viewingCurrentMonth =
+      selectedYear === now.getFullYear() &&
+      selectedMonth === now.getMonth() + 1;
+
     return new Map(accounts.map(account => {
       const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
+      const remainingMonthEvents = viewingCurrentMonth
+        ? acctEvents.filter(e => toDateOnly(e.date) > today)
+        : acctEvents;
       const ingresosPrevistos = acctEvents.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
       const ingresosReales = acctEvents.filter(e => e.type === 'income' && e.status === 'confirmado').reduce((s, e) => s + e.amount, 0);
       const gastosPrevistos = acctEvents.filter(e => e.type !== 'income').reduce((s, e) => s + e.amount, 0);
       const gastosReales = acctEvents.filter(e => e.type !== 'income' && e.status === 'confirmado').reduce((s, e) => s + e.amount, 0);
-      const saldoFinalPrevisto = account.balance + ingresosPrevistos - gastosPrevistos;
-      const saldoFinalReal = account.balance + ingresosReales - gastosReales;
+      const ingresosRestantes = remainingMonthEvents
+        .filter(e => e.type === 'income')
+        .reduce((s, e) => s + e.amount, 0);
+      const gastosRestantes = remainingMonthEvents
+        .filter(e => e.type !== 'income')
+        .reduce((s, e) => s + e.amount, 0);
+      const ingresosRestantesConfirmados = remainingMonthEvents
+        .filter(e => e.type === 'income' && e.status === 'confirmado')
+        .reduce((s, e) => s + e.amount, 0);
+      const gastosRestantesConfirmados = remainingMonthEvents
+        .filter(e => e.type !== 'income' && e.status === 'confirmado')
+        .reduce((s, e) => s + e.amount, 0);
+
+      const saldoFinalPrevisto = account.balance + ingresosRestantes - gastosRestantes;
+      const saldoFinalReal = account.balance + ingresosRestantesConfirmados - gastosRestantesConfirmados;
       const totalPunteado = account.balance + acctEvents.filter(e => e.status === 'confirmado').reduce((s, e) => s + (e.type === 'income' ? e.amount : -e.amount), 0);
       return [account.id, { ingresosPrevistos, ingresosReales, gastosPrevistos, gastosReales, saldoFinalPrevisto, saldoFinalReal, totalPunteado }] as const;
     }));
-  }, [accounts, events]);
+  }, [accounts, currentMonth, events]);
 
   const totalGlobalPunteado = useMemo(() =>
     accounts.reduce((sum, a) => sum + (accountBreakdown.get(a.id)?.totalPunteado ?? a.balance), 0),
@@ -864,7 +892,7 @@ const TreasuryReconciliationView: React.FC = () => {
                         Hoy&nbsp;<span>{formatAmount(account.balance)} €</span>
                       </div>
                       <div className={`tv3-bank-finmes ${isNeg ? 'tv3-bank-finmes--neg' : ''}`}>
-                        Fin mes&nbsp;<span>{formatAmount(bd?.saldoFinalReal ?? account.balance)} €</span>
+                        Fin mes&nbsp;<span>{formatAmount(bd?.saldoFinalPrevisto ?? account.balance)} €</span>
                       </div>
                     </div>
 
