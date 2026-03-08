@@ -111,6 +111,7 @@ const PropertyDetail: React.FC = () => {
     }
   }, [id, loadProperty]);
 
+  // Keep the active tab in sync with the `tab` query param.
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
     if (isDetailTab(requestedTab) && requestedTab !== activeTab) {
