@@ -1,24 +1,15 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import InvestorDashboard from '../components/dashboard/InvestorDashboard';
+import HorizonPanel from '../modules/horizon/panel/Panel';
 
 /**
- * PanelPage - Dashboard principal del inversor
- * 
- * Muestra el InvestorDashboard con:
- * 1. Patrimonio neto total + variación
- * 2. 3 Bolsillos (Trabajo, Inmuebles, Inversiones)
- * 3. Liquidez con proyección 30d
- * 4. Alertas que requieren atención
+ * PanelPage - Entrada principal del panel (/panel)
+ *
+ * Importante: esta ruta debe renderizar el panel estratégico de Horizon.
+ * Antes estaba conectado a InvestorDashboard (legacy), por eso en producción
+ * se seguía viendo el dashboard antiguo.
  */
 const PanelPage: React.FC = () => {
-  const navigate = useNavigate();
-  
-  const handleNavigate = (route: string) => {
-    navigate(route);
-  };
-  
-  return <InvestorDashboard onNavigate={handleNavigate} />;
+  return <HorizonPanel />;
 };
 
 export default PanelPage;
