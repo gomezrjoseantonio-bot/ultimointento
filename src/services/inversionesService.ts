@@ -5,25 +5,62 @@ import { initDB } from './db';
 import { PosicionInversion, Aportacion } from '../types/inversiones';
 import { calcularGananciaPerdidaFIFO } from './inversionesFiscalService';
 
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function calculateTotalAportado(aportaciones: Aportacion[] = []): number {
+  return aportaciones.reduce((sum, aportacion) => {
+    const importe = Number(aportacion.importe || 0);
+    if (!Number.isFinite(importe)) return sum;
+    return aportacion.tipo === 'reembolso' ? sum - importe : sum + importe;
+  }, 0);
+}
+
+function normalizePosicion(posicion: PosicionInversion): PosicionInversion {
+  const aportaciones = Array.isArray(posicion.aportaciones) ? posicion.aportaciones : [];
+  const totalFromAportaciones = calculateTotalAportado(aportaciones);
+  const total_aportado = isFiniteNumber(posicion.total_aportado) ? posicion.total_aportado : totalFromAportaciones;
+  const valor_actual = isFiniteNumber(posicion.valor_actual) ? posicion.valor_actual : 0;
+  const rentabilidad_euros = valor_actual - total_aportado;
+  const rentabilidad_porcentaje = total_aportado > 0
+    ? (rentabilidad_euros / total_aportado) * 100
+    : 0;
+
+  return {
+    ...posicion,
+    aportaciones,
+    valor_actual,
+    total_aportado,
+    rentabilidad_euros,
+    rentabilidad_porcentaje,
+  };
+}
+
 export const inversionesService = {
   // Obtener todas las posiciones activas
   async getPosiciones(): Promise<PosicionInversion[]> {
     const db = await initDB();
     const posiciones = await db.getAll('inversiones');
-    return posiciones.filter(p => p.activo);
+    return posiciones
+      .filter((p) => p.activo)
+      .map((p) => normalizePosicion(p as PosicionInversion));
   },
 
   // Obtener una posición por ID
   async getPosicion(id: number): Promise<PosicionInversion | undefined> {
     const db = await initDB();
-    return db.get('inversiones', id);
+    const posicion = await db.get('inversiones', id);
+    return posicion ? normalizePosicion(posicion as PosicionInversion) : undefined;
   },
 
   // Crear nueva posición
   async createPosicion(posicion: Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & { importe_inicial?: number }): Promise<number> {
     const db = await initDB();
     const now = new Date().toISOString();
-    const totalAportado = posicion.total_aportado ?? posicion.importe_inicial ?? posicion.valor_actual;
+    const valorActual = Number(posicion.valor_actual || 0);
+    const totalAportado = Number(posicion.total_aportado ?? posicion.importe_inicial ?? valorActual);
     const aportacionInicial: Aportacion = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       fecha: posicion.fecha_valoracion,
@@ -39,13 +76,13 @@ export const inversionesService = {
       entidad: posicion.entidad,
       isin: posicion.isin,
       ticker: posicion.ticker,
-      valor_actual: posicion.valor_actual,
+      valor_actual: valorActual,
       fecha_valoracion: posicion.fecha_valoracion,
       aportaciones,
       total_aportado: totalAportado,
-      rentabilidad_euros: posicion.valor_actual - totalAportado,
+      rentabilidad_euros: valorActual - totalAportado,
       rentabilidad_porcentaje: totalAportado > 0
-        ? ((posicion.valor_actual - totalAportado) / totalAportado) * 100
+        ? ((valorActual - totalAportado) / totalAportado) * 100
         : 0,
       notas: posicion.notas,
       activo: true,
@@ -66,16 +103,12 @@ export const inversionesService = {
     const db = await initDB();
     const posicion = await db.get('inversiones', id);
     if (posicion) {
-      const updated = {
+      const merged = {
         ...posicion,
         ...updates,
         updated_at: new Date().toISOString(),
-      };
-      // Recalcular rentabilidad
-      updated.rentabilidad_euros = updated.valor_actual - updated.total_aportado;
-      updated.rentabilidad_porcentaje = updated.total_aportado > 0 
-        ? (updated.rentabilidad_euros / updated.total_aportado) * 100 
-        : 0;
+      } as PosicionInversion;
+      const updated = normalizePosicion(merged);
       await db.put('inversiones', updated);
     }
   },
