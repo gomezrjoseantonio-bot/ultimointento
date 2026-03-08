@@ -782,7 +782,57 @@ class DashboardService {
         const status = String(c?.estado ?? c?.estadoContrato ?? c?.status ?? '').toLowerCase();
         return status === 'activo' || status === 'active';
       });
-      const ocupacion = activeProperties.length > 0 ? (activeContracts.length / activeProperties.length) * 100 : 0;
+
+      const activePropertyIds = new Set(
+        activeProperties
+          .map((p: any) => toNumericId(p?.id ?? p?.propertyId ?? p?.inmueble_id))
+          .filter((id): id is number => id != null)
+      );
+
+      const roomPropertyIds = new Set(
+        contracts
+          .filter((c: any) => {
+            const propertyId = toNumericId(c?.inmuebleId ?? c?.inmueble_id ?? c?.propertyId ?? c?.property_id);
+            if (propertyId == null || !activePropertyIds.has(propertyId)) return false;
+            const unitType = String(c?.unidadTipo ?? c?.unidad_tipo ?? c?.type ?? '').toLowerCase();
+            return unitType === 'habitacion' || unitType === 'habitación' || String(c?.habitacionId ?? c?.habitacion_id ?? '').trim() !== '';
+          })
+          .map((c: any) => toNumericId(c?.inmuebleId ?? c?.inmueble_id ?? c?.propertyId ?? c?.property_id))
+          .filter((id): id is number => id != null)
+      );
+
+      const totalUnits = activeProperties.reduce((sum: number, property: any) => {
+        const propertyId = toNumericId(property?.id ?? property?.propertyId ?? property?.inmueble_id);
+        if (propertyId == null || !activePropertyIds.has(propertyId)) return sum;
+
+        if (roomPropertyIds.has(propertyId)) {
+          const rooms = toNumber(property?.bedrooms ?? property?.habitaciones ?? 0);
+          return sum + Math.max(1, Math.floor(rooms));
+        }
+
+        return sum + 1;
+      }, 0);
+
+      const occupiedUnits = Array.from(activePropertyIds).reduce((sum: number, propertyId: number) => {
+        const propertyActiveContracts = activeContracts.filter((c: any) => {
+          const contractPropertyId = toNumericId(c?.inmuebleId ?? c?.inmueble_id ?? c?.propertyId ?? c?.property_id);
+          return contractPropertyId === propertyId;
+        });
+
+        if (roomPropertyIds.has(propertyId)) {
+          const occupiedRooms = new Set(
+            propertyActiveContracts
+              .map((c: any) => String(c?.habitacionId ?? c?.habitacion_id ?? '').trim().toUpperCase())
+              .filter((roomId: string) => roomId !== '')
+          );
+          return sum + occupiedRooms.size;
+        }
+
+        return sum + (propertyActiveContracts.length > 0 ? 1 : 0);
+      }, 0);
+
+      const ocupacionBase = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
+      const ocupacion = Math.max(0, Math.min(100, ocupacionBase));
 
       const last3Months = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentYear, currentMonth - (i + 1), 1);

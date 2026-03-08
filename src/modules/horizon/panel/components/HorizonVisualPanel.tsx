@@ -115,21 +115,6 @@ const HorizonVisualPanel: React.FC = () => {
 
   return (
     <div className="exec-shell">
-      <aside className="exec-sidebar">
-        <div className="exec-logo">
-          <div className="exec-mark">A</div>
-          <div>
-            <div style={{ fontWeight: 700 }}>ATLAS</div>
-            <div style={{ fontSize: 10, color: 'var(--teal)', textTransform: 'uppercase', letterSpacing: '.12em' }}>Horizon</div>
-          </div>
-        </div>
-        <div className="exec-nav-group">Supervisión</div>
-        <a className="exec-nav-item active" href="/panel"><LayoutDashboard size={16} /> Dashboard</a>
-        <a className="exec-nav-item" href="/personal/resumen"><Home size={16} /> Personal</a>
-        <a className="exec-nav-item" href="/inmuebles"><Building2 size={16} /> Inmuebles</a>
-        <a className="exec-nav-item" href="/inversiones"><LineChart size={16} /> Inversiones</a>
-      </aside>
-
       <div className="exec-main">
         <header className="exec-topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

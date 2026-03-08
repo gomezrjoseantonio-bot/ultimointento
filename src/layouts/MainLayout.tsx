@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
 import CommandPalette from '../components/common/CommandPalette';
@@ -10,6 +10,8 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const location = useLocation();
+  const isPanelRoute = location.pathname === '/panel';
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
@@ -47,12 +49,16 @@ const MainLayout: React.FC = () => {
         
         <main 
           id="main-content"
-          className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
+          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${isPanelRoute ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}`}
           tabIndex={-1}
         >
-          <div className="container mx-auto h-full max-w-7xl">
+          {isPanelRoute ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="container mx-auto h-full max-w-7xl">
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
     </div>

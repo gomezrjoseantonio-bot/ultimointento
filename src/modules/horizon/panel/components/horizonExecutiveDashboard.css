@@ -30,7 +30,7 @@
 .exec-nav-item { display:flex; align-items:center; gap:8px; color:rgba(255,255,255,.56); text-decoration:none; padding:8px 16px; border-left:2px solid transparent; }
 .exec-nav-item.active { color:#fff; border-left-color:var(--teal); background:rgba(29,160,186,.1); }
 
-.exec-main { margin-left:220px; width:calc(100% - 220px); min-width:0; }
+.exec-main { margin-left:0; width:100%; min-width:0; }
 .exec-topbar { min-height:56px; background:#fff; border-bottom:1px solid var(--n-200); display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 24px; position:sticky; top:0; z-index:5; flex-wrap:wrap; }
 .exec-content { width:100%; max-width:none; margin:0; padding:24px 28px; display:flex; flex-direction:column; gap:20px; }
 
