@@ -130,6 +130,13 @@ const isDateWithinRange = (value: unknown, start: Date, end: Date): boolean => {
   return Boolean(date && date >= start && date <= end);
 };
 
+const isCardAccount = (acc: any): boolean => {
+  const explicitCardType = acc?.tipo === 'TARJETA_CREDITO' || acc?.type === 'card';
+  const normalizedName = String(acc?.alias || acc?.name || acc?.bank || acc?.banco?.name || '').toLowerCase();
+  const inferredFromName = normalizedName.includes('tarjeta') || normalizedName.includes('card');
+  return explicitCardType || inferredFromName;
+};
+
 // Default configurations
 const PRESET_A_BLOCKS: DashboardBlockConfig[] = [
   {
@@ -516,7 +523,11 @@ class DashboardService {
 
       // Cuentas: sum active account balances.
       const accounts = await db.getAll('accounts');
-      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const activeAccounts = accounts.filter((acc: any) => (
+        acc.isActive !== false
+        && !acc.deleted_at
+        && !isCardAccount(acc)
+      ));
       const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => sum + toNumber(acc.balance), 0);
 
       // Inversiones: latest current valuation.
@@ -945,7 +956,11 @@ class DashboardService {
       const movements = await db.getAll('movements').catch(() => []);
       const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
 
-      const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
+      const activeAccounts = accounts.filter((acc: any) => (
+        acc.isActive !== false
+        && !acc.deleted_at
+        && !isCardAccount(acc)
+      ));
 
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;

@@ -147,7 +147,7 @@ const HorizonVisualPanel: React.FC = () => {
           <article className="col-span-12 xl:col-span-7 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario</p>
-              <span className="text-xs text-hz-neutral-600">{new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')}</span>
+              <span className="text-xs text-hz-neutral-600">Corte hoy: {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')} · Mes {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
             </div>
             <div className="overflow-auto">
               <table className="w-full text-sm">
@@ -165,17 +165,17 @@ const HorizonVisualPanel: React.FC = () => {
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por cobrar {renderSortIcon('porCobrar')}
+                        Por cobrar (resto mes) {renderSortIcon('porCobrar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por pagar {renderSortIcon('porPagar')}
+                        Por pagar (resto mes) {renderSortIcon('porPagar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
-                        Proyección {renderSortIcon('proyeccion')}
+                        Proyección fin de mes {renderSortIcon('proyeccion')}
                       </button>
                     </th>
                   </tr>
