@@ -179,6 +179,44 @@ describe('Property Analysis Utils', () => {
       );
     });
 
+
+    it('normalizes variable mortgage rates entered as decimal or percentage', () => {
+      const variableLoanDecimal: Prestamo = {
+        ...prestamo,
+        tipo: 'VARIABLE',
+        tipoNominalAnualFijo: undefined,
+        valorIndiceActual: 0.025,
+        diferencial: 0.01,
+      };
+
+      const variableLoanPercentage: Prestamo = {
+        ...variableLoanDecimal,
+        valorIndiceActual: 2.5,
+        diferencial: 1,
+      };
+
+      const decimalResult = buildPropertyAnalysisInputs({
+        property,
+        contracts: [contract],
+        ingresos,
+        gastosOperativosOverride: 140,
+        prestamos: [variableLoanDecimal],
+        valoraciones,
+      });
+
+      const percentageResult = buildPropertyAnalysisInputs({
+        property,
+        contracts: [contract],
+        ingresos,
+        gastosOperativosOverride: 140,
+        prestamos: [variableLoanPercentage],
+        valoraciones,
+      });
+
+      expect(decimalResult.inputs.cuotaHipoteca).toBeCloseTo(percentageResult.inputs.cuotaHipoteca, 2);
+      expect(decimalResult.inputs.amortizacionAnual).toBeCloseTo(percentageResult.inputs.amortizacionAnual, 2);
+    });
+
     it('reports missing required data when records are incomplete', () => {
       const result = buildPropertyAnalysisInputs({
         property,
