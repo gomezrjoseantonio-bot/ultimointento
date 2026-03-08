@@ -14,8 +14,12 @@ import InmuebleFormCompact from '../../../../components/inmuebles/InmuebleFormCo
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
 type ContractFilter = 'all' | 'active' | 'terminated';
 
-const isDetailTab = (value: string | null): value is DetailTab =>
-  value === 'resumen' || value === 'contratos' || value === 'presupuesto' || value === 'fiscal';
+
+const DETAIL_TABS: DetailTab[] = ['resumen', 'contratos', 'presupuesto', 'fiscal'];
+
+const isDetailTab = (value: string | null): value is DetailTab => {
+  return value !== null && DETAIL_TABS.includes(value as DetailTab);
+};
 
 const getContractDateRange = (contract: Contract): { start: Date; end: Date } | null => {
   const startRaw = contract.fechaInicio || contract.startDate;
@@ -107,6 +111,7 @@ const PropertyDetail: React.FC = () => {
     }
   }, [id, loadProperty]);
 
+  // Keep the active tab in sync with the `tab` query param.
   useEffect(() => {
     const requestedTab = searchParams.get('tab');
     if (isDetailTab(requestedTab) && requestedTab !== activeTab) {
