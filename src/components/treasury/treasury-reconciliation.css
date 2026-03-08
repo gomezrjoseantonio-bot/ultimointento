@@ -851,19 +851,6 @@
   border-left: 1px solid var(--n-300);
 }
 
-.bank-filter-card__details {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 4px 12px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed #dbe3f3;
-  font-size: 11px;
-  color: #4b5563;
-  text-align: left;
-}
-
 /* ===== NIVEL 3: EVENTS PANEL (PUNTEO MANUAL) ===== */
 
 .events-panel {
@@ -907,11 +894,6 @@
 .events-panel__count {
   font-size: 12px;
   color: var(--n-500);
-}
-
-.events-panel__count--total {
-  font-weight: 600;
-  color: var(--atlas-blue);
 }
 
 .events-list {
