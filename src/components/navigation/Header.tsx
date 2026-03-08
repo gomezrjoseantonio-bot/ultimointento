@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, UserCircle, ChevronDown, LogOut, HelpCircle } from 'lucide-react';
+import { Menu, UserCircle, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import TourManager from '../tours/TourManager';
 
 interface HeaderProps {
   setSidebarOpen: (open: boolean) => void;
@@ -12,7 +11,6 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [showTourManager, setShowTourManager] = useState(false);
 
   const handleAccountClick = () => {
     navigate('/cuenta/perfil');
@@ -25,10 +23,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
   };
 
   return (
-    <>
-      {showTourManager && <TourManager onClose={() => setShowTourManager(false)} />}
-
-      <header
+    <header
         className="sticky top-0 z-30 border-b"
         style={{
           backgroundColor: 'var(--white)',
@@ -56,15 +51,6 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <button
-              onClick={() => setShowTourManager(true)}
-              className="atlas-btn-ghost atlas-btn-sm"
-              aria-label="Ver tours guiados"
-              title="Tours guiados"
-            >
-              <HelpCircle className="h-5 w-5" style={{ color: 'var(--n-700)' }} />
-            </button>
-
             {user && (
               <div
                 className="hidden lg:flex items-center px-3 py-1 rounded-md text-xs font-semibold"
@@ -142,7 +128,6 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
           </div>
         </div>
       </header>
-    </>
   );
 };
 
