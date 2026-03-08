@@ -148,6 +148,8 @@ const toNumericId = (value: unknown): number | undefined => {
 
 const isPendingTreasuryEvent = (event: any): boolean => event?.status !== 'executed';
 
+const isForecastTreasuryEvent = (event: any): boolean => isPendingTreasuryEvent(event);
+
 const resolveTreasuryEventDisplayAccountId = (
   event: any,
   cardSettlementByAccountId: Map<number, { chargeAccountId: number }>,
