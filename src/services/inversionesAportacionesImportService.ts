@@ -128,7 +128,11 @@ async function parseRows(file: File): Promise<{ rows: RawRow[]; errors: string[]
   return { rows, errors: [] };
 }
 
-function mapRowsToAportaciones(rows: RawRow[], posicionesById: Map<number, PosicionInversion>): { aportaciones: ParsedAportacionRow[]; skipped: number; errors: string[] } {
+function mapRowsToAportaciones(
+  rows: RawRow[],
+  posicionesById: Map<number, PosicionInversion>,
+  posicionPorDefecto?: PosicionInversion
+): { aportaciones: ParsedAportacionRow[]; skipped: number; errors: string[] } {
   const aportaciones: ParsedAportacionRow[] = [];
   const errors: string[] = [];
   let skipped = 0;
@@ -143,9 +147,9 @@ function mapRowsToAportaciones(rows: RawRow[], posicionesById: Map<number, Posic
       return;
     }
 
-    const posicionId = parsePosicionId(getRowValue(row, ['posicion_id', 'id_posicion']));
-    const posicionNombre = String(getRowValue(row, ['posicion_nombre', 'nombre_posicion', 'posicion']) ?? '').trim();
-    const entidad = String(getRowValue(row, ['entidad', 'broker', 'banco']) ?? '').trim();
+    const posicionId = parsePosicionId(getRowValue(row, ['posicion_id', 'id_posicion'])) ?? posicionPorDefecto?.id;
+    const posicionNombre = String(getRowValue(row, ['posicion_nombre', 'nombre_posicion', 'posicion']) ?? '').trim() || posicionPorDefecto?.nombre || '';
+    const entidad = String(getRowValue(row, ['entidad', 'broker', 'banco']) ?? '').trim() || posicionPorDefecto?.entidad || '';
 
     if (!posicionId && !posicionNombre) {
       skipped += 1;
@@ -232,7 +236,10 @@ const findPosicion = (
   return undefined;
 };
 
-export async function importarAportacionesHistoricasMasivas(file: File): Promise<ImportAportacionesResult> {
+export async function importarAportacionesHistoricasMasivas(
+  file: File,
+  posicionPorDefecto?: PosicionInversion
+): Promise<ImportAportacionesResult> {
   const filename = file.name.toLowerCase();
   if (!filename.endsWith('.xlsx') && !filename.endsWith('.xls')) {
     return {
@@ -250,7 +257,7 @@ export async function importarAportacionesHistoricasMasivas(file: File): Promise
     return { imported: 0, skipped: parsed.errors.length, errors: parsed.errors };
   }
 
-  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById);
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, posicionPorDefecto);
   const ordered = [...mapped.aportaciones].sort(
     (a, b) => new Date(a.aportacion.fecha).getTime() - new Date(b.aportacion.fecha).getTime()
   );
@@ -278,8 +285,11 @@ export async function importarAportacionesHistoricasMasivas(file: File): Promise
 }
 
 // Backward-compatible export name used by previous integrations/builds.
-export async function importarAportacionesHistoricas(file: File): Promise<ImportAportacionesResult> {
-  return importarAportacionesHistoricasMasivas(file);
+export async function importarAportacionesHistoricas(
+  file: File,
+  posicionPorDefecto?: PosicionInversion
+): Promise<ImportAportacionesResult> {
+  return importarAportacionesHistoricasMasivas(file, posicionPorDefecto);
 }
 
 export function descargarPlantillaImportacionAportaciones(): void {
