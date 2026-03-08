@@ -1,8 +1,723 @@
-import React from 'react';
-import AnalisisCartera from '../../modules/horizon/analisis-cartera/AnalisisCartera';
+// src/pages/inversiones/InversionesAnalisis.tsx
+// Página de análisis de portfolio de inversiones
+// Tabs: Resumen · Cartera · Rendimientos · Individual
 
-const InversionesAnalisis: React.FC = () => {
-  return <AnalisisCartera scope="inversiones" />;
+import React, { useState, useMemo } from 'react';
+import {
+  LayoutDashboard,
+  Table2,
+  BarChart2,
+  TrendingUp,
+  Wallet,
+  ArrowUpRight,
+  Eye,
+  MoreHorizontal,
+  SlidersHorizontal,
+  Plus,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  Star,
+  Activity,
+} from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+} from 'recharts';
+
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+const C = {
+  blue: '#042C5E',
+  teal: '#1DA0BA',
+  c2: '#5B8DB8',
+  c3: '#1DA0BA',
+  c4: '#A8C4DE',
+  c5: '#C8D0DC',
+  pos: '#1A7A3C',
+  posBg: '#E8F5ED',
+  neg: '#B91C1C',
+  negBg: '#FEE9E9',
+  n700: '#303A4C',
+  n500: '#6C757D',
+  n300: '#C8D0DC',
+  n200: '#DDE3EC',
+  n100: '#EEF1F5',
+  n50: '#F8F9FA',
 };
 
-export default InversionesAnalisis;
+// ─── Formatters ───────────────────────────────────────────────────────────────
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + ' €';
+
+const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
+
+// ─── Data ─────────────────────────────────────────────────────────────────────
+const POSITIONS = [
+  {
+    id: 'sp500',
+    alias: 'Indexado SP500',
+    broker: 'Myinvestor',
+    tipo: 'Fondo indexado',
+    aportado: 26816,
+    valor: 63971,
+    rentPct: 138.56,
+    rentAnual: 26.09,
+    peso: 28.3,
+    color: C.blue,
+    tag: 'Top performer',
+  },
+  {
+    id: 'smartflip',
+    alias: 'Smartflip P2P',
+    broker: 'Smartflip',
+    tipo: 'P2P Lending',
+    aportado: 100000,
+    valor: 100050,
+    rentPct: 0.05,
+    rentAnual: 1.2,
+    peso: 44.2,
+    color: C.c2,
+    tag: null,
+  },
+  {
+    id: 'plan-orange',
+    alias: 'Plan Orange',
+    broker: 'BBVA',
+    tipo: 'Plan de pensiones',
+    aportado: 43800,
+    valor: 59150,
+    rentPct: 35.05,
+    rentAnual: 5.84,
+    peso: 26.1,
+    color: C.teal,
+    tag: null,
+  },
+  {
+    id: 'acc-orange',
+    alias: 'Acciones Orange',
+    broker: 'BNP Paribas',
+    tipo: 'Renta variable',
+    aportado: 2740,
+    valor: 3181,
+    rentPct: 16.09,
+    rentAnual: 4.8,
+    peso: 1.4,
+    color: C.c4,
+    tag: null,
+  },
+];
+
+const DONUT_COLORS = POSITIONS.map(p => p.color);
+
+const EVOLUCION_INV = [
+  { year: '2017', valor: 30000,  aportado: 28000  },
+  { year: '2018', valor: 35000,  aportado: 35000  },
+  { year: '2019', valor: 55000,  aportado: 50000  },
+  { year: '2020', valor: 70000,  aportado: 65000  },
+  { year: '2021', valor: 110000, aportado: 95000  },
+  { year: '2022', valor: 140000, aportado: 130000 },
+  { year: '2023', valor: 175000, aportado: 155000 },
+  { year: '2024', valor: 200000, aportado: 165000 },
+  { year: '2025', valor: 215000, aportado: 170000 },
+  { year: '2026', valor: 226352, aportado: 173356 },
+];
+
+const RENT_DATA = POSITIONS.map(p => ({ name: p.alias, rentPct: p.rentPct, rentAnual: p.rentAnual }));
+
+const buildProyInv = (years: number) => {
+  const base = 226352, aport = 173356, rate = 0.15;
+  return Array.from({ length: years + 1 }, (_, i) => ({
+    year: String(2026 + i),
+    valor: Math.round(base * Math.pow(1 + rate, i)),
+    coste: Math.round(aport * (1 + i * 0.05)),
+  }));
+};
+
+const INDIV_EVOL: Record<string, { year: string; hist: number | null; proy: number | null }[]> = {
+  sp500: [
+    { year: '2017', hist: 9000,  proy: null },
+    { year: '2019', hist: 14000, proy: null },
+    { year: '2020', hist: 17000, proy: null },
+    { year: '2021', hist: 31000, proy: null },
+    { year: '2022', hist: 38000, proy: null },
+    { year: '2023', hist: 48000, proy: null },
+    { year: '2024', hist: 57000, proy: null },
+    { year: '2026', hist: 63971, proy: 63971 },
+    { year: '2028', hist: null,  proy: 84000 },
+    { year: '2030', hist: null,  proy: 111000 },
+    { year: '2032', hist: null,  proy: 147000 },
+  ],
+  smartflip: [
+    { year: '2021', hist: 30000, proy: null },
+    { year: '2022', hist: 60000, proy: null },
+    { year: '2023', hist: 80000, proy: null },
+    { year: '2024', hist: 95000, proy: null },
+    { year: '2026', hist: 100050, proy: 100050 },
+    { year: '2028', hist: null,   proy: 102500 },
+    { year: '2030', hist: null,   proy: 105000 },
+  ],
+  'plan-orange': [
+    { year: '2017', hist: 12000, proy: null },
+    { year: '2019', hist: 20000, proy: null },
+    { year: '2021', hist: 35000, proy: null },
+    { year: '2023', hist: 48000, proy: null },
+    { year: '2026', hist: 59150, proy: 59150 },
+    { year: '2028', hist: null,  proy: 69000 },
+    { year: '2030', hist: null,  proy: 80000 },
+  ],
+  'acc-orange': [
+    { year: '2022', hist: 2740, proy: null },
+    { year: '2024', hist: 2900, proy: null },
+    { year: '2026', hist: 3181, proy: 3181 },
+    { year: '2028', hist: null, proy: 3500 },
+    { year: '2030', hist: null, proy: 3850 },
+  ],
+};
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function KpiCard({
+  label, value, meta, accentColor, iconBg, icon: Icon, valueColor,
+}: {
+  label: string; value: string; meta?: React.ReactNode;
+  accentColor?: string; iconBg?: string; icon?: React.ElementType;
+  valueColor?: string;
+}) {
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
+      {accentColor && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accentColor }} />}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500 }}>{label}</span>
+        {Icon && (
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: iconBg ?? 'rgba(4,44,94,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon size={16} />
+          </div>
+        )}
+      </div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 32, fontWeight: 600, lineHeight: 1, marginBottom: 5, color: valueColor ?? C.n700 }}>{value}</div>
+      {meta && <div style={{ fontSize: 12, color: C.n500 }}>{meta}</div>}
+    </div>
+  );
+}
+
+function Chip({ children, color, bg }: { children: React.ReactNode; color: string; bg: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: bg, color }}>{children}</span>
+  );
+}
+
+function ResultRow({ label, value, valueColor, bold }: { label: string; value: string; valueColor?: string; bold?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0', borderBottom: `1px solid ${C.n100}` }}>
+      <span style={{ fontSize: 13, color: bold ? C.n700 : C.n500, fontWeight: bold ? 700 : 400 }}>{label}</span>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: valueColor ?? C.n700 }}>{value}</span>
+    </div>
+  );
+}
+
+function ChartCard({ title, sub, children, right }: { title: string; sub?: string; children: React.ReactNode; right?: React.ReactNode }) {
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>{title}</div>
+          {sub && <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>{sub}</div>}
+        </div>
+        {right}
+      </div>
+      <div style={{ padding: 20 }}>{children}</div>
+    </div>
+  );
+}
+
+// ─── Tab: Resumen ─────────────────────────────────────────────────────────────
+
+function TabResumen() {
+  const [horizon, setHorizon] = useState(10);
+  const proyData = useMemo(() => buildProyInv(horizon), [horizon]);
+  const best = POSITIONS.reduce((a, b) => (a.rentPct > b.rentPct ? a : b));
+
+  return (
+    <div>
+      {/* Hero banner */}
+      <div style={{ background: `linear-gradient(135deg, ${C.blue} 0%, #0D4A8A 100%)`, borderRadius: 12, padding: '20px 24px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', opacity: .7, marginBottom: 6 }}>Mejor posición · {best.alias}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 38, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>{fmtPct(best.rentPct)}</div>
+          <div style={{ fontSize: 13, opacity: .75 }}>Rentabilidad total · {best.broker} · {best.tipo}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 11, opacity: .7, marginBottom: 4 }}>Valor posición</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 26, fontWeight: 600 }}>{fmt(best.valor)}</div>
+          <div style={{ fontSize: 12, opacity: .65, marginTop: 2 }}>Aportado: {fmt(best.aportado)}</div>
+        </div>
+      </div>
+
+      {/* KPI row 1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
+        <KpiCard label="Valor total portfolio" value="226.352 €" meta={<><Chip color={C.pos} bg={C.posBg}><TrendingUp size={10} /> +30,57%</Chip> sobre aportado</>} accentColor={C.blue} icon={Wallet} />
+        <KpiCard label="Capital aportado" value="173.356 €" meta="Inversión acumulada total" accentColor={C.c2} icon={ArrowUpRight} />
+        <KpiCard label="Ganancia no realizada" value="+52.996 €" meta="Si liquidas hoy (antes de impuestos)" accentColor={C.pos} valueColor={C.pos} icon={TrendingUp} iconBg={C.posBg} />
+        <KpiCard label="Posiciones activas" value="4" meta="En 4 brokers / plataformas" accentColor={C.teal} icon={Activity} />
+      </div>
+
+      {/* KPI row 2 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 16 }}>
+        {[
+          { label: 'Rentabilidad total portfolio', val: '+30,57%', meta: 'Desde primera aportación (2017)' },
+          { label: 'Rentabilidad anualizada', val: '+8,2%', meta: '/ año · CAGR estimado' },
+          { label: 'Mejor posición', val: `${best.alias} +${best.rentPct.toFixed(1)}%`, meta: `${best.rentAnual.toFixed(2)}% / año · ${best.broker}` },
+        ].map(k => (
+          <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: k.val.length > 14 ? 20 : 30, fontWeight: 600, color: C.blue, lineHeight: 1, marginBottom: 4 }}>{k.val}</div>
+            <div style={{ fontSize: 12, color: C.n500 }}>{k.meta}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <ChartCard
+          title="Proyección del portfolio"
+          sub="Valor proyectado a tasa histórica ~15%/año"
+          right={
+            <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3 }}>
+              {[5, 10, 20].map(y => (
+                <button key={y} onClick={() => setHorizon(y)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: horizon === y ? 600 : 500, color: horizon === y ? C.blue : C.n500, background: horizon === y ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: horizon === y ? '0 1px 3px rgba(4,44,94,.08)' : 'none', fontFamily: 'inherit' }}>{y}a</button>
+              ))}
+            </div>
+          }
+        >
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={proyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" strokeDasharray="0" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <Line type="monotone" dataKey="valor" name="Valor estimado" stroke={C.blue} strokeWidth={2} dot={{ r: 3, fill: C.blue }} />
+              <Line type="monotone" dataKey="coste" name="Capital aportado" stroke={C.c2} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3, fill: C.c2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Resumen del portfolio</div>
+          <ResultRow label="Total aportado" value={fmt(173356)} />
+          <ResultRow label="Valor actual" value={fmt(226352)} />
+          <ResultRow label="Ganancia no realizada" value={`+${fmt(52996)}`} valueColor={C.pos} />
+          <ResultRow label="Rentabilidad total" value="+30,57%" valueColor={C.pos} />
+          <ResultRow label="Mejor posición" value={`${best.alias}`} />
+          <ResultRow label="Posición más estable" value="Smartflip P2P" />
+          <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Múltiplo sobre capital</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× 1,31</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Cartera ─────────────────────────────────────────────────────────────
+
+function TabCartera({ onSelectPosition }: { onSelectPosition: (id: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState<keyof typeof POSITIONS[0]>('alias');
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return POSITIONS
+      .filter(p => p.alias.toLowerCase().includes(q) || p.broker.toLowerCase().includes(q) || p.tipo.toLowerCase().includes(q))
+      .sort((a: any, b: any) => sortAsc ? (a[sortKey] > b[sortKey] ? 1 : -1) : (a[sortKey] < b[sortKey] ? 1 : -1));
+  }, [query, sortKey, sortAsc]);
+
+  const handleSort = (key: keyof typeof POSITIONS[0]) => {
+    if (sortKey === key) setSortAsc(!sortAsc);
+    else { setSortKey(key); setSortAsc(true); }
+  };
+
+  const SortIcon = ({ k }: { k: keyof typeof POSITIONS[0] }) =>
+    sortKey === k ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
+
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 360, padding: '7px 12px', border: `1.5px solid ${C.n200}`, borderRadius: 8, background: C.n50 }}>
+          <Search size={14} color={C.n500} />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre, broker o tipo..." style={{ border: 'none', background: 'transparent', fontSize: 13, color: C.n700, width: '100%', outline: 'none', fontFamily: 'inherit' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
+            <SlidersHorizontal size={13} /> Filtros
+          </button>
+          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
+            <Plus size={13} /> Nueva posición
+          </button>
+        </div>
+      </div>
+
+      <div style={{ padding: '8px 20px', fontSize: 11, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>{filtered.length} posiciones</div>
+
+      {/* Pos cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: 20 }}>
+        {filtered.map(p => (
+          <div key={p.id} onClick={() => onSelectPosition(p.id)} style={{ border: `1.5px solid ${C.n200}`, borderRadius: 12, padding: 18, cursor: 'pointer', transition: 'box-shadow 120ms', position: 'relative', overflow: 'hidden' }}
+            onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(4,44,94,.08)')}
+            onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: p.color }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.n700 }}>{p.alias}</div>
+                <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>{p.broker} · {p.tipo}</div>
+              </div>
+              {p.tag && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: 'rgba(4,44,94,.08)', color: C.blue, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Star size={10} />{p.tag}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: C.n500, marginBottom: 2 }}>Valor actual</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.n700 }}>{fmt(p.valor)}</div>
+                <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>Aportado: {fmt(p.aportado)}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: C.n500, marginBottom: 2 }}>Rentabilidad</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: p.rentPct > 0 ? C.pos : C.neg }}>
+                  {fmtPct(p.rentPct)}
+                </div>
+                <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.rentAnual.toFixed(2)}% / año</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.n500, marginBottom: 4 }}>
+                <span>Peso portfolio</span><span style={{ fontWeight: 600 }}>{p.peso}%</span>
+              </div>
+              <div style={{ background: C.n100, borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${p.peso}%`, background: p.color, borderRadius: 4, transition: 'width 600ms ease' }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div style={{ borderTop: `1px solid ${C.n100}`, padding: '0 0 0 0' }}>
+        <div style={{ padding: '8px 20px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, background: C.n50 }}>Vista tabla</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {[
+                { key: 'alias', label: 'Posición / Broker', align: 'left' },
+                { key: 'aportado', label: 'Aportado', align: 'right' },
+                { key: 'valor', label: 'Valor actual', align: 'right' },
+                { key: 'rentPct', label: '% Rent. total', align: 'right' },
+                { key: 'rentAnual', label: '% Rent. anual', align: 'right' },
+                { key: 'peso', label: 'Peso %', align: 'right' },
+              ].map(col => (
+                <th key={col.key} onClick={() => handleSort(col.key as any)} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col.align as any, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{col.label}<SortIcon k={col.key as any} /></span>
+                </th>
+              ))}
+              <th style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, background: C.n50, borderBottom: `1px solid ${C.n200}` }} />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((p, i) => (
+              <tr key={p.id} onClick={() => onSelectPosition(p.id)} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${C.n100}` : 'none', cursor: 'pointer' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(4,44,94,.015)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <td style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{p.alias}</div>
+                      <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.broker} · {p.tipo}</div>
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.aportado)}</td>
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.valor)}</td>
+                <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <Chip color={p.rentPct > 5 ? C.pos : p.rentPct > 0 ? C.n500 : C.neg} bg={p.rentPct > 5 ? C.posBg : p.rentPct > 0 ? C.n100 : C.negBg}>{fmtPct(p.rentPct)}</Chip>
+                </td>
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.pos, fontWeight: 600 }}>{p.rentAnual.toFixed(2)}%</td>
+                <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{p.peso}%</td>
+                <td style={{ padding: '12px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                    <button onClick={e => { e.stopPropagation(); onSelectPosition(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
+                    <button onClick={e => e.stopPropagation()} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><MoreHorizontal size={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Rendimientos ────────────────────────────────────────────────────────
+
+function TabRendimientos() {
+  const donutData = POSITIONS.map(p => ({ name: p.alias, value: p.valor }));
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+        <ChartCard title="Evolución del portfolio" sub="Valor total vs capital aportado · 2017–2026">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={EVOLUCION_INV} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="valor" name="Valor portfolio" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="aportado" name="Capital aportado" stroke={C.c2} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Rentabilidad por posición" sub="% total acumulado desde primera aportación">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={RENT_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+              <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <ReferenceLine y={0} stroke={C.n300} />
+              <Bar dataKey="rentPct" name="Rentabilidad total %" radius={[4, 4, 0, 0]}>
+                {RENT_DATA.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <ChartCard title="Distribución del portfolio" sub="% por valor actual de cada posición">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <PieChart width={180} height={180}>
+              <Pie data={donutData} dataKey="value" cx={90} cy={90} innerRadius={58} outerRadius={86} paddingAngle={1}>
+                {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+              </Pie>
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12 }} />
+            </PieChart>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {POSITIONS.map((p, i) => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.n700 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: DONUT_COLORS[i], flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{p.alias}</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600 }}>{p.peso}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ChartCard>
+
+        <ChartCard title="Rentabilidad anualizada por posición" sub="% rent. anual estimada (CAGR)">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={RENT_DATA} layout="vertical" margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} width={110} />
+              <Tooltip formatter={(v: number) => [`${v.toFixed(2)}%/año`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Bar dataKey="rentAnual" name="Rent. anual %" radius={[0, 4, 4, 0]}>
+                {RENT_DATA.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Individual ──────────────────────────────────────────────────────────
+
+function TabIndividual({ selectedId }: { selectedId: string }) {
+  const [posId, setPosId] = useState(selectedId || 'sp500');
+  const pos = POSITIONS.find(p => p.id === posId) ?? POSITIONS[0];
+  const evolData = INDIV_EVOL[posId] ?? INDIV_EVOL['sp500'];
+
+  return (
+    <div>
+      {/* Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
+        <select value={posId} onChange={e => setPosId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 280, fontFamily: 'inherit' }}>
+          {POSITIONS.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.broker}</option>)}
+        </select>
+      </div>
+
+      {/* Timeline */}
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.n500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        Foto pasado · presente · proyección
+        <div style={{ flex: 1, height: 1, background: C.n200 }} />
+      </div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+        {[
+          { label: 'Aportado', val: fmt(pos.aportado), sub: 'Capital invertido total', cls: 'past' },
+          { label: 'Hoy', val: fmt(pos.valor), sub: 'Valor estimado · mar 2026', cls: 'present' },
+          { label: 'Proyección 5 años', val: `~${fmt(Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 5)))}`, sub: `A ${pos.rentAnual.toFixed(2)}% anual`, cls: 'future' },
+          { label: 'Proyección 10 años', val: `~${fmt(Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 10)))}`, sub: `A ${pos.rentAnual.toFixed(2)}% anual`, cls: 'future' },
+        ].map(t => (
+          <div key={t.label} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: `1px solid ${t.cls === 'present' ? C.blue : t.cls === 'future' ? C.teal : C.n200}`, background: t.cls === 'present' ? 'rgba(4,44,94,.04)' : t.cls === 'future' ? 'rgba(29,160,186,.04)' : C.n50 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: C.n500, marginBottom: 4 }}>{t.label}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.n700 }}>{t.val}</div>
+            <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{t.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, overflowX: 'auto' }}>
+        {[
+          { label: 'Ganancia no realizada', val: `+${fmt(pos.valor - pos.aportado)}`, meta: 'Valor − aportado', color: C.pos },
+          { label: 'Rentabilidad total', val: fmtPct(pos.rentPct), meta: 'Acumulada total', color: C.pos },
+          { label: 'Rentabilidad anual', val: `${pos.rentAnual.toFixed(2)}%/a`, meta: 'CAGR estimado', color: C.blue },
+          { label: 'Múltiplo s/ capital', val: `× ${(pos.valor / pos.aportado).toFixed(2)}`, meta: 'Valor / aportado', color: C.blue },
+          { label: 'Peso portfolio', val: `${pos.peso}%`, meta: 'Del total', color: C.n500 },
+        ].map(k => (
+          <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14, flexShrink: 0, minWidth: 130 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, fontWeight: 600, color: k.color }}>{k.val}</div>
+            <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{k.meta}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+        <ChartCard title={`${pos.alias} — Evolución y proyección`} sub={`Valor histórico + proyección a tasa ${pos.rentAnual.toFixed(2)}%/año`}>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={evolData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="hist" name="Valor histórico" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="proy" name={`Proyección (${pos.rentAnual.toFixed(2)}%/a)`} stroke={C.teal} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Ficha de posición</div>
+          <ResultRow label="Nombre" value={pos.alias} />
+          <ResultRow label="Broker / Plataforma" value={pos.broker} />
+          <ResultRow label="Tipo de activo" value={pos.tipo} />
+          <ResultRow label="Capital aportado" value={fmt(pos.aportado)} />
+          <ResultRow label="Valor actual" value={fmt(pos.valor)} />
+          <ResultRow label="Ganancia no realizada" value={`+${fmt(pos.valor - pos.aportado)}`} valueColor={C.pos} />
+          <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
+          <ResultRow label="Rentabilidad total" value={fmtPct(pos.rentPct)} valueColor={C.pos} bold />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>CAGR estimado</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>{pos.rentAnual.toFixed(2)}%/a</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+type Tab = 'resumen' | 'cartera' | 'rendimientos' | 'individual';
+
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+  { id: 'resumen',       label: 'Resumen',      icon: LayoutDashboard },
+  { id: 'cartera',       label: 'Cartera',       icon: Table2 },
+  { id: 'rendimientos',  label: 'Rendimientos',  icon: BarChart2 },
+  { id: 'individual',    label: 'Individual',    icon: Activity },
+];
+
+export default function InversionesAnalisis() {
+  const [activeTab, setActiveTab] = useState<Tab>('resumen');
+  const [selectedPositionId, setSelectedPositionId] = useState('sp500');
+
+  const handleSelectPosition = (id: string) => {
+    setSelectedPositionId(id);
+    setActiveTab('individual');
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+
+      {/* Topbar */}
+      <header style={{ position: 'sticky', top: 0, zIndex: 90, background: '#fff', borderBottom: `1px solid ${C.n200}`, padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.blue }}>
+            <TrendingUp size={18} />
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.n700 }}>Inversiones</div>
+            <div style={{ fontSize: 11, color: C.n500 }}>4 posiciones · Valor total 226.352 €</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
+            Exportar
+          </button>
+          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
+            <Plus size={13} /> Nueva posición
+          </button>
+        </div>
+      </header>
+
+      <div style={{ padding: 24 }}>
+        {/* Page header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <TrendingUp size={20} color={C.blue} />
+          </div>
+          <div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Portfolio de inversiones</div>
+            <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus posiciones financieras</div>
+          </div>
+        </div>
+
+        {/* Pill tabs */}
+        <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3, marginBottom: 20 }}>
+          {TABS.map(t => {
+            const Icon = t.icon;
+            const on = activeTab === t.id;
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 13, fontWeight: on ? 600 : 500, color: on ? C.blue : C.n500, background: on ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: on ? '0 1px 3px rgba(4,44,94,.08)' : 'none', transition: 'all 150ms', fontFamily: 'inherit' }}>
+                <Icon size={14} />{t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab content */}
+        {activeTab === 'resumen'      && <TabResumen />}
+        {activeTab === 'cartera'      && <TabCartera onSelectPosition={handleSelectPosition} />}
+        {activeTab === 'rendimientos' && <TabRendimientos />}
+        {activeTab === 'individual'   && <TabIndividual selectedId={selectedPositionId} />}
+      </div>
+    </div>
+  );
+}
