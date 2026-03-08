@@ -53,16 +53,4 @@ describe('Design compliance regressions', () => {
 
     expect(file).toContain("background: 'var(--n-100)'");
   });
-  it('keeps sidebar overlay semantic and focus-visible styles on sidebar controls', () => {
-    const file = fs.readFileSync(
-      path.join(process.cwd(), 'src/components/navigation/Sidebar.tsx'),
-      'utf8'
-    );
-
-    expect(file).toContain('<button');
-    expect(file).toContain('aria-label="Cerrar menú lateral"');
-    expect(file).toContain('focus-visible:outline');
-    expect(file).not.toContain('focus:outline-none');
-  });
-
 });

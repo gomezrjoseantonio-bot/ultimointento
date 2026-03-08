@@ -782,6 +782,27 @@
   flex-shrink: 0;
 }
 
+.bank-filter-strip__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 0 10px;
+  flex-shrink: 0;
+}
+
+.bank-filter-strip__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--atlas-navy-1);
+  margin: 0;
+}
+
+.bank-filter-strip__total {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--atlas-blue);
+}
+
 .bank-filter-card {
   display: flex;
   align-items: center;
@@ -794,6 +815,7 @@
   font-size: 13px;
   transition: all 0.2s;
   font-family: inherit;
+  flex-wrap: wrap;
 }
 
 .bank-filter-card:hover {
@@ -856,6 +878,17 @@
   font-weight: 600;
   color: var(--atlas-navy-1);
   margin: 0;
+}
+
+.events-panel__title-toggle {
+  border: none;
+  background: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--atlas-navy-1);
 }
 
 .events-panel__count {
