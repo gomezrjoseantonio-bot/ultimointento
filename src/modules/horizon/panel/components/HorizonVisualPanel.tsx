@@ -1,17 +1,38 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Bell, ChevronDown, ChevronUp, RefreshCw, Settings, Wallet } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Bell,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  ChevronRight,
+  CreditCard,
+  FileText,
+  HelpCircle,
+  Home,
+  Landmark,
+  LayoutDashboard,
+  LineChart,
+  Settings2,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+  Wallet,
+  Zap
+} from 'lucide-react';
 import { dashboardService } from '../../../../services/dashboardService';
 import type { DashboardSnapshot } from '../../../../services/dashboardService';
 import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
+import './horizonExecutiveDashboard.css';
 
 export interface PanelFilters {
   excludePersonal?: boolean;
   dateRange: 'today' | '7days' | '30days';
 }
 
-type SortColumn = 'banco' | 'hoy' | 'porCobrar' | 'porPagar' | 'proyeccion';
-type SortDirection = 'asc' | 'desc';
+const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
 const DEFAULT_DATA: DashboardSnapshot = {
   patrimonio: {
     total: 0,
@@ -41,230 +62,235 @@ const DEFAULT_DATA: DashboardSnapshot = {
   alertas: []
 };
 
-const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-
 const HorizonVisualPanel: React.FC = () => {
-  const navigate = useNavigate();
-  const [filters] = useState<PanelFilters>({ excludePersonal: false, dateRange: '30days' });
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
-  const [sortBy, setSortBy] = useState<SortColumn>('banco');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [flujos, setFlujos] = useState<Awaited<ReturnType<typeof dashboardService.getFlujosCaja>> | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const pageSize = 6;
 
   const loadDashboardData = async () => {
     setLoading(true);
-    const [patrimonio, liquidez, salud, tesoreria, alertas] = await Promise.all([
+    const [patrimonio, liquidez, salud, tesoreria, alertas, flujosCaja] = await Promise.all([
       dashboardService.getPatrimonioNeto(),
       dashboardService.getLiquidez(),
       dashboardService.getSaludFinanciera(),
       dashboardService.getTesoreriaPanel(),
-      dashboardService.getAlertas()
+      dashboardService.getAlertas(),
+      dashboardService.getFlujosCaja()
     ]);
     setData({ patrimonio, liquidez, salud, tesoreria, alertas });
+    setFlujos(flujosCaja);
     setLoading(false);
   };
 
   useEffect(() => {
     void loadDashboardData();
-  }, [filters.dateRange]);
+  }, []);
 
-  const sortedRows = useMemo(() => {
-    const rows = [...data.tesoreria.filas];
-    rows.sort((a, b) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
+  const monthLabel = useMemo(() => {
+    const d = new Date(data.tesoreria.asOf);
+    return d.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }).toUpperCase();
+  }, [data.tesoreria.asOf]);
 
-      if (sortBy === 'banco') {
-        return a.banco.localeCompare(b.banco) * direction;
-      }
+  const shortDate = useMemo(() => {
+    const d = new Date(data.tesoreria.asOf);
+    return d.toLocaleDateString('es-ES');
+  }, [data.tesoreria.asOf]);
 
-      return (a[sortBy] - b[sortBy]) * direction;
-    });
-    return rows;
-  }, [data.tesoreria.filas, sortBy, sortDirection]);
+  const rows = useMemo(() => [...data.tesoreria.filas].sort((a, b) => a.banco.localeCompare(b.banco)), [data.tesoreria.filas]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, currentPage]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const handleSort = (column: SortColumn) => {
-    setCurrentPage(1);
-    if (sortBy === column) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-      return;
-    }
-
-    setSortBy(column);
-    setSortDirection('asc');
-  };
-
-  const renderSortIcon = (column: SortColumn) => {
-    if (sortBy !== column) return <ChevronDown className="w-3 h-3 opacity-40" />;
-    return sortDirection === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
-  };
-
-  const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
-
-  const panelMonthLabel = new Date(data.tesoreria.asOf).toLocaleDateString('es-ES', {
-    month: 'long',
-    year: 'numeric'
-  });
-  const panelMonthTitle = `${panelMonthLabel.charAt(0).toUpperCase()}${panelMonthLabel.slice(1)}`;
+  const cashflowNeto = (flujos?.trabajo.netoMensual ?? 0) + (flujos?.inmuebles.cashflow ?? 0) + ((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0));
 
   return (
-    <div className="min-h-screen bg-hz-bg">
-      <div className="max-w-[1320px] mx-auto p-6 space-y-5">
-        <header className="bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="atlas-shell">
+      <aside className="atlas-sidebar">
+        <div className="atlas-brand">
+          <div className="atlas-mark">A</div>
+          <div>
+            <div className="atlas-name">ATLAS</div>
+            <div className="atlas-sub">HORIZON</div>
+          </div>
+        </div>
+
+        <div className="atlas-group">Supervisión</div>
+        <a className="atlas-item active" href="/panel"><LayoutDashboard size={16} /> Dashboard</a>
+        <a className="atlas-item" href="/personal/resumen"><Home size={16} /> Personal</a>
+        <a className="atlas-item" href="/inmuebles"><Building2 size={16} /> Inmuebles</a>
+        <a className="atlas-item" href="/inversiones"><TrendingUp size={16} /> Inversiones</a>
+        <a className="atlas-item" href="/tesoreria"><Landmark size={16} /> Tesorería</a>
+        <a className="atlas-item" href="/previsiones"><LineChart size={16} /> Previsiones</a>
+        <a className="atlas-item" href="/fiscalidad"><FileText size={16} /> Impuestos</a>
+        <a className="atlas-item" href="/financiacion"><CreditCard size={16} /> Financiación</a>
+
+        <div className="atlas-group">Gestión</div>
+        <a className="atlas-item" href="/alquileres"><Users size={16} /> Alquileres</a>
+
+        <div className="atlas-group">Docs</div>
+        <a className="atlas-item" href="/documentacion"><BookOpen size={16} /> Documentación</a>
+        <a className="atlas-item" href="/glosario"><HelpCircle size={16} /> Glosario</a>
+
+        <div className="atlas-user">
+          <div className="avatar">JA</div>
+          <div>
+            <div className="uname">José Antonio</div>
+            <div className="uplan">Professional</div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="atlas-main">
+        <header className="atlas-topbar">
+          <div className="title-wrap">
+            <div className="title-icon"><LayoutDashboard size={17} /></div>
             <div>
-              <h1 className="text-2xl font-semibold text-hz-neutral-900">Dashboard ejecutivo</h1>
-              <p className="text-sm text-hz-neutral-700">KPIs reales de patrimonio, liquidez, riesgo y alertas en corto, medio y largo plazo.</p>
+              <div className="title-main">Dashboard ejecutivo</div>
+              <div className="title-sub">KPIs reales de patrimonio, liquidez, riesgo y alertas</div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDrawerOpen(true)}
-                className="px-3 py-2 text-sm rounded-lg bg-hz-primary text-white hover:opacity-90"
-              >
-                Actualizar valores
-              </button>
-              <button
-                onClick={handleConfigureClick}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-hz-neutral-900 border border-hz-neutral-300 rounded-lg hover:bg-hz-neutral-100"
-              >
-                <Settings className="w-4 h-4" />
-                Configurar
-              </button>
-            </div>
+          </div>
+          <div className="top-actions">
+            <button className="btn outline" onClick={() => setDrawerOpen(true)}><Zap size={14} /> Actualizar valores</button>
+            <button className="btn outline"><Settings2 size={14} /> Configurar</button>
           </div>
         </header>
 
-        <section className="grid grid-cols-12 gap-4">
-          <article className="col-span-12 xl:col-span-7 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2"><Wallet className="w-4 h-4" />Balance Bancario · {panelMonthTitle}</p>
-              <span className="text-xs text-hz-neutral-600">Actualizado a {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')}</span>
-            </div>
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="text-hz-neutral-600">
-                  <tr>
-                    <th className="text-left py-2">
-                      <button onClick={() => handleSort('banco')} className="inline-flex items-center gap-1 font-semibold">
-                        Banco {renderSortIcon('banco')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('hoy')} className="inline-flex items-center gap-1 font-semibold">
-                        Hoy {renderSortIcon('hoy')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por cobrar {renderSortIcon('porCobrar')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por pagar {renderSortIcon('porPagar')}
-                      </button>
-                    </th>
-                    <th className="text-right py-2">
-                      <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
-                        Fin mes {renderSortIcon('proyeccion')}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-hz-neutral-200 bg-hz-neutral-100 font-semibold">
-                    <td className="py-2">Totales</td>
-                    <td className="text-right">{euro.format(data.tesoreria.totales.hoy)}</td>
-                    <td className="text-right text-emerald-700">{euro.format(data.tesoreria.totales.porCobrar)}</td>
-                    <td className="text-right text-red-700">{euro.format(data.tesoreria.totales.porPagar)}</td>
-                    <td className={`text-right ${data.tesoreria.totales.proyeccion >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{euro.format(data.tesoreria.totales.proyeccion)}</td>
-                  </tr>
-                  {paginatedRows.map((fila) => (
-                    <tr key={fila.accountId} className="border-t border-hz-neutral-200">
-                      <td className="py-2">{fila.banco}</td>
-                      <td className="text-right">{euro.format(fila.hoy)}</td>
-                      <td className="text-right text-emerald-700">{euro.format(fila.porCobrar)}</td>
-                      <td className="text-right text-red-700">{euro.format(fila.porPagar)}</td>
-                      <td className={`text-right font-medium ${fila.proyeccion >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{euro.format(fila.proyeccion)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-hz-neutral-700">
-              <span>Página {currentPage} de {totalPages} · {sortedRows.length} cuentas</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
-                >
-                  Anterior
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-2 py-1 rounded border border-hz-neutral-300 disabled:opacity-50"
-                >
-                  Siguiente
-                </button>
+        <main className="atlas-content">
+          <section className="hero-card">
+            <div className="hero-top">
+              <div>
+                <div className="hero-eyebrow"><Wallet size={12} /> PATRIMONIO NETO · {monthLabel}</div>
+                <div className="hero-amount">{euro.format(data.patrimonio.total)}</div>
+                <div className="hero-deltas">
+                  <span className="delta pos"><TrendingUp size={12} /> {data.patrimonio.variacionPorcentaje.toFixed(1)}% este mes</span>
+                  <span className="hero-note">{euro.format(data.patrimonio.variacionMes)} vs mes anterior</span>
+                </div>
+              </div>
+              <div className="hero-right">
+                <div className="hero-date">Actualizado {shortDate}</div>
+                <button className="btn ghost-on-blue" onClick={() => setDrawerOpen(true)}><Zap size={14} /> Actualizar valores</button>
               </div>
             </div>
-          </article>
-
-          <article className="col-span-12 xl:col-span-5 bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4">
-            <p className="text-sm font-semibold text-hz-neutral-900 flex items-center gap-2 mb-3"><Bell className="w-4 h-4" />Alertas prioritarias</p>
-            <div className="space-y-2">
-              {data.alertas.slice(0, 5).map((alerta) => (
-                <div key={alerta.id} className="rounded-md border border-hz-neutral-200 p-3">
-                  <p className="text-sm font-medium text-hz-neutral-900">{alerta.titulo}</p>
-                  <p className="text-xs text-hz-neutral-700">{alerta.descripcion}</p>
-                </div>
-              ))}
-              {data.alertas.length === 0 && (
-                <div className="rounded-md bg-emerald-50 text-emerald-700 p-3 text-sm">Sin alertas activas.</div>
-              )}
+            <div className="hero-breakdown">
+              <span><Building2 size={12} /> {euro.format(data.patrimonio.desglose.inmuebles)} Inmuebles</span>
+              <span><LineChart size={12} /> {euro.format(data.patrimonio.desglose.inversiones)} Inversiones</span>
+              <span><Landmark size={12} /> {euro.format(data.patrimonio.desglose.cuentas)} Cuentas</span>
+              <span className="neg"><CreditCard size={12} /> −{euro.format(Math.abs(data.patrimonio.desglose.deuda)).replace('-', '')} Deuda</span>
             </div>
-          </article>
-        </section>
+          </section>
 
-        <footer className="bg-hz-card-bg border border-hz-neutral-300 rounded-xl p-4 flex items-center justify-between">
-          <p className="text-sm text-hz-neutral-700 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            Estado financiero: <span className="font-semibold uppercase">{data.salud.estado}</span> · Colchón {data.salud.colchonMeses.toFixed(1)} meses
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm px-3 py-2 rounded-lg bg-hz-neutral-100 text-hz-neutral-900 flex items-center gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar KPIs
-          </button>
-        </footer>
+          <section className="kpi-grid">
+            <article className="kpi-card">
+              <div className="kpi-label">Colchón emerg.</div>
+              <div className="kpi-value pos">{data.salud.colchonMeses.toFixed(1)} m</div>
+              <div className="kpi-sub"><ShieldCheck size={12} /> {data.salud.estado === 'ok' ? 'Seguro' : data.salud.estado === 'warning' ? 'Atención' : 'Crítico'}</div>
+            </article>
+            <article className="kpi-card">
+              <div className="kpi-label">Ocupación</div>
+              <div className="kpi-value warn">{(flujos?.inmuebles.ocupacion ?? 0).toFixed(1)}%</div>
+              <div className="kpi-sub"><Building2 size={12} /> Cartera activa</div>
+            </article>
+            <article className="kpi-card">
+              <div className="kpi-label">Comprometido 30d</div>
+              <div className="kpi-value neg">−{euro.format(Math.abs(data.liquidez.comprometido30d)).replace('-', '')}</div>
+              <div className="kpi-sub"><AlertTriangle size={12} /> Gastos previstos</div>
+            </article>
+            <article className="kpi-card">
+              <div className="kpi-label">Cashflow neto</div>
+              <div className={`kpi-value ${cashflowNeto >= 0 ? 'pos' : 'neg'}`}>{euro.format(cashflowNeto)}</div>
+              <div className="kpi-sub"><Wallet size={12} /> {loading ? 'Calculando…' : 'Mes actual'}</div>
+            </article>
+          </section>
 
-        <ActualizacionValoresDrawer
-          isOpen={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          onSaved={() => {
-            setDrawerOpen(false);
-            void loadDashboardData();
-          }}
-        />
+          <section className="two-col">
+            <article className="panel-card">
+              <div className="panel-eyebrow">FLUJOS DE CAJA · {monthLabel}</div>
+              <div className="flow-row">
+                <div>
+                  <div className="flow-title">Economía familiar</div>
+                  <div className={`flow-value ${(flujos?.trabajo.netoMensual ?? 0) >= 0 ? 'pos' : 'neg'}`}>{euro.format(flujos?.trabajo.netoMensual ?? 0)}<span>/mes</span></div>
+                  <div className="flow-sub">Ingresos − Gastos personales</div>
+                </div>
+                <ChevronRight size={16} />
+              </div>
+              <div className="flow-row">
+                <div>
+                  <div className="flow-title">Inmuebles</div>
+                  <div className={`flow-value ${(flujos?.inmuebles.cashflow ?? 0) >= 0 ? 'pos' : 'neg'}`}>{euro.format(flujos?.inmuebles.cashflow ?? 0)}<span>/mes</span></div>
+                  <div className="flow-sub">Cashflow · {(flujos?.inmuebles.ocupacion ?? 0).toFixed(1)}% ocupación</div>
+                </div>
+                <ChevronRight size={16} />
+              </div>
+              <div className="flow-row no-border">
+                <div>
+                  <div className="flow-title">Inversiones</div>
+                  <div className="flow-value pos">{euro.format((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0))}<span>/mes</span></div>
+                  <div className="flow-sub">Dividendos + revalorización</div>
+                </div>
+                <ChevronRight size={16} />
+              </div>
+            </article>
+
+            <article className="panel-card">
+              <div className="treasury-head">
+                <div>
+                  <div className="treasury-title"><Landmark size={15} /> Tesorería</div>
+                  <div className="treasury-meta">Datos a {shortDate} · {rows.length} cuentas</div>
+                </div>
+                <button className="link-btn">Ver detalle <ArrowRight size={12} /></button>
+              </div>
+              <table className="treasury-table">
+                <thead>
+                  <tr><th>Banco</th><th>Hoy</th><th>Fin mes</th></tr>
+                </thead>
+                <tbody>
+                  {rows.map((fila) => (
+                    <tr key={fila.accountId}>
+                      <td>{fila.banco}</td>
+                      <td>{euro.format(fila.hoy)}</td>
+                      <td className={fila.proyeccion >= 0 ? 'pos' : 'neg'}>{euro.format(fila.proyeccion)}</td>
+                    </tr>
+                  ))}
+                  <tr className="total-row">
+                    <td>Total</td>
+                    <td>{euro.format(data.tesoreria.totales.hoy)}</td>
+                    <td className={data.tesoreria.totales.proyeccion >= 0 ? 'pos' : 'neg'}>{euro.format(data.tesoreria.totales.proyeccion)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="treasury-foot">Por cobrar {euro.format(data.tesoreria.totales.porCobrar)} · Por pagar {euro.format(data.tesoreria.totales.porPagar)}</div>
+            </article>
+          </section>
+
+          <section className="panel-card alerts">
+            <div className="alerts-head">
+              <div className="alerts-title"><Bell size={15} /> Requiere atención <span className="count">{data.alertas.length}</span></div>
+              <button className="link-btn">Ver todas <ArrowRight size={12} /></button>
+            </div>
+            {data.alertas.length === 0 && (
+              <div className="alert-row">
+                <ShieldCheck size={16} />
+                <div><strong>Sin alertas activas</strong><div className="muted">No hay alertas prioritarias actualmente.</div></div>
+              </div>
+            )}
+            {data.alertas.slice(0, 5).map((alerta) => (
+              <div className="alert-row" key={alerta.id}>
+                {alerta.tipo === 'contrato' ? <CalendarDays size={16} /> : alerta.tipo === 'cobro' ? <Wallet size={16} /> : <Bell size={16} />}
+                <div className="alert-body"><strong>{alerta.titulo}</strong><div className="muted">{alerta.descripcion}</div></div>
+                {typeof alerta.importe === 'number' && <div className="alert-amount">{euro.format(alerta.importe)}</div>}
+                <div className="alert-tag">{alerta.diasVencimiento > 0 ? `En ${alerta.diasVencimiento}d` : `Hace ${Math.abs(alerta.diasVencimiento)}d`}</div>
+              </div>
+            ))}
+          </section>
+        </main>
       </div>
+
+      <ActualizacionValoresDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSaved={() => {
+          setDrawerOpen(false);
+          void loadDashboardData();
+        }}
+      />
     </div>
   );
 };
