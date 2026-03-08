@@ -1,158 +1,108 @@
-# Auditoría exhaustiva de cumplimiento — Guía de Diseño ATLAS v3
+# Auditoría exhaustiva de cumplimiento — Guía de Diseño ATLAS v3 (actualizada)
 
 Fecha: 2026-03-08  
-Alcance: revisión estática de toda la app (`src/`) contra la guía oficial `design-bible/GUIA_DISENO_DEFINITIVA_V3.md`.
+Alcance: revisión integral de `src/` contra `design-bible/GUIA_DISENO_DEFINITIVA_V3.md`.
 
-## 1) Metodología ejecutada
+> Este informe lista **todo el incumplimiento detectable por análisis estático** y lo cruza contra el requisito específico.
 
-Se aplicaron 3 niveles de validación:
+## 1) Evidencias ejecutadas
 
-1. **Validación automática del sistema de diseño** con `npm run lint:atlas`.
-2. **Validación automática de accesibilidad** con `npm run test:accessibility`.
-3. **Barridos adicionales de código** (regex y conteos) para cubrir obligaciones explícitas de la guía v3.
+- `npm run lint:atlas` → 32 errores + 395 warnings en 283 archivos.
+- `npm run test:accessibility` → 81 icon-only sin `aria-label` y 47 `div` con `onClick` (exit 1).
+- Escaneo línea a línea contra requisitos v3 → **1547 hallazgos** con archivo/línea/requisito/evidencia.
+- Inventario completo para PR único:
+  - `AUDITORIA_V3_HALLAZGOS_DETALLADOS.md`
+  - `AUDITORIA_V3_HALLAZGOS_DETALLADOS.csv`
 
-### Resultado agregado de validaciones automáticas
+## 2) Matriz de incumplimiento (requisito → total exacto)
 
-- `lint:atlas`: **32 errores** bloqueantes y **395 warnings** en **283 archivos**.
-- Distribución de errores bloqueantes:
-  - 27 por dark theme/overlay.
-  - 3 por tipografías no permitidas según el linter.
-  - 2 por patrones de ayuda inválidos.
-- Top warnings:
-  - 273 incidencias por patrón de botón no estandarizado.
-  - 117 incidencias por colores hardcodeados.
-  - 5 incidencias por `alert/confirm/prompt` del navegador.
+| Requisito ID | Requisito v3 | Incidencias | Archivos | Estado |
+|---|---|---:|---:|---|
+| `V3-2-COLOR-HARDCODE` | Guía v3 §2: prohibido hardcodear colores en componentes. | 334 | 70 | ❌ Incumple |
+| `V3-2-COLOR-09182E` | Guía v3 §2: `#09182E` está prohibido. | 0 | 0 | ✅ Cumple |
+| `V3-2-TEAL-IMPORTE` | Guía v3 §2: `--teal` no se usa en KPIs/importes. | 21 | 5 | ❌ Incumple |
+| `V3-2-DARK-OVERLAY` | Guía v3 §2: consistencia de paleta (sin overlays oscuros legacy). | 39 | 21 | ❌ Incumple |
+| `V3-3-BUTTON-STANDARD` | Guía v3 §3: botones en variantes estándar (`primary/secondary/ghost/danger/icon`). | 920 | 243 | ❌ Incumple |
+| `V3-3-INPUT-FOCUS` | Guía v3 §3: focus obligatorio en inputs (border + outline + ring). | 16 | 7 | ❌ Incumple |
+| `V3-4-ICONS-LUCIDE` | Guía v3 §4: iconografía exclusiva `lucide-react`. | 0 | 0 | ✅ Cumple |
+| `V3-4-DELETE-KEBAB` | Guía v3 §4: destructivos en kebab + confirmación modal. | 2 | 2 | ❌ Incumple |
+| `V3-4-INFO-SUBTITLE` | Guía v3 §4: `ⓘ` y subtítulo no conviven. | 0 | 0 | ✅ Cumple |
+| `V3-5-CHART-PALETTE` | Guía v3 §5: paleta/orden estable de gráficos c1..c6. | 54 | 14 | ❌ Incumple |
+| `V3-6-ARIA-ICON-BUTTON` | Guía v3 §6: icon-only con nombre accesible. | 81 | 59 | ❌ Incumple |
+| `V3-6-DIV-ONCLICK` | Guía v3 §6: interacción semántica (evitar `div onClick`). | 47 | 37 | ❌ Incumple |
+| `V3-6-TOUCH-44` | Guía v3 §6: touch target mínimo 44x44. | 33 | 19 | ❌ Incumple |
 
-### Barrido adicional en `src/` (conteo global)
+## 3) Foco solicitado por negocio: Nómina y gráficas
 
-- Archivos analizados (`.ts/.tsx/.js/.jsx/.css`): **682**.
-- Coincidencias de hex hardcodeado: **238**.
-- Coincidencias `rgb/rgba`: **124**.
-- Coincidencias de clases/constructos oscuros (`dark:`, `bg-black`, `bg-opacity-*`): **13**.
-- Imports de iconos no permitidos (`@heroicons/react`, `react-icons`, etc.): **0**.
-- Uso de `alert/confirm/prompt`: **5**.
-- `toLocale*` no `es-ES`: **0** detectados por patrón.
-- Botones icon-only sin `aria-label` (heurístico): **99**.
-- `div` con `onClick` (heurístico): **48**.
+### 3.1 Incumplimiento específico en gráfica de nómina
 
----
+- En gráfico de distribución mensual de nómina se usa `c1 + c2` para 2 series (`base` y `paga extra`).
+- La guía v3 exige para 2 series: **`c1 + c5`**.
+- Este punto queda trazado como incumplimiento de `V3-5-CHART-PALETTE`.
 
-## 2) Matriz de cumplimiento contra Guía v3
+### 3.2 Todo lo no conforme detectado en archivos de nómina
 
-## 2.1 Tokens (fuente única) y reglas de color
+- `V3-5-CHART-PALETTE`: 18 incidencias.
+- `V3-3-BUTTON-STANDARD`: 17 incidencias.
+- `V3-2-COLOR-HARDCODE`: 17 incidencias.
 
-**Estado: INCUMPLIMIENTO CRÍTICO.**
+## 4) Inventario completo (“todo TODO”)
 
-Requisitos v3 relevantes:
-- Prohibido hardcodear colores.
-- `#09182E` prohibido.
-- Uso semántico restringido.
-- `--teal` sólo como acento UI, no para importes/KPIs financieros.
+El detalle completo por archivo/línea/requisito/evidencia está en:
 
-Hallazgos:
-- Hay un volumen alto de colores hardcodeados (hex + rgba), incompatible con el principio de token único.
-- No se detectó uso de `#09182E` (cumplido ese punto concreto).
-- Se detecta uso de teal en señalización de importes/ingresos (`.movement-ingreso { color: var(--teal-500) }`), lo que contradice la regla de no usar teal para valores financieros.
+- `AUDITORIA_V3_HALLAZGOS_DETALLADOS.md`
+- `AUDITORIA_V3_HALLAZGOS_DETALLADOS.csv`
 
-## 2.2 Tipografía
+### Top 40 archivos con más incumplimientos
 
-**Estado: INCUMPLIMIENTO / INCONSISTENCIA DE GOBERNANZA.**
+| Archivo | Incidencias |
+|---|---:|
+| `src/components/treasury/treasury-reconciliation.css` | 88 |
+| `src/components/personal/nomina/NominaForm.tsx` | 44 |
+| `src/components/treasury/TreasuryReconciliationView.tsx` | 33 |
+| `src/components/personal/autonomo/AutonomoManager.tsx` | 24 |
+| `src/modules/horizon/inmuebles/contratos/components/ContractsListaEnhanced.tsx` | 21 |
+| `src/components/documents/DocumentViewer.tsx` | 19 |
+| `src/modules/horizon/proyeccion/base/components/ProjectionChart.tsx` | 18 |
+| `src/index.css` | 17 |
+| `src/components/inmuebles/InmueblePresupuestoTab.tsx` | 17 |
+| `src/components/dashboard/PulseDashboardHero.tsx` | 16 |
+| `src/modules/pulse/firmas/plantillas/PandaDocTemplateBuilder.tsx` | 16 |
+| `src/components/inbox/DocumentActions.tsx` | 15 |
+| `src/components/dashboard/DashboardBlockBase.tsx` | 15 |
+| `src/modules/horizon/proyeccion/simulaciones/ProyeccionSimulaciones.tsx` | 15 |
+| `src/modules/horizon/inmuebles/gastos-capex/components/CapexTab.tsx` | 15 |
+| `src/modules/horizon/financiacion/components/PrestamosList.tsx` | 15 |
+| `src/modules/horizon/financiacion/components/steps/BonificacionesStep.tsx` | 15 |
+| `src/modules/horizon/inversiones/components/PosicionDetailModal.tsx` | 14 |
+| `src/modules/horizon/configuracion/cuentas/components/AtlasBancosManagement.tsx` | 14 |
+| `src/components/atlas/AtlasComponents.tsx` | 13 |
+| `src/modules/pulse/tesoreria-personal/movimientos/TPMovimientos.tsx` | 13 |
+| `src/modules/horizon/tesoreria/components/MovimientosPanel.tsx` | 13 |
+| `src/components/inbox/PendingQueue.tsx` | 12 |
+| `src/components/dashboard/InvestorDashboardV2.tsx` | 12 |
+| `src/modules/horizon/fiscalidad/detalle/Detalle.tsx` | 12 |
+| `src/modules/horizon/tesoreria/components/AutomatizacionesPanel.tsx` | 12 |
+| `src/components/dashboard/PulsePresetShowcase.tsx` | 11 |
+| `src/components/dashboard/ActualizacionValoresDrawer.tsx` | 11 |
+| `src/modules/horizon/inversiones/components/PosicionForm.tsx` | 11 |
+| `src/modules/horizon/inmuebles/gastos-capex/components/GastosTab.tsx` | 11 |
+| `src/modules/horizon/configuracion/cuentas/components/ReglasAlertas.tsx` | 11 |
+| `src/modules/horizon/financiacion/components/PrestamosWizard.tsx` | 11 |
+| `src/pages/DesignBiblePage.tsx` | 10 |
+| `src/modules/personal/components/ProfileView.tsx` | 10 |
+| `src/modules/horizon/panel/components/HorizonVisualPanel.tsx` | 10 |
+| `src/modules/horizon/inmuebles/contratos/components/ContractsCalendario.tsx` | 10 |
+| `src/modules/horizon/inmuebles/cartera/Cartera.tsx` | 10 |
+| `src/modules/horizon/configuracion/preferencias-datos/PreferenciasDatos.tsx` | 10 |
+| `src/modules/horizon/configuracion/cuentas/components/BancosManagement.tsx` | 10 |
+| `src/modules/horizon/financiacion/components/steps/ImportacionStep.tsx` | 10 |
 
-Requisito v3: familia base `IBM Plex Sans` y técnica `IBM Plex Mono`.
+## 5) Observación sobre “títulos con iconos sombreados”
 
-Hallazgos:
-- En `index.css` se define correctamente `--font-base` con `IBM Plex Sans` y `--font-mono` con `IBM Plex Mono`.
-- Pero el proyecto sigue importando `@fontsource/inter` en arranque global.
-- Además, el linter corporativo actual todavía valida “Inter only”, en conflicto directo con la guía v3.
+- Se detecta uso amplio de `shadow-*` en cabeceras/cards/modales, pero la Guía v3 no explicita una prohibición textual genérica de sombra en icono de título.
+- Por tanto, este punto se deja trazado como **hallazgo de consistencia visual** a validar con criterio UX, no como incumplimiento automático inequívoco de una regla literal v3.
 
-Conclusión: hay **desalineación entre guía oficial y tooling de cumplimiento**.
+## 6) Conclusión
 
-## 2.3 Componentes base (botones, inputs, chips)
-
-**Estado: INCUMPLIMIENTO ALTO.**
-
-Hallazgos:
-- 273 warnings de botón no estandarizado indican adopción incompleta del componente canónico/estilos de botón.
-- Se mantiene presencia de estilos legacy y variantes heterogéneas en múltiples módulos.
-- La regla “un solo botón primary por vista/formulario” no puede cerrarse al 100% con validación estática; requiere revisión visual por pantalla y flujos.
-
-## 2.4 Cabeceras, tabs e iconografía
-
-**Estado: PARCIAL.**
-
-Hallazgos:
-- No se detectan imports de librerías de iconos prohibidas en `src` (cumplimiento positivo para librería única).
-- No existe actualmente una regla automática robusta que garantice en todo el código:
-  - jerarquía canónica de cabecera (icono + H1 + subtítulo + acción + tabs),
-  - exclusión mutua `ⓘ` vs subtítulo,
-  - tabs siempre bajo H1/subtítulo.
-
-Conclusión: cumplimiento **no demostrable de forma global** sin auditoría visual funcional por rutas.
-
-## 2.5 Gráficos
-
-**Estado: PARCIAL / RIESGO.**
-
-Requisito v3: paleta fija `c1..c6` y asignaciones estables por nº de series.
-
-Hallazgos:
-- Existen componentes que sí consumen tokens de gráfica.
-- Pero también aparecen clases/colores no normalizados en partes de la app, lo que sugiere potencial incumplimiento de asignación estable en algunos gráficos.
-- No hay test automático dedicado que valide orden y asignación de series (`c1..c6`) en todos los gráficos.
-
-## 2.6 Interacción y accesibilidad
-
-**Estado: INCUMPLIMIENTO ALTO.**
-
-Requisitos v3: focus visible uniforme, WCAG AA, touch target mínimo 44x44.
-
-Hallazgos automáticos:
-- 81 botones icon-only sin `aria-label` (script de accesibilidad).
-- 47 `div` con `onClick` sin garantías de semántica/teclado.
-- El test reporta contraste insuficiente para el token `--warn` frente a fondo blanco.
-- Hay estilos focus presentes globalmente, pero la cobertura en todos los interactivos no está garantizada por test end-to-end.
-
----
-
-## 3) Conclusión ejecutiva
-
-La app **NO cumple actualmente** de forma integral con las obligaciones de la Guía de Diseño v3.
-
-Principales bloqueadores:
-1. Alto volumen de deuda de estilos (colores hardcodeados y botones no canónicos).
-2. Errores bloqueantes de tema/overlay oscuro detectados por linter.
-3. Deuda de accesibilidad (aria-labels, semántica de controles interactivos).
-4. Inconsistencia de gobernanza: la guía v3 y el linter corporativo no están alineados en tipografía.
-
----
-
-## 4) Plan de remediación obligatorio (priorizado)
-
-### Fase 0 — Gobernanza (inmediata)
-1. Alinear `scripts/atlas-lint.js` con la Guía v3 (tipografía IBM Plex, reglas reales vigentes).
-2. Congelar nuevas pantallas fuera de design system hasta cerrar errores bloqueantes.
-
-### Fase 1 — Bloqueantes CI (48-72h)
-1. Eliminar los 32 errores de `lint:atlas`.
-2. Corregir dark overlays y patrones de ayuda inválidos.
-3. Añadir regla automática para prohibir teal en importes/KPI financieros.
-
-### Fase 2 — Diseño base (1 sprint)
-1. Migrar botones a componente canónico y reducir warnings masivos.
-2. Sustituir hardcoded colors por tokens.
-3. Revisar cabeceras/tabs por plantilla canónica.
-
-### Fase 3 — Accesibilidad (1 sprint)
-1. Eliminar icon-only sin `aria-label`.
-2. Reemplazar `div onClick` por `button` o controles accesibles equivalentes.
-3. Ejecutar auditoría manual por teclado + lector de pantalla por rutas críticas.
-
----
-
-## 5) Evidencias específicas (muestras)
-
-- Guía v3 define prohibición de hardcoded colors y uso restringido de teal en importes.
-- `src/index.css` contiene `movement-ingreso` coloreado en teal.
-- `src/index.css` define tipografía IBM Plex pero también se importan fuentes Inter.
-- El tooling disponible (`scripts/atlas-lint.js` y `scripts/test-accessibility.js`) confirma deuda de cumplimiento en diseño y accesibilidad.
-
+La app **sigue incumpliendo** la guía v3. El inventario adjunto permite ejecutar un **único PR de remediación** sin perder trazabilidad de requisito.
