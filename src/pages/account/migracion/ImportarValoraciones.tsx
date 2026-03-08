@@ -34,6 +34,37 @@ const TIPO_COLORS: Record<string, string> = {
   inversion: 'var(--ok)',
 };
 
+const toYearMonth = (year: number, month: number): string => `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
+
+const normalizarFechaExcel = (value: unknown): string => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value);
+    if (parsed?.y && parsed?.m) {
+      return toYearMonth(parsed.y, parsed.m);
+    }
+    return '';
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return toYearMonth(value.getFullYear(), value.getMonth() + 1);
+  }
+
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+
+  const yearMonthMatch = normalized.match(/^(\d{4})[-/](\d{1,2})$/);
+  if (yearMonthMatch) {
+    return toYearMonth(Number(yearMonthMatch[1]), Number(yearMonthMatch[2]));
+  }
+
+  const jsDate = new Date(normalized);
+  if (!Number.isNaN(jsDate.getTime())) {
+    return toYearMonth(jsDate.getFullYear(), jsDate.getMonth() + 1);
+  }
+
+  return '';
+};
+
 const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -87,7 +118,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         }
 
         const parsed: PreviewRow[] = rows.map((row) => ({
-          fecha: String(row.fecha || '').trim(),
+          fecha: normalizarFechaExcel(row.fecha),
           tipo_activo: String(row.tipo_activo || '').trim().toLowerCase(),
           activo_nombre: String(row.activo_nombre || '').trim(),
           valor: Number(row.valor) || 0,
