@@ -5,6 +5,7 @@ import SubTabs from './SubTabs';
 interface PageLayoutProps {
   title: string;
   subtitle?: string;
+  infoText?: string;
   showInfoIcon?: boolean;
   primaryAction?: {
     label: string;
@@ -20,6 +21,7 @@ interface PageLayoutProps {
 const PageLayout: React.FC<PageLayoutProps> = ({ 
   title, 
   subtitle, 
+  infoText,
   showInfoIcon = false,
   primaryAction,
   secondaryActions,
@@ -31,6 +33,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       <PageHeader 
         title={title} 
         subtitle={subtitle} 
+        infoText={infoText}
         showInfoIcon={showInfoIcon}
         primaryAction={primaryAction}
         secondaryActions={secondaryActions}

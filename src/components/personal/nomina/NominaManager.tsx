@@ -149,7 +149,7 @@ const NominaManager: React.FC = () => {
                   {/* activa — turquesa si activa, gris si no */}
                   <span className="px-2 py-0.5 text-xs rounded"
                         style={nomina.activa
-                          ? { background: 'var(--teal-050)', color: 'var(--teal-600)', border: '1px solid var(--teal-200)' }
+                          ? { background: 'var(--s-pos-bg)', color: 'var(--s-pos)', border: '1px solid color-mix(in srgb, var(--s-pos) 25%, var(--white))' }
                           : { background: 'var(--gray-100)', color: 'var(--gray-400)' }}>
                     {nomina.activa ? 'Activa' : 'Inactiva'}
                   </span>
@@ -195,10 +195,10 @@ const NominaManager: React.FC = () => {
                       {calculo ? formatCurrency(calculo.netoMensual) : '-'}
                     </p>
                   </div>
-                  {/* Neto anual — turquesa (positivo) */}
+                  {/* Neto anual — color de dato base (azul) */}
                   <div className="bg-white border p-4" style={{ borderColor: 'var(--gray-200)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--gray-500)' }}>Neto Anual</p>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--teal-500)' }}>
+                    <p className="text-2xl font-bold" style={{ color: 'var(--blue)' }}>
                       {calculo ? formatCurrency(calculo.totalAnualNeto) : '-'}
                     </p>
                   </div>
@@ -237,7 +237,7 @@ const NominaManager: React.FC = () => {
                   </div>
                 )}
 
-                {/* Gráfico barras — azul base, turquesa en meses con bonus/paga extra */}
+                {/* Gráfico barras — c1 base, c2 meses con paga extra */}
                 {calculo && calculo.distribucionMensual.length > 0 && (
                   <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--gray-100)' }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-3" style={{ color: 'var(--gray-500)' }}>
@@ -260,8 +260,8 @@ const NominaManager: React.FC = () => {
                                 style={{
                                   height: `${barHeight}px`,
                                   minHeight: '2px',
-                                  // turquesa = meses con paga extra / bonus; azul = base
-                                  backgroundColor: hasPagaExtra ? 'var(--teal-500)' : 'var(--blue-800)'
+                                  // c2 = meses con paga extra / bonus; c1 = base
+                                  backgroundColor: hasPagaExtra ? 'var(--c2)' : 'var(--c1)'
                                 }}
                                 title={formatCurrency(m.netoTotal)}
                               />
@@ -276,11 +276,11 @@ const NominaManager: React.FC = () => {
                     {/* Leyenda */}
                     <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: 'var(--gray-500)' }}>
                       <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--blue-800)' }} />
+                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--c1)' }} />
                         Neto base
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--teal-500)' }} />
+                        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'var(--c2)' }} />
                         Con bonus / paga extra
                       </span>
                     </div>

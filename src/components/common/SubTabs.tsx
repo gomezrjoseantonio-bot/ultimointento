@@ -26,8 +26,8 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Simulador', path: '/fiscalidad/simulador', icon: Calculator },
   ],
   proyeccion: [
-    { label: 'Presupuesto', path: '/proyeccion/presupuesto' },
-    { label: 'Real vs Previsto', path: '/proyeccion/comparativa' },
+    { label: 'Proyección Automática', path: '/proyeccion/presupuesto' },
+    { label: 'Real vs Previsión', path: '/proyeccion/comparativa' },
     { label: 'Escenarios', path: '/proyeccion/escenarios' },
   ],
   configuracion: [
@@ -107,9 +107,9 @@ const SubTabs: React.FC = () => {
   }
   
   return (
-    <div className="border-b border-[color:var(--hz-neutral-300)] bg-[var(--hz-card-bg)]">
+    <div className="border-b" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
       <div className="px-6">
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             const TabIcon = tab.icon;
@@ -119,13 +119,12 @@ const SubTabs: React.FC = () => {
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
                 className={`
-                  px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2 flex items-center gap-1.5
-                  ${isActive 
-                    ? 'border-hz-primary' 
-                    : 'text-[var(--hz-neutral-700)] hover:text-[var(--hz-neutral-900)] border-transparent hover:border-[color:var(--hz-neutral-300)]'
-                  }
+                  px-4 py-2.5 text-sm transition-colors duration-150 relative border-b-2 -mb-px flex items-center gap-1.5
+                  ${isActive
+                    ? 'font-semibold border-[var(--blue)]'
+                    : 'font-medium border-transparent hover:border-[var(--n-200)]'}
                 `}
-                style={isActive ? { color: 'var(--hz-primary)' } : {}}
+                style={{ color: isActive ? 'var(--blue)' : 'var(--n-500)' }}
               >
                 {TabIcon && <TabIcon className="h-4 w-4" />}
                 {tab.label}

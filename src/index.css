@@ -8,11 +8,11 @@
 @tailwind utilities;
 
 /* ============================================================
-   ATLAS — SISTEMA DE COLOR UNIFICADO v2.0
+   ATLAS — SISTEMA DE COLOR UNIFICADO v3.0
    Paleta única. Sin Horizon/Pulse. Sin semáforos.
    ============================================================ */
 :root {
-  /* ===== TOKENS V2 DEFINITIVOS ===== */
+  /* ===== TOKENS V3 DEFINITIVOS ===== */
   --blue: #042C5E;
   --blue-hover: #031F47;
   --teal: #1DA0BA;
@@ -22,24 +22,42 @@
   --n-700: #303A4C;
   --n-500: #6C757D;
   --n-300: #C8D0DC;
+  --n-200: #DDE3EC;
   --n-100: #EEF1F5;
   --n-50: #F8F9FA;
   --white: #FFFFFF;
 
-  --s-positive: #1A7A3C;
-  --s-positive-bg: #E8F5ED;
-  --s-negative: #B91C1C;
-  --s-negative-bg: #FEE9E9;
-  --s-warning: #92620A;
-  --s-warning-bg: #FEF3DC;
-  --s-neutral: #374151;
-  --s-neutral-bg: #F3F4F6;
+  --s-pos: #1A7A3C;
+  --s-pos-bg: #E8F5ED;
+  --s-neg: #B91C1C;
+  --s-neg-bg: #FEE9E9;
+  --s-warn: #92620A;
+  --s-warn-bg: #FEF3DC;
+  --s-neu: #374151;
+  --s-neu-bg: #F3F4F6;
+
+  --s-positive: var(--s-pos);
+  --s-positive-bg: var(--s-pos-bg);
+  --s-negative: var(--s-neg);
+  --s-negative-bg: var(--s-neg-bg);
+  --s-warning: var(--s-warn);
+  --s-warning-bg: var(--s-warn-bg);
+  --s-neutral: var(--s-neu);
+  --s-neutral-bg: var(--s-neu-bg);
+
+  --c1: #042C5E;
+  --c2: #5B8DB8;
+  --c3: #1DA0BA;
+  --c4: #A8C4DE;
+  --c5: #C8D0DC;
+  --c6: #303A4C;
 
   --focus-ring: rgba(4, 44, 94, 0.12);
 
   --r-sm: 4px;
   --r-md: 8px;
   --r-lg: 12px;
+  --r-xl: 16px;
   --sidebar-width: 256px;
   --topbar-height: 64px;
 
@@ -47,8 +65,21 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  --s1: var(--space-1);
+  --s2: var(--space-2);
+  --s3: var(--space-3);
+  --s4: var(--space-4);
+  --s5: var(--space-5);
+  --s6: var(--space-6);
+  --s8: var(--space-8);
+  --s10: var(--space-10);
+  --s12: var(--space-12);
 
   --text-xs: 12px;
   --text-sm: 13px;
@@ -58,6 +89,14 @@
   --text-xl: 24px;
   --text-2xl: 32px;
   --text-3xl: 40px;
+
+  --t-xs: 0.75rem;
+  --t-sm: 0.8125rem;
+  --t-base: 0.9375rem;
+  --t-md: 1.0625rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.5rem;
+  --t-2xl: 2rem;
 
   --font-base: 'IBM Plex Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
