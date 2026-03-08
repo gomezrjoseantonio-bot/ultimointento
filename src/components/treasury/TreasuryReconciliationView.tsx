@@ -26,6 +26,7 @@ import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
+import { dashboardService } from '../../services/dashboardService';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -59,6 +60,11 @@ interface SimpleAccount {
 
 interface CardSettlementConfig {
   chargeAccountId: number;
+}
+
+interface CurrentMonthBalance {
+  hoy: number;
+  proyeccion: number;
 }
 
 interface DisplayAccountResolverInput {
@@ -163,6 +169,7 @@ const TreasuryReconciliationView: React.FC = () => {
   const [savingMovement, setSavingMovement] = useState(false);
   const [syncingForecasts, setSyncingForecasts] = useState(false);
   const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
+  const [currentMonthBalances, setCurrentMonthBalances] = useState<Map<number, CurrentMonthBalance>>(new Map());
 
   useEffect(() => {
     if (editState && amountInputRef.current) {
@@ -256,6 +263,19 @@ const TreasuryReconciliationView: React.FC = () => {
 
       setAccounts(simpleAccounts);
       setEvents(localEvents);
+
+      const now = new Date();
+      const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+      if (isCurrentMonth) {
+        const panel = await dashboardService.getTesoreriaPanel();
+        const balances = new Map<number, CurrentMonthBalance>();
+        panel.filas.forEach((row) => {
+          balances.set(row.accountId, { hoy: row.hoy, proyeccion: row.proyeccion });
+        });
+        setCurrentMonthBalances(balances);
+      } else {
+        setCurrentMonthBalances(new Map());
+      }
     } catch (err) {
       console.error('Error loading treasury data:', err);
       toast.error('Error al cargar datos de tesorería');
@@ -861,6 +881,9 @@ const TreasuryReconciliationView: React.FC = () => {
                 const pct = totalEvts > 0 ? Math.round((doneEvts / totalEvts) * 100) : 0;
                 const isNeg = bd && bd.saldoFinalReal < 0;
                 const isFull = pct === 100 && totalEvts > 0;
+                const dashboardBalance = currentMonthBalances.get(account.dbId);
+                const displayedHoy = dashboardBalance?.hoy ?? account.balance;
+                const displayedFinMes = dashboardBalance?.proyeccion ?? bd?.saldoFinalPrevisto ?? account.balance;
 
                 return (
                   <div
@@ -889,10 +912,10 @@ const TreasuryReconciliationView: React.FC = () => {
                     {/* Importes — dos filas separadas */}
                     <div className="tv3-bank-amounts">
                       <div className="tv3-bank-hoy">
-                        Hoy&nbsp;<span>{formatAmount(account.balance)} €</span>
+                        Hoy&nbsp;<span>{formatAmount(displayedHoy)} €</span>
                       </div>
                       <div className={`tv3-bank-finmes ${isNeg ? 'tv3-bank-finmes--neg' : ''}`}>
-                        Fin mes&nbsp;<span>{formatAmount(bd?.saldoFinalPrevisto ?? account.balance)} €</span>
+                        Fin mes&nbsp;<span>{formatAmount(displayedFinMes)} €</span>
                       </div>
                     </div>
 
