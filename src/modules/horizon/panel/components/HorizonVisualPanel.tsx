@@ -353,9 +353,6 @@ const HorizonVisualPanel: React.FC = () => {
             ))}
           </section>
 
-          <footer className="exec-footer-note">
-            <AlertTriangle size={14} /> Estado financiero: <strong>{data.salud.estado.toUpperCase()}</strong> · Liquidez hoy {euro.format(data.salud.liquidezHoy)}
-          </footer>
         </main>
       </div>
 
