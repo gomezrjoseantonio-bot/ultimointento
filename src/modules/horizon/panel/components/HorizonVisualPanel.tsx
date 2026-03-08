@@ -10,18 +10,6 @@ export interface PanelFilters {
 }
 
 type HorizonId = 'corto' | 'medio' | 'largo';
-type RiskLevel = 'bajo' | 'medio' | 'alto';
-
-interface HorizonCard {
-  id: HorizonId;
-  titulo: string;
-  periodo: string;
-  objetivo: string;
-  foco: string;
-  progreso: number;
-  riesgo: RiskLevel;
-}
-
 const DEFAULT_DATA: DashboardSnapshot = {
   patrimonio: {
     total: 0,
@@ -109,17 +97,6 @@ const HorizonVisualPanel: React.FC = () => {
   }, [data]);
 
   const handleConfigureClick = () => navigate('/configuracion/preferencias-datos#panel');
-
-  const riskBadgeStyles: Record<RiskLevel, string> = {
-    bajo: 'bg-emerald-100 text-emerald-700',
-    medio: 'bg-amber-100 text-amber-700',
-    alto: 'bg-red-100 text-red-700'
-  };
-
-  const activeNarrative = useMemo(
-    () => HORIZON_CARDS.find((card) => card.id === activeHorizon),
-    [activeHorizon]
-  );
 
   return (
     <div className="min-h-screen bg-hz-bg">
