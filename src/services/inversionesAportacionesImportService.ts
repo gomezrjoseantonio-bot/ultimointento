@@ -8,9 +8,31 @@ export interface ImportAportacionesResult {
   errors: string[];
 }
 
+export interface AportacionImportPreviewRow {
+  fila: number;
+  fecha: string;
+  posicionId?: number;
+  posicionNombre: string;
+  entidad: string;
+  importe: number;
+  notas: string;
+  estado: 'valida' | 'error';
+  error?: string;
+}
+
+export interface AportacionesImportPreview {
+  totalFilasArchivo: number;
+  totalAportacionesDetectadas: number;
+  totalValidas: number;
+  totalConError: number;
+  rows: AportacionImportPreviewRow[];
+  errors: string[];
+}
+
 type RawRow = Record<string, unknown>;
 
 type ParsedAportacionRow = {
+  sourceRow: number;
   posicionId?: number;
   posicionNombre?: string;
   entidad?: string;
@@ -177,6 +199,7 @@ function mapRowsToAportaciones(
 
       if (importeEmpresa > 0) {
         aportaciones.push({
+          sourceRow: rowNumber,
           posicionId,
           posicionNombre,
           entidad,
@@ -186,6 +209,7 @@ function mapRowsToAportaciones(
 
       if (importeIndividuo > 0) {
         aportaciones.push({
+          sourceRow: rowNumber,
           posicionId,
           posicionNombre,
           entidad,
@@ -204,6 +228,7 @@ function mapRowsToAportaciones(
     }
 
     aportaciones.push({
+      sourceRow: rowNumber,
       posicionId,
       posicionNombre,
       entidad,
@@ -220,11 +245,12 @@ const findPosicion = (
   posiciones: PosicionInversion[]
 ): PosicionInversion | undefined => {
   if (row.posicionId) {
-    return posicionesById.get(row.posicionId);
+    const byId = posicionesById.get(row.posicionId);
+    if (byId) return byId;
   }
 
-  const nombreNorm = (row.posicionNombre ?? '').toLowerCase();
-  const entidadNorm = (row.entidad ?? '').toLowerCase();
+  const nombreNorm = (row.posicionNombre ?? '').toLowerCase().trim();
+  const entidadNorm = (row.entidad ?? '').toLowerCase().trim();
 
   const matches = posiciones.filter((p) => {
     if (p.nombre.toLowerCase() !== nombreNorm) return false;
@@ -235,6 +261,71 @@ const findPosicion = (
   if (matches.length === 1) return matches[0];
   return undefined;
 };
+
+export async function previsualizarImportacionAportaciones(
+  file: File,
+  posicionPorDefecto?: PosicionInversion
+): Promise<AportacionesImportPreview> {
+  const posiciones = await inversionesService.getPosiciones();
+  const posicionesById = new Map<number, PosicionInversion>(posiciones.map((p) => [p.id, p]));
+
+  const parsed = await parseRows(file);
+  if (parsed.errors.length > 0) {
+    return {
+      totalFilasArchivo: 0,
+      totalAportacionesDetectadas: 0,
+      totalValidas: 0,
+      totalConError: parsed.errors.length,
+      rows: [],
+      errors: parsed.errors,
+    };
+  }
+
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, posicionPorDefecto);
+  const previewRows: AportacionImportPreviewRow[] = mapped.aportaciones.map((row) => {
+    const posicion = findPosicion(row, posicionesById, posiciones);
+    if (!posicion) {
+      const referencia = row.posicionId
+        ? `No se encontró una coincidencia única para posicion_id ${row.posicionId}.`
+        : `No se encontró una coincidencia única para posición "${row.posicionNombre}"${row.entidad ? ` (${row.entidad})` : ''}.`;
+
+      return {
+        fila: row.sourceRow,
+        fecha: row.aportacion.fecha,
+        posicionId: row.posicionId,
+        posicionNombre: row.posicionNombre ?? '',
+        entidad: row.entidad ?? '',
+        importe: row.aportacion.importe,
+        notas: row.aportacion.notas ?? '',
+        estado: 'error',
+        error: referencia,
+      };
+    }
+
+    return {
+      fila: row.sourceRow,
+      fecha: row.aportacion.fecha,
+      posicionId: posicion.id,
+      posicionNombre: posicion.nombre,
+      entidad: posicion.entidad,
+      importe: row.aportacion.importe,
+      notas: row.aportacion.notas ?? '',
+      estado: 'valida',
+    };
+  });
+
+  const totalConError = mapped.skipped + previewRows.filter((r) => r.estado === 'error').length;
+  const totalValidas = previewRows.filter((r) => r.estado === 'valida').length;
+
+  return {
+    totalFilasArchivo: parsed.rows.length,
+    totalAportacionesDetectadas: previewRows.length,
+    totalValidas,
+    totalConError,
+    rows: previewRows,
+    errors: [...mapped.errors, ...previewRows.filter((r) => r.error).map((r) => r.error as string)],
+  };
+}
 
 export async function importarAportacionesHistoricasMasivas(
   file: File,
