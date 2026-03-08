@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText, CircleDollarSign } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText, CircleDollarSign, MoreHorizontal } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, initDB } from '../../../../services/db';
 import PropertySaleModal from '../components/PropertySaleModal';
@@ -76,6 +76,8 @@ const Cartera: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<string>('alias');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [openMenuPropertyId, setOpenMenuPropertyId] = useState<number | null>(null);
+  const actionMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
 
@@ -193,6 +195,35 @@ const Cartera: React.FC = () => {
       toast.error('Error al eliminar el inmueble');
     }
   };
+
+  const handleRowAction = (action: () => void) => {
+    setOpenMenuPropertyId(null);
+    action();
+  };
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (actionMenuContainerRef.current && !actionMenuContainerRef.current.contains(target)) {
+        setOpenMenuPropertyId(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenMenuPropertyId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -339,6 +370,7 @@ const Cartera: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
                   {filteredProperties.map((property) => {
+                    const propId = property.id ?? -1;
                     const totalCost = calculateTotalCost(property);
                     const yieldPct = getYield(property, contracts);
                     const currentValue = getLatestValuation(property, valuations);
@@ -346,7 +378,7 @@ const Cartera: React.FC = () => {
                     const revaluationAnnualized = getAnnualizedRevaluationPct(property, valuations);
 
                     return (
-                      <tr key={property.id} className="hover:bg-neutral-50">
+                      <tr key={propId} className="hover:bg-neutral-50">
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-neutral-900">{property.alias}</div>
                           <div className="text-xs text-neutral-500">{property.address}</div>
@@ -359,72 +391,79 @@ const Cartera: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {revaluationTotal !== null
-                            ? <span className={revaluationTotal >= 0 ? 'text-teal-600 font-medium' : 'text-red-600 font-medium'}>{revaluationTotal.toFixed(2)}%</span>
+                            ? <span className={revaluationTotal >= 0 ? 'font-medium text-[var(--s-pos)]' : 'font-medium text-[var(--s-neg)]'}>{revaluationTotal.toFixed(2)}%</span>
                             : <span className="text-neutral-400">—</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {revaluationAnnualized !== null
-                            ? <span className={revaluationAnnualized >= 0 ? 'text-teal-600 font-medium' : 'text-red-600 font-medium'}>{revaluationAnnualized.toFixed(2)}%</span>
+                            ? <span className={revaluationAnnualized >= 0 ? 'font-medium text-[var(--s-pos)]' : 'font-medium text-[var(--s-neg)]'}>{revaluationAnnualized.toFixed(2)}%</span>
                             : <span className="text-neutral-400">—</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                           {yieldPct > 0
-                            ? <span className="text-teal-600 font-medium">{yieldPct.toFixed(2)}%</span>
+                            ? <span className="font-medium text-[var(--s-pos)]">{yieldPct.toFixed(2)}%</span>
                             : <span className="text-neutral-400">—</span>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1">
+                          <div ref={actionMenuContainerRef} className="relative flex items-center gap-1">
                             <button
-                              onClick={() => navigate(`/inmuebles/cartera/${property.id}`)}
+                              onClick={() => navigate(`/inmuebles/cartera/${propId}`)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Ver"
+                              title="Ver detalle"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => navigate(`/inmuebles/cartera/${property.id}/editar`)}
+                              onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)}
                               className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Editar"
+                              title="Más opciones"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4" />
                             </button>
-                            {property.state === 'activo' && (
-                              <button
-                                onClick={() => setSaleModalProperty(property)}
-                                className="p-1.5 text-neutral-500 hover:text-error-600 hover:bg-neutral-100 rounded transition-colors"
-                                title="Vender inmueble"
-                              >
-                                <CircleDollarSign className="h-4 w-4" />
-                              </button>
+
+                            {openMenuPropertyId === propId && (
+                              <div className="absolute right-0 top-9 z-20 w-48 rounded-md border bg-white shadow-lg py-1">
+                                <button
+                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}/editar`))}
+                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
+                                >
+                                  <Pencil className="h-4 w-4" /> Editar
+                                </button>
+                                <button
+                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/contratos?propertyId=${propId}`))}
+                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
+                                >
+                                  <Users className="h-4 w-4" /> Inquilinos
+                                </button>
+                                <button
+                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/gastos?propertyId=${propId}`))}
+                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
+                                >
+                                  <TrendingDown className="h-4 w-4" /> Gastos
+                                </button>
+                                <button
+                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}?tab=fiscal`))}
+                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
+                                >
+                                  <FileText className="h-4 w-4" /> Fiscal
+                                </button>
+                                {property.state === 'activo' && (
+                                  <button
+                                    onClick={() => handleRowAction(() => setSaleModalProperty(property))}
+                                    className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
+                                  >
+                                    <CircleDollarSign className="h-4 w-4" /> Vender inmueble
+                                  </button>
+                                )}
+                                <div className="my-1 border-t border-[var(--n-200)]" />
+                                <button
+                                  onClick={() => handleRowAction(() => handleDelete(property))}
+                                  className="w-full px-3 py-2 text-left text-sm text-[var(--s-neg)] hover:bg-[var(--s-neg-bg)] inline-flex items-center gap-2"
+                                >
+                                  <Trash2 className="h-4 w-4" /> Eliminar
+                                </button>
+                              </div>
                             )}
-                            <button
-                              onClick={() => handleDelete(property)}
-                              className="p-1.5 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded transition-colors"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/inmuebles/contratos?propertyId=${property.id}`)}
-                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Alquileres"
-                            >
-                              <Users className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/inmuebles/gastos?propertyId=${property.id}`)}
-                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Gastos"
-                            >
-                              <TrendingDown className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/inmuebles/cartera/${property.id}?tab=fiscal`)}
-                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Fiscal"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
