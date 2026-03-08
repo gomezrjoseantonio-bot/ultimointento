@@ -931,7 +931,7 @@ class DashboardService {
         .reduce((sum: number, ing: any) => sum + parseNumericValue(ing.importe), 0);
 
       const ingresosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => event.type === 'income' && event.status !== 'executed')
+        .filter((event) => event.type === 'income' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
@@ -1199,7 +1199,7 @@ class DashboardService {
         .reduce((sum: number, payment: any) => sum + parseNumericValue(payment.importe), 0);
 
       const ingresosEventosTesoreria = (treasuryEvents as any[])
-        .filter((event) => event.type === 'income' && event.status !== 'executed')
+        .filter((event) => event.type === 'income' && isForecastTreasuryEvent(event))
         .filter((event) => isDateWithinRange(event.predictedDate, now, next30Days))
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
 
