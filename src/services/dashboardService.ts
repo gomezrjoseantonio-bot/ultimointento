@@ -1,7 +1,6 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
 import { personalDataService } from './personalDataService';
-import { calculateAccountBalanceAtDate } from './accountBalanceService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -963,18 +962,17 @@ class DashboardService {
         && !isCardAccount(acc)
       ));
 
-      const endOfTodayCutoff = new Date(now);
-      endOfTodayCutoff.setDate(endOfTodayCutoff.getDate() + 1);
-      const cutoffDate = `${endOfTodayCutoff.getFullYear()}-${String(endOfTodayCutoff.getMonth() + 1).padStart(2, '0')}-${String(endOfTodayCutoff.getDate()).padStart(2, '0')}`;
+      const toDateOnly = (value: unknown): string | null => {
+        if (!value) return null;
+        const raw = String(value);
+        return raw.includes('T') ? raw.split('T')[0] : raw;
+      };
+      const todayDateOnly = toDateOnly(now.toISOString())!;
+      const endOfMonthDateOnly = toDateOnly(endOfMonth.toISOString())!;
 
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;
-        const hoy = calculateAccountBalanceAtDate({
-          account,
-          cutoffDate,
-          treasuryEvents: treasuryEvents as any,
-          movements: movements as any,
-        });
+        const hoy = toNumber(account.balance);
 
         const monthMovements = (movements as any[]).filter((movement) => {
           if (movement.accountId !== accountId) return false;
@@ -988,8 +986,9 @@ class DashboardService {
         const futurosCuenta = (treasuryEvents as any[]).filter((event) => {
           if (event.accountId !== accountId) return false;
           if (event.status === 'executed') return false;
-          const predictedDate = new Date(event.predictedDate);
-          return !Number.isNaN(predictedDate.getTime()) && predictedDate >= now && predictedDate <= endOfMonth;
+          const predictedDateOnly = toDateOnly(event.predictedDate);
+          if (!predictedDateOnly) return false;
+          return predictedDateOnly >= todayDateOnly && predictedDateOnly <= endOfMonthDateOnly;
         });
 
         const porCobrar = futurosCuenta
