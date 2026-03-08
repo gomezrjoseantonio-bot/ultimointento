@@ -16,7 +16,13 @@ interface SubTabsConfig {
 const HORIZON_SUBTABS: SubTabsConfig = {
   inmuebles: [
     { label: 'Cartera', path: '/inmuebles/cartera' },
-    { label: 'Evolución', path: '/inmuebles/analisis' },
+    { label: 'Evolución', path: '/inmuebles/evolucion' },
+    { label: 'Análisis', path: '/inmuebles/analisis' },
+  ],
+  inversiones: [
+    { label: 'Cartera', path: '/inversiones/cartera' },
+    { label: 'Rendimientos', path: '/inversiones/rendimientos' },
+    { label: 'Análisis', path: '/inversiones/analisis' },
   ],
   // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
@@ -65,7 +71,7 @@ const PULSE_SUBTABS: SubTabsConfig = {
 };
 
 // Define which sections belong to which module
-const HORIZON_SECTIONS = ['inmuebles', 'tesoreria', 'fiscalidad', 'proyeccion'];
+const HORIZON_SECTIONS = ['inmuebles', 'inversiones', 'tesoreria', 'fiscalidad', 'proyeccion'];
 const PULSE_SECTIONS = ['ingresos', 'gastos', 'tesoreria-personal', 'proyeccion-personal'];
 
 const SubTabs: React.FC = () => {

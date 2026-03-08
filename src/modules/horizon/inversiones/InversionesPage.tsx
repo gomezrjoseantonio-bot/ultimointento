@@ -19,7 +19,13 @@ import toast from 'react-hot-toast';
 
 type Tab = 'cartera' | 'rendimientos';
 
-const InversionesPage: React.FC = () => {
+interface InversionesPageProps {
+  initialTab?: Tab;
+}
+
+
+
+const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera' }) => {
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
   const [resumen, setResumen] = useState({
     valor_total: 0,
@@ -29,7 +35,7 @@ const InversionesPage: React.FC = () => {
     num_posiciones: 0,
     por_tipo: {} as Record<string, number>,
   });
-  const [activeTab, setActiveTab] = useState<Tab>('cartera');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showActualizarValor, setShowActualizarValor] = useState(false);
@@ -59,6 +65,11 @@ const InversionesPage: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     const init = async () => {
