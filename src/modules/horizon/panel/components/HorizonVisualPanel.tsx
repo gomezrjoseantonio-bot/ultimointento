@@ -1,26 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  ArrowRight,
   Bell,
   Building2,
   CalendarDays,
-  Check,
   ChevronRight,
   CreditCard,
   Home,
   Landmark,
   LayoutDashboard,
   LineChart,
-  Percent,
   Receipt,
-  Settings2,
   ShieldCheck,
+  TrendingDown,
   TrendingUp,
   Wallet,
-  X,
   Zap
 } from 'lucide-react';
+import { dashboardService } from '../../../../services/dashboardService';
+import type { DashboardSnapshot } from '../../../../services/dashboardService';
+import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
 import './horizonExecutiveDashboard.css';
 
 export interface PanelFilters {
@@ -28,9 +27,81 @@ export interface PanelFilters {
   dateRange: 'today' | '7days' | '30days';
 }
 
+const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+const DEFAULT_DATA: DashboardSnapshot = {
+  patrimonio: {
+    total: 0,
+    variacionMes: 0,
+    variacionPorcentaje: 0,
+    fechaCalculo: new Date().toISOString(),
+    desglose: { inmuebles: 0, inversiones: 0, cuentas: 0, deuda: 0 }
+  },
+  liquidez: {
+    disponibleHoy: 0,
+    comprometido30d: 0,
+    ingresos30d: 0,
+    proyeccion30d: 0
+  },
+  salud: {
+    liquidezHoy: 0,
+    gastoMedioMensual: 0,
+    colchonMeses: 0,
+    estado: 'critical',
+    proyeccion30d: { estimado: 0, ingresos: 0, gastos: 0 }
+  },
+  tesoreria: {
+    asOf: new Date().toISOString(),
+    filas: [],
+    totales: { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 }
+  },
+  alertas: []
+};
+
 const HorizonVisualPanel: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
+  const [flujos, setFlujos] = useState<Awaited<ReturnType<typeof dashboardService.getFlujosCaja>> | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const toggleDrawer = () => setDrawerOpen((v) => !v);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6;
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    const [patrimonio, liquidez, salud, tesoreria, alertas, flujosCaja] = await Promise.all([
+      dashboardService.getPatrimonioNeto(),
+      dashboardService.getLiquidez(),
+      dashboardService.getSaludFinanciera(),
+      dashboardService.getTesoreriaPanel(),
+      dashboardService.getAlertas(),
+      dashboardService.getFlujosCaja()
+    ]);
+    setData({ patrimonio, liquidez, salud, tesoreria, alertas });
+    setFlujos(flujosCaja);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void loadDashboardData();
+  }, []);
+
+  const monthLabel = useMemo(() => {
+    const d = new Date(data.tesoreria.asOf);
+    return d.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+  }, [data.tesoreria.asOf]);
+
+  const rows = useMemo(() => [...data.tesoreria.filas].sort((a, b) => a.banco.localeCompare(b.banco)), [data.tesoreria.filas]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return rows.slice(start, start + pageSize);
+  }, [rows, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const netoMensual = (flujos?.trabajo.netoMensual ?? 0) + (flujos?.inmuebles.cashflow ?? 0) + ((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0));
 
   return (
     <div className="exec-shell">
@@ -68,73 +139,86 @@ const HorizonVisualPanel: React.FC = () => {
           <section className="exec-hero">
             <div className="exec-row">
               <div>
-                <div className="exec-muted">Patrimonio neto · Mar 2026</div>
-                <div className="exec-hero-title">450.800 €</div>
+                <div className="exec-muted">Patrimonio neto · {monthLabel}</div>
+                <div className="exec-hero-title">{euro.format(data.patrimonio.total)}</div>
                 <div className="exec-pills">
-                  <span className="exec-pill"><TrendingUp size={12} /> +1,2% este mes</span>
-                  <span className="exec-pill"><TrendingUp size={12} /> +8,4% este año</span>
+                  <span className="exec-pill"><TrendingUp size={12} /> {data.patrimonio.variacionPorcentaje.toFixed(1)}% mensual</span>
+                  <span className="exec-muted">{euro.format(data.patrimonio.variacionMes)} vs mes anterior</span>
                 </div>
               </div>
-              <button className="exec-btn ghost" onClick={toggleDrawer} style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}><Zap size={14} /> Actualizar valores</button>
+              <button className="exec-btn ghost" onClick={() => setDrawerOpen(true)} style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}><Zap size={14} /> Actualizar valores</button>
             </div>
             <div className="exec-pills" style={{ marginTop: 16 }}>
-              <span className="exec-muted"><Building2 size={12} /> 386.000 € Inmuebles</span>
-              <span className="exec-muted"><LineChart size={12} /> 95.400 € Inversiones</span>
-              <span className="exec-muted"><Landmark size={12} /> 6.017 € Cuentas</span>
-              <span className="exec-muted"><CreditCard size={12} /> −36.617 € Deuda</span>
+              <span className="exec-muted"><Building2 size={12} /> {euro.format(data.patrimonio.desglose.inmuebles)} Inmuebles</span>
+              <span className="exec-muted"><LineChart size={12} /> {euro.format(data.patrimonio.desglose.inversiones)} Inversiones</span>
+              <span className="exec-muted"><Landmark size={12} /> {euro.format(data.patrimonio.desglose.cuentas)} Cuentas</span>
+              <span className="exec-muted"><CreditCard size={12} /> −{euro.format(data.patrimonio.desglose.deuda).replace('-', '')} Deuda</span>
             </div>
           </section>
 
           <section className="exec-pulso">
-            <div className="exec-chip"><div className="label">Colchón emerg.</div><div className="value" style={{ color: 'var(--s-pos)' }}>8,4 m</div><div style={{ fontSize: 12 }}><ShieldCheck size={12} /> Seguro</div></div>
-            <div className="exec-chip"><div className="label">Ocupación</div><div className="value" style={{ color: 'var(--s-warn)' }}>87,5%</div><div style={{ fontSize: 12 }}><AlertTriangle size={12} /> 1 vacío</div></div>
-            <div className="exec-chip"><div className="label">IRPF estimado</div><div className="value" style={{ color: 'var(--s-neg)' }}>−3.240 €</div><div style={{ fontSize: 12 }}><Receipt size={12} /> A pagar · 2025</div></div>
-            <div className="exec-chip"><div className="label">Cashflow neto</div><div className="value" style={{ color: 'var(--s-pos)' }}>+1.820 €</div><div style={{ fontSize: 12 }}><Wallet size={12} /> +340 vs feb</div></div>
+            <div className="exec-chip"><div className="label">Colchón emerg.</div><div className="value" style={{ color: 'var(--s-pos)' }}>{data.salud.colchonMeses.toFixed(1)} m</div><div style={{ fontSize: 12 }}><ShieldCheck size={12} /> Estado {data.salud.estado}</div></div>
+            <div className="exec-chip"><div className="label">Ocupación</div><div className="value" style={{ color: 'var(--s-warn)' }}>{(flujos?.inmuebles.ocupacion ?? 0).toFixed(1)}%</div><div style={{ fontSize: 12 }}><Home size={12} /> Inmuebles activos</div></div>
+            <div className="exec-chip"><div className="label">Comprometido 30d</div><div className="value" style={{ color: 'var(--s-neg)' }}>−{euro.format(Math.abs(data.liquidez.comprometido30d)).replace('-', '')}</div><div style={{ fontSize: 12 }}><Receipt size={12} /> Gastos estimados</div></div>
+            <div className="exec-chip"><div className="label">Cashflow neto</div><div className="value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div><div style={{ fontSize: 12 }}><Wallet size={12} /> {loading ? 'Calculando...' : 'Mes actual'}</div></div>
           </section>
 
           <section className="exec-zone3">
             <div className="exec-card">
-              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Economía familiar</div><strong style={{ color: 'var(--s-pos)' }}>+3.200 €/mes</strong></div><ChevronRight size={16} /></div>
-              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inmuebles</div><strong style={{ color: 'var(--s-pos)' }}>+2.800 €/mes</strong></div><ChevronRight size={16} /></div>
-              <div className="exec-flujo" style={{ borderBottom: 'none' }}><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inversiones</div><strong style={{ color: 'var(--s-pos)' }}>+380 €/mes</strong></div><ChevronRight size={16} /></div>
+              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Economía familiar</div><strong style={{ color: (flujos?.trabajo.netoMensual ?? 0) >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(flujos?.trabajo.netoMensual ?? 0)}/mes</strong></div>{(flujos?.trabajo.tendencia === 'down') ? <TrendingDown size={16} /> : <TrendingUp size={16} />}</div>
+              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inmuebles</div><strong style={{ color: (flujos?.inmuebles.cashflow ?? 0) >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(flujos?.inmuebles.cashflow ?? 0)}/mes</strong></div><ChevronRight size={16} /></div>
+              <div className="exec-flujo" style={{ borderBottom: 'none' }}><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inversiones</div><strong style={{ color: 'var(--s-pos)' }}>{euro.format((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0))}/mes</strong></div><ChevronRight size={16} /></div>
             </div>
+
             <div className="exec-card">
               <table className="exec-table">
                 <thead><tr><th>Banco</th><th>Hoy</th><th>Fin mes</th></tr></thead>
                 <tbody>
-                  <tr><td>Santander</td><td>3.424 €</td><td style={{ color: 'var(--s-pos)' }}>16.122 €</td></tr>
-                  <tr><td>Unicaja</td><td>857 €</td><td>62 €</td></tr>
-                  <tr><td>BBVA</td><td>392 €</td><td style={{ color: 'var(--s-neg)' }}>−132 €</td></tr>
-                  <tr><td><strong>Total</strong></td><td><strong>6.017 €</strong></td><td style={{ color: 'var(--s-pos)' }}><strong>15.688 €</strong></td></tr>
+                  {paginatedRows.map((fila) => (
+                    <tr key={fila.accountId}><td>{fila.banco}</td><td>{euro.format(fila.hoy)}</td><td style={{ color: fila.proyeccion >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(fila.proyeccion)}</td></tr>
+                  ))}
+                  <tr><td><strong>Total</strong></td><td><strong>{euro.format(data.tesoreria.totales.hoy)}</strong></td><td style={{ color: data.tesoreria.totales.proyeccion >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}><strong>{euro.format(data.tesoreria.totales.proyeccion)}</strong></td></tr>
                 </tbody>
               </table>
+              <div className="exec-pagination">
+                <span>Página {currentPage} de {totalPages} · {rows.length} cuentas</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="exec-btn ghost" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Anterior</button>
+                  <button className="exec-btn ghost" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>Siguiente</button>
+                </div>
+              </div>
             </div>
           </section>
 
           <section className="exec-card">
-            <div className="exec-alert"><Bell size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Contrato próximo a vencer</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Calle Mayor 14 · Renovación pendiente</div></div><span style={{ fontSize: 12, background: '#fee9e9', color: '#b91c1c', padding: '4px 8px', borderRadius: 4 }}>En 12d</span></div>
-            <div className="exec-alert"><CalendarDays size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Cobro pendiente</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Avenida Norte 3 · Alquiler marzo 2026</div></div><span>850 €</span></div>
-            <div className="exec-alert"><Percent size={16} color="#92620a" /><div style={{ flex: 1 }}><strong>Revisión IPC pendiente</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Paseo Colón 7 · IPC 2025 +3,1%</div></div><ArrowRight size={14} /></div>
+            {(data.alertas.length > 0 ? data.alertas.slice(0, 5) : [{ id: 'empty', titulo: 'Sin alertas activas', descripcion: 'No hay alertas prioritarias actualmente', urgencia: 'media', diasVencimiento: 0 } as any]).map((alerta: any) => (
+              <div className="exec-alert" key={alerta.id}>
+                {alerta.tipo === 'contrato' ? <CalendarDays size={16} color="#92620a" /> : alerta.tipo === 'cobro' ? <Wallet size={16} color="#92620a" /> : <Bell size={16} color="#92620a" />}
+                <div style={{ flex: 1 }}><strong>{alerta.titulo}</strong><div style={{ fontSize: 12, color: '#6c757d' }}>{alerta.descripcion}</div></div>
+                {typeof alerta.importe === 'number' && <span>{euro.format(alerta.importe)}</span>}
+                {alerta.diasVencimiento !== 0 && (
+                  <span className="exec-alert-badge">
+                    {alerta.diasVencimiento > 0 ? `En ${alerta.diasVencimiento}d` : `Hace ${Math.abs(alerta.diasVencimiento)}d`}
+                  </span>
+                )}
+              </div>
+            ))}
           </section>
+
+          <footer className="exec-footer-note">
+            <AlertTriangle size={14} /> Estado financiero: <strong>{data.salud.estado.toUpperCase()}</strong> · Liquidez hoy {euro.format(data.salud.liquidezHoy)}
+          </footer>
         </main>
       </div>
 
-      <div className={`exec-overlay ${drawerOpen ? 'open' : ''}`} onClick={toggleDrawer} />
-      <aside className={`exec-drawer ${drawerOpen ? 'open' : ''}`} aria-modal="true" role="dialog">
-        <div className="exec-drawer-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><strong>Actualizar valores</strong><div style={{ fontSize: 12, color: '#6c757d' }}>Introduce los valores de cierre del mes</div></div>
-          <button className="exec-btn ghost" onClick={toggleDrawer}><X size={14} /></button>
-        </div>
-        <div className="exec-drawer-body">
-          <div style={{ marginBottom: 12 }}>Calle Mayor 14 <input className="exec-input" type="number" defaultValue={185000} /></div>
-          <div style={{ marginBottom: 12 }}>Avenida Norte 3 <input className="exec-input" type="number" defaultValue={124000} /></div>
-          <div style={{ marginBottom: 12 }}>Paseo Colón 7 <input className="exec-input" type="number" defaultValue={77000} /></div>
-        </div>
-        <div className="exec-drawer-foot">
-          <button className="exec-btn ghost" onClick={toggleDrawer}>Cancelar</button>
-          <button className="exec-btn primary" onClick={toggleDrawer}><Check size={14} /> Guardar valores</button>
-        </div>
-      </aside>
+      <ActualizacionValoresDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSaved={() => {
+          setDrawerOpen(false);
+          void loadDashboardData();
+        }}
+      />
     </div>
   );
 };
