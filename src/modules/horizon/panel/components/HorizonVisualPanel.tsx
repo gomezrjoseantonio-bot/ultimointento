@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Activity,
   AlertTriangle,
   Bell,
   Building2,
   CalendarDays,
+  Check,
   ChevronRight,
   CreditCard,
   Home,
@@ -12,6 +14,7 @@ import {
   LineChart,
   Receipt,
   Settings2,
+  ShieldAlert,
   ShieldCheck,
   TrendingDown,
   TrendingUp,
@@ -103,6 +106,12 @@ const HorizonVisualPanel: React.FC = () => {
   }, [currentPage, totalPages]);
 
   const netoMensual = (flujos?.trabajo.netoMensual ?? 0) + (flujos?.inmuebles.cashflow ?? 0) + ((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0));
+  const colchonSeguro = data.salud.colchonMeses >= 6;
+  const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
+  const ocupacionParcial = ocupacion < 100;
+  const trabajoNeto = flujos?.trabajo.netoMensual ?? 0;
+  const inmueblesCashflow = flujos?.inmuebles.cashflow ?? 0;
+  const inversionesMensual = (flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0);
 
   return (
     <div className="exec-shell">
@@ -137,48 +146,186 @@ const HorizonVisualPanel: React.FC = () => {
         </header>
 
         <main className="exec-content">
-          <section className="exec-hero">
-            <div className="exec-row">
-              <div>
-                <div className="exec-muted">Patrimonio neto · {monthLabel}</div>
-                <div className="exec-hero-title">{euro.format(data.patrimonio.total)}</div>
-                <div className="exec-pills">
-                  <span className="exec-pill"><TrendingUp size={12} /> {data.patrimonio.variacionPorcentaje.toFixed(1)}% mensual</span>
-                  <span className="exec-muted">{euro.format(data.patrimonio.variacionMes)} vs mes anterior</span>
+          <section className="exec-hero patrimonio-hero">
+            <div className="patrimonio-inner">
+              <div className="patrimonio-left">
+                <div className="patrimonio-eyebrow">
+                  <Activity size={12} />
+                  Patrimonio neto · {monthLabel}
+                </div>
+                <div className="patrimonio-amount">{euro.format(data.patrimonio.total)}</div>
+                <div className="patrimonio-deltas">
+                  <span className={`delta-pill ${data.patrimonio.variacionPorcentaje >= 0 ? 'delta-pos' : 'delta-neg'}`}>
+                    {data.patrimonio.variacionPorcentaje >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                    {data.patrimonio.variacionPorcentaje >= 0 ? '+' : ''}{data.patrimonio.variacionPorcentaje.toFixed(1)}% mensual
+                  </span>
+                  <span className="delta-label">{euro.format(Math.abs(data.patrimonio.variacionMes))} vs mes anterior</span>
+                </div>
+                <div className="patrimonio-breakdown">
+                  <div className="breakdown-item">
+                    <div className="breakdown-dot" style={{ background: '#5B8DB8' }} />
+                    <Building2 size={13} style={{ color: 'rgba(255,255,255,.4)' }} />
+                    <span className="breakdown-val">{euro.format(data.patrimonio.desglose.inmuebles)}</span>
+                    <span className="breakdown-name">Inmuebles</span>
+                  </div>
+                  <div className="breakdown-divider" />
+                  <div className="breakdown-item">
+                    <div className="breakdown-dot" style={{ background: '#1DA0BA' }} />
+                    <LineChart size={13} style={{ color: 'rgba(255,255,255,.4)' }} />
+                    <span className="breakdown-val">{euro.format(data.patrimonio.desglose.inversiones)}</span>
+                    <span className="breakdown-name">Inversiones</span>
+                  </div>
+                  <div className="breakdown-divider" />
+                  <div className="breakdown-item">
+                    <div className="breakdown-dot" style={{ background: '#A8C4DE' }} />
+                    <Landmark size={13} style={{ color: 'rgba(255,255,255,.4)' }} />
+                    <span className="breakdown-val">{euro.format(data.patrimonio.desglose.cuentas)}</span>
+                    <span className="breakdown-name">Cuentas</span>
+                  </div>
+                  <div className="breakdown-divider" />
+                  <div className="breakdown-item">
+                    <div className="breakdown-dot" style={{ background: 'rgba(185,28,28,.6)' }} />
+                    <CreditCard size={13} style={{ color: 'rgba(255,255,255,.4)' }} />
+                    <span className="breakdown-val" style={{ color: 'rgba(248,113,113,.9)' }}>
+                      −{euro.format(Math.abs(data.patrimonio.desglose.deuda)).replace('-', '')}
+                    </span>
+                    <span className="breakdown-name">Deuda</span>
+                  </div>
                 </div>
               </div>
-              <button className="exec-btn ghost" onClick={() => setDrawerOpen(true)} style={{ color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}><Zap size={14} /> Actualizar valores</button>
-            </div>
-            <div className="exec-pills" style={{ marginTop: 16 }}>
-              <span className="exec-muted"><Building2 size={12} /> {euro.format(data.patrimonio.desglose.inmuebles)} Inmuebles</span>
-              <span className="exec-muted"><LineChart size={12} /> {euro.format(data.patrimonio.desglose.inversiones)} Inversiones</span>
-              <span className="exec-muted"><Landmark size={12} /> {euro.format(data.patrimonio.desglose.cuentas)} Cuentas</span>
-              <span className="exec-muted"><CreditCard size={12} /> −{euro.format(data.patrimonio.desglose.deuda).replace('-', '')} Deuda</span>
+              <div className="patrimonio-right">
+                <div className="patrimonio-date">Actualizado {new Date(data.patrimonio.fechaCalculo).toLocaleDateString('es-ES')}</div>
+                <button className="btn-actualizar" onClick={() => setDrawerOpen(true)}><Zap size={14} /> Actualizar valores</button>
+              </div>
             </div>
           </section>
 
-          <section className="exec-pulso">
-            <div className="exec-chip"><div className="label">Colchón emerg.</div><div className="value" style={{ color: 'var(--s-pos)' }}>{data.salud.colchonMeses.toFixed(1)} m</div><div style={{ fontSize: 12 }}><ShieldCheck size={12} /> Estado {data.salud.estado}</div></div>
-            <div className="exec-chip"><div className="label">Ocupación</div><div className="value" style={{ color: 'var(--s-warn)' }}>{(flujos?.inmuebles.ocupacion ?? 0).toFixed(1)}%</div><div style={{ fontSize: 12 }}><Home size={12} /> Inmuebles activos</div></div>
-            <div className="exec-chip"><div className="label">Comprometido 30d</div><div className="value" style={{ color: 'var(--s-neg)' }}>−{euro.format(Math.abs(data.liquidez.comprometido30d)).replace('-', '')}</div><div style={{ fontSize: 12 }}><Receipt size={12} /> Gastos estimados</div></div>
-            <div className="exec-chip"><div className="label">Cashflow neto</div><div className="value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div><div style={{ fontSize: 12 }}><Wallet size={12} /> {loading ? 'Calculando...' : 'Mes actual'}</div></div>
+          <section className="pulso-bar">
+            <div className="pulso-chip">
+              <div className="pulso-chip-accent" style={{ background: colchonSeguro ? 'var(--s-pos)' : 'var(--s-warn)' }} />
+              <div className="pulso-icon-wrap" style={{ background: colchonSeguro ? 'var(--s-pos-bg)' : 'var(--s-warn-bg)' }}>
+                {colchonSeguro ? <ShieldCheck size={16} style={{ color: 'var(--s-pos)' }} /> : <ShieldAlert size={16} style={{ color: 'var(--s-warn)' }} />}
+              </div>
+              <div className="pulso-text">
+                <div className="pulso-label">Colchón emerg.</div>
+                <div className="pulso-value" style={{ color: colchonSeguro ? 'var(--s-pos)' : 'var(--s-warn)' }}>{data.salud.colchonMeses.toFixed(1)} m</div>
+                <div className="pulso-meta">
+                  <span className="pulso-badge" style={{ background: colchonSeguro ? 'var(--s-pos-bg)' : 'var(--s-warn-bg)', color: colchonSeguro ? 'var(--s-pos)' : 'var(--s-warn)' }}>
+                    {colchonSeguro ? <Check size={10} /> : <AlertTriangle size={10} />} {colchonSeguro ? 'Seguro' : 'Revisar'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="pulso-chip">
+              <div className="pulso-chip-accent" style={{ background: 'var(--s-warn)' }} />
+              <div className="pulso-icon-wrap" style={{ background: 'var(--s-warn-bg)' }}>
+                <Home size={16} style={{ color: 'var(--s-warn)' }} />
+              </div>
+              <div className="pulso-text">
+                <div className="pulso-label">Ocupación</div>
+                <div className="pulso-value" style={{ color: 'var(--s-warn)' }}>{ocupacion.toFixed(1)}%</div>
+                <div className="pulso-meta">
+                  <span className="pulso-badge" style={{ background: 'var(--s-warn-bg)', color: 'var(--s-warn)' }}>
+                    <AlertTriangle size={10} /> {ocupacionParcial ? 'Por debajo de objetivo' : 'Completa'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="pulso-chip">
+              <div className="pulso-chip-accent" style={{ background: 'var(--s-neu)' }} />
+              <div className="pulso-icon-wrap" style={{ background: 'var(--s-neu-bg)' }}>
+                <Receipt size={16} style={{ color: 'var(--s-neu)' }} />
+              </div>
+              <div className="pulso-text">
+                <div className="pulso-label">Comprometido 30d</div>
+                <div className="pulso-value" style={{ color: 'var(--s-neg)' }}>−{euro.format(Math.abs(data.liquidez.comprometido30d)).replace('-', '')}</div>
+                <div className="pulso-meta">
+                  <span className="pulso-badge" style={{ background: 'var(--s-neu-bg)', color: 'var(--s-neu)' }}>
+                    <Receipt size={10} /> IRPF / gastos
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="pulso-chip">
+              <div className="pulso-chip-accent" style={{ background: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }} />
+              <div className="pulso-icon-wrap" style={{ background: netoMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)' }}>
+                <Wallet size={16} style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }} />
+              </div>
+              <div className="pulso-text">
+                <div className="pulso-label">Cashflow neto</div>
+                <div className="pulso-value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div>
+                <div className="pulso-meta">
+                  <span className="pulso-badge" style={{ background: netoMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    <TrendingUp size={10} /> {loading ? 'Calculando...' : 'Mes actual'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="exec-zone3">
-            <div className="exec-card">
-              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Economía familiar</div><strong style={{ color: (flujos?.trabajo.netoMensual ?? 0) >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(flujos?.trabajo.netoMensual ?? 0)}/mes</strong></div>{(flujos?.trabajo.tendencia === 'down') ? <TrendingDown size={16} /> : <TrendingUp size={16} />}</div>
-              <div className="exec-flujo"><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inmuebles</div><strong style={{ color: (flujos?.inmuebles.cashflow ?? 0) >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(flujos?.inmuebles.cashflow ?? 0)}/mes</strong></div><ChevronRight size={16} /></div>
-              <div className="exec-flujo" style={{ borderBottom: 'none' }}><div><div style={{ fontSize: 11, color: '#6c757d', textTransform: 'uppercase' }}>Inversiones</div><strong style={{ color: 'var(--s-pos)' }}>{euro.format((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0))}/mes</strong></div><ChevronRight size={16} /></div>
+            <div className="exec-card" style={{ display: 'grid', gap: 12, padding: 12 }}>
+              <div className="flujo-card">
+                <div className="flujo-card-left-bar" style={{ background: 'var(--blue)' }} />
+                <div className="flujo-icon"><Home size={18} /></div>
+                <div className="flujo-body">
+                  <div className="flujo-nombre">Economía familiar</div>
+                  <div className="flujo-importe" style={{ color: trabajoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(trabajoNeto)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  </div>
+                  <div className="flujo-sub">Ingresos − Gastos personales</div>
+                </div>
+                <div className="flujo-right">
+                  <span className="flujo-delta" style={{ background: trabajoNeto >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: trabajoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {flujos?.trabajo.tendencia === 'down' ? 'Tendencia ↓' : 'Tendencia ↑'}
+                  </span>
+                  <div className="flujo-arrow"><ChevronRight size={16} /></div>
+                </div>
+              </div>
+              <div className="flujo-card">
+                <div className="flujo-card-left-bar" style={{ background: 'var(--teal)' }} />
+                <div className="flujo-icon"><Building2 size={18} /></div>
+                <div className="flujo-body">
+                  <div className="flujo-nombre">Inmuebles</div>
+                  <div className="flujo-importe" style={{ color: inmueblesCashflow >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(inmueblesCashflow)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  </div>
+                  <div className="flujo-sub">Ingresos alquiler − costes</div>
+                </div>
+                <div className="flujo-right">
+                  <span className="flujo-delta" style={{ background: ocupacionParcial ? 'var(--s-warn-bg)' : 'var(--s-pos-bg)', color: ocupacionParcial ? 'var(--s-warn)' : 'var(--s-pos)' }}>
+                    Ocup. {ocupacion.toFixed(1)}%
+                  </span>
+                  <div className="flujo-arrow"><ChevronRight size={16} /></div>
+                </div>
+              </div>
+              <div className="flujo-card">
+                <div className="flujo-card-left-bar" style={{ background: '#5B8DB8' }} />
+                <div className="flujo-icon"><LineChart size={18} /></div>
+                <div className="flujo-body">
+                  <div className="flujo-nombre">Inversiones</div>
+                  <div className="flujo-importe" style={{ color: inversionesMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(inversionesMensual)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  </div>
+                  <div className="flujo-sub">Rendimiento + dividendos</div>
+                </div>
+                <div className="flujo-right">
+                  <span className="flujo-delta" style={{ background: inversionesMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inversionesMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    Resultado mensual
+                  </span>
+                  <div className="flujo-arrow"><ChevronRight size={16} /></div>
+                </div>
+              </div>
             </div>
 
             <div className="exec-card">
-              <table className="exec-table">
+              <table className="tbl-tesoreria">
                 <thead><tr><th>Banco</th><th>Hoy</th><th>Fin mes</th></tr></thead>
                 <tbody>
                   {paginatedRows.map((fila) => (
                     <tr key={fila.accountId}><td>{fila.banco}</td><td>{euro.format(fila.hoy)}</td><td style={{ color: fila.proyeccion >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(fila.proyeccion)}</td></tr>
                   ))}
-                  <tr><td><strong>Total</strong></td><td><strong>{euro.format(data.tesoreria.totales.hoy)}</strong></td><td style={{ color: data.tesoreria.totales.proyeccion >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}><strong>{euro.format(data.tesoreria.totales.proyeccion)}</strong></td></tr>
+                  <tr className="total-row"><td><strong>Total</strong></td><td><strong>{euro.format(data.tesoreria.totales.hoy)}</strong></td><td className={data.tesoreria.totales.proyeccion >= 0 ? 'num-pos' : 'num-neg'}><strong>{euro.format(data.tesoreria.totales.proyeccion)}</strong></td></tr>
                 </tbody>
               </table>
               <div className="exec-pagination">
