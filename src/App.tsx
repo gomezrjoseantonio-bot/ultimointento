@@ -39,6 +39,8 @@ const Capex = React.lazy(() => import('./modules/horizon/inmuebles/capex/CAPEX')
 // Inversiones Module
 const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
 const AnalisisCartera = React.lazy(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
+const InmueblesAnalisis = React.lazy(() => import('./pages/inmuebles/InmueblesAnalisis'));
+const InversionesAnalisis = React.lazy(() => import('./pages/inversiones/InversionesAnalisis'));
 
 // Financing Module - New standalone financing module
 const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
@@ -230,7 +232,11 @@ function App() {
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
-              <Route index element={<Navigate to="/inmuebles/cartera" replace />} />
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesAnalisis />
+                </React.Suspense>
+              } />
               <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Cartera />
@@ -291,7 +297,11 @@ function App() {
             
             {/* Inversiones Module */}
             <Route path="inversiones">
-              <Route index element={<Navigate to="/inversiones/cartera" replace />} />
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesAnalisis />
+                </React.Suspense>
+              } />
               <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <InversionesPage initialTab="cartera" />
