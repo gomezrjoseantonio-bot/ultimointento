@@ -28,7 +28,13 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<AportacionesImportPreview | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const totalPreviewPages = preview ? Math.max(1, Math.ceil(preview.rows.length / PREVIEW_ROW_LIMIT)) : 1;
+  const paginatedRows = preview
+    ? preview.rows.slice((previewPage - 1) * PREVIEW_ROW_LIMIT, previewPage * PREVIEW_ROW_LIMIT)
+    : [];
 
   const runPreview = useCallback(async (file: File) => {
     setImporting(true);
@@ -36,6 +42,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
       const data = await previsualizarImportacionAportaciones(file);
       setPreview(data);
       setSelectedFile(file);
+      setPreviewPage(1);
 
       if (data.totalValidas === 0) {
         toast('No hay aportaciones válidas para importar.', { icon: 'ℹ️' });
@@ -70,6 +77,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
       if (result.imported > 0) {
         setPreview(null);
         setSelectedFile(null);
+        setPreviewPage(1);
         onComplete();
       }
     } catch (error) {
@@ -245,6 +253,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               onClick={() => {
                 setPreview(null);
                 setSelectedFile(null);
+                setPreviewPage(1);
               }}
               aria-label="Cancelar importación"
               style={{
@@ -303,7 +312,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.slice(0, PREVIEW_ROW_LIMIT).map((row, index) => (
+                {paginatedRows.map((row, index) => (
                   <tr
                     key={`${row.fila}-${index}`}
                     style={{
@@ -324,9 +333,53 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
               </tbody>
             </table>
             {preview.rows.length > PREVIEW_ROW_LIMIT && (
-              <p style={{ padding: '8px 12px', margin: 0, fontSize: '0.75rem', color: 'var(--text-gray)' }}>
-                ... y {preview.rows.length - PREVIEW_ROW_LIMIT} filas más
-              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  gap: '8px',
+                }}
+              >
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-gray)' }}>
+                  Página {previewPage} de {totalPreviewPages} ({preview.rows.length} filas)
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
+                    disabled={previewPage === 1}
+                    style={{
+                      padding: '6px 10px',
+                      border: '1px solid var(--hz-neutral-300)',
+                      borderRadius: '6px',
+                      background: 'var(--bg)',
+                      color: 'var(--atlas-navy-1)',
+                      cursor: previewPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages, p + 1))}
+                    disabled={previewPage === totalPreviewPages}
+                    style={{
+                      padding: '6px 10px',
+                      border: '1px solid var(--hz-neutral-300)',
+                      borderRadius: '6px',
+                      background: 'var(--bg)',
+                      color: 'var(--atlas-navy-1)',
+                      cursor: previewPage === totalPreviewPages ? 'not-allowed' : 'pointer',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
