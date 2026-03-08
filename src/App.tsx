@@ -13,10 +13,6 @@ import CopilotWidget from './components/common/CopilotWidget';
 // Core pages - keep minimal imports for critical path  
 import AccountPage from './pages/account/AccountPage';
 
-// Auth pages
-const LoginPage = React.lazy(() => import('./pages/auth/LoginPage'));
-const RegisterPage = React.lazy(() => import('./pages/auth/RegisterPage'));
-
 // Loading component for better UX - ATLAS compliant
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
@@ -178,17 +174,9 @@ function App() {
           />
           <CopilotWidget />
           <Routes>
-            {/* Public Auth Routes */}
-            <Route path="/login" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <LoginPage />
-              </React.Suspense>
-            } />
-            <Route path="/register" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <RegisterPage />
-              </React.Suspense>
-            } />
+            {/* Auth por email desactivada temporalmente */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
 
             {/* Protected App Routes */}
             <Route path="/" element={

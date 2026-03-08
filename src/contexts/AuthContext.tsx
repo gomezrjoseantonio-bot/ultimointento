@@ -17,50 +17,31 @@ interface AuthContextType {
   cancelSubscription: () => Promise<void>;
 }
 
+const AUTH_DISABLED_MESSAGE = 'La autenticación por email está desactivada temporalmente.';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
+  // Initialize a demo session on mount while email auth is disabled
   useEffect(() => {
-    const currentUser = mockAuthService.getCurrentUser();
+    const currentUser = mockAuthService.ensureDemoSession();
     setUser(currentUser);
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      const user = await mockAuthService.login(email, password);
-      setUser(user);
-      toast.success(`¡Bienvenido, ${user.name}!`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al iniciar sesión');
-      throw error;
-    }
+  const login = async (_email: string, _password: string) => {
+    toast(AUTH_DISABLED_MESSAGE, { icon: 'ℹ️' });
   };
 
-  const register = async (email: string, password: string, name: string) => {
-    try {
-      const user = await mockAuthService.register(email, password, name);
-      setUser(user);
-      toast.success('¡Cuenta creada exitosamente! 14 días de prueba gratis.');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al registrarse');
-      throw error;
-    }
+  const register = async (_email: string, _password: string, _name: string) => {
+    toast(AUTH_DISABLED_MESSAGE, { icon: 'ℹ️' });
   };
 
   const logout = async () => {
-    try {
-      await mockAuthService.logout();
-      setUser(null);
-      toast.success('Sesión cerrada');
-    } catch (error) {
-      toast.error('Error al cerrar sesión');
-      throw error;
-    }
+    toast(AUTH_DISABLED_MESSAGE, { icon: 'ℹ️' });
   };
 
   const updateSubscription = async (plan: 'free' | 'starter' | 'professional') => {
