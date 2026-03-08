@@ -9,7 +9,7 @@ const DesignBiblePage: React.FC = () => {
       description: 'Tokens y fundamentos (colores, tipografía, iconos, espaciado)',
       items: [
         'Color Tokens ATLAS',
-        'Typography (Inter)',
+        'Typography (IBM Plex)',
         'Iconography (Lucide)',
         'Spacing System (4px grid)',
         'Formatos ES'
@@ -94,7 +94,7 @@ const DesignBiblePage: React.FC = () => {
       items: [
         'No hardcoded colors',
         'Solo iconos Lucide',
-        'Solo font Inter',
+        'Solo tipografía IBM Plex',
         'No dark themes',
         'Sidebar order correcto'
       ]
@@ -128,7 +128,7 @@ const DesignBiblePage: React.FC = () => {
             </div>
             <div className="flex items-center space-x-2">
               <span className="px-3 py-1 bg-ok/10 text-ok text-sm font-medium rounded-full">
-                v1.0.0
+                v3.0.0
               </span>
               <button
                 onClick={() => window.close()}
@@ -329,7 +329,7 @@ const DesignBiblePage: React.FC = () => {
         {/* Footer */}
         <footer className="mt-12 text-center text-sm text-text-gray">
           <p>
-            Mantenido por ATLAS Design System Team • Última actualización: Marzo 2024
+            Mantenido por ATLAS Design System Team • Última actualización: Marzo 2026
           </p>
           <p className="mt-1">
             ¿Encontraste un error? 
