@@ -65,6 +65,69 @@ const normalizarFechaExcel = (value: unknown): string => {
   return '';
 };
 
+
+const normalizarTexto = (value: unknown): string =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const TIPOS_INMUEBLE = new Set([
+  'inmueble',
+  'inmuebles',
+  'vivienda',
+  'propiedad',
+  'real estate',
+  'property',
+]);
+
+const TIPOS_INVERSION = new Set([
+  // Genéricos
+  'inversion',
+  'inversiones',
+  'fondo',
+  'fondos',
+  'cartera',
+  // Tipos definidos en alta de posiciones (labels y values)
+  'cuenta remunerada',
+  'cuenta_remunerada',
+  'prestamo p2p',
+  'prestamo_p2p',
+  'deposito a plazo',
+  'deposito plazo',
+  'deposito_plazo',
+  'deposito',
+  'accion',
+  'acciones',
+  'etf',
+  'reit',
+  'fondo de inversion',
+  'fondo_inversion',
+  'plan de pensiones',
+  'plan pensiones',
+  'plan_pensiones',
+  'plan de empleo',
+  'plan empleo',
+  'plan_empleo',
+  'criptomoneda',
+  'crypto',
+  'otro',
+  // Variantes en inglés
+  'pension plan',
+]);
+
+const normalizarTipoActivo = (value: unknown): 'inmueble' | 'inversion' | '' => {
+  const tipo = normalizarTexto(value);
+  if (!tipo) return '';
+
+  if (TIPOS_INMUEBLE.has(tipo)) return 'inmueble';
+  if (TIPOS_INVERSION.has(tipo)) return 'inversion';
+
+  return '';
+};
+
 const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -119,7 +182,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
 
         const parsed: PreviewRow[] = rows.map((row) => ({
           fecha: normalizarFechaExcel(row.fecha),
-          tipo_activo: String(row.tipo_activo || '').trim().toLowerCase(),
+          tipo_activo: normalizarTipoActivo(row.tipo_activo),
           activo_nombre: String(row.activo_nombre || '').trim(),
           valor: Number(row.valor) || 0,
         }));
