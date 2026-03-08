@@ -26,7 +26,9 @@
 .tv3-view {
   display: flex;
   flex-direction: column;
+  flex: 1;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: var(--n-50, #F8F9FA);
   font-family: var(--font, 'IBM Plex Sans', sans-serif);
@@ -119,6 +121,7 @@
 .tv3-content {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   min-height: 0;
   padding: 20px 24px;
   display: flex;
@@ -503,10 +506,19 @@
 
 /* ── MOVEMENTS PANEL ── */
 .tv3-mov-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--white, #fff);
   border: 1px solid var(--n-100, #f3f4f6);
   border-radius: 14px;
   overflow: hidden;
+}
+
+.tv3-mov-list {
+  max-height: min(56vh, 560px);
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .tv3-mov-toolbar {
