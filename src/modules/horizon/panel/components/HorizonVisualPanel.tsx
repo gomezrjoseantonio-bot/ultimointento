@@ -171,17 +171,17 @@ const HorizonVisualPanel: React.FC = () => {
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porCobrar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por cobrar {renderSortIcon('porCobrar')}
+                        Por cobrar (resto mes) {renderSortIcon('porCobrar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('porPagar')} className="inline-flex items-center gap-1 font-semibold">
-                        Por pagar {renderSortIcon('porPagar')}
+                        Por pagar (resto mes) {renderSortIcon('porPagar')}
                       </button>
                     </th>
                     <th className="text-right py-2">
                       <button onClick={() => handleSort('proyeccion')} className="inline-flex items-center gap-1 font-semibold">
-                        Proyección {renderSortIcon('proyeccion')}
+                        Proyección fin de mes {renderSortIcon('proyeccion')}
                       </button>
                     </th>
                   </tr>

@@ -235,7 +235,7 @@ const InversionesPage: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--n-300)', paddingBottom: '0' }}>
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--n-200)', paddingBottom: '0' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -251,7 +251,7 @@ const InversionesPage: React.FC = () => {
               color: activeTab === tab.id ? 'var(--blue)' : 'var(--text-gray)',
               fontFamily: 'var(--font-base)',
               fontSize: 'var(--text-base)',
-              fontWeight: activeTab === tab.id ? 600 : 400,
+              fontWeight: activeTab === tab.id ? 600 : 500,
               cursor: 'pointer',
               marginBottom: '-1px',
               transition: 'color 0.15s',

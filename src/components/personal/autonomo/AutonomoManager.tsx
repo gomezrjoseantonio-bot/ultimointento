@@ -290,8 +290,8 @@ const AutonomoManager: React.FC = () => {
             </div>
             <div className="border p-4 rounded" style={cardStyle}>
               <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--gray-500)' }}>Rendimiento Neto Estimado</p>
-              {/* turquesa = positivo, gris = negativo — sin verde/rojo */}
-              <p className="text-2xl font-bold" style={{ color: estimated.rendimientoNeto >= 0 ? 'var(--teal-500)' : 'var(--gray-500)' }}>
+              {/* Neto estimado: semántico positivo/negativo */}
+              <p className="text-2xl font-bold" style={{ color: estimated.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
                 {formatCurrency(estimated.rendimientoNeto)}
               </p>
             </div>
@@ -324,9 +324,9 @@ const AutonomoManager: React.FC = () => {
                            title={`Gastos: ${formatCurrency(gastos)}`} />
                     )}
                   </div>
-                  {/* neto: turquesa si positivo, gris si negativo — sin rojo */}
+                  {/* neto: semántico positivo/negativo */}
                   <span className="text-[10px] mt-1 font-medium leading-tight"
-                        style={{ color: neto >= 0 ? 'var(--teal-500)' : 'var(--gray-500)' }}>
+                        style={{ color: neto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
                     {formatNetoShort(neto)}
                   </span>
                 </div>

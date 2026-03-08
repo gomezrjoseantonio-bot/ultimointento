@@ -50,6 +50,21 @@ const saveMockUsers = (users: Record<string, any>) => {
 
 export const mockAuthService = {
   /**
+   * Ensure a local demo session exists when email auth is disabled.
+   */
+  ensureDemoSession(): User {
+    const existing = this.getCurrentUser();
+    if (existing) {
+      return existing;
+    }
+
+    const users = getMockUsers();
+    const demoRecord = users['demo@atlas.com'];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(demoRecord.user));
+    return demoRecord.user;
+  },
+
+  /**
    * Register a new user
    */
   async register(email: string, password: string, name: string): Promise<User> {

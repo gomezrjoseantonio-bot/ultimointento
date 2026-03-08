@@ -14,11 +14,11 @@ interface SectionProps {
 }
 
 const colorMap = {
-  green: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#e6f9f6', iconColor: '#0f766e' },
-  blue: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#e6efff', iconColor: 'var(--atlas-blue)' },
-  gray: { bg: 'var(--hz-card-bg)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: 'var(--hz-neutral-100)', iconColor: 'var(--atlas-navy-1)' },
-  orange: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#fff2e8', iconColor: '#c2410c' },
-  purple: { bg: 'var(--hz-neutral-50)', border: 'var(--hz-neutral-300)', text: 'var(--atlas-navy-1)', iconBg: '#f2ecff', iconColor: '#6d28d9' },
+  green: { bg: 'var(--n-50)', border: 'var(--n-300)', text: 'var(--n-700)', iconBg: 'var(--s-pos-bg)', iconColor: 'var(--s-pos)' },
+  blue: { bg: 'var(--n-50)', border: 'var(--n-300)', text: 'var(--n-700)', iconBg: 'color-mix(in srgb, var(--blue) 10%, var(--white))', iconColor: 'var(--blue)' },
+  gray: { bg: 'var(--white)', border: 'var(--n-300)', text: 'var(--n-700)', iconBg: 'var(--n-100)', iconColor: 'var(--n-700)' },
+  orange: { bg: 'var(--n-50)', border: 'var(--n-300)', text: 'var(--n-700)', iconBg: 'var(--s-warn-bg)', iconColor: 'var(--s-warn)' },
+  purple: { bg: 'var(--n-50)', border: 'var(--n-300)', text: 'var(--n-700)', iconBg: 'color-mix(in srgb, var(--c2) 12%, var(--white))', iconColor: 'var(--c6)' },
 };
 
 const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', children }) => {
@@ -45,7 +45,7 @@ const Section: React.FC<SectionProps> = ({ title, icon: Icon, color = 'gray', ch
           </div>
         )}
         <h3 style={{
-          fontFamily: 'var(--font-inter)',
+          fontFamily: 'var(--font-base)',
           fontSize: '0.9375rem',
           fontWeight: 600,
           color: colors.text,
