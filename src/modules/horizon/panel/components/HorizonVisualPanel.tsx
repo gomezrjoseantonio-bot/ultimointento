@@ -6,7 +6,7 @@ import type { DashboardSnapshot } from '../../../../services/dashboardService';
 import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
 
 export interface PanelFilters {
-  excludePersonal: boolean;
+  excludePersonal?: boolean;
   dateRange: 'today' | '7days' | '30days';
 }
 
@@ -45,7 +45,7 @@ const euro = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR'
 
 const HorizonVisualPanel: React.FC = () => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<PanelFilters>({ excludePersonal: true, dateRange: '30days' });
+  const [filters] = useState<PanelFilters>({ excludePersonal: false, dateRange: '30days' });
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
   const [sortBy, setSortBy] = useState<SortColumn>('banco');
@@ -69,7 +69,7 @@ const HorizonVisualPanel: React.FC = () => {
 
   useEffect(() => {
     void loadDashboardData();
-  }, [filters.excludePersonal, filters.dateRange]);
+  }, [filters.dateRange]);
 
   const sortedRows = useMemo(() => {
     const rows = [...data.tesoreria.filas];
@@ -131,12 +131,6 @@ const HorizonVisualPanel: React.FC = () => {
                 className="px-3 py-2 text-sm rounded-lg bg-hz-primary text-white hover:opacity-90"
               >
                 Actualizar valores
-              </button>
-              <button
-                onClick={() => setFilters((prev) => ({ ...prev, excludePersonal: !prev.excludePersonal }))}
-                className="px-3 py-2 text-sm rounded-lg bg-hz-neutral-100 text-hz-neutral-900"
-              >
-                {filters.excludePersonal ? 'Personal excluido' : 'Personal incluido'}
               </button>
               <button
                 onClick={handleConfigureClick}
