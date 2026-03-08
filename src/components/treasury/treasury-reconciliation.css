@@ -3,15 +3,36 @@
    Design Guide v3 — tokens, semántica y tipografía
    ═══════════════════════════════════════════════════════════════ */
 
+:root {
+  --blue:      #042C5E;
+  --teal:      #1DA0BA;
+  --s-pos:     #1A7A3C;   --s-pos-bg: #E8F5ED;
+  --s-neg:     #B91C1C;   --s-neg-bg: #FEE9E9;
+  --s-warn:    #92620A;   --s-warn-bg: #FEF3DC;
+  --s-neu:     #374151;   --s-neu-bg: #F3F4F6;
+  --n-900:     #1A2332;
+  --n-700:     #303A4C;
+  --n-500:     #6C757D;
+  --n-300:     #C8D0DC;
+  --n-200:     #DDE3EC;
+  --n-100:     #EEF1F5;
+  --n-50:      #F8F9FA;
+  --white:     #FFFFFF;
+  --font:      'IBM Plex Sans', system-ui, sans-serif;
+  --mono:      'IBM Plex Mono', monospace;
+}
+
 /* ── BASE ── */
 .tv3-view {
   display: flex;
   flex-direction: column;
+  flex: 1;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
-  background: var(--n-50, #f9fafb);
+  background: var(--n-50, #F8F9FA);
   font-family: var(--font, 'IBM Plex Sans', sans-serif);
-  color: var(--n-900, #111827);
+  color: var(--n-700, #303A4C);
 }
 
 /* ── TOPBAR ── */
@@ -100,6 +121,7 @@
 .tv3-content {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   min-height: 0;
   padding: 20px 24px;
   display: flex;
@@ -383,27 +405,17 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 7px;
-}
-
-.tv3-bank-letter {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--blue, #042C5E);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  margin-bottom: 8px;
 }
 
 .tv3-bank-name {
-  font-size: 12px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--n-800, #1f2937);
+  color: var(--n-700, #303A4C);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -494,10 +506,18 @@
 
 /* ── MOVEMENTS PANEL ── */
 .tv3-mov-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--white, #fff);
   border: 1px solid var(--n-100, #f3f4f6);
   border-radius: 14px;
   overflow: hidden;
+}
+
+.tv3-mov-list {
+  max-height: none;
+  overflow: visible;
 }
 
 .tv3-mov-toolbar {
@@ -558,50 +578,34 @@
 }
 
 /* ── DATE GROUP HEADER ── */
-.tv3-date-head {
+.tv3-group-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 18px 6px;
-  background: var(--n-50, #f9fafb);
+  justify-content: space-between;
+  padding: 10px 0 6px;
   position: sticky;
   top: 0;
-  z-index: 2;
-  border-bottom: 1px solid var(--n-100, #f3f4f6);
+  background: var(--n-50, #F8F9FA);
+  z-index: 10;
 }
 
-.tv3-date-label {
+.tv3-group-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--n-500, #6C757D);
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--n-500, #6b7280);
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  flex-shrink: 0;
+  gap: 6px;
+  text-transform: lowercase;
+  letter-spacing: .01em;
 }
+.tv3-group-date svg { width: 13px; height: 13px; }
 
-.tv3-date-line {
-  flex: 1;
-  height: 1px;
-  background: var(--n-100, #f3f4f6);
-}
-
-.tv3-date-totals {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.tv3-date-tot {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.tv3-group-total {
   font-family: var(--mono, 'IBM Plex Mono', monospace);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--n-600, #4b5563);
+  color: var(--n-500, #6C757D);
 }
 
 /* ── EVENT ROW ── */
@@ -664,18 +668,21 @@
 .tv3-punteo-btn--done:hover { color: var(--s-neg, #B91C1C); }
 
 /* Tipo icono */
-.tv3-tipo-icon {
+.tv3-evt-icon {
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--n-100, #EEF1F5);
+  color: var(--n-500, #6C757D);
 }
-.tv3-tipo-icon--income   { background: rgba(29,160,186,.12); color: var(--teal, #1DA0BA); }
-.tv3-tipo-icon--expense  { background: rgba(4,44,94,.08);  color: var(--blue, #042C5E); }
-.tv3-tipo-icon--financing { background: rgba(4,44,94,.08); color: var(--blue, #042C5E); }
+.tv3-evt-icon--income  { background: var(--s-pos-bg, #E8F5ED); color: var(--s-pos, #1A7A3C); }
+.tv3-evt-icon--expense { background: var(--n-100, #EEF1F5); color: var(--n-500, #6C757D); }
+.tv3-evt-icon--finance { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
+.tv3-evt-icon--financing { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
 
 /* Body */
 .tv3-event-body {
@@ -707,7 +714,7 @@
   border-radius: 99px;
 }
 .tv3-tag--contrato  { background: #eff6ff; color: #1d4ed8; }
-.tv3-tag--hipoteca  { background: #f5f3ff; color: #6d28d9; }
+.tv3-tag--hipoteca  { background: var(--n-100, #EEF1F5); color: var(--n-500, #6C757D); }
 .tv3-tag--manual    { background: var(--n-100, #f3f4f6); color: var(--n-500, #6b7280); }
 
 .tv3-event-bank {
