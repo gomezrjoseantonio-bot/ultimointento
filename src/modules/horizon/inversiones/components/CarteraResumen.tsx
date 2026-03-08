@@ -78,7 +78,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             width: '40px', 
             height: '40px', 
             borderRadius: '10px', 
-            background: 'rgba(4, 44, 94, 0.1)',
+            background: 'var(--n-100)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -118,13 +118,13 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             width: '40px', 
             height: '40px', 
             borderRadius: '10px', 
-            background: rentabilidadEuros >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)',
+            background: 'var(--n-100)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginRight: '0.75rem'
           }}>
-            <TrendingUp size={20} style={{ color: rentabilidadColor }} />
+            <TrendingUp size={20} style={{ color: 'var(--blue)' }} />
           </div>
           <span style={{ 
             fontFamily: 'var(--font-base)',
