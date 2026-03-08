@@ -93,6 +93,7 @@ const HorizonVisualPanel: React.FC = () => {
     const d = new Date(data.tesoreria.asOf);
     return d.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
   }, [data.tesoreria.asOf]);
+  const monthLabelUpper = monthLabel.toUpperCase();
 
   const rows = useMemo(() => [...data.tesoreria.filas].sort((a, b) => a.banco.localeCompare(b.banco)), [data.tesoreria.filas]);
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -250,6 +251,7 @@ const HorizonVisualPanel: React.FC = () => {
 
           <section className="exec-zone3">
             <div className="exec-card" style={{ display: 'grid', gap: 12, padding: 12 }}>
+              <div className="exec-section-title">Flujos de caja · {monthLabelUpper}</div>
               <div className="flujo-card">
                 <div className="flujo-card-left-bar" style={{ background: 'var(--blue)' }} />
                 <div className="flujo-icon"><Home size={18} /></div>
@@ -304,6 +306,13 @@ const HorizonVisualPanel: React.FC = () => {
             </div>
 
             <div className="exec-card">
+              <div className="exec-card-header">
+                <div>
+                  <div className="exec-card-title"><Landmark size={16} /> Tesorería</div>
+                  <div className="exec-card-subtitle">Datos a {new Date(data.tesoreria.asOf).toLocaleDateString('es-ES')} · {rows.length} cuentas</div>
+                </div>
+                <button className="exec-card-link">Ver detalle <ChevronRight size={14} /></button>
+              </div>
               <table className="tbl-tesoreria">
                 <thead><tr><th>Banco</th><th>Hoy</th><th>Fin mes</th></tr></thead>
                 <tbody>
@@ -324,6 +333,10 @@ const HorizonVisualPanel: React.FC = () => {
           </section>
 
           <section className="exec-card">
+            <div className="exec-card-header">
+              <div className="exec-card-title"><Bell size={16} /> Requiere atención <span className="exec-pill-count">{data.alertas.length}</span></div>
+              <button className="exec-card-link">Ver todas <ChevronRight size={14} /></button>
+            </div>
             {(data.alertas.length > 0 ? data.alertas.slice(0, 5) : [{ id: 'empty', titulo: 'Sin alertas activas', descripcion: 'No hay alertas prioritarias actualmente', urgencia: 'media', diasVencimiento: 0 } as any]).map((alerta: any) => (
               <div className="exec-alert" key={alerta.id}>
                 {alerta.tipo === 'contrato' ? <CalendarDays size={16} color="#92620a" /> : alerta.tipo === 'cobro' ? <Wallet size={16} color="#92620a" /> : <Bell size={16} color="#92620a" />}
