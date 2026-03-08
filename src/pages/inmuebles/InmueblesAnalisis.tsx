@@ -61,8 +61,6 @@ const C = {
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + ' €';
 
-const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
-
 // ─── Data ─────────────────────────────────────────────────────────────────────
 const PROPERTIES = [
   { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68 },
