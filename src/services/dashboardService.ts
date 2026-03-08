@@ -1243,4 +1243,12 @@ class DashboardService {
   }
 }
 
+export interface DashboardSnapshot {
+  patrimonio: Awaited<ReturnType<DashboardService['getPatrimonioNeto']>>;
+  liquidez: Awaited<ReturnType<DashboardService['getLiquidez']>>;
+  salud: Awaited<ReturnType<DashboardService['getSaludFinanciera']>>;
+  tesoreria: Awaited<ReturnType<DashboardService['getTesoreriaPanel']>>;
+  alertas: Awaited<ReturnType<DashboardService['getAlertas']>>;
+}
+
 export const dashboardService = new DashboardService();
