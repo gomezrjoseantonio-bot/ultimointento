@@ -50,8 +50,8 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
 
   const getCategoryColor = (): string => {
     const cat = getTipoCategoria();
-    if (cat === 'rendimiento') return '#0d9488';
-    if (cat === 'dividendos') return '#1d4ed8';
+    if (cat === 'rendimiento') return 'var(--c3)';
+    if (cat === 'dividendos') return 'var(--c1)';
     return 'var(--text-gray)';
   };
 
@@ -82,21 +82,21 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
     if (cat === 'rendimiento' && posAny.rendimiento?.tasa_interes_anual) {
       return {
         label: `Genera intereses ${posAny.rendimiento.tasa_interes_anual}%/año`,
-        bg: '#ccfbf1',
-        color: '#0d9488',
+        bg: 'var(--s-pos-bg)',
+        color: 'var(--s-pos)',
       };
     }
     if (cat === 'dividendos') {
       const pagaDividendos = posAny.dividendos?.paga_dividendos;
       return pagaDividendos
-        ? { label: 'Paga dividendos', bg: '#dbeafe', color: '#1d4ed8' }
-        : { label: 'Acumulación', bg: '#eff6ff', color: '#1d4ed8' };
+        ? { label: 'Paga dividendos', bg: 'color-mix(in srgb, var(--c1) 12%, var(--white))', color: 'var(--c1)' }
+        : { label: 'Acumulación', bg: 'color-mix(in srgb, var(--c2) 14%, var(--white))', color: 'var(--c2)' };
     }
-    return { label: 'Valoración simple', bg: '#f3f4f6', color: 'var(--text-gray)' };
+    return { label: 'Valoración simple', bg: 'var(--n-100)', color: 'var(--n-500)' };
   };
 
   const categoryBadge = getCategoryBadge();
-  const rentabilidadColor = posicion.rentabilidad_euros >= 0 ? 'var(--ok)' : 'var(--error)';
+  const rentabilidadColor = posicion.rentabilidad_euros >= 0 ? 'var(--s-pos)' : 'var(--s-neg)';
 
   return (
     <div

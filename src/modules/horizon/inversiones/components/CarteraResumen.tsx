@@ -23,16 +23,7 @@ const tipoLabels: Record<string, string> = {
   otro: 'Otros',
 };
 
-const tipoColors: Record<string, string> = {
-  plan_pensiones: '#0b8fa0',
-  fondo_inversion: '#0b4f8f',
-  accion: '#2563eb',
-  etf: '#3b82f6',
-  crypto: '#64748b',
-  deposito: '#0d9488',
-  plan_empleo: '#1e40af',
-  otro: 'var(--n-500)',
-};
+const CHART_COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)'];
 
 const CarteraResumen: React.FC<CarteraResumenProps> = ({
   valorTotal,
@@ -53,7 +44,20 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
   };
 
-  const rentabilidadColor = rentabilidadEuros >= 0 ? 'var(--ok)' : 'var(--error)';
+  const rentabilidadColor = rentabilidadEuros >= 0 ? 'var(--s-pos)' : 'var(--s-neg)';
+
+  const pieData = Object.entries(porTipo)
+    .map(([tipo, valor]) => ({
+      name: tipoLabels[tipo] || tipo,
+      value: valor,
+      tipo,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  const pieColorByTipo = pieData.reduce<Record<string, string>>((acc, item, idx) => {
+    acc[item.tipo] = CHART_COLORS[idx % CHART_COLORS.length];
+    return acc;
+  }, {});
 
   return (
     <div style={{ 
@@ -95,7 +99,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
           fontFamily: 'var(--font-base)',
           fontSize: 'var(--text-xl)',
           fontWeight: 600,
-          color: 'var(--atlas-navy-1)',
+          color: 'var(--n-700)',
           fontVariantNumeric: 'tabular-nums'
         }}>
           {formatCurrency(valorTotal)}
@@ -114,7 +118,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             width: '40px', 
             height: '40px', 
             borderRadius: '10px', 
-            background: rentabilidadEuros >= 0 ? 'var(--s-positive-bg)' : 'var(--s-negative-bg)',
+            background: rentabilidadEuros >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -168,15 +172,11 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
             Distribución por tipo
           </span>
         </div>
-        {Object.keys(porTipo).length > 0 ? (
+        {pieData.length > 0 ? (
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
-                data={Object.entries(porTipo).map(([tipo, valor]) => ({
-                  name: tipoLabels[tipo] || tipo,
-                  value: valor,
-                  tipo,
-                }))}
+                data={pieData}
                 cx="50%"
                 cy="50%"
                 innerRadius={40}
@@ -184,8 +184,8 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
                 paddingAngle={2}
                 dataKey="value"
               >
-                {Object.entries(porTipo).map(([tipo]) => (
-                  <Cell key={tipo} fill={tipoColors[tipo] || 'var(--n-500)'} />
+                {pieData.map((entry) => (
+                  <Cell key={entry.tipo} fill={pieColorByTipo[entry.tipo] || 'var(--c5)'} />
                 ))}
               </Pie>
               <Tooltip
@@ -197,7 +197,7 @@ const CarteraResumen: React.FC<CarteraResumenProps> = ({
                 iconType="circle"
                 iconSize={8}
                 formatter={(value) => (
-                  <span style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--atlas-navy-1)' }}>
+                  <span style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-sm)', color: 'var(--n-700)' }}>
                     {value}
                   </span>
                 )}

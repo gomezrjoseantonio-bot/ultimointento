@@ -185,7 +185,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
             </div>
 
             <div style={{
-              background: isPositive ? 'var(--teal-050)' : '#F8F9FC',
+              background: isPositive ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)',
               borderRadius: '10px',
               padding: '1rem',
             }}>
@@ -201,7 +201,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 fontFamily: 'var(--font-inter)',
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: isPositive ? 'var(--teal-600)' : 'var(--gray-700)',
+                color: isPositive ? 'var(--s-pos)' : 'var(--s-neg)',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {posicion.rentabilidad_porcentaje >= 0 ? '+' : ''}
@@ -210,7 +210,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
               <div style={{
                 fontFamily: 'var(--font-inter)',
                 fontSize: '0.75rem',
-                color: isPositive ? 'var(--teal-600)' : 'var(--gray-700)',
+                color: isPositive ? 'var(--s-pos)' : 'var(--s-neg)',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {posicion.rentabilidad_euros >= 0 ? '+' : ''}
