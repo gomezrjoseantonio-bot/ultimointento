@@ -17,41 +17,30 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       key={item.name}
       to={item.href}
       className={({ isActive }) =>
-        `${
-          isActive
-            ? 'text-white'
-            : 'text-gray-300 hover:text-white hover:opacity-90'
-        } group flex items-center ${collapsed ? 'justify-center' : ''} px-2.5 py-2 text-sm font-medium rounded-lg transition-all duration-200 border border-transparent`
+        `${isActive ? 'text-white' : 'text-white/75 hover:text-white'} sidebar-nav-item group flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 text-sm font-medium rounded-md transition-all duration-150`
       }
       style={({ isActive }) => ({
-        backgroundColor: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-        borderColor: isActive ? 'rgba(255,255,255,0.18)' : 'transparent',
+        backgroundColor: isActive ? 'var(--blue)' : 'transparent',
       })}
       title={collapsed ? item.name : undefined}
     >
-      <item.icon
-        className={`${collapsed ? '' : 'mr-3'} h-5 w-5 flex-shrink-0`}
-        aria-hidden="true"
-      />
+      <item.icon className={`${collapsed ? '' : 'mr-3'} h-5 w-5 flex-shrink-0`} aria-hidden="true" />
       {!collapsed && item.name}
     </NavLink>
   );
 
-  // Sin secciones Horizon/Pulse — navegación plana agrupada por tipo
-  const mainItems       = navigation.filter(item => item.section === 'horizon');
+  const mainItems = navigation.filter(item => item.section === 'horizon');
   const managementItems = navigation.filter(item => item.section === 'pulse');
-  const docsItems       = navigation.filter(item => item.section === 'documentation');
+  const docsItems = navigation.filter(item => item.section === 'documentation');
 
   const SectionLabel = ({ label }: { label: string }) => collapsed ? null : (
-    <p className="px-2 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest"
-       style={{ color: 'rgba(255,255,255,0.45)' }}>
+    <p className="px-2 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-white/40">
       {label}
     </p>
   );
 
   return (
     <>
-      {/* Mobile overlay */}
       <div
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden ${
           sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -62,35 +51,24 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       <div
         className={`fixed inset-y-0 left-0 z-[100] transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${collapsed ? 'w-16' : 'w-60'}`}
-        style={{
-          background: 'linear-gradient(180deg, #021E3F 0%, #042C5E 100%)',
-        }}
+        } ${collapsed ? 'w-16' : 'w-64'}`}
+        style={{ backgroundColor: 'var(--n-900)' }}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-5"
-             style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {!collapsed && (
             <div className="flex items-center space-x-2">
-              <div
-                className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                style={{ backgroundColor: 'var(--teal-500)' }}
-              >
+              <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: 'var(--blue)' }}>
                 A
               </div>
               <h1 className="text-white text-xl font-bold tracking-tight">ATLAS</h1>
             </div>
           )}
           {collapsed && (
-            <div
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm mx-auto"
-              style={{ backgroundColor: 'var(--teal-500)' }}
-              title="ATLAS"
-            >
+            <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm mx-auto" style={{ backgroundColor: 'var(--blue)' }} title="ATLAS">
               A
             </div>
           )}
-          {/* Colapsar — desktop */}
+
           <button
             className="hidden md:block text-white/40 hover:text-white/80 transition-colors focus:outline-none"
             onClick={() => setCollapsed(!collapsed)}
@@ -103,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               }
             </svg>
           </button>
-          {/* Cerrar — mobile */}
+
           <button
             className="md:hidden text-white/60 hover:text-white"
             onClick={() => setSidebarOpen(false)}
@@ -113,17 +91,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </button>
         </div>
 
-        {/* Nav */}
         <nav className="px-2 mt-3 flex-1 overflow-y-auto space-y-0.5">
-          {/* Supervisión */}
           <SectionLabel label="Supervisión" />
           {mainItems.map(renderNavItem)}
 
-          {/* Gestión */}
           <SectionLabel label="Gestión" />
           {managementItems.map(renderNavItem)}
 
-          {/* Docs */}
           <SectionLabel label="Docs" />
           {docsItems.map(renderNavItem)}
         </nav>
