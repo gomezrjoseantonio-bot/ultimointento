@@ -51,6 +51,7 @@ interface FormData {
 
 const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propertyId, embedded = false, onCancel, onSaved }) => {
   const navigate = useNavigate();
+  const portfolioRoute = '/inmuebles?tab=cartera';
   const { id } = useParams();
   const resolvedPropertyId = propertyId ?? (id ? parseInt(id, 10) : undefined);
   
@@ -111,7 +112,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       if (!property) {
         toast.error('Inmueble no encontrado');
         if (!embedded) {
-          navigate('/inmuebles/cartera');
+          navigate(portfolioRoute);
         }
         return;
       }
@@ -153,7 +154,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       console.error('Error loading property:', error);
       toast.error('Error al cargar el inmueble');
       if (!embedded) {
-        navigate('/inmuebles/cartera');
+        navigate(portfolioRoute);
       }
     } finally {
       setIsLoading(false);
@@ -379,7 +380,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       }
 
       if (!embedded) {
-        navigate('/inmuebles/cartera?refresh=1');
+        navigate(`${portfolioRoute}&refresh=1`);
       }
     } catch (error) {
       console.error('Error saving property:', error);
@@ -396,7 +397,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       return;
     }
 
-    navigate('/inmuebles/cartera');
+    navigate(portfolioRoute);
   };
   
   // Format currency
