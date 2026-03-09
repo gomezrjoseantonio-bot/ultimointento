@@ -155,6 +155,42 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inmuebles.cashflow).toBeCloseTo(-250, 2);
   });
 
+
+  it('trata estado confirmado como cobro real para evitar fallback de contrato', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [],
+      gastos: [],
+      expenses: [],
+      rentPayments: [
+        { fecha: '2026-03-10', importe: 700, estado: 'confirmado' }
+      ],
+      contracts: [
+        {
+          id: 1,
+          inmuebleId: 1,
+          rentaMensual: 1000,
+          fechaInicio: '2026-01-01',
+          fechaFin: '2026-12-31',
+          estadoContrato: 'activo'
+        }
+      ],
+      prestamos: [],
+      properties: [
+        { id: 1, estado: 'activo' }
+      ],
+      inversiones: []
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    // Debe usar 700 (confirmado real) y no 1000 del contrato fallback.
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(700, 2);
+  });
+
   it('incluye financiación y reasigna eventos de tarjeta al banco de cargo en tesorería panel', async () => {
     const datasets: Record<string, any[]> = {
       accounts: [

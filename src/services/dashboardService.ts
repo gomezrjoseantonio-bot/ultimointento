@@ -743,7 +743,21 @@ class DashboardService {
 
       const isPaidRentPayment = (payment: any): boolean => {
         const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
-        return status === 'pagada' || status === 'pagado' || status === 'paid' || status === 'cobrada' || status === 'cobrado';
+        return [
+          'pagada',
+          'pagado',
+          'paid',
+          'cobrada',
+          'cobrado',
+          'confirmada',
+          'confirmado',
+          'confirmed',
+          'ejecutada',
+          'ejecutado',
+          'executed',
+          'parcial',
+          'partial',
+        ].includes(status);
       };
 
       const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
