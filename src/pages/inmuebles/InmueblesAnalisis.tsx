@@ -36,8 +36,9 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { initDB, Property } from '../../services/db';
+import { Contract, Expense, initDB, Property } from '../../services/db';
 import type { Prestamo } from '../../types/prestamos';
+import type { ValoracionHistorica } from '../../types/valoraciones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -64,62 +65,91 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + ' €';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const PROPERTIES = [
-  { id: 'acevedo',      alias: 'Acevedo',        addr: 'Fuertes Acevedo, 32 2D',        coste: 128500, valor: 240000, revalTotal: 86.77, revalAnual: 19.84, yield: 17.68, deudaPendiente: 115400, cashflowMes: 620, gastosMes: 280 },
-  { id: 'manresa',      alias: 'Manresa',        addr: "Sant Joan d'en Coll, 53 3-6",   coste: 93200,  valor: 135000, revalTotal: 44.85, revalAnual: 8.44,  yield: 0, deudaPendiente: 68400, cashflowMes: -90, gastosMes: 210 },
-  { id: 'santfruitos',  alias: 'Sant Fruitós',   addr: 'Carles Buigas, 15-17 BJ 2',     coste: 114500, valor: 230000, revalTotal: 100.87,revalAnual: 3.48,  yield: 3.46, deudaPendiente: 0, cashflowMes: 310, gastosMes: 190 },
-  { id: 'tenderina4d',  alias: 'Tenderina 64 4D', addr: 'Tenderina, 64 4D',             coste: 94920,  valor: 150000, revalTotal: 58.03, revalAnual: 19.70, yield: 15.87, deudaPendiente: 42100, cashflowMes: 540, gastosMes: 220 },
-  { id: 'tenderina4i',  alias: 'Tenderina 64 4I', addr: 'Tenderina, 64 4I',             coste: 98760,  valor: 150000, revalTotal: 51.88, revalAnual: 12.86, yield: 19.68, deudaPendiente: 48021, cashflowMes: 585, gastosMes: 235 },
-  { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',             coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0, deudaPendiente: 0, cashflowMes: -15, gastosMes: 30 },
-];
-
-type PropertySnapshot = typeof PROPERTIES[number];
-
-const normalize = (value: string) =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-
-const findMatchingProperty = (seed: PropertySnapshot, properties: Property[]): Property | undefined => {
-  const seedAlias = normalize(seed.alias);
-  const seedAddress = normalize(seed.addr);
-
-  return properties.find((property) => {
-    const alias = normalize(property.alias || '');
-    const globalAlias = normalize(property.globalAlias || '');
-    const address = normalize(property.address || '');
-
-    return (
-      alias.includes(seedAlias) ||
-      seedAlias.includes(alias) ||
-      globalAlias.includes(seedAlias) ||
-      seedAddress.includes(address) ||
-      address.includes(seedAddress)
-    );
-  });
+type PropertySnapshot = {
+  id: string;
+  alias: string;
+  addr: string;
+  coste: number;
+  valor: number;
+  revalTotal: number;
+  revalAnual: number;
+  yield: number;
+  deudaPendiente: number;
+  cashflowMes: number;
+  gastosMes: number;
 };
 
-const resolveLiveDebtByProperty = (seed: PropertySnapshot[], properties: Property[], loans: Prestamo[]) =>
-  seed.map((property) => {
-    const matched = findMatchingProperty(property, properties);
-    if (!matched?.id) {
-      return property;
-    }
+const getAcquisitionCost = (property: Property): number => {
+  const { acquisitionCosts } = property;
+  const extras = (acquisitionCosts.other || []).reduce((sum, item) => sum + (item.amount || 0), 0);
+  return (
+    (acquisitionCosts.price ?? 0) +
+    (acquisitionCosts.itp ?? 0) +
+    (acquisitionCosts.iva ?? 0) +
+    (acquisitionCosts.notary ?? 0) +
+    (acquisitionCosts.registry ?? 0) +
+    (acquisitionCosts.management ?? 0) +
+    (acquisitionCosts.psi ?? 0) +
+    (acquisitionCosts.realEstate ?? 0) +
+    extras
+  );
+};
 
-    const links = new Set(
-      [String(matched.id), matched.globalAlias ? String(matched.globalAlias) : '']
-        .map((value) => value.trim())
-        .filter(Boolean)
-    );
+const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmueble' | 'inversion') => {
+  const latest = new Map<number, number>();
+  const sorted = valoraciones
+    .filter((item) => item.tipo_activo === tipo)
+    .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
 
-    const deudaPendiente = loans
-      .filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo && links.has(String(loan.inmuebleId ?? '').trim()))
-      .reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
-
-    return { ...property, deudaPendiente };
+  sorted.forEach((item) => {
+    latest.set(item.activo_id, item.valor);
   });
+
+  return latest;
+};
+
+const mapToSnapshot = (
+  property: Property,
+  contracts: Contract[],
+  expenses: Expense[],
+  loans: Prestamo[],
+  valorActual: number,
+): PropertySnapshot => {
+  const propertyId = property.id!;
+  const coste = getAcquisitionCost(property);
+  const valor = valorActual;
+
+  const propertyContracts = contracts.filter((contract) => contract.inmuebleId === propertyId && contract.estadoContrato === 'activo');
+  const ingresosMes = propertyContracts.reduce((sum, contract) => sum + (contract.rentaMensual || 0), 0);
+
+  const propertyExpenses = expenses.filter((expense) => expense.propertyId === propertyId);
+  const gastosMes = propertyExpenses.length
+    ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
+    : 0;
+
+  const deudaPendiente = loans
+    .filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo && String(loan.inmuebleId ?? '').trim() === String(propertyId))
+    .reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
+
+  const revalTotal = coste > 0 ? ((valor - coste) / coste) * 100 : 0;
+  const revalAnual = revalTotal / 5;
+  const annualIncome = ingresosMes * 12;
+  const yieldValue = coste > 0 ? (annualIncome / coste) * 100 : 0;
+
+  return {
+    id: String(propertyId),
+    alias: property.alias,
+    addr: property.address,
+    coste,
+    valor,
+    revalTotal,
+    revalAnual,
+    yield: yieldValue,
+    deudaPendiente,
+    cashflowMes: ingresosMes - gastosMes,
+    gastosMes,
+  };
+};
 
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
 
@@ -620,32 +650,57 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export default function InmueblesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
-  const [selectedPropertyId, setSelectedPropertyId] = useState(PROPERTIES[0].id);
-  const [properties, setProperties] = useState<PropertySnapshot[]>(PROPERTIES);
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [properties, setProperties] = useState<PropertySnapshot[]>([]);
 
   useEffect(() => {
     let mounted = true;
 
-    const loadLiveDebt = async () => {
+    const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbValoraciones] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
+          db.getAll('contracts') as Promise<Contract[]>,
+          db.getAll('expenses') as Promise<Expense[]>,
+          db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
         ]);
 
         if (!mounted) return;
-        setProperties(resolveLiveDebtByProperty(PROPERTIES, dbProperties, dbLoans));
+        const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
+        const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
+        const snapshots = active.map((property) =>
+          mapToSnapshot(
+            property,
+            dbContracts,
+            dbExpenses,
+            dbLoans,
+            latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
+          )
+        );
+        setProperties(snapshots);
+        if (!selectedPropertyId && snapshots.length) {
+          setSelectedPropertyId(snapshots[0].id);
+        }
       } catch {
-        if (mounted) setProperties(PROPERTIES);
+        if (mounted) setProperties([]);
       }
     };
 
-    void loadLiveDebt();
+    void loadProperties();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [selectedPropertyId]);
+
+  if (!properties.length) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.n50, display: 'grid', placeItems: 'center' }}>
+        <p style={{ color: C.n500 }}>No hay inmuebles activos en tus datos.</p>
+      </div>
+    );
+  }
 
   const handleSelectProperty = (id: string) => {
     setSelectedPropertyId(id);
