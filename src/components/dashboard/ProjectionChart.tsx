@@ -4,58 +4,32 @@ interface ProjectionChartProps {
   type: 'horizon' | 'pulse';
 }
 
-const chartConfig = {
-  horizon: {
-    label: 'Projected cashflow',
-    stroke: '#1D4ED8',
-    fill: '#93C5FD',
-    values: [38, 44, 47, 53, 56, 61, 65, 70, 72, 77, 81, 86],
-  },
-  pulse: {
-    label: 'Budget utilization',
-    stroke: '#0F766E',
-    fill: '#99F6E4',
-    values: [62, 60, 63, 58, 56, 59, 61, 57, 55, 58, 60, 62],
-  },
-} as const;
+const DATA_POINTS: Record<ProjectionChartProps['type'], number[]> = {
+  horizon: [42, 46, 49, 52, 58, 62, 66, 71, 75, 79, 84, 88],
+  pulse: [64, 61, 68, 65, 71, 69, 74, 72, 78, 76, 82, 85],
+};
 
 const ProjectionChart: React.FC<ProjectionChartProps> = ({ type }) => {
-  const config = chartConfig[type];
-  const maxValue = Math.max(...config.values);
-
-  const points = config.values
-    .map((value, index) => {
-      const x = (index / (config.values.length - 1)) * 100;
-      const y = 100 - (value / maxValue) * 90;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  const points = DATA_POINTS[type];
 
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-      <div className="mb-3 flex items-center justify-between text-sm text-gray-600">
-        <span>{config.label}</span>
-        <span className="font-medium text-gray-800">Last 12 months</span>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-700">
+          {type === 'horizon' ? 'Projected portfolio performance' : 'Projected budget performance'}
+        </p>
+        <span className="text-xs text-gray-500">12 months</span>
       </div>
 
-      <div className="h-36 w-full rounded-md bg-white p-2">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
-          <defs>
-            <linearGradient id={`gradient-${type}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={config.fill} stopOpacity="0.5" />
-              <stop offset="100%" stopColor={config.fill} stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          <polygon points={`${points} 100,100 0,100`} fill={`url(#gradient-${type})`} />
-          <polyline
-            fill="none"
-            stroke={config.stroke}
-            strokeWidth="2.5"
-            points={points}
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
+      <div className="grid h-32 grid-cols-12 items-end gap-1">
+        {points.map((value, index) => (
+          <div key={`${type}-${index}`} className="flex flex-col items-center gap-1">
+            <div
+              className={`w-full rounded-sm ${type === 'horizon' ? 'bg-primary-900/70' : 'bg-teal-500/70'}`}
+              style={{ height: `${value}%` }}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
