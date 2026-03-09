@@ -39,6 +39,13 @@ function normalizePosicion(posicion: PosicionInversion): PosicionInversion {
 }
 
 export const inversionesService = {
+  recalculatePosition(aportaciones: Aportacion[]): Partial<PosicionInversion> {
+    const total_aportado = calculateTotalAportado(aportaciones);
+    return {
+      aportaciones,
+      total_aportado,
+    };
+  },
   // Obtener todas las posiciones activas
   async getPosiciones(): Promise<PosicionInversion[]> {
     const db = await initDB();
@@ -135,14 +142,7 @@ export const inversionesService = {
         : newAportacionBase;
 
       const aportaciones = [...posicion.aportaciones, newAportacion];
-
-      // Recalcular total aportado
-      const total_aportado = aportaciones.reduce((sum, a) => {
-        if (a.tipo === 'reembolso') return sum - a.importe;
-        return sum + a.importe;
-      }, 0);
-
-      const updates: Partial<PosicionInversion> = { aportaciones, total_aportado };
+      const updates: Partial<PosicionInversion> = this.recalculatePosition(aportaciones);
       if (newAportacion.tipo === 'reembolso' && (newAportacion.unidades_vendidas ?? 0) > 0) {
         const numeroParticipaciones = (posicion as any).numero_participaciones as number | undefined;
         if (typeof numeroParticipaciones === 'number') {
@@ -155,6 +155,41 @@ export const inversionesService = {
 
       await this.updatePosicion(posicionId, updates);
     }
+  },
+
+  async updateAportacion(posicionId: number, aportacionId: number, aportacion: Omit<Aportacion, 'id'>): Promise<void> {
+    const db = await initDB();
+    const posicion = await db.get('inversiones', posicionId);
+    if (!posicion) return;
+
+    const aportacionesBase = (posicion.aportaciones || []).filter((a: Aportacion) => a.id !== aportacionId);
+    const editedBase: Aportacion = { ...aportacion, id: aportacionId };
+    const edited = editedBase.tipo === 'reembolso'
+      ? (() => {
+          const posicionPreview = { ...posicion, aportaciones: aportacionesBase } as PosicionInversion;
+          const { costeAdquisicion, gananciaOPerdida } = calcularGananciaPerdidaFIFO(posicionPreview, editedBase);
+          return {
+            ...editedBase,
+            coste_adquisicion_fifo: costeAdquisicion,
+            ganancia_perdida: gananciaOPerdida,
+          };
+        })()
+      : editedBase;
+
+    const aportaciones = [...aportacionesBase, edited].sort(
+      (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+    );
+
+    await this.updatePosicion(posicionId, this.recalculatePosition(aportaciones));
+  },
+
+  async deleteAportacion(posicionId: number, aportacionId: number): Promise<void> {
+    const db = await initDB();
+    const posicion = await db.get('inversiones', posicionId);
+    if (!posicion) return;
+
+    const aportaciones = (posicion.aportaciones || []).filter((a: Aportacion) => a.id !== aportacionId);
+    await this.updatePosicion(posicionId, this.recalculatePosition(aportaciones));
   },
 
   // Eliminar posición (soft delete)

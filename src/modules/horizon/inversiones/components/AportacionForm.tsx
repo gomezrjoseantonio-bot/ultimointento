@@ -11,6 +11,7 @@ import { calcularGananciaPerdidaFIFO } from '../../../../services/inversionesFis
 interface AportacionFormProps {
   posicionNombre: string;
   posicion: PosicionInversion;
+  initialAportacion?: Aportacion;
   onSave: (aportacion: Omit<Aportacion, 'id'>) => void;
   onClose: () => void;
 }
@@ -19,14 +20,14 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicion, onSave, onClose }) => {
+const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicion, initialAportacion, onSave, onClose }) => {
   const [formData, setFormData] = useState({
-    fecha: new Date().toISOString().split('T')[0],
-    tipo: 'aportacion' as 'aportacion' | 'reembolso',
-    importe: 0,
-    notas: '',
-    cuenta_cargo_id: '' as string,
-    unidades_vendidas: 0,
+    fecha: initialAportacion?.fecha?.split('T')[0] || new Date().toISOString().split('T')[0],
+    tipo: (initialAportacion?.tipo || 'aportacion') as 'aportacion' | 'reembolso',
+    importe: initialAportacion?.importe || 0,
+    notas: initialAportacion?.notas || '',
+    cuenta_cargo_id: initialAportacion?.cuenta_cargo_id ? String(initialAportacion.cuenta_cargo_id) : '',
+    unidades_vendidas: initialAportacion?.unidades_vendidas || 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [cuentas, setCuentas] = useState<Account[]>([]);
@@ -131,7 +132,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
             color: 'var(--atlas-navy-1)',
             margin: 0,
           }}>
-            Añadir aportación
+            {initialAportacion ? 'Editar movimiento' : 'Añadir aportación'}
           </h2>
           <button
             onClick={onClose}
@@ -260,7 +261,7 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
               Cancelar
             </button>
             <button type="submit" style={{ padding: '0.75rem 1.5rem', border: 'none', borderRadius: '8px', background: 'var(--atlas-blue)', fontFamily: 'var(--font-inter)', fontSize: '1rem', fontWeight: 500, color: 'white', cursor: 'pointer' }}>
-              Guardar
+              {initialAportacion ? 'Guardar cambios' : 'Guardar'}
             </button>
           </div>
         </form>
