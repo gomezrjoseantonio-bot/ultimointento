@@ -2,13 +2,16 @@
 // ATLAS HORIZON: Detailed modal for an investment position showing aportaciones history
 
 import React, { useRef } from 'react';
-import { X, Plus, RefreshCw, Edit, Upload, Download } from 'lucide-react';
+import { X, Plus, RefreshCw, Edit, Upload, Download, Pencil, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { PosicionInversion } from '../../../../types/inversiones';
 
 interface PosicionDetailModalProps {
   posicion: PosicionInversion;
   onClose: () => void;
   onAddAportacion: () => void;
+  onEditAportacion: (aportacionId: number) => void;
+  onDeleteAportacion: (aportacionId: number) => Promise<void>;
   onImportAportaciones: (file: File) => Promise<void>;
   onDownloadPlantillaImportacion: () => void;
   onActualizarValor: () => void;
@@ -19,6 +22,8 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   posicion,
   onClose,
   onAddAportacion,
+  onEditAportacion,
+  onDeleteAportacion,
   onImportAportaciones,
   onDownloadPlantillaImportacion,
   onActualizarValor,
@@ -75,6 +80,19 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
     if (!file) return;
     await onImportAportaciones(file);
     event.target.value = '';
+  };
+
+  const handleDeleteAportacion = async (aportacionId: number) => {
+    if (!window.confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) {
+      return;
+    }
+    try {
+      await onDeleteAportacion(aportacionId);
+      toast.success('Movimiento eliminado correctamente');
+    } catch (error) {
+      console.error('Error deleting aportacion:', error);
+      toast.error('No se pudo eliminar el movimiento');
+    }
   };
 
   return (
@@ -346,7 +364,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      {['Fecha', 'Tipo', 'Importe', 'Notas'].map(col => (
+                      {['Fecha', 'Tipo', 'Importe', 'Notas', 'Acciones'].map(col => (
                         <th key={col} style={{
                           textAlign: 'left',
                           padding: '0.5rem 0.75rem',
@@ -410,6 +428,48 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                             )}
                           </div>
                         </td>
+                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button
+                              type="button"
+                              title="Editar movimiento"
+                              onClick={() => onEditAportacion(ap.id)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border)',
+                                background: 'white',
+                                color: 'var(--atlas-navy-1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Eliminar movimiento"
+                              onClick={() => handleDeleteAportacion(ap.id)}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                border: '1px solid #fecaca',
+                                background: '#fff1f2',
+                                color: '#dc2626',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -430,6 +490,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                       }}>
                         {formatCurrency(posicion.total_aportado)}
                       </td>
+                      <td />
                       <td />
                     </tr>
                   </tfoot>
