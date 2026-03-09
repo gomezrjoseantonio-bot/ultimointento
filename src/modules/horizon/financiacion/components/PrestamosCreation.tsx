@@ -1,0 +1,514 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Save, 
+  X, 
+  ChevronDown, 
+  ChevronUp,
+  User,
+  CreditCard,
+  Calculator,
+  CheckCircle,
+  AlertCircle,
+  Clock
+} from 'lucide-react';
+import { PrestamoFinanciacion, ValidationError } from '../../../../types/financiacion';
+import { prestamosService } from '../../../../services/prestamosService';
+import { useDebouncedCalculation } from '../../../../hooks/useDebouncedCalculation';
+import { AtlasButton } from '../../../../components/atlas';
+
+// Import block components (to be created)
+import IdentificacionBlock from './blocks/IdentificacionBlock';
+import CondicionesFinancierasBlock from './blocks/CondicionesFinancierasBlock';
+import BonificacionesBlock from './blocks/BonificacionesBlock';
+import ResumenFinalBlock from './blocks/ResumenFinalBlock';
+
+interface PrestamosCreationProps {
+  prestamoId?: string;
+  initialData?: Partial<PrestamoFinanciacion>; // For FEIN pre-filled data
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+const PrestamosCreation: React.FC<PrestamosCreationProps> = ({ 
+  prestamoId, 
+  initialData, 
+  onSuccess, 
+  onCancel 
+}) => {
+  // Block visibility state
+  const [visibleBlocks, setVisibleBlocks] = useState({
+    identificacion: true,
+    condiciones: false,
+    bonificaciones: false,
+    resumen: false
+  });
+
+  // Form data state
+  const [formData, setFormData] = useState<Partial<PrestamoFinanciacion>>(() => {
+    // If initialData is provided (from FEIN), use it as starting point
+    if (initialData) {
+      return {
+        ...initialData,
+        // Ensure required defaults are set
+        esquemaPrimerRecibo: initialData.esquemaPrimerRecibo || 'NORMAL',
+        sistema: initialData.sistema || 'FRANCES',
+        revision: initialData.revision || 12,
+        diaCobroMes: initialData.diaCobroMes || 1,
+        bonificaciones: initialData.bonificaciones || []
+      };
+    }
+    
+    // Default values for manual creation
+    return {
+      ambito: 'PERSONAL',
+      esquemaPrimerRecibo: 'NORMAL',
+      tipo: 'FIJO',
+      plazoPeriodo: 'AÑOS',
+      carencia: 'NINGUNA',
+      sistema: 'FRANCES',
+      revision: 12,
+      diaCobroMes: 1,
+      bonificaciones: []
+    };
+  });
+
+  // Live calculation state - moved to useDebouncedCalculation hook below
+  
+  // Form validation state
+  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Autosave state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const draftKey = `prestamo_draft_${prestamoId || 'new'}`;
+
+  // Live calculation with debounce (300ms)
+  const calculoLive = useDebouncedCalculation(formData);
+
+  const isEditMode = !!prestamoId;
+
+  // Load existing loan data if in edit mode
+  useEffect(() => {
+    if (prestamoId) {
+      const loadPrestamoData = async () => {
+        try {
+          setLoading(true);
+          const prestamo = await prestamosService.getPrestamoById(prestamoId);
+          if (prestamo) {
+            // Convert existing loan data to new format
+            setFormData({
+              id: prestamo.id,
+              ambito: 'INMUEBLE', // Legacy loans were property-based
+              inmuebleId: prestamo.inmuebleId,
+              cuentaCargoId: prestamo.cuentaCargoId,
+              fechaFirma: prestamo.fechaFirma,
+              fechaPrimerCargo: prestamo.fechaFirma, // Use same date as default
+              diaCobroMes: prestamo.diaCargoMes || 1,
+              esquemaPrimerRecibo: 'NORMAL', // Default value
+              capitalInicial: prestamo.principalInicial,
+              plazoTotal: prestamo.plazoMesesTotal,
+              plazoPeriodo: 'MESES',
+              carencia: 'NINGUNA',
+              tipo: prestamo.tipo,
+              tinFijo: prestamo.tipoNominalAnualFijo,
+              indice: prestamo.indice,
+              valorIndice: prestamo.valorIndiceActual,
+              diferencial: prestamo.diferencial,
+              revision: prestamo.periodoRevisionMeses === 6 ? 6 : 12,
+              tramoFijoAnos: prestamo.tramoFijoMeses ? Math.round(prestamo.tramoFijoMeses / 12) : undefined,
+              tinTramoFijo: prestamo.tipoNominalAnualMixtoFijo,
+              sistema: 'FRANCES',
+              comisionApertura: 0,
+              comisionMantenimiento: prestamo.gastosFijosOperacion,
+              comisionAmortizacionAnticipada: prestamo.comisionAmortizacionParcial,
+              bonificaciones: prestamo.bonificaciones?.map(b => ({
+                id: b.id,
+                tipo: 'OTROS' as const,
+                nombre: b.nombre,
+                condicionParametrizable: 'Condición personalizada',
+                descuentoTIN: b.reduccionPuntosPorcentuales,
+                impacto: { puntos: b.reduccionPuntosPorcentuales },
+                aplicaEn: 'FIJO' as const,
+                ventanaEvaluacion: b.lookbackMeses,
+                fuenteVerificacion: 'MANUAL' as const,
+                estadoInicial: 'NO_CUMPLE' as const,
+                seleccionado: false,
+                graciaMeses: 0 as const,
+                activa: true
+              })) || []
+            });
+          }
+        } catch (error) {
+          console.error('Error loading loan data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadPrestamoData();
+    }
+  }, [prestamoId]);
+
+  // Recover draft on mount (only for new loans)
+  useEffect(() => {
+    if (!prestamoId) {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        try {
+          const { formData: savedData } = JSON.parse(saved);
+          if (window.confirm('¿Recuperar borrador guardado anteriormente?')) {
+            setFormData(savedData);
+          }
+        } catch {
+          // Ignore corrupt drafts
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave every 2 seconds when form data changes
+  useEffect(() => {
+    if (Object.keys(formData).length === 0) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(draftKey, JSON.stringify({ formData, timestamp: Date.now() }));
+      setLastSaved(new Date());
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [formData, draftKey]);
+
+  // Discard draft
+  const discardDraft = useCallback(() => {
+    localStorage.removeItem(draftKey);
+    setLastSaved(null);
+  }, [draftKey]);
+
+  // Toggle block visibility
+  const toggleBlock = (blockName: keyof typeof visibleBlocks) => {
+    setVisibleBlocks(prev => ({
+      ...prev,
+      [blockName]: !prev[blockName]
+    }));
+  };
+
+  // Update form data
+  const updateFormData = (updates: Partial<PrestamoFinanciacion>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  // Validate form data
+  const validateForm = (): boolean => {
+    const newErrors: ValidationError[] = [];
+
+    // Step 1 validation
+    if (!formData.cuentaCargoId) {
+      newErrors.push({ field: 'cuentaCargoId', message: 'La cuenta de cargo es obligatoria' });
+    }
+    if (formData.ambito === 'INMUEBLE' && !formData.inmuebleId) {
+      newErrors.push({ field: 'inmuebleId', message: 'Debe seleccionar un inmueble' });
+    }
+    if (!formData.fechaFirma) {
+      newErrors.push({ field: 'fechaFirma', message: 'La fecha de firma es obligatoria' });
+    }
+    if (!formData.fechaPrimerCargo) {
+      newErrors.push({ field: 'fechaPrimerCargo', message: 'La fecha del primer cargo es obligatoria' });
+    }
+
+    // Step 2 validation
+    if (!formData.capitalInicial || formData.capitalInicial < 0) {
+      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial es obligatorio y debe ser mayor o igual a 0' });
+    }
+    if (formData.capitalInicial && formData.capitalInicial > 9999999) {
+      newErrors.push({ field: 'capitalInicial', message: 'El capital inicial no puede superar 9.999.999€' });
+    }
+    if (!formData.plazoTotal || formData.plazoTotal <= 0) {
+      newErrors.push({ field: 'plazoTotal', message: 'El plazo total es obligatorio y debe ser mayor que 0' });
+    }
+    if (!formData.tipo) {
+      newErrors.push({ field: 'tipo', message: 'El tipo de interés es obligatorio' });
+    }
+    
+    // Interest rate validation based on type
+    if (formData.tipo === 'FIJO' && (!formData.tinFijo || formData.tinFijo <= 0)) {
+      newErrors.push({ field: 'tinFijo', message: 'El TIN fijo es obligatorio para préstamos a tipo fijo' });
+    }
+    if (formData.tipo === 'VARIABLE') {
+      if (!formData.valorIndice && formData.valorIndice !== 0) {
+        newErrors.push({ field: 'valorIndice', message: 'El valor del índice es obligatorio para préstamos variables' });
+      }
+      if (!formData.diferencial && formData.diferencial !== 0) {
+        newErrors.push({ field: 'diferencial', message: 'El diferencial es obligatorio para préstamos variables' });
+      }
+    }
+    if (formData.tipo === 'MIXTO') {
+      if (!formData.tramoFijoAnos || formData.tramoFijoAnos <= 0) {
+        newErrors.push({ field: 'tramoFijoAnos', message: 'El tramo fijo es obligatorio para préstamos mixtos' });
+      }
+      if (!formData.tinTramoFijo || formData.tinTramoFijo <= 0) {
+        newErrors.push({ field: 'tinTramoFijo', message: 'El TIN del tramo fijo es obligatorio para préstamos mixtos' });
+      }
+    }
+
+    setErrors(newErrors);
+    return newErrors.length === 0;
+  };
+
+  // Save loan
+  const handleSave = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Convert to legacy format for now (you would implement proper conversion service)
+      const legacyData = {
+        ambito: (formData.inmuebleId ? 'INMUEBLE' : 'PERSONAL') as 'PERSONAL' | 'INMUEBLE',
+        nombre: formData.alias || `Préstamo ${formData.ambito}`,
+        inmuebleId: formData.inmuebleId ?? undefined,
+        principalInicial: formData.capitalInicial!,
+        principalVivo: formData.capitalInicial!,
+        fechaFirma: formData.fechaFirma!,
+        fechaPrimerCargo: formData.fechaPrimerCargo!,
+        plazoMesesTotal: formData.plazoPeriodo === 'AÑOS' ? formData.plazoTotal! * 12 : formData.plazoTotal!,
+        diaCargoMes: formData.diaCobroMes ?? 1,
+        esquemaPrimerRecibo: 'NORMAL' as const,
+        carencia: 'NINGUNA' as const,
+        sistema: 'FRANCES' as const,
+        cuotasPagadas: 0,
+        origenCreacion: 'MANUAL' as const,
+        activo: true,
+        tipo: formData.tipo!,
+        tipoNominalAnualFijo: formData.tinFijo,
+        indice: formData.indice,
+        valorIndiceActual: formData.valorIndice,
+        diferencial: formData.diferencial,
+        periodoRevisionMeses: formData.revision,
+        tramoFijoMeses: formData.tramoFijoAnos ? formData.tramoFijoAnos * 12 : undefined,
+        tipoNominalAnualMixtoFijo: formData.tinTramoFijo,
+        cuentaCargoId: formData.cuentaCargoId!,
+        gastosFijosOperacion: formData.comisionMantenimiento,
+        comisionAmortizacionParcial: formData.comisionAmortizacionAnticipada,
+        bonificaciones: formData.bonificaciones?.map(b => ({
+          id: b.id,
+          tipo: b.tipo === 'PLAN_PENSIONES' ? 'PENSIONES' as const : 
+                b.tipo === 'INGRESOS_RECURRENTES' ? 'OTROS' as const :
+                b.tipo as 'NOMINA'|'RECIBOS'|'SEGURO_HOGAR'|'SEGURO_VIDA'|'TARJETA'|'PENSIONES'|'ALARMA'|'OTROS',
+          nombre: b.nombre,
+          reduccionPuntosPorcentuales: b.descuentoTIN,
+          impacto: b.impacto,
+          aplicaEn: b.aplicaEn,
+          lookbackMeses: b.ventanaEvaluacion,
+          regla: { tipo: 'OTRA' as const, descripcion: b.condicionParametrizable },
+          seleccionado: b.seleccionado,
+          graciaMeses: b.graciaMeses,
+          estado: 'PENDIENTE' as const
+        }))
+      };
+
+      if (isEditMode) {
+        await prestamosService.updatePrestamo(prestamoId!, legacyData);
+      } else {
+        await prestamosService.createPrestamo(legacyData);
+      }
+
+      onSuccess();
+    } catch (error) {
+      console.error('Error saving loan:', error);
+      setErrors([{ field: 'general', message: 'Error al guardar el préstamo' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Block components data
+  const blocks = [
+    {
+      id: 'identificacion',
+      title: '1. Identificación & Cuenta de Cargo',
+      icon: User,
+      isVisible: visibleBlocks.identificacion,
+      isComplete: !!(formData.cuentaCargoId && formData.fechaFirma && formData.fechaPrimerCargo &&
+        (formData.ambito !== 'INMUEBLE' || formData.inmuebleId)),
+      component: IdentificacionBlock
+    },
+    {
+      id: 'condiciones',
+      title: '2. Condiciones Financieras',
+      icon: Calculator,
+      isVisible: visibleBlocks.condiciones,
+      isComplete: !!(formData.capitalInicial && formData.plazoTotal && formData.tipo && 
+        (formData.tipo === 'FIJO' ? formData.tinFijo : 
+         formData.tipo === 'VARIABLE' ? (formData.valorIndice !== undefined && formData.diferencial !== undefined) :
+         (formData.tramoFijoAnos && formData.tinTramoFijo))),
+      component: CondicionesFinancierasBlock
+    },
+    {
+      id: 'bonificaciones',
+      title: '3. Bonificaciones',
+      icon: CreditCard,
+      isVisible: visibleBlocks.bonificaciones,
+      isComplete: true, // Bonifications are optional
+      component: BonificacionesBlock
+    },
+    {
+      id: 'resumen',
+      title: '4. Resumen Final',
+      icon: CheckCircle,
+      isVisible: visibleBlocks.resumen,
+      isComplete: true,
+      component: ResumenFinalBlock
+    }
+  ];
+
+  if (loading && isEditMode) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-atlas-blue border-t-transparent mx-auto mb-4"></div>
+          <p className="text-atlas-navy-1">Cargando datos del préstamo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-bg">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={onCancel}
+              className="p-2 text-text-gray hover:text-atlas-navy-1"
+              aria-label="Volver"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-semibold text-atlas-navy-1">
+                {isEditMode ? 'Editar Préstamo' : 'Crear Préstamo'}
+              </h1>
+              <p className="text-sm text-text-gray">
+                Financiación - ATLAS Horizon
+              </p>
+            </div>
+          </div>
+          {/* Autosave indicator */}
+          {lastSaved && (
+            <div className="flex items-center gap-2 text-sm text-text-gray">
+              <Clock className="h-4 w-4" />
+              <span>Guardado {lastSaved.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="text-error-500 hover:text-error-700 underline text-xs ml-2"
+              >
+                Descartar borrador
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stepper */}
+        <div className="mt-4 flex items-center justify-between max-w-2xl">
+          {blocks.map((block, idx) => (
+            <React.Fragment key={block.id}>
+              <button
+                type="button"
+                onClick={() => toggleBlock(block.id as keyof typeof visibleBlocks)}
+                className="flex flex-col items-center gap-1"
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  block.isComplete
+                    ? 'bg-ok-50 text-ok-700 border-2 border-ok'
+                    : visibleBlocks[block.id as keyof typeof visibleBlocks]
+                    ? 'bg-primary-50 border-2 border-atlas-blue text-atlas-blue ring-4 ring-primary-100'
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {block.isComplete ? <CheckCircle className="h-5 w-5" /> : idx + 1}
+                </div>
+                <span className="text-xs text-text-gray hidden sm:block">{block.title.split('. ')[1]?.split(' ')[0] || block.title}</span>
+              </button>
+              {idx < blocks.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-1 ${block.isComplete ? 'bg-ok' : 'bg-gray-200'}`} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* General errors */}
+        {errors.some(e => e.field === 'general') && (
+          <div className="mt-4 p-3 bg-error-50 border border-error-200">
+            <div className="flex">
+              <AlertCircle className="h-5 w-5 text-error-500 flex-shrink-0" />
+              <div className="ml-3">
+                <p className="text-sm text-error-700">
+                  {errors.find(e => e.field === 'general')?.message}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {blocks.map((block) => (
+          <div key={block.id} className="bg-white border border-gray-200 overflow-hidden">
+            {/* Block Header */}
+            <div 
+              className="px-6 py-4 border-b border-gray-200 cursor-pointer"
+              onClick={() => toggleBlock(block.id as keyof typeof visibleBlocks)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <block.icon className={`h-5 w-5 ${block.isComplete ? 'text-ok' : 'text-text-gray'}`} />
+                  <h3 className="text-lg font-medium text-atlas-navy-1">{block.title}</h3>
+                  {block.isComplete && (
+                    <CheckCircle className="h-5 w-5 text-ok" />
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  {block.isVisible ? (
+                    <ChevronUp className="h-5 w-5 text-text-gray" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-text-gray" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Block Content */}
+            {block.isVisible && (
+              <div className="p-6">
+                <block.component
+                  formData={formData}
+                  updateFormData={updateFormData}
+                  errors={errors}
+                  calculoLive={calculoLive}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Save Button at Bottom Right */}
+        <div className="flex justify-end">
+          <AtlasButton
+            variant="primary"
+            size="lg"
+            onClick={handleSave}
+            loading={loading}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Guardar
+          </AtlasButton>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PrestamosCreation;

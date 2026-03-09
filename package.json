@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource/inter": "^5.2.6",
     "@heroicons/react": "^2.0.18",
     "@tailwindcss/forms": "^0.5.7",
     "@testing-library/jest-dom": "^5.17.0",
@@ -12,24 +16,45 @@
     "@types/node": "^16.18.39",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
-    "chart.js": "^4.3.3",
+    "chart.js": "^4.5.1",
+    "google-auth-library": "^10.3.0",
     "idb": "^7.1.1",
-    "lucide-react": "^0.577.0",
+    "jspdf": "^3.0.2",
+    "jspdf-autotable": "^5.0.2",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.542.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.149",
     "react": "^18.2.0",
-    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.4.1",
+    "react-is": "^18.3.1",
     "react-router-dom": "^6.14.2",
     "react-scripts": "5.0.1",
+    "recharts": "^3.1.2",
+    "sheetjs-style": "^0.15.8",
     "tailwindcss": "^3.3.3",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:bank-profiles": "node scripts/build-bank-profiles.js",
+    "cleanup:complete": "node scripts/completeDataCleanup.js",
+    "cleanup:complete:confirm": "node scripts/completeDataCleanup.js --confirm",
+    "optimize:bundle": "node scripts/bundleOptimizer.js",
+    "performance:analyze": "npm run build && npm run optimize:bundle",
+    "lint:atlas": "node scripts/atlas-lint.js",
+    "build:atlas": "npm run lint:atlas && npm run build",
+    "test:accessibility": "node scripts/test-accessibility.js",
+    "migrate:buttons": "node scripts/migrate-buttons-to-atlas.js",
+    "migrate:colors": "node scripts/replace-hardcoded-colors.js",
+    "fix:aria-labels": "node scripts/add-aria-labels.js",
+    "fix:divs-to-buttons": "node scripts/convert-divs-to-buttons.js",
+    "migrate:atlas": "node scripts/migrate-to-atlas.js"
   },
   "eslintConfig": {
     "extends": [
@@ -48,5 +73,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@netlify/functions": "^4.2.5",
+    "@types/jszip": "^3.4.0",
+    "fake-indexeddb": "^6.2.2",
+    "typescript": "^4.9.5"
   }
 }

@@ -1,38 +1,607 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { bankProfilesService } from './services/bankProfilesService';
+import { performanceMonitor } from './services/performanceMonitoringService';
+import { initializeAccountMigration } from './services/accountMigrationService';
 import MainLayout from './layouts/MainLayout';
-import Dashboard from './pages/Dashboard';
-import InboxPage from './pages/InboxPage';
-import RealEstatePortfolioPage from './pages/RealEstatePortfolioPage';
-import ExpensesPage from './pages/ExpensesPage';
-import ContractsPage from './pages/ContractsPage';
-import TreasuryPage from './pages/TreasuryPage';
-import TaxPage from './pages/TaxPage';
-import ProjectionsPage from './pages/ProjectionsPage';
-import PulseCentersPage from './pages/PulseCentersPage';
-import SettingsPage from './pages/SettingsPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import CopilotWidget from './components/common/CopilotWidget';
+
+// Core pages - keep minimal imports for critical path  
+import AccountPage from './pages/account/AccountPage';
+
+// Loading component for better UX - ATLAS compliant
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-8 w-8 border-2 border-atlas-blue border-t-transparent"></div>
+    <span className="ml-2" style={{ color: 'var(--text-gray)' }}>Cargando...</span>
+  </div>
+);
+
+// Lazy-loaded components for route-based code splitting
+// Core dashboard with charts - lazy load to reduce main bundle
+const PanelPage = React.lazy(() => import('./pages/PanelPage'));
+
+// Inbox page - lazy load to reduce main bundle
+const InboxPage = React.lazy(() => import('./pages/InboxPage'));
+
+// Horizon (Investment) Module Components
+const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
+const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
+const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+const Ingresos = React.lazy(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
+const Gastos = React.lazy(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
+const Capex = React.lazy(() => import('./modules/horizon/inmuebles/capex/CAPEX'));
+
+// Inversiones Module
+const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
+const AnalisisCartera = React.lazy(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
+const InmueblesAnalisis = React.lazy(() => import('./pages/inmuebles/InmueblesAnalisis'));
+const InversionesAnalisis = React.lazy(() => import('./pages/inversiones/InversionesAnalisis'));
+
+// Financing Module - New standalone financing module
+const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
+const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
+const FiscalDashboard = React.lazy(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
+const DeclaracionPage = React.lazy(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
+const SimuladorPage = React.lazy(() => import('./modules/horizon/fiscalidad/simulador/SimuladorPage'));
+const PagosPage = React.lazy(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
+
+const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
+const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
+const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
+const ProyeccionMensual = React.lazy(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
+const PresupuestosView = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
+const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
+const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
+const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
+const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
+const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
+
+// Personal section (within Horizon)
+const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'));
+
+// Pulse (Management) Module Components
+const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
+const ContratosNuevoPage = React.lazy(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
+const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
+const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
+const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
+const TareasPendientes = React.lazy(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
+
+// Legacy Pulse (Personal) Module Components - Keep for migration
+const HorizonPreferenciasDatos = React.lazy(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
+const GastosCapex = React.lazy(() => import('./modules/horizon/inmuebles/gastos-capex/GastosCapex'));
+
+// Development only imports
+const ProfileSeederPage = React.lazy(() => 
+  (import.meta as any).env?.DEV 
+    ? import('./pages/ProfileSeederPage')
+    : Promise.resolve({ default: () => null })
+);
+
+// Image Description page - New feature
+const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPage'));
+
+// Design Bible page - ATLAS Design System reference
+const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
+
+// Glossary page - Sprint 3: Accessible technical terms reference
+const GlossaryPage = React.lazy(() => import('./pages/GlossaryPage'));
 
 function App() {
+  // Initialize bank profiles and performance monitoring on app start
+  useEffect(() => {
+    // Initialize account migration first
+    initializeAccountMigration().catch(console.error);
+    
+    bankProfilesService.loadProfiles().catch(console.error);
+    
+    // Performance monitoring setup
+    const performanceObserver = new PerformanceObserver((list) => {
+      list.getEntries().forEach((entry) => {
+        if (entry.entryType === 'navigation') {
+          const navEntry = entry as PerformanceNavigationTiming;
+          performanceMonitor.recordMetric({
+            operation: 'app_load',
+            duration: navEntry.loadEventEnd - navEntry.fetchStart,
+            timestamp: Date.now()
+          });
+        } else if (entry.entryType === 'measure') {
+          performanceMonitor.recordMetric({
+            operation: entry.name,
+            duration: entry.duration,
+            timestamp: Date.now()
+          });
+        }
+      });
+    });
+    
+    // Start observing performance
+    try {
+      performanceObserver.observe({ entryTypes: ['navigation', 'measure'] });
+    } catch (error) {
+      console.warn('Performance Observer not supported:', error);
+    }
+    
+    // Log performance status periodically in development
+    if (process.env.NODE_ENV === 'development') {
+      const interval = setInterval(() => {
+        if (performanceMonitor.needsOptimization()) {
+          console.warn('⚠️ Performance optimization needed');
+          performanceMonitor.logPerformanceStatus();
+        }
+      }, 30000); // Check every 30 seconds
+      
+      return () => {
+        clearInterval(interval);
+        performanceObserver.disconnect();
+      };
+    }
+    
+    return () => performanceObserver.disconnect();
+  }, []);
+
   return (
-    <Router>
-      <Toaster position="top-right" />
-      <Routes>
-        <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="inbox" element={<InboxPage />} />
-          <Route path="real-estate" element={<RealEstatePortfolioPage />} />
-          <Route path="expenses" element={<ExpensesPage />} />
-          <Route path="contracts" element={<ContractsPage />} />
-          <Route path="treasury" element={<TreasuryPage />} />
-          <Route path="tax" element={<TaxPage />} />
-          <Route path="projections" element={<ProjectionsPage />} />
-          <Route path="pulse" element={<PulseCentersPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Toaster 
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+                color: 'var(--atlas-navy-1)',
+                background: 'white',
+                border: '1px solid var(--hz-neutral-300)',
+                borderRadius: '10px',
+                boxShadow: '0 2px 4px rgba(156, 163, 175, 0.1)',
+              },
+              success: {
+                iconTheme: {
+                  primary: 'var(--ok)',
+                  secondary: 'white',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: 'var(--error)',
+                  secondary: 'white',
+                },
+              },
+            }}
+          />
+          <CopilotWidget />
+          <Routes>
+            {/* Auth por email desactivada temporalmente */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
+
+            {/* Protected App Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }>
+            <Route index element={<Navigate to="/panel" replace />} />
+            <Route path="panel" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PanelPage />
+              </React.Suspense>
+            } />
+            <Route path="inbox" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InboxPage />
+              </React.Suspense>
+            } />
+            <Route path="inbox-unified" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InboxPage />
+              </React.Suspense>
+            } />
+            <Route path="inbox-legacy" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InboxPage />
+              </React.Suspense>
+            } />
+            
+            {/* Image Description Feature */}
+            <Route path="describe-image" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImageDescriptionPage />
+              </React.Suspense>
+            } />
+            
+            {/* Design Bible - ATLAS Design System */}
+            <Route path="design-bible" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <DesignBiblePage />
+              </React.Suspense>
+            } />
+            
+            {/* Glossary - Sprint 3: Accessible technical terms */}
+            <Route path="glosario" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <GlossaryPage />
+              </React.Suspense>
+            } />
+            
+            {/* Horizon (Investment) Routes */}
+            <Route path="inmuebles">
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesAnalisis />
+                </React.Suspense>
+              } />
+              <Route path="cartera" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Cartera />
+                </React.Suspense>
+              } />
+              <Route path="cartera/nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="create" />
+                </React.Suspense>
+              } />
+              <Route path="cartera/:id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyDetail />
+                </React.Suspense>
+              } />
+              <Route path="cartera/:id/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="edit" />
+                </React.Suspense>
+              } />
+              <Route path="contratos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Contratos />
+                </React.Suspense>
+              } />
+              <Route path="gastos-capex" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <GastosCapex />
+                </React.Suspense>
+              } />
+              <Route path="evolucion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Analisis />
+                </React.Suspense>
+              } />
+              <Route path="analisis" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AnalisisCartera scope="inmuebles" />
+                </React.Suspense>
+              } />
+              <Route path="analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Ingresos />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Gastos />
+                </React.Suspense>
+              } />
+              <Route path="capex" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Capex />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            {/* Inversiones Module */}
+            <Route path="inversiones">
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesAnalisis />
+                </React.Suspense>
+              } />
+              <Route path="cartera" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesPage initialTab="cartera" />
+                </React.Suspense>
+              } />
+              <Route path="rendimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesPage initialTab="rendimientos" />
+                </React.Suspense>
+              } />
+              <Route path="analisis" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AnalisisCartera scope="inversiones" />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            <Route path="tesoreria">
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Tesoreria />
+                </React.Suspense>
+              } />
+              <Route path="cuenta/:id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Tesoreria />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            <Route path="fiscalidad">
+              <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
+              {/* New fiscal module tabs */}
+              <Route path="resumen" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDashboard />
+                </React.Suspense>
+              } />
+              <Route path="declaracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <DeclaracionPage />
+                </React.Suspense>
+              } />
+              <Route path="simulador" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <SimuladorPage />
+                </React.Suspense>
+              } />
+              <Route path="pagos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PagosPage />
+                </React.Suspense>
+              } />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad/resumen" replace />} />
+              <Route path="historico" element={<Navigate to="/fiscalidad/resumen" replace />} />
+              {/* Legacy routes — redirect to new equivalents */}
+              <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
+              <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />
+            </Route>
+            
+            {/* Financing Module - Standalone loan management */}
+            <Route path="financiacion" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <Financiacion />
+              </React.Suspense>
+            } />
+            
+            <Route path="proyeccion">
+              <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
+              <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
+              <Route path="consolidado" element={<Navigate to="/proyeccion/comparativa" replace />} />
+              
+              {/* Main proyeccion tabs */}
+              <Route path="presupuesto" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PresupuestosView />
+                </React.Suspense>
+              } />
+              <Route path="comparativa" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionComparativa />
+                </React.Suspense>
+              } />
+              <Route path="escenarios" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionEscenarios />
+                </React.Suspense>
+              } />
+              <Route path="valoraciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionValoraciones />
+                </React.Suspense>
+              } />
+              
+              {/* Legacy routes for backward compatibility */}
+              <Route path="base" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="simulaciones" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="comparativas" element={<Navigate to="/proyeccion/escenarios" replace />} />
+              <Route path="mensual" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ProyeccionMensual />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            {/* Personal section (within Horizon) */}
+            <Route path="personal">
+              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="resumen" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="nomina" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="autonomo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="pension" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="pensiones-inversiones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+              <Route path="otros-ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            {/* Pulse (Management) Routes */}
+            <Route path="contratos">
+              <Route index element={<Navigate to="/contratos/lista" replace />} />
+              <Route path="lista" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosLista />
+                </React.Suspense>
+              } />
+              <Route path="nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosNuevoPage />
+                </React.Suspense>
+              } />
+              <Route path="gestion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ContratosLista />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            <Route path="firmas">
+              <Route index element={<Navigate to="/firmas/pendientes" replace />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FirmasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="completadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FirmasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="plantillas" element={<Navigate to="/cuenta/configuracion" replace />} />
+            </Route>
+            
+            <Route path="cobros">
+              <Route index element={<Navigate to="/cobros/pendientes" replace />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
+              <Route path="conciliacion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
+              <Route path="historico" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <CobrosPendientes />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            <Route path="automatizaciones">
+              <Route index element={<Navigate to="/automatizaciones/reglas" replace />} />
+              <Route path="reglas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
+              <Route path="flujos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
+              <Route path="historial" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutomatizacionesReglas />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            <Route path="tareas">
+              <Route index element={<Navigate to="/tareas/pendientes" replace />} />
+              <Route path="pendientes" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="completadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
+              <Route path="programadas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TareasPendientes />
+                </React.Suspense>
+              } />
+            </Route>
+
+            {/* Shared Configuration Routes */}
+            <Route path="configuracion">
+              <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
+              {/* ATLAS: Redirect old tesoreria cuentas to new location */}
+              <Route path="bancos-cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
+              <Route path="cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
+              {/* Horizon configuration - available only for Horizon */}
+              <Route path="usuarios-roles" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <UsuariosRoles />
+                </React.Suspense>
+              } />
+              {/* Shared configuration - available for both modules */}
+              <Route path="preferencias-datos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <HorizonPreferenciasDatos />
+                </React.Suspense>
+              } />
+              <Route path="email-entrante" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <EmailEntrante />
+                </React.Suspense>
+              } />
+              {/* H6: Redirect old plan-facturacion route to new cuenta location */}
+              <Route path="plan-facturacion" element={<Navigate to="/cuenta/plan" replace />} />
+            </Route>
+
+            {/* H6: Account (Cuenta) Routes */}
+            <Route path="cuenta">
+              <Route index element={<Navigate to="/cuenta/perfil" replace />} />
+              <Route path="perfil" element={<AccountPage />} />
+              <Route path="seguridad" element={<AccountPage />} />
+              <Route path="plan" element={<AccountPage />} />
+              <Route path="privacidad" element={<AccountPage />} />
+              <Route path="configuracion" element={<AccountPage />} />
+              {/* ATLAS: New Cuentas section under Cuenta ▸ Configuración ▸ Cuentas Bancarias */}
+              <Route path="cuentas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Cuentas />
+                </React.Suspense>
+              } />
+            </Route>
+            
+            {/* Development only routes */}
+            {(import.meta as any).env?.DEV && (
+              <>
+                <Route 
+                  path="__profiles" 
+                  element={
+                    <React.Suspense fallback={<div>Cargando...</div>}>
+                      <ProfileSeederPage />
+                    </React.Suspense>
+                  } 
+                />
+              </>
+            )}
+            
+            <Route path="*" element={<Navigate to="/panel" replace />} />
+          </Route>
+        </Routes>
+      </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

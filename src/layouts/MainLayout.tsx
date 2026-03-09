@@ -1,22 +1,64 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
+import CommandPalette from '../components/common/CommandPalette';
+import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
+import { useCommandPalette } from '../hooks/useCommandPalette';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const location = useLocation();
+  const isPanelRoute = location.pathname === '/panel';
+  
+  // Sprint 5: Command Palette (Cmd+K)
+  const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
+  
+  // Sprint 5: Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onShowShortcuts: () => setShowShortcuts(true),
+  });
+  
   
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Sprint 5: Command Palette (Cmd+K) */}
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
+      
+      {/* Sprint 5: Keyboard Shortcuts Help Modal */}
+      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      
+      {/* Skip Link - Sprint 3: Accessibility improvement */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:font-medium focus:shadow-lg"
+        style={{
+          backgroundColor: 'var(--hz-primary)',
+          color: 'white',
+        }}
+      >
+        Saltar a contenido principal
+      </a>
+      
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         <Header setSidebarOpen={setSidebarOpen} />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-          <div className="container mx-auto">
+        <main 
+          id="main-content"
+          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${isPanelRoute ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}`}
+          tabIndex={-1}
+        >
+          {isPanelRoute ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="container mx-auto h-full max-w-7xl">
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
     </div>

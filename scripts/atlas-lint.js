@@ -1,0 +1,477 @@
+#!/usr/bin/env node
+/**
+ * ATLAS Design System Linter
+ * Validates compliance with ATLAS design system requirements
+ * Fails build if non-compliant patterns are found
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+// Patterns that should fail the build (per ATLAS Design Bible)
+const FORBIDDEN_PATTERNS = {
+  // Dark themes and overlays - ATLAS requires light themes only
+  darkThemes: [
+    /\bbg-black\b/g,
+    /\bbg-opacity-50\b/g,
+    /\bbg-opacity-60\b/g,
+    /\bbg-opacity-70\b/g,
+    /\bbg-opacity-80\b/g,
+    /\bbg-opacity-90\b/g,
+    /bg-gray-900/g,
+    /bg-gray-800/g,
+    /bg-slate-900/g,
+    /bg-slate-800/g,
+    /dark:/g,
+    /className.*dark/g,
+    /\bbg-opacity-\d+\b/g,  // Any bg-opacity class
+    /backdrop-.*black/g, // Black backdrops
+    /background\s*:\s*rgba\(0,\s*0,\s*0,/g, // Black rgba overlays as background only
+  ],
+  
+  // Non-ATLAS colors (hardcoded hex values) - Exception for token definitions
+  hardcodedColors: [
+    /#[0-9A-Fa-f]{6}/g,  // Hex colors (should use tokens)
+    /#[0-9A-Fa-f]{3}/g,  // Short hex colors
+    /rgb\(/g,             // RGB colors
+    /rgba\(/g,            // RGBA colors
+    /hsl\(/g,             // HSL colors
+    /hsla\(/g,            // HSLA colors
+  ],
+  
+  // Forbidden color - #09182E specifically mentioned as prohibited
+  prohibitedColors: [
+    /#09182E/gi,
+    /#091/gi,  // Short version
+  ],
+  
+  // Non-Lucide icon imports - ATLAS requires Lucide only
+  forbiddenIcons: [
+    /@heroicons\/react/g,
+    /from ['"]@heroicons/g,
+    /import.*@heroicons/g,
+    /from ['"]@material-ui/g,
+    /import.*@material-ui/g,
+    /from ['"]react-icons/g,
+    /import.*react-icons/g,
+    /from ['"]@mui\/icons/g,
+    /import.*@mui\/icons/g,
+    /from ['"]@fortawesome/g,
+    /import.*@fortawesome/g,
+    /from ['"]feather-icons/g,
+    /import.*feather-icons/g,
+  ],
+  
+  // Non-IBM Plex fonts - ATLAS v3 requires IBM Plex Sans/Mono
+  forbiddenFonts: [
+    /'Arial'(?!.*system-ui)/g,
+    /'Helvetica'(?!.*system-ui)/g,
+    /'Times'/g,
+    /'Georgia'/g,
+    /'Comic Sans'/g,
+    /'Verdana'/g,
+    /@import.*google.*fonts/g, // Google Fonts imports
+  ],
+  
+  // Browser alerts - Should use ATLAS toast system
+  browserAlerts: [
+    /alert\(/g,
+    /confirm\(/g,
+    /prompt\(/g,
+  ],
+  
+  // Help pattern violations - Must use ATLAS SUA patterns only
+  invalidHelp: [
+    // Help text in H1/H2 (forbidden per requirements)
+    /<h[12][^>]*>.*(?:ayuda|help|asistencia|soporte)/gi,
+    // Non-SUA help patterns
+    /className.*help.*modal/g,
+    /className.*help.*sidebar/g,
+    /className.*help.*overlay/g,
+    // Invalid help implementations
+    /helpModal(?!.*(?:EmptyState|InlineHint|InfoTooltip|HelperBanner))/g,
+  ],
+
+  // Teal is restricted to UI accent, not financial semantics
+  invalidFinancialTeal: [
+    /movement-ingreso[^\n]*var\(--teal/g,
+    /(?:income|ingreso|kpi|amount|importe|revenue)[^\n]*var\(--teal/gi,
+  ],
+  
+  // Non-ES locale formatting - Must use ES-ES format
+  invalidLocale: [
+    /toLocaleString\(['"](?!es-ES)/g,
+    /new Intl\..*\(['"](?!es-ES)/g,
+    /toLocaleDateString\(['"](?!es-ES)/g,
+    /new Intl\.NumberFormat\(['"](?!es-ES)/g,
+  ],
+
+  // Sidebar order violations - Must maintain canonical order
+  sidebarOrder: [
+    // Check for wrong navigation order in config files
+    /navigationConfig.*(?:Alquileres.*Dashboard|Documentación.*Personal|Financiación.*Tesorería)/g,
+  ],
+
+  // Non-ATLAS button patterns
+  invalidButtons: [
+    // Non-standard button classes
+    /btn-(?!primary|secondary|destructive|ghost)/g,
+    /button.*(?!atlas-btn-)/g,
+  ],
+
+  // Overlay violations - No dark overlays allowed
+  darkOverlays: [
+    /overlay.*black/g,
+    /modal.*dark/g,
+    /backdrop.*dark/g,
+    /bg-black.*modal/g,
+    /bg-gray-900.*overlay/g,
+  ],
+};
+
+// Allowed exceptions (files that can be skipped)
+const EXCEPTIONS = [
+  'node_modules',
+  'build',
+  'dist',
+  '.git',
+  'package-lock.json',
+  'atlas-lint.js', // This file itself
+  'design-bible',  // Design Bible can contain examples
+  'test.',
+  'spec.',
+  '.test.',
+  '.spec.',
+  'stories.',
+  'storybook',
+  '.md',           // Markdown files
+  'README',
+  'CHANGELOG',
+  '__tests__',
+  'jest.config',
+  'tailwind.config.js', // Config files need color definitions
+  'tsconfig.json'
+];
+
+function getAllFiles(dir, extensions = ['.tsx', '.ts', '.jsx', '.js', '.css']) {
+  const files = [];
+  
+  try {
+    const items = fs.readdirSync(dir);
+    
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      // Skip exceptions
+      if (EXCEPTIONS.some(exc => fullPath.includes(exc))) {
+        continue;
+      }
+      
+      if (stat.isDirectory()) {
+        files.push(...getAllFiles(fullPath, extensions));
+      } else if (extensions.some(ext => item.endsWith(ext))) {
+        files.push(fullPath);
+      }
+    }
+  } catch (error) {
+    console.warn(`Warning: Could not read directory ${dir}:`, error.message);
+  }
+  
+  return files;
+}
+
+function lintFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const errors = [];
+  const warnings = [];
+  
+  // Check for dark themes and overlays
+  for (const pattern of FORBIDDEN_PATTERNS.darkThemes) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'DARK_THEME',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Dark theme/overlay detected - ATLAS requires light themes only'
+      });
+    }
+  }
+
+  // Check for dark overlays specifically
+  for (const pattern of FORBIDDEN_PATTERNS.darkOverlays) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'DARK_OVERLAY',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Dark overlay detected - ATLAS requires light overlays only'
+      });
+    }
+  }
+  
+  // Check for prohibited color #09182E
+  for (const pattern of FORBIDDEN_PATTERNS.prohibitedColors) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'PROHIBITED_COLOR',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Prohibited color #09182E detected - this color is forbidden in ATLAS'
+      });
+    }
+  }
+  
+  // Check for hardcoded colors (but allow CSS custom properties and ATLAS token definitions)
+  for (const pattern of FORBIDDEN_PATTERNS.hardcodedColors) {
+    const matches = content.match(pattern);
+    if (matches) {
+      // Filter out CSS custom properties and allowed tokens
+      const filteredMatches = matches.filter(match => 
+        !match.includes('--') && 
+        !match.includes('var(') &&
+        // Allow specific ATLAS token values in comments or definitions
+        !content.includes(`--atlas-blue: ${match}`) &&
+        !content.includes(`--atlas-navy-1: ${match}`) &&
+        !content.includes(`--atlas-navy-2: ${match}`) &&
+        !content.includes(`--atlas-teal: ${match}`) &&
+        !content.includes(`--ok: ${match}`) &&
+        !content.includes(`--warn: ${match}`) &&
+        !content.includes(`--error: ${match}`) &&
+        !content.includes(`--bg: ${match}`) &&
+        !content.includes(`--text-gray: ${match}`) &&
+        // Allow in CSS files if it's a token definition
+        !(filePath.endsWith('.css') && content.includes(`: ${match};`)) &&
+        // Allow in tailwind config
+        !filePath.includes('tailwind.config') &&
+        // Allow in design bible examples
+        !filePath.includes('design-bible')
+      );
+      
+      if (filteredMatches.length > 0) {
+        warnings.push({
+          type: 'HARDCODED_COLOR',
+          pattern: pattern.toString(),
+          matches: filteredMatches,
+          message: 'Hardcoded color detected - should use ATLAS tokens'
+        });
+      }
+    }
+  }
+  
+  // Check for forbidden icon imports
+  for (const pattern of FORBIDDEN_PATTERNS.forbiddenIcons) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'FORBIDDEN_ICONS',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-Lucide icons detected - ATLAS requires Lucide only'
+      });
+    }
+  }
+  
+  // Check for non-Inter fonts
+  for (const pattern of FORBIDDEN_PATTERNS.forbiddenFonts) {
+    const matches = content.match(pattern);
+    if (matches) {
+      // Special handling for font-family declarations - often false positives
+      // Only flag as error if clearly using non-ATLAS fonts
+      const isActualViolation = matches.some(match => 
+        !match.includes('Inter') && 
+        !match.includes('system-ui') && 
+        !match.includes('sans-serif')
+      );
+      
+      if (isActualViolation) {
+        errors.push({
+          type: 'FORBIDDEN_FONTS',
+          pattern: pattern.toString(),
+          matches: matches.length,
+          message: 'Non-IBM Plex font detected - ATLAS v3 requires IBM Plex Sans/Mono with approved fallbacks only'
+        });
+      } else {
+        // Likely false positive - make it a warning
+        warnings.push({
+          type: 'FONT_CHECK',
+          pattern: pattern.toString(),
+          matches: matches.length,
+        message: 'Font declaration flagged - verify IBM Plex usage (may be false positive)'
+      });
+      }
+    }
+  }
+  
+  // Check for browser alerts
+  for (const pattern of FORBIDDEN_PATTERNS.browserAlerts) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'BROWSER_ALERT',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Browser alert detected - should use ATLAS toast system'
+      });
+    }
+  }
+  
+  // Check for invalid help patterns
+  for (const pattern of FORBIDDEN_PATTERNS.invalidHelp) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'INVALID_HELP_PATTERN',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Invalid help pattern - must use ATLAS SUA patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner) only'
+      });
+    }
+  }
+  
+  // Check for non-ES locale formatting
+  for (const pattern of FORBIDDEN_PATTERNS.invalidLocale) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'INVALID_LOCALE',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-ES locale detected - ATLAS requires es-ES formatting (1.234,56 €, DD/MM/AAAA)'
+      });
+    }
+  }
+
+  // Check for sidebar order violations (in navigation config files)
+  if (filePath.includes('navigation')) {
+    for (const pattern of FORBIDDEN_PATTERNS.sidebarOrder) {
+      const matches = content.match(pattern);
+      if (matches) {
+        errors.push({
+          type: 'SIDEBAR_ORDER_VIOLATION',
+          pattern: pattern.toString(),
+          matches: matches.length,
+          message: 'Sidebar navigation order violation - must follow canonical ATLAS order'
+        });
+      }
+    }
+  }
+
+  // Check for invalid button patterns
+  for (const pattern of FORBIDDEN_PATTERNS.invalidButtons) {
+    const matches = content.match(pattern);
+    if (matches) {
+      warnings.push({
+        type: 'INVALID_BUTTON_PATTERN',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Non-standard button pattern - should use ATLAS button classes'
+      });
+    }
+  }
+
+  for (const pattern of FORBIDDEN_PATTERNS.invalidFinancialTeal) {
+    const matches = content.match(pattern);
+    if (matches) {
+      errors.push({
+        type: 'INVALID_FINANCIAL_TEAL',
+        pattern: pattern.toString(),
+        matches: matches.length,
+        message: 'Teal used in financial semantics (ingresos/KPI/importes) - use semantic positive tokens instead'
+      });
+    }
+  }
+  
+  return { errors, warnings };
+}
+
+function main() {
+  console.log('🔍 ATLAS Design System Linter');
+  console.log('==============================');
+  
+  const srcDir = path.join(process.cwd(), 'src');
+  const files = getAllFiles(srcDir);
+  
+  console.log(`Checking ${files.length} files...`);
+  
+  let totalErrors = 0;
+  let totalWarnings = 0;
+  const problemFiles = [];
+  
+  for (const file of files) {
+    const { errors, warnings } = lintFile(file);
+    
+    if (errors.length > 0 || warnings.length > 0) {
+      const relativePath = path.relative(process.cwd(), file);
+      problemFiles.push({
+        file: relativePath,
+        errors,
+        warnings
+      });
+      
+      totalErrors += errors.length;
+      totalWarnings += warnings.length;
+    }
+  }
+  
+  // Report results
+  if (problemFiles.length === 0) {
+    console.log('✅ All files pass ATLAS design system validation!');
+    return 0;
+  }
+  
+  console.log(`\n❌ Found ${totalErrors} errors and ${totalWarnings} warnings in ${problemFiles.length} files:\n`);
+  
+  for (const { file, errors, warnings } of problemFiles) {
+    console.log(`📄 ${file}`);
+    
+    for (const error of errors) {
+      console.log(`  🚨 ERROR: ${error.message}`);
+      console.log(`     Pattern: ${error.pattern}`);
+      console.log(`     Matches: ${error.matches}`);
+    }
+    
+    for (const warning of warnings) {
+      console.log(`  ⚠️  WARNING: ${warning.message}`);
+      console.log(`     Pattern: ${warning.pattern}`);
+      if (Array.isArray(warning.matches)) {
+        console.log(`     Examples: ${warning.matches.slice(0, 3).join(', ')}`);
+      } else {
+        console.log(`     Matches: ${warning.matches}`);
+      }
+    }
+    
+    console.log('');
+  }
+  
+  console.log('💡 To fix these issues:');
+  console.log('  - Replace dark themes with ATLAS light themes');
+  console.log('  - Use ATLAS color tokens instead of hardcoded colors');
+  console.log('  - Import icons from lucide-react only');
+  console.log('  - Replace browser alerts with ATLAS toast system');
+  console.log('  - Use only 4 SUA help patterns (EmptyState, InlineHint, InfoTooltip, HelperBanner)');
+  console.log('  - Maintain canonical sidebar navigation order');
+  console.log('  - Apply IBM Plex font family with approved fallbacks');
+  console.log('  - Use es-ES locale for all formatting');
+  console.log('  - Remove prohibited color #09182E');
+  console.log('');
+  console.log('📖 See ATLAS Design Bible at /design-bible/ for complete specifications');
+  
+  // Fail build if there are errors (warnings are allowed)
+  if (totalErrors > 0) {
+    console.log(`\n🛑 Build failed due to ${totalErrors} ATLAS compliance errors`);
+    return 1;
+  } else {
+    console.log(`\n✅ No blocking errors found (${totalWarnings} warnings can be addressed later)`);
+    return 0;
+  }
+}
+
+if (require.main === module) {
+  process.exit(main());
+}
+
+module.exports = { main, lintFile };

@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-09-13T17:14:59.656Z",
+  "heavyDependencies": [
+    "@testing-library/react",
+    "@testing-library/jest-dom",
+    "@testing-library/user-event",
+    "react-beautiful-dnd",
+    "jspdf",
+    "jspdf-autotable",
+    "jszip",
+    "xlsx",
+    "sheetjs-style"
+  ],
+  "suggestedDynamicImports": [
+    {
+      "component": "PDFViewer",
+      "reason": "jsPDF is heavy and not always needed",
+      "code": "const PDFViewer = lazy(() => import('./PDFViewer'));"
+    },
+    {
+      "component": "ExcelExporter",
+      "reason": "XLSX parsing is heavy",
+      "code": "const ExcelExporter = lazy(() => import('./ExcelExporter'));"
+    },
+    {
+      "component": "DocumentScanner",
+      "reason": "OCR libraries are typically large",
+      "code": "const DocumentScanner = lazy(() => import('./DocumentScanner'));"
+    },
+    {
+      "component": "Charts",
+      "reason": "Chart.js is large for visualization",
+      "code": "const Charts = lazy(() => import('./Charts'));"
+    }
+  ],
+  "webpackOptimizations": {
+    "splitChunks": {
+      "chunks": "all",
+      "cacheGroups": {
+        "vendor": {
+          "test": {},
+          "name": "vendors",
+          "chunks": "all",
+          "maxSize": 200000
+        },
+        "common": {
+          "name": "common",
+          "minChunks": 2,
+          "chunks": "all",
+          "maxSize": 100000
+        }
+      }
+    },
+    "usedExports": true,
+    "sideEffects": false
+  },
+  "largeFiles": [
+    {
+      "path": "/src/services/db.ts",
+      "size": 66,
+      "lines": 1851
+    },
+    {
+      "path": "/src/pages/InboxPage.tsx",
+      "size": 51,
+      "lines": 1420
+    }
+  ],
+  "recommendations": [
+    "✅ COMPLETED: Move heavy dependencies to dynamic imports",
+    "✅ COMPLETED: Implement code splitting for route-level components",
+    "✅ COMPLETED: Lazy-load Dashboard with chart components",
+    "✅ COMPLETED: Dynamic XLSX and JSZip imports",
+    "Consider removing unused dependencies (testing libraries)",
+    "Optimize database operations with indexing",
+    "Implement virtualization for large lists",
+    "Use React.memo for expensive components",
+    "Implement proper error boundaries to prevent cascading re-renders",
+    "Add service worker for better caching",
+    "Consider preloading critical chunks on user interaction"
+  ]
+}

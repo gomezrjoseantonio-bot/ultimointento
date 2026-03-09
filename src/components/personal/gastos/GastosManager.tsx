@@ -1,9 +1,16 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
-import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
-import { PersonalExpense, CategoriaGasto } from '../../../types/personal';
+import { LayoutTemplate, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  PersonalData,
+  PersonalExpense,
+  PersonalExpenseCategory,
+  PersonalExpenseFrequency,
+} from '../../../types/personal';
 import { personalExpensesService } from '../../../services/personalExpensesService';
+import { personalDataService } from '../../../services/personalDataService';
 import GastosManagerDrawer from './GastosManagerDrawer';
 
 ChartJS.register(ArcElement, Tooltip);
@@ -15,58 +22,54 @@ const N300  = '#C8D0DC';
 const S_NEG = '#B91C1C';
 
 // Donut palette: c1→c2→c3→c4→c6 para categorías nombradas, c5 para "Otros"
-const C: Record<string, string> = {
-  c1: '#042C5E',
-  c2: '#1A4A8C',
-  c3: '#4A7EB5',
-  c4: '#7BA3CC',
-  c5: '#C8D0DC', // Otros
-  c6: '#9DB5C8',
-};
-const NAMED_COLORS = [C.c1, C.c2, C.c3, C.c4, C.c6]; // orden sin c5
-const OTROS_COLOR  = C.c5;
-const MAX_NAMED    = 5; // top categorías que reciben color propio
+const NAMED_COLORS = ['#042C5E', '#1A4A8C', '#4A7EB5', '#7BA3CC', '#9DB5C8'];
+const OTROS_COLOR  = '#C8D0DC'; // c5
+const MAX_NAMED    = 5;
 
-// ─── Constantes de UI ───────────────────────────────────────────────────────
-const CATEGORIA_LABEL: Record<CategoriaGasto, string> = {
+const FONT = 'IBM Plex Sans, Inter, sans-serif';
+const MONO = 'IBM Plex Mono, monospace';
+
+// ─── Labels ─────────────────────────────────────────────────────────────────
+const CATEGORIA_LABEL: Record<PersonalExpenseCategory, string> = {
   vivienda:     'Vivienda',
   alimentacion: 'Alimentación',
   transporte:   'Transporte',
-  salud:        'Salud',
   ocio:         'Ocio',
-  ropa:         'Ropa',
+  salud:        'Salud',
+  seguros:      'Seguros',
   educacion:    'Educación',
   otros:        'Otros',
 };
 
-const FRECUENCIA_LABEL: Record<string, string> = {
-  mensual:     'Mensual',
-  trimestral:  'Trimestral',
-  semestral:   'Semestral',
-  anual:       'Anual',
+const FRECUENCIA_LABEL: Record<PersonalExpenseFrequency, string> = {
+  semanal:          'Semanal',
+  mensual:          'Mensual',
+  bimestral:        'Bimestral',
+  trimestral:       'Trimestral',
+  semestral:        'Semestral',
+  anual:            'Anual',
+  meses_especificos: 'Meses específicos',
 };
 
-type ActiveTab = 'todas' | CategoriaGasto;
+type ActiveTab = 'todas' | PersonalExpenseCategory;
 
 const ALL_TABS: { value: ActiveTab; label: string }[] = [
   { value: 'todas',        label: 'Todas' },
   { value: 'vivienda',     label: 'Vivienda' },
   { value: 'alimentacion', label: 'Alimentación' },
   { value: 'transporte',   label: 'Transporte' },
-  { value: 'salud',        label: 'Salud' },
   { value: 'ocio',         label: 'Ocio' },
-  { value: 'ropa',         label: 'Ropa' },
+  { value: 'salud',        label: 'Salud' },
+  { value: 'seguros',      label: 'Seguros' },
   { value: 'educacion',    label: 'Educación' },
   { value: 'otros',        label: 'Otros' },
 ];
-
-const FONT = 'IBM Plex Sans, Inter, sans-serif';
-const MONO = 'IBM Plex Mono, monospace';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function buildDonutData(gastos: PersonalExpense[]) {
   const sums: Record<string, number> = {};
   for (const g of gastos) {
+    if (!g.activo) continue;
     sums[g.categoria] = (sums[g.categoria] ?? 0) +
       personalExpensesService.calcularImporteMensual(g);
   }
@@ -76,7 +79,7 @@ function buildDonutData(gastos: PersonalExpense[]) {
   const rest   = sorted.slice(MAX_NAMED);
 
   const labels: string[] = named.map(([cat]) =>
-    CATEGORIA_LABEL[cat as CategoriaGasto] ?? cat,
+    CATEGORIA_LABEL[cat as PersonalExpenseCategory] ?? cat,
   );
   const data:   number[] = named.map(([, v]) => v);
   const colors: string[] = named.map((_, i) => NAMED_COLORS[i]);
@@ -93,7 +96,7 @@ function buildDonutData(gastos: PersonalExpense[]) {
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
-/** Modal de confirmación de borrado (reemplaza window.confirm) */
+/** Modal de confirmación de borrado — reemplaza window.confirm */
 const DeleteModal: React.FC<{
   concepto: string;
   onConfirm: () => void;
@@ -108,10 +111,7 @@ const DeleteModal: React.FC<{
     <div
       aria-hidden="true"
       onClick={onCancel}
-      style={{
-        position: 'absolute', inset: 0,
-        backgroundColor: 'rgba(3, 20, 43, 0.45)',
-      }}
+      style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(3, 20, 43, 0.45)' }}
     />
     <div
       role="alertdialog"
@@ -141,8 +141,7 @@ const DeleteModal: React.FC<{
           style={{
             flex: 1, padding: '8px 0', borderRadius: 6,
             border: `1px solid ${N300}`, background: 'transparent',
-            color: N700, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            fontFamily: FONT,
+            color: N700, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
           }}
         >
           Cancelar
@@ -152,8 +151,7 @@ const DeleteModal: React.FC<{
           style={{
             flex: 1, padding: '8px 0', borderRadius: 6,
             border: 'none', background: S_NEG,
-            color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            fontFamily: FONT,
+            color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
           }}
         >
           Eliminar
@@ -163,7 +161,35 @@ const DeleteModal: React.FC<{
   </div>
 );
 
-/** Menú kebab por fila (MoreVertical → Editar | Eliminar) */
+/** Ítem del dropdown del kebab */
+const MenuItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  hoverBg: string;
+  onClick: () => void;
+}> = ({ icon, label, color, hoverBg, onClick }) => {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        width: '100%', padding: '9px 12px',
+        border: 'none', background: hover ? hoverBg : '#fff',
+        color, fontSize: 13, fontWeight: 400, cursor: 'pointer',
+        fontFamily: FONT, textAlign: 'left',
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+};
+
+/** Menú kebab por fila: MoreVertical → dropdown Editar | Eliminar */
 const KebabMenu: React.FC<{ onEdit: () => void; onDelete: () => void }> = ({
   onEdit,
   onDelete,
@@ -228,52 +254,44 @@ const KebabMenu: React.FC<{ onEdit: () => void; onDelete: () => void }> = ({
   );
 };
 
-const MenuItem: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  hoverBg: string;
-  onClick: () => void;
-}> = ({ icon, label, color, hoverBg, onClick }) => {
-  const [hover, setHover] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        width: '100%', padding: '9px 12px',
-        border: 'none', background: hover ? hoverBg : '#fff',
-        color, fontSize: 13, fontWeight: 400, cursor: 'pointer',
-        fontFamily: FONT, textAlign: 'left',
-      }}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-};
-
 // ─── GastosManager ──────────────────────────────────────────────────────────
 const GastosManager: React.FC = () => {
-  const [gastos,       setGastos]       = useState<PersonalExpense[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [activeTab,    setActiveTab]    = useState<ActiveTab>('todas');
-  const [drawerOpen,   setDrawerOpen]   = useState(false);
-  const [editingGasto, setEditingGasto] = useState<PersonalExpense | undefined>();
-  const [deleteTarget, setDeleteTarget] = useState<PersonalExpense | null>(null);
+  const [gastos,        setGastos]        = useState<PersonalExpense[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [personalData,  setPersonalData]  = useState<PersonalData | null>(null);
+  const [activeTab,     setActiveTab]     = useState<ActiveTab>('todas');
+  const [drawerOpen,    setDrawerOpen]    = useState(false);
+  const [editingGasto,  setEditingGasto]  = useState<PersonalExpense | undefined>();
+  const [deleteTarget,  setDeleteTarget]  = useState<PersonalExpense | null>(null);
+
+  // Cargar perfil personal para obtener personalDataId
+  useEffect(() => {
+    personalDataService.getPersonalData()
+      .then(data => {
+        if (data?.id) setPersonalDataId(data.id);
+        setPersonalData(data);
+      })
+      .catch(err => console.error('Error loading personal data:', err));
+  }, []);
 
   const loadGastos = useCallback(async () => {
+    if (!personalDataId) return;
     setLoading(true);
     try {
-      setGastos(await personalExpensesService.getAll());
+      const data = await personalExpensesService.getExpenses(personalDataId);
+      data.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
+      setGastos(data);
+    } catch {
+      toast.error('Error al cargar los gastos');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [personalDataId]);
 
-  useEffect(() => { loadGastos(); }, [loadGastos]);
+  useEffect(() => {
+    if (personalDataId !== null) loadGastos();
+  }, [loadGastos, personalDataId]);
 
   const handleOpenNew = () => {
     setEditingGasto(undefined);
@@ -285,23 +303,43 @@ const GastosManager: React.FC = () => {
     setDrawerOpen(true);
   };
 
+  // Eliminar usa modal propio — nunca window.confirm
   const handleDeleteConfirm = async () => {
     if (deleteTarget?.id == null) return;
-    await personalExpensesService.remove(deleteTarget.id);
-    setDeleteTarget(null);
-    loadGastos();
+    try {
+      await personalExpensesService.deleteExpense(deleteTarget.id);
+      toast.success('Gasto eliminado');
+      setDeleteTarget(null);
+      loadGastos();
+    } catch {
+      toast.error('Error al eliminar el gasto');
+    }
   };
 
-  const filtered = activeTab === 'todas'
-    ? gastos
-    : gastos.filter(g => g.categoria === activeTab);
+  const handleLoadTemplate = async () => {
+    if (!personalDataId) return;
+    try {
+      await personalExpensesService.smartMergeTemplateExpenses(personalDataId, personalData);
+      toast.success('Plantilla cargada correctamente');
+      loadGastos();
+    } catch {
+      toast.error('Error al cargar la plantilla');
+    }
+  };
 
-  const totalMensual = gastos.reduce(
-    (sum, g) => sum + personalExpensesService.calcularImporteMensual(g),
-    0,
+  const filtered = useMemo(
+    () => activeTab === 'todas' ? gastos : gastos.filter(g => g.categoria === activeTab),
+    [gastos, activeTab],
   );
 
-  const donut = buildDonutData(gastos);
+  const totalMensual = useMemo(
+    () => gastos
+      .filter(g => g.activo)
+      .reduce((sum, g) => sum + personalExpensesService.calcularImporteMensual(g), 0),
+    [gastos],
+  );
+
+  const donut = useMemo(() => buildDonutData(gastos), [gastos]);
 
   const chartData = {
     labels: donut.labels,
@@ -318,10 +356,7 @@ const GastosManager: React.FC = () => {
     plugins: {
       legend: { display: false },
       tooltip: {
-        callbacks: {
-          label: (ctx: any) =>
-            ` €${(ctx.parsed as number).toFixed(2)}/mes`,
-        },
+        callbacks: { label: (ctx: any) => ` €${(ctx.parsed as number).toFixed(2)}/mes` },
       },
     },
   } as const;
@@ -340,8 +375,7 @@ const GastosManager: React.FC = () => {
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', borderRadius: 6, border: 'none',
             background: BLUE, color: '#fff',
-            fontSize: 14, fontWeight: 500, cursor: 'pointer',
-            fontFamily: FONT,
+            fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
           }}
         >
           <Plus size={16} />
@@ -357,9 +391,9 @@ const GastosManager: React.FC = () => {
           padding: '20px 24px', marginBottom: 20,
         }}
       >
-        {/* Donut */}
+        {/* Donut: categoría mayor → c1, Otros → c5, orden c1→c2→c3→c4→c6 */}
         <div style={{ position: 'relative', width: 128, height: 128, flexShrink: 0 }}>
-          {gastos.length > 0 ? (
+          {gastos.some(g => g.activo) ? (
             <>
               <Doughnut data={chartData} options={chartOptions as any} />
               <div
@@ -433,10 +467,7 @@ const GastosManager: React.FC = () => {
                 border: active ? 'none' : `1px solid ${N300}`,
                 background: active ? BLUE : 'transparent',
                 color: active ? '#fff' : N700,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: FONT,
+                fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
               }}
             >
               {tab.label}
@@ -447,7 +478,15 @@ const GastosManager: React.FC = () => {
 
       {/* ── Lista de gastos ── */}
       {loading ? (
-        <p style={{ fontSize: 13, color: N700 }}>Cargando...</p>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+          <div
+            style={{
+              width: 24, height: 24, borderRadius: '50%',
+              border: `2px solid ${BLUE}`, borderTopColor: 'transparent',
+              animation: 'spin 0.8s linear infinite',
+            }}
+          />
+        </div>
       ) : filtered.length === 0 ? (
         <div
           style={{
@@ -455,11 +494,34 @@ const GastosManager: React.FC = () => {
             padding: '40px 24px', textAlign: 'center',
           }}
         >
-          <p style={{ margin: 0, fontSize: 13, color: N700 }}>
-            {activeTab === 'todas'
-              ? 'Aún no hay gastos. Pulsa «Nuevo gasto» para empezar.'
-              : 'No hay gastos en esta categoría.'}
-          </p>
+          {activeTab === 'todas' && gastos.length === 0 ? (
+            <>
+              <LayoutTemplate size={36} style={{ color: N300, marginBottom: 12 }} />
+              <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 500, color: N700 }}>
+                No hay gastos registrados
+              </p>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: N700, opacity: 0.6 }}>
+                Carga una plantilla con los gastos más habituales, o añade el primero manualmente.
+              </p>
+              <button
+                onClick={handleLoadTemplate}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 6, border: 'none',
+                  background: BLUE, color: '#fff',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+                  marginBottom: 12,
+                }}
+              >
+                <LayoutTemplate size={14} />
+                Cargar plantilla de gastos comunes
+              </button>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 13, color: N700 }}>
+              No hay gastos en esta categoría.
+            </p>
+          )}
         </div>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -472,6 +534,7 @@ const GastosManager: React.FC = () => {
                   display: 'flex', alignItems: 'center', gap: 12,
                   border: `1px solid ${N300}`, borderRadius: 8,
                   padding: '12px 16px',
+                  opacity: g.activo ? 1 : 0.5,
                 }}
               >
                 {/* Punto de categoría */}
@@ -516,14 +579,17 @@ const GastosManager: React.FC = () => {
       )}
 
       {/* ── Drawer (slide-in 400px desde la derecha) ── */}
-      <GastosManagerDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        gasto={editingGasto}
-        onSuccess={loadGastos}
-      />
+      {personalDataId !== null && (
+        <GastosManagerDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          personalDataId={personalDataId}
+          gasto={editingGasto}
+          onSuccess={loadGastos}
+        />
+      )}
 
-      {/* ── Modal confirmación de borrado ── */}
+      {/* ── Modal de confirmación de borrado ── */}
       {deleteTarget && (
         <DeleteModal
           concepto={deleteTarget.concepto}

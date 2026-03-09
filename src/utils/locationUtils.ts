@@ -1,0 +1,492 @@
+// Spanish postal code to location mapping utilities
+import { multiplyCurrency, roundCurrency } from './formatUtils';
+
+export interface LocationData {
+  province: string;
+  ccaa: string;
+  municipalities: string[];
+}
+
+// CCAA list with ITP rates (tipo general)
+export const CCAA_LIST = [
+  { name: 'Andalucía', itpRate: 8.0 },
+  { name: 'Aragón', itpRate: 8.0 },
+  { name: 'Asturias', itpRate: 8.0 },
+  { name: 'Baleares', itpRate: 8.0 },
+  { name: 'Canarias', itpRate: 6.5 },
+  { name: 'Cantabria', itpRate: 8.0 },
+  { name: 'Castilla-La Mancha', itpRate: 9.0 },
+  { name: 'Castilla y León', itpRate: 8.0 },
+  { name: 'Cataluña', itpRate: 10.0 },
+  { name: 'Ceuta', itpRate: 6.0 },
+  { name: 'Extremadura', itpRate: 8.0 },
+  { name: 'Galicia', itpRate: 10.0 },
+  { name: 'La Rioja', itpRate: 7.0 },
+  { name: 'Madrid', itpRate: 6.0 },
+  { name: 'Melilla', itpRate: 6.0 },
+  { name: 'Murcia', itpRate: 8.0 },
+  { name: 'Navarra', itpRate: 6.0 },
+  { name: 'País Vasco', itpRate: 4.0 },
+  { name: 'Valencia', itpRate: 10.0 }
+];
+
+// Basic postal code to location mapping (expanded data)
+const POSTAL_CODE_MAP: Record<string, LocationData> = {
+  // Madrid (28xxx)
+  '28001': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28002': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28003': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28004': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28005': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28006': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28007': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28008': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28009': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28010': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28011': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28012': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28013': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28014': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28015': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28016': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28017': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28018': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28019': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28020': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28021': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28022': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28023': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28024': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28025': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28026': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28027': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28028': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28029': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28030': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28031': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28032': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28033': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28034': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28035': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28036': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28037': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28038': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28039': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28040': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28041': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28042': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28043': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28044': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28045': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28046': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28047': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28048': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28049': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  '28050': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Madrid'] },
+  // Alcalá de Henares
+  '28801': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28802': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28803': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28804': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28805': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28806': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  '28807': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Alcalá de Henares'] },
+  // Móstoles
+  '28931': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28932': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28933': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28934': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28935': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28936': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28937': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28938': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  '28939': { province: 'Madrid', ccaa: 'Madrid', municipalities: ['Móstoles'] },
+  
+  // Barcelona (08xxx)
+  '08001': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08002': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08003': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08004': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08005': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08006': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08007': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08008': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08009': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08010': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08011': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08012': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08013': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08014': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08015': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08016': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08017': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08018': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08019': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08020': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08021': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08022': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08023': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08024': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08025': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08026': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08027': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08028': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08029': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08030': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08031': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08032': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08033': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08034': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08035': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08036': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08037': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08038': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08039': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  '08040': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Barcelona'] },
+  // L'Hospitalet de Llobregat
+  '08901': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['L\'Hospitalet de Llobregat'] },
+  '08902': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['L\'Hospitalet de Llobregat'] },
+  '08903': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['L\'Hospitalet de Llobregat'] },
+  '08904': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['L\'Hospitalet de Llobregat'] },
+  '08905': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['L\'Hospitalet de Llobregat'] },
+  // Badalona
+  '08911': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  '08912': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  '08913': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  '08914': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  '08915': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  '08916': { province: 'Barcelona', ccaa: 'Cataluña', municipalities: ['Badalona'] },
+  
+  // Valencia (46xxx)
+  '46001': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46002': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46003': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46004': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46005': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46006': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46007': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46008': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46009': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46010': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46011': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46012': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46013': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46014': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46015': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46016': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46017': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46018': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46019': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46020': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46021': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46022': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46023': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46024': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  '46025': { province: 'Valencia', ccaa: 'Valencia', municipalities: ['Valencia'] },
+  
+  // Sevilla (41xxx)
+  '41001': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41002': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41003': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41004': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41005': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41006': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41007': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41008': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41009': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41010': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41011': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41012': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41013': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41014': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41015': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41016': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41017': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41018': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41019': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41020': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Sevilla'] },
+  '41940': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Tomares'] },
+  '41950': { province: 'Sevilla', ccaa: 'Andalucía', municipalities: ['Castilleja de la Cuesta'] },
+  
+  // Asturias - Oviedo (33xxx)
+  '33001': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33002': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33003': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33004': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33005': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33006': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33007': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33008': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33009': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33010': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33011': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33012': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  '33013': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Oviedo'] },
+  // Gijón
+  '33201': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33202': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33203': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33204': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33205': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33206': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33207': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33208': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33209': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33210': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33211': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33212': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33213': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  '33214': { province: 'Asturias', ccaa: 'Asturias', municipalities: ['Gijón'] },
+  
+  // Cantabria - Santander (39xxx)
+  '39001': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39002': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39003': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39004': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39005': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39006': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39007': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39008': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39009': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39010': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39011': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  '39012': { province: 'Cantabria', ccaa: 'Cantabria', municipalities: ['Santander'] },
+  
+  // Galicia - A Coruña (15xxx)
+  '15001': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15002': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15003': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15004': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  '15005': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['A Coruña'] },
+  // Santiago de Compostela
+  '15701': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  '15702': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  '15703': { province: 'A Coruña', ccaa: 'Galicia', municipalities: ['Santiago de Compostela'] },
+  // Vigo (Pontevedra)
+  '36201': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36202': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36203': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36204': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  '36205': { province: 'Pontevedra', ccaa: 'Galicia', municipalities: ['Vigo'] },
+  
+  // País Vasco - Bilbao (48xxx)
+  '48001': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48002': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48003': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48004': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  '48005': { province: 'Bizkaia', ccaa: 'País Vasco', municipalities: ['Bilbao'] },
+  // San Sebastián (Gipuzkoa)
+  '20001': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20002': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20003': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20004': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  '20005': { province: 'Gipuzkoa', ccaa: 'País Vasco', municipalities: ['Donostia-San Sebastián'] },
+  // Vitoria-Gasteiz (Álava)
+  '01001': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01002': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01003': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01004': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  '01005': { province: 'Álava', ccaa: 'País Vasco', municipalities: ['Vitoria-Gasteiz'] },
+  
+  // Zaragoza (50xxx)
+  '50001': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50002': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50003': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50004': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  '50005': { province: 'Zaragoza', ccaa: 'Aragón', municipalities: ['Zaragoza'] },
+  
+  // Murcia (30xxx)
+  '30001': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30002': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30003': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Murcia'] },
+  '30201': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Cartagena'] },
+  '30202': { province: 'Murcia', ccaa: 'Murcia', municipalities: ['Cartagena'] },
+  
+  // Extremadura - Badajoz (06xxx)
+  '06001': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  '06002': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  '06003': { province: 'Badajoz', ccaa: 'Extremadura', municipalities: ['Badajoz'] },
+  // Cáceres
+  '10001': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  '10002': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  '10003': { province: 'Cáceres', ccaa: 'Extremadura', municipalities: ['Cáceres'] },
+  
+  // Castilla y León - Valladolid (47xxx)
+  '47001': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47002': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47003': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47004': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  '47005': { province: 'Valladolid', ccaa: 'Castilla y León', municipalities: ['Valladolid'] },
+  
+  // Canarias - Las Palmas (35xxx)
+  '35001': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35002': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35003': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35004': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  '35005': { province: 'Las Palmas', ccaa: 'Canarias', municipalities: ['Las Palmas de Gran Canaria'] },
+  // Santa Cruz de Tenerife
+  '38001': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  '38002': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  '38003': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias', municipalities: ['Santa Cruz de Tenerife'] },
+  
+  // Baleares - Palma (07xxx)
+  '07001': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07002': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07003': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07004': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  '07005': { province: 'Baleares', ccaa: 'Baleares', municipalities: ['Palma'] },
+  
+  // La Rioja - Logroño (26xxx)
+  '26001': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  '26002': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  '26003': { province: 'La Rioja', ccaa: 'La Rioja', municipalities: ['Logroño'] },
+  
+  // Navarra - Pamplona (31xxx)
+  '31001': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  '31002': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  '31003': { province: 'Navarra', ccaa: 'Navarra', municipalities: ['Pamplona'] },
+  
+  // Ceuta (51xxx)
+  '51001': { province: 'Ceuta', ccaa: 'Ceuta', municipalities: ['Ceuta'] },
+  '51002': { province: 'Ceuta', ccaa: 'Ceuta', municipalities: ['Ceuta'] },
+  
+  // Melilla (52xxx)
+  '52001': { province: 'Melilla', ccaa: 'Melilla', municipalities: ['Melilla'] },
+  '52002': { province: 'Melilla', ccaa: 'Melilla', municipalities: ['Melilla'] },
+};
+
+// Map of 2-digit postal code prefixes to province and CCAA
+const PROVINCE_MAP: Record<string, { province: string; ccaa: string }> = {
+  '01': { province: 'Álava', ccaa: 'País Vasco' },
+  '02': { province: 'Albacete', ccaa: 'Castilla-La Mancha' },
+  '03': { province: 'Alicante', ccaa: 'Valencia' },
+  '04': { province: 'Almería', ccaa: 'Andalucía' },
+  '05': { province: 'Ávila', ccaa: 'Castilla y León' },
+  '06': { province: 'Badajoz', ccaa: 'Extremadura' },
+  '07': { province: 'Baleares', ccaa: 'Baleares' },
+  '08': { province: 'Barcelona', ccaa: 'Cataluña' },
+  '09': { province: 'Burgos', ccaa: 'Castilla y León' },
+  '10': { province: 'Cáceres', ccaa: 'Extremadura' },
+  '11': { province: 'Cádiz', ccaa: 'Andalucía' },
+  '12': { province: 'Castellón', ccaa: 'Valencia' },
+  '13': { province: 'Ciudad Real', ccaa: 'Castilla-La Mancha' },
+  '14': { province: 'Córdoba', ccaa: 'Andalucía' },
+  '15': { province: 'A Coruña', ccaa: 'Galicia' },
+  '16': { province: 'Cuenca', ccaa: 'Castilla-La Mancha' },
+  '17': { province: 'Girona', ccaa: 'Cataluña' },
+  '18': { province: 'Granada', ccaa: 'Andalucía' },
+  '19': { province: 'Guadalajara', ccaa: 'Castilla-La Mancha' },
+  '20': { province: 'Gipuzkoa', ccaa: 'País Vasco' },
+  '21': { province: 'Huelva', ccaa: 'Andalucía' },
+  '22': { province: 'Huesca', ccaa: 'Aragón' },
+  '23': { province: 'Jaén', ccaa: 'Andalucía' },
+  '24': { province: 'León', ccaa: 'Castilla y León' },
+  '25': { province: 'Lleida', ccaa: 'Cataluña' },
+  '26': { province: 'La Rioja', ccaa: 'La Rioja' },
+  '27': { province: 'Lugo', ccaa: 'Galicia' },
+  '28': { province: 'Madrid', ccaa: 'Madrid' },
+  '29': { province: 'Málaga', ccaa: 'Andalucía' },
+  '30': { province: 'Murcia', ccaa: 'Murcia' },
+  '31': { province: 'Navarra', ccaa: 'Navarra' },
+  '32': { province: 'Ourense', ccaa: 'Galicia' },
+  '33': { province: 'Asturias', ccaa: 'Asturias' },
+  '34': { province: 'Palencia', ccaa: 'Castilla y León' },
+  '35': { province: 'Las Palmas', ccaa: 'Canarias' },
+  '36': { province: 'Pontevedra', ccaa: 'Galicia' },
+  '37': { province: 'Salamanca', ccaa: 'Castilla y León' },
+  '38': { province: 'Santa Cruz de Tenerife', ccaa: 'Canarias' },
+  '39': { province: 'Cantabria', ccaa: 'Cantabria' },
+  '40': { province: 'Segovia', ccaa: 'Castilla y León' },
+  '41': { province: 'Sevilla', ccaa: 'Andalucía' },
+  '42': { province: 'Soria', ccaa: 'Castilla y León' },
+  '43': { province: 'Tarragona', ccaa: 'Cataluña' },
+  '44': { province: 'Teruel', ccaa: 'Aragón' },
+  '45': { province: 'Toledo', ccaa: 'Castilla-La Mancha' },
+  '46': { province: 'Valencia', ccaa: 'Valencia' },
+  '47': { province: 'Valladolid', ccaa: 'Castilla y León' },
+  '48': { province: 'Bizkaia', ccaa: 'País Vasco' },
+  '49': { province: 'Zamora', ccaa: 'Castilla y León' },
+  '50': { province: 'Zaragoza', ccaa: 'Aragón' },
+  '51': { province: 'Ceuta', ccaa: 'Ceuta' },
+  '52': { province: 'Melilla', ccaa: 'Melilla' }
+};
+
+export interface InferredLocationData extends LocationData {
+  isInferred: true;
+}
+
+export const getProvinceFromPostalCode = (postalCode: string): string | null => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) return null;
+  const prefix = cleanCode.substring(0, 2);
+  return PROVINCE_MAP[prefix]?.province || null;
+};
+
+export const getCCAAFromProvince = (province: string): string | null => {
+  const entry = Object.values(PROVINCE_MAP).find(
+    v => v.province.toLowerCase() === province.toLowerCase()
+  );
+  return entry?.ccaa || null;
+};
+
+export const inferLocationFromPostalCodeRange = (postalCode: string): InferredLocationData | null => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) return null;
+  const prefix = cleanCode.substring(0, 2);
+  const entry = PROVINCE_MAP[prefix];
+  if (!entry) return null;
+  return {
+    province: entry.province,
+    ccaa: entry.ccaa,
+    municipalities: [],
+    isInferred: true
+  };
+};
+
+export const getLocationFromPostalCode = (postalCode: string): LocationData | null => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  if (cleanCode.length !== 5 || !/^\d{5}$/.test(cleanCode)) {
+    return null;
+  }
+  
+  return POSTAL_CODE_MAP[cleanCode] || null;
+};
+
+export const validatePostalCode = (postalCode: string): boolean => {
+  const cleanCode = postalCode.replace(/\s/g, '');
+  return cleanCode.length === 5 && /^\d{5}$/.test(cleanCode);
+};
+
+export const getITPRateForCCAA = (ccaa: string): number => {
+  const ccaaData = CCAA_LIST.find(c => c.name.toLowerCase() === ccaa.toLowerCase());
+  return ccaaData?.itpRate || 8.0; // Default to 8% if not found
+};
+
+export const calculateITP = (price: number, ccaa: string): number => {
+  const rate = getITPRateForCCAA(ccaa);
+  return roundCurrency(multiplyCurrency(price, rate / 100));
+};
+
+export const formatCadastralReference = (ref: string): string => {
+  // Normalize to uppercase, remove spaces, max 20 chars
+  return ref.toUpperCase().replace(/\s/g, '').substring(0, 20);
+};
+
+export const calculateIVA = (price: number): number => {
+  // Standard IVA rate for new construction is 10%
+  return roundCurrency(multiplyCurrency(price, 0.10));
+};
+
+export const getSpecialRegionWarning = (ccaa: string): string | null => {
+  const ccaaLower = ccaa.toLowerCase();
+  
+  if (ccaaLower === 'canarias') {
+    return 'En Canarias aplica IGIC (no IVA). Ajusta el importe si procede.';
+  }
+  
+  if (ccaaLower === 'ceuta' || ccaaLower === 'melilla') {
+    return 'En Ceuta/Melilla aplica IPSI. Ajusta el importe si procede.';
+  }
+  
+  return null;
+};

@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { PersonalExpense } from '../../../types/personal';
+import { personalExpensesService } from '../../../services/personalExpensesService';
 import PersonalExpenseForm from './PersonalExpenseForm';
 
 export interface GastosManagerDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  personalDataId: number;
   /** Si se pasa, el drawer abre en modo edición */
   gasto?: PersonalExpense;
   onSuccess: () => void;
@@ -16,6 +18,7 @@ const DRAWER_WIDTH = 400;
 const GastosManagerDrawer: React.FC<GastosManagerDrawerProps> = ({
   isOpen,
   onClose,
+  personalDataId,
   gasto,
   onSuccess,
 }) => {
@@ -27,7 +30,18 @@ const GastosManagerDrawer: React.FC<GastosManagerDrawerProps> = ({
     };
   }, [isOpen]);
 
-  const handleSuccess = () => {
+  /**
+   * PersonalExpenseForm delega el guardado al padre vía onSave.
+   * Aquí llamamos al servicio y luego notificamos al manager.
+   */
+  const handleSave = async (
+    formData: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'> & { id?: number },
+  ) => {
+    if (formData.id != null) {
+      await personalExpensesService.updateExpense(formData.id, formData);
+    } else {
+      await personalExpensesService.saveExpense(formData);
+    }
     onSuccess();
     onClose();
   };
@@ -112,21 +126,12 @@ const GastosManagerDrawer: React.FC<GastosManagerDrawerProps> = ({
           </button>
         </div>
 
-        {/* Body — scrollable */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '24px',
-          }}
-        >
-          {/*
-           * Reutiliza PersonalExpenseForm sin reimplementar el formulario.
-           * onCancel cierra el drawer; onSuccess recarga la lista y lo cierra.
-           */}
+        {/* Body — scrollable. Reutiliza PersonalExpenseForm sin reimplementarlo */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
           <PersonalExpenseForm
-            gasto={gasto}
-            onSuccess={handleSuccess}
+            personalDataId={personalDataId}
+            expense={gasto}
+            onSave={handleSave}
             onCancel={onClose}
           />
         </div>
