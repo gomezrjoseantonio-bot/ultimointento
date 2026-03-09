@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { askCopilot, CopilotMessage } from '../../services/copilotService';
 
 const initialMessage: CopilotMessage = {
@@ -13,6 +13,19 @@ const CopilotWidget: React.FC = () => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<CopilotMessage[]>([initialMessage]);
   const [error, setError] = useState<string | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const movedOnDrag = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setPosition({
+      x: window.innerWidth - 140,
+      y: window.innerHeight - 80,
+    });
+  }, []);
 
   const historyForApi = useMemo(
     () => messages.filter((m) => m !== initialMessage).slice(-8),
@@ -42,16 +55,46 @@ const CopilotWidget: React.FC = () => {
     }
   };
 
+  const onDragStart = (event: React.PointerEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    target.setPointerCapture(event.pointerId);
+    movedOnDrag.current = false;
+    dragOffset.current = {
+      x: event.clientX - position.x,
+      y: event.clientY - position.y,
+    };
+    setDragging(true);
+  };
+
+  const onDragMove = (event: React.PointerEvent) => {
+    if (!dragging) return;
+    const nextX = Math.min(window.innerWidth - 72, Math.max(8, event.clientX - dragOffset.current.x));
+    const nextY = Math.min(window.innerHeight - 72, Math.max(8, event.clientY - dragOffset.current.y));
+    movedOnDrag.current = true;
+    setPosition({ x: nextX, y: nextY });
+  };
+
+  const onDragEnd = (event: React.PointerEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    if (target.hasPointerCapture(event.pointerId)) {
+      target.releasePointerCapture(event.pointerId);
+    }
+    setDragging(false);
+  };
+
   return (
-    <div className="fixed bottom-4 right-4 z-40">
+    <div className="fixed z-40" style={{ left: position.x, top: position.y }}>
       {open && (
         <div
           className="w-[360px] max-w-[calc(100vw-2rem)] h-[520px] rounded-2xl shadow-xl border flex flex-col overflow-hidden"
           style={{ backgroundColor: 'white', borderColor: 'var(--hz-neutral-300)' }}
         >
           <div
-            className="px-4 py-3 flex items-center justify-between"
+            className="px-4 py-3 flex items-center justify-between cursor-move select-none"
             style={{ backgroundColor: 'var(--hz-primary)', color: 'white' }}
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
           >
             <div>
               <p className="font-semibold text-sm">Atlas Copilot</p>
@@ -107,8 +150,17 @@ const CopilotWidget: React.FC = () => {
 
       {!open && (
         <button
-          onClick={() => setOpen(true)}
-          className="px-4 py-3 rounded-full shadow-lg text-white font-medium"
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onClick={() => {
+            if (movedOnDrag.current) {
+              movedOnDrag.current = false;
+              return;
+            }
+            setOpen(true);
+          }}
+          className="px-4 py-3 rounded-full shadow-lg text-white font-medium cursor-move select-none"
           style={{ backgroundColor: 'var(--hz-primary)' }}
           aria-label="Abrir Atlas Copilot"
         >
