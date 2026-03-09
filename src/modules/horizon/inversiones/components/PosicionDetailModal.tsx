@@ -1,8 +1,8 @@
 // PosicionDetailModal.tsx
 // ATLAS HORIZON: Detailed modal for an investment position showing aportaciones history
 
-import React, { useRef } from 'react';
-import { X, Plus, RefreshCw, Edit, Upload, Download, Pencil, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Plus, RefreshCw, Edit, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PosicionInversion } from '../../../../types/inversiones';
 
@@ -12,8 +12,6 @@ interface PosicionDetailModalProps {
   onAddAportacion: () => void;
   onEditAportacion: (aportacionId: number) => void;
   onDeleteAportacion: (aportacionId: number) => Promise<void>;
-  onImportAportaciones: (file: File) => Promise<void>;
-  onDownloadPlantillaImportacion: () => void;
   onActualizarValor: () => void;
   onEditarPosicion: () => void;
 }
@@ -24,12 +22,11 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   onAddAportacion,
   onEditAportacion,
   onDeleteAportacion,
-  onImportAportaciones,
-  onDownloadPlantillaImportacion,
   onActualizarValor,
   onEditarPosicion,
 }) => {
-  const importInputRef = useRef<HTMLInputElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(8);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('es-ES', {
@@ -41,9 +38,9 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
 
   const formatDate = (isoDate: string) =>
     new Date(isoDate).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      year: '2-digit',
+      month: '2-digit',
+      day: '2-digit',
     });
 
   const tipoLabels: Record<string, string> = {
@@ -74,13 +71,18 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
   const aportacionesOrdenadas = [...posicion.aportaciones].sort(
     (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
   );
+  const totalPages = Math.max(1, Math.ceil(aportacionesOrdenadas.length / rowsPerPage));
+  const paginatedAportaciones = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return aportacionesOrdenadas.slice(start, start + rowsPerPage);
+  }, [aportacionesOrdenadas, currentPage, rowsPerPage]);
 
-  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    await onImportAportaciones(file);
-    event.target.value = '';
+  const handleRowsChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextRows = Number(event.target.value);
+    setRowsPerPage(nextRows);
+    setCurrentPage(1);
   };
+
 
   const handleDeleteAportacion = async (aportacionId: number) => {
     if (!window.confirm('¿Eliminar este movimiento? Esta acción no se puede deshacer.')) {
@@ -115,7 +117,9 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
         width: '100%',
         maxWidth: '680px',
         maxHeight: '90vh',
-        overflow: 'auto',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
       }}>
         {/* Header */}
         <div style={{
@@ -151,7 +155,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
           </button>
         </div>
 
-        <div style={{ padding: '1.5rem' }}>
+        <div style={{ padding: '1.5rem', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {/* Valoración summary */}
           <div style={{
             display: 'grid',
@@ -268,55 +272,6 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 Histórico de aportaciones
               </h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileSelected}
-                  style={{ display: 'none' }}
-                />
-                <button
-                  onClick={onDownloadPlantillaImportacion}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.375rem',
-                    padding: '0.5rem 0.75rem',
-                    background: 'var(--surface-card, var(--white))',
-                    color: 'var(--atlas-navy-1)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: 'var(--text-caption)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 150ms ease',
-                  }}
-                >
-                  <Download size={14} />
-                  Plantilla Excel
-                </button>
-                <button
-                  onClick={() => importInputRef.current?.click()}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.375rem',
-                    padding: '0.5rem 0.75rem',
-                    background: 'var(--n-100)',
-                    color: 'var(--atlas-navy-1)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: 'var(--text-caption)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 150ms ease',
-                  }}
-                >
-                  <Upload size={14} />
-                  Importar Excel
-                </button>
                 <button
                   onClick={onAddAportacion}
                   style={{
@@ -355,6 +310,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                 No hay aportaciones registradas
               </p>
             ) : (
+              <>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{
                   width: '100%',
@@ -367,7 +323,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                       {['Fecha', 'Tipo', 'Importe', 'Notas', 'Acciones'].map(col => (
                         <th key={col} style={{
                           textAlign: 'left',
-                          padding: '0.5rem 0.75rem',
+                          padding: '0.4rem 0.75rem',
                           fontWeight: 600,
                           color: 'var(--text-gray)',
                         }}>
@@ -377,12 +333,12 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {aportacionesOrdenadas.map(ap => (
+                    {paginatedAportaciones.map(ap => (
                       <tr key={ap.id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
-                        <td style={{ padding: '0.625rem 0.75rem', color: 'var(--atlas-navy-1)' }}>
+                        <td style={{ padding: '0.4rem 0.75rem', color: 'var(--atlas-navy-1)', whiteSpace: 'nowrap' }}>
                           {formatDate(ap.fecha)}
                         </td>
-                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                        <td style={{ padding: '0.4rem 0.75rem' }}>
                           <span style={{
                             display: 'inline-block',
                             padding: '0.125rem 0.5rem',
@@ -395,14 +351,14 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                           </span>
                         </td>
                         <td style={{
-                          padding: '0.625rem 0.75rem',
+                          padding: '0.4rem 0.75rem',
                           color: ap.tipo === 'reembolso' ? 'var(--gray-700)' : 'var(--atlas-navy-1)',
                           fontVariantNumeric: 'tabular-nums',
                           fontWeight: 600,
                         }}>
                           {ap.tipo === 'reembolso' ? '-' : '+'}{formatCurrency(ap.importe)}
                         </td>
-                        <td style={{ padding: '0.625rem 0.75rem', color: 'var(--text-gray)' }}>
+                        <td style={{ padding: '0.4rem 0.75rem', color: 'var(--text-gray)' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <span>{ap.notas || '-'}</span>
                             {ap.tipo === 'reembolso' && typeof ap.ganancia_perdida === 'number' && (
@@ -428,7 +384,7 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                        <td style={{ padding: '0.4rem 0.75rem' }}>
                           <div style={{ display: 'flex', gap: '0.25rem' }}>
                             <button
                               type="button"
@@ -473,29 +429,39 @@ const PosicionDetailModal: React.FC<PosicionDetailModalProps> = ({
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr style={{ borderTop: '2px solid var(--border)' }}>
-                      <td colSpan={2} style={{
-                        padding: '0.625rem 0.75rem',
-                        fontWeight: 600,
-                        color: 'var(--atlas-navy-1)',
-                      }}>
-                        Total aportado
-                      </td>
-                      <td style={{
-                        padding: '0.625rem 0.75rem',
-                        fontWeight: 700,
-                        color: 'var(--atlas-navy-1)',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        {formatCurrency(posicion.total_aportado)}
-                      </td>
-                      <td />
-                      <td />
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
+              <div style={{
+                marginTop: '0.5rem',
+                padding: '0.6rem 0.75rem',
+                borderTop: '2px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+              }}>
+                <div style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+                  Total aportado: <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(posicion.total_aportado)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-gray)' }}>
+                    Filas
+                    <select value={rowsPerPage} onChange={handleRowsChange} style={{ marginLeft: '0.35rem' }}>
+                      {[6, 8, 10].map((size) => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1}>‹</button>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-gray)', minWidth: '70px', textAlign: 'center' }}>
+                    {currentPage}/{totalPages}
+                  </span>
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>›</button>
+                </div>
+              </div>
+              </>
+
             )}
           </div>
 

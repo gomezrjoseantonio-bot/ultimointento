@@ -41,7 +41,6 @@ import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
-import { descargarPlantillaImportacionAportaciones, importarAportacionesHistoricas } from '../../services/inversionesAportacionesImportService';
 import toast from 'react-hot-toast';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -791,16 +790,6 @@ export default function InversionesAnalisis() {
     await refreshDetailPosicion();
   };
 
-  const handleImportAportaciones = async (file: File) => {
-    if (!detailPosicion) return;
-    const result = await importarAportacionesHistoricas(file, detailPosicion);
-    await refreshPosiciones();
-    await refreshDetailPosicion();
-
-    if (result.imported > 0) toast.success(`Importadas ${result.imported} aportaciones históricas.`);
-    if (result.errors.length > 0) toast(result.errors[0], { icon: '⚠️' });
-    if (result.imported === 0 && result.errors.length === 0) toast('No se detectaron filas para importar.', { icon: 'ℹ️' });
-  };
 
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
@@ -875,8 +864,6 @@ export default function InversionesAnalisis() {
             setShowAportacionForm(true);
           }}
           onDeleteAportacion={handleDeleteAportacion}
-          onImportAportaciones={handleImportAportaciones}
-          onDownloadPlantillaImportacion={descargarPlantillaImportacionAportaciones}
           onActualizarValor={async () => {
             toast('Actualiza el valor desde editar posición por ahora.', { icon: 'ℹ️' });
           }}
