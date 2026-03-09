@@ -80,122 +80,50 @@ type PositionRow = {
   tag: string | null;
 };
 
-const MOCK_POSITIONS: PositionRow[] = [
-  {
-    id: 'sp500',
-    alias: 'Indexado SP500',
-    broker: 'Myinvestor',
-    tipo: 'Fondo indexado',
-    aportado: 26816,
-    valor: 63971,
-    rentPct: 138.56,
-    rentAnual: 26.09,
-    peso: 28.3,
-    color: C.blue,
-    tag: 'Top performer',
-  },
-  {
-    id: 'smartflip',
-    alias: 'Smartflip P2P',
-    broker: 'Smartflip',
-    tipo: 'P2P Lending',
-    aportado: 100000,
-    valor: 100050,
-    rentPct: 0.05,
-    rentAnual: 1.2,
-    peso: 44.2,
-    color: C.c2,
-    tag: null,
-  },
-  {
-    id: 'plan-orange',
-    alias: 'Plan Orange',
-    broker: 'BBVA',
-    tipo: 'Plan de pensiones',
-    aportado: 43800,
-    valor: 59150,
-    rentPct: 35.05,
-    rentAnual: 5.84,
-    peso: 26.1,
-    color: C.teal,
-    tag: null,
-  },
-  {
-    id: 'acc-orange',
-    alias: 'Acciones Orange',
-    broker: 'BNP Paribas',
-    tipo: 'Renta variable',
-    aportado: 2740,
-    valor: 3181,
-    rentPct: 16.09,
-    rentAnual: 4.8,
-    peso: 1.4,
-    color: C.c4,
-    tag: null,
-  },
-];
+const buildEvolucionInversiones = (positions: PositionRow[]) => {
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+  const aportado = positions.reduce((sum, p) => sum + p.aportado, 0);
+  const valor = positions.reduce((sum, p) => sum + p.valor, 0);
 
-const EVOLUCION_INV = [
-  { year: '2017', valor: 30000,  aportado: 28000  },
-  { year: '2018', valor: 35000,  aportado: 35000  },
-  { year: '2019', valor: 55000,  aportado: 50000  },
-  { year: '2020', valor: 70000,  aportado: 65000  },
-  { year: '2021', valor: 110000, aportado: 95000  },
-  { year: '2022', valor: 140000, aportado: 130000 },
-  { year: '2023', valor: 175000, aportado: 155000 },
-  { year: '2024', valor: 200000, aportado: 165000 },
-  { year: '2025', valor: 215000, aportado: 170000 },
-  { year: '2026', valor: 226352, aportado: 173356 },
-];
+  return years.map((year, index) => {
+    const progress = (index + 1) / years.length;
+    return {
+      year: String(year),
+      aportado: Math.round(aportado * progress),
+      valor: Math.round(aportado + (valor - aportado) * progress),
+    };
+  });
+};
 
-const buildProyInv = (years: number) => {
-  const base = 226352, aport = 173356, rate = 0.15;
+const buildProyInv = (years: number, base: number, aportado: number) => {
+  const rate = 0.08;
   return Array.from({ length: years + 1 }, (_, i) => ({
-    year: String(2026 + i),
+    year: String(new Date().getFullYear() + i),
     valor: Math.round(base * Math.pow(1 + rate, i)),
-    coste: Math.round(aport * (1 + i * 0.05)),
+    coste: Math.round(aportado * (1 + i * 0.03)),
   }));
 };
 
-const INDIV_EVOL: Record<string, { year: string; hist: number | null; proy: number | null }[]> = {
-  sp500: [
-    { year: '2017', hist: 9000,  proy: null },
-    { year: '2019', hist: 14000, proy: null },
-    { year: '2020', hist: 17000, proy: null },
-    { year: '2021', hist: 31000, proy: null },
-    { year: '2022', hist: 38000, proy: null },
-    { year: '2023', hist: 48000, proy: null },
-    { year: '2024', hist: 57000, proy: null },
-    { year: '2026', hist: 63971, proy: 63971 },
-    { year: '2028', hist: null,  proy: 84000 },
-    { year: '2030', hist: null,  proy: 111000 },
-    { year: '2032', hist: null,  proy: 147000 },
-  ],
-  smartflip: [
-    { year: '2021', hist: 30000, proy: null },
-    { year: '2022', hist: 60000, proy: null },
-    { year: '2023', hist: 80000, proy: null },
-    { year: '2024', hist: 95000, proy: null },
-    { year: '2026', hist: 100050, proy: 100050 },
-    { year: '2028', hist: null,   proy: 102500 },
-    { year: '2030', hist: null,   proy: 105000 },
-  ],
-  'plan-orange': [
-    { year: '2017', hist: 12000, proy: null },
-    { year: '2019', hist: 20000, proy: null },
-    { year: '2021', hist: 35000, proy: null },
-    { year: '2023', hist: 48000, proy: null },
-    { year: '2026', hist: 59150, proy: 59150 },
-    { year: '2028', hist: null,  proy: 69000 },
-    { year: '2030', hist: null,  proy: 80000 },
-  ],
-  'acc-orange': [
-    { year: '2022', hist: 2740, proy: null },
-    { year: '2024', hist: 2900, proy: null },
-    { year: '2026', hist: 3181, proy: 3181 },
-    { year: '2028', hist: null, proy: 3500 },
-    { year: '2030', hist: null, proy: 3850 },
-  ],
+const buildIndividualEvolucion = (position: PositionRow) => {
+  const currentYear = new Date().getFullYear();
+  const hist = Array.from({ length: 5 }, (_, i) => {
+    const progress = (i + 1) / 5;
+    return {
+      year: String(currentYear - 4 + i),
+      hist: Math.round(position.aportado + (position.valor - position.aportado) * progress),
+      proy: null as number | null,
+    };
+  });
+
+  const proy = Array.from({ length: 3 }, (_, i) => ({
+    year: String(currentYear + (i + 1) * 2),
+    hist: null as number | null,
+    proy: Math.round(position.valor * Math.pow(1 + Math.max(0.01, position.rentAnual / 100), i + 1)),
+  }));
+
+  hist[hist.length - 1].proy = position.valor;
+  return [...hist, ...proy];
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -258,12 +186,15 @@ function ChartCard({ title, sub, children, right }: { title: string; sub?: strin
 
 function TabResumen({ positions }: { positions: PositionRow[] }) {
   const [horizon, setHorizon] = useState(10);
-  const totalAportado = positions.reduce((sum, p) => sum + p.aportado, 0);
-  const valorTotal = positions.reduce((sum, p) => sum + p.valor, 0);
+  const safePositions = positions.length ? positions : [{
+    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0, rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
+  }];
+  const totalAportado = safePositions.reduce((sum, p) => sum + p.aportado, 0);
+  const valorTotal = safePositions.reduce((sum, p) => sum + p.valor, 0);
   const ganancia = valorTotal - totalAportado;
   const rentabilidadTotal = totalAportado > 0 ? (ganancia / totalAportado) * 100 : 0;
-  const proyData = useMemo(() => buildProyInv(horizon), [horizon]);
-  const best = positions.reduce((a, b) => (a.rentPct > b.rentPct ? a : b), positions[0]);
+  const proyData = useMemo(() => buildProyInv(horizon, valorTotal, totalAportado), [horizon, totalAportado, valorTotal]);
+  const best = safePositions.reduce((a, b) => (a.rentPct > b.rentPct ? a : b), safePositions[0]);
 
   return (
     <div>
@@ -495,6 +426,7 @@ function TabCartera({ onSelectPosition, positions }: { onSelectPosition: (id: st
 // ─── Tab: Rendimientos ────────────────────────────────────────────────────────
 
 function TabRendimientos({ positions }: { positions: PositionRow[] }) {
+  const evolucionInv = useMemo(() => buildEvolucionInversiones(positions), [positions]);
   const donutData = positions.map(p => ({ name: p.alias, value: p.valor }));
   const donutColors = positions.map(p => p.color);
   const rentData = positions.map(p => ({ name: p.alias, rentPct: p.rentPct, rentAnual: p.rentAnual }));
@@ -504,7 +436,7 @@ function TabRendimientos({ positions }: { positions: PositionRow[] }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         <ChartCard title="Evolución del portfolio" sub="Valor total vs capital aportado · 2017–2026">
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={EVOLUCION_INV} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <LineChart data={evolucionInv} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" />
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
@@ -574,9 +506,12 @@ function TabRendimientos({ positions }: { positions: PositionRow[] }) {
 // ─── Tab: Individual ──────────────────────────────────────────────────────────
 
 function TabIndividual({ selectedId, positions }: { selectedId: string; positions: PositionRow[] }) {
-  const [posId, setPosId] = useState(selectedId || 'sp500');
-  const pos = positions.find(p => p.id === posId) ?? positions[0];
-  const evolData = INDIV_EVOL[posId] ?? INDIV_EVOL['sp500'];
+  const [posId, setPosId] = useState(selectedId || '');
+  const safePositions = positions.length ? positions : [{
+    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0, rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
+  }];
+  const pos = safePositions.find(p => p.id === posId) ?? safePositions[0];
+  const evolData = buildIndividualEvolucion(pos);
 
   return (
     <div>
@@ -584,7 +519,7 @@ function TabIndividual({ selectedId, positions }: { selectedId: string; position
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
         <select value={posId} onChange={e => setPosId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 280, fontFamily: 'inherit' }}>
-          {positions.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.broker}</option>)}
+          {safePositions.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.broker}</option>)}
         </select>
       </div>
 
@@ -674,15 +609,19 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export default function InversionesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
-  const [selectedPositionId, setSelectedPositionId] = useState('sp500');
-  const [positions, setPositions] = useState<PositionRow[]>(MOCK_POSITIONS);
+  const [selectedPositionId, setSelectedPositionId] = useState('');
+  const [positions, setPositions] = useState<PositionRow[]>([]);
 
   useEffect(() => {
     const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
     const loadPosiciones = async () => {
       try {
         const data = await inversionesService.getPosiciones();
-        if (!data.length) return;
+        if (!data.length) {
+          setPositions([]);
+          setSelectedPositionId('');
+          return;
+        }
 
         const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
         const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
@@ -716,6 +655,14 @@ export default function InversionesAnalisis() {
 
     loadPosiciones();
   }, [selectedPositionId]);
+
+  if (!positions.length) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.n50, display: 'grid', placeItems: 'center' }}>
+        <p style={{ color: C.n500 }}>No hay posiciones de inversión activas en tus datos.</p>
+      </div>
+    );
+  }
 
   const handleSelectPosition = (id: string) => {
     setSelectedPositionId(id);
