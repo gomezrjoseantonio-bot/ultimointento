@@ -741,12 +741,20 @@ class DashboardService {
       const getContractMonthlyRent = (contract: any): number =>
         toNumber(contract?.rentaMensual ?? contract?.renta_mensual ?? contract?.monthlyRent ?? contract?.importeMensual);
 
-      const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
-        const paidRent = rentPaymentsData
-          .filter((payment: any) => inMonth(payment, month, year) && payment.estado === 'pagada')
-          .reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+      const isPaidRentPayment = (payment: any): boolean => {
+        const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+        return status === 'pagada' || status === 'pagado' || status === 'paid' || status === 'cobrada' || status === 'cobrado';
+      };
 
-        if (paidRent > 0) return paidRent;
+      const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
+        const paidPayments = rentPaymentsData
+          .filter((payment: any) => inMonth(payment, month, year) && isPaidRentPayment(payment));
+
+        // Important: if there are paid records, always trust real collections,
+        // even when net amount is 0 or negative (refunds/ajustes).
+        if (paidPayments.length > 0) {
+          return paidPayments.reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+        }
 
         return contractsData
           .filter((contract: any) => isActiveContractForMonth(contract, month, year))

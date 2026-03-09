@@ -116,6 +116,45 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inmuebles.ocupacion).toBeCloseTo(100, 2);
   });
 
+  it('prioriza cobros reales pagados aunque el neto mensual sea cero o negativo', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [],
+      gastos: [
+        { fecha: '2026-03-05', importe: 200, esPersonal: false, destino: 'inmueble_id', destino_id: 1 }
+      ],
+      expenses: [],
+      rentPayments: [
+        { fecha: '2026-03-10', importe: 100, estado: 'pagada' },
+        { fecha: '2026-03-11', importe: -150, estado: 'paid' }
+      ],
+      contracts: [
+        {
+          id: 1,
+          inmuebleId: 1,
+          rentaMensual: 1000,
+          fechaInicio: '2026-01-01',
+          fechaFin: '2026-12-31',
+          estadoContrato: 'activo'
+        }
+      ],
+      prestamos: [],
+      properties: [
+        { id: 1, estado: 'activo' }
+      ],
+      inversiones: []
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    // Debe usar cobros reales: (100 - 150) - 200 = -250
+    // y NO caer al fallback de contrato (1000) porque sí hay cobros pagados.
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(-250, 2);
+  });
+
   it('incluye financiación y reasigna eventos de tarjeta al banco de cargo en tesorería panel', async () => {
     const datasets: Record<string, any[]> = {
       accounts: [
