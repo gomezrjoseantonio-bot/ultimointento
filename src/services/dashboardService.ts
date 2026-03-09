@@ -567,14 +567,9 @@ class DashboardService {
         return sum + toNumber(ultimaValoracion ?? fallbackValorActual);
       }, 0);
 
-      // Cuentas: sum active account balances.
-      const accounts = await db.getAll('accounts');
-      const activeAccounts = accounts.filter((acc: any) => (
-        acc.isActive !== false
-        && !acc.deleted_at
-        && !isCardAccount(acc)
-      ));
-      const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => sum + toNumber(acc.balance), 0);
+      // Cuentas: use Tesorería "HOY" total as single source of truth to avoid divergences.
+      const tesoreriaPanel = await this.getTesoreriaPanel();
+      const saldoCuentas = toNumber(tesoreriaPanel.totales.hoy);
 
       // Inversiones: latest current valuation.
       const inversiones = await db.getAll('inversiones');
