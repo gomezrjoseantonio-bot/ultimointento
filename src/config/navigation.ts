@@ -139,6 +139,7 @@ export const navigationConfig: NavigationItem[] = [
     section: 'documentation',
     subTabs: [
       { name: 'Repositorio', href: '/documentacion', icon: FolderOpen, module: 'shared' },
+      { name: 'Inbox (escaneo y subida)', href: '/inbox', icon: Upload, module: 'shared' },
       { name: 'Filtros', href: '/documentacion/filtros', icon: Settings2, module: 'shared' },
       { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Receipt, module: 'shared' },
       { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: UserCircle, module: 'shared' },
