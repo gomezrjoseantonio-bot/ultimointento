@@ -2,7 +2,7 @@
 // Página de análisis de cartera inmobiliaria
 // Tabs: Resumen · Cartera · Evolución general · Individual
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard,
   Table2,
@@ -36,6 +36,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { initDB, Property } from '../../services/db';
+import type { Prestamo } from '../../types/prestamos';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -71,6 +73,54 @@ const PROPERTIES = [
   { id: 'tenderina5d',  alias: 'Tenderina 64 5D', addr: 'Tenderina, 64 5D',             coste: 10800,  valor: 11000,  revalTotal: 1.85,  revalAnual: 0.75,  yield: 0, deudaPendiente: 0, cashflowMes: -15, gastosMes: 30 },
 ];
 
+type PropertySnapshot = typeof PROPERTIES[number];
+
+const normalize = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+const findMatchingProperty = (seed: PropertySnapshot, properties: Property[]): Property | undefined => {
+  const seedAlias = normalize(seed.alias);
+  const seedAddress = normalize(seed.addr);
+
+  return properties.find((property) => {
+    const alias = normalize(property.alias || '');
+    const globalAlias = normalize(property.globalAlias || '');
+    const address = normalize(property.address || '');
+
+    return (
+      alias.includes(seedAlias) ||
+      seedAlias.includes(alias) ||
+      globalAlias.includes(seedAlias) ||
+      seedAddress.includes(address) ||
+      address.includes(seedAddress)
+    );
+  });
+};
+
+const resolveLiveDebtByProperty = (seed: PropertySnapshot[], properties: Property[], loans: Prestamo[]) =>
+  seed.map((property) => {
+    const matched = findMatchingProperty(property, properties);
+    if (!matched?.id) {
+      return property;
+    }
+
+    const links = new Set(
+      [String(matched.id), matched.globalAlias ? String(matched.globalAlias) : '']
+        .map((value) => value.trim())
+        .filter(Boolean)
+    );
+
+    const deudaPendiente = loans
+      .filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo && links.has(String(loan.inmuebleId ?? '').trim()))
+      .reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
+
+    return { ...property, deudaPendiente };
+  });
+
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
 
 const EVOLUCION_DATA = [
@@ -103,7 +153,7 @@ const buildProyeccion = (years: number) => {
   }));
 };
 
-const buildIndividualValueSeries = (property: typeof PROPERTIES[number]) => {
+const buildIndividualValueSeries = (property: PropertySnapshot) => {
   const pastYears = ['2005', '2008', '2010', '2013', '2015', '2018', '2020', '2022', '2024', '2026'];
   const growth = Math.max(0.004, property.revalAnual / 100);
   const past = pastYears.map((year, index) => {
@@ -123,7 +173,7 @@ const buildIndividualValueSeries = (property: typeof PROPERTIES[number]) => {
   return [...past, ...projection];
 };
 
-const buildIndividualCashflowSeries = (property: typeof PROPERTIES[number]) => {
+const buildIndividualCashflowSeries = (property: PropertySnapshot) => {
   const years = ['2006', '2008', '2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024', '2026'];
   const yearlyIncome = Math.max(0, Math.round((property.cashflowMes + property.gastosMes) * 12));
   const yearlyExpenses = Math.max(0, Math.round(property.gastosMes * 12));
@@ -273,27 +323,33 @@ function TabResumen() {
 
 // ─── Tab: Cartera ─────────────────────────────────────────────────────────────
 
-function TabCartera({ onSelectProperty }: { onSelectProperty: (id: string) => void }) {
+function TabCartera({
+  onSelectProperty,
+  properties,
+}: {
+  onSelectProperty: (id: string) => void;
+  properties: PropertySnapshot[];
+}) {
   const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState<keyof typeof PROPERTIES[0]>('alias');
+  const [sortKey, setSortKey] = useState<keyof PropertySnapshot>('alias');
   const [sortAsc, setSortAsc] = useState(true);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return PROPERTIES
+    return properties
       .filter(p => p.alias.toLowerCase().includes(q) || p.addr.toLowerCase().includes(q))
       .sort((a, b) => {
         const va = a[sortKey], vb = b[sortKey];
         return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
       });
-  }, [query, sortKey, sortAsc]);
+  }, [properties, query, sortKey, sortAsc]);
 
-  const handleSort = (key: keyof typeof PROPERTIES[0]) => {
+  const handleSort = (key: keyof PropertySnapshot) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const SortIcon = ({ k }: { k: keyof typeof PROPERTIES[0] }) =>
+  const SortIcon = ({ k }: { k: keyof PropertySnapshot }) =>
     sortKey === k ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
 
   return (
@@ -367,9 +423,9 @@ function TabCartera({ onSelectProperty }: { onSelectProperty: (id: string) => vo
 
 // ─── Tab: Evolución general ───────────────────────────────────────────────────
 
-function TabEvolucion() {
-  const donutData = PROPERTIES.map(p => ({ name: p.alias, value: p.valor }));
-  const yieldData = [...PROPERTIES].sort((a, b) => b.yield - a.yield).map(p => ({ name: p.alias, yield: p.yield }));
+function TabEvolucion({ properties }: { properties: PropertySnapshot[] }) {
+  const donutData = properties.map(p => ({ name: p.alias, value: p.valor }));
+  const yieldData = [...properties].sort((a, b) => b.yield - a.yield).map(p => ({ name: p.alias, yield: p.yield }));
 
   return (
     <div>
@@ -442,9 +498,9 @@ function TabEvolucion() {
 
 // ─── Tab: Individual ──────────────────────────────────────────────────────────
 
-function TabIndividual({ selectedId }: { selectedId: string }) {
+function TabIndividual({ selectedId, properties }: { selectedId: string; properties: PropertySnapshot[] }) {
   const [propId, setPropId] = useState(selectedId || 'acevedo');
-  const prop = PROPERTIES.find(p => p.id === propId) ?? PROPERTIES[0];
+  const prop = properties.find(p => p.id === propId) ?? properties[0];
   const indivData = useMemo(() => buildIndividualValueSeries(prop), [prop]);
   const cashflowData = useMemo(() => buildIndividualCashflowSeries(prop), [prop]);
   const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '0 €';
@@ -458,7 +514,7 @@ function TabIndividual({ selectedId }: { selectedId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Inmueble</label>
         <select value={propId} onChange={e => setPropId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 260, fontFamily: 'inherit' }}>
-          {PROPERTIES.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.addr}</option>)}
+          {properties.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.addr}</option>)}
         </select>
       </div>
 
@@ -564,7 +620,32 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export default function InmueblesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
-  const [selectedPropertyId, setSelectedPropertyId] = useState('acevedo');
+  const [selectedPropertyId, setSelectedPropertyId] = useState(PROPERTIES[0].id);
+  const [properties, setProperties] = useState<PropertySnapshot[]>(PROPERTIES);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLiveDebt = async () => {
+      try {
+        const db = await initDB();
+        const [dbProperties, dbLoans] = await Promise.all([
+          db.getAll('properties') as Promise<Property[]>,
+          db.getAll('prestamos') as Promise<Prestamo[]>,
+        ]);
+
+        if (!mounted) return;
+        setProperties(resolveLiveDebtByProperty(PROPERTIES, dbProperties, dbLoans));
+      } catch {
+        if (mounted) setProperties(PROPERTIES);
+      }
+    };
+
+    void loadLiveDebt();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSelectProperty = (id: string) => {
     setSelectedPropertyId(id);
@@ -600,9 +681,9 @@ export default function InmueblesAnalisis() {
 
         {/* Tab content */}
         {activeTab === 'resumen'    && <TabResumen />}
-        {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} />}
-        {activeTab === 'evolucion'  && <TabEvolucion />}
-        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} />}
+        {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} properties={properties} />}
+        {activeTab === 'evolucion'  && <TabEvolucion properties={properties} />}
+        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} />}
       </div>
     </div>
   );
