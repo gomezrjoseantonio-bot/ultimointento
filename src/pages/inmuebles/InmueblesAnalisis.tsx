@@ -3,7 +3,7 @@
 // Tabs: Resumen · Cartera · Evolución general · Individual
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   Table2,
@@ -663,9 +663,19 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function InmueblesAnalisis() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTabParam = searchParams.get('tab');
+  const refreshFlag = searchParams.get('refresh');
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
+
+  useEffect(() => {
+    const requestedTab = currentTabParam;
+    if (requestedTab && TABS.some((tab) => tab.id === requestedTab)) {
+      setActiveTab(requestedTab as Tab);
+    }
+  }, [currentTabParam]);
 
   useEffect(() => {
     let mounted = true;
@@ -706,7 +716,15 @@ export default function InmueblesAnalisis() {
     return () => {
       mounted = false;
     };
-  }, [selectedPropertyId]);
+  }, [selectedPropertyId, refreshFlag]);
+
+  const handleTabChange = (tabId: Tab) => {
+    setActiveTab(tabId);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('tab', tabId);
+    nextParams.delete('refresh');
+    setSearchParams(nextParams, { replace: true });
+  };
 
   if (!properties.length) {
     return (
@@ -741,7 +759,7 @@ export default function InmueblesAnalisis() {
             const Icon = t.icon;
             const on = activeTab === t.id;
             return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 13, fontWeight: on ? 600 : 500, color: on ? C.blue : C.n500, background: on ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: on ? '0 1px 3px rgba(4,44,94,.08)' : 'none', transition: 'all 150ms', fontFamily: 'inherit' }}>
+              <button key={t.id} onClick={() => handleTabChange(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 13, fontWeight: on ? 600 : 500, color: on ? C.blue : C.n500, background: on ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: on ? '0 1px 3px rgba(4,44,94,.08)' : 'none', transition: 'all 150ms', fontFamily: 'inherit' }}>
                 <Icon size={14} />{t.label}
               </button>
             );
