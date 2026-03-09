@@ -3,6 +3,7 @@
 // Tabs: Resumen · Cartera · Evolución general · Individual
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Table2,
@@ -14,7 +15,7 @@ import {
   ArrowUpRight,
   TrendingUp,
   Eye,
-  MoreHorizontal,
+  Pencil,
   SlidersHorizontal,
   Plus,
   Search,
@@ -360,6 +361,7 @@ function TabCartera({
   onSelectProperty: (id: string) => void;
   properties: PropertySnapshot[];
 }) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PropertySnapshot>('alias');
   const [sortAsc, setSortAsc] = useState(true);
@@ -394,7 +396,10 @@ function TabCartera({
           <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
             <SlidersHorizontal size={13} /> Filtros
           </button>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
+          <button
+            onClick={() => navigate('/inmuebles/cartera/nuevo')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}
+          >
             <Plus size={13} /> Nuevo inmueble
           </button>
         </div>
@@ -440,7 +445,16 @@ function TabCartera({
               <td style={{ padding: '12px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                   <button onClick={e => { e.stopPropagation(); onSelectProperty(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle"><Eye size={14} /></button>
-                  <button onClick={e => e.stopPropagation()} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Más"><MoreHorizontal size={14} /></button>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      navigate(`/inmuebles/cartera/${p.id}/editar`);
+                    }}
+                    style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                    title="Editar inmueble"
+                  >
+                    <Pencil size={14} />
+                  </button>
                 </div>
               </td>
             </tr>
