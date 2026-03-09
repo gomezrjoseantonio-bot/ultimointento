@@ -40,6 +40,7 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
   const [showDetail, setShowDetail] = useState(false);
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportacionForm, setShowAportacionForm] = useState(false);
+  const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
   const [loading, setLoading] = useState(true);
   const [pendingRendimientos, setPendingRendimientos] = useState(0);
@@ -133,9 +134,15 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
   const handleAddAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
     if (!editingPosicion) return;
     try {
-      await inversionesService.addAportacion(editingPosicion.id, aportacion);
-      toast.success('Aportación añadida correctamente');
+      if (editingAportacion) {
+        await inversionesService.updateAportacion(editingPosicion.id, editingAportacion.id, aportacion);
+        toast.success('Movimiento actualizado correctamente');
+      } else {
+        await inversionesService.addAportacion(editingPosicion.id, aportacion);
+        toast.success('Aportación añadida correctamente');
+      }
       setShowAportacionForm(false);
+      setEditingAportacion(undefined);
       await loadData();
       const updated = await inversionesService.getPosicion(editingPosicion.id);
       setEditingPosicion(updated);
@@ -143,6 +150,14 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
       console.error('Error adding aportacion:', error);
       toast.error('Error al añadir la aportación');
     }
+  };
+
+  const handleDeleteAportacion = async (aportacionId: number) => {
+    if (!editingPosicion) return;
+    await inversionesService.deleteAportacion(editingPosicion.id, aportacionId);
+    await loadData();
+    const updated = await inversionesService.getPosicion(editingPosicion.id);
+    setEditingPosicion(updated);
   };
 
   const handleImportAportaciones = async (file: File) => {
@@ -416,8 +431,19 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
           onClose={() => {
             setShowDetail(false);
             setEditingPosicion(undefined);
+            setEditingAportacion(undefined);
           }}
-          onAddAportacion={() => setShowAportacionForm(true)}
+          onAddAportacion={() => {
+            setEditingAportacion(undefined);
+            setShowAportacionForm(true);
+          }}
+          onEditAportacion={(aportacionId) => {
+            const aportacion = editingPosicion.aportaciones.find((a) => a.id === aportacionId);
+            if (!aportacion) return;
+            setEditingAportacion(aportacion);
+            setShowAportacionForm(true);
+          }}
+          onDeleteAportacion={handleDeleteAportacion}
           onImportAportaciones={handleImportAportaciones}
           onDownloadPlantillaImportacion={descargarPlantillaImportacionAportaciones}
           onActualizarValor={() => setShowActualizarValor(true)}
@@ -455,8 +481,12 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
         <AportacionForm
           posicionNombre={editingPosicion.nombre}
           posicion={editingPosicion}
+          initialAportacion={editingAportacion}
           onSave={handleAddAportacion}
-          onClose={() => setShowAportacionForm(false)}
+          onClose={() => {
+            setShowAportacionForm(false);
+            setEditingAportacion(undefined);
+          }}
         />
       )}
     </div>
