@@ -1,6 +1,25 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Eye, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown, Users, TrendingDown, FileText, CircleDollarSign, MoreHorizontal } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Eye,
+  Pencil,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Users,
+  TrendingDown,
+  FileText,
+  CircleDollarSign,
+  MoreHorizontal,
+  Wallet,
+  Home,
+  Shield,
+  Filter,
+  TriangleAlert
+} from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, initDB } from '../../../../services/db';
 import PropertySaleModal from '../components/PropertySaleModal';
@@ -23,8 +42,7 @@ const calculateTotalCost = (property: Property): number => {
     (costs.other?.reduce((sum, item) => sum + item.amount, 0) || 0);
 };
 
-const isActiveContract = (c: Contract): boolean =>
-  c.estadoContrato === 'activo' || c.status === 'active';
+const isActiveContract = (c: Contract): boolean => c.estadoContrato === 'activo' || c.status === 'active';
 
 const getCashflow = (property: Property, contracts: Contract[]): number => {
   return contracts
@@ -82,7 +100,7 @@ const Cartera: React.FC = () => {
   const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
 
   useEffect(() => {
-    loadData();
+    void loadData();
 
     const refreshParam = searchParams.get('refresh');
     if (refreshParam === '1') {
@@ -93,49 +111,53 @@ const Cartera: React.FC = () => {
   }, [searchParams, setSearchParams]);
 
   const filterAndSortProperties = useCallback(() => {
-    let filtered = [...properties];
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(prop =>
-        prop.alias.toLowerCase().includes(search) ||
-        prop.address.toLowerCase().includes(search) ||
-        (prop.cadastralReference && prop.cadastralReference.toLowerCase().includes(search))
-      );
-    }
-
-    filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
-      switch (sortField) {
-        case 'totalCost':
-          aValue = calculateTotalCost(a);
-          bValue = calculateTotalCost(b);
-          break;
-        case 'yield':
-          aValue = getYield(a, contracts);
-          bValue = getYield(b, contracts);
-          break;
-        case 'currentValue':
-          aValue = getLatestValuation(a, valuations) ?? -Infinity;
-          bValue = getLatestValuation(b, valuations) ?? -Infinity;
-          break;
-        case 'revaluationTotal':
-          aValue = getTotalRevaluationPct(a, valuations) ?? -Infinity;
-          bValue = getTotalRevaluationPct(b, valuations) ?? -Infinity;
-          break;
-        case 'revaluationAnnualized':
-          aValue = getAnnualizedRevaluationPct(a, valuations) ?? -Infinity;
-          bValue = getAnnualizedRevaluationPct(b, valuations) ?? -Infinity;
-          break;
-        case 'alias':
-        default:
-          aValue = a.alias.toLowerCase();
-          bValue = b.alias.toLowerCase();
-      }
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+    const filtered = [...properties]
+      .filter((prop) => {
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+          prop.alias.toLowerCase().includes(search) ||
+          prop.address.toLowerCase().includes(search) ||
+          (prop.cadastralReference && prop.cadastralReference.toLowerCase().includes(search))
+        );
+      })
+      .sort((a, b) => {
+        let aValue: number | string = '';
+        let bValue: number | string = '';
+        switch (sortField) {
+          case 'totalCost':
+            aValue = calculateTotalCost(a);
+            bValue = calculateTotalCost(b);
+            break;
+          case 'yield':
+            aValue = getYield(a, contracts);
+            bValue = getYield(b, contracts);
+            break;
+          case 'currentValue':
+            aValue = getLatestValuation(a, valuations) ?? -Infinity;
+            bValue = getLatestValuation(b, valuations) ?? -Infinity;
+            break;
+          case 'revaluationTotal':
+            aValue = getTotalRevaluationPct(a, valuations) ?? -Infinity;
+            bValue = getTotalRevaluationPct(b, valuations) ?? -Infinity;
+            break;
+          case 'revaluationAnnualized':
+            aValue = getAnnualizedRevaluationPct(a, valuations) ?? -Infinity;
+            bValue = getAnnualizedRevaluationPct(b, valuations) ?? -Infinity;
+            break;
+          case 'cashflow':
+            aValue = getCashflow(a, contracts);
+            bValue = getCashflow(b, contracts);
+            break;
+          case 'alias':
+          default:
+            aValue = a.alias.toLowerCase();
+            bValue = b.alias.toLowerCase();
+        }
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
 
     setFilteredProperties(filtered);
   }, [properties, contracts, valuations, searchTerm, sortField, sortDirection]);
@@ -166,6 +188,14 @@ const Cartera: React.FC = () => {
     }
   };
 
+  const totalPortfolioCost = filteredProperties.reduce((sum, p) => sum + calculateTotalCost(p), 0);
+  const totalPortfolioValue = filteredProperties.reduce((sum, p) => sum + (getLatestValuation(p, valuations) ?? 0), 0);
+  const totalLatentGain = totalPortfolioValue - totalPortfolioCost;
+  const totalOccupancy = filteredProperties.length > 0
+    ? (filteredProperties.filter(p => getCashflow(p, contracts) > 0).length / filteredProperties.length) * 100
+    : 0;
+  const totalRent = filteredProperties.reduce((sum, p) => sum + getCashflow(p, contracts), 0);
+
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -189,7 +219,7 @@ const Cartera: React.FC = () => {
       const db = await initDB();
       await db.delete('properties', property.id!);
       toast.success('Inmueble eliminado correctamente');
-      loadData();
+      void loadData();
     } catch (error) {
       console.error('Error deleting property:', error);
       toast.error('Error al eliminar el inmueble');
@@ -200,7 +230,6 @@ const Cartera: React.FC = () => {
     setOpenMenuPropertyId(null);
     action();
   };
-
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -245,223 +274,129 @@ const Cartera: React.FC = () => {
       subtitle="Dashboard financiero de tus propiedades de inversión."
       showInfoIcon={true}
     >
-      <div className="space-y-4">
-        {/* Header with search + new button */}
-        <div className="flex justify-between items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="h-4 w-4 absolute left-3 top-2.5 text-neutral-400" />
-            <input
-              type="text"
-              placeholder="Buscar por alias o dirección..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-            />
+      <div className="space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-neutral-200 p-5">
+            <div className="inline-flex p-2 rounded-lg bg-emerald-50 text-emerald-600 mb-3"><Wallet className="h-4 w-4" /></div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Plusvalía latente</p>
+            <p className={`text-4xl font-semibold mt-1 ${totalLatentGain >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>{formatEuro(totalLatentGain)}</p>
+            <p className="text-sm text-neutral-500 mt-1">Sobre coste de adquisición</p>
           </div>
-          <button
-            onClick={() => navigate('/inmuebles/cartera/nuevo')}
-            className="flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors text-sm font-medium shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo inmueble
-          </button>
+          <div className="bg-white rounded-xl border border-neutral-200 p-5">
+            <div className="inline-flex p-2 rounded-lg bg-cyan-50 text-cyan-600 mb-3"><Home className="h-4 w-4" /></div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Ocupación</p>
+            <p className="text-4xl font-semibold mt-1 text-brand-navy">{totalOccupancy.toFixed(1)}%</p>
+            <p className="text-sm text-neutral-500 mt-1">
+              {filteredProperties.filter(p => getCashflow(p, contracts) > 0).length} de {filteredProperties.length} unidades alquiladas
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-neutral-200 p-5">
+            <div className="inline-flex p-2 rounded-lg bg-indigo-50 text-indigo-600 mb-3"><Shield className="h-4 w-4" /></div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Cobertura hipotecas</p>
+            <p className="text-4xl font-semibold mt-1 text-brand-navy">N/D</p>
+            <p className="text-sm text-neutral-500 mt-1">CF ingresos / CF financiación</p>
+          </div>
         </div>
 
-        {/* Results count */}
-        <div className="text-xs text-neutral-500">
-          {filteredProperties.length} inmueble{filteredProperties.length !== 1 ? 's' : ''}
-          {filteredProperties.length !== properties.length && ` de ${properties.length}`}
-        </div>
+        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-200">
+            <h3 className="text-lg font-semibold text-neutral-700 uppercase tracking-wider">Cartera detallada</h3>
+            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-50 text-sm">
+              <Filter className="h-4 w-4" /> Filtrar
+            </button>
+          </div>
 
-        {/* Table or empty state */}
-        {filteredProperties.length === 0 ? (
-          <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center">
-            <div className="space-y-4">
-              <div className="text-neutral-400">
-                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-6 0H3m0 0V9a2 2 0 012-2h4l2 2h4a2 2 0 012 2v2M7 7h10" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-neutral-900">
-                  {searchTerm ? 'No se encontraron inmuebles' : 'No tienes inmuebles registrados'}
-                </h3>
-                <p className="text-neutral-600 mt-1">
-                  {searchTerm
-                    ? 'Intenta cambiar los términos de búsqueda.'
-                    : 'Comienza registrando tu primer inmueble de inversión.'}
-                </p>
-              </div>
-              {!searchTerm && (
-                <button
-                  onClick={() => navigate('/inmuebles/cartera/nuevo')}
-                  className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors text-sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo inmueble
-                </button>
-              )}
+          <div className="px-5 pt-4 flex justify-between items-center gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="h-4 w-4 absolute left-3 top-2.5 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Buscar por alias o dirección..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              />
             </div>
+            <button
+              onClick={() => navigate('/inmuebles/cartera/nuevo')}
+              className="flex items-center px-4 py-2 bg-brand-navy text-white rounded-md hover:bg-brand-navy/90 transition-colors text-sm font-medium shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo inmueble
+            </button>
           </div>
-        ) : (
-          <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+
+          <div className="px-5 pb-2 pt-2 text-xs text-neutral-500">
+            {filteredProperties.length} inmueble{filteredProperties.length !== 1 ? 's' : ''}
+            {filteredProperties.length !== properties.length && ` de ${properties.length}`}
+          </div>
+
+          {filteredProperties.length === 0 ? (
+            <div className="p-12 text-center text-neutral-500">No se encontraron inmuebles.</div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('alias')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Dirección / Alias</span>
-                        {getSortIcon('alias')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('totalCost')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Coste inversión</span>
-                        {getSortIcon('totalCost')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('currentValue')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Valor actual</span>
-                        {getSortIcon('currentValue')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('revaluationTotal')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>% reval. total</span>
-                        {getSortIcon('revaluationTotal')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('revaluationAnnualized')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>% reval. media anual</span>
-                        {getSortIcon('revaluationAnnualized')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer hover:bg-neutral-100"
-                      onClick={() => handleSort('yield')}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span>Yield (%)</span>
-                        {getSortIcon('yield')}
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('alias')}><div className="flex items-center gap-1"><span>Propiedad</span>{getSortIcon('alias')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('totalCost')}><div className="flex items-center gap-1"><span>Coste</span>{getSortIcon('totalCost')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('currentValue')}><div className="flex items-center gap-1"><span>Valor actual</span>{getSortIcon('currentValue')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('revaluationTotal')}><div className="flex items-center gap-1"><span>Plusvalía</span>{getSortIcon('revaluationTotal')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('cashflow')}><div className="flex items-center gap-1"><span>Renta/mes</span>{getSortIcon('cashflow')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider cursor-pointer" onClick={() => handleSort('yield')}><div className="flex items-center gap-1"><span>Yield bruto</span>{getSortIcon('yield')}</div></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Estado</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
                   {filteredProperties.map((property) => {
                     const propId = property.id ?? -1;
                     const totalCost = calculateTotalCost(property);
-                    const yieldPct = getYield(property, contracts);
                     const currentValue = getLatestValuation(property, valuations);
-                    const revaluationTotal = getTotalRevaluationPct(property, valuations);
-                    const revaluationAnnualized = getAnnualizedRevaluationPct(property, valuations);
+                    const plusvalia = currentValue !== null ? currentValue - totalCost : null;
+                    const yieldPct = getYield(property, contracts);
+                    const rent = getCashflow(property, contracts);
+                    const isRented = rent > 0;
+                    const annualized = getAnnualizedRevaluationPct(property, valuations);
 
                     return (
-                      <tr key={propId} className="hover:bg-neutral-50">
+                      <tr key={propId} className="hover:bg-neutral-50/80">
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-neutral-900">{property.alias}</div>
-                          <div className="text-xs text-neutral-500">{property.address}</div>
+                          <div className="font-semibold text-brand-navy">{property.alias}</div>
+                          <div className="text-sm text-neutral-500">{property.address}</div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">{formatEuro(totalCost)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">{currentValue !== null ? formatEuro(currentValue) : <span className="text-neutral-400">—</span>}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {formatEuro(totalCost)}
+                          {plusvalia !== null ? <span className={plusvalia >= 0 ? 'text-[var(--s-pos)] font-medium' : 'text-[var(--s-neg)] font-medium'}>{formatEuro(plusvalia)}</span> : <span className="text-neutral-400">—</span>}
+                          {annualized !== null && <div className="text-xs text-neutral-500 mt-0.5">{annualized.toFixed(2)}% anual</div>}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">{rent > 0 ? formatEuro(rent) : <span className="text-[var(--s-neg)]">0 €</span>}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {currentValue ? formatEuro(currentValue) : <span className="text-neutral-400">—</span>}
+                          {yieldPct > 0 ? <span className="font-semibold text-cyan-600">{yieldPct.toFixed(2)}%</span> : <span className="font-medium text-[var(--s-neg)]">0%</span>}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {revaluationTotal !== null
-                            ? <span className={revaluationTotal >= 0 ? 'font-medium text-[var(--s-pos)]' : 'font-medium text-[var(--s-neg)]'}>{revaluationTotal.toFixed(2)}%</span>
-                            : <span className="text-neutral-400">—</span>}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {revaluationAnnualized !== null
-                            ? <span className={revaluationAnnualized >= 0 ? 'font-medium text-[var(--s-pos)]' : 'font-medium text-[var(--s-neg)]'}>{revaluationAnnualized.toFixed(2)}%</span>
-                            : <span className="text-neutral-400">—</span>}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
-                          {yieldPct > 0
-                            ? <span className="font-medium text-[var(--s-pos)]">{yieldPct.toFixed(2)}%</span>
-                            : <span className="text-neutral-400">—</span>}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {isRented ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium bg-[var(--s-pos-bg)] text-[var(--s-pos)]">Alquilado</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-medium bg-amber-50 text-amber-700"><TriangleAlert className="h-3.5 w-3.5" />Vacío</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div ref={actionMenuContainerRef} className="relative flex items-center gap-1">
-                            <button
-                              onClick={() => navigate(`/inmuebles/cartera/${propId}`)}
-                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Ver detalle"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)}
-                              className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors"
-                              title="Más opciones"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-
+                            <button onClick={() => navigate(`/inmuebles/cartera/${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver detalle"><Eye className="h-4 w-4" /></button>
+                            <button onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Más opciones"><MoreHorizontal className="h-4 w-4" /></button>
                             {openMenuPropertyId === propId && (
                               <div className="absolute right-0 top-9 z-20 w-48 rounded-md border bg-white shadow-lg py-1">
-                                <button
-                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}/editar`))}
-                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
-                                >
-                                  <Pencil className="h-4 w-4" /> Editar
-                                </button>
-                                <button
-                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/contratos?propertyId=${propId}`))}
-                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
-                                >
-                                  <Users className="h-4 w-4" /> Inquilinos
-                                </button>
-                                <button
-                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/gastos?propertyId=${propId}`))}
-                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
-                                >
-                                  <TrendingDown className="h-4 w-4" /> Gastos
-                                </button>
-                                <button
-                                  onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}?tab=fiscal`))}
-                                  className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
-                                >
-                                  <FileText className="h-4 w-4" /> Fiscal
-                                </button>
+                                <button onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}/editar`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><Pencil className="h-4 w-4" /> Editar</button>
+                                <button onClick={() => handleRowAction(() => navigate(`/inmuebles/contratos?propertyId=${propId}`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><Users className="h-4 w-4" /> Inquilinos</button>
+                                <button onClick={() => handleRowAction(() => navigate(`/inmuebles/gastos?propertyId=${propId}`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><TrendingDown className="h-4 w-4" /> Gastos</button>
+                                <button onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}?tab=fiscal`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><FileText className="h-4 w-4" /> Fiscal</button>
                                 {property.state === 'activo' && (
-                                  <button
-                                    onClick={() => handleRowAction(() => setSaleModalProperty(property))}
-                                    className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"
-                                  >
-                                    <CircleDollarSign className="h-4 w-4" /> Vender inmueble
-                                  </button>
+                                  <button onClick={() => handleRowAction(() => setSaleModalProperty(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Vender inmueble</button>
                                 )}
                                 <div className="my-1 border-t border-[var(--n-200)]" />
-                                <button
-                                  onClick={() => handleRowAction(() => handleDelete(property))}
-                                  className="w-full px-3 py-2 text-left text-sm text-[var(--s-neg)] hover:bg-[var(--s-neg-bg)] inline-flex items-center gap-2"
-                                >
-                                  <Trash2 className="h-4 w-4" /> Eliminar
-                                </button>
+                                <button onClick={() => handleRowAction(() => handleDelete(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--s-neg)] hover:bg-[var(--s-neg-bg)] inline-flex items-center gap-2"><Trash2 className="h-4 w-4" /> Eliminar</button>
                               </div>
                             )}
                           </div>
@@ -469,11 +404,21 @@ const Cartera: React.FC = () => {
                       </tr>
                     );
                   })}
+                  <tr className="bg-neutral-50 font-semibold text-brand-navy">
+                    <td className="px-6 py-3">Total cartera</td>
+                    <td className="px-6 py-3">{formatEuro(totalPortfolioCost)}</td>
+                    <td className="px-6 py-3">{formatEuro(totalPortfolioValue)}</td>
+                    <td className={`px-6 py-3 ${totalLatentGain >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>{formatEuro(totalLatentGain)}</td>
+                    <td className="px-6 py-3">{formatEuro(totalRent)}</td>
+                    <td className="px-6 py-3">{totalPortfolioCost > 0 ? `${((totalRent * 12 / totalPortfolioCost) * 100).toFixed(2)}%` : '—'}</td>
+                    <td className="px-6 py-3">{totalOccupancy.toFixed(1)}%</td>
+                    <td className="px-6 py-3">—</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <PropertySaleModal
