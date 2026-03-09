@@ -1,5 +1,6 @@
 // H-OCR-FIX: Enhanced OCR Service for Google Document AI integration
 import { OCRResult, OCRField } from './db';
+import { callScanChat } from './scanChatService';
 
 // H-OCR-FIX: Document AI entity type mappings for EU Invoice processor
 // Based on Google Document AI EU Invoice processor schema
@@ -166,38 +167,39 @@ const processDocumentAIEntity = (entity: any): OCRField | null => {
 // H-OCR-FIX: Call Document AI Netlify Function
 export const callDocumentAIFunction = async (file: File): Promise<any> => {
   try {
-    // Convert file to bytes for direct upload (as per requirements)
-    const fileBytes = await file.arrayBuffer();
-    
-    // DEV telemetry: Log OCR call details
     if (process.env.NODE_ENV === 'development') {
-      const sizeKB = Math.round(fileBytes.byteLength / 1024);
-      console.log('OCR call → endpoint: /.netlify/functions/ocr-documentai, sizeKB:', sizeKB);
+      const sizeKB = Math.round(file.size / 1024);
+      console.log('OCR call → endpoint: /.netlify/functions/chat (scan), sizeKB:', sizeKB);
     }
-    
-    const response = await fetch('/.netlify/functions/ocr-documentai', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/octet-stream'
-      },
-      body: fileBytes
-    });
-    
-    const responseData = await response.json();
-    
-    if (!response.ok) {
-      // Handle specific error codes as requested
-      if ([403, 404, 429].includes(response.status) || responseData.code === 'CONFIG') {
-        const errorCode = responseData.code || response.status.toString();
-        const errorMessage = responseData.message || responseData.error || `Error HTTP ${response.status}`;
-        // This will be handled by the calling component to show toast/banner
-        throw new Error(`OCR_ERROR_${errorCode}: ${errorMessage}`);
-      }
-      
-      throw new Error(responseData.message || responseData.error || `Error HTTP ${response.status}`);
-    }
-    
-    return responseData;
+
+    const responseData = await callScanChat(file, file.type || 'application/pdf');
+    const extracted = responseData.extraido && typeof responseData.extraido === 'object'
+      ? responseData.extraido
+      : {};
+
+    const confidence = Number(extracted.confianza);
+    const safeConfidence = Number.isFinite(confidence) ? confidence : 0.8;
+
+    const entities = [
+      extracted.proveedor ? { type: 'supplier_name', mentionText: String(extracted.proveedor), confidence: safeConfidence } : null,
+      extracted.importe_total ? { type: 'total_amount', mentionText: String(extracted.importe_total), confidence: safeConfidence } : null,
+      extracted.iva ? { type: 'tax_amount', mentionText: String(extracted.iva), confidence: safeConfidence } : null,
+      extracted.fecha ? { type: 'invoice_date', mentionText: String(extracted.fecha), confidence: safeConfidence } : null,
+      extracted.moneda ? { type: 'currency', mentionText: String(extracted.moneda), confidence: safeConfidence } : null
+    ].filter(Boolean);
+
+    return {
+      success: true,
+      results: [
+        {
+          status: 'success',
+          entities,
+          text: typeof responseData.extraido === 'string'
+            ? responseData.extraido
+            : (extracted.notas ? String(extracted.notas) : JSON.stringify(extracted))
+        }
+      ]
+    };
   } catch (error) {
     console.error('Document AI Function Error:', error);
     throw error;
