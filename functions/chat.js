@@ -74,6 +74,8 @@ async function callAnthropic({ model, system, messages, maxTokens = 800, tempera
 }
 
 exports.handler = async (event) => {
+  console.log('API KEY existe:', !!process.env.ANTHROPIC_API_KEY);
+
   if (event.httpMethod === 'OPTIONS') {
     return jsonResponse(200, { ok: true });
   }
