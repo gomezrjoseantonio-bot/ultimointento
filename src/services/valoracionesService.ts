@@ -4,6 +4,26 @@
 import { initDB } from './db';
 import type { ValoracionHistorica, ValoracionesMensuales, ValoracionInput, ActivoParaActualizar } from '../types/valoraciones';
 
+const toNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const resolveCurrentPropertyValue = (property: any): number => {
+  return toNumber(
+    property?.valor_actual
+    ?? property?.currentValue
+    ?? property?.marketValue
+    ?? property?.estimatedValue
+    ?? property?.valuation
+    ?? property?.compra?.valor_actual
+    ?? property?.acquisitionCosts?.currentValue
+    ?? property?.acquisitionCosts?.price
+    ?? property?.compra?.precio_compra
+    ?? 0
+  );
+};
+
 export const valoracionesService = {
   // ── Activos ──────────────────────────────────────────────────────────────
 
@@ -20,7 +40,7 @@ export const valoracionesService = {
         id: prop.id as number,
         nombre: prop.alias || prop.address,
         tipo: 'inmueble',
-        ultima_valoracion: ultima?.valor,
+        ultima_valoracion: ultima?.valor ?? resolveCurrentPropertyValue(prop),
         fecha_ultima_valoracion: ultima?.fecha_valoracion,
       });
     }
@@ -63,6 +83,22 @@ export const valoracionesService = {
   },
 
   /** Obtener evolución temporal de un activo */
+
+
+  /** Obtener última valoración hasta un mes objetivo (inclusive, YYYY-MM) */
+  async getUltimaValoracionHastaMes(
+    tipo: 'inmueble' | 'inversion',
+    id: number,
+    fechaMes: string
+  ): Promise<ValoracionHistorica | undefined> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const filtered = all
+      .filter((v) => v.tipo_activo === tipo && v.activo_id === id && String(v.fecha_valoracion).slice(0, 7) <= fechaMes)
+      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
+    return filtered[0];
+  },
+
   async getEvolucionActivo(
     tipo: 'inmueble' | 'inversion',
     id: number

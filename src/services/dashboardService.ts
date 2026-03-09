@@ -554,8 +554,17 @@ class DashboardService {
           .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
 
         const ultimaValoracion = propertyValuations[0]?.valor;
-        const fallbackCompra = prop.acquisitionCosts?.price ?? prop.compra?.precio_compra ?? 0;
-        return sum + toNumber(ultimaValoracion ?? fallbackCompra);
+        const fallbackValorActual = prop.valor_actual
+          ?? prop.currentValue
+          ?? prop.marketValue
+          ?? prop.estimatedValue
+          ?? prop.valuation
+          ?? prop.compra?.valor_actual
+          ?? prop.acquisitionCosts?.currentValue
+          ?? prop.acquisitionCosts?.price
+          ?? prop.compra?.precio_compra
+          ?? 0;
+        return sum + toNumber(ultimaValoracion ?? fallbackValorActual);
       }, 0);
 
       // Cuentas: sum active account balances.
@@ -714,6 +723,67 @@ class DashboardService {
 
       const getImporte = (item: any): number => toNumber(item?.importe ?? item?.total ?? item?.amount);
 
+      const isActiveContractForMonth = (contract: any, month: number, year: number): boolean => {
+        const status = String(contract?.estadoContrato ?? contract?.estado ?? contract?.status ?? '').toLowerCase();
+        if (['finalizado', 'terminated', 'rescindido', 'cancelado', 'cancelled'].includes(status)) {
+          return false;
+        }
+
+        const monthStart = new Date(year, month, 1);
+        const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+        const startRaw = contract?.fechaInicio ?? contract?.fecha_inicio ?? contract?.startDate;
+        const endRaw = contract?.fechaFin ?? contract?.fecha_fin ?? contract?.endDate;
+
+        const startDate = startRaw ? new Date(startRaw) : null;
+        const endDate = endRaw ? new Date(endRaw) : null;
+
+        if (startDate && Number.isNaN(startDate.getTime())) return false;
+        if (endDate && Number.isNaN(endDate.getTime())) return false;
+
+        if (startDate && startDate > monthEnd) return false;
+        if (endDate && endDate < monthStart) return false;
+
+        return true;
+      };
+
+      const getContractMonthlyRent = (contract: any): number =>
+        toNumber(contract?.rentaMensual ?? contract?.renta_mensual ?? contract?.monthlyRent ?? contract?.importeMensual);
+
+      const isPaidRentPayment = (payment: any): boolean => {
+        const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+        return [
+          'pagada',
+          'pagado',
+          'paid',
+          'cobrada',
+          'cobrado',
+          'confirmada',
+          'confirmado',
+          'confirmed',
+          'ejecutada',
+          'ejecutado',
+          'executed',
+          'parcial',
+          'partial',
+        ].includes(status);
+      };
+
+      const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
+        const paidPayments = rentPaymentsData
+          .filter((payment: any) => inMonth(payment, month, year) && isPaidRentPayment(payment));
+
+        // Important: if there are paid records, always trust real collections,
+        // even when net amount is 0 or negative (refunds/ajustes).
+        if (paidPayments.length > 0) {
+          return paidPayments.reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+        }
+
+        return contractsData
+          .filter((contract: any) => isActiveContractForMonth(contract, month, year))
+          .reduce((sum: number, contract: any) => sum + getContractMonthlyRent(contract), 0);
+      };
+
       const isPersonalIngreso = (ing: any): boolean => ing?.esPersonal === true || ing?.destino === 'personal';
       const isPersonalGasto = (gasto: any): boolean => gasto?.esPersonal === true || gasto?.destino === 'personal';
       const isInmuebleExpense = (expense: any): boolean => expense?.propertyId != null || expense?.destino === 'inmueble_id' || expense?.destino_id != null;
@@ -727,6 +797,7 @@ class DashboardService {
       const gastos = await db.getAll('gastos');
       const expenses = await db.getAll('expenses');
       const rentPayments = await db.getAll('rentPayments');
+      const contracts = await db.getAll('contracts');
       const inversiones = await db.getAll('inversiones');
 
       // TRABAJO (salario/otros ingresos personales - gastos personales + autónomo)
@@ -756,9 +827,7 @@ class DashboardService {
       const trabajoMensual = trabajoBase + autonomoNetoMensual;
 
       // INMUEBLES (rentas cobradas - gastos - cuotas de préstamos de inmueble)
-      const rentasMes = rentPayments
-        .filter((payment: any) => inMonth(payment, currentMonth, currentYear) && payment.estado === 'pagada')
-        .reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+      const rentasMes = getRentalIncomeForMonth(currentMonth, currentYear, rentPayments, contracts);
 
       const gastosInmueblesMes = [
         ...expenses.filter((expense: any) => inMonth(expense, currentMonth, currentYear) && isInmuebleExpense(expense)),
@@ -777,7 +846,6 @@ class DashboardService {
         const status = String(p?.state ?? p?.status ?? p?.estado ?? '').toLowerCase();
         return status === '' || status === 'activo' || status === 'active';
       });
-      const contracts = await db.getAll('contracts');
       const activeContracts = contracts.filter((c: any) => {
         const status = String(c?.estado ?? c?.estadoContrato ?? c?.status ?? '').toLowerCase();
         return status === 'activo' || status === 'active';
@@ -854,9 +922,7 @@ class DashboardService {
       const trabajoTendencia: 'up' | 'down' | 'stable' = trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
 
       const cashflowLast3 = last3Months.map(({ month, year }) => {
-        const rentas = rentPayments
-          .filter((payment: any) => inMonth(payment, month, year) && payment.estado === 'pagada')
-          .reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+        const rentas = getRentalIncomeForMonth(month, year, rentPayments, contracts);
         const gastosMes = [
           ...expenses.filter((expense: any) => inMonth(expense, month, year) && isInmuebleExpense(expense)),
           ...gastos.filter((gasto: any) => inMonth(gasto, month, year) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
