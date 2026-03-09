@@ -37,8 +37,11 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { inversionesService } from '../../services/inversionesService';
-import { PosicionInversion } from '../../types/inversiones';
+import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
+import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
+import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
+import { descargarPlantillaImportacionAportaciones, importarAportacionesHistoricas } from '../../services/inversionesAportacionesImportService';
 import toast from 'react-hot-toast';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -286,11 +289,13 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
 
 function TabCartera({
   onSelectPosition,
+  onViewAportaciones,
   onNewPosition,
   onEditPosition,
   positions,
 }: {
   onSelectPosition: (id: string) => void;
+  onViewAportaciones: (id: string) => void;
   onNewPosition: () => void;
   onEditPosition: (id: string) => void;
   positions: PositionRow[];
@@ -430,14 +435,14 @@ function TabCartera({
                 <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{p.peso}%</td>
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                    <button onClick={e => { e.stopPropagation(); onSelectPosition(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
+                    <button onClick={e => { e.stopPropagation(); onViewAportaciones(p.id); }} title="Ver historial aportaciones" aria-label={`Ver historial de ${p.alias}`} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        onEditPosition(p.id);
+                        onViewAportaciones(p.id);
                       }}
-                      title="Editar posición"
-                      aria-label={`Editar ${p.alias}`}
+                      title="Gestionar aportaciones"
+                      aria-label={`Gestionar aportaciones de ${p.alias}`}
                       style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
                     ><MoreHorizontal size={14} /></button>
                   </div>
@@ -640,7 +645,11 @@ export default function InversionesAnalisis() {
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
+  const [showAportacionForm, setShowAportacionForm] = useState(false);
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
+  const [detailPosicion, setDetailPosicion] = useState<PosicionInversion | undefined>();
+  const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
 
   const mapPosicionesToRows = (data: PosicionInversion[]) => {
     const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
@@ -716,6 +725,21 @@ export default function InversionesAnalisis() {
     }
   };
 
+  const handleViewAportaciones = async (id: string) => {
+    try {
+      const posicion = await inversionesService.getPosicion(Number(id));
+      if (!posicion) {
+        toast.error('No se ha encontrado la posición');
+        return;
+      }
+      setDetailPosicion(posicion);
+      setShowDetail(true);
+    } catch (error) {
+      console.error('Error cargando detalle de posición:', error);
+      toast.error('Error al abrir el detalle de aportaciones');
+    }
+  };
+
   const handleSavePosition = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
     try {
       if (editingPosicion) {
@@ -732,6 +756,50 @@ export default function InversionesAnalisis() {
       console.error('Error guardando posición:', error);
       toast.error('Error al guardar la posición');
     }
+  };
+
+  const refreshDetailPosicion = async () => {
+    if (!detailPosicion) return;
+    const updated = await inversionesService.getPosicion(detailPosicion.id);
+    setDetailPosicion(updated);
+  };
+
+  const handleSaveAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
+    if (!detailPosicion) return;
+    try {
+      if (editingAportacion) {
+        await inversionesService.updateAportacion(detailPosicion.id, editingAportacion.id, aportacion);
+        toast.success('Movimiento actualizado correctamente');
+      } else {
+        await inversionesService.addAportacion(detailPosicion.id, aportacion);
+        toast.success('Aportación añadida correctamente');
+      }
+      setShowAportacionForm(false);
+      setEditingAportacion(undefined);
+      await refreshPosiciones();
+      await refreshDetailPosicion();
+    } catch (error) {
+      console.error('Error guardando aportación:', error);
+      toast.error('Error al guardar el movimiento');
+    }
+  };
+
+  const handleDeleteAportacion = async (aportacionId: number) => {
+    if (!detailPosicion) return;
+    await inversionesService.deleteAportacion(detailPosicion.id, aportacionId);
+    await refreshPosiciones();
+    await refreshDetailPosicion();
+  };
+
+  const handleImportAportaciones = async (file: File) => {
+    if (!detailPosicion) return;
+    const result = await importarAportacionesHistoricas(file, detailPosicion);
+    await refreshPosiciones();
+    await refreshDetailPosicion();
+
+    if (result.imported > 0) toast.success(`Importadas ${result.imported} aportaciones históricas.`);
+    if (result.errors.length > 0) toast(result.errors[0], { icon: '⚠️' });
+    if (result.imported === 0 && result.errors.length === 0) toast('No se detectaron filas para importar.', { icon: 'ℹ️' });
   };
 
   return (
@@ -767,6 +835,7 @@ export default function InversionesAnalisis() {
         {activeTab === 'cartera'      && (
           <TabCartera
             onSelectPosition={handleSelectPosition}
+            onViewAportaciones={handleViewAportaciones}
             onNewPosition={handleNewPosition}
             onEditPosition={handleEditPosition}
             positions={positions}
@@ -783,6 +852,51 @@ export default function InversionesAnalisis() {
           onClose={() => {
             setShowForm(false);
             setEditingPosicion(undefined);
+          }}
+        />
+      )}
+
+      {showDetail && detailPosicion && (
+        <PosicionDetailModal
+          posicion={detailPosicion}
+          onClose={() => {
+            setShowDetail(false);
+            setDetailPosicion(undefined);
+            setEditingAportacion(undefined);
+          }}
+          onAddAportacion={() => {
+            setEditingAportacion(undefined);
+            setShowAportacionForm(true);
+          }}
+          onEditAportacion={(aportacionId) => {
+            const aportacion = detailPosicion.aportaciones.find((a) => a.id === aportacionId);
+            if (!aportacion) return;
+            setEditingAportacion(aportacion);
+            setShowAportacionForm(true);
+          }}
+          onDeleteAportacion={handleDeleteAportacion}
+          onImportAportaciones={handleImportAportaciones}
+          onDownloadPlantillaImportacion={descargarPlantillaImportacionAportaciones}
+          onActualizarValor={async () => {
+            toast('Actualiza el valor desde editar posición por ahora.', { icon: 'ℹ️' });
+          }}
+          onEditarPosicion={() => {
+            setShowDetail(false);
+            setEditingPosicion(detailPosicion);
+            setShowForm(true);
+          }}
+        />
+      )}
+
+      {showAportacionForm && detailPosicion && (
+        <AportacionForm
+          posicionNombre={detailPosicion.nombre}
+          posicion={detailPosicion}
+          initialAportacion={editingAportacion}
+          onSave={handleSaveAportacion}
+          onClose={() => {
+            setShowAportacionForm(false);
+            setEditingAportacion(undefined);
           }}
         />
       )}
