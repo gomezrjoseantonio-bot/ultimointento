@@ -2,7 +2,7 @@
 // Página de análisis de portfolio de inversiones
 // Tabs: Resumen · Cartera · Rendimientos · Individual
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   Table2,
@@ -39,6 +39,9 @@ import {
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion } from '../../types/inversiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
+import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
+import ActualizarValorModal from '../../modules/horizon/inversiones/components/ActualizarValorModal';
+import { importarAportacionesHistoricas } from '../../services/inversionesAportacionesImportService';
 import toast from 'react-hot-toast';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -288,16 +291,25 @@ function TabCartera({
   onSelectPosition,
   onNewPosition,
   onEditPosition,
+  onAddAportacion,
+  onImportAportacionesHistoricas,
+  onActualizarValor,
+  onImportarValorHistorico,
   positions,
 }: {
   onSelectPosition: (id: string) => void;
   onNewPosition: () => void;
   onEditPosition: (id: string) => void;
+  onAddAportacion: (id: string) => void;
+  onImportAportacionesHistoricas: (id: string) => void;
+  onActualizarValor: (id: string) => void;
+  onImportarValorHistorico: () => void;
   positions: PositionRow[];
 }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -425,16 +437,65 @@ function TabCartera({
                 <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{p.peso}%</td>
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                    <button onClick={e => { e.stopPropagation(); onSelectPosition(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        onEditPosition(p.id);
-                      }}
-                      title="Editar posición"
-                      aria-label={`Editar ${p.alias}`}
-                      style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
-                    ><MoreHorizontal size={14} /></button>
+                    <button onClick={e => { e.stopPropagation(); onSelectPosition(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle" aria-label={`Ver detalle ${p.alias}`}><Eye size={14} /></button>
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setOpenMenuId((current) => current === p.id ? null : p.id);
+                        }}
+                        title="Más acciones"
+                        aria-label={`Más acciones de ${p.alias}`}
+                        style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                      ><MoreHorizontal size={14} /></button>
+
+                      {openMenuId === p.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            position: 'absolute',
+                            top: 'calc(100% + 6px)',
+                            right: 0,
+                            minWidth: 240,
+                            background: '#fff',
+                            border: `1px solid ${C.n200}`,
+                            borderRadius: 8,
+                            boxShadow: '0 8px 24px rgba(4,44,94,.12)',
+                            zIndex: 30,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {[
+                            { label: 'Editar posición', action: () => onEditPosition(p.id) },
+                            { label: 'Añadir aportación', action: () => onAddAportacion(p.id) },
+                            { label: 'Importar aportaciones históricas', action: () => onImportAportacionesHistoricas(p.id) },
+                            { label: 'Actualizar valor', action: () => onActualizarValor(p.id) },
+                            { label: 'Importar valor histórico', action: () => onImportarValorHistorico() },
+                          ].map((item) => (
+                            <button
+                              key={item.label}
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                item.action();
+                              }}
+                              style={{
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '0.55rem 0.75rem',
+                                border: 'none',
+                                background: 'white',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                color: C.n700,
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -635,7 +696,10 @@ export default function InversionesAnalisis() {
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [positions, setPositions] = useState<PositionRow[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [showAportacionForm, setShowAportacionForm] = useState(false);
+  const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
+  const aportacionesInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadPosiciones = async () => {
@@ -674,6 +738,27 @@ export default function InversionesAnalisis() {
   };
 
 
+  const refreshPosiciones = async () => {
+    const refreshed = await inversionesService.getPosiciones();
+    setPositions(mapPosicionesToRows(refreshed));
+  };
+
+  const loadPosicionForAction = async (id: string): Promise<PosicionInversion | null> => {
+    try {
+      const posicion = await inversionesService.getPosicion(Number(id));
+      if (!posicion) {
+        toast.error('No se ha encontrado la posición');
+        return null;
+      }
+      setEditingPosicion(posicion);
+      return posicion;
+    } catch (error) {
+      console.error('Error cargando la posición:', error);
+      toast.error('Error al cargar la posición');
+      return null;
+    }
+  };
+
   const mapPosicionesToRows = (data: PosicionInversion[]) => {
     const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
     const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
@@ -709,18 +794,95 @@ export default function InversionesAnalisis() {
   };
 
   const handleEditPosition = async (id: string) => {
+    const posicion = await loadPosicionForAction(id);
+    if (!posicion) return;
+    setShowForm(true);
+  };
+
+  const handleAddAportacion = async (id: string) => {
+    const posicion = await loadPosicionForAction(id);
+    if (!posicion) return;
+    setShowAportacionForm(true);
+  };
+
+  const handleActualizarValorDesdeMenu = async (id: string) => {
+    const posicion = await loadPosicionForAction(id);
+    if (!posicion) return;
+    setShowActualizarValor(true);
+  };
+
+  const handleImportAportacionesDesdeMenu = async (id: string) => {
+    const posicion = await loadPosicionForAction(id);
+    if (!posicion) return;
+    aportacionesInputRef.current?.click();
+  };
+
+  const handleImportAportacionesHistoricas = async (file: File) => {
+    if (!editingPosicion) return;
     try {
-      const posicion = await inversionesService.getPosicion(Number(id));
-      if (!posicion) {
-        toast.error('No se ha encontrado la posición para editar');
-        return;
+      const result = await importarAportacionesHistoricas(file, editingPosicion);
+      await refreshPosiciones();
+      const updated = await inversionesService.getPosicion(editingPosicion.id);
+      if (updated) setEditingPosicion(updated);
+
+      if (result.imported > 0) {
+        toast.success(`Importadas ${result.imported} aportaciones históricas.`);
+      } else {
+        toast('No se detectaron filas para importar.', { icon: 'ℹ️' });
       }
-      setEditingPosicion(posicion);
-      setShowForm(true);
+
+      if (result.errors.length > 0) {
+        toast(result.errors[0], { icon: '⚠️' });
+      }
     } catch (error) {
-      console.error('Error cargando la posición para editar:', error);
-      toast.error('Error al abrir la edición de la posición');
+      console.error('Error importing aportaciones:', error);
+      toast.error('Error al importar aportaciones históricas');
     }
+  };
+
+  const handleAportacionFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleImportAportacionesHistoricas(file);
+    event.target.value = '';
+  };
+
+  const handleGuardarAportacion = async (aportacion: any) => {
+    if (!editingPosicion) return;
+    try {
+      await inversionesService.addAportacion(editingPosicion.id, aportacion);
+      toast.success('Aportación añadida correctamente');
+      setShowAportacionForm(false);
+      await refreshPosiciones();
+      const updated = await inversionesService.getPosicion(editingPosicion.id);
+      if (updated) setEditingPosicion(updated);
+    } catch (error) {
+      console.error('Error adding aportacion:', error);
+      toast.error('Error al añadir la aportación');
+    }
+  };
+
+  const handleGuardarValor = async (nuevoValor: number, fechaValoracion: string) => {
+    if (!editingPosicion) return;
+    try {
+      await inversionesService.updatePosicion(editingPosicion.id, {
+        valor_actual: nuevoValor,
+        fecha_valoracion: fechaValoracion,
+      });
+      toast.success('Valor actualizado correctamente');
+      setShowActualizarValor(false);
+      await refreshPosiciones();
+      const updated = await inversionesService.getPosicion(editingPosicion.id);
+      if (updated) setEditingPosicion(updated);
+    } catch (error) {
+      console.error('Error updating valor:', error);
+      toast.error('Error al actualizar el valor');
+    }
+  };
+
+  const handleImportarValorHistorico = () => {
+    toast('Para importar valor histórico usa Cuenta > Migración > Valoraciones.', { icon: 'ℹ️' });
+    window.location.href = '/account/migracion';
   };
 
   const handleSavePosition = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
@@ -735,8 +897,7 @@ export default function InversionesAnalisis() {
       setShowForm(false);
       setEditingPosicion(undefined);
 
-      const refreshed = await inversionesService.getPosiciones();
-      setPositions(mapPosicionesToRows(refreshed));
+      await refreshPosiciones();
     } catch (error) {
       console.error('Error guardando posición:', error);
       toast.error('Error al guardar la posición');
@@ -778,6 +939,10 @@ export default function InversionesAnalisis() {
             onSelectPosition={handleSelectPosition}
             onNewPosition={handleNewPosition}
             onEditPosition={handleEditPosition}
+            onAddAportacion={handleAddAportacion}
+            onImportAportacionesHistoricas={handleImportAportacionesDesdeMenu}
+            onActualizarValor={handleActualizarValorDesdeMenu}
+            onImportarValorHistorico={handleImportarValorHistorico}
             positions={positions}
           />
         )}
@@ -793,6 +958,32 @@ export default function InversionesAnalisis() {
             setShowForm(false);
             setEditingPosicion(undefined);
           }}
+        />
+      )}
+
+      <input
+        ref={aportacionesInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleAportacionFileSelected}
+        style={{ display: 'none' }}
+      />
+
+      {showAportacionForm && editingPosicion && (
+        <AportacionForm
+          posicionNombre={editingPosicion.nombre}
+          posicion={editingPosicion}
+          onSave={handleGuardarAportacion}
+          onClose={() => setShowAportacionForm(false)}
+        />
+      )}
+
+      {showActualizarValor && editingPosicion && (
+        <ActualizarValorModal
+          posicionNombre={editingPosicion.nombre}
+          valorActual={editingPosicion.valor_actual}
+          onSave={handleGuardarValor}
+          onClose={() => setShowActualizarValor(false)}
         />
       )}
     </div>
