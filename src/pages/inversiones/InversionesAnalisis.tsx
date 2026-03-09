@@ -37,9 +37,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { inversionesService } from '../../services/inversionesService';
-import { initDB } from '../../services/db';
 import { PosicionInversion } from '../../types/inversiones';
-import type { ValoracionHistorica } from '../../types/valoraciones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
 import ActualizarValorModal from '../../modules/horizon/inversiones/components/ActualizarValorModal';
@@ -131,19 +129,6 @@ const buildIndividualEvolucion = (position: PositionRow) => {
 
   hist[hist.length - 1].proy = position.valor;
   return [...hist, ...proy];
-};
-
-const getLatestInvestmentValuationMap = (valoraciones: ValoracionHistorica[]) => {
-  const latest = new Map<number, number>();
-  const sorted = valoraciones
-    .filter((item) => item.tipo_activo === 'inversion')
-    .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
-
-  sorted.forEach((item) => {
-    latest.set(item.activo_id, item.valor);
-  });
-
-  return latest;
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -719,10 +704,7 @@ export default function InversionesAnalisis() {
   useEffect(() => {
     const loadPosiciones = async () => {
       try {
-        const [data, dbValoraciones] = await Promise.all([
-          inversionesService.getPosiciones(),
-          initDB().then((db) => db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>),
-        ]);
+        const data = await inversionesService.getPosiciones();
 
         if (!data.length) {
           setPositions([]);
