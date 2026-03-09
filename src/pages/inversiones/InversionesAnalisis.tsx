@@ -298,8 +298,6 @@ function TabCartera({
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return positions
