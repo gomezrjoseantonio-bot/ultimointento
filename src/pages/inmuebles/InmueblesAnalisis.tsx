@@ -38,6 +38,7 @@ import {
 } from 'recharts';
 import { Contract, Expense, initDB, Property } from '../../services/db';
 import type { Prestamo } from '../../types/prestamos';
+import type { ValoracionHistorica } from '../../types/valoraciones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -94,10 +95,29 @@ const getAcquisitionCost = (property: Property): number => {
   );
 };
 
-const mapToSnapshot = (property: Property, contracts: Contract[], expenses: Expense[], loans: Prestamo[]): PropertySnapshot => {
+const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmueble' | 'inversion') => {
+  const latest = new Map<number, number>();
+  const sorted = valoraciones
+    .filter((item) => item.tipo_activo === tipo)
+    .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
+
+  sorted.forEach((item) => {
+    latest.set(item.activo_id, item.valor);
+  });
+
+  return latest;
+};
+
+const mapToSnapshot = (
+  property: Property,
+  contracts: Contract[],
+  expenses: Expense[],
+  loans: Prestamo[],
+  valorActual: number,
+): PropertySnapshot => {
   const propertyId = property.id!;
   const coste = getAcquisitionCost(property);
-  const valor = property.acquisitionCosts.price;
+  const valor = valorActual;
 
   const propertyContracts = contracts.filter((contract) => contract.inmuebleId === propertyId && contract.estadoContrato === 'activo');
   const ingresosMes = propertyContracts.reduce((sum, contract) => sum + (contract.rentaMensual || 0), 0);
@@ -639,16 +659,26 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbValoraciones] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('expenses') as Promise<Expense[]>,
+          db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
         ]);
 
         if (!mounted) return;
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
-        const snapshots = active.map((property) => mapToSnapshot(property, dbContracts, dbExpenses, dbLoans));
+        const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
+        const snapshots = active.map((property) =>
+          mapToSnapshot(
+            property,
+            dbContracts,
+            dbExpenses,
+            dbLoans,
+            latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
+          )
+        );
         setProperties(snapshots);
         if (!selectedPropertyId && snapshots.length) {
           setSelectedPropertyId(snapshots[0].id);
