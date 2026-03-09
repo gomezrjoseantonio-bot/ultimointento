@@ -2,7 +2,7 @@
 // Página de análisis de portfolio de inversiones
 // Tabs: Resumen · Cartera · Rendimientos · Individual
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   LayoutDashboard,
   Table2,
@@ -38,6 +38,8 @@ import {
 } from 'recharts';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion } from '../../types/inversiones';
+import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
+import toast from 'react-hot-toast';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -282,7 +284,17 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
 
 // ─── Tab: Cartera ─────────────────────────────────────────────────────────────
 
-function TabCartera({ onSelectPosition, positions }: { onSelectPosition: (id: string) => void; positions: PositionRow[] }) {
+function TabCartera({
+  onSelectPosition,
+  onNewPosition,
+  onEditPosition,
+  positions,
+}: {
+  onSelectPosition: (id: string) => void;
+  onNewPosition: () => void;
+  onEditPosition: (id: string) => void;
+  positions: PositionRow[];
+}) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
@@ -313,13 +325,22 @@ function TabCartera({ onSelectPosition, positions }: { onSelectPosition: (id: st
           <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
             <SlidersHorizontal size={13} /> Filtros
           </button>
-          <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}>
+          <button
+            onClick={onNewPosition}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}
+          >
             <Plus size={13} /> Nueva posición
           </button>
         </div>
       </div>
 
       <div style={{ padding: '8px 20px', fontSize: 11, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>{filtered.length} posiciones</div>
+
+      {filtered.length === 0 && (
+        <div style={{ padding: 24, textAlign: 'center', color: C.n500, borderBottom: `1px solid ${C.n100}` }}>
+          No hay posiciones para mostrar.
+        </div>
+      )}
 
       {/* Pos cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, padding: 20 }}>
@@ -411,7 +432,15 @@ function TabCartera({ onSelectPosition, positions }: { onSelectPosition: (id: st
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                     <button onClick={e => { e.stopPropagation(); onSelectPosition(p.id); }} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
-                    <button onClick={e => e.stopPropagation()} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><MoreHorizontal size={14} /></button>
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        onEditPosition(p.id);
+                      }}
+                      title="Editar posición"
+                      aria-label={`Editar ${p.alias}`}
+                      style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                    ><MoreHorizontal size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -608,65 +637,102 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function InversionesAnalisis() {
-  const [activeTab, setActiveTab] = useState<Tab>('resumen');
+  const [activeTab, setActiveTab] = useState<Tab>('cartera');
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [positions, setPositions] = useState<PositionRow[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
+
+  const mapPosicionesToRows = (data: PosicionInversion[]) => {
+    const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
+    if (!data.length) return [] as PositionRow[];
+
+    const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
+    const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
+      const rentabilidadAnual = Number((p as any).rendimiento || 0);
+      const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
+      return {
+        id: String(p.id),
+        alias: p.nombre,
+        broker: p.entidad,
+        tipo: p.tipo,
+        aportado: p.total_aportado,
+        valor: p.valor_actual,
+        rentPct: p.rentabilidad_porcentaje,
+        rentAnual: Number.isFinite(rentabilidadAnual) ? rentabilidadAnual : 0,
+        peso: Number(peso.toFixed(1)),
+        color: colorPalette[index % colorPalette.length],
+        tag: null,
+      };
+    });
+
+    const bestIdx = mapped.reduce((best, item, index, arr) => (item.rentPct > arr[best].rentPct ? index : best), 0);
+    mapped[bestIdx] = { ...mapped[bestIdx], tag: 'Top performer' };
+    return mapped;
+  };
+
+  const refreshPosiciones = useCallback(async () => {
+    const data = await inversionesService.getPosiciones();
+    const mapped = mapPosicionesToRows(data);
+    setPositions(mapped);
+    if (mapped.length && !mapped.some((p) => p.id === selectedPositionId)) {
+      setSelectedPositionId(mapped[0].id);
+    }
+  }, [selectedPositionId]);
 
   useEffect(() => {
-    const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
     const loadPosiciones = async () => {
       try {
-        const data = await inversionesService.getPosiciones();
-        if (!data.length) {
-          setPositions([]);
-          setSelectedPositionId('');
-          return;
-        }
-
-        const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
-        const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
-          const rentabilidadAnual = Number((p as any).rendimiento || 0);
-          const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
-          return {
-            id: String(p.id),
-            alias: p.nombre,
-            broker: p.entidad,
-            tipo: p.tipo,
-            aportado: p.total_aportado,
-            valor: p.valor_actual,
-            rentPct: p.rentabilidad_porcentaje,
-            rentAnual: Number.isFinite(rentabilidadAnual) ? rentabilidadAnual : 0,
-            peso: Number(peso.toFixed(1)),
-            color: colorPalette[index % colorPalette.length],
-            tag: null,
-          };
-        });
-
-        const bestIdx = mapped.reduce((best, item, index, arr) => (item.rentPct > arr[best].rentPct ? index : best), 0);
-        mapped[bestIdx] = { ...mapped[bestIdx], tag: 'Top performer' };
-        setPositions(mapped);
-        if (!mapped.some((p) => p.id === selectedPositionId)) {
-          setSelectedPositionId(mapped[0].id);
-        }
+        await refreshPosiciones();
       } catch (error) {
         console.error('Error cargando posiciones de inversiones:', error);
       }
     };
 
     loadPosiciones();
-  }, [selectedPositionId]);
-
-  if (!positions.length) {
-    return (
-      <div style={{ minHeight: '100vh', background: C.n50, display: 'grid', placeItems: 'center' }}>
-        <p style={{ color: C.n500 }}>No hay posiciones de inversión activas en tus datos.</p>
-      </div>
-    );
-  }
+  }, [refreshPosiciones]);
 
   const handleSelectPosition = (id: string) => {
     setSelectedPositionId(id);
     setActiveTab('individual');
+  };
+
+  const handleNewPosition = () => {
+    setEditingPosicion(undefined);
+    setShowForm(true);
+  };
+
+  const handleEditPosition = async (id: string) => {
+    try {
+      const posicion = await inversionesService.getPosicion(Number(id));
+      if (!posicion) {
+        toast.error('No se ha encontrado la posición para editar');
+        return;
+      }
+      setEditingPosicion(posicion);
+      setShowForm(true);
+    } catch (error) {
+      console.error('Error cargando la posición para editar:', error);
+      toast.error('Error al abrir la edición');
+    }
+  };
+
+  const handleSavePosition = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
+    try {
+      if (editingPosicion) {
+        await inversionesService.updatePosicion(editingPosicion.id, data);
+        toast.success('Posición actualizada correctamente');
+      } else {
+        await inversionesService.createPosicion(data as Omit<PosicionInversion, 'id' | 'created_at' | 'updated_at'> & { importe_inicial?: number });
+        toast.success('Posición creada correctamente');
+      }
+      setShowForm(false);
+      setEditingPosicion(undefined);
+      await refreshPosiciones();
+    } catch (error) {
+      console.error('Error guardando posición:', error);
+      toast.error('Error al guardar la posición');
+    }
   };
 
   return (
@@ -699,10 +765,28 @@ export default function InversionesAnalisis() {
 
         {/* Tab content */}
         {activeTab === 'resumen'      && <TabResumen positions={positions} />}
-        {activeTab === 'cartera'      && <TabCartera onSelectPosition={handleSelectPosition} positions={positions} />}
+        {activeTab === 'cartera'      && (
+          <TabCartera
+            onSelectPosition={handleSelectPosition}
+            onNewPosition={handleNewPosition}
+            onEditPosition={handleEditPosition}
+            positions={positions}
+          />
+        )}
         {activeTab === 'rendimientos' && <TabRendimientos positions={positions} />}
         {activeTab === 'individual'   && <TabIndividual selectedId={selectedPositionId} positions={positions} />}
       </div>
+
+      {showForm && (
+        <PosicionForm
+          posicion={editingPosicion}
+          onSave={handleSavePosition}
+          onClose={() => {
+            setShowForm(false);
+            setEditingPosicion(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }
