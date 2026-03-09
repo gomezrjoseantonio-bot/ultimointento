@@ -20,18 +20,17 @@ export interface CopilotReply {
 
 export const askCopilot = async (
   message: string,
-  history: CopilotMessage[],
-  context?: CopilotContext
+  _history: CopilotMessage[],
+  _context?: CopilotContext
 ): Promise<CopilotReply> => {
-  const response = await fetch('/.netlify/functions/copilot-chat', {
+  const response = await fetch('/.netlify/functions/chat', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      message,
-      history,
-      context,
+      tipo: 'chat',
+      mensaje: message,
     }),
   });
 
@@ -42,7 +41,7 @@ export const askCopilot = async (
   }
 
   return {
-    answer: data.answer,
+    answer: data.respuesta,
     model: data.model,
   };
 };

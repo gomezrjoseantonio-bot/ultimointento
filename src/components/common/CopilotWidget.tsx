@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Bot } from 'lucide-react';
 import { askCopilot, CopilotMessage } from '../../services/copilotService';
 
 const initialMessage: CopilotMessage = {
   role: 'assistant',
   content:
-    '¡Hola! Soy tu Copiloto Atlas 😊. Puedo ayudarte con recomendaciones financieras prácticas basadas en tus objetivos.',
+    '¡Hola! Soy tu Copiloto Atlas. Puedo ayudarte con recomendaciones financieras prácticas basadas en tus objetivos.',
 };
 
 const CopilotWidget: React.FC = () => {
@@ -102,7 +103,11 @@ const CopilotWidget: React.FC = () => {
             </div>
             <button
               className="text-white text-sm"
-              onClick={() => setOpen(false)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setOpen(false);
+              }}
               aria-label="Cerrar copiloto"
             >
               Cerrar
@@ -160,11 +165,12 @@ const CopilotWidget: React.FC = () => {
             }
             setOpen(true);
           }}
-          className="px-4 py-3 rounded-full shadow-lg text-white font-medium cursor-move select-none"
+          className="px-4 py-3 rounded-full shadow-lg text-white font-medium cursor-move select-none inline-flex items-center gap-2"
           style={{ backgroundColor: 'var(--hz-primary)' }}
           aria-label="Abrir Atlas Copilot"
         >
-          Copilot 😊
+          <Bot size={18} aria-hidden="true" />
+          <span>Copilot</span>
         </button>
       )}
     </div>
