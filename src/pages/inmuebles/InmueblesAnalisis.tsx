@@ -415,6 +415,7 @@ function TabCartera({
   const totalLatentGain = totalValue - totalCost;
   const totalDebt = filtered.reduce((sum, p) => sum + p.deudaPendiente, 0);
   const totalMortgage = filtered.reduce((sum, p) => sum + p.cuotaHipotecaMes, 0);
+  const totalExpenses = filtered.reduce((sum, p) => sum + p.gastosMes, 0);
   const totalRent = filtered.reduce((sum, p) => sum + Math.max(0, p.cashflowMes + p.gastosMes), 0);
   const totalNetCf = filtered.reduce((sum, p) => sum + (p.cashflowMes - p.cuotaHipotecaMes), 0);
   const equity = Math.max(0, totalValue - totalDebt);
@@ -501,7 +502,18 @@ function TabCartera({
 
         <div style={{ padding: '10px 20px', fontSize: 13, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>{filtered.length} inmuebles</div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '21%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '12%' }} />
+          </colgroup>
           <thead>
             <tr>
               {[
@@ -518,7 +530,6 @@ function TabCartera({
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{col.label}<SortIcon k={col.key as any} /></span>
                 </th>
               ))}
-              <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: 'center' }}>Estado</th>
               <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: 'center' }}>Acciones</th>
             </tr>
           </thead>
@@ -526,19 +537,19 @@ function TabCartera({
             {rows.map((p, i) => (
               <tr key={p.id} onClick={() => onSelectProperty(p.id)} style={{ borderBottom: i < rows.length - 1 ? `1px solid ${C.n100}` : 'none', cursor: 'pointer' }}>
                 <td style={{ padding: '14px 16px' }}>
-                  <div style={{ fontWeight: 600, color: C.n700, fontSize: 16 }}>{p.alias}</div>
-                  <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>{p.addr}</div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
+                    <div style={{ fontWeight: 600, color: C.n700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.alias}</div>
+                    <Chip color={p.status === 'Alquilado' ? C.pos : C.neg} bg={p.status === 'Alquilado' ? C.posBg : C.negBg}>{p.status}</Chip>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.n500, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.addr}</div>
                 </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.coste)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.valor)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.revalTotal >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.revalTotal >= 0 ? '+' : '-'}{fmt(Math.abs(p.valor - p.coste))}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.rent)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.yield > 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.yield > 0 ? `${p.yield.toFixed(2).replace('.', ',')}%` : '0%'}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.cuotaHipotecaMes)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.netCf >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.netCf >= 0 ? '+' : '-'}{fmt(Math.abs(p.netCf))}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                  <Chip color={p.status === 'Alquilado' ? C.pos : C.neg} bg={p.status === 'Alquilado' ? C.posBg : C.negBg}>{p.status}</Chip>
-                </td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.coste)}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.valor)}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.revalTotal >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.revalTotal >= 0 ? '+' : '-'}{fmt(Math.abs(p.valor - p.coste))}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.rent)}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.yield > 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.yield > 0 ? `${p.yield.toFixed(2).replace('.', ',')}%` : '0%'}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.cuotaHipotecaMes)}</td>
+                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.netCf >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.netCf >= 0 ? '+' : '-'}{fmt(Math.abs(p.netCf))}</td>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle"><Eye size={15} /></button>
@@ -556,7 +567,6 @@ function TabCartera({
               <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: C.blue, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{totalCost > 0 ? `${((totalRent * 12 / totalCost) * 100).toFixed(2).replace('.', ',')}%` : '0%'}</td>
               <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{fmt(totalMortgage)}</td>
               <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: totalNetCf >= 0 ? C.pos : C.neg, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{totalNetCf >= 0 ? '+' : '-'}{fmt(Math.abs(totalNetCf))}</td>
-              <td style={{ padding: '14px 16px' }} />
               <td style={{ padding: '14px 16px' }} />
             </tr>
           </tbody>
@@ -618,7 +628,9 @@ function TabCartera({
         <div style={{ height: 1, background: C.n200, marginBottom: 12 }} />
         <ResultRow label="Cashflow neto · mes actual" value={`${currentCashflow >= 0 ? '+' : '-'}${fmt(Math.abs(currentCashflow))}`} valueColor={currentCashflow >= 0 ? C.pos : C.neg} />
         <ResultRow label="Ingresos por alquileres" value={`+${fmt(totalRent)}`} valueColor={C.pos} />
+        <ResultRow label="Gastos de inmuebles" value={`-${fmt(totalExpenses)}`} valueColor={C.neg} />
         <ResultRow label="Cuotas hipotecarias" value={`-${fmt(totalMortgage)}`} valueColor={C.neg} />
+        <ResultRow label="Total salidas" value={`-${fmt(totalExpenses + totalMortgage)}`} valueColor={C.neg} />
       </div>
     </div>
   );
