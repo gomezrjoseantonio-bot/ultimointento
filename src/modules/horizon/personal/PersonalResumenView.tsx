@@ -323,12 +323,12 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
       try {
         const year = new Date().getFullYear();
         const prestamos = await prestamosService.getAllPrestamos();
-        const standaloneLoans = prestamos.filter((p) =>
-          p.activo && !p.inmuebleId && p.ambito !== 'INMUEBLE',
+        const personalLoans = prestamos.filter((p) =>
+          p.activo && p.ambito === 'PERSONAL',
         );
 
         const totals = await Promise.all(
-          standaloneLoans.map(async (prestamo) => {
+          personalLoans.map(async (prestamo) => {
             const plan = await prestamosService.getPaymentPlan(prestamo.id);
             return (plan?.periodos ?? [])
               .filter((periodo) => Number(periodo.fechaCargo.substring(0, 4)) === year)
@@ -456,7 +456,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
     ? [
         ...expenseCatsBase,
         {
-          label: 'Préstamos sin activo',
+          label: 'Préstamos personales',
           amount: annualLoanCostFromProyeccion,
           color: 'bg-red-600',
         },
@@ -519,13 +519,13 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
           }
         />
         <KpiCard
-          title="Coste anual préstamos"
+          title="Coste anual préstamos personales"
           amount={annualLoanCostFromProyeccion}
           icon={TrendingDown}
           accent="danger"
           sub={
             <span className="text-xs text-gray-400">
-              Préstamos no vinculados a activos
+              Préstamos de ámbito PERSONAL
             </span>
           }
         />
