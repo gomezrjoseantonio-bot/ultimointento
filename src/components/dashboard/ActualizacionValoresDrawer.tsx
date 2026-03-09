@@ -93,10 +93,10 @@ const ActualizacionValoresDrawer: React.FC<ActualizacionValoresDrawerProps> = ({
       return;
     }
 
-    // Load historical values from previous month
+    // Load values as-of previous month (not latest overall)
     const newValores: Record<string, string> = {};
     for (const activo of [...inmuebles, ...inversiones]) {
-      const hist = await valoracionesService.getUltimaValoracion(activo.tipo, activo.id);
+      const hist = await valoracionesService.getUltimaValoracionHastaMes(activo.tipo, activo.id, mesAnterior);
       if (hist) {
         newValores[`${activo.tipo}-${activo.id}`] = String(hist.valor);
       }

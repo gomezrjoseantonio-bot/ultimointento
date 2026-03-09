@@ -191,6 +191,35 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inmuebles.cashflow).toBeCloseTo(700, 2);
   });
 
+
+  it('en patrimonio neto prioriza valor actual del activo antes que precio de compra cuando no hay valoración histórica', async () => {
+    const datasets: Record<string, any[]> = {
+      properties: [
+        {
+          id: 1,
+          state: 'activo',
+          acquisitionCosts: { price: 100000 },
+          currentValue: 155000
+        }
+      ],
+      valoraciones_historicas: [],
+      accounts: [],
+      inversiones: [],
+      prestamos: []
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      getAllFromIndex: jest.fn(async () => []),
+      add: jest.fn(async () => 1)
+    });
+
+    const patrimonio = await dashboardService.getPatrimonioNeto();
+
+    expect(patrimonio.desglose.inmuebles).toBeCloseTo(155000, 2);
+    expect(patrimonio.total).toBeCloseTo(155000, 2);
+  });
+
   it('incluye financiación y reasigna eventos de tarjeta al banco de cargo en tesorería panel', async () => {
     const datasets: Record<string, any[]> = {
       accounts: [

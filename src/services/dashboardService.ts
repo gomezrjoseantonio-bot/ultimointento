@@ -554,8 +554,17 @@ class DashboardService {
           .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
 
         const ultimaValoracion = propertyValuations[0]?.valor;
-        const fallbackCompra = prop.acquisitionCosts?.price ?? prop.compra?.precio_compra ?? 0;
-        return sum + toNumber(ultimaValoracion ?? fallbackCompra);
+        const fallbackValorActual = prop.valor_actual
+          ?? prop.currentValue
+          ?? prop.marketValue
+          ?? prop.estimatedValue
+          ?? prop.valuation
+          ?? prop.compra?.valor_actual
+          ?? prop.acquisitionCosts?.currentValue
+          ?? prop.acquisitionCosts?.price
+          ?? prop.compra?.precio_compra
+          ?? 0;
+        return sum + toNumber(ultimaValoracion ?? fallbackValorActual);
       }, 0);
 
       // Cuentas: sum active account balances.
