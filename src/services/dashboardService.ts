@@ -567,43 +567,9 @@ class DashboardService {
         return sum + toNumber(ultimaValoracion ?? fallbackValorActual);
       }, 0);
 
-      // Cuentas: align with Tesorería "HOY" logic (balance + eventos reales del mes).
-      const accounts = await db.getAll('accounts');
-      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
-      const activeAccounts = accounts.filter((acc: any) => (
-        acc.isActive !== false
-        && !acc.deleted_at
-        && !isCardAccount(acc)
-      ));
-
-      const cardSettlementByAccountId = new Map<number, { chargeAccountId: number }>();
-      for (const account of accounts as any[]) {
-        if (account?.id == null || account?.cardConfig?.chargeAccountId == null) continue;
-        cardSettlementByAccountId.set(account.id, { chargeAccountId: account.cardConfig.chargeAccountId });
-      }
-
-      const toDateOnly = (value: unknown): string | null => {
-        if (!value) return null;
-        const raw = String(value);
-        return raw.includes('T') ? raw.split('T')[0] : raw;
-      };
-      const startOfMonthDateOnly = toDateOnly(new Date(now.getFullYear(), now.getMonth(), 1).toISOString())!;
-      const todayDateOnly = toDateOnly(now.toISOString())!;
-
-      const saldoCuentas = activeAccounts.reduce((sum: number, acc: any) => {
-        const accountId = acc.id as number;
-        const deltaRealMes = (treasuryEvents as any[])
-          .filter((event) => {
-            const displayAccountId = resolveTreasuryEventDisplayAccountId(event, cardSettlementByAccountId);
-            if (displayAccountId !== accountId || isForecastTreasuryEvent(event)) return false;
-            const predictedDateOnly = toDateOnly(event.predictedDate);
-            if (!predictedDateOnly) return false;
-            return predictedDateOnly >= startOfMonthDateOnly && predictedDateOnly <= todayDateOnly;
-          })
-          .reduce((delta, event) => delta + (event.type === 'income' ? toNumber(event.amount) : -toNumber(event.amount)), 0);
-
-        return sum + toNumber(acc.balance) + deltaRealMes;
-      }, 0);
+      // Cuentas: use Tesorería "HOY" total as single source of truth to avoid divergences.
+      const tesoreriaPanel = await this.getTesoreriaPanel();
+      const saldoCuentas = toNumber(tesoreriaPanel.totales.hoy);
 
       // Inversiones: latest current valuation.
       const inversiones = await db.getAll('inversiones');
