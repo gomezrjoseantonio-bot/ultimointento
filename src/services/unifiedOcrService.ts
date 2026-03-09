@@ -2,6 +2,7 @@
 // Implements exact requirements from problem statement
 
 import { safeMatch } from '../utils/safe';
+import { callScanChat } from './scanChatService';
 
 export interface OCRResponse {
   success: boolean;
@@ -61,92 +62,26 @@ export class UnifiedOCRService {
         throw new Error(`Tipo de archivo no soportado para OCR: ${file.type}`);
       }
 
-      // Convert file to array buffer for binary upload
-      const fileBuffer = await file.arrayBuffer();
-      
-      // Call the existing ocr-documentai endpoint with binary data
-      const response = await fetch('/.netlify/functions/ocr-documentai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/octet-stream',
-        },
-        body: fileBuffer
-      });
+      const response = await callScanChat(file, file.type || 'application/pdf');
+      const extracted = response.extraido && typeof response.extraido === 'object' ? response.extraido : {};
 
-      // Check content type before parsing
-      const contentType = response.headers.get('content-type') || '';
-      const responseText = await response.text();
-      
-      // Detect HTML response (backend error page)
-      if (!contentType.includes('application/json') || responseText.trim().startsWith('<')) {
-        console.error('OCR service returned HTML instead of JSON:', responseText.slice(0, 200));
-        return {
-          success: false,
-          error: 'El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.',
-          status: response.status
-        };
-      }
+      const totalAmount = extracted.importe_total
+        ? parseFloat(String(extracted.importe_total).replace(/[^\d,.-]/g, '').replace(',', '.'))
+        : undefined;
 
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        console.error('Raw response:', responseText.slice(0, 200));
-        
-        return {
-          success: false,
-          error: 'El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.',
-          status: response.status
-        };
-      }
-
-      if (!response.ok) {
-        // Handle error response from ocr-documentai
-        let errorMessage = 'Error en el procesamiento OCR';
-        
-        if (result?.message) {
-          errorMessage = result.message;
-        } else if (result?.results?.[0]?.error) {
-          errorMessage = result.results[0].error;
+      return {
+        success: true,
+        data: {
+          supplier_name: extracted.proveedor ? String(extracted.proveedor) : undefined,
+          total_amount: Number.isFinite(totalAmount) ? totalAmount : undefined,
+          issue_date: extracted.fecha ? String(extracted.fecha) : undefined,
+          raw_text: typeof response.extraido === 'string'
+            ? response.extraido
+            : (extracted.notas ? String(extracted.notas) : JSON.stringify(extracted)),
+          utility_type: this.detectUtilityType(typeof response.extraido === 'string' ? response.extraido : JSON.stringify(extracted)),
+          iban_mask: this.extractIbanMask(typeof response.extraido === 'string' ? response.extraido : JSON.stringify(extracted))
         }
-
-        return {
-          success: false,
-          error: errorMessage,
-          status: response.status
-        };
-      }
-
-      // Parse successful response from ocr-documentai
-      const ocrResult = result;
-      
-      if (!ocrResult.success || !ocrResult.results?.[0]) {
-        return {
-          success: false,
-          error: 'Respuesta OCR inválida',
-          status: response.status
-        };
-      }
-
-      const documentResult = ocrResult.results[0];
-      
-      if (documentResult.status === 'error') {
-        return {
-          success: false,
-          error: documentResult.error || 'Error en OCR',
-          status: response.status
-        };
-      }
-
-      // Transform Document AI response to our standard format
-      return this.transformDocumentAIResponse({
-        document: {
-          entities: documentResult.entities || [],
-          pages: documentResult.pages || [],
-          text: documentResult.text || ''
-        }
-      });
+      };
 
     } catch (error) {
       console.error('OCR processing error:', error);

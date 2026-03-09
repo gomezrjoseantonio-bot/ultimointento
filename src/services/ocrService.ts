@@ -3,6 +3,7 @@ import { OCRResult, OCRField } from './db';
 import { findProviderByNIF, findProviderByNameOrAlias, initializeDefaultProviders } from './providerDirectoryService';
 import { parseEsNumber, formatEsCurrency, validateInvoiceHarmony } from '../utils/numberUtils';
 import { safeMatch } from '../utils/safe';
+import { callScanChat } from './scanChatService';
 
 // H-OCR-ALIGN: Configuration interface with strict alignment requirements
 interface OCRConfig {
@@ -381,63 +382,7 @@ export const getOCRConfig = (): OCRConfig => {
 
 // H-OCR: Process invoice with direct blob upload to Netlify function
 export async function processInvoice(blob: Blob): Promise<any> {
-  const res = await fetch('/.netlify/functions/ocr-documentai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/octet-stream' },
-    body: blob,
-  });
-  
-  const text = await res.text();
-  const contentType = res.headers.get('content-type') || '';
-  
-  // Handle error responses
-  if (!res.ok) {
-    // Check if response is HTML (common when backend returns error page)
-    if (contentType.includes('text/html') || text.trim().startsWith('<')) {
-      console.error('OCR service returned HTML error response:', text.slice(0, 200));
-      throw new Error('El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.');
-    }
-    
-    try {
-      const errorData = JSON.parse(text);
-      if (errorData.code && errorData.status && errorData.message) {
-        // Structure error based on backend format
-        if (errorData.code === 'CONFIG') {
-          throw new Error('CONFIG: OCR no configurado correctamente');
-        } else if (res.status === 403) {
-          throw new Error('403: Sin permisos para OCR');
-        } else if (res.status === 404) {
-          throw new Error('404: Servicio OCR no encontrado');
-        } else {
-          throw new Error(`${errorData.status}: ${errorData.message}`);
-        }
-      }
-    } catch (parseError) {
-      // Fallback for malformed error responses
-      if (contentType.includes('text/html') || text.trim().startsWith('<')) {
-        throw new Error('El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.');
-      }
-      throw new Error(`OCR error ${res.status}: ${text.slice(0, 180)}`);
-    }
-  }
-  
-  // Check for successful response content type
-  if (!contentType.includes('application/json') && text.trim().startsWith('<')) {
-    console.error('OCR service returned HTML instead of JSON:', text.slice(0, 200));
-    throw new Error('El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.');
-  }
-  
-  // Parse successful response
-  try { 
-    return JSON.parse(text); 
-  } catch (parseError) { 
-    // Additional check for HTML in successful response
-    if (text.trim().startsWith('<')) {
-      console.error('OCR successful response contains HTML:', text.slice(0, 200));
-      throw new Error('El servicio OCR devolvió una respuesta no válida. Reintenta o contacta soporte.');
-    }
-    throw new Error(`OCR bad JSON: ${text.slice(0,180)}`); 
-  }
+  return await callScanChat(blob, blob.type || 'application/pdf');
 }
 
 // H-OCR: Format currency in Spanish locale
