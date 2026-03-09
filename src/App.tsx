@@ -208,6 +208,10 @@ function App() {
                 <InboxPage />
               </React.Suspense>
             } />
+            <Route path="documentacion" element={<Navigate to="/inbox" replace />} />
+            <Route path="documentacion/filtros" element={<Navigate to="/inbox" replace />} />
+            <Route path="documentacion/fiscal" element={<Navigate to="/inbox" replace />} />
+            <Route path="documentacion/inspecciones" element={<Navigate to="/inbox" replace />} />
             
             {/* Image Description Feature */}
             <Route path="describe-image" element={
