@@ -423,7 +423,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     <div className={embedded ? '' : 'min-h-screen bg-hz-bg'}>
       <div className={embedded ? '' : 'max-w-5xl mx-auto'}>
         {/* Header */}
-        <div className={`bg-white border-b border-gray-200 px-6 py-4 flex items-center ${embedded ? '' : 'sticky top-0 z-10 shadow-sm'}`}>
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center">
           <div className="flex items-center space-x-3">
             <Home className="w-6 h-6 text-atlas-blue" />
             <h1 className="text-xl font-semibold text-gray-900">
@@ -433,7 +433,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         </div>
         
         {/* Form Content - Compact Layout */}
-        <div className={`p-6 space-y-4 ${embedded ? '' : 'inmueble-form-compact'}`}>
+        <div className={`p-6 space-y-4 ${embedded ? 'inmueble-form-compact' : ''}`}>
           {/* Section 1: IDENTIFICACIÓN */}
           <section className="border border-gray-200 rounded-lg bg-white">
             <button
