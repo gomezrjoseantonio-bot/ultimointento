@@ -11,6 +11,7 @@ import { personalDataService } from '../../../services/personalDataService';
 import { personalExpensesService } from '../../../services/personalExpensesService';
 import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
 import { autonomoService } from '../../../services/autonomoService';
+import { prestamosService } from '../../../services/prestamosService';
 import {
   getPersonalExpenseAmountForMonth,
   gastoRecurrenteAppliesToMonth,
@@ -88,7 +89,7 @@ interface KpiCardProps {
   title: string;
   amount: number;
   icon: React.ElementType;
-  accent?: 'navy' | 'positive' | 'default';
+  accent?: 'navy' | 'positive' | 'default' | 'danger';
   sub?: React.ReactNode;
 }
 
@@ -98,14 +99,25 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = '
       ? 'text-blue-900'
       : accent === 'positive'
       ? 'text-[var(--s-pos)]'
+      : accent === 'danger'
+      ? 'text-red-700'
       : 'text-gray-900';
 
+  const accentBorder =
+    accent === 'navy'
+      ? 'border-t-blue-900'
+      : accent === 'positive'
+      ? 'border-t-[var(--s-pos)]'
+      : accent === 'danger'
+      ? 'border-t-red-600'
+      : 'border-t-gray-300';
+
   return (
-    <div className="bg-white border border-gray-200 p-6 flex flex-col gap-3">
+    <div className={`bg-white border border-gray-200 border-t-4 ${accentBorder} rounded-3xl p-6 flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{title}</p>
         <div className={`p-2 rounded-full ${accent === 'positive' ? 'bg-[var(--s-pos-bg)]' : 'bg-gray-50'}`}>
-          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-[var(--s-pos)]' : 'text-gray-400'}`} />
+          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-[var(--s-pos)]' : accent === 'danger' ? 'text-red-700' : 'text-gray-400'}`} />
         </div>
       </div>
       <p className={`text-3xl font-bold tracking-tight ${amountClass}`}>{fmt(amount)}</p>
@@ -122,7 +134,7 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
   const maxValue = Math.max(...data.map(d => Math.max(d.income, d.expenses)));
 
   return (
-    <div className="bg-white border border-gray-200 p-6">
+    <div className="bg-white border border-gray-200 rounded-3xl p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Flujo de Caja</p>
@@ -170,25 +182,25 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
 
 interface ExpenseBreakdownProps {
   categories: typeof MOCK_EXPENSE_CATEGORIES;
-  total: number;
+  incomeTotal: number;
 }
 
-const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, total }) => (
-  <div className="bg-white border border-gray-200 p-6 flex flex-col gap-4">
+const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, incomeTotal }) => (
+  <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Desglose de Gastos</p>
       <p className="text-sm text-gray-400 mt-0.5">Por categoría — anual</p>
     </div>
     <div className="space-y-3">
       {categories.map(({ label, amount, color }) => {
-        const share = total > 0 ? (amount / total) * 100 : 0;
-        const widthPct = Math.round(share);
+        const share = incomeTotal > 0 ? (amount / incomeTotal) * 100 : 0;
+        const widthPct = Math.min(100, Math.max(0, Math.round(share)));
         return (
           <div key={label}>
             <div className="flex justify-between text-sm mb-1">
               <div className="flex flex-col">
                 <span className="text-gray-500">{label}</span>
-                <span className="text-[10px] text-gray-400">{pct(share)} del total</span>
+                <span className="text-[10px] text-gray-400">{pct(share)} de los ingresos</span>
               </div>
               <span className="text-gray-900 font-medium">{fmt(amount)}</span>
             </div>
@@ -203,8 +215,8 @@ const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, total }
       })}
     </div>
     <div className="flex justify-between pt-2 border-t border-gray-200">
-      <span className="text-sm font-semibold text-gray-900">Total</span>
-      <span className="text-sm font-bold text-blue-900">{fmt(total)}</span>
+      <span className="text-sm font-semibold text-gray-900">Total gastos</span>
+      <span className="text-sm font-bold text-blue-900">{fmt(categories.reduce((s, c) => s + c.amount, 0))}</span>
     </div>
   </div>
 );
@@ -215,7 +227,7 @@ interface IncomeSourcesProps {
 }
 
 const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
-  <div className="bg-white border border-gray-200 p-6 flex flex-col gap-4">
+  <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Fuentes de Ingresos</p>
       <p className="text-sm text-gray-400 mt-0.5">Distribución anual</p>
@@ -280,6 +292,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   const [expenseCategories, setExpenseCategories] = useState<typeof MOCK_EXPENSE_CATEGORIES | null>(null);
   const [autonomoAnual, setAutonomoAnual] = useState<AutonomoAnnualData | null>(null);
   const [autonomoMensual, setAutonomoMensual] = useState<AutonomoMonthlyData[] | null>(null);
+  const [annualLoanCost, setAnnualLoanCost] = useState(0);
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
@@ -303,6 +316,32 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
       }
     }
     loadAutonomoData();
+  }, []);
+
+  useEffect(() => {
+    async function loadAnnualPersonalLoanCost() {
+      try {
+        const year = new Date().getFullYear();
+        const prestamos = await prestamosService.getAllPrestamos();
+        const standaloneLoans = prestamos.filter((p) =>
+          p.activo && !p.inmuebleId && p.ambito !== 'INMUEBLE',
+        );
+
+        const totals = await Promise.all(
+          standaloneLoans.map(async (prestamo) => {
+            const plan = await prestamosService.getPaymentPlan(prestamo.id);
+            return (plan?.periodos ?? [])
+              .filter((periodo) => Number(periodo.fechaCargo.substring(0, 4)) === year)
+              .reduce((sum, periodo) => sum + periodo.cuota, 0);
+          }),
+        );
+
+        setAnnualLoanCost(totals.reduce((sum, amount) => sum + amount, 0));
+      } catch (err) {
+        console.error('[PersonalResumenView] Failed to load annual loan cost:', err);
+      }
+    }
+    loadAnnualPersonalLoanCost();
   }, []);
 
   useEffect(() => {
@@ -372,11 +411,16 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
     : DEFAULT_ANNUAL_INCOME;
 
   // Personal expenses (property OPEX excluded; gastosAutonomo already netted in income)
-  const totalExpenses = proyeccion
+  const totalExpensesBase = proyeccion
     ? proyeccion.months.reduce((s, m) => s + monthPersonalExpenses(m), 0)
     : resumen && resumen.gastos.total > 0
     ? resumen.gastos.total * 12
     : DEFAULT_ANNUAL_EXPENSES;
+  const annualLoanCostFromProyeccion = proyeccion
+    ? proyeccion.months.reduce((s, m) => s + m.financiacion.cuotasPrestamos, 0)
+    : annualLoanCost;
+
+  const totalExpenses = totalExpensesBase + annualLoanCostFromProyeccion;
 
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
@@ -407,9 +451,17 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
 
   // Expense categories: real data if loaded, else annualised mock.
   // gastosAutonomo is already netted in autonomo income; not re-added here.
-  const expenseCatsToShow = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
-  // Use the sum of displayed categories as the denominator for percentages and the footer total.
-  const expenseCatTotal = expenseCatsToShow.reduce((s, c) => s + c.amount, 0);
+  const expenseCatsBase = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
+  const expenseCatsToShow = annualLoanCostFromProyeccion > 0
+    ? [
+        ...expenseCatsBase,
+        {
+          label: 'Préstamos sin activo',
+          amount: annualLoanCostFromProyeccion,
+          color: 'bg-red-600',
+        },
+      ]
+    : expenseCatsBase;
 
   // Monthly cash-flow chart: real personal figures from projection, else mock
   const cashFlowData = proyeccion
@@ -432,7 +484,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
   return (
     <div className="space-y-4">
       {/* ── Top Row: KPIs ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           title="Ingresos Anuales"
           amount={totalIncome}
@@ -466,6 +518,17 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
             </span>
           }
         />
+        <KpiCard
+          title="Coste anual préstamos"
+          amount={annualLoanCostFromProyeccion}
+          icon={TrendingDown}
+          accent="danger"
+          sub={
+            <span className="text-xs text-gray-400">
+              Préstamos no vinculados a activos
+            </span>
+          }
+        />
       </div>
 
       {/* ── Middle Row: Cash Flow Visual ─────────────────────────────── */}
@@ -473,7 +536,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
 
       {/* ── Bottom Row: Expense Breakdown + Income Sources ─────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ExpenseBreakdown categories={expenseCatsToShow} total={expenseCatTotal} />
+        <ExpenseBreakdown categories={expenseCatsToShow} incomeTotal={totalIncome} />
         <IncomeSources sources={incomeSources} total={totalIncome} />
       </div>
     </div>
