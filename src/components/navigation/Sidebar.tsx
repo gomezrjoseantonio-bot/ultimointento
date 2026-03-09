@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -10,6 +11,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const { user } = useAuth();
   const navigation = getNavigationForModule();
 
   const renderNavItem = (item: NavigationItem) => (
@@ -38,6 +40,15 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       {label}
     </p>
   );
+
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((namePart) => namePart[0]?.toUpperCase() ?? '')
+        .join('')
+    : 'US';
 
   return (
     <>
@@ -103,6 +114,29 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <SectionLabel label="Docs" />
           {docsItems.map(renderNavItem)}
         </nav>
+
+        {user && (
+          <div className="p-3" style={{ borderTop: '1px solid color-mix(in srgb, var(--white) 8%, transparent)' }}>
+            <div
+              className={`rounded-xl px-3 py-2.5 flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--white) 6%, transparent)' }}
+              title={collapsed ? `${user.name} • ${user.subscriptionPlan}` : undefined}
+            >
+              <div
+                className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                style={{ backgroundColor: 'var(--blue)' }}
+              >
+                {initials}
+              </div>
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white leading-tight truncate">{user.name}</p>
+                  <p className="text-xs text-white/70 capitalize leading-tight">{user.subscriptionPlan}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
