@@ -1,10 +1,11 @@
 import React from 'react';
 import { User, Home, Edit3, Trash2, Zap } from 'lucide-react';
-import { Prestamo } from '../../../../../types/prestamos';
+import { Prestamo, PlanPagos } from '../../../../../types/prestamos';
 import ProgressBar from '../ProgressBar';
 
 interface HeaderSectionProps {
   prestamo: Prestamo;
+  planPagos?: PlanPagos | null;
   onEdit: () => void;
   onDelete: () => void;
   onSimular: () => void;
@@ -12,10 +13,19 @@ interface HeaderSectionProps {
 
 const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelete, onSimular }) => {
+const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEdit, onDelete, onSimular }) => {
   const isPersonal = prestamo.ambito === 'PERSONAL';
 
-  const principalAmortizado = prestamo.principalInicial - prestamo.principalVivo;
+  const periodosPagados = (planPagos?.periodos || []).filter(periodo => periodo.pagado);
+  const ultimaCuotaPagada = periodosPagados.length > 0
+    ? periodosPagados[periodosPagados.length - 1]
+    : null;
+
+  const principalVivoResumen = ultimaCuotaPagada
+    ? ultimaCuotaPagada.principalFinal
+    : prestamo.principalVivo;
+
+  const principalAmortizado = prestamo.principalInicial - principalVivoResumen;
   const pctCuotas = prestamo.plazoMesesTotal > 0
     ? Math.round((prestamo.cuotasPagadas / prestamo.plazoMesesTotal) * 100)
     : 0;
@@ -29,9 +39,16 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
   if (prestamo.tipo === 'MIXTO') baseTIN = prestamo.tipoNominalAnualMixtoFijo || 0;
   const monthlyRate = baseTIN / 12 / 100;
   const meses = prestamo.plazoMesesTotal - prestamo.cuotasPagadas;
-  const cuotaEst = monthlyRate > 0 && meses > 0
-    ? (prestamo.principalVivo * monthlyRate * Math.pow(1 + monthlyRate, meses)) / (Math.pow(1 + monthlyRate, meses) - 1)
-    : prestamo.principalVivo / Math.max(1, meses);
+  const cuotaEstimada = monthlyRate > 0 && meses > 0
+    ? (principalVivoResumen * monthlyRate * Math.pow(1 + monthlyRate, meses)) / (Math.pow(1 + monthlyRate, meses) - 1)
+    : principalVivoResumen / Math.max(1, meses);
+
+  // If amortization table is available, show the definitive installment from it
+  const cuotaDefinitiva = (planPagos?.periodos || []).find(periodo =>
+    periodo.cuota > 0 && !periodo.esProrrateado && !periodo.esSoloIntereses
+  )?.cuota;
+
+  const cuotaResumen = cuotaDefinitiva ?? cuotaEstimada;
 
   const fechaFin = new Date(prestamo.fechaFirma);
   fechaFin.setMonth(fechaFin.getMonth() + prestamo.plazoMesesTotal);
@@ -85,8 +102,8 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, onEdit, onDelet
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Principal', value: `${fmt(prestamo.principalInicial)} €` },
-          { label: 'Capital Vivo', value: `${fmt(prestamo.principalVivo)} €` },
-          { label: 'Cuota estimada', value: `${fmt(cuotaEst)} €/mes` },
+          { label: 'Capital Vivo', value: `${fmt(principalVivoResumen)} €` },
+          { label: 'Cuota estimada', value: `${fmt(cuotaResumen)} €/mes` },
           { label: 'Fin previsto', value: fechaFin.toLocaleDateString('es-ES') },
         ].map(kpi => (
           <div key={kpi.label} className="border border-gray-100 rounded p-3"
