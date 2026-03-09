@@ -39,6 +39,7 @@ import {
 import { inversionesService } from '../../services/inversionesService';
 import { initDB } from '../../services/db';
 import { PosicionInversion } from '../../types/inversiones';
+import type { ValoracionHistorica } from '../../types/valoraciones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
 import ActualizarValorModal from '../../modules/horizon/inversiones/components/ActualizarValorModal';
