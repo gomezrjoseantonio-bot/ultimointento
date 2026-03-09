@@ -133,12 +133,12 @@ export const navigationConfig: NavigationItem[] = [
   },
   {
     name: 'Documentación',
-    href: '/documentacion',
+    href: '/inbox',
     icon: FolderOpen,
     module: 'shared',
     section: 'documentation',
     subTabs: [
-      { name: 'Repositorio', href: '/documentacion', icon: FolderOpen, module: 'shared' },
+      { name: 'Repositorio', href: '/inbox', icon: FolderOpen, module: 'shared' },
       { name: 'Inbox (escaneo y subida)', href: '/inbox', icon: Upload, module: 'shared' },
       { name: 'Filtros', href: '/documentacion/filtros', icon: Settings2, module: 'shared' },
       { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Receipt, module: 'shared' },
