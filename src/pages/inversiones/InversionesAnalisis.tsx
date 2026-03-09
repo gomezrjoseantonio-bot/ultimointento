@@ -37,7 +37,9 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { inversionesService } from '../../services/inversionesService';
+import { initDB } from '../../services/db';
 import { PosicionInversion } from '../../types/inversiones';
+import type { ValoracionHistorica } from '../../types/valoraciones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -124,6 +126,19 @@ const buildIndividualEvolucion = (position: PositionRow) => {
 
   hist[hist.length - 1].proy = position.valor;
   return [...hist, ...proy];
+};
+
+const getLatestInvestmentValuationMap = (valoraciones: ValoracionHistorica[]) => {
+  const latest = new Map<number, number>();
+  const sorted = valoraciones
+    .filter((item) => item.tipo_activo === 'inversion')
+    .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
+
+  sorted.forEach((item) => {
+    latest.set(item.activo_id, item.valor);
+  });
+
+  return latest;
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -616,15 +631,36 @@ export default function InversionesAnalisis() {
     const colorPalette = [C.blue, C.c2, C.teal, C.c4, C.c5];
     const loadPosiciones = async () => {
       try {
-        const data = await inversionesService.getPosiciones();
+        const [data, dbValoraciones] = await Promise.all([
+          inversionesService.getPosiciones(),
+          initDB().then((db) => db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>),
+        ]);
+
         if (!data.length) {
           setPositions([]);
           setSelectedPositionId('');
           return;
         }
 
-        const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
-        const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
+        const latestInvestmentValuationMap = getLatestInvestmentValuationMap(dbValoraciones);
+        const posicionesConValorActual = data.map((position) => {
+          const latest = latestInvestmentValuationMap.get(position.id as number);
+          if (latest == null) return position;
+
+          const totalAportado = position.total_aportado || 0;
+          const rentabilidadEuros = latest - totalAportado;
+          const rentabilidadPorcentaje = totalAportado > 0 ? (rentabilidadEuros / totalAportado) * 100 : 0;
+
+          return {
+            ...position,
+            valor_actual: latest,
+            rentabilidad_euros: rentabilidadEuros,
+            rentabilidad_porcentaje: rentabilidadPorcentaje,
+          } as PosicionInversion;
+        });
+
+        const totalValor = posicionesConValorActual.reduce((sum, p) => sum + p.valor_actual, 0);
+        const mapped: PositionRow[] = posicionesConValorActual.map((p: PosicionInversion, index) => {
           const rentabilidadAnual = Number((p as any).rendimiento || 0);
           const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
           return {
