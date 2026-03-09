@@ -72,6 +72,50 @@ describe('dashboardService financial metrics', () => {
     expect(salud.proyeccion30d.estimado).toBeCloseTo(1535.5, 2);
   });
 
+
+  it('usa renta mensual de contratos activos cuando no hay cobros pagados en rentPayments', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [],
+      gastos: [
+        { fecha: '2026-03-05', importe: 200, esPersonal: false, destino: 'inmueble_id', destino_id: 1 }
+      ],
+      expenses: [
+        { fecha: '2026-03-08', importe: 50, propertyId: 1 }
+      ],
+      rentPayments: [
+        { fecha: '2026-03-10', importe: 900, estado: 'pendiente' }
+      ],
+      contratos: [],
+      contracts: [
+        {
+          id: 1,
+          inmuebleId: 1,
+          rentaMensual: 1000,
+          fechaInicio: '2026-01-01',
+          fechaFin: '2026-12-31',
+          estadoContrato: 'activo'
+        }
+      ],
+      prestamos: [
+        { ambito: 'INMUEBLE', cuotaMensual: 300, activo: true }
+      ],
+      properties: [
+        { id: 1, estado: 'activo' }
+      ],
+      inversiones: []
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    // 1000 (renta contrato) - 250 (gastos) - 300 (hipoteca) = 450
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(450, 2);
+    expect(flujos.inmuebles.ocupacion).toBeCloseTo(100, 2);
+  });
+
   it('incluye financiación y reasigna eventos de tarjeta al banco de cargo en tesorería panel', async () => {
     const datasets: Record<string, any[]> = {
       accounts: [
