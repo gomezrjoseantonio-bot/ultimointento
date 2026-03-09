@@ -251,4 +251,34 @@ describe('dashboardService financial metrics', () => {
     expect(panel.totales.hoy).toBe(600);
     expect(panel.totales.porPagar).toBe(475);
   });
+
+  it('alinea patrimonio cuentas con tesorería hoy incluyendo eventos reales del mes', async () => {
+    const datasets: Record<string, any[]> = {
+      properties: [],
+      valoraciones_historicas: [],
+      inversiones: [],
+      prestamos: [],
+      accounts: [
+        { id: 1, isActive: true, alias: 'Cuenta Banco', balance: 6906 }
+      ],
+      treasuryEvents: [
+        { accountId: 1, type: 'expense', status: 'confirmed', amount: 1240, predictedDate: '2026-03-04' }
+      ]
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      getAllFromIndex: jest.fn(async () => []),
+      add: jest.fn(async () => 1)
+    });
+
+    const [patrimonio, panel] = await Promise.all([
+      dashboardService.getPatrimonioNeto(),
+      dashboardService.getTesoreriaPanel()
+    ]);
+
+    expect(panel.totales.hoy).toBe(5666);
+    expect(patrimonio.desglose.cuentas).toBe(5666);
+    expect(patrimonio.total).toBe(5666);
+  });
 });
