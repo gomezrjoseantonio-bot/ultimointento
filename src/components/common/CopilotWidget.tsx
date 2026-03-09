@@ -43,7 +43,7 @@ const CopilotWidget: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-40">
+    <div className="fixed top-20 right-4 z-40">
       {open && (
         <div
           className="w-[360px] max-w-[calc(100vw-2rem)] h-[520px] rounded-2xl shadow-xl border flex flex-col overflow-hidden"
