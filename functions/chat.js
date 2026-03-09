@@ -97,6 +97,7 @@ exports.handler = async (event) => {
 
     if (tipo === 'chat') {
       const mensaje = typeof body?.mensaje === 'string' ? body.mensaje.trim() : '';
+      const contexto = typeof body?.contexto === 'string' ? body.contexto.trim() : '';
 
       if (!mensaje) {
         return jsonResponse(400, { ok: false, error: 'El campo "mensaje" es obligatorio para tipo "chat"' });
@@ -108,6 +109,7 @@ exports.handler = async (event) => {
         'No inventes datos; si falta información, indica qué falta.',
         'Incluye advertencias breves cuando exista riesgo financiero o fiscal.',
         'No sustituyes asesoramiento profesional legal/fiscal.',
+        `Datos financieros actuales del usuario: ${contexto || 'No disponible'}`,
       ].join(' ');
 
       const result = await callAnthropic({
