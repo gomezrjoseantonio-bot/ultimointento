@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronRight,
   FileText,
@@ -7,7 +7,7 @@ import {
   Upload,
   XCircle
 } from 'lucide-react';
-import { deleteDocumentAndBlob, getDocumentBlob, initDB } from '../services/db';
+import { deleteDocumentAndBlob, getDocumentBlob, initDB, saveDocumentWithBlob } from '../services/db';
 import { processDocumentOCR } from '../services/documentAIService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
@@ -26,6 +26,7 @@ const InboxPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
   const [activeType, setActiveType] = useState<(typeof typeFilters)[number]>('Todos');
   const [search, setSearch] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -181,6 +182,52 @@ const InboxPage: React.FC = () => {
     toast.success('Datos confirmados y guardados');
   };
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    try {
+      const uploadedDocuments: any[] = [];
+
+      for (const file of Array.from(selectedFiles)) {
+        const documentToSave = {
+          filename: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          lastModified: file.lastModified,
+          content: file,
+          uploadDate: new Date().toISOString(),
+          metadata: {
+            title: file.name.replace(/\.[^/.]+$/, ''),
+            queueStatus: 'pendiente',
+            status: 'Nuevo',
+            tipo: 'Otros'
+          }
+        };
+
+        const id = await saveDocumentWithBlob(documentToSave as any);
+        uploadedDocuments.push({ ...documentToSave, id });
+      }
+
+      const updatedDocuments = [...uploadedDocuments, ...documents];
+      await persistDocuments(updatedDocuments);
+
+      if (!selectedDocument && uploadedDocuments.length > 0) {
+        setSelectedDocument(uploadedDocuments[0]);
+      }
+
+      toast.success(`${uploadedDocuments.length} documento(s) subido(s)`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se pudieron subir los documentos');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   const selectedId = selectedDocument?.id;
 
   return (
@@ -199,7 +246,15 @@ const InboxPage: React.FC = () => {
             <h1 className="text-4xl font-semibold" style={{ color: 'var(--n-900)' }}>Bandeja de entrada</h1>
             <p className="mt-1 text-lg" style={{ color: 'var(--n-500)' }}>Sube, escanea y asigna facturas y documentos</p>
           </div>
-          <button className="atlas-btn-primary">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            accept=".pdf,.png,.jpg,.jpeg,.csv,.xls,.xlsx,.zip"
+            onChange={handleUploadFiles}
+          />
+          <button type="button" className="atlas-btn-primary" onClick={handleUploadClick}>
             <Upload size={16} />
             Subir documentos
           </button>
