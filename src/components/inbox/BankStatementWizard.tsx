@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Check, AlertCircle, Upload, ArrowRight, ArrowLeft } from 'lucide-react';
 
@@ -195,7 +194,7 @@ const BankStatementWizard: React.FC<BankStatementWizardProps> = ({
   const selectStyle = { width: '100%', border: '1.5px solid var(--n-300)', borderRadius: 'var(--r-md)', padding: '9px 12px', fontFamily: 'var(--font-base)', fontSize: 'var(--t-sm)', color: 'var(--n-900)', background: 'var(--white)' };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: \'rgba(26,35,50,.45)\' }} style={{ background: 'rgba(26,35,50,.45)' }}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26,35,50,.45)' }}>
       <div className="bg-white shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" style={{ borderRadius: 'var(--r-lg)' }}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
