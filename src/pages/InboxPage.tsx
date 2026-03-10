@@ -33,9 +33,19 @@ const InboxPage: React.FC = () => {
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── tab badge counts ──────────────────────────────────────────────────────
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { Pendientes: 0, Procesados: 0, Todos: documents.length };
+    for (const doc of documents) {
+      const status = String(doc.metadata?.queueStatus || 'pendiente').toLowerCase();
+      if (status === 'pendiente') counts['Pendientes']++;
+      if (status.includes('procesado')) counts['Procesados']++;
+    }
+    return counts;
+  }, [documents]);
+
   const getStoredFileUrl = (document: any): string => {
     if (!document) return '';
-
     return (
       document?.storageUrl ||
       document?.downloadUrl ||
@@ -69,7 +79,6 @@ const InboxPage: React.FC = () => {
         if (parsed.length > 0) setSelectedDocument(parsed[0]);
       }
     };
-
     loadDocuments();
   }, []);
 
@@ -84,11 +93,9 @@ const InboxPage: React.FC = () => {
       if (selectedDocument.id) {
         blob = await getDocumentBlob(selectedDocument.id);
       }
-
       if (!blob && selectedDocument.content) {
         blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
       }
-
       if (!blob) return;
 
       const reader = new FileReader();
@@ -120,7 +127,6 @@ const InboxPage: React.FC = () => {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       return;
     }
-
     const storedUrl = getStoredFileUrl(selectedDocument);
     if (storedUrl) window.open(storedUrl, '_blank', 'noopener,noreferrer');
     else toast.error('No se encontró una URL para abrir este archivo');
@@ -161,7 +167,6 @@ const InboxPage: React.FC = () => {
       setSelectedDocument(filteredDocuments[0]);
       return;
     }
-
     if (selectedDocument && !filteredDocuments.some((doc) => doc.id === selectedDocument.id)) {
       setSelectedDocument(filteredDocuments[0] || null);
     }
@@ -169,7 +174,6 @@ const InboxPage: React.FC = () => {
 
   const handleProcessOCR = async () => {
     if (!selectedDocument) return;
-
     try {
       setProcessingOCR(true);
       let blob: Blob | null = null;
@@ -207,17 +211,13 @@ const InboxPage: React.FC = () => {
   };
 
   const requestDelete = (documentToDelete?: any) => {
-    if (documentToDelete) {
-      setSelectedDocument(documentToDelete);
-    }
-
+    if (documentToDelete) setSelectedDocument(documentToDelete);
     if (!documentToDelete && !selectedDocument) return;
     setShowDeleteModal(true);
   };
 
   const handleDelete = async () => {
     if (!selectedDocument) return;
-
     await deleteDocumentAndBlob(selectedDocument.id);
     const updatedDocs = documents.filter((doc) => doc.id !== selectedDocument.id);
     setDocuments(updatedDocs);
@@ -237,10 +237,8 @@ const InboxPage: React.FC = () => {
 
   const processUploadedFiles = async (files: File[]) => {
     if (!files.length) return;
-
     try {
       const uploadedDocuments: any[] = [];
-
       for (const file of files) {
         const documentToSave = {
           filename: file.name,
@@ -256,18 +254,14 @@ const InboxPage: React.FC = () => {
             tipo: 'Otros'
           }
         };
-
         const id = await saveDocumentWithBlob(documentToSave as any);
         uploadedDocuments.push({ ...documentToSave, id });
       }
-
       const updatedDocuments = [...uploadedDocuments, ...documents];
       await persistDocuments(updatedDocuments);
-
       if (!selectedDocument && uploadedDocuments.length > 0) {
         setSelectedDocument(uploadedDocuments[0]);
       }
-
       toast.success(`${uploadedDocuments.length} documento(s) subido(s)`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudieron subir los documentos');
@@ -277,7 +271,6 @@ const InboxPage: React.FC = () => {
   const handleUploadFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
-
     await processUploadedFiles(Array.from(selectedFiles));
     event.target.value = '';
   };
@@ -285,7 +278,6 @@ const InboxPage: React.FC = () => {
   const handleDropUpload = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragActive(false);
-
     const droppedFiles = Array.from(event.dataTransfer.files || []);
     await processUploadedFiles(droppedFiles);
   };
@@ -322,14 +314,16 @@ const InboxPage: React.FC = () => {
           </button>
         </div>
 
+        {/* ── Tabs with badges ── */}
         <div className="mt-5 flex items-center gap-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
           {tabItems.map((tab) => {
             const active = tab === activeTab;
+            const count = tabCounts[tab] ?? 0;
             return (
               <button
                 key={tab}
                 type="button"
-                className="pb-3 text-base font-medium"
+                className="pb-3 text-base font-medium flex items-center gap-2"
                 style={{
                   color: active ? 'var(--blue)' : 'var(--n-500)',
                   borderBottom: active ? '2px solid var(--blue)' : '2px solid transparent'
@@ -337,6 +331,23 @@ const InboxPage: React.FC = () => {
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
+                {count > 0 && (
+                  <span
+                    className="inline-flex items-center justify-center text-xs font-semibold"
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      padding: '0 5px',
+                      borderRadius: 'var(--r-sm)',
+                      background: active ? 'var(--blue)' : 'var(--n-200)',
+                      color: active ? 'var(--white)' : 'var(--n-600)',
+                      fontFamily: 'var(--font-base)',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -344,6 +355,8 @@ const InboxPage: React.FC = () => {
 
         <div className="mt-4 h-[calc(100vh-330px)] min-h-[620px] border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)' }}>
           <div className="h-full flex">
+
+            {/* ── Col 1 — document list (30%) ── */}
             <div className="h-full border-r" style={{ width: '30%', borderColor: 'var(--n-200)' }}>
               <div className="p-4 border-b" style={{ borderColor: 'var(--n-200)' }}>
                 <div className="relative">
@@ -422,14 +435,15 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
 
+            {/* ── Col 2 — PDF preview (40%) ── */}
             <div className="h-full border-r flex flex-col" style={{ width: '40%', borderColor: 'var(--n-200)' }}>
               <div className="h-14 px-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--n-200)' }}>
                 <div className="flex items-center gap-2 text-base font-semibold" style={{ color: 'var(--n-900)' }}>
                   <FileText size={16} />
                   <span className="truncate max-w-[220px]">{selectedDocument?.filename || 'Documento'}</span>
                 </div>
-              <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
-                <span>PDF</span>
+                <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
+                  <span>PDF</span>
                   <button type="button" style={{ color: 'var(--n-500)' }} onClick={handleOpenInNewTab}>Descargar</button>
                   <button type="button" style={{ color: 'var(--n-500)' }}><MoreVertical size={16} /></button>
                 </div>
@@ -471,7 +485,6 @@ const InboxPage: React.FC = () => {
 
               <div className="h-16 px-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                 <InboxV3Actions
-                  onProcessOCR={handleProcessOCR}
                   onAssign={handleAssign}
                   onDelete={requestDelete}
                   disableActions={!selectedDocument || processingOCR}
@@ -479,8 +492,14 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
 
+            {/* ── Col 3 — extracted data (30%) ── */}
             <div className="h-full" style={{ width: '30%', background: 'var(--white)' }}>
-              <InboxV3ExtractedPanel document={selectedDocument} onConfirm={handleConfirmAndSave} />
+              <InboxV3ExtractedPanel
+                document={selectedDocument}
+                onConfirm={handleConfirmAndSave}
+                onProcessOCR={handleProcessOCR}
+                processingOCR={processingOCR}
+              />
             </div>
           </div>
         </div>
