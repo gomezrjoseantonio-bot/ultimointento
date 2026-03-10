@@ -1,4 +1,4 @@
-(no base changes needed)
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Check, AlertCircle, Upload, ArrowRight, ArrowLeft } from 'lucide-react';
 
