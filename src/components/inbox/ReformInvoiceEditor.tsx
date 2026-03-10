@@ -93,9 +93,8 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
   ];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: \'rgba(26,35,50,.45)\' }} style={{ background: 'rgba(26,35,50,.45)' }}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26,35,50,.45)' }}>
       <div className="bg-white shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" style={{ borderRadius: 'var(--r-lg)' }}>
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
           <div>
             <h2 className="text-lg font-semibold" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>Editor de Reformas</h2>
@@ -105,7 +104,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
         </div>
 
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Doc info */}
           <div className="mb-6 p-4" style={{ background: 'var(--n-50)', borderRadius: 'var(--r-md)' }}>
             <h3 className="font-medium mb-2 text-sm" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>Documento</h3>
             <div className="space-y-0.5 text-sm" style={{ color: 'var(--n-500)' }}>
@@ -115,7 +113,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             </div>
           </div>
 
-          {/* Split method */}
           <div className="mb-6">
             <h3 className="font-medium mb-3 text-sm" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>Método de reparto</h3>
             <div className="flex gap-4">
@@ -129,7 +126,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             </div>
           </div>
 
-          {/* Auto distribute */}
           <div className="mb-6">
             <button onClick={autoDistribute} className="atlas-btn-secondary flex items-center gap-2 px-4 py-2 text-sm">
               <Calculator className="w-4 h-4" />Distribución automática
@@ -137,7 +133,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             <p className="text-xs mt-1" style={{ color: 'var(--n-500)' }}>Distribuye automáticamente según el concepto del documento</p>
           </div>
 
-          {/* Categories */}
           <div className="space-y-4">
             {categories.map(({ key, label, sub, color }) => (
               <div key={key} className="border p-4" style={{ borderColor: 'var(--n-200)', borderRadius: 'var(--r-md)' }}>
@@ -180,7 +175,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             ))}
           </div>
 
-          {/* Summary */}
           <div className="mt-6 p-4" style={{ background: 'var(--n-50)', borderRadius: 'var(--r-md)' }}>
             <h4 className="font-medium mb-3 text-sm" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>Resumen</h4>
             <div className="grid grid-cols-4 gap-4 text-sm">
@@ -198,7 +192,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             </div>
           </div>
 
-          {/* Errors */}
           {errors.length > 0 && (
             <div className="mt-4 p-4 border" style={{ background: 'var(--s-neg-bg)', borderColor: 'var(--s-neg)', borderRadius: 'var(--r-md)' }}>
               <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--s-neg)' }}>
@@ -218,7 +211,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             </div>
           )}
 
-          {/* Notes */}
           <div className="mt-6">
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--n-700)', fontFamily: 'var(--font-base)' }}>Notas adicionales (opcional)</label>
             <textarea
@@ -231,7 +223,6 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t" style={{ borderColor: 'var(--n-200)' }}>
           <div className="text-sm" style={{ color: 'var(--n-500)', fontFamily: 'var(--font-base)' }}>
             Se crearán {[splitData.mejora.amount, splitData.mobiliario.amount, splitData.reparacionConservacion.amount].filter(a => a > 0).length} apuntes contables
