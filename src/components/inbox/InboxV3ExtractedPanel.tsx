@@ -11,6 +11,11 @@ const pickField = (document: any, candidates: string[]): string => {
   const hit = fields.find((field: any) => candidates.includes(String(field.name || '').toLowerCase()));
   if (hit?.value) return String(hit.value);
 
+  const ocrData = document?.metadata?.ocr?.data || {};
+  for (const key of candidates) {
+    if (ocrData[key]) return String(ocrData[key]);
+  }
+
   const metadata = document?.metadata || {};
   for (const key of candidates) {
     if (metadata[key]) return String(metadata[key]);
