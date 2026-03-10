@@ -1,4 +1,3 @@
-(no base changes needed)
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calculator, AlertCircle, Check, Euro, Percent } from 'lucide-react';
 
