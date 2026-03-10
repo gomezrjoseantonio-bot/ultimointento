@@ -24,16 +24,26 @@ const pickField = (document: any, candidates: string[]): string => {
   return '—';
 };
 
+const pickSnakeField = (document: any, key: string): string => {
+  const ocrData = document?.metadata?.ocr?.data || {};
+  const value = ocrData[key];
+  if (value === undefined || value === null || value === '') return '—';
+  return String(value);
+};
+
 const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({ document, onConfirm }) => {
   const hasOCR = !!document?.metadata?.ocr;
 
   const rows = [
-    { label: 'Proveedor', value: pickField(document, ['supplier_name', 'proveedor']) },
-    { label: 'Fecha', value: pickField(document, ['invoice_date', 'fecha']) },
-    { label: 'Base imponible', value: pickField(document, ['net_amount', 'subtotal', 'base_imponible']) },
-    { label: 'IVA', value: pickField(document, ['tax_amount', 'iva']) },
-    { label: 'Total', value: pickField(document, ['total_amount', 'total']) },
-    { label: 'Número factura', value: pickField(document, ['invoice_id', 'invoice_number', 'numero_factura']) }
+    { label: 'Proveedor', value: pickSnakeField(document, 'proveedor') !== '—' ? pickSnakeField(document, 'proveedor') : pickField(document, ['supplier_name']) },
+    { label: 'Número factura', value: pickSnakeField(document, 'numero_factura') !== '—' ? pickSnakeField(document, 'numero_factura') : pickField(document, ['invoice_id', 'invoice_number']) },
+    { label: 'Fecha', value: pickSnakeField(document, 'fecha') !== '—' ? pickSnakeField(document, 'fecha') : pickField(document, ['invoice_date']) },
+    { label: 'Base imponible', value: pickSnakeField(document, 'base_imponible') !== '—' ? pickSnakeField(document, 'base_imponible') : pickField(document, ['net_amount', 'subtotal']) },
+    { label: 'IVA', value: pickSnakeField(document, 'iva') !== '—' ? pickSnakeField(document, 'iva') : pickField(document, ['tax_amount']) },
+    { label: 'Importe total', value: pickSnakeField(document, 'importe_total') !== '—' ? pickSnakeField(document, 'importe_total') : pickField(document, ['total_amount']) },
+    { label: 'Moneda', value: pickSnakeField(document, 'moneda') !== '—' ? pickSnakeField(document, 'moneda') : pickField(document, ['currency']) },
+    { label: 'Confianza', value: pickSnakeField(document, 'confianza') },
+    { label: 'Notas', value: pickSnakeField(document, 'notas') }
   ];
 
   return (

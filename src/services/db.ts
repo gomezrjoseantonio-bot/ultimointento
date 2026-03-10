@@ -166,6 +166,17 @@ export interface OCRResult {
   timestamp: string;
   confidenceGlobal: number; // Overall confidence 0-1
   fields: OCRField[];
+  data?: {
+    proveedor?: string;
+    numero_factura?: string;
+    fecha?: string;
+    base_imponible?: string | number;
+    iva?: string | number;
+    importe_total?: string | number;
+    moneda?: string;
+    confianza?: number;
+    notas?: string;
+  }; // Raw extracted payload using snake_case keys from OCR backend
   status: 'pending' | 'processing' | 'completed' | 'error';
   error?: string;
   validationWarnings?: string[]; // Validation warnings for Base + VAT ≈ Total checks
