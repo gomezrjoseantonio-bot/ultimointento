@@ -182,6 +182,8 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
 
     const entities = [
       extracted.proveedor ? { type: 'supplier_name', mentionText: String(extracted.proveedor), confidence: safeConfidence } : null,
+      extracted.numero_factura ? { type: 'invoice_id', mentionText: String(extracted.numero_factura), confidence: safeConfidence } : null,
+      extracted.base_imponible ? { type: 'net_amount', mentionText: String(extracted.base_imponible), confidence: safeConfidence } : null,
       extracted.importe_total ? { type: 'total_amount', mentionText: String(extracted.importe_total), confidence: safeConfidence } : null,
       extracted.iva ? { type: 'tax_amount', mentionText: String(extracted.iva), confidence: safeConfidence } : null,
       extracted.fecha ? { type: 'invoice_date', mentionText: String(extracted.fecha), confidence: safeConfidence } : null,
@@ -190,6 +192,7 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
 
     return {
       success: true,
+      extractedData: extracted,
       results: [
         {
           status: 'success',
@@ -221,6 +224,9 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   
   // Process first successful result (for now)
   const firstResult = apiResponse.results.find((r: any) => r.status === 'success');
+  const extractedData = apiResponse.extractedData && typeof apiResponse.extractedData === 'object'
+    ? apiResponse.extractedData
+    : undefined;
   
   if (!firstResult) {
     const firstError = apiResponse.results.find((r: any) => r.status === 'error');
@@ -303,6 +309,17 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
     timestamp: new Date().toISOString(),
     confidenceGlobal: globalConfidence,
     fields,
+    data: extractedData ? {
+      proveedor: extractedData.proveedor ? String(extractedData.proveedor) : undefined,
+      numero_factura: extractedData.numero_factura ? String(extractedData.numero_factura) : undefined,
+      fecha: extractedData.fecha ? String(extractedData.fecha) : undefined,
+      base_imponible: extractedData.base_imponible,
+      iva: extractedData.iva,
+      importe_total: extractedData.importe_total,
+      moneda: extractedData.moneda ? String(extractedData.moneda) : undefined,
+      confianza: Number.isFinite(Number(extractedData.confianza)) ? Number(extractedData.confianza) : undefined,
+      notas: extractedData.notas ? String(extractedData.notas) : undefined
+    } : undefined,
     status: 'completed',
     validationWarnings, // Add warnings to OCR result
     engineInfo: {
