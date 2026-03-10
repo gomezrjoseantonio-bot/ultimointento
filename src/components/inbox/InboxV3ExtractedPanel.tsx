@@ -49,7 +49,9 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({ document,
   return (
     <div className="h-full flex flex-col">
       <div className="h-14 px-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--n-200)' }}>
-        <p className="text-2xl font-semibold" style={{ color: 'var(--n-900)' }}>Datos extraídos</p>
+        <p style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)', fontSize: 'var(--t-lg)', fontWeight: 600, lineHeight: 1.3 }}>
+          Datos extraídos
+        </p>
         {hasOCR && <span className="atlas-chip-positive">OCR completado</span>}
       </div>
 
@@ -59,7 +61,7 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({ document,
         </div>
       ) : (
         <div className="h-full p-5 flex flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--s-positive)' }}>
+          <div className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--s-pos)' }}>
             <CheckCircle2 size={16} />
             Confianza alta
           </div>
