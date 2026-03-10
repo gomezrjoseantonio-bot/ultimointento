@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronRight,
+  FileUp,
   ExternalLink,
   FileText,
   MoreVertical,
@@ -29,6 +30,7 @@ const InboxPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
   const [activeType, setActiveType] = useState<(typeof typeFilters)[number]>('Todos');
   const [search, setSearch] = useState('');
+  const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getStoredFileUrl = (document: any): string => {
@@ -207,8 +209,12 @@ const InboxPage: React.FC = () => {
     toast('Asignación manual pendiente de implementar', { icon: 'ℹ️' });
   };
 
-  const requestDelete = () => {
-    if (!selectedDocument) return;
+  const requestDelete = (documentToDelete?: any) => {
+    if (documentToDelete) {
+      setSelectedDocument(documentToDelete);
+    }
+
+    if (!documentToDelete && !selectedDocument) return;
     setShowDeleteModal(true);
   };
 
@@ -232,14 +238,13 @@ const InboxPage: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const handleUploadFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
+  const processUploadedFiles = async (files: File[]) => {
+    if (!files.length) return;
 
     try {
       const uploadedDocuments: any[] = [];
 
-      for (const file of Array.from(selectedFiles)) {
+      for (const file of files) {
         const documentToSave = {
           filename: file.name,
           type: file.type || 'application/octet-stream',
@@ -269,9 +274,23 @@ const InboxPage: React.FC = () => {
       toast.success(`${uploadedDocuments.length} documento(s) subido(s)`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudieron subir los documentos');
-    } finally {
-      event.target.value = '';
     }
+  };
+
+  const handleUploadFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    await processUploadedFiles(Array.from(selectedFiles));
+    event.target.value = '';
+  };
+
+  const handleDropUpload = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragActive(false);
+
+    const droppedFiles = Array.from(event.dataTransfer.files || []);
+    await processUploadedFiles(droppedFiles);
   };
 
   const selectedId = selectedDocument?.id;
@@ -367,7 +386,43 @@ const InboxPage: React.FC = () => {
                 </div>
               </div>
 
-              <InboxV3DocumentList documents={filteredDocuments} selectedId={selectedId} onSelect={setSelectedDocument} />
+              <div className="h-[calc(100%-138px)] overflow-hidden">
+                <InboxV3DocumentList
+                  documents={filteredDocuments}
+                  selectedId={selectedId}
+                  onSelect={setSelectedDocument}
+                  onDelete={requestDelete}
+                />
+              </div>
+
+              <div
+                className="p-4 border-t"
+                style={{ borderColor: 'var(--n-200)' }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  if (!isDragActive) setIsDragActive(true);
+                }}
+                onDragLeave={() => setIsDragActive(false)}
+                onDrop={handleDropUpload}
+              >
+                <button
+                  type="button"
+                  onClick={handleUploadClick}
+                  className="w-full border-2 border-dashed px-4 py-5 text-sm text-center transition"
+                  style={{
+                    borderRadius: 'var(--r-md)',
+                    borderColor: isDragActive ? 'var(--blue)' : 'var(--n-300)',
+                    background: isDragActive ? 'var(--blue-50)' : 'var(--n-50)',
+                    color: 'var(--n-700)'
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <FileUp size={18} />
+                    <span>Arrastra y suelta uno o varios documentos aquí</span>
+                    <span className="text-xs" style={{ color: 'var(--n-500)' }}>o haz clic para subir</span>
+                  </div>
+                </button>
+              </div>
             </div>
 
             <div className="h-full border-r flex flex-col" style={{ width: '40%', borderColor: 'var(--n-200)' }}>
