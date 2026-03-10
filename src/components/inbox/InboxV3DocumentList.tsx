@@ -51,7 +51,7 @@ const normalizeStatus = (doc: any): 'pendiente' | 'procesado' | 'error' => {
 
 const formatBytes = (bytes?: number): string => {
   if (!bytes) return '';
-  if (bytes < 1024)       return `${bytes} B`;
+  if (bytes < 1024)        return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
@@ -97,9 +97,9 @@ const KebabMenu: React.FC<KebabMenuProps> = ({ onDelete }) => {
         aria-label="Más opciones"
         onClick={() => setOpen((v) => !v)}
         className="p-1.5 transition-colors"
-        style={{ color: 'var(--n-500)', borderRadius: 'var(--r-sm)' }}
+        style={{ color: 'var(--n-400)', borderRadius: 'var(--r-sm)' }}
         onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--n-900)')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--n-500)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--n-400)')}
       >
         <MoreVertical size={16} />
       </button>
@@ -122,10 +122,7 @@ const KebabMenu: React.FC<KebabMenuProps> = ({ onDelete }) => {
             style={{ color: 'var(--s-neg)', fontFamily: 'var(--font-base)' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--s-neg-bg)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
+            onClick={() => { setOpen(false); onDelete(); }}
           >
             <Trash2 size={14} />
             Eliminar documento
@@ -159,7 +156,6 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ filename, onConfirm, onCancel
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Icon */}
       <div
         className="flex items-center justify-center w-10 h-10 mb-4"
         style={{ background: 'var(--s-neg-bg)', borderRadius: 'var(--r-md)' }}
@@ -167,37 +163,21 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ filename, onConfirm, onCancel
         <Trash2 size={20} style={{ color: 'var(--s-neg)' }} />
       </div>
 
-      <p
-        className="text-base font-semibold mb-1"
-        style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}
-      >
+      <p className="text-base font-semibold mb-1" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>
         ¿Eliminar documento?
       </p>
-      <p
-        className="text-sm mb-6 truncate"
-        style={{ color: 'var(--n-500)', fontFamily: 'var(--font-base)' }}
-        title={filename}
-      >
+      <p className="text-sm mb-6 truncate" style={{ color: 'var(--n-500)', fontFamily: 'var(--font-base)' }} title={filename}>
         {filename}
       </p>
 
       <div className="flex gap-3">
-        <button
-          type="button"
-          className="atlas-btn-secondary flex-1"
-          onClick={onCancel}
-        >
+        <button type="button" className="atlas-btn-secondary flex-1" onClick={onCancel}>
           Cancelar
         </button>
         <button
           type="button"
           className="flex-1 px-4 py-2 text-sm font-medium transition-colors"
-          style={{
-            background: 'var(--s-neg)',
-            color: 'var(--white)',
-            borderRadius: 'var(--r-md)',
-            fontFamily: 'var(--font-base)',
-          }}
+          style={{ background: 'var(--s-neg)', color: 'var(--white)', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-base)' }}
           onClick={onConfirm}
         >
           Eliminar
@@ -206,6 +186,76 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ filename, onConfirm, onCancel
     </div>
   </div>
 );
+
+// ─── document row (extracted for hover state) ────────────────────────────────
+
+interface DocRowProps {
+  doc: any;
+  isSelected: boolean;
+  onSelect: (doc: any) => void;
+  onDeleteRequest: (doc: any) => void;
+  showDelete: boolean;
+}
+
+const DocRow: React.FC<DocRowProps> = ({ doc, isSelected, onSelect, onDeleteRequest, showDelete }) => {
+  const [hovered, setHovered] = useState(false);
+
+  const type   = normalizeType(doc);
+  const status = normalizeStatus(doc);
+
+  const fecha   = formatDate(doc.metadata?.fecha || doc.createdAt || doc.uploadedAt);
+  const importe = formatEuro(
+    doc.metadata?.ocr?.data?.importe_total ||
+    doc.metadata?.importe ||
+    doc.amount
+  );
+  const size = formatBytes(doc.size || doc.metadata?.size);
+
+  const bg = isSelected ? 'var(--n-100)' : hovered ? 'var(--n-50)' : 'var(--white)';
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(doc)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="w-full text-left px-4 py-3 border-b transition-colors"
+      style={{
+        borderColor: 'var(--n-100)',
+        background: bg,
+        fontFamily: 'var(--font-base)',
+        cursor: 'pointer',
+      }}
+    >
+      <div className="flex items-start gap-2">
+        <div className="mt-0.5 flex-shrink-0">
+          <TypeIcon type={type} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--n-900)' }} title={doc.filename}>
+            {doc.filename}
+          </p>
+
+          {(fecha || importe || size) && (
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--n-500)' }}>
+              {[fecha, importe, size].filter(Boolean).join(' · ')}
+            </p>
+          )}
+
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            <span className={typeChipClass[type]}>{typeLabel[type]}</span>
+            <span className={statusChipClass[status]}>{status}</span>
+          </div>
+        </div>
+
+        {showDelete && (
+          <KebabMenu onDelete={() => onDeleteRequest(doc)} />
+        )}
+      </div>
+    </button>
+  );
+};
 
 // ─── main component ──────────────────────────────────────────────────────────
 
@@ -218,9 +268,7 @@ const InboxV3DocumentList: React.FC<InboxDocumentListProps> = ({
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
 
   const handleConfirmDelete = () => {
-    if (pendingDelete && onDelete) {
-      onDelete(pendingDelete);
-    }
+    if (pendingDelete && onDelete) onDelete(pendingDelete);
     setPendingDelete(null);
   };
 
@@ -231,90 +279,24 @@ const InboxV3DocumentList: React.FC<InboxDocumentListProps> = ({
         style={{ background: 'var(--surface-card)' }}
       >
         {documents.length === 0 && (
-          <div
-            className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center"
-            style={{ color: 'var(--n-500)' }}
-          >
+          <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center" style={{ color: 'var(--n-500)' }}>
             <FileText size={32} style={{ color: 'var(--n-300)' }} />
-            <p className="text-sm" style={{ fontFamily: 'var(--font-base)' }}>
-              No hay documentos
-            </p>
+            <p className="text-sm" style={{ fontFamily: 'var(--font-base)' }}>No hay documentos</p>
           </div>
         )}
 
-        {documents.map((doc) => {
-          const type   = normalizeType(doc);
-          const status = normalizeStatus(doc);
-          const isSelected = doc.id === selectedId;
-
-          // Metadata — try multiple paths
-          const fecha   = formatDate(doc.metadata?.fecha || doc.createdAt || doc.uploadedAt);
-          const importe = formatEuro(
-            doc.metadata?.ocr?.data?.importe_total ||
-            doc.metadata?.importe ||
-            doc.amount
-          );
-          const size = formatBytes(doc.size || doc.metadata?.size);
-
-          return (
-            <button
-              key={doc.id}
-              type="button"
-              onClick={() => onSelect(doc)}
-              className="w-full text-left px-4 py-3 border-b transition-colors"
-              style={{
-                borderColor: 'var(--n-100)',
-                background: isSelected ? 'var(--n-100)' : 'var(--white)',
-                fontFamily: 'var(--font-base)',
-                cursor: 'pointer',
-              }}
-            >
-              {/* Row: icon + content + kebab */}
-              <div className="flex items-start gap-2">
-                {/* File type icon */}
-                <div className="mt-0.5 flex-shrink-0">
-                  <TypeIcon type={type} />
-                </div>
-
-                {/* Main content */}
-                <div className="flex-1 min-w-0">
-                  {/* Filename */}
-                  <p
-                    className="text-sm font-semibold truncate"
-                    style={{ color: 'var(--n-900)' }}
-                    title={doc.filename}
-                  >
-                    {doc.filename}
-                  </p>
-
-                  {/* Metadata row */}
-                  {(fecha || importe || size) && (
-                    <p
-                      className="text-xs mt-0.5 truncate"
-                      style={{ color: 'var(--n-500)' }}
-                    >
-                      {[fecha, importe, size].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-
-                  {/* Chips */}
-                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                    <span className={typeChipClass[type]}>{typeLabel[type]}</span>
-                    <span className={statusChipClass[status]}>{status}</span>
-                  </div>
-                </div>
-
-                {/* Kebab */}
-                {onDelete && (
-                  <KebabMenu onDelete={() => setPendingDelete(doc)} />
-                )}
-              </div>
-            </button>
-          );
-        })}
+        {documents.map((doc) => (
+          <DocRow
+            key={doc.id}
+            doc={doc}
+            isSelected={doc.id === selectedId}
+            onSelect={onSelect}
+            onDeleteRequest={setPendingDelete}
+            showDelete={!!onDelete}
+          />
+        ))}
       </div>
 
-      {/* Delete confirmation modal */}
       {pendingDelete && (
         <DeleteModal
           filename={pendingDelete.filename}
