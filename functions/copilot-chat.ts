@@ -10,9 +10,31 @@ interface CopilotRequestBody {
   history?: ChatMessage[];
   context?: {
     userName?: string;
+    profileType?: 'particular' | 'autonomo' | 'sociedad';
     goals?: string[];
     monthlyIncome?: number;
     monthlyExpenses?: number;
+    cashAvailable?: number;
+    emergencyFundMonths?: number;
+    debt?: {
+      total?: number;
+      monthlyPayment?: number;
+      averageInterestRate?: number;
+    };
+    realEstate?: {
+      propertiesOwned?: number;
+      occupancyRate?: number;
+      monthlyRentIncome?: number;
+      monthlyPropertyCosts?: number;
+      netCashflow?: number;
+      targetYield?: number;
+    };
+    alerts?: {
+      minLiquidityMonths?: number;
+      maxDebtToIncome?: number;
+      minNetYield?: number;
+    };
+    preferredHorizon?: 'corto' | 'medio' | 'largo';
     language?: string;
   };
 }
@@ -25,23 +47,46 @@ const corsHeaders = {
 
 const buildSystemPrompt = (context?: CopilotRequestBody['context']) => {
   const language = context?.language || 'es';
+  const contextSnapshot = {
+    userName: context?.userName || null,
+    profileType: context?.profileType || null,
+    goals: context?.goals || [],
+    monthlyIncome: context?.monthlyIncome ?? null,
+    monthlyExpenses: context?.monthlyExpenses ?? null,
+    cashAvailable: context?.cashAvailable ?? null,
+    emergencyFundMonths: context?.emergencyFundMonths ?? null,
+    debt: context?.debt || null,
+    realEstate: context?.realEstate || null,
+    alerts: context?.alerts || null,
+    preferredHorizon: context?.preferredHorizon || null,
+  };
+
+  const contextJson = JSON.stringify(contextSnapshot, null, 2);
 
   return [
-    'Eres Atlas Copilot, un consejero financiero digital para clientes particulares en España.',
-    'Tu tono es claro, empático y accionable.',
-    'Reglas de respuesta:',
-    '1) No inventes datos, si falta contexto dilo explícitamente.',
-    '2) Da respuestas breves y prácticas.',
-    '3) Devuelve SIEMPRE en este formato:',
-    '   - Resumen (1-2 frases)',
-    '   - 3 Acciones recomendadas',
-    '   - Riesgo/alerta principal',
-    '4) Incluye una advertencia corta: "Orientación informativa, no asesoramiento legal/fiscal".',
-    `5) Responde en idioma: ${language}.`,
-    context?.userName ? `Nombre del cliente: ${context.userName}` : null,
-    context?.goals?.length ? `Objetivos: ${context.goals.join(', ')}` : null,
-    typeof context?.monthlyIncome === 'number' ? `Ingresos mensuales estimados: ${context.monthlyIncome} EUR` : null,
-    typeof context?.monthlyExpenses === 'number' ? `Gastos mensuales estimados: ${context.monthlyExpenses} EUR` : null,
+    'Eres Atlas Copilot, asistente financiero para el día a día de clientes en España con foco en finanzas personales, tesorería e inversión en inmuebles para alquiler.',
+    `Responde en idioma: ${language}.`,
+    'Tono: claro, directo, empático y accionable.',
+    'Prioridad: ayudar a tomar decisiones, dar feedback y disparar alertas tempranas.',
+    '',
+    'REGLAS DE ORO:',
+    '1) No inventes datos ni supuestos ocultos. Si faltan datos críticos, dilo y pide exactamente qué falta.',
+    '2) Usa SIEMPRE primero el contexto disponible del cliente (adjunto abajo) antes de recomendar.',
+    '3) Si hay objetivos declarados, alinea recomendaciones a esos objetivos y al horizonte temporal.',
+    '4) Señala riesgos de liquidez, sobreendeudamiento, concentración inmobiliaria o rentabilidad insuficiente cuando aplique.',
+    '5) Si detectas incoherencias numéricas, repórtalas explícitamente.',
+    '6) Nunca des asesoramiento legal/fiscal vinculante. Incluye la frase exacta al final: "Orientación informativa, no asesoramiento legal/fiscal".',
+    '',
+    'FORMATO OBLIGATORIO DE RESPUESTA:',
+    '- Resumen ejecutivo (máx. 3 frases).',
+    '- Decisión o feedback principal (1 bloque claro).',
+    '- 3 acciones recomendadas priorizadas (Alta/Media/Baja).',
+    '- Alertas y umbrales vigilados (si no hay alertas, indica "Sin alertas críticas").',
+    '- Datos faltantes para mejorar la recomendación (máx. 5 puntos).',
+    '- Cierre obligatorio: "Orientación informativa, no asesoramiento legal/fiscal".',
+    '',
+    'CONTEXTO ESTRUCTURADO DEL CLIENTE (fuente de verdad para esta conversación):',
+    contextJson,
   ]
     .filter(Boolean)
     .join('\n');
