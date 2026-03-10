@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronRight,
+  ExternalLink,
   FileText,
   MoreVertical,
   Search,
@@ -21,12 +22,36 @@ const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewAvailable, setPreviewAvailable] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'iframe' | 'embed'>('iframe');
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
   const [activeType, setActiveType] = useState<(typeof typeFilters)[number]>('Todos');
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getStoredFileUrl = (document: any): string => {
+    if (!document) return '';
+
+    return (
+      document?.storageUrl ||
+      document?.downloadUrl ||
+      document?.url ||
+      document?.fileUrl ||
+      document?.metadata?.storageUrl ||
+      document?.metadata?.downloadUrl ||
+      document?.metadata?.url ||
+      ''
+    );
+  };
+
+  const isPdfDocument = (document: any): boolean => {
+    if (!document) return false;
+    const mime = String(document.type || '').toLowerCase();
+    const filename = String(document.filename || '').toLowerCase();
+    return mime.includes('pdf') || filename.endsWith('.pdf');
+  };
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -52,6 +77,8 @@ const InboxPage: React.FC = () => {
     const resolvePreview = async () => {
       if (!selectedDocument) {
         setPreviewUrl('');
+        setPreviewAvailable(false);
+        setPreviewMode('iframe');
         return;
       }
 
@@ -66,12 +93,16 @@ const InboxPage: React.FC = () => {
 
       if (!blob) {
         setPreviewUrl('');
+        setPreviewAvailable(false);
+        setPreviewMode('iframe');
         return;
       }
 
       const url = URL.createObjectURL(blob);
       currentUrl = url;
       setPreviewUrl(url);
+      setPreviewAvailable(true);
+      setPreviewMode('iframe');
     };
 
     resolvePreview();
@@ -80,6 +111,21 @@ const InboxPage: React.FC = () => {
       if (currentUrl) URL.revokeObjectURL(currentUrl);
     };
   }, [selectedDocument]);
+
+  const handleOpenInNewTab = () => {
+    if (previewUrl) {
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const storedUrl = getStoredFileUrl(selectedDocument);
+    if (!storedUrl) {
+      toast.error('No se encontró una URL para abrir este archivo');
+      return;
+    }
+
+    window.open(storedUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const persistDocuments = async (updatedDocs: any[]) => {
     setDocuments(updatedDocs);
@@ -330,17 +376,39 @@ const InboxPage: React.FC = () => {
                   <FileText size={16} />
                   <span className="truncate max-w-[220px]">{selectedDocument?.filename || 'Documento'}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
-                  <span>PDF</span>
-                  <button type="button" style={{ color: 'var(--n-500)' }}>Descargar</button>
+              <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
+                <span>PDF</span>
+                  <button type="button" style={{ color: 'var(--n-500)' }} onClick={handleOpenInNewTab}>Descargar</button>
                   <button type="button" style={{ color: 'var(--n-500)' }}><MoreVertical size={16} /></button>
                 </div>
               </div>
 
               <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
                 <div className="h-full border" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
-                  {selectedDocument && previewUrl ? (
-                    <iframe title={selectedDocument.filename} src={previewUrl} className="w-full h-full" style={{ border: 'none', borderRadius: 'var(--r-md)' }} />
+                  {selectedDocument && isPdfDocument(selectedDocument) && previewUrl && previewMode === 'iframe' ? (
+                    <iframe
+                      title={selectedDocument.filename}
+                      src={previewUrl}
+                      className="w-full h-full"
+                      style={{ border: 'none', borderRadius: 'var(--r-md)' }}
+                      onError={() => setPreviewMode('embed')}
+                    />
+                  ) : selectedDocument && isPdfDocument(selectedDocument) && previewUrl && previewMode === 'embed' ? (
+                    <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
+                  ) : selectedDocument && isPdfDocument(selectedDocument) && previewAvailable ? (
+                    <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
+                  ) : selectedDocument && isPdfDocument(selectedDocument) ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
+                      <span>El PDF no está en memoria en este momento.</span>
+                      <button type="button" className="atlas-btn-secondary atlas-btn-sm" onClick={handleOpenInNewTab}>
+                        <ExternalLink size={14} />
+                        Abrir en nueva pestaña
+                      </button>
+                    </div>
+                  ) : selectedDocument ? (
+                    <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
+                      Vista previa disponible solo para documentos PDF
+                    </div>
                   ) : (
                     <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
                       Selecciona un documento
