@@ -52,7 +52,7 @@ const InboxV3DocumentList: React.FC<InboxDocumentListProps> = ({ documents, sele
               fontFamily: 'var(--font-base)'
             }}
           >
-            <p className="text-sm font-medium truncate" style={{ color: 'var(--n-900)' }}>
+            <p className="text-base font-semibold truncate" style={{ color: 'var(--n-900)' }}>
               {doc.filename}
             </p>
             <div className="mt-2 flex items-center gap-2">

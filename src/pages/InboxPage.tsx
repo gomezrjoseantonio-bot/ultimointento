@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileText } from 'lucide-react';
+import {
+  ChevronRight,
+  FileText,
+  MoreVertical,
+  Search,
+  Upload,
+  XCircle
+} from 'lucide-react';
 import { deleteDocumentAndBlob, getDocumentBlob, initDB } from '../services/db';
 import { processDocumentOCR } from '../services/documentAIService';
 import toast from 'react-hot-toast';
@@ -7,12 +14,18 @@ import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
 import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
 
+const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
+const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
+
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
+  const [activeType, setActiveType] = useState<(typeof typeFilters)[number]>('Todos');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -82,6 +95,32 @@ const InboxPage: React.FC = () => {
     }
   };
 
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      const status = String(doc.metadata?.queueStatus || 'pendiente').toLowerCase();
+      const type = String(doc.metadata?.tipo || '').toLowerCase();
+      const filename = String(doc.filename || '').toLowerCase();
+
+      if (activeTab === 'Pendientes' && status !== 'pendiente') return false;
+      if (activeTab === 'Procesados' && !status.includes('procesado')) return false;
+      if (activeType === 'Facturas' && !type.includes('factura') && !type.includes('recibo')) return false;
+      if (activeType === 'Contratos' && !type.includes('contrato')) return false;
+      if (search && !filename.includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [documents, activeTab, activeType, search]);
+
+  useEffect(() => {
+    if (!selectedDocument && filteredDocuments.length > 0) {
+      setSelectedDocument(filteredDocuments[0]);
+      return;
+    }
+
+    if (selectedDocument && !filteredDocuments.some((doc) => doc.id === selectedDocument.id)) {
+      setSelectedDocument(filteredDocuments[0] || null);
+    }
+  }, [filteredDocuments, selectedDocument]);
+
   const handleProcessOCR = async () => {
     if (!selectedDocument) return;
 
@@ -143,42 +182,137 @@ const InboxPage: React.FC = () => {
   };
 
   const selectedId = selectedDocument?.id;
-  const empty = useMemo(() => documents.length === 0, [documents.length]);
 
   return (
-    <div className="h-[calc(100vh-140px)] border overflow-hidden" style={{ borderColor: 'var(--n-200)', borderRadius: 'var(--r-lg)', fontFamily: 'var(--font-base)' }}>
-      <div className="h-full flex">
-        <div className="h-full border-r" style={{ width: '30%', borderColor: 'var(--n-200)' }}>
-          <InboxV3DocumentList documents={documents} selectedId={selectedId} onSelect={setSelectedDocument} />
+    <div className="space-y-4" style={{ fontFamily: 'var(--font-base)' }}>
+      <div className="px-1">
+        <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--n-500)' }}>
+          <span>Docs</span>
+          <ChevronRight size={14} />
+          <span style={{ color: 'var(--n-900)', fontWeight: 600 }}>Bandeja de entrada</span>
         </div>
+      </div>
 
-        <div className="h-full border-r p-5 flex flex-col" style={{ width: '40%', borderColor: 'var(--n-200)' }}>
-          <InboxV3Actions
-            onProcessOCR={handleProcessOCR}
-            onAssign={handleAssign}
-            onDelete={requestDelete}
-            disableActions={!selectedDocument || processingOCR}
-          />
-
-          <div className="mt-4 flex-1 border flex items-center justify-center" style={{ borderColor: 'var(--n-200)', borderRadius: 'var(--r-md)', background: 'var(--n-50)' }}>
-            {selectedDocument && previewUrl ? (
-              <iframe title={selectedDocument.filename} src={previewUrl} className="w-full h-full" style={{ border: 'none', borderRadius: 'var(--r-md)' }} />
-            ) : (
-              <div className="flex flex-col items-center gap-2" style={{ color: 'var(--n-500)' }}>
-                <FileText size={28} />
-                <span className="text-sm">{empty ? 'No hay documentos en bandeja' : 'Selecciona un documento'}</span>
-              </div>
-            )}
+      <div className="p-6 border" style={{ borderRadius: 'var(--r-lg)', borderColor: 'var(--n-200)', background: 'var(--surface-card)' }}>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-semibold" style={{ color: 'var(--n-900)' }}>Bandeja de entrada</h1>
+            <p className="mt-1 text-lg" style={{ color: 'var(--n-500)' }}>Sube, escanea y asigna facturas y documentos</p>
           </div>
+          <button className="atlas-btn-primary">
+            <Upload size={16} />
+            Subir documentos
+          </button>
         </div>
 
-        <div className="h-full" style={{ width: '30%', background: 'var(--white)' }}>
-          <InboxV3ExtractedPanel document={selectedDocument} onConfirm={handleConfirmAndSave} />
+        <div className="mt-5 flex items-center gap-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
+          {tabItems.map((tab) => {
+            const active = tab === activeTab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                className="pb-3 text-base font-medium"
+                style={{
+                  color: active ? 'var(--blue)' : 'var(--n-500)',
+                  borderBottom: active ? '2px solid var(--blue)' : '2px solid transparent'
+                }}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 h-[calc(100vh-330px)] min-h-[620px] border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)' }}>
+          <div className="h-full flex">
+            <div className="h-full border-r" style={{ width: '30%', borderColor: 'var(--n-200)' }}>
+              <div className="p-4 border-b" style={{ borderColor: 'var(--n-200)' }}>
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--n-500)' }} />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="w-full h-10 pl-9 pr-3 border text-sm"
+                    placeholder="Buscar documentos..."
+                    style={{
+                      borderColor: 'var(--n-300)',
+                      borderRadius: 'var(--r-md)',
+                      color: 'var(--n-900)',
+                      background: 'var(--white)'
+                    }}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  {typeFilters.map((type) => {
+                    const active = type === activeType;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setActiveType(type)}
+                        className="px-3 py-1.5 text-sm font-medium"
+                        style={{
+                          borderRadius: 'var(--r-sm)',
+                          background: active ? 'var(--blue)' : 'var(--n-100)',
+                          color: active ? 'var(--white)' : 'var(--n-700)'
+                        }}
+                      >
+                        {type}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <InboxV3DocumentList documents={filteredDocuments} selectedId={selectedId} onSelect={setSelectedDocument} />
+            </div>
+
+            <div className="h-full border-r flex flex-col" style={{ width: '40%', borderColor: 'var(--n-200)' }}>
+              <div className="h-14 px-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--n-200)' }}>
+                <div className="flex items-center gap-2 text-base font-semibold" style={{ color: 'var(--n-900)' }}>
+                  <FileText size={16} />
+                  <span className="truncate max-w-[220px]">{selectedDocument?.filename || 'Documento'}</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
+                  <span>PDF</span>
+                  <button type="button" style={{ color: 'var(--n-500)' }}>Descargar</button>
+                  <button type="button" style={{ color: 'var(--n-500)' }}><MoreVertical size={16} /></button>
+                </div>
+              </div>
+
+              <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
+                <div className="h-full border" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
+                  {selectedDocument && previewUrl ? (
+                    <iframe title={selectedDocument.filename} src={previewUrl} className="w-full h-full" style={{ border: 'none', borderRadius: 'var(--r-md)' }} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
+                      Selecciona un documento
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="h-16 px-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
+                <InboxV3Actions
+                  onProcessOCR={handleProcessOCR}
+                  onAssign={handleAssign}
+                  onDelete={requestDelete}
+                  disableActions={!selectedDocument || processingOCR}
+                />
+              </div>
+            </div>
+
+            <div className="h-full" style={{ width: '30%', background: 'var(--white)' }}>
+              <InboxV3ExtractedPanel document={selectedDocument} onConfirm={handleConfirmAndSave} />
+            </div>
+          </div>
         </div>
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26, 35, 50, 0.22)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'var(--focus-ring)' }}>
           <div className="p-6 border w-full max-w-md" style={{ background: 'var(--surface-card)', borderColor: 'var(--n-200)', borderRadius: 'var(--r-lg)' }}>
             <h3 className="text-base font-semibold" style={{ color: 'var(--n-900)' }}>Confirmar eliminación</h3>
             <p className="text-sm mt-2" style={{ color: 'var(--n-500)' }}>
@@ -189,6 +323,7 @@ const InboxPage: React.FC = () => {
                 Cancelar
               </button>
               <button type="button" className="atlas-btn-destructive atlas-btn-sm" onClick={handleDelete}>
+                <XCircle size={14} />
                 Eliminar
               </button>
             </div>
