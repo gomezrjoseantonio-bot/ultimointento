@@ -485,6 +485,7 @@ const InboxPage: React.FC = () => {
 
               <div className="h-16 px-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                 <InboxV3Actions
+                  onProcessOCR={handleProcessOCR}
                   onAssign={handleAssign}
                   onDelete={requestDelete}
                   disableActions={!selectedDocument || processingOCR}
