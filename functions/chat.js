@@ -148,13 +148,22 @@ exports.handler = async (event) => {
         ? body.mimeType.trim()
         : 'image/jpeg';
 
-      const system = [
-        'Eres un analista OCR financiero.',
-        'Extrae datos de facturas o tickets en español.',
-        'Devuelve texto JSON válido sin markdown con las claves:',
-        'proveedor, importe_total, iva, fecha, moneda, confianza, notas.',
-        'Si un campo no se puede identificar, usa null.',
-      ].join(' ');
+      const system = `Eres un experto en OCR de documentos fiscales españoles.
+Analiza la imagen y extrae datos con máxima precisión.
+
+REGLAS:
+- importe_total: importe final con IVA incluido. Busca "TOTAL", "TOTAL A PAGAR", "IMPORTE TOTAL". Devuelve número, no string.
+- iva: importe del IVA en euros (NO el porcentaje). Busca "IVA 21%", "IVA 10%", "Cuota IVA". Devuelve número.
+- base_imponible: importe antes de IVA. Busca "BASE", "SUBTOTAL", "BASE IMPONIBLE". Devuelve número.
+- proveedor: nombre de la empresa emisora, NO del receptor ni del cliente.
+- fecha: fecha de emisión en formato DD/MM/YYYY.
+- numero_factura: número o referencia del documento.
+- moneda: código ISO, EUR por defecto.
+- confianza: número entre 0 y 1 según tu seguridad global.
+- notas: campos dudosos o advertencias relevantes.
+
+Devuelve ÚNICAMENTE un objeto JSON válido, sin markdown, sin texto adicional.
+Si un campo no aparece en el documento usa null.`;
 
       const result = await callAnthropic({
         model: SCAN_MODEL,
@@ -167,7 +176,22 @@ exports.handler = async (event) => {
             content: [
               {
                 type: 'text',
-                text: 'Analiza este documento y extrae proveedor, importe, IVA y fecha. Devuelve únicamente JSON.',
+                text: `Eres un experto en OCR de documentos fiscales españoles.
+Analiza la imagen y extrae datos con máxima precisión.
+
+REGLAS:
+- importe_total: importe final con IVA incluido. Busca "TOTAL", "TOTAL A PAGAR", "IMPORTE TOTAL". Devuelve número, no string.
+- iva: importe del IVA en euros (NO el porcentaje). Busca "IVA 21%", "IVA 10%", "Cuota IVA". Devuelve número.
+- base_imponible: importe antes de IVA. Busca "BASE", "SUBTOTAL", "BASE IMPONIBLE". Devuelve número.
+- proveedor: nombre de la empresa emisora, NO del receptor ni del cliente.
+- fecha: fecha de emisión en formato DD/MM/YYYY.
+- numero_factura: número o referencia del documento.
+- moneda: código ISO, EUR por defecto.
+- confianza: número entre 0 y 1 según tu seguridad global.
+- notas: campos dudosos o advertencias relevantes.
+
+Devuelve ÚNICAMENTE un objeto JSON válido, sin markdown, sin texto adicional.
+Si un campo no aparece en el documento usa null.`,
               },
               {
                 type: 'image',
