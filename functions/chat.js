@@ -147,6 +147,25 @@ exports.handler = async (event) => {
       const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
         ? body.mimeType.trim()
         : 'image/jpeg';
+      const normalizedMimeType = mimeType.toLowerCase();
+      const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(normalizedMimeType);
+      const mediaBlock = isImage
+        ? {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: normalizedMimeType,
+              data: base64Data,
+            },
+          }
+        : {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: base64Data,
+            },
+          };
 
       const system = `Eres un experto en OCR de documentos fiscales españoles.
 Analiza la imagen y extrae datos con máxima precisión.
@@ -176,31 +195,9 @@ Si un campo no aparece en el documento usa null.`;
             content: [
               {
                 type: 'text',
-                text: `Eres un experto en OCR de documentos fiscales españoles.
-Analiza la imagen y extrae datos con máxima precisión.
-
-REGLAS:
-- importe_total: importe final con IVA incluido. Busca "TOTAL", "TOTAL A PAGAR", "IMPORTE TOTAL". Devuelve número, no string.
-- iva: importe del IVA en euros (NO el porcentaje). Busca "IVA 21%", "IVA 10%", "Cuota IVA". Devuelve número.
-- base_imponible: importe antes de IVA. Busca "BASE", "SUBTOTAL", "BASE IMPONIBLE". Devuelve número.
-- proveedor: nombre de la empresa emisora, NO del receptor ni del cliente.
-- fecha: fecha de emisión en formato DD/MM/YYYY.
-- numero_factura: número o referencia del documento.
-- moneda: código ISO, EUR por defecto.
-- confianza: número entre 0 y 1 según tu seguridad global.
-- notas: campos dudosos o advertencias relevantes.
-
-Devuelve ÚNICAMENTE un objeto JSON válido, sin markdown, sin texto adicional.
-Si un campo no aparece en el documento usa null.`,
+                text: 'Extrae todos los datos fiscales de este documento.',
               },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: mimeType,
-                  data: base64Data,
-                },
-              },
+              mediaBlock,
             ],
           },
         ],
