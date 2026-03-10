@@ -74,15 +74,11 @@ const InboxPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    let currentUrl = '';
+    setPreviewUrl('');
+    setPreviewAvailable(false);
 
     const resolvePreview = async () => {
-      if (!selectedDocument) {
-        setPreviewUrl('');
-        setPreviewAvailable(false);
-        setPreviewMode('iframe');
-        return;
-      }
+      if (!selectedDocument) return;
 
       let blob: Blob | null = null;
       if (selectedDocument.id) {
@@ -93,40 +89,41 @@ const InboxPage: React.FC = () => {
         blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
       }
 
-      if (!blob) {
-        setPreviewUrl('');
-        setPreviewAvailable(false);
-        setPreviewMode('iframe');
-        return;
-      }
+      if (!blob) return;
 
-      const url = URL.createObjectURL(blob);
-      currentUrl = url;
-      setPreviewUrl(url);
-      setPreviewAvailable(true);
-      setPreviewMode('iframe');
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        if (dataUrl) {
+          setPreviewUrl(dataUrl);
+          setPreviewAvailable(true);
+          setPreviewMode('iframe');
+        }
+      };
+      reader.readAsDataURL(blob);
     };
 
     resolvePreview();
-
-    return () => {
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-    };
   }, [selectedDocument]);
 
-  const handleOpenInNewTab = () => {
-    if (previewUrl) {
-      window.open(previewUrl, '_blank', 'noopener,noreferrer');
+  const handleOpenInNewTab = async () => {
+    let blob: Blob | null = null;
+    if (selectedDocument?.id) {
+      blob = await getDocumentBlob(selectedDocument.id);
+    }
+    if (!blob && selectedDocument?.content) {
+      blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
+    }
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       return;
     }
 
     const storedUrl = getStoredFileUrl(selectedDocument);
-    if (!storedUrl) {
-      toast.error('No se encontró una URL para abrir este archivo');
-      return;
-    }
-
-    window.open(storedUrl, '_blank', 'noopener,noreferrer');
+    if (storedUrl) window.open(storedUrl, '_blank', 'noopener,noreferrer');
+    else toast.error('No se encontró una URL para abrir este archivo');
   };
 
   const persistDocuments = async (updatedDocs: any[]) => {
