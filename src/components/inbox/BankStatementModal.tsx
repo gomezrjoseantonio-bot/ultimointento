@@ -32,18 +32,15 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
   const [showUnrecognizedIBAN, setShowUnrecognizedIBAN] = useState(false);
   const [detectedIBAN, setDetectedIBAN] = useState<string>('');
 
-  // Load accounts when modal opens
   useEffect(() => {
-    if (isOpen) {
-      loadAccounts();
-    }
+    if (isOpen) loadAccounts();
   }, [isOpen]);
 
   const loadAccounts = async () => {
     try {
       const allAccounts = await treasuryAPI.accounts.getAccounts();
-      setAccounts(allAccounts.filter(acc => 
-        acc.isActive && 
+      setAccounts(allAccounts.filter(acc =>
+        acc.isActive &&
         !acc.deleted_at &&
         !acc.name?.toLowerCase().includes('demo') &&
         !acc.name?.toLowerCase().includes('sample') &&
@@ -59,16 +56,10 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
   };
 
   const handleGoToSettings = () => {
-    // Close modal and redirect to Settings > Accounts
     onClose();
-    
-    // Navigate to settings (this depends on your routing setup)
-    // For a React Router setup, you would typically use navigate('/configuracion/cuentas')
-    // Since I don't see the routing setup, I'll use window location
     const currentUrl = new URL(window.location.href);
     currentUrl.hash = '#/configuracion/cuentas';
     window.location.href = currentUrl.toString();
-    
     toast.success('Crea la cuenta en Configuración y luego importa de nuevo el extracto');
   };
 
@@ -77,51 +68,23 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
       toast.error('Por favor, selecciona una cuenta de destino');
       return;
     }
-
     try {
       setIsLoading(true);
-      
-      // Validate that account exists
       const selectedAccount = accounts.find(acc => acc.id === selectedAccountId);
-      if (!selectedAccount) {
-        toast.error('Cuenta seleccionada no encontrada');
-        return;
-      }
-      
-      // Use the unified import service
-      const options: ImportOptions = {
-        file,
-        destinationAccountId: selectedAccountId as number,
-        usuario: 'inbox_ui'
-      };
-      
+      if (!selectedAccount) { toast.error('Cuenta seleccionada no encontrada'); return; }
+      const options: ImportOptions = { file, destinationAccountId: selectedAccountId as number, usuario: 'inbox_ui' };
       const result = await importBankStatement(options);
-      
       if (!result.success && (result as any).requiresAccountSelection) {
-        // Show unrecognized IBAN modal
         setDetectedIBAN((result as any).unrecognizedIBAN || 'IBAN no detectado');
         setShowUnrecognizedIBAN(true);
         return;
       }
-      
       if (result.success) {
-        console.debug('🧭 inbox:toTreasury:ok - Import completed successfully');
-        console.info(`🧭 Inbox import: ${result.inserted} movements saved to Treasury`);
-        
-        // Call the completion handler with the expected format
-        onImportComplete({
-          inserted: result.inserted,
-          duplicates: result.duplicates,
-          failed: result.errors,
-          batchId: result.batchId
-        });
+        onImportComplete({ inserted: result.inserted, duplicates: result.duplicates, failed: result.errors, batchId: result.batchId });
       } else {
-        console.error('🧭 inbox:toTreasury:error - Import failed');
         toast.error('Error al importar el extracto');
       }
-      
     } catch (error) {
-      console.error('Import error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error al importar movimientos';
       toast.error(errorMessage);
     } finally {
@@ -131,53 +94,28 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Unrecognized IBAN Modal
   if (showUnrecognizedIBAN) {
     return (
-      <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-        <div className="bg-white shadow-xl max-w-md w-full mx-4">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Cuenta no reconocida
-            </h2>
-            <button
-              onClick={() => setShowUnrecognizedIBAN(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26,35,50,.45)' }}>
+        <div className="bg-white shadow-xl max-w-md w-full mx-4" style={{ borderRadius: 'var(--r-lg)' }}>
+          <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
+            <h2 className="text-lg font-semibold" style={{ color: 'var(--n-900)' }}>Cuenta no reconocida</h2>
+            <button onClick={() => setShowUnrecognizedIBAN(false)} style={{ color: 'var(--n-500)' }}><X className="w-5 h-5" /></button>
           </div>
-
           <div className="p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: 'var(--s-warn)' }} />
               <div>
-                <h3 className="font-medium text-gray-900 mb-2">
-                  No se encontró una cuenta para este IBAN
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  IBAN detectado: <span className="font-mono font-medium">{detectedIBAN}</span>
-                </p>
-                <p className="text-sm text-gray-600">
-                  Para importar movimientos, necesitas crear primero la cuenta en Configuración &gt; Cuentas.
-                </p>
+                <h3 className="font-medium mb-2" style={{ color: 'var(--n-900)' }}>No se encontró una cuenta para este IBAN</h3>
+                <p className="text-sm mb-3" style={{ color: 'var(--n-500)' }}>IBAN detectado: <span className="font-mono font-medium">{detectedIBAN}</span></p>
+                <p className="text-sm" style={{ color: 'var(--n-500)' }}>Para importar movimientos, necesitas crear primero la cuenta en Configuración &gt; Cuentas.</p>
               </div>
             </div>
-
             <div className="flex gap-3 pt-4">
-              <button
-                onClick={handleGoToSettings}
-                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex items-center gap-2 px-4 py-2"
-              >
-                <Settings className="w-4 h-4" />
-                Ir a Configuración &gt; Cuentas
+              <button onClick={handleGoToSettings} className="atlas-btn-primary flex items-center gap-2 px-4 py-2">
+                <Settings className="w-4 h-4" />Ir a Configuración &gt; Cuentas
               </button>
-              <button
-                onClick={() => setShowUnrecognizedIBAN(false)}
-                className="px-4 py-2 border border-gray-300"
-              >
-                Cancelar
-              </button>
+              <button onClick={() => setShowUnrecognizedIBAN(false)} className="atlas-btn-secondary px-4 py-2">Cancelar</button>
             </div>
           </div>
         </div>
@@ -186,41 +124,26 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white shadow-xl max-w-md w-full mx-4">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Importar Extracto Bancario
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26,35,50,.45)' }}>
+      <div className="bg-white shadow-xl max-w-md w-full mx-4" style={{ borderRadius: 'var(--r-lg)' }}>
+        <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--n-900)' }}>Importar Extracto Bancario</h2>
+          <button onClick={onClose} style={{ color: 'var(--n-500)' }}><X className="w-5 h-5" /></button>
         </div>
-
         <div className="p-6 space-y-4">
-          {/* File info */}
-          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
-            <div className="flex items-center gap-3">
-              <Upload className="w-5 h-5 text-primary-600" />
-              <div>
-                <div className="font-medium text-primary-900">{file?.name}</div>
-                <div className="text-sm text-primary-600">
-                  Extracto bancario detectado
-                </div>
-              </div>
+          <div className="flex items-center gap-3 p-4 border" style={{ borderColor: 'var(--n-200)', borderRadius: 'var(--r-md)', background: 'var(--n-50)' }}>
+            <Upload className="w-5 h-5" style={{ color: 'var(--blue)' }} />
+            <div>
+              <div className="font-medium" style={{ color: 'var(--n-900)' }}>{file?.name}</div>
+              <div className="text-sm" style={{ color: 'var(--n-500)' }}>Extracto bancario detectado</div>
             </div>
           </div>
 
-          {/* Account selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Seleccionar cuenta destino
-            </label>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--n-700)' }}>Seleccionar cuenta destino</label>
             <select
-              className="btn-secondary-horizon w-full "
+              className="w-full border px-3 py-2"
+              style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-md)' }}
               value={selectedAccountId || ''}
               onChange={(e) => setSelectedAccountId(Number(e.target.value) || null)}
             >
@@ -233,42 +156,26 @@ const BankStatementModal: React.FC<BankStatementModalProps> = ({
             </select>
           </div>
 
-          {/* Help text and no accounts warning */}
           {accounts.length === 0 ? (
-            <div className="bg-amber-50 border border-amber-200 p-3">
-              <p className="text-sm text-amber-700 mb-2">
-                ⚠️ No hay cuentas configuradas. Debes crear una cuenta antes de poder importar extractos.
-              </p>
-              <button
-                onClick={handleGoToSettings}
-                className="text-sm bg-amber-600 px-3 py-1 rounded"
-              >
-                Ir a Configuración &gt; Cuentas
-              </button>
+            <div className="p-3 border" style={{ borderColor: 'var(--s-warn)', background: 'var(--s-warn-bg)', borderRadius: 'var(--r-md)' }}>
+              <p className="text-sm mb-2" style={{ color: 'var(--s-warn)' }}>⚠️ No hay cuentas configuradas. Debes crear una cuenta antes de poder importar extractos.</p>
+              <button onClick={handleGoToSettings} className="atlas-btn-secondary text-sm px-3 py-1">Ir a Configuración &gt; Cuentas</button>
             </div>
           ) : (
-            <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
-              <p className="text-sm text-primary-700">
-                💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.
-              </p>
+            <div className="p-3 border" style={{ borderColor: 'var(--n-200)', background: 'var(--n-50)', borderRadius: 'var(--r-md)' }}>
+              <p className="text-sm" style={{ color: 'var(--n-700)' }}>💡 ¿No ves tu cuenta? Ve a <strong>Configuración &gt; Cuentas</strong> para crear una nueva cuenta.</p>
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 pt-4">
             <button
               onClick={handleImport}
               disabled={!selectedAccountId || isLoading || accounts.length === 0}
-              className="atlas-atlas-atlas-atlas-atlas-btn-primary flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="atlas-btn-primary flex-1 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Importando...' : accounts.length === 0 ? 'Sin cuentas disponibles' : 'Importar Movimientos'}
             </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300"
-            >
-              Cancelar
-            </button>
+            <button onClick={onClose} className="atlas-btn-secondary px-4 py-2">Cancelar</button>
           </div>
         </div>
       </div>
