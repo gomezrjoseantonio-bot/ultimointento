@@ -20,7 +20,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [documentBlob, setDocumentBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [showInvoiceBreakdown, setShowInvoiceBreakdown] = useState(false); // H-OCR-REFORM: For invoice breakdown modal
   
   // Load document blob for preview
@@ -43,15 +43,15 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     loadDocumentBlob();
   }, [document?.id, document?.content, document?.type]);
 
-  // Create and revoke object URL properly
+  // Convert blob to data URL to bypass Chrome blob iframe restrictions
   useEffect(() => {
     if (!documentBlob) {
-      setPreviewUrl(null);
+      setPreviewDataUrl(null);
       return;
     }
-    const url = URL.createObjectURL(documentBlob);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
+    const reader = new FileReader();
+    reader.onload = (e) => setPreviewDataUrl(e.target?.result as string);
+    reader.readAsDataURL(documentBlob);
   }, [documentBlob]);
   
   const [metadata, setMetadata] = useState({
@@ -266,7 +266,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
   };
 
   const renderInlinePreview = () => {
-    if (!documentBlob || !previewUrl) {
+    if (!documentBlob || !previewDataUrl) {
       return (
         <div className="flex flex-col items-center justify-center py-10 text-neutral-400">
           <Eye className="h-10 w-10 mb-3" />
@@ -278,7 +278,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     if (document.type === 'application/pdf') {
       return (
         <iframe
-          src={previewUrl}
+          src={previewDataUrl}
           className="w-full rounded-lg border-0"
           style={{ height: '520px' }}
           title={document.filename}
@@ -289,7 +289,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
     if (document.type?.startsWith('image/')) {
       return (
         <img
-          src={previewUrl}
+          src={previewDataUrl}
           alt={document.filename}
           className="w-full max-h-[520px] object-contain rounded-lg"
         />
@@ -507,17 +507,6 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
           <Download className="w-4 h-4" />
           Descargar
         </button>
-        {previewUrl && document?.type === 'application/pdf' && (
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
-          >
-            <Eye className="w-4 h-4" />
-            Abrir en pestaña
-          </a>
-        )}
         <button 
           className="flex items-center gap-2 px-4 py-2 border border-error-200 text-error-600 rounded-lg hover:bg-error-50 transition-colors"
           onClick={() => setShowDeleteConfirm(true)}
