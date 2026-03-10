@@ -208,6 +208,9 @@ Si un campo no aparece en el documento usa null.`;
       }
 
       let extraido = result.text;
+      console.log('Claude raw text:', result.text);
+      console.log('Result ok:', result.ok);
+      console.log('Result status:', result.status);
       try {
         extraido = JSON.parse(result.text);
       } catch (_e) {
