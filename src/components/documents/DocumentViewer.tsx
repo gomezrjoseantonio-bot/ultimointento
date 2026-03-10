@@ -277,35 +277,12 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
 
     if (document.type === 'application/pdf') {
       return (
-        <object
-          data={previewUrl}
-          type="application/pdf"
-          className="w-full rounded-lg"
+        <iframe
+          src={previewUrl}
+          className="w-full rounded-lg border-0"
           style={{ height: '520px' }}
-        >
-          {/* Fallback for browsers that don't support inline PDF */}
-          <div className="flex flex-col items-center justify-center py-10 gap-3">
-            <p className="text-neutral-500 text-sm">Tu navegador no puede mostrar PDFs inline.</p>
-            <div className="flex gap-2">
-              <a
-                href={previewUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-navy-700 text-white rounded-lg hover:bg-navy-800 transition-colors text-sm"
-              >
-                <Eye className="w-4 h-4 inline mr-2" />
-                Abrir en nueva pestaña
-              </a>
-              <button
-                onClick={handleDownload}
-                className="px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors text-sm"
-              >
-                <Download className="w-4 h-4 inline mr-2" />
-                Descargar
-              </button>
-            </div>
-          </div>
-        </object>
+          title={document.filename}
+        />
       );
     }
 
