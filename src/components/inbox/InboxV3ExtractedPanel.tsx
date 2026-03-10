@@ -58,7 +58,7 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({ document,
           Procesa el documento con OCR para ver datos extraídos.
         </div>
       ) : (
-        <div className="h-full p-5 flex flex-col">
+        <div className="h-full p-5 flex flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--s-positive)' }}>
             <CheckCircle2 size={16} />
             Confianza alta
