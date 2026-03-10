@@ -1,5 +1,4 @@
-// Status Chip Component for Bandeja de entrada
-// Displays document status with proper colors: Verde/Ámbar/Rojo
+// StatusChip — tokens V3, escala de iconos 16px (Lucide)
 
 import React from 'react';
 import { CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react';
@@ -10,83 +9,114 @@ interface StatusChipProps {
   className?: string;
 }
 
-const StatusChip: React.FC<StatusChipProps> = ({ status, warnings = [], className = '' }) => {
-  const getStatusConfig = (status: string) => {
-    const normalizedStatus = status.toLowerCase();
-    
-    switch (normalizedStatus) {
-      case 'procesado':
-      case 'importado':
-      case 'completado':
-      case 'auto-guardado ok':
-      case 'classified_ok':
-        return {
-          label: normalizedStatus.includes('auto-guardado') ? 'Auto-guardado OK (72h)' : 'Procesado',
-          icon: CheckCircle,
-          bgColor: 'bg-success-100',
-          textColor: 'text-success-800',
-          borderColor: 'border-success-200',
-          iconColor: 'text-success-600'
-        };
-      
-      case 'warning':
-      case 'incompleto':
-      case 'procesado_ocr':
-      case 'needs_review':
-      case 'revisión':
-      case 'fein_revision':
-        return {
-          label: normalizedStatus.includes('fein') ? 'Revisión' : 
-                 warnings.length > 0 ? 'Warning' : 'Incompleto',
-          icon: AlertTriangle,
-          bgColor: 'bg-amber-100',
-          textColor: 'text-amber-800',
-          borderColor: 'border-amber-200',
-          iconColor: 'text-amber-600'
-        };
-      
-      case 'error':
-      case 'duplicado':
-      case 'failed':
-        return {
-          label: normalizedStatus === 'duplicado' ? 'Duplicado' : 'Error',
-          icon: XCircle,
-          bgColor: 'bg-error-100',
-          textColor: 'text-error-800',
-          borderColor: 'border-error-200',
-          iconColor: 'text-error-600'
-        };
-      
-      case 'pendiente':
-      case 'pending':
-      default:
-        return {
-          label: 'Pendiente',
-          icon: Clock,
-          bgColor: 'bg-neutral-100',
-          textColor: 'text-neutral-800',
-          borderColor: 'border-neutral-200',
-          iconColor: 'text-neutral-600'
-        };
-    }
-  };
+type ChipConfig = {
+  label: string;
+  icon: React.ElementType;
+  bg: string;
+  text: string;
+  border: string;
+  iconColor: string;
+};
 
-  const config = getStatusConfig(status);
-  const Icon = config.icon;
-  
+const getConfig = (status: string, warnings: string[]): ChipConfig => {
+  switch (status.toLowerCase()) {
+    case 'procesado':
+    case 'importado':
+    case 'completado':
+    case 'auto-guardado ok':
+    case 'classified_ok':
+      return {
+        label: status.toLowerCase().includes('auto') ? 'Auto-guardado OK' : 'Procesado',
+        icon: CheckCircle,
+        bg:     'var(--s-pos-bg)',
+        text:   'var(--s-pos)',
+        border: 'var(--s-pos)',
+        iconColor: 'var(--s-pos)',
+      };
+
+    case 'warning':
+    case 'incompleto':
+    case 'procesado_ocr':
+    case 'needs_review':
+    case 'revisión':
+    case 'fein_revision':
+      return {
+        label: status.toLowerCase().includes('fein')
+          ? 'Revisión'
+          : warnings.length > 0 ? 'Warning' : 'Incompleto',
+        icon: AlertTriangle,
+        bg:     'var(--s-warn-bg)',
+        text:   'var(--s-warn)',
+        border: 'var(--s-warn)',
+        iconColor: 'var(--s-warn)',
+      };
+
+    case 'error':
+    case 'duplicado':
+    case 'failed':
+      return {
+        label: status.toLowerCase() === 'duplicado' ? 'Duplicado' : 'Error',
+        icon: XCircle,
+        bg:     'var(--s-neg-bg)',
+        text:   'var(--s-neg)',
+        border: 'var(--s-neg)',
+        iconColor: 'var(--s-neg)',
+      };
+
+    case 'pendiente':
+    case 'pending':
+    default:
+      return {
+        label: 'Pendiente',
+        icon: Clock,
+        bg:     'var(--s-neu-bg)',
+        text:   'var(--s-neu)',
+        border: 'var(--n-300)',
+        iconColor: 'var(--n-500)',
+      };
+  }
+};
+
+const StatusChip: React.FC<StatusChipProps> = ({
+  status,
+  warnings = [],
+  className = '',
+}) => {
+  const cfg = getConfig(status, warnings);
+  const Icon = cfg.icon;
+
   return (
-    <div className={`
-      inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
-      ${config.bgColor} ${config.textColor} ${config.borderColor} ${className}
-    `}>
-      <Icon className={`w-3.5 h-3.5 ${config.iconColor}`} />
-      <span>{config.label}</span>
+    <span
+      className={`inline-flex items-center gap-1 ${className}`}
+      style={{
+        padding: '3px 10px',
+        borderRadius: 'var(--r-sm)',
+        border: `1px solid ${cfg.border}`,
+        background: cfg.bg,
+        color: cfg.text,
+        fontFamily: 'var(--font-base)',
+        fontSize: 'var(--t-xs)',
+        fontWeight: 600,
+        lineHeight: 1.4,
+      }}
+    >
+      <Icon size={16} style={{ color: cfg.iconColor, flexShrink: 0 }} />
+      {cfg.label}
       {warnings.length > 0 && (
-        <div className="ml-1">
-          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" title={warnings.join(', ')} />
-        </div>
+        <span
+          title={warnings.join(', ')}
+          style={{
+            display: 'inline-block',
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--s-warn)',
+            marginLeft: 2,
+            flexShrink: 0,
+          }}
+        />
       )}
-    </div>
+    </span>
   );
 };
 
