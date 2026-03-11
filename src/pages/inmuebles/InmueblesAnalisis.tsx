@@ -41,7 +41,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db';
-import type { Prestamo } from '../../types/prestamos';
+import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -120,10 +120,36 @@ const mapToSnapshot = (
   expenses: Expense[],
   opexRules: OpexRule[],
   loans: Prestamo[],
+  paymentPlansByLoanId: Map<string, PlanPagos>,
   valorActual: number,
 ): PropertySnapshot => {
   const propertyId = property.id!;
   const normalizedPropertyId = String(propertyId).trim();
+
+  const parseAmount = (value: unknown): number => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value !== 'string') return 0;
+
+    const raw = value.trim();
+    if (!raw) return 0;
+
+    const normalized = raw
+      .replace(/€/g, '')
+      .replace(/\s+/g, '')
+      .replace(/\.(?=\d{3}(\D|$))/g, '')
+      .replace(',', '.');
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const normalizeToken = (value: unknown): string =>
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
 
   const isLoanLinkedToProperty = (loan: Prestamo): boolean => {
     const rawLoan = loan as Prestamo & {
@@ -159,7 +185,7 @@ const mapToSnapshot = (
       return false;
     }
 
-    const hasInmuebleScope = ambito === 'INMUEBLE' || ambito === '';
+    const hasInmuebleScope = ambito === 'INMUEBLE' || ambito === '' || ambito === 'HIPOTECA';
     if (!hasInmuebleScope) {
       return false;
     }
@@ -170,6 +196,19 @@ const mapToSnapshot = (
 
     const propertyGlobalAlias = String(property.globalAlias ?? '').trim();
     if (propertyGlobalAlias && linkedId === propertyGlobalAlias) {
+      return true;
+    }
+
+    const normalizedLinkedIdToken = normalizeToken(linkedId);
+    if (!normalizedLinkedIdToken) return false;
+
+    const aliasToken = normalizeToken(property.alias);
+    if (aliasToken && normalizedLinkedIdToken === aliasToken) {
+      return true;
+    }
+
+    const globalAliasToken = normalizeToken(propertyGlobalAlias);
+    if (globalAliasToken && normalizedLinkedIdToken === globalAliasToken) {
       return true;
     }
 
@@ -217,26 +256,31 @@ const mapToSnapshot = (
       ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
       : 0;
 
-  const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
+  const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + parseAmount(loan.principalVivo), 0);
 
-  const cuotaHipotecaMes = propertyLoans
-    .reduce((sum, loan) => {
-      const rawLoan = loan as any;
-      const planPeriodoCuota = rawLoan?.planPagos?.periodos?.find((periodo: any) => !periodo?.pagado)?.cuota
-        ?? rawLoan?.planPagos?.periodos?.[0]?.cuota
-        ?? rawLoan?.cuadro_amortizacion?.find((cuota: any) => !cuota?.pagado)?.cuota_total
-        ?? rawLoan?.cuadro_amortizacion?.[0]?.cuota_total;
+  const getLoanMonthlyInstallment = (loan: Prestamo): number => {
+    const rawLoan = loan as any;
+    const planFromLoan = rawLoan?.planPagos;
+    const planFromKeyval = paymentPlansByLoanId.get(String(loan.id));
+    const plan = planFromLoan ?? planFromKeyval;
 
-      return sum + Number(
-        rawLoan?.cuotaMensual
-        ?? rawLoan?.cuota_mensual
-        ?? rawLoan?.cuotaEstimada
-        ?? rawLoan?.cuotaEstim
-        ?? rawLoan?.cuota
-        ?? planPeriodoCuota
-        ?? 0
-      );
-    }, 0);
+    const planPeriodoCuota = plan?.periodos?.find((periodo: any) => !periodo?.pagado)?.cuota
+      ?? plan?.periodos?.[0]?.cuota
+      ?? rawLoan?.cuadro_amortizacion?.find((cuota: any) => !cuota?.pagado)?.cuota_total
+      ?? rawLoan?.cuadro_amortizacion?.[0]?.cuota_total;
+
+    return parseAmount(
+      rawLoan?.cuotaMensual
+      ?? rawLoan?.cuota_mensual
+      ?? rawLoan?.cuotaEstimada
+      ?? rawLoan?.cuotaEstim
+      ?? rawLoan?.cuota
+      ?? planPeriodoCuota
+      ?? 0
+    );
+  };
+
+  const cuotaHipotecaMes = propertyLoans.reduce((sum, loan) => sum + getLoanMonthlyInstallment(loan), 0);
 
   const revalTotal = coste > 0 ? ((valor - coste) / coste) * 100 : 0;
   const revalAnual = revalTotal / 5;
@@ -943,16 +987,33 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('expenses') as Promise<Expense[]>,
           db.getAll('opexRules') as Promise<OpexRule[]>,
           db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
+          db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
         ]);
 
         if (!mounted) return;
+        const paymentPlanKeys = keyvalKeys
+          .map((key) => String(key))
+          .filter((key) => key.startsWith('planpagos_'));
+
+        const paymentPlans = await Promise.all(
+          paymentPlanKeys.map((key) => db.get('keyval', key) as Promise<PlanPagos | undefined>)
+        );
+
+        const paymentPlansByLoanId = new Map<string, PlanPagos>();
+        paymentPlans.forEach((plan, index) => {
+          if (!plan?.periodos?.length) return;
+          const key = paymentPlanKeys[index];
+          const loanId = key.replace('planpagos_', '').trim();
+          if (loanId) paymentPlansByLoanId.set(loanId, plan);
+        });
+
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const snapshots = active.map((property) =>
@@ -962,6 +1023,7 @@ export default function InmueblesAnalisis() {
             dbExpenses,
             dbOpexRules,
             dbLoans,
+            paymentPlansByLoanId,
             latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
           )
         );
