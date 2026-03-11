@@ -14,6 +14,9 @@ import {
   Wallet,
   ArrowUpRight,
   TrendingUp,
+  Shield,
+  AlertTriangle,
+  CircleCheck,
   Eye,
   Pencil,
   SlidersHorizontal,
@@ -119,6 +122,50 @@ const mapToSnapshot = (
   valorActual: number,
 ): PropertySnapshot => {
   const propertyId = property.id!;
+  const normalizedPropertyId = String(propertyId).trim();
+
+  const isLoanLinkedToProperty = (loan: Prestamo): boolean => {
+    const rawLoan = loan as Prestamo & {
+      propertyId?: string | number;
+      activoAsociadoId?: string | number;
+      activoId?: string | number;
+      assetId?: string | number;
+      inmueble?: { id?: string | number };
+      globalAlias?: string;
+    };
+
+    const ambito = String(rawLoan.ambito ?? '').toUpperCase();
+    if (ambito !== 'INMUEBLE' || rawLoan.activo === false) {
+      return false;
+    }
+
+    const linkedId = String(
+      rawLoan.inmuebleId
+      ?? rawLoan.propertyId
+      ?? rawLoan.activoAsociadoId
+      ?? rawLoan.activoId
+      ?? rawLoan.assetId
+      ?? rawLoan.inmueble?.id
+      ?? ''
+    ).trim();
+
+    if (!linkedId) {
+      return false;
+    }
+
+    if (linkedId === normalizedPropertyId) {
+      return true;
+    }
+
+    const propertyGlobalAlias = String(property.globalAlias ?? '').trim();
+    if (propertyGlobalAlias && linkedId === propertyGlobalAlias) {
+      return true;
+    }
+
+    return Number(linkedId) === Number(normalizedPropertyId);
+  };
+
+  const propertyLoans = loans.filter(isLoanLinkedToProperty);
   const coste = getAcquisitionCost(property);
   const valor = valorActual;
 
@@ -130,12 +177,9 @@ const mapToSnapshot = (
     ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
     : 0;
 
-  const deudaPendiente = loans
-    .filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo && String(loan.inmuebleId ?? '').trim() === String(propertyId))
-    .reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
+  const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
 
-  const cuotaHipotecaMes = loans
-    .filter((loan) => loan.ambito === 'INMUEBLE' && loan.activo && String(loan.inmuebleId ?? '').trim() === String(propertyId))
+  const cuotaHipotecaMes = propertyLoans
     .reduce((sum, loan) => {
       const rawLoan = loan as any;
       const planPeriodoCuota = rawLoan?.planPagos?.periodos?.find((periodo: any) => !periodo?.pagado)?.cuota
@@ -418,6 +462,10 @@ function TabCartera({
   const totalNetCf = filtered.reduce((sum, p) => sum + (p.cashflowMes - p.cuotaHipotecaMes), 0);
   const equity = Math.max(0, totalValue - totalDebt);
   const ltv = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
+  const occupiedUnits = filtered.filter((p) => Math.max(0, p.cashflowMes + p.gastosMes) > 0).length;
+  const totalUnits = filtered.length;
+  const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
+  const mortgageCoverage = totalMortgage > 0 ? totalRent / totalMortgage : 0;
 
   const rows = filtered.map((p) => {
     const rent = Math.max(0, p.cashflowMes + p.gastosMes);
@@ -457,31 +505,32 @@ function TabCartera({
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 16, padding: 20, boxShadow: '0 2px 6px rgba(4,44,94,.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>Coste total</div>
-          <div style={{ marginTop: 10, fontSize: 56, lineHeight: 1, fontWeight: 700, color: C.n700, whiteSpace: 'nowrap' }}>{fmt(totalCost)}</div>
-          <div style={{ marginTop: 8, fontSize: 14, color: C.n500 }}>Inversión acumulada</div>
-        </div>
-
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 16, padding: 20, boxShadow: '0 2px 6px rgba(4,44,94,.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>Valor actual</div>
-          <div style={{ marginTop: 10, fontSize: 56, lineHeight: 1, fontWeight: 700, color: C.n700, whiteSpace: 'nowrap' }}>{fmt(totalValue)}</div>
-          <div style={{ marginTop: 8, fontSize: 14, color: C.n500 }}>Valoración consolidada</div>
-          <div style={{ marginTop: 10 }}><Chip color={totalLatentGain >= 0 ? C.pos : C.neg} bg={totalLatentGain >= 0 ? C.posBg : C.negBg}>{totalCost > 0 ? `${totalLatentGain >= 0 ? '↗' : '↘'} ${Math.abs((totalLatentGain / totalCost) * 100).toFixed(1)}%` : '0,0%'}</Chip></div>
-        </div>
-
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 16, padding: 20, boxShadow: '0 2px 6px rgba(4,44,94,.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>Cashflow neto / mes</div>
-          <div style={{ marginTop: 10, fontSize: 56, lineHeight: 1, fontWeight: 700, color: totalNetCf >= 0 ? C.pos : C.neg, whiteSpace: 'nowrap' }}>{totalNetCf >= 0 ? '+' : '-'}{fmt(Math.abs(totalNetCf))}</div>
-          <div style={{ marginTop: 8, fontSize: 14, color: C.n500 }}>Ingresos − gastos − hipotecas</div>
-        </div>
-
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 16, padding: 20, boxShadow: '0 2px 6px rgba(4,44,94,.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>Plusvalía latente</div>
-          <div style={{ marginTop: 10, fontSize: 56, lineHeight: 1, fontWeight: 700, color: totalLatentGain >= 0 ? C.pos : C.neg, whiteSpace: 'nowrap' }}>{totalLatentGain >= 0 ? '+' : '-'}{fmt(Math.abs(totalLatentGain))}</div>
-          <div style={{ marginTop: 8, fontSize: 14, color: C.n500 }}>Sobre coste de adquisición</div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+        <KpiCard
+          label="Plusvalía latente"
+          value={`${totalLatentGain >= 0 ? '+' : '-'}${fmt(Math.abs(totalLatentGain))}`}
+          meta={<Chip color={totalLatentGain >= 0 ? C.pos : C.neg} bg={totalLatentGain >= 0 ? C.posBg : C.negBg}>{totalCost > 0 ? `${totalLatentGain >= 0 ? '↗' : '↘'} ${Math.abs((totalLatentGain / totalCost) * 100).toFixed(1)}%` : '0,0%'}</Chip>}
+          accentColor={C.pos}
+          icon={ArrowUpRight}
+          iconBg={C.posBg}
+          valueColor={totalLatentGain >= 0 ? C.pos : C.neg}
+        />
+        <KpiCard
+          label="Ocupación"
+          value={`${occupancyRate.toFixed(1).replace('.', ',')}%`}
+          meta={<><span>{occupiedUnits} de {totalUnits} unidades alquiladas</span><div style={{ marginTop: 4 }}><Chip color={occupiedUnits === totalUnits ? C.pos : '#A16207'} bg={occupiedUnits === totalUnits ? C.posBg : '#FEF3C7'}>{occupiedUnits === totalUnits ? <><CircleCheck size={10} /> Completa</> : <><AlertTriangle size={10} /> {totalUnits - occupiedUnits} unidad vacía</>}</Chip></div></>}
+          accentColor={C.teal}
+          icon={Home}
+          iconBg="rgba(29,160,186,.1)"
+        />
+        <KpiCard
+          label="Cobertura hipotecas"
+          value={totalMortgage > 0 ? `${mortgageCoverage.toFixed(1).replace('.', ',')}x` : 'N/A'}
+          meta={<><span>CF ingresos / CF financiación</span><div style={{ marginTop: 4 }}><Chip color={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.pos : C.neg} bg={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.posBg : C.negBg}>{totalMortgage <= 0 ? 'Sin deuda' : mortgageCoverage >= 1.2 ? <><CircleCheck size={10} /> Solvente</> : 'En riesgo'}</Chip></div></>}
+          accentColor={C.blue}
+          icon={Shield}
+          iconBg="rgba(4,44,94,.06)"
+        />
       </div>
 
       <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
