@@ -19,25 +19,10 @@ import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
 const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
 
-const isPdfDocumentRecord = (document: any): boolean => {
-  if (!document) return false;
-  const mime = String(document.type || '').toLowerCase();
-  const filename = String(document.filename || '').toLowerCase();
-  return mime.includes('pdf') || filename.endsWith('.pdf');
-};
-
-const ensurePdfBlob = (blob: Blob, document: any): Blob => {
-  if (blob.type.includes('pdf')) return blob;
-  if (isPdfDocumentRecord(document)) {
-    return new Blob([blob], { type: 'application/pdf' });
-  }
-  return blob;
-};
-
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
@@ -45,7 +30,7 @@ const InboxPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const previewObjectUrlRef = useRef<string | null>(null);
+  const blobUrlRef = useRef<string>(''); // track for cleanup
 
   // ── tab badge counts ──────────────────────────────────────────────────────
   const tabCounts = useMemo(() => {
@@ -58,21 +43,12 @@ const InboxPage: React.FC = () => {
     return counts;
   }, [documents]);
 
-  const getStoredFileUrl = (document: any): string => {
-    if (!document) return '';
-    return (
-      document?.storageUrl ||
-      document?.downloadUrl ||
-      document?.url ||
-      document?.fileUrl ||
-      document?.metadata?.storageUrl ||
-      document?.metadata?.downloadUrl ||
-      document?.metadata?.url ||
-      ''
-    );
+  const isPdfDocument = (document: any): boolean => {
+    if (!document) return false;
+    const mime = String(document.type || '').toLowerCase();
+    const filename = String(document.filename || '').toLowerCase();
+    return mime.includes('pdf') || filename.endsWith('.pdf');
   };
-
-  const isPdfDocument = (document: any): boolean => isPdfDocumentRecord(document);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -91,65 +67,53 @@ const InboxPage: React.FC = () => {
     loadDocuments();
   }, []);
 
+  // ── PDF preview: blob URL + <embed> (evita bloqueo Chrome con data: en iframe) ──
   useEffect(() => {
-    setPreviewUrl('');
-
-    if (previewObjectUrlRef.current) {
-      URL.revokeObjectURL(previewObjectUrlRef.current);
-      previewObjectUrlRef.current = null;
+    // Revocar blob anterior
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = '';
     }
-
-    if (previewObjectUrlRef.current) {
-      URL.revokeObjectURL(previewObjectUrlRef.current);
-      previewObjectUrlRef.current = null;
-    }
+    setPreviewBlobUrl('');
 
     const resolvePreview = async () => {
-      if (!selectedDocument) return;
+      if (!selectedDocument || !isPdfDocument(selectedDocument)) return;
 
       let blob: Blob | null = null;
-      if (selectedDocument.id) {
-        blob = await getDocumentBlob(selectedDocument.id);
-      }
+      if (selectedDocument.id) blob = await getDocumentBlob(selectedDocument.id);
       if (!blob && selectedDocument.content) {
         blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
       }
       if (!blob) return;
 
-      const normalizedBlob = ensurePdfBlob(blob, selectedDocument);
-      const objectUrl = URL.createObjectURL(normalizedBlob);
-      previewObjectUrlRef.current = objectUrl;
-      setPreviewUrl(objectUrl);
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      setPreviewBlobUrl(url);
     };
 
     resolvePreview();
 
     return () => {
-      if (previewObjectUrlRef.current) {
-        URL.revokeObjectURL(previewObjectUrlRef.current);
-        previewObjectUrlRef.current = null;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = '';
       }
     };
   }, [selectedDocument]);
 
   const handleOpenInNewTab = async () => {
     let blob: Blob | null = null;
-    if (selectedDocument?.id) {
-      blob = await getDocumentBlob(selectedDocument.id);
-    }
+    if (selectedDocument?.id) blob = await getDocumentBlob(selectedDocument.id);
     if (!blob && selectedDocument?.content) {
       blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
     }
     if (blob) {
-      const normalizedBlob = ensurePdfBlob(blob, selectedDocument);
-      const blobUrl = URL.createObjectURL(normalizedBlob);
-      window.open(blobUrl, '_blank', 'noopener,noreferrer');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
       return;
     }
-    const storedUrl = getStoredFileUrl(selectedDocument);
-    if (storedUrl) window.open(storedUrl, '_blank', 'noopener,noreferrer');
-    else toast.error('No se encontró una URL para abrir este archivo');
+    toast.error('No se encontró una URL para abrir este archivo');
   };
 
   const persistDocuments = async (updatedDocs: any[]) => {
@@ -158,13 +122,9 @@ const InboxPage: React.FC = () => {
     try {
       const db = await initDB();
       const tx = db.transaction('documents', 'readwrite');
-      for (const doc of updatedDocs) {
-        await tx.store.put(doc);
-      }
+      for (const doc of updatedDocs) await tx.store.put(doc);
       await tx.done;
-    } catch (_error) {
-      // fallback already persisted in localStorage
-    }
+    } catch (_error) { /* fallback localStorage */ }
   };
 
   const filteredDocuments = useMemo(() => {
@@ -172,7 +132,6 @@ const InboxPage: React.FC = () => {
       const status = String(doc.metadata?.queueStatus || 'pendiente').toLowerCase();
       const type = String(doc.metadata?.tipo || '').toLowerCase();
       const filename = String(doc.filename || '').toLowerCase();
-
       if (activeTab === 'Pendientes' && status !== 'pendiente') return false;
       if (activeTab === 'Procesados' && !status.includes('procesado')) return false;
       if (activeType === 'Facturas' && !type.includes('factura') && !type.includes('recibo')) return false;
@@ -183,10 +142,7 @@ const InboxPage: React.FC = () => {
   }, [documents, activeTab, activeType, search]);
 
   useEffect(() => {
-    if (!selectedDocument && filteredDocuments.length > 0) {
-      setSelectedDocument(filteredDocuments[0]);
-      return;
-    }
+    if (!selectedDocument && filteredDocuments.length > 0) { setSelectedDocument(filteredDocuments[0]); return; }
     if (selectedDocument && !filteredDocuments.some((doc) => doc.id === selectedDocument.id)) {
       setSelectedDocument(filteredDocuments[0] || null);
     }
@@ -197,9 +153,7 @@ const InboxPage: React.FC = () => {
     try {
       setProcessingOCR(true);
       let blob: Blob | null = null;
-      if (selectedDocument.id) {
-        blob = await getDocumentBlob(selectedDocument.id);
-      }
+      if (selectedDocument.id) blob = await getDocumentBlob(selectedDocument.id);
       if (!blob && selectedDocument.content) {
         blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
       }
@@ -208,13 +162,8 @@ const InboxPage: React.FC = () => {
       const ocr = await processDocumentOCR(blob, selectedDocument.filename);
       const updated = {
         ...selectedDocument,
-        metadata: {
-          ...selectedDocument.metadata,
-          ocr,
-          queueStatus: ocr.status === 'error' ? 'error' : 'procesado'
-        }
+        metadata: { ...selectedDocument.metadata, ocr, queueStatus: ocr.status === 'error' ? 'error' : 'procesado' }
       };
-
       const updatedDocs = documents.map((doc) => (doc.id === updated.id ? updated : doc));
       await persistDocuments(updatedDocs);
       setSelectedDocument(updated);
@@ -247,59 +196,43 @@ const InboxPage: React.FC = () => {
     toast.success('Documento eliminado');
   };
 
-  const handleConfirmAndSave = () => {
-    toast.success('Datos confirmados y guardados');
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const processUploadedFiles = async (files: File[]) => {
     if (!files.length) return;
     try {
-      const uploadedDocuments: any[] = [];
+      const uploaded: any[] = [];
       for (const file of files) {
-        const documentToSave = {
+        const doc = {
           filename: file.name,
           type: file.type || 'application/octet-stream',
           size: file.size,
           lastModified: file.lastModified,
           content: file,
           uploadDate: new Date().toISOString(),
-          metadata: {
-            title: file.name.replace(/\.[^/.]+$/, ''),
-            queueStatus: 'pendiente',
-            status: 'Nuevo',
-            tipo: 'Otros'
-          }
+          metadata: { title: file.name.replace(/\.[^/.]+$/, ''), queueStatus: 'pendiente', status: 'Nuevo', tipo: 'Otros' }
         };
-        const id = await saveDocumentWithBlob(documentToSave as any);
-        uploadedDocuments.push({ ...documentToSave, id });
+        const id = await saveDocumentWithBlob(doc as any);
+        uploaded.push({ ...doc, id });
       }
-      const updatedDocuments = [...uploadedDocuments, ...documents];
+      const updatedDocuments = [...uploaded, ...documents];
       await persistDocuments(updatedDocuments);
-      if (!selectedDocument && uploadedDocuments.length > 0) {
-        setSelectedDocument(uploadedDocuments[0]);
-      }
-      toast.success(`${uploadedDocuments.length} documento(s) subido(s)`);
+      if (!selectedDocument && uploaded.length > 0) setSelectedDocument(uploaded[0]);
+      toast.success(`${uploaded.length} documento(s) subido(s)`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se pudieron subir los documentos');
     }
   };
 
   const handleUploadFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles || selectedFiles.length === 0) return;
-    await processUploadedFiles(Array.from(selectedFiles));
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    await processUploadedFiles(Array.from(files));
     event.target.value = '';
   };
 
   const handleDropUpload = async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragActive(false);
-    const droppedFiles = Array.from(event.dataTransfer.files || []);
-    await processUploadedFiles(droppedFiles);
+    await processUploadedFiles(Array.from(event.dataTransfer.files || []));
   };
 
   const selectedId = selectedDocument?.id;
@@ -320,21 +253,13 @@ const InboxPage: React.FC = () => {
             <h1 className="text-4xl font-semibold" style={{ color: 'var(--n-900)' }}>Bandeja de entrada</h1>
             <p className="mt-1 text-lg" style={{ color: 'var(--n-500)' }}>Sube, escanea y asigna facturas y documentos</p>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            accept=".pdf,.png,.jpg,.jpeg,.csv,.xls,.xlsx,.zip"
-            onChange={handleUploadFiles}
-          />
-          <button type="button" className="atlas-btn-primary" onClick={handleUploadClick}>
-            <Upload size={16} />
-            Subir documentos
+          <input ref={fileInputRef} type="file" multiple className="hidden" accept=".pdf,.png,.jpg,.jpeg,.csv,.xls,.xlsx,.zip" onChange={handleUploadFiles} />
+          <button type="button" className="atlas-btn-primary" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={16} />Subir documentos
           </button>
         </div>
 
-        {/* ── Tabs with badges ── */}
+        {/* ── tabs con badges ── */}
         <div className="mt-5 flex items-center gap-6 border-b" style={{ borderColor: 'var(--n-200)' }}>
           {tabItems.map((tab) => {
             const active = tab === activeTab;
@@ -344,26 +269,14 @@ const InboxPage: React.FC = () => {
                 key={tab}
                 type="button"
                 className="pb-3 text-base font-medium flex items-center gap-2"
-                style={{
-                  color: active ? 'var(--blue)' : 'var(--n-500)',
-                  borderBottom: active ? '2px solid var(--blue)' : '2px solid transparent'
-                }}
+                style={{ color: active ? 'var(--blue)' : 'var(--n-500)', borderBottom: active ? '2px solid var(--blue)' : '2px solid transparent' }}
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
                 {count > 0 && (
                   <span
                     className="inline-flex items-center justify-center text-xs font-semibold"
-                    style={{
-                      minWidth: 18,
-                      height: 18,
-                      padding: '0 5px',
-                      borderRadius: 'var(--r-sm)',
-                      background: active ? 'var(--blue)' : 'var(--n-200)',
-                      color: active ? 'var(--white)' : 'var(--n-600)',
-                      fontFamily: 'var(--font-base)',
-                      lineHeight: 1,
-                    }}
+                    style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 'var(--r-sm)', background: active ? 'var(--blue)' : 'var(--n-200)', color: active ? 'var(--white)' : 'var(--n-600)', fontFamily: 'var(--font-base)', lineHeight: 1 }}
                   >
                     {count}
                   </span>
@@ -376,39 +289,25 @@ const InboxPage: React.FC = () => {
         <div className="mt-4 h-[calc(100vh-330px)] min-h-[620px] border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)' }}>
           <div className="h-full flex">
 
-            {/* ── Col 1 — document list (30%) ── */}
+            {/* ── Col 1 — lista (30%) ── */}
             <div className="h-full border-r" style={{ width: '30%', borderColor: 'var(--n-200)' }}>
               <div className="p-4 border-b" style={{ borderColor: 'var(--n-200)' }}>
                 <div className="relative">
                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--n-500)' }} />
                   <input
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(e) => setSearch(e.target.value)}
                     className="w-full h-10 pl-9 pr-3 border text-sm"
                     placeholder="Buscar documentos..."
-                    style={{
-                      borderColor: 'var(--n-300)',
-                      borderRadius: 'var(--r-md)',
-                      color: 'var(--n-900)',
-                      background: 'var(--white)'
-                    }}
+                    style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-md)', color: 'var(--n-900)', background: 'var(--white)' }}
                   />
                 </div>
                 <div className="flex items-center gap-2 mt-3">
                   {typeFilters.map((type) => {
                     const active = type === activeType;
                     return (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setActiveType(type)}
-                        className="px-3 py-1.5 text-sm font-medium"
-                        style={{
-                          borderRadius: 'var(--r-sm)',
-                          background: active ? 'var(--blue)' : 'var(--n-100)',
-                          color: active ? 'var(--white)' : 'var(--n-700)'
-                        }}
-                      >
+                      <button key={type} type="button" onClick={() => setActiveType(type)} className="px-3 py-1.5 text-sm font-medium"
+                        style={{ borderRadius: 'var(--r-sm)', background: active ? 'var(--blue)' : 'var(--n-100)', color: active ? 'var(--white)' : 'var(--n-700)' }}>
                         {type}
                       </button>
                     );
@@ -417,34 +316,21 @@ const InboxPage: React.FC = () => {
               </div>
 
               <div className="h-[calc(100%-138px)] overflow-hidden">
-                <InboxV3DocumentList
-                  documents={filteredDocuments}
-                  selectedId={selectedId}
-                  onSelect={setSelectedDocument}
-                  onDelete={requestDelete}
-                />
+                <InboxV3DocumentList documents={filteredDocuments} selectedId={selectedId} onSelect={setSelectedDocument} onDelete={requestDelete} />
               </div>
 
               <div
                 className="p-4 border-t"
                 style={{ borderColor: 'var(--n-200)' }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  if (!isDragActive) setIsDragActive(true);
-                }}
+                onDragOver={(e) => { e.preventDefault(); if (!isDragActive) setIsDragActive(true); }}
                 onDragLeave={() => setIsDragActive(false)}
                 onDrop={handleDropUpload}
               >
                 <button
                   type="button"
-                  onClick={handleUploadClick}
+                  onClick={() => fileInputRef.current?.click()}
                   className="w-full border-2 border-dashed px-4 py-5 text-sm text-center transition"
-                  style={{
-                    borderRadius: 'var(--r-md)',
-                    borderColor: isDragActive ? 'var(--blue)' : 'var(--n-300)',
-                    background: isDragActive ? 'var(--blue-50)' : 'var(--n-50)',
-                    color: 'var(--n-700)'
-                  }}
+                  style={{ borderRadius: 'var(--r-md)', borderColor: isDragActive ? 'var(--blue)' : 'var(--n-300)', background: isDragActive ? 'var(--blue-50)' : 'var(--n-50)', color: 'var(--n-700)' }}
                 >
                   <div className="flex flex-col items-center gap-2">
                     <FileUp size={18} />
@@ -455,7 +341,7 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
 
-            {/* ── Col 2 — PDF preview (40%) ── */}
+            {/* ── Col 2 — preview PDF (40%) ── */}
             <div className="h-full border-r flex flex-col" style={{ width: '40%', borderColor: 'var(--n-200)' }}>
               <div className="h-14 px-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--n-200)' }}>
                 <div className="flex items-center gap-2 text-base font-semibold" style={{ color: 'var(--n-900)' }}>
@@ -470,22 +356,20 @@ const InboxPage: React.FC = () => {
               </div>
 
               <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
-                <div className="h-full border" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
-                  {selectedDocument && isPdfDocument(selectedDocument) && previewUrl ? (
-                    <object
-                      data={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                <div className="h-full border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
+                  {selectedDocument && isPdfDocument(selectedDocument) && previewBlobUrl ? (
+                    // ── blob URL + <embed> — funciona en Chrome sin bloqueo CSP ──
+                    <embed
+                      src={previewBlobUrl}
                       type="application/pdf"
                       className="w-full h-full"
-                      aria-label={selectedDocument.filename}
-                    >
-                      <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
-                    </object>
+                      style={{ display: 'block' }}
+                    />
                   ) : selectedDocument && isPdfDocument(selectedDocument) ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
-                      <span>El PDF no está en memoria en este momento.</span>
+                      <span>El PDF no está disponible en este momento.</span>
                       <button type="button" className="atlas-btn-secondary atlas-btn-sm" onClick={handleOpenInNewTab}>
-                        <ExternalLink size={14} />
-                        Abrir en nueva pestaña
+                        <ExternalLink size={14} />Abrir en nueva pestaña
                       </button>
                     </div>
                   ) : selectedDocument ? (
@@ -502,7 +386,6 @@ const InboxPage: React.FC = () => {
 
               <div className="h-16 px-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                 <InboxV3Actions
-                  onProcessOCR={handleProcessOCR}
                   onAssign={handleAssign}
                   onDelete={requestDelete}
                   disableActions={!selectedDocument || processingOCR}
@@ -510,11 +393,11 @@ const InboxPage: React.FC = () => {
               </div>
             </div>
 
-            {/* ── Col 3 — extracted data (30%) ── */}
+            {/* ── Col 3 — datos extraídos (30%) ── */}
             <div className="h-full" style={{ width: '30%', background: 'var(--white)' }}>
               <InboxV3ExtractedPanel
                 document={selectedDocument}
-                onConfirm={handleConfirmAndSave}
+                onConfirm={() => toast.success('Datos confirmados y guardados')}
                 onProcessOCR={handleProcessOCR}
                 processingOCR={processingOCR}
               />
@@ -524,19 +407,14 @@ const InboxPage: React.FC = () => {
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'var(--focus-ring)' }}>
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(26,35,50,.45)' }}>
           <div className="p-6 border w-full max-w-md" style={{ background: 'var(--surface-card)', borderColor: 'var(--n-200)', borderRadius: 'var(--r-lg)' }}>
             <h3 className="text-base font-semibold" style={{ color: 'var(--n-900)' }}>Confirmar eliminación</h3>
-            <p className="text-sm mt-2" style={{ color: 'var(--n-500)' }}>
-              ¿Seguro que deseas eliminar este documento?
-            </p>
+            <p className="text-sm mt-2" style={{ color: 'var(--n-500)' }}>¿Seguro que deseas eliminar este documento?</p>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" className="atlas-btn-secondary atlas-btn-sm" onClick={() => setShowDeleteModal(false)}>
-                Cancelar
-              </button>
+              <button type="button" className="atlas-btn-secondary atlas-btn-sm" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
               <button type="button" className="atlas-btn-destructive atlas-btn-sm" onClick={handleDelete}>
-                <XCircle size={14} />
-                Eliminar
+                <XCircle size={14} />Eliminar
               </button>
             </div>
           </div>
