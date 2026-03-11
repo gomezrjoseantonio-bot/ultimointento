@@ -118,14 +118,14 @@ exports.handler = async (event) => {
 Analiza el documento y extrae datos con máxima precisión.
 
 CAMPOS A EXTRAER:
-- proveedor: nombre de la empresa emisora (NO del receptor).
+- proveedor: nombre de la empresa emisora (quien emite la factura, NO el receptor).
 - numero_factura: número o referencia del documento.
 - fecha: fecha de emisión en formato DD/MM/YYYY.
 - base_imponible: importe antes de IVA. Busca "BASE", "SUBTOTAL", "BASE IMPONIBLE". Número.
 - iva: importe del IVA en euros (NO el porcentaje). Busca "IVA 21%", "Cuota IVA". Número.
 - importe_total: importe final con IVA incluido. Busca "TOTAL", "TOTAL A PAGAR". Número.
 - moneda: código ISO, EUR por defecto.
-- direccion: dirección completa del emisor (calle, ciudad, CP). String o null.
+- direccion: dirección completa del RECEPTOR o cliente (a quien va dirigida la factura: calle, ciudad, CP). String o null. NO es la dirección del proveedor/emisor.
 - tipo_gasto: categoría del gasto. Elige UNA de: "telecomunicaciones", "electricidad", "agua", "gas", "alquiler", "seguros", "mantenimiento", "transporte", "alimentacion", "material_oficina", "servicios_profesionales", "otros".
   Ejemplos: Orange/Simyo/Vodafone/Movistar → "telecomunicaciones"; Iberdrola/Endesa/Naturgy eléctrica → "electricidad"; Naturgy gas/Repsol gas → "gas"; Canal de Isabel/Aguas → "agua".
 - confianza: número entre 0 y 1 según tu seguridad global.
