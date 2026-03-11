@@ -131,10 +131,11 @@ const mapToSnapshot = (
       activoId?: string | number;
       assetId?: string | number;
       inmueble?: { id?: string | number };
+      globalAlias?: string;
     };
 
     const ambito = String(rawLoan.ambito ?? '').toUpperCase();
-    if (ambito !== 'INMUEBLE' || !rawLoan.activo) {
+    if (ambito !== 'INMUEBLE' || rawLoan.activo === false) {
       return false;
     }
 
@@ -153,6 +154,11 @@ const mapToSnapshot = (
     }
 
     if (linkedId === normalizedPropertyId) {
+      return true;
+    }
+
+    const propertyGlobalAlias = String(property.globalAlias ?? '').trim();
+    if (propertyGlobalAlias && linkedId === propertyGlobalAlias) {
       return true;
     }
 
@@ -499,13 +505,6 @@ function TabCartera({
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12 }}>
-        <KpiCard label="Coste total" value={fmt(totalCost)} meta="Inversión acumulada" accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
-        <KpiCard label="Valor actual" value={fmt(totalValue)} meta={<><Chip color={totalLatentGain >= 0 ? C.pos : C.neg} bg={totalLatentGain >= 0 ? C.posBg : C.negBg}>{totalCost > 0 ? `${totalLatentGain >= 0 ? '↗' : '↘'} ${Math.abs((totalLatentGain / totalCost) * 100).toFixed(1)}%` : '0,0%'}</Chip> sobre coste</>} accentColor={C.blue} icon={Building2} iconBg="rgba(4,44,94,.06)" />
-        <KpiCard label="Cashflow neto / mes" value={`${totalNetCf >= 0 ? '+' : '-'}${fmt(Math.abs(totalNetCf))}`} meta="Ingresos − gastos − hipotecas" accentColor={C.pos} icon={Wallet} iconBg={C.posBg} valueColor={totalNetCf >= 0 ? C.pos : C.neg} />
-        <KpiCard label="Plusvalía latente" value={`${totalLatentGain >= 0 ? '+' : '-'}${fmt(Math.abs(totalLatentGain))}`} meta="Sobre coste de adquisición" accentColor={C.teal} icon={ArrowUpRight} iconBg="rgba(29,160,186,.1)" valueColor={totalLatentGain >= 0 ? C.pos : C.neg} />
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
         <KpiCard
           label="Plusvalía latente"
@@ -527,7 +526,7 @@ function TabCartera({
         <KpiCard
           label="Cobertura hipotecas"
           value={totalMortgage > 0 ? `${mortgageCoverage.toFixed(1).replace('.', ',')}x` : 'N/A'}
-          meta={<><span>CF ingresos / CF financiación</span><div style={{ marginTop: 4 }}><Chip color={mortgageCoverage >= 1.2 ? C.pos : C.neg} bg={mortgageCoverage >= 1.2 ? C.posBg : C.negBg}>{mortgageCoverage >= 1.2 ? <><CircleCheck size={10} /> Solvente</> : 'En riesgo'}</Chip></div></>}
+          meta={<><span>CF ingresos / CF financiación</span><div style={{ marginTop: 4 }}><Chip color={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.pos : C.neg} bg={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.posBg : C.negBg}>{totalMortgage <= 0 ? 'Sin deuda' : mortgageCoverage >= 1.2 ? <><CircleCheck size={10} /> Solvente</> : 'En riesgo'}</Chip></div></>}
           accentColor={C.blue}
           icon={Shield}
           iconBg="rgba(4,44,94,.06)"
