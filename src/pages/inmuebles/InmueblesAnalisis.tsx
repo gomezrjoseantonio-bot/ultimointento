@@ -41,7 +41,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db';
-import type { Prestamo } from '../../types/prestamos';
+import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -120,6 +120,7 @@ const mapToSnapshot = (
   expenses: Expense[],
   opexRules: OpexRule[],
   loans: Prestamo[],
+  paymentPlansByLoanId: Map<string, PlanPagos>,
   valorActual: number,
 ): PropertySnapshot => {
   const propertyId = property.id!;
@@ -257,24 +258,29 @@ const mapToSnapshot = (
 
   const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + parseAmount(loan.principalVivo), 0);
 
-  const cuotaHipotecaMes = propertyLoans
-    .reduce((sum, loan) => {
-      const rawLoan = loan as any;
-      const planPeriodoCuota = rawLoan?.planPagos?.periodos?.find((periodo: any) => !periodo?.pagado)?.cuota
-        ?? rawLoan?.planPagos?.periodos?.[0]?.cuota
-        ?? rawLoan?.cuadro_amortizacion?.find((cuota: any) => !cuota?.pagado)?.cuota_total
-        ?? rawLoan?.cuadro_amortizacion?.[0]?.cuota_total;
+  const getLoanMonthlyInstallment = (loan: Prestamo): number => {
+    const rawLoan = loan as any;
+    const planFromLoan = rawLoan?.planPagos;
+    const planFromKeyval = paymentPlansByLoanId.get(String(loan.id));
+    const plan = planFromLoan ?? planFromKeyval;
 
-      return sum + parseAmount(
-        rawLoan?.cuotaMensual
-        ?? rawLoan?.cuota_mensual
-        ?? rawLoan?.cuotaEstimada
-        ?? rawLoan?.cuotaEstim
-        ?? rawLoan?.cuota
-        ?? planPeriodoCuota
-        ?? 0
-      );
-    }, 0);
+    const planPeriodoCuota = plan?.periodos?.find((periodo: any) => !periodo?.pagado)?.cuota
+      ?? plan?.periodos?.[0]?.cuota
+      ?? rawLoan?.cuadro_amortizacion?.find((cuota: any) => !cuota?.pagado)?.cuota_total
+      ?? rawLoan?.cuadro_amortizacion?.[0]?.cuota_total;
+
+    return parseAmount(
+      rawLoan?.cuotaMensual
+      ?? rawLoan?.cuota_mensual
+      ?? rawLoan?.cuotaEstimada
+      ?? rawLoan?.cuotaEstim
+      ?? rawLoan?.cuota
+      ?? planPeriodoCuota
+      ?? 0
+    );
+  };
+
+  const cuotaHipotecaMes = propertyLoans.reduce((sum, loan) => sum + getLoanMonthlyInstallment(loan), 0);
 
   const revalTotal = coste > 0 ? ((valor - coste) / coste) * 100 : 0;
   const revalAnual = revalTotal / 5;
@@ -981,16 +987,33 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('expenses') as Promise<Expense[]>,
           db.getAll('opexRules') as Promise<OpexRule[]>,
           db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
+          db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
         ]);
 
         if (!mounted) return;
+        const paymentPlanKeys = keyvalKeys
+          .map((key) => String(key))
+          .filter((key) => key.startsWith('planpagos_'));
+
+        const paymentPlans = await Promise.all(
+          paymentPlanKeys.map((key) => db.get('keyval', key) as Promise<PlanPagos | undefined>)
+        );
+
+        const paymentPlansByLoanId = new Map<string, PlanPagos>();
+        paymentPlans.forEach((plan, index) => {
+          if (!plan?.periodos?.length) return;
+          const key = paymentPlanKeys[index];
+          const loanId = key.replace('planpagos_', '').trim();
+          if (loanId) paymentPlansByLoanId.set(loanId, plan);
+        });
+
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const snapshots = active.map((property) =>
@@ -1000,6 +1023,7 @@ export default function InmueblesAnalisis() {
             dbExpenses,
             dbOpexRules,
             dbLoans,
+            paymentPlansByLoanId,
             latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
           )
         );
