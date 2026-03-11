@@ -16,6 +16,7 @@ import {
   Coins,
   PiggyBank,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/personal';
 import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyeccionMensualService';
 import { ProyeccionAnual, MonthlyProjectionRow } from '../proyeccion/mensual/types/proyeccionMensual';
@@ -90,7 +91,7 @@ const getIncomeSourceIcon = (label: string): React.ElementType => {
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
-const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   vivienda:      { label: 'Vivienda',      color: 'var(--hz-primary)', icon: Home },
   alimentacion:  { label: 'Alimentación',  color: 'var(--hz-primary-600, #2563EB)', icon: Utensils },
   transporte:    { label: 'Transporte',    color: 'var(--hz-info, #3B82F6)', icon: Car },
