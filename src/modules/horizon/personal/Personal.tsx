@@ -165,7 +165,8 @@ const Personal: React.FC = () => {
       );
     }
 
-    return <PersonalResumenView resumen={resumen} config={config} />;
+    const gastosTabLabel = tabs.find(tab => tab.id === 'gastos')?.name ?? 'Gastos';
+    return <PersonalResumenView resumen={resumen} config={config} gastosTabLabel={gastosTabLabel} />;
   };
 
   const renderGastosSection = () => (

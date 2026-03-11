@@ -99,6 +99,11 @@ const InboxPage: React.FC = () => {
       previewObjectUrlRef.current = null;
     }
 
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+
     const resolvePreview = async () => {
       if (!selectedDocument) return;
 
