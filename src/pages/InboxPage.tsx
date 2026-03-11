@@ -19,6 +19,21 @@ import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
 const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
 
+const isPdfDocumentRecord = (document: any): boolean => {
+  if (!document) return false;
+  const mime = String(document.type || '').toLowerCase();
+  const filename = String(document.filename || '').toLowerCase();
+  return mime.includes('pdf') || filename.endsWith('.pdf');
+};
+
+const ensurePdfBlob = (blob: Blob, document: any): Blob => {
+  if (blob.type.includes('pdf')) return blob;
+  if (isPdfDocumentRecord(document)) {
+    return new Blob([blob], { type: 'application/pdf' });
+  }
+  return blob;
+};
+
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
@@ -32,6 +47,7 @@ const InboxPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   // ── tab badge counts ──────────────────────────────────────────────────────
   const tabCounts = useMemo(() => {
@@ -58,12 +74,7 @@ const InboxPage: React.FC = () => {
     );
   };
 
-  const isPdfDocument = (document: any): boolean => {
-    if (!document) return false;
-    const mime = String(document.type || '').toLowerCase();
-    const filename = String(document.filename || '').toLowerCase();
-    return mime.includes('pdf') || filename.endsWith('.pdf');
-  };
+  const isPdfDocument = (document: any): boolean => isPdfDocumentRecord(document);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -86,6 +97,11 @@ const InboxPage: React.FC = () => {
     setPreviewUrl('');
     setPreviewAvailable(false);
 
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+
     const resolvePreview = async () => {
       if (!selectedDocument) return;
 
@@ -98,19 +114,22 @@ const InboxPage: React.FC = () => {
       }
       if (!blob) return;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        if (dataUrl) {
-          setPreviewUrl(dataUrl);
-          setPreviewAvailable(true);
-          setPreviewMode('iframe');
-        }
-      };
-      reader.readAsDataURL(blob);
+      const normalizedBlob = ensurePdfBlob(blob, selectedDocument);
+      const objectUrl = URL.createObjectURL(normalizedBlob);
+      previewObjectUrlRef.current = objectUrl;
+      setPreviewUrl(objectUrl);
+      setPreviewAvailable(true);
+      setPreviewMode('iframe');
     };
 
     resolvePreview();
+
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    };
   }, [selectedDocument]);
 
   const handleOpenInNewTab = async () => {
@@ -122,7 +141,8 @@ const InboxPage: React.FC = () => {
       blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
     }
     if (blob) {
-      const blobUrl = URL.createObjectURL(blob);
+      const normalizedBlob = ensurePdfBlob(blob, selectedDocument);
+      const blobUrl = URL.createObjectURL(normalizedBlob);
       window.open(blobUrl, '_blank', 'noopener,noreferrer');
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
       return;
