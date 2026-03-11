@@ -390,7 +390,6 @@ const InboxPage: React.FC = () => {
                   onDelete={requestDelete}
                   onProcessOCR={handleProcessOCR}
                   disableActions={!selectedDocument || processingOCR}
-                  onProcessOCR={handleProcessOCR}
                 />
               </div>
             </div>
