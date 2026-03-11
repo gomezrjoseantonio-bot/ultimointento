@@ -38,8 +38,6 @@ const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [previewAvailable, setPreviewAvailable] = useState(false);
-  const [previewMode, setPreviewMode] = useState<'iframe' | 'embed'>('iframe');
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
@@ -95,7 +93,11 @@ const InboxPage: React.FC = () => {
 
   useEffect(() => {
     setPreviewUrl('');
-    setPreviewAvailable(false);
+
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
 
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
@@ -118,8 +120,6 @@ const InboxPage: React.FC = () => {
       const objectUrl = URL.createObjectURL(normalizedBlob);
       previewObjectUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
-      setPreviewAvailable(true);
-      setPreviewMode('iframe');
     };
 
     resolvePreview();
@@ -471,18 +471,15 @@ const InboxPage: React.FC = () => {
 
               <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
                 <div className="h-full border" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
-                  {selectedDocument && isPdfDocument(selectedDocument) && previewUrl && previewMode === 'iframe' ? (
-                    <iframe
-                      title={selectedDocument.filename}
-                      src={previewUrl}
+                  {selectedDocument && isPdfDocument(selectedDocument) && previewUrl ? (
+                    <object
+                      data={`${previewUrl}#toolbar=0&navpanes=0&scrollbar=1&view=FitH`}
+                      type="application/pdf"
                       className="w-full h-full"
-                      style={{ border: 'none', borderRadius: 'var(--r-md)' }}
-                      onError={() => setPreviewMode('embed')}
-                    />
-                  ) : selectedDocument && isPdfDocument(selectedDocument) && previewUrl && previewMode === 'embed' ? (
-                    <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
-                  ) : selectedDocument && isPdfDocument(selectedDocument) && previewAvailable ? (
-                    <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
+                      aria-label={selectedDocument.filename}
+                    >
+                      <embed src={previewUrl} type="application/pdf" className="w-full h-full" />
+                    </object>
                   ) : selectedDocument && isPdfDocument(selectedDocument) ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
                       <span>El PDF no está en memoria en este momento.</span>
