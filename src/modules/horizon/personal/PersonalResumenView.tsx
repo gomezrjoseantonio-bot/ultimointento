@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   TrendingUp,
   TrendingDown,
-  PiggyBank,
+  Wallet,
 } from 'lucide-react';
 import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/personal';
 import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyeccionMensualService';
@@ -127,18 +127,26 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = '
 };
 
 interface CashFlowChartProps {
-  data: typeof MOCK_MONTHLY_DATA;
+  data: Array<{
+    label: string;
+    income: number;
+    personalExpenses: number;
+    loanExpenses: number;
+    savings: number;
+  }>;
 }
 
 const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
-  const maxValue = Math.max(...data.map(d => Math.max(d.income, d.expenses)));
+  const [selectedMonth, setSelectedMonth] = useState(0);
+  const maxValue = Math.max(...data.map(d => Math.max(d.income, d.personalExpenses + d.loanExpenses)));
+  const activeMonth = data[selectedMonth] ?? data[0];
 
   return (
     <div className="bg-white border border-gray-200 rounded-3xl p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Flujo de Caja</p>
-          <p className="text-sm text-gray-400 mt-0.5">Ingresos vs Gastos — 12 meses</p>
+          <p className="text-sm text-gray-400 mt-0.5">Selecciona un mes para ver el detalle</p>
         </div>
         <div className="flex items-center gap-4 text-xs text-gray-500">
           <span className="flex items-center gap-1.5">
@@ -147,35 +155,62 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-gray-200" />
-            Gastos
+            Gastos totales
           </span>
         </div>
       </div>
       <div className="flex items-end gap-1.5" style={{ height: 160 }}>
-        {data.map(({ label, income, expenses }) => {
+        {data.map(({ label, income, personalExpenses, loanExpenses }, idx) => {
+          const totalExpenses = personalExpenses + loanExpenses;
           const incomeH = Math.round((income / maxValue) * 140);
-          const expensesH = Math.round((expenses / maxValue) * 140);
+          const expensesH = Math.round((totalExpenses / maxValue) * 140);
+          const selected = selectedMonth === idx;
           return (
-            <div key={label} className="flex-1 flex flex-col items-center gap-1">
+            <button
+              key={label}
+              type="button"
+              onClick={() => setSelectedMonth(idx)}
+              className={`flex-1 flex flex-col items-center gap-1 rounded-lg transition-colors ${selected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+            >
               <div className="w-full flex items-end justify-center gap-0.5" style={{ height: 148 }}>
-                {/* Income bar */}
                 <div
                   className="w-[45%] bg-blue-900 rounded-t-sm transition-all"
                   style={{ height: incomeH }}
                   title={`Ingresos: ${fmt(income)}`}
                 />
-                {/* Expenses bar */}
                 <div
                   className="w-[45%] bg-gray-200 rounded-t-sm transition-all"
                   style={{ height: expensesH }}
-                  title={`Gastos: ${fmt(expenses)}`}
+                  title={`Gastos totales: ${fmt(totalExpenses)}`}
                 />
               </div>
-              <p className="text-[10px] text-gray-400 font-medium">{label}</p>
-            </div>
+              <p className={`text-[10px] font-medium ${selected ? 'text-blue-900' : 'text-gray-400'}`}>{label}</p>
+            </button>
           );
         })}
       </div>
+      {activeMonth && (
+        <div className="mt-5 border-t border-gray-100 pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400">Ingresos ({activeMonth.label})</p>
+            <p className="text-sm font-semibold text-blue-900">{fmt(activeMonth.income)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400">Gastos personales</p>
+            <p className="text-sm font-semibold text-gray-700">{fmt(activeMonth.personalExpenses)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400">Préstamos</p>
+            <p className="text-sm font-semibold text-red-700">{fmt(activeMonth.loanExpenses)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-gray-400">Ahorro</p>
+            <p className={`text-sm font-semibold ${activeMonth.savings >= 0 ? 'text-[var(--s-pos)]' : 'text-red-700'}`}>
+              {fmt(activeMonth.savings)}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -185,73 +220,123 @@ interface ExpenseBreakdownProps {
   incomeTotal: number;
 }
 
-const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, incomeTotal }) => (
-  <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Desglose de Gastos</p>
-      <p className="text-sm text-gray-400 mt-0.5">Por categoría — anual</p>
-    </div>
-    <div className="space-y-3">
-      {categories.map(({ label, amount, color }) => {
-        const share = incomeTotal > 0 ? (amount / incomeTotal) * 100 : 0;
-        const widthPct = Math.min(100, Math.max(0, Math.round(share)));
-        return (
-          <div key={label}>
-            <div className="flex justify-between text-sm mb-1">
-              <div className="flex flex-col">
-                <span className="text-gray-500">{label}</span>
-                <span className="text-[10px] text-gray-400">{pct(share)} de los ingresos</span>
-              </div>
-              <span className="text-gray-900 font-medium">{fmt(amount)}</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-              <div
-                className={`${color} h-1.5 rounded-full transition-all`}
-                style={{ width: `${widthPct}%` }}
+const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, incomeTotal }) => {
+  const totalExpenses = categories.reduce((sum, c) => sum + c.amount, 0);
+  const groupedCategories = useMemo(() => {
+    if (totalExpenses <= 0) return categories;
+    const major = categories.filter(c => (c.amount / totalExpenses) * 100 >= 5);
+    const restAmount = categories
+      .filter(c => (c.amount / totalExpenses) * 100 < 5)
+      .reduce((sum, c) => sum + c.amount, 0);
+    return restAmount > 0
+      ? [...major, { label: 'Resto', amount: restAmount, color: 'bg-gray-300' }]
+      : major;
+  }, [categories, totalExpenses]);
+
+  const donutColors = ['#1e3a8a', '#1d4ed8', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#d1d5db'];
+  const slices = groupedCategories.map((cat, idx) => {
+    const share = totalExpenses > 0 ? cat.amount / totalExpenses : 0;
+    return { ...cat, share, colorHex: donutColors[idx % donutColors.length] };
+  });
+
+  let cursor = 0;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Desglose de Gastos</p>
+        <p className="text-sm text-gray-400 mt-0.5">Formato donut — categorías &lt; 5% agrupadas en Resto</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-5 items-center">
+        <svg viewBox="0 0 42 42" className="w-40 h-40 mx-auto -rotate-90">
+          <circle cx="21" cy="21" r="15.9155" fill="transparent" stroke="#eef2f7" strokeWidth="6" />
+          {slices.map((slice) => {
+            const dash = `${slice.share * 100} ${100 - slice.share * 100}`;
+            const element = (
+              <circle
+                key={slice.label}
+                cx="21"
+                cy="21"
+                r="15.9155"
+                fill="transparent"
+                stroke={slice.colorHex}
+                strokeWidth="6"
+                strokeDasharray={dash}
+                strokeDashoffset={-cursor}
               />
+            );
+            cursor += slice.share * 100;
+            return element;
+          })}
+        </svg>
+        <div className="space-y-2">
+          {slices.map((slice) => (
+            <div key={slice.label} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-gray-600">
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slice.colorHex }} />
+                {slice.label}
+              </span>
+              <span className="text-gray-900 font-medium">{pct(slice.share * 100)} · {fmt(slice.amount)}</span>
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-between pt-2 border-t border-gray-200">
+        <span className="text-sm font-semibold text-gray-900">Total gastos</span>
+        <span className="text-sm font-bold text-blue-900">{fmt(totalExpenses)}</span>
+      </div>
+      <p className="text-[11px] text-gray-400">Referencia sobre ingresos: {pct(incomeTotal > 0 ? (totalExpenses / incomeTotal) * 100 : 0)}</p>
     </div>
-    <div className="flex justify-between pt-2 border-t border-gray-200">
-      <span className="text-sm font-semibold text-gray-900">Total gastos</span>
-      <span className="text-sm font-bold text-blue-900">{fmt(categories.reduce((s, c) => s + c.amount, 0))}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 interface IncomeSourcesProps {
   sources: typeof MOCK_INCOME_SOURCES;
   total: number;
 }
 
-const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => (
-  <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Fuentes de Ingresos</p>
-      <p className="text-sm text-gray-400 mt-0.5">Distribución anual</p>
-    </div>
-    <div className="space-y-3">
-      {sources.map(({ label, amount }) => {
-        const share = total > 0 ? (amount / total) * 100 : 0;
-        return (
-          <div key={label} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-            <div className="flex flex-col">
-              <span className="text-sm text-gray-500">{label}</span>
-              <span className="text-[10px] text-gray-400">{pct(share)} del total</span>
+const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => {
+  const palette = ['#1e3a8a', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
+  return (
+    <div className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">Fuentes de Ingresos</p>
+        <p className="text-sm text-gray-400 mt-0.5">Barra única 100% por fuente</p>
+      </div>
+      <div className="w-full h-7 rounded-full overflow-hidden bg-blue-50 border border-blue-100 flex">
+        {sources.map(({ label, amount }, idx) => {
+          const share = total > 0 ? (amount / total) * 100 : 0;
+          return (
+            <div
+              key={label}
+              className="h-full"
+              style={{ width: `${share}%`, backgroundColor: palette[idx % palette.length] }}
+              title={`${label}: ${pct(share)}`}
+            />
+          );
+        })}
+      </div>
+      <div className="space-y-2">
+        {sources.map(({ label, amount }, idx) => {
+          const share = total > 0 ? (amount / total) * 100 : 0;
+          return (
+            <div key={label} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-gray-600">
+                <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: palette[idx % palette.length] }} />
+                {label}
+              </span>
+              <span className="text-gray-900 font-medium">{pct(share)} · {fmt(amount)}</span>
             </div>
-            <span className="text-sm text-gray-900 font-medium">{fmt(amount)}</span>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      <div className="flex justify-between pt-2 border-t border-gray-200">
+        <span className="text-sm font-semibold text-gray-900">Total</span>
+        <span className="text-sm font-bold text-blue-900">{fmt(total)}</span>
+      </div>
     </div>
-    <div className="flex justify-between pt-2 border-t border-gray-200">
-      <span className="text-sm font-semibold text-gray-900">Total</span>
-      <span className="text-sm font-bold text-blue-900">{fmt(total)}</span>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── Monthly row helpers (personal figures only) ──────────────────────────────
 
@@ -451,38 +536,43 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
 
   // Expense categories: real data if loaded, else annualised mock.
   // gastosAutonomo is already netted in autonomo income; not re-added here.
-  const expenseCatsBase = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
-  const expenseCatsToShow = annualLoanCostFromProyeccion > 0
-    ? [
-        ...expenseCatsBase,
-        {
-          label: 'Préstamos personales',
-          amount: annualLoanCostFromProyeccion,
-          color: 'bg-red-600',
-        },
-      ]
-    : expenseCatsBase;
+  const expenseCatsToShow = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
 
   // Monthly cash-flow chart: real personal figures from projection, else mock
   const cashFlowData = proyeccion
-    ? proyeccion.months.map((m, i) => ({
-        label: MONTH_LABELS[i],
-        income: monthPersonalIncome(m)
+    ? proyeccion.months.map((m, i) => {
+        const income = monthPersonalIncome(m)
           + (!proyeccionHasAutonomo && autonomoMensual && autonomoMensual[i]
             ? autonomoMensual[i].neto
-            : 0),
-        expenses: monthPersonalExpenses(m),
-      }))
+            : 0);
+        const personalExpenses = monthPersonalExpenses(m);
+        const loanExpenses = m.financiacion.cuotasPrestamos;
+        return {
+        label: MONTH_LABELS[i],
+        income,
+        personalExpenses,
+        loanExpenses,
+        savings: income - personalExpenses - loanExpenses,
+      };
+    })
     : autonomoMensual
     ? MONTH_LABELS.map((label, i) => ({
         label,
         income: autonomoMensual[i]?.neto ?? 0,
-        expenses: 0,
+        personalExpenses: 0,
+        loanExpenses: annualLoanCost / 12,
+        savings: (autonomoMensual[i]?.neto ?? 0) - (annualLoanCost / 12),
       }))
-    : MOCK_MONTHLY_DATA;
+    : MOCK_MONTHLY_DATA.map(({ label, income, expenses }) => ({
+        label,
+        income,
+        personalExpenses: expenses,
+        loanExpenses: 0,
+        savings: income - expenses,
+      }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* ── Top Row: KPIs ────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
@@ -497,35 +587,35 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen }) =>
           }
         />
         <KpiCard
-          title="Gastos Anuales"
-          amount={totalExpenses}
+          title="Gastos personales/familiares"
+          amount={totalExpensesBase}
           icon={TrendingDown}
           accent="default"
           sub={
             <span className="text-xs text-gray-400">
-              {expenseCatsToShow.length} categorías registradas
+              Según tab de gastos personales
             </span>
           }
         />
         <KpiCard
-          title="Ahorro Neto Anual"
-          amount={netSavings}
-          icon={PiggyBank}
-          accent="positive"
-          sub={
-            <span className="font-semibold text-sm" style={{ color: 'var(--s-pos)' }}>
-              Tasa de ahorro: {pct(savingsRate)}
-            </span>
-          }
-        />
-        <KpiCard
-          title="Coste anual préstamos personales"
+          title="Gastos préstamos"
           amount={annualLoanCostFromProyeccion}
           icon={TrendingDown}
           accent="danger"
           sub={
             <span className="text-xs text-gray-400">
               Préstamos de ámbito PERSONAL
+            </span>
+          }
+        />
+        <KpiCard
+          title="Cashflow anual"
+          amount={netSavings}
+          icon={Wallet}
+          accent={netSavings >= 0 ? 'positive' : 'danger'}
+          sub={
+            <span className={`font-semibold text-sm ${netSavings >= 0 ? 'text-[var(--s-pos)]' : 'text-red-700'}`}>
+              Tasa de ahorro: {pct(savingsRate)}
             </span>
           }
         />
