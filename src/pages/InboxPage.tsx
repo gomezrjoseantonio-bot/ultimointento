@@ -140,6 +140,8 @@ const InboxPage: React.FC = () => {
     });
   }, [documents, activeTab, activeType, search]);
 
+  const disableInboxActions = !selectedDocument || processingOCR;
+
   useEffect(() => {
     if (!selectedDocument && filteredDocuments.length > 0) { setSelectedDocument(filteredDocuments[0]); return; }
     if (selectedDocument && !filteredDocuments.some((doc) => doc.id === selectedDocument.id)) {
@@ -389,7 +391,7 @@ const InboxPage: React.FC = () => {
                   onAssign={handleAssign}
                   onDelete={requestDelete}
                   onProcessOCR={handleProcessOCR}
-                  disableActions={!selectedDocument || processingOCR}
+                  disableActions={disableInboxActions}
                 />
               </div>
             </div>
