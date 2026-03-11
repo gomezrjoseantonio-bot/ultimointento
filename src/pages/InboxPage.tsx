@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronRight,
   FileUp,
-  ExternalLink,
   FileText,
   MoreVertical,
   Search,
@@ -15,6 +14,7 @@ import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
 import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
+import PdfPreview from '../components/inbox/PdfPreview';
 
 const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
@@ -22,7 +22,6 @@ const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
 const InboxPage: React.FC = () => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string>('');
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
@@ -30,7 +29,6 @@ const InboxPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const blobUrlRef = useRef<string>('');
 
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { Pendientes: 0, Procesados: 0, Todos: documents.length };
@@ -66,38 +64,26 @@ const InboxPage: React.FC = () => {
     loadDocuments();
   }, []);
 
-  // ── PDF preview: blob URL + <iframe>
-  // Chrome bloquea data: en iframes desde v60, pero blob: funciona sin restricciones
+  // ── PDF preview: blob cargado directamente para PdfPreview (PDF.js canvas) ──
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+
   useEffect(() => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = '';
-    }
-    setPreviewBlobUrl('');
+    setPreviewBlob(null);
+    if (!selectedDocument || !isPdfDocument(selectedDocument)) return;
 
-    const resolvePreview = async () => {
-      if (!selectedDocument || !isPdfDocument(selectedDocument)) return;
-
+    const resolveBlob = async () => {
       let blob: Blob | null = null;
       if (selectedDocument.id) blob = await getDocumentBlob(selectedDocument.id);
       if (!blob && selectedDocument.content) {
         blob = new Blob([selectedDocument.content], { type: selectedDocument.type || 'application/pdf' });
       }
-      if (!blob) return;
-
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setPreviewBlobUrl(url);
-    };
-
-    resolvePreview();
-
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = '';
+      if (blob && blob.type !== 'application/pdf') {
+        blob = new Blob([blob], { type: 'application/pdf' });
       }
+      setPreviewBlob(blob);
     };
+
+    resolveBlob();
   }, [selectedDocument]);
 
   const handleOpenInNewTab = async () => {
@@ -139,8 +125,6 @@ const InboxPage: React.FC = () => {
       return true;
     });
   }, [documents, activeTab, activeType, search]);
-
-  const disableInboxActions = !selectedDocument || processingOCR;
 
   useEffect(() => {
     if (!selectedDocument && filteredDocuments.length > 0) { setSelectedDocument(filteredDocuments[0]); return; }
@@ -358,22 +342,9 @@ const InboxPage: React.FC = () => {
 
               <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
                 <div className="h-full border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
-                  {selectedDocument && isPdfDocument(selectedDocument) && previewBlobUrl ? (
-                    // ── FIX: <iframe> con blob URL — Chrome acepta blob: en iframes sin restricción CSP ──
-                    <iframe
-                      key={previewBlobUrl}
-                      title={selectedDocument.filename}
-                      src={previewBlobUrl}
-                      className="w-full h-full"
-                      style={{ border: 'none', display: 'block' }}
-                    />
-                  ) : selectedDocument && isPdfDocument(selectedDocument) ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
-                      <span>El PDF no está disponible en este momento.</span>
-                      <button type="button" className="atlas-btn-secondary atlas-btn-sm" onClick={handleOpenInNewTab}>
-                        <ExternalLink size={14} />Abrir en nueva pestaña
-                      </button>
-                    </div>
+                  {selectedDocument && isPdfDocument(selectedDocument) ? (
+                    // ── PDF.js canvas — sin iframes, sin restricciones CSP ──
+                    <PdfPreview blob={previewBlob} filename={selectedDocument.filename} />
                   ) : selectedDocument ? (
                     <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
                       Vista previa disponible solo para documentos PDF
@@ -391,7 +362,7 @@ const InboxPage: React.FC = () => {
                   onAssign={handleAssign}
                   onDelete={requestDelete}
                   onProcessOCR={handleProcessOCR}
-                  disableActions={disableInboxActions}
+                  disableActions={!selectedDocument || processingOCR}
                 />
               </div>
             </div>
