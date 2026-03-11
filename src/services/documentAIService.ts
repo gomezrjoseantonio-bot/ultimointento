@@ -2,10 +2,7 @@
 import { OCRResult, OCRField } from './db';
 import { callScanChat } from './scanChatService';
 
-// H-OCR-FIX: Document AI entity type mappings for EU Invoice processor
-// Based on Google Document AI EU Invoice processor schema
 const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
-  // Amount fields
   'total_amount': 'total_amount',
   'net_amount': 'net_amount', 
   'subtotal_amount': 'subtotal',
@@ -15,11 +12,7 @@ const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
   'purchase_total': 'total_amount',
   'total_monto': 'total_amount',
   'subtotal': 'subtotal',
-  
-  // Currency
   'currency': 'currency',
-  
-  // Invoice details
   'invoice_id': 'invoice_id',
   'invoice_number': 'invoice_id',
   'document_id': 'invoice_id',
@@ -28,8 +21,6 @@ const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
   'date': 'invoice_date',
   'due_date': 'due_date',
   'payment_due_date': 'due_date',
-  
-  // Supplier information
   'supplier_name': 'supplier_name',
   'supplier_address': 'supplier_address',
   'supplier_tax_id': 'supplier_tax_id',
@@ -38,109 +29,64 @@ const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
   'supplier_phone': 'supplier_phone',
   'vendor_name': 'supplier_name',
   'vendor_address': 'supplier_address',
-  
-  // Receiver/Customer information  
   'receiver_name': 'receiver_name',
   'receiver_address': 'receiver_address',
   'receiver_tax_id': 'receiver_tax_id',
   'customer_name': 'receiver_name',
   'customer_address': 'receiver_address',
-  
-  // Tax details
   'tax_id': 'tax_id',
   'vat_id': 'supplier_tax_id',
   'tax_rate': 'tax_rate',
   'vat_rate': 'tax_rate',
-  
-  // Payment details
   'iban': 'iban',
   'account_number': 'iban',
   'payment_terms': 'payment_terms',
-  
-  // Line items and descriptions
   'line_item': 'line_item',
   'line_item_description': 'line_item_description',
   'line_item_quantity': 'line_item_quantity',
   'line_item_amount': 'line_item_amount'
 };
 
-// H-OCR-FIX: Format currency value from Document AI
 const formatCurrencyFromDocumentAI = (value: any): string => {
   if (typeof value === 'object' && value.moneyValue) {
     const units = parseInt(value.moneyValue.units || '0');
     const nanos = parseInt(value.moneyValue.nanos || '0');
     const amount = units + (nanos / 1_000_000_000);
-    
-    return new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
+    return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
   }
-  
   if (typeof value === 'string') {
-    // Parse and normalize Spanish currency format
     const cleanValue = value.replace(/[^\d,.-]/g, '');
     const parsedAmount = parseFloat(cleanValue.replace(',', '.'));
-    
     if (!isNaN(parsedAmount)) {
-      return new Intl.NumberFormat('es-ES', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(parsedAmount);
+      return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parsedAmount);
     }
   }
-  
   return value?.toString() || '';
 };
 
-// H-OCR-FIX: Format date value from Document AI
 const formatDateFromDocumentAI = (value: any): string => {
   if (typeof value === 'object' && value.dateValue) {
     const { year, month, day } = value.dateValue;
-    const date = new Date(year, month - 1, day); // month is 1-based in API
-    
-    return new Intl.DateTimeFormat('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(date);
+    const date = new Date(year, month - 1, day);
+    return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
   }
-  
   if (typeof value === 'string') {
     try {
       const date = new Date(value);
       if (!isNaN(date.getTime())) {
-        return new Intl.DateTimeFormat('es-ES', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }).format(date);
+        return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
       }
-    } catch {
-      // Return original if parsing fails
-    }
+    } catch { /* return original */ }
   }
-  
   return value?.toString() || '';
 };
 
-// H-OCR-FIX: Process Document AI entity to OCRField
 const processDocumentAIEntity = (entity: any): OCRField | null => {
   const entityType = entity.type?.toLowerCase();
   const mappedType = ENTITY_TYPE_MAPPINGS[entityType];
-  
-  // DEV: Log unmapped entity types for debugging
-  if (!mappedType && process.env.NODE_ENV === 'development') {
-    console.warn('Unmapped entity type:', entityType, 'value:', entity.mentionText);
-  }
-  
-  if (!mappedType) {
-    return null; // Skip unmapped entity types
-  }
-  
+  if (!mappedType) return null;
+
   let processedValue = '';
-  
-  // Process based on normalized value type
   if (entity.normalizedValue) {
     if (entity.normalizedValue.moneyValue) {
       processedValue = formatCurrencyFromDocumentAI(entity.normalizedValue);
@@ -150,12 +96,10 @@ const processDocumentAIEntity = (entity: any): OCRField | null => {
       processedValue = entity.normalizedValue.text;
     }
   }
-  
-  // Fallback to mention text if no normalized value
   if (!processedValue && entity.mentionText) {
     processedValue = entity.mentionText.trim();
   }
-  
+
   return {
     name: mappedType,
     value: processedValue,
@@ -164,14 +108,8 @@ const processDocumentAIEntity = (entity: any): OCRField | null => {
   };
 };
 
-// H-OCR-FIX: Call Document AI Netlify Function
 export const callDocumentAIFunction = async (file: File): Promise<any> => {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      const sizeKB = Math.round(file.size / 1024);
-      console.log('OCR call → endpoint: /.netlify/functions/chat (scan), sizeKB:', sizeKB);
-    }
-
     const responseData = await callScanChat(file, file.type || 'application/pdf');
     const extracted = responseData.extraido && typeof responseData.extraido === 'object'
       ? responseData.extraido
@@ -181,27 +119,25 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
     const safeConfidence = Number.isFinite(confidence) ? confidence : 0.8;
 
     const entities = [
-      extracted.proveedor ? { type: 'supplier_name', mentionText: String(extracted.proveedor), confidence: safeConfidence } : null,
-      extracted.numero_factura ? { type: 'invoice_id', mentionText: String(extracted.numero_factura), confidence: safeConfidence } : null,
-      extracted.base_imponible ? { type: 'net_amount', mentionText: String(extracted.base_imponible), confidence: safeConfidence } : null,
-      extracted.importe_total ? { type: 'total_amount', mentionText: String(extracted.importe_total), confidence: safeConfidence } : null,
-      extracted.iva ? { type: 'tax_amount', mentionText: String(extracted.iva), confidence: safeConfidence } : null,
-      extracted.fecha ? { type: 'invoice_date', mentionText: String(extracted.fecha), confidence: safeConfidence } : null,
-      extracted.moneda ? { type: 'currency', mentionText: String(extracted.moneda), confidence: safeConfidence } : null
+      extracted.proveedor      ? { type: 'supplier_name', mentionText: String(extracted.proveedor),      confidence: safeConfidence } : null,
+      extracted.numero_factura ? { type: 'invoice_id',    mentionText: String(extracted.numero_factura), confidence: safeConfidence } : null,
+      extracted.base_imponible ? { type: 'net_amount',    mentionText: String(extracted.base_imponible), confidence: safeConfidence } : null,
+      extracted.importe_total  ? { type: 'total_amount',  mentionText: String(extracted.importe_total),  confidence: safeConfidence } : null,
+      extracted.iva            ? { type: 'tax_amount',    mentionText: String(extracted.iva),            confidence: safeConfidence } : null,
+      extracted.fecha          ? { type: 'invoice_date',  mentionText: String(extracted.fecha),          confidence: safeConfidence } : null,
+      extracted.moneda         ? { type: 'currency',      mentionText: String(extracted.moneda),         confidence: safeConfidence } : null,
     ].filter(Boolean);
 
     return {
       success: true,
       extractedData: extracted,
-      results: [
-        {
-          status: 'success',
-          entities,
-          text: typeof responseData.extraido === 'string'
-            ? responseData.extraido
-            : (extracted.notas ? String(extracted.notas) : JSON.stringify(extracted))
-        }
-      ]
+      results: [{
+        status: 'success',
+        entities,
+        text: typeof responseData.extraido === 'string'
+          ? responseData.extraido
+          : (extracted.notas ? String(extracted.notas) : JSON.stringify(extracted))
+      }]
     };
   } catch (error) {
     console.error('Document AI Function Error:', error);
@@ -209,7 +145,6 @@ export const callDocumentAIFunction = async (file: File): Promise<any> => {
   }
 };
 
-// H-OCR-FIX: Process Document AI response to OCRResult
 export const processDocumentAIResponse = (apiResponse: any, filename: string): OCRResult => {
   if (!apiResponse.success || !apiResponse.results || apiResponse.results.length === 0) {
     return {
@@ -221,13 +156,12 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
       error: 'No se pudieron procesar los documentos'
     };
   }
-  
-  // Process first successful result (for now)
+
   const firstResult = apiResponse.results.find((r: any) => r.status === 'success');
   const extractedData = apiResponse.extractedData && typeof apiResponse.extractedData === 'object'
     ? apiResponse.extractedData
     : undefined;
-  
+
   if (!firstResult) {
     const firstError = apiResponse.results.find((r: any) => r.status === 'error');
     return {
@@ -239,89 +173,62 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
       error: firstError?.error || 'Error al procesar el documento'
     };
   }
-  
-  // Process entities to OCR fields
+
   const fields: OCRField[] = [];
-  
   if (firstResult.entities) {
-    // DEV: Log all raw entities for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.info('Document AI entities received:', firstResult.entities.length);
-      firstResult.entities.forEach((entity: any, index: number) => {
-        console.info(`Entity ${index}:`, {
-          type: entity.type,
-          mentionText: entity.mentionText,
-          confidence: entity.confidence,
-          normalizedValue: entity.normalizedValue
-        });
-      });
-    }
-    
     for (const entity of firstResult.entities) {
       const ocrField = processDocumentAIEntity(entity);
-      if (ocrField) {
-        fields.push(ocrField);
-      }
-    }
-    
-    // DEV: Log mapping results
-    if (process.env.NODE_ENV === 'development') {
-      console.info('Mapped fields:', fields.length, 'from', firstResult.entities.length, 'entities');
+      if (ocrField) fields.push(ocrField);
     }
   }
-  
-  // Calculate global confidence
-  const globalConfidence = fields.length > 0 
+
+  const globalConfidence = fields.length > 0
     ? fields.reduce((sum, field) => sum + field.confidence, 0) / fields.length
     : 0;
 
-  // Add invoice validation - Base + VAT ≈ Total (±0.01€)
   const validationWarnings: string[] = [];
-  const baseAmount = parseFloat(fields.find(f => f.name === 'net_amount' || f.name === 'subtotal')?.value || '0');
-  const taxAmount = parseFloat(fields.find(f => f.name === 'tax_amount')?.value || '0');
+  const baseAmount  = parseFloat(fields.find(f => f.name === 'net_amount' || f.name === 'subtotal')?.value || '0');
+  const taxAmount   = parseFloat(fields.find(f => f.name === 'tax_amount')?.value || '0');
   const totalAmount = parseFloat(fields.find(f => f.name === 'total_amount')?.value || '0');
-  
+
   if (baseAmount > 0 && taxAmount > 0 && totalAmount > 0) {
     const calculatedTotal = baseAmount + taxAmount;
-    const difference = Math.abs(totalAmount - calculatedTotal);
-    
-    // Round difference to 2 decimal places to avoid floating point precision issues
-    const roundedDifference = Math.round(difference * 100) / 100;
-    
-    // Use > 0.01 to allow exactly ±0.01€ difference as per requirements
-    if (roundedDifference > 0.01) {
+    const roundedDiff = Math.round(Math.abs(totalAmount - calculatedTotal) * 100) / 100;
+    if (roundedDiff > 0.01) {
       validationWarnings.push(
-        `Totales no cuadran: Base ${baseAmount.toFixed(2)} + IVA ${taxAmount.toFixed(2)} = ${calculatedTotal.toFixed(2)} ≠ Total ${totalAmount.toFixed(2)} (diferencia: ${roundedDifference.toFixed(2)}€)`
+        `Totales no cuadran: Base ${baseAmount.toFixed(2)} + IVA ${taxAmount.toFixed(2)} = ${calculatedTotal.toFixed(2)} ≠ Total ${totalAmount.toFixed(2)} (diferencia: ${roundedDiff.toFixed(2)}€)`
       );
     }
   }
-  
-  // Prepare page information
+
   const pageInfo = firstResult.pages ? {
     totalPages: firstResult.pages.length,
     selectedPage: 1,
     pageScore: 1.0,
     allPageScores: firstResult.pages.map((_: any, index: number) => 1.0 - (index * 0.1))
   } : undefined;
-  
+
   return {
     engine: 'document-ai-invoice:Document AI — Invoice (EU)',
     timestamp: new Date().toISOString(),
     confidenceGlobal: globalConfidence,
     fields,
+    // ── FIX: data incluye direccion y tipo_gasto del nuevo prompt ──
     data: extractedData ? {
-      proveedor: extractedData.proveedor ? String(extractedData.proveedor) : undefined,
-      numero_factura: extractedData.numero_factura ? String(extractedData.numero_factura) : undefined,
-      fecha: extractedData.fecha ? String(extractedData.fecha) : undefined,
-      base_imponible: extractedData.base_imponible,
-      iva: extractedData.iva,
-      importe_total: extractedData.importe_total,
-      moneda: extractedData.moneda ? String(extractedData.moneda) : undefined,
-      confianza: Number.isFinite(Number(extractedData.confianza)) ? Number(extractedData.confianza) : undefined,
-      notas: extractedData.notas ? String(extractedData.notas) : undefined
+      proveedor:      extractedData.proveedor      != null ? String(extractedData.proveedor)      : undefined,
+      numero_factura: extractedData.numero_factura != null ? String(extractedData.numero_factura) : undefined,
+      fecha:          extractedData.fecha          != null ? String(extractedData.fecha)          : undefined,
+      base_imponible: extractedData.base_imponible != null ? extractedData.base_imponible         : undefined,
+      iva:            extractedData.iva            != null ? extractedData.iva                    : undefined,
+      importe_total:  extractedData.importe_total  != null ? extractedData.importe_total          : undefined,
+      moneda:         extractedData.moneda         != null ? String(extractedData.moneda)         : undefined,
+      direccion:      extractedData.direccion      != null ? String(extractedData.direccion)      : undefined,
+      tipo_gasto:     extractedData.tipo_gasto     != null ? String(extractedData.tipo_gasto)     : undefined,
+      confianza:      Number.isFinite(Number(extractedData.confianza)) ? Number(extractedData.confianza) : undefined,
+      notas:          extractedData.notas          != null ? String(extractedData.notas)          : undefined,
     } : undefined,
     status: 'completed',
-    validationWarnings, // Add warnings to OCR result
+    validationWarnings,
     engineInfo: {
       type: 'document-ai-invoice',
       displayName: 'Document AI — Invoice (EU)',
@@ -333,19 +240,11 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
 
 export const processDocumentOCR = async (documentBlob: Blob, filename: string): Promise<OCRResult> => {
   try {
-    // Convert blob to file for form data
     const file = new File([documentBlob], filename, { type: documentBlob.type });
-    
-    // Call Document AI function
     const apiResponse = await callDocumentAIFunction(file);
-    
-    // Process response
-    const ocrResult = processDocumentAIResponse(apiResponse, filename);
-    
-    return ocrResult;
+    return processDocumentAIResponse(apiResponse, filename);
   } catch (error) {
     console.error('OCR Processing Error:', error);
-    
     return {
       engine: 'document-ai-invoice:Error',
       timestamp: new Date().toISOString(),
@@ -357,24 +256,18 @@ export const processDocumentOCR = async (documentBlob: Blob, filename: string): 
   }
 };
 
-// H-OCR-FIX: Check if OCR suggests expense creation
 export const shouldSuggestExpense = (ocrResult: OCRResult): boolean => {
-  const hasRequiredFields = ocrResult.fields.some(field => 
+  const hasRequiredFields = ocrResult.fields.some(field =>
     ['total_amount', 'purchase_total', 'total_monto'].includes(field.name) && field.confidence >= 0.80
-  ) && ocrResult.fields.some(field => 
+  ) && ocrResult.fields.some(field =>
     ['invoice_date', 'date'].includes(field.name) && field.confidence >= 0.80
   );
-  
   return hasRequiredFields && ocrResult.status === 'completed';
 };
 
-// H-OCR-FIX: Check if OCR suggests CAPEX creation  
-export const shouldSuggestCAPEX = (ocrResult: OCRResult): boolean => {
-  // Basic heuristic - could be enhanced with more business logic
-  return shouldSuggestExpense(ocrResult) && ocrResult.confidenceGlobal >= 0.60;
-};
+export const shouldSuggestCAPEX = (ocrResult: OCRResult): boolean =>
+  shouldSuggestExpense(ocrResult) && ocrResult.confidenceGlobal >= 0.60;
 
-// H-OCR-FIX: Get critical fields status
 export const getCriticalFieldsStatus = (ocrResult: OCRResult): {
   allCriticalValid: boolean;
   hasEmptyCritical: boolean;
@@ -382,42 +275,26 @@ export const getCriticalFieldsStatus = (ocrResult: OCRResult): {
 } => {
   const criticalFieldNames = ['total_amount', 'purchase_total', 'total_monto', 'invoice_date', 'date'];
   const CONFIDENCE_THRESHOLD = 0.80;
-  
-  const foundCriticalFields = ocrResult.fields.filter(field => 
-    criticalFieldNames.includes(field.name)
-  );
-  
-  const validCriticalFields = foundCriticalFields.filter(field => 
-    field.confidence >= CONFIDENCE_THRESHOLD && field.value.trim() !== ''
-  );
-  
-  const hasValidTotal = validCriticalFields.some(f => 
-    ['total_amount', 'purchase_total', 'total_monto'].includes(f.name)
-  );
-  const hasValidDate = validCriticalFields.some(f => 
-    ['invoice_date', 'date'].includes(f.name)
-  );
-  
+  const foundCriticalFields = ocrResult.fields.filter(f => criticalFieldNames.includes(f.name));
+  const validCriticalFields = foundCriticalFields.filter(f => f.confidence >= CONFIDENCE_THRESHOLD && f.value.trim() !== '');
   return {
-    allCriticalValid: hasValidTotal && hasValidDate,
+    allCriticalValid: validCriticalFields.some(f => ['total_amount', 'purchase_total', 'total_monto'].includes(f.name))
+      && validCriticalFields.some(f => ['invoice_date', 'date'].includes(f.name)),
     hasEmptyCritical: foundCriticalFields.length < 2,
     criticalFields: foundCriticalFields.map(f => f.name)
   };
 };
 
-// H-OCR-FIX: Create expense data from OCR result
 export const createExpenseFromOCR = (ocrResult: OCRResult): any => {
   const getFieldValue = (fieldNames: string[]): string => {
     const field = ocrResult.fields.find(f => fieldNames.includes(f.name));
     return field?.value || '';
   };
-  
   const getFieldAmount = (fieldNames: string[]): number => {
     const value = getFieldValue(fieldNames);
     const cleanValue = value.replace(/[^\d,.-]/g, '').replace(',', '.');
     return parseFloat(cleanValue) || 0;
   };
-  
   return {
     provider: getFieldValue(['supplier_name', 'receiver_name']),
     amount: getFieldAmount(['total_amount', 'purchase_total', 'total_monto']),
@@ -435,26 +312,15 @@ export const createExpenseFromOCR = (ocrResult: OCRResult): any => {
       timestamp: ocrResult.timestamp,
       confidenceGlobal: ocrResult.confidenceGlobal,
       usedFields: ocrResult.fields.filter(f => f.confidence >= 0.80).map(f => ({
-        type: f.name,
-        value: f.value,
-        confidence: f.confidence
+        type: f.name, value: f.value, confidence: f.confidence
       }))
     }
   };
 };
 
-// H-OCR-FIX: Bank reconciliation suggestion
 export const suggestBankReconciliation = async (
-  amount: number, 
-  date: string, 
-  windowDays: number = 7, 
-  tolerance: number = 0.01
-): Promise<any[]> => {
-  // This would integrate with your bank movements/transactions
-  // For now, return empty array as this requires the H8 banking system
-  return [];
-};
+  _amount: number, _date: string, _windowDays: number = 7, _tolerance: number = 0.01
+): Promise<any[]> => [];
 
-// H-OCR-FIX: Legacy compatibility exports
 export { formatCurrency } from './ocrService';
 export { normalizeDateToSpanish } from './ocrService';
