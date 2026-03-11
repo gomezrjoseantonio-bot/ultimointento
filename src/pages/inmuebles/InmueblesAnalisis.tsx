@@ -40,7 +40,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Contract, Expense, initDB, Property } from '../../services/db';
+import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db';
 import type { Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 
@@ -118,6 +118,7 @@ const mapToSnapshot = (
   property: Property,
   contracts: Contract[],
   expenses: Expense[],
+  opexRules: OpexRule[],
   loans: Prestamo[],
   valorActual: number,
 ): PropertySnapshot => {
@@ -134,8 +135,8 @@ const mapToSnapshot = (
       globalAlias?: string;
     };
 
-    const ambito = String(rawLoan.ambito ?? '').toUpperCase();
-    if (ambito !== 'INMUEBLE' || rawLoan.activo === false) {
+    const ambito = String(rawLoan.ambito ?? '').toUpperCase().trim();
+    if (rawLoan.activo === false) {
       return false;
     }
 
@@ -150,6 +151,16 @@ const mapToSnapshot = (
     ).trim();
 
     if (!linkedId) {
+      return false;
+    }
+
+    const normalizedLinkedId = linkedId.toLowerCase();
+    if (['standalone', 'personal', 'sin_asociar', 'none', 'null', 'undefined'].includes(normalizedLinkedId)) {
+      return false;
+    }
+
+    const hasInmuebleScope = ambito === 'INMUEBLE' || ambito === '';
+    if (!hasInmuebleScope) {
       return false;
     }
 
@@ -173,9 +184,38 @@ const mapToSnapshot = (
   const ingresosMes = propertyContracts.reduce((sum, contract) => sum + (contract.rentaMensual || 0), 0);
 
   const propertyExpenses = expenses.filter((expense) => expense.propertyId === propertyId);
-  const gastosMes = propertyExpenses.length
-    ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
-    : 0;
+  const propertyOpexRules = opexRules.filter((rule) => rule.propertyId === propertyId && rule.activo);
+
+  const opexRuleMonthly = (rule: OpexRule): number => {
+    const amount = Number(rule.importeEstimado || 0);
+    switch (rule.frecuencia) {
+      case 'semanal':
+        return (amount * 52) / 12;
+      case 'mensual':
+        return amount;
+      case 'bimestral':
+        return amount / 2;
+      case 'trimestral':
+        return amount / 3;
+      case 'semestral':
+        return amount / 6;
+      case 'anual':
+        return amount / 12;
+      case 'meses_especificos':
+        if (rule.asymmetricPayments?.length) {
+          return rule.asymmetricPayments.reduce((sum, payment) => sum + Number(payment.importe || 0), 0) / 12;
+        }
+        return ((rule.mesesCobro?.length || 0) * amount) / 12;
+      default:
+        return 0;
+    }
+  };
+
+  const gastosMes = propertyOpexRules.length > 0
+    ? propertyOpexRules.reduce((sum, rule) => sum + opexRuleMonthly(rule), 0)
+    : propertyExpenses.length
+      ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
+      : 0;
 
   const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + (loan.principalVivo || 0), 0);
 
@@ -903,11 +943,12 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbValoraciones] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('contracts') as Promise<Contract[]>,
           db.getAll('expenses') as Promise<Expense[]>,
+          db.getAll('opexRules') as Promise<OpexRule[]>,
           db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
         ]);
 
@@ -919,6 +960,7 @@ export default function InmueblesAnalisis() {
             property,
             dbContracts,
             dbExpenses,
+            dbOpexRules,
             dbLoans,
             latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
           )
