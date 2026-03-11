@@ -30,9 +30,8 @@ const InboxPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const blobUrlRef = useRef<string>(''); // track for cleanup
+  const blobUrlRef = useRef<string>('');
 
-  // ── tab badge counts ──────────────────────────────────────────────────────
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = { Pendientes: 0, Procesados: 0, Todos: documents.length };
     for (const doc of documents) {
@@ -67,9 +66,9 @@ const InboxPage: React.FC = () => {
     loadDocuments();
   }, []);
 
-  // ── PDF preview: blob URL + <embed> (evita bloqueo Chrome con data: en iframe) ──
+  // ── PDF preview: blob URL + <iframe>
+  // Chrome bloquea data: en iframes desde v60, pero blob: funciona sin restricciones
   useEffect(() => {
-    // Revocar blob anterior
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = '';
@@ -358,12 +357,13 @@ const InboxPage: React.FC = () => {
               <div className="flex-1 p-4" style={{ background: 'var(--n-50)' }}>
                 <div className="h-full border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                   {selectedDocument && isPdfDocument(selectedDocument) && previewBlobUrl ? (
-                    // ── blob URL + <embed> — funciona en Chrome sin bloqueo CSP ──
-                    <embed
+                    // ── FIX: <iframe> con blob URL — Chrome acepta blob: en iframes sin restricción CSP ──
+                    <iframe
+                      key={previewBlobUrl}
+                      title={selectedDocument.filename}
                       src={previewBlobUrl}
-                      type="application/pdf"
                       className="w-full h-full"
-                      style={{ display: 'block' }}
+                      style={{ border: 'none', display: 'block' }}
                     />
                   ) : selectedDocument && isPdfDocument(selectedDocument) ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3 text-sm" style={{ color: 'var(--n-500)' }}>
