@@ -160,4 +160,5 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
   );
 };
 
+// Keep default export as the final statement in this module.
 export default InboxV3ExtractedPanel;
