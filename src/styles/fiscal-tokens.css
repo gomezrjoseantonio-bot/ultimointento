@@ -1,0 +1,65 @@
+:root {
+  /* Brand */
+  --blue: #042C5E;
+  --teal: #1DA0BA;
+
+  /* Neutrals */
+  --n-900: #1A2332;
+  --n-800: #253047;
+  --n-700: #303A4C;
+  --n-500: #6C757D;
+  --n-300: #C8D0DC;
+  --n-200: #DDE3EC;
+  --n-100: #EEF1F5;
+  --n-50:  #F8F9FA;
+  --white: #FFFFFF;
+
+  /* Semantic */
+  --s-pos:     #1A7A3C;
+  --s-pos-bg:  #E8F5ED;
+  --s-neg:     #B91C1C;
+  --s-neg-bg:  #FEE9E9;
+  --s-warn:    #92620A;
+  --s-warn-bg: #FEF3DC;
+  --s-neu:     #374151;
+  --s-neu-bg:  #F3F4F6;
+
+  /* Charts */
+  --c1: #042C5E;
+  --c2: #5B8DB8;
+  --c3: #1DA0BA;
+  --c4: #A8C4DE;
+  --c5: #C8D0DC;
+  --c6: #303A4C;
+
+  /* Typography */
+  --font-ui:   'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --t-xs:   11px;
+  --t-sm:   12px;
+  --t-base: 13px;
+  --t-md:   14px;
+  --t-lg:   16px;
+  --t-xl:   20px;
+  --t-2xl:  24px;
+
+  /* Spacing (4px grid) */
+  --s1:  4px;
+  --s2:  8px;
+  --s3:  12px;
+  --s4:  16px;
+  --s5:  20px;
+  --s6:  24px;
+  --s8:  32px;
+  --s10: 40px;
+  --s12: 48px;
+
+  /* Radii */
+  --r-sm:  4px;
+  --r-md:  8px;
+  --r-lg:  12px;
+  --r-xl:  16px;
+
+  /* Focus ring */
+  --focus-ring: rgba(4, 44, 94, 0.15);
+}
