@@ -5,6 +5,8 @@ import {
   addPropertyImprovement, 
   getPropertyImprovements, 
   deletePropertyImprovement,
+  updateImprovement,
+  ImprovementUpdatePayload,
   formatEsCurrency 
 } from '../../services/aeatAmortizationService';
 import { PropertyImprovement } from '../../services/db';
@@ -91,8 +93,7 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
     try {
       setLoading(true);
       
-      const improvement = {
-        propertyId,
+      const improvementPayload: ImprovementUpdatePayload = {
         year: parseInt(formData.year),
         amount,
         date: formData.date || undefined,
@@ -101,12 +102,14 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
         description: formData.description.trim()
       };
 
-      if (editingId) {
-        // For editing, we'd need an update function - for now just add new
-        toast.error('Edición no implementada aún');
-        return;
+      if (editingId !== null) {
+        await updateImprovement(String(propertyId), String(editingId), improvementPayload);
+        toast.success('Mejora actualizada');
       } else {
-        await addPropertyImprovement(improvement);
+        await addPropertyImprovement({
+          propertyId,
+          ...improvementPayload,
+        });
         toast.success('Mejora añadida correctamente');
       }
 
@@ -115,10 +118,32 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
       resetForm();
     } catch (error) {
       console.error('Error saving improvement:', error);
-      toast.error('Error al guardar la mejora');
+      if (editingId !== null) {
+        toast.error('Error al actualizar la mejora');
+      } else {
+        toast.error('Error al guardar la mejora');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (improvement: PropertyImprovement) => {
+    if (!improvement.id) {
+      toast.error('No se pudo identificar la mejora');
+      return;
+    }
+
+    setEditingId(improvement.id);
+    setFormData({
+      year: improvement.year.toString(),
+      amount: improvement.amount.toString(),
+      date: improvement.date ?? '',
+      daysInYear: improvement.daysInYear?.toString() ?? '',
+      providerNIF: improvement.counterpartyNIF ?? '',
+      description: improvement.description,
+    });
+    setShowForm(true);
   };
 
   const handleDelete = async (improvementId: number) => {
@@ -301,21 +326,23 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
           </div>
 
           <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="px-4 py-2 text-neutral-600 border border-neutral-300"
-              disabled={loading}
-            >
-              Cancelar
-            </button>
+            {editingId !== null && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 text-neutral-600 border border-neutral-300"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2 bg-brand-navy disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {loading ? 'Guardando...' : 'Guardar mejora'}
+              {loading ? 'Guardando...' : editingId !== null ? 'Guardar cambios' : 'Guardar mejora'}
             </button>
           </div>
         </form>
@@ -369,6 +396,14 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({
                     {improvement.counterpartyNIF || '-'}
                   </td>
                   <td className="px-3 py-2 text-center">
+                    <button
+                      onClick={() => handleEdit(improvement)}
+                      disabled={loading}
+                      className="text-brand-navy hover:text-brand-navy/80 disabled:opacity-50 mr-3"
+                      title="Editar mejora"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleDelete(improvement.id!)}
                       disabled={loading}

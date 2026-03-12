@@ -1,6 +1,15 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, PropertyImprovement, FiscalSummary } from './db';
 
+export interface ImprovementUpdatePayload {
+  year: number;
+  amount: number;
+  date?: string;
+  daysInYear?: number;
+  counterpartyNIF?: string;
+  description: string;
+}
+
 export interface AEATAmortizationCalculation {
   // Base calculation
   calculationMethod: 'general' | 'special';
@@ -321,6 +330,38 @@ export const getPropertyImprovements = async (propertyId: number): Promise<Prope
 export const deletePropertyImprovement = async (improvementId: number): Promise<void> => {
   const db = await initDB();
   await db.delete('propertyImprovements', improvementId);
+};
+
+export const updateImprovement = async (
+  propertyId: string,
+  improvementId: string,
+  data: ImprovementUpdatePayload
+): Promise<void> => {
+  const db = await initDB();
+  const parsedPropertyId = Number(propertyId);
+  const parsedImprovementId = Number(improvementId);
+
+  if (!Number.isFinite(parsedPropertyId) || !Number.isFinite(parsedImprovementId)) {
+    throw new Error('Identificadores de mejora inválidos');
+  }
+
+  const existing = await db.get('propertyImprovements', parsedImprovementId);
+  if (!existing || existing.propertyId !== parsedPropertyId) {
+    throw new Error('Mejora no encontrada para el inmueble indicado');
+  }
+
+  const updatedImprovement: PropertyImprovement = {
+    ...existing,
+    year: data.year,
+    amount: data.amount,
+    date: data.date,
+    daysInYear: data.daysInYear,
+    counterpartyNIF: data.counterpartyNIF,
+    description: data.description,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db.put('propertyImprovements', updatedImprovement);
 };
 
 // Helper function

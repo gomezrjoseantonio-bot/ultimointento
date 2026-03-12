@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TrendingUp, Home, Building, PiggyBank, Briefcase, User, BarChart2 } from 'lucide-react';
+import { useSelector } from 'react-redux';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
+import { Property } from '../../../../services/db';
+import { RootState } from '../../../../store/store';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -13,6 +16,15 @@ interface SimulacionCard {
   icon: React.FC<{ className?: string }>;
   campos: { name: string; label: string; type: 'number' | 'text' }[];
 }
+
+type SimulationParamValue = string | number;
+
+type ReduxPropertiesState = RootState & {
+  properties?: Property[];
+  property_catalog?: {
+    properties?: Property[];
+  };
+};
 
 const SIMULACIONES: SimulacionCard[] = [
   {
@@ -40,7 +52,6 @@ const SIMULACIONES: SimulacionCard[] = [
     descripcion: 'Modifica la renta mensual de un inmueble alquilado',
     icon: Building,
     campos: [
-      { name: 'inmuebleId', label: 'ID del inmueble', type: 'number' },
       { name: 'rentaNueva', label: 'Nueva renta mensual (€)', type: 'number' },
       { name: 'mesesRestantes', label: 'Meses restantes del ejercicio', type: 'number' },
     ],
@@ -51,7 +62,6 @@ const SIMULACIONES: SimulacionCard[] = [
     descripcion: 'Simula dejar de alquilar un inmueble (imputación rentas)',
     icon: Home,
     campos: [
-      { name: 'inmuebleId', label: 'ID del inmueble', type: 'number' },
       { name: 'mesesVacio', label: 'Meses vacío', type: 'number' },
     ],
   },
@@ -61,7 +71,6 @@ const SIMULACIONES: SimulacionCard[] = [
     descripcion: 'Simula poner en alquiler un inmueble vacío',
     icon: Building,
     campos: [
-      { name: 'inmuebleId', label: 'ID del inmueble', type: 'number' },
       { name: 'rentaEstimada', label: 'Renta mensual estimada (€)', type: 'number' },
       { name: 'mesesAlquiler', label: 'Meses de alquiler', type: 'number' },
     ],
@@ -97,11 +106,27 @@ const SIMULACIONES: SimulacionCard[] = [
 
 const SimuladorPage: React.FC = () => {
   const [ejercicio] = useState<number>(new Date().getFullYear());
+  const properties = useSelector((state: ReduxPropertiesState) => {
+    const candidateProperties = state.properties ?? state.property_catalog?.properties ?? [];
+    return candidateProperties.filter((property) => property.state === 'activo' && property.id !== undefined);
+  });
   const [selectedCard, setSelectedCard] = useState<SimulacionCard | null>(null);
-  const [params, setParams] = useState<Record<string, any>>({});
+  const [params, setParams] = useState<Record<string, SimulationParamValue>>({});
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [resultado, setResultado] = useState<Simulacion | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const requiresPropertySelection = useMemo(
+    () => new Set<TipoSimulacion>(['cambio_renta_alquiler', 'vaciar_inmueble', 'alquilar_inmueble']),
+    []
+  );
+
+  useEffect(() => {
+    if (!selectedPropertyId && properties.length > 0 && properties[0].id !== undefined) {
+      setSelectedPropertyId(String(properties[0].id));
+    }
+  }, [properties, selectedPropertyId]);
 
   const handleSelectCard = (card: SimulacionCard) => {
     setSelectedCard(card);
@@ -115,10 +140,22 @@ const SimuladorPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await ejecutarSimulacion(ejercicio, selectedCard.tipo, params);
+      const simulationParams: Record<string, SimulationParamValue> = { ...params };
+
+      if (requiresPropertySelection.has(selectedCard.tipo)) {
+        if (!selectedPropertyId) {
+          setError('Selecciona un inmueble para continuar');
+          setLoading(false);
+          return;
+        }
+        simulationParams.inmuebleId = Number(selectedPropertyId);
+      }
+
+      const res = await ejecutarSimulacion(ejercicio, selectedCard.tipo, simulationParams);
       setResultado(res);
-    } catch (e: any) {
-      setError(e?.message ?? 'Error al ejecutar la simulación');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Error al ejecutar la simulación';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -164,13 +201,38 @@ const SimuladorPage: React.FC = () => {
           </div>
           <p className="text-sm text-gray-500">{selectedCard.descripcion}</p>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Inmueble</label>
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              disabled={properties.length === 0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--atlas-info-500)] focus:border-transparent disabled:bg-gray-100"
+            >
+              {properties.length === 0 ? (
+                <option value="">Sin inmuebles disponibles</option>
+              ) : (
+                properties.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.alias} · {property.address}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
           {selectedCard.campos.map(campo => (
             <div key={campo.name}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{campo.label}</label>
               <input
                 type={campo.type}
                 value={params[campo.name] ?? ''}
-                onChange={e => setParams(prev => ({ ...prev, [campo.name]: Number(e.target.value) || e.target.value }))}
+                onChange={(e) => {
+                  const value = campo.type === 'number'
+                    ? (e.target.value === '' ? '' : Number(e.target.value))
+                    : e.target.value;
+                  setParams(prev => ({ ...prev, [campo.name]: value }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--atlas-info-500)] focus:border-transparent"
                 placeholder={campo.type === 'number' ? '0' : ''}
               />
