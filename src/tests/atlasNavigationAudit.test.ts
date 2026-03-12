@@ -2,7 +2,7 @@
  * ATLAS Navigation Audit Test
  * 
  * This test validates the ATLAS navigation requirements:
- * 1. Exactly 10 navigation entries (including Glosario)
+ * 1. Exactly 12 navigation entries (including Herramientas y Glosario)
  * 2. Correct separators: "Horizon — Supervisión", "Pulse — Gestión", "Documentación"
  * 3. Configuración and Tareas are NOT in the sidebar
  * 4. Correct order of items
@@ -13,8 +13,8 @@ import { navigationConfig, getNavigationForModule } from '../config/navigation';
 describe('ATLAS Navigation Audit', () => {
   const navigation = getNavigationForModule();
 
-  test('should have exactly 10 navigation entries', () => {
-    expect(navigation).toHaveLength(10);
+  test('should have exactly 12 navigation entries', () => {
+    expect(navigation).toHaveLength(12);
   });
 
   test('should have correct navigation items in exact order', () => {
@@ -22,12 +22,14 @@ describe('ATLAS Navigation Audit', () => {
       'Dashboard',
       'Personal',
       'Inmuebles', 
+      'Inversiones',
       'Tesorería',
       'Previsiones',
       'Impuestos',
       'Financiación',
       'Alquileres',
       'Documentación',
+      'Herramientas',
       'Glosario'
     ];
 
@@ -40,14 +42,14 @@ describe('ATLAS Navigation Audit', () => {
     const pulseItems = navigation.filter(item => item.section === 'pulse');
     const documentationItems = navigation.filter(item => item.section === 'documentation');
 
-    // HORIZON — Supervisión should have 7 items
-    expect(horizonItems).toHaveLength(7);
+    // HORIZON — Supervisión should have 8 items
+    expect(horizonItems).toHaveLength(8);
     
     // PULSE — Gestión should have 1 item
     expect(pulseItems).toHaveLength(1);
     
-    // DOCUMENTACIÓN should have 2 items
-    expect(documentationItems).toHaveLength(2);
+    // DOCUMENTACIÓN should have 3 items
+    expect(documentationItems).toHaveLength(3);
   });
 
   test('should not include Configuración in sidebar navigation', () => {
@@ -60,13 +62,13 @@ describe('ATLAS Navigation Audit', () => {
     expect(hasStandaloneTareas).toBe(false);
   });
 
-  test('should include Tareas as subtab in Inmuebles', () => {
+  test('should include Evolución as subtab in Inmuebles', () => {
     const inmuebles = navigation.find(item => item.name === 'Inmuebles');
     expect(inmuebles).toBeDefined();
     expect(inmuebles?.subTabs).toBeDefined();
     
-    const tareasSubtab = inmuebles?.subTabs?.find(subtab => subtab.name === 'Tareas');
-    expect(tareasSubtab).toBeDefined();
+    const evolucionSubtab = inmuebles?.subTabs?.find(subtab => subtab.name === 'Evolución');
+    expect(evolucionSubtab).toBeDefined();
   });
 
   test('should have correct Horizon section items', () => {
@@ -75,6 +77,7 @@ describe('ATLAS Navigation Audit', () => {
       'Dashboard',
       'Personal', 
       'Inmuebles',
+      'Inversiones',
       'Tesorería',
       'Previsiones',
       'Impuestos',
@@ -93,8 +96,9 @@ describe('ATLAS Navigation Audit', () => {
 
   test('should have correct Documentation section items', () => {
     const documentationItems = navigation.filter(item => item.section === 'documentation');
-    expect(documentationItems).toHaveLength(2);
+    expect(documentationItems).toHaveLength(3);
     expect(documentationItems.some(item => item.name === 'Documentación')).toBe(true);
+    expect(documentationItems.some(item => item.name === 'Herramientas')).toBe(true);
     expect(documentationItems.some(item => item.name === 'Glosario')).toBe(true);
   });
 
