@@ -94,10 +94,32 @@ const PropertyImprovements: React.FC<PropertyImprovementsProps> = ({ propertyId,
       resetForm();
     } catch (error) {
       console.error('Error saving improvement:', error);
-      toast.error('Error al guardar la mejora');
+      if (editingId !== null) {
+        toast.error('Error al actualizar la mejora');
+      } else {
+        toast.error('Error al guardar la mejora');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (improvement: PropertyImprovement) => {
+    if (!improvement.id) {
+      toast.error('No se pudo identificar la mejora');
+      return;
+    }
+
+    setEditingId(improvement.id);
+    setFormData({
+      year: improvement.year.toString(),
+      amount: improvement.amount.toString(),
+      date: improvement.date ?? '',
+      daysInYear: improvement.daysInYear?.toString() ?? '',
+      providerNIF: improvement.counterpartyNIF ?? '',
+      description: improvement.description,
+    });
+    setShowForm(true);
   };
 
   const handleDelete = async (improvementId: number) => {

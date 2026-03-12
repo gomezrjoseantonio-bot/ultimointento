@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { getOrCreateEjercicio } from '../../../../services/ejercicioFiscalService';
+import { conciliarEjercicioFiscal } from '../../../../services/fiscalConciliationService';
 import { EjercicioFiscal } from '../../../../services/db';
 import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 
@@ -14,6 +15,7 @@ const DeclaracionPage: React.FC = () => {
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
   const [ejercicioFiscal, setEjercicioFiscal] = useState<EjercicioFiscal | null>(null);
+  const [dataRealPct, setDataRealPct] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const currentYear = new Date().getFullYear();
@@ -25,8 +27,18 @@ const DeclaracionPage: React.FC = () => {
       const [decl, ejercicioData] = await Promise.all([calcularDeclaracionIRPF(ejercicio), getOrCreateEjercicio(ejercicio)]);
       setDeclaracion(decl);
       setEjercicioFiscal(ejercicioData);
+
+      try {
+        const conciliation = await conciliarEjercicioFiscal(ejercicio);
+        const coverageRatio = conciliation.resumen.coberturaPunteo / 100;
+        setDataRealPct(Math.max(0, Math.min(1, coverageRatio)));
+      } catch (conciliationError) {
+        console.error('Error loading fiscal conciliation coverage:', conciliationError);
+        setDataRealPct(0);
+      }
     } catch (e) {
       console.error('Error loading declaracion:', e);
+      setDataRealPct(0);
     } finally {
       setLoading(false);
     }

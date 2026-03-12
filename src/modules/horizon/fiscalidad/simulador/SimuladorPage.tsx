@@ -4,6 +4,8 @@ import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
+import { Property } from '../../../../services/db';
+import { RootState } from '../../../../store/store';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -16,6 +18,15 @@ interface SimulacionCard {
   campos: { name: string; label: string; type: 'number' | 'text' }[];
 }
 
+type SimulationParamValue = string | number;
+
+type ReduxPropertiesState = RootState & {
+  properties?: Property[];
+  property_catalog?: {
+    properties?: Property[];
+  };
+};
+
 const SIMULACIONES: SimulacionCard[] = [
   { tipo: 'venta_inversion', label: 'Vender inmueble / inversión', descripcion: 'Calcula el impacto fiscal de vender una posición', campos: [{ name: 'importeVenta', label: 'Importe de venta (€)', type: 'number' }, { name: 'costeAdquisicion', label: 'Coste de adquisición (€)', type: 'number' }] },
   { tipo: 'aportacion_plan_pensiones', label: 'Aportar a plan de pensiones', descripcion: 'Simula una aportación adicional al plan de pensiones (máx. 1.500 €)', campos: [{ name: 'aportacion', label: 'Aportación adicional (€)', type: 'number' }] },
@@ -24,6 +35,10 @@ const SIMULACIONES: SimulacionCard[] = [
 
 const SimuladorPage: React.FC = () => {
   const [ejercicio] = useState<number>(new Date().getFullYear());
+  const properties = useSelector((state: ReduxPropertiesState) => {
+    const candidateProperties = state.properties ?? state.property_catalog?.properties ?? [];
+    return candidateProperties.filter((property) => property.state === 'activo' && property.id !== undefined);
+  });
   const [selectedCard, setSelectedCard] = useState<SimulacionCard | null>(null);
   const [params, setParams] = useState<Record<string, string | number>>({});
   const [resultado, setResultado] = useState<Simulacion | null>(null);
@@ -39,7 +54,18 @@ const SimuladorPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await ejecutarSimulacion(ejercicio, selectedCard.tipo, params);
+      const simulationParams: Record<string, SimulationParamValue> = { ...params };
+
+      if (requiresPropertySelection.has(selectedCard.tipo)) {
+        if (!selectedPropertyId) {
+          setError('Selecciona un inmueble para continuar');
+          setLoading(false);
+          return;
+        }
+        simulationParams.inmuebleId = Number(selectedPropertyId);
+      }
+
+      const res = await ejecutarSimulacion(ejercicio, selectedCard.tipo, simulationParams);
       setResultado(res);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Error al ejecutar la simulación';
