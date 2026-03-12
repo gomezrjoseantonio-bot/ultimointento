@@ -1,30 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Download, Calendar, User, Archive } from 'lucide-react';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property } from '../../../../services/db';
-import { getFiscalSummary } from '../../../../services/fiscalSummaryService';
+import { calculateCarryForwards, getFiscalSummary } from '../../../../services/fiscalSummaryService';
+import { calculateCurrentYearAccruedIncome } from '../../../../services/incomeReconciliationService';
+import { addExportRecord, ExportRecord } from '../../../../store/fiscalExportsSlice';
+import { AppDispatch, RootState, store } from '../../../../store/store';
 
-interface ExportHistory {
-  id: string;
-  exerciseYear: number;
-  dateTime: string;
-  user: string;
-  propertyScope: 'todos' | number;
-  fileName: string;
-}
-
-const Declaraciones: React.FC = () => {
+const DeclaracionesContent: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const exportHistory = useSelector((state: RootState) => state.fiscal_exports.export_history);
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedProperty, setSelectedProperty] = useState<'todos' | number>('todos');
-  const [exportHistory, setExportHistory] = useState<ExportHistory[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
-    loadExportHistory();
   }, []);
 
   const loadData = async () => {
@@ -40,18 +35,8 @@ const Declaraciones: React.FC = () => {
     }
   };
 
-  const loadExportHistory = () => {
-    // Load from localStorage for now (in production would be from database)
-    const history = localStorage.getItem('fiscalidad-export-history');
-    if (history) {
-      setExportHistory(JSON.parse(history));
-    }
-  };
-
-  const saveExportHistory = (entry: ExportHistory) => {
-    const updatedHistory = [entry, ...exportHistory].slice(0, 50); // Keep last 50 exports
-    setExportHistory(updatedHistory);
-    localStorage.setItem('fiscalidad-export-history', JSON.stringify(updatedHistory));
+  const saveExportHistory = (entry: ExportRecord) => {
+    dispatch(addExportRecord(entry));
   };
 
   const formatDate = (dateString: string): string => {
@@ -469,6 +454,10 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
           if (!property.id) continue;
           
           const fiscalSummary = await getFiscalSummary(property.id, selectedYear);
+          const incomeBreakdown = await calculateCurrentYearAccruedIncome(property.id, selectedYear);
+          const carryForwards = await calculateCarryForwards(property.id, selectedYear);
+          const arrastresAplicados = carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
+          const arrastresPendientes = carryForwards.reduce((sum, carryForward) => sum + carryForward.remainingAmount, 0);
           const gastos = (fiscalSummary.box0105 || 0) + (fiscalSummary.box0106 || 0) + 
                        (fiscalSummary.box0109 || 0) + (fiscalSummary.box0112 || 0) + 
                        (fiscalSummary.box0113 || 0) + (fiscalSummary.box0114 || 0) + 
@@ -477,11 +466,15 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
           const propertyData = {
             property,
             fiscalSummary,
-            ingresos: 0, // TODO: Calculate from contracts
+            ingresos: incomeBreakdown.total,
             gastos,
             amortizaciones: fiscalSummary.annualDepreciation || 0,
-            arrastres: 0, // TODO: Calculate carryforwards
-            neto: 0 - gastos - (fiscalSummary.annualDepreciation || 0)
+            arrastres: arrastresAplicados,
+            arrastresAplicados,
+            arrastresGenerados: fiscalSummary.deductibleExcess || 0,
+            arrastresPendientes,
+            carryForwards,
+            neto: incomeBreakdown.total - gastos - (fiscalSummary.annualDepreciation || 0) - arrastresAplicados
           };
           
           allData.push(propertyData);
@@ -529,6 +522,10 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         if (!property || !property.id) throw new Error('Property not found');
         
         const fiscalSummary = await getFiscalSummary(property.id, selectedYear);
+        const incomeBreakdown = await calculateCurrentYearAccruedIncome(property.id, selectedYear);
+        const carryForwards = await calculateCarryForwards(property.id, selectedYear);
+        const arrastresAplicados = carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
+        const arrastresPendientes = carryForwards.reduce((sum, carryForward) => sum + carryForward.remainingAmount, 0);
         const gastos = (fiscalSummary.box0105 || 0) + (fiscalSummary.box0106 || 0) + 
                      (fiscalSummary.box0109 || 0) + (fiscalSummary.box0112 || 0) + 
                      (fiscalSummary.box0113 || 0) + (fiscalSummary.box0114 || 0) + 
@@ -537,11 +534,15 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         const propertyData = {
           property,
           fiscalSummary,
-          ingresos: 0, // TODO: Calculate from contracts
+          ingresos: incomeBreakdown.total,
           gastos,
           amortizaciones: fiscalSummary.annualDepreciation || 0,
-          arrastres: 0, // TODO: Calculate carryforwards
-          neto: 0 - gastos - (fiscalSummary.annualDepreciation || 0)
+          arrastres: arrastresAplicados,
+          arrastresAplicados,
+          arrastresGenerados: fiscalSummary.deductibleExcess || 0,
+          arrastresPendientes,
+          carryForwards,
+          neto: incomeBreakdown.total - gastos - (fiscalSummary.annualDepreciation || 0) - arrastresAplicados
         };
         
         const pdfContent = generatePDFContent(propertyData, selectedYear);
@@ -572,7 +573,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
       URL.revokeObjectURL(url);
       
       // Save to export history
-      const exportEntry: ExportHistory = {
+      const exportEntry: ExportRecord = {
         id: Date.now().toString(),
         exerciseYear: selectedYear,
         dateTime: new Date().toISOString(),
@@ -770,6 +771,14 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
         </div>
       </div>
     </PageLayout>
+  );
+};
+
+const Declaraciones: React.FC = () => {
+  return (
+    <Provider store={store}>
+      <DeclaracionesContent />
+    </Provider>
   );
 };
 

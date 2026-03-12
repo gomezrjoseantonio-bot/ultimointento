@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { FileText, Download } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Property, FiscalSummary } from '../../../../services/db';
-import { getFiscalSummary, exportFiscalData } from '../../../../services/fiscalSummaryService';
+import { calculateCarryForwards, getFiscalSummary, exportFiscalData } from '../../../../services/fiscalSummaryService';
 import { formatEuro, getAEATBoxDisplayName } from '../../../../services/aeatClassificationService';
 import { calculateCurrentYearAccruedIncome } from '../../../../services/incomeReconciliationService';
 import { getCAPEXAmortizationSummary } from '../../../../services/capexClassificationService';
@@ -31,6 +31,7 @@ const Resumen: React.FC = () => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | 'todos' | null>('todos');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [fiscalSummary, setFiscalSummary] = useState<FiscalSummary | null>(null);
+  const [singlePropertyData, setSinglePropertyData] = useState<PropertyFiscalData | null>(null);
   const [allPropertiesData, setAllPropertiesData] = useState<PropertyFiscalData[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'Vivo' | 'Prescrito'>('all');
@@ -78,7 +79,8 @@ const Resumen: React.FC = () => {
                        (fiscalSummary.box0115 || 0) + (fiscalSummary.box0117 || 0);
           
           const amortizaciones = fiscalSummary.annualDepreciation || 0;
-          const arrastres = 0; // TODO: Implement carryforward calculation
+          const carryForwards = await calculateCarryForwards(property.id, selectedYear);
+          const arrastres = carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
           const neto = incomeBreakdown.cobrado - gastos - amortizaciones - arrastres;
           
           propertiesData.push({
@@ -122,6 +124,7 @@ const Resumen: React.FC = () => {
       
       setAllPropertiesData(propertiesData);
       setFiscalSummary(null);
+      setSinglePropertyData(null);
     };
     
     try {
@@ -131,12 +134,44 @@ const Resumen: React.FC = () => {
       } else {
         // Load data for single property
         const summary = await getFiscalSummary(selectedPropertyId, selectedYear);
+        const incomeBreakdown = await calculateCurrentYearAccruedIncome(selectedPropertyId, selectedYear);
+        const carryForwards = await calculateCarryForwards(selectedPropertyId, selectedYear);
+        const arrastres = carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
+        const gastos = (summary.box0105 || 0) + (summary.box0106 || 0) + 
+          (summary.box0109 || 0) + (summary.box0112 || 0) + 
+          (summary.box0113 || 0) + (summary.box0114 || 0) + 
+          (summary.box0115 || 0) + (summary.box0117 || 0);
+
+        const capexSummary = await getCAPEXAmortizationSummary(selectedPropertyId, selectedYear);
+        const property = properties.find((item) => item.id === selectedPropertyId);
+
         setFiscalSummary(summary);
+        if (property) {
+          setSinglePropertyData({
+            property,
+            fiscalSummary: summary,
+            ingresos: incomeBreakdown.total,
+            gastos,
+            amortizaciones: summary.annualDepreciation || 0,
+            arrastres,
+            neto: incomeBreakdown.cobrado - gastos - (summary.annualDepreciation || 0) - arrastres,
+            cobrado: incomeBreakdown.cobrado,
+            pendiente: incomeBreakdown.previsto + incomeBreakdown.impagado,
+            parcialmenteCobrado: incomeBreakdown.parcialmenteCobrado,
+            impagado: incomeBreakdown.impagado,
+            amortizacionInmueble: capexSummary.propertyAmortization,
+            amortizacionMejoras: capexSummary.improvementAmortization,
+            amortizacionMobiliario: capexSummary.furnitureAmortization
+          });
+        } else {
+          setSinglePropertyData(null);
+        }
         setAllPropertiesData([]);
       }
     } catch (error) {
       console.error('Error loading fiscal summary:', error);
       setFiscalSummary(null);
+      setSinglePropertyData(null);
       setAllPropertiesData([]);
     }
   }, [selectedPropertyId, selectedYear, properties]);
@@ -507,15 +542,15 @@ const Resumen: React.FC = () => {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(singlePropertyData?.ingresos || 0)}</div>
                   <div className="text-sm text-gray-600">Ingresos devengados</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(singlePropertyData?.cobrado || 0)}</div>
                   <div className="text-sm text-gray-600">Cobrado</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(singlePropertyData?.pendiente || 0)}</div>
                   <div className="text-sm text-gray-600">Pendiente</div>
                 </div>
                 <div className="text-center">
@@ -527,14 +562,14 @@ const Resumen: React.FC = () => {
                   <div className="text-sm text-gray-600">Amortizaciones</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(fiscalSummary.deductibleExcess || 0)}</div>
+                  <div className="text-2xl font-semibold text-brand-navy">{formatCurrency(singlePropertyData?.arrastres || 0)}</div>
                   <div className="text-sm text-gray-600">Arrastres aplicados</div>
                 </div>
               </div>
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-gray-900">
-                    {formatCurrency(0 - getTotalAmount() - (fiscalSummary.annualDepreciation || 0) - (fiscalSummary.deductibleExcess || 0))}
+                    {formatCurrency((singlePropertyData?.cobrado || 0) - getTotalAmount() - (fiscalSummary.annualDepreciation || 0) - (singlePropertyData?.arrastres || 0))}
                   </div>
                   <div className="text-sm text-gray-600">Neto Fiscal</div>
                 </div>
@@ -566,7 +601,7 @@ const Resumen: React.FC = () => {
                         {properties.find(p => p.id === selectedPropertyId)?.alias}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(0)}
+                        {formatCurrency(singlePropertyData?.ingresos || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {formatCurrency(getTotalAmount())}
@@ -575,10 +610,10 @@ const Resumen: React.FC = () => {
                         {formatCurrency(fiscalSummary.annualDepreciation || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(fiscalSummary.deductibleExcess || 0)}
+                        {formatCurrency(singlePropertyData?.arrastres || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">
-                        {formatCurrency(0 - getTotalAmount() - (fiscalSummary.annualDepreciation || 0) - (fiscalSummary.deductibleExcess || 0))}
+                        {formatCurrency((singlePropertyData?.cobrado || 0) - getTotalAmount() - (fiscalSummary.annualDepreciation || 0) - (singlePropertyData?.arrastres || 0))}
                       </td>
                     </tr>
                   </tbody>
