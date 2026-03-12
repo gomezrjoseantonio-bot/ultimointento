@@ -57,8 +57,6 @@ const DeclaracionPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const dataRealPct = declaracion ? (declaracion.retenciones.total > 0 ? 0.75 : 0) : 0;
-
   return (
     <PageLayout title={`Declaración IRPF ${ejercicio}`} subtitle="Desglose AEAT del ejercicio seleccionado">
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
