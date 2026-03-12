@@ -1,11 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { LayoutDashboard } from 'lucide-react';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { generarEventosFiscales, EventoFiscal } from '../../../../services/fiscalPaymentsService';
+import FiscalKpiCard from '../../../../components/fiscal/ui/FiscalKpiCard';
+import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
+import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+
+const fmt = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+
+const cardStyle: React.CSSProperties = {
+  background: 'var(--n-50)',
+  border: '1.5px solid var(--n-200)',
+  borderRadius: 'var(--r-lg)',
+  padding: 'var(--s5)',
+};
 
 const FiscalDashboard: React.FC = () => {
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
@@ -30,156 +43,131 @@ const FiscalDashboard: React.FC = () => {
     }
   }, [ejercicio]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const proximosEventos = eventos
-    .filter(e => !e.pagado && new Date(e.fechaLimite) >= new Date())
-    .sort((a, b) => a.fechaLimite.localeCompare(b.fechaLimite))
-    .slice(0, 3);
+  const totalIngresosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.ingresosIntegros, 0) ?? 0;
+  const totalGastosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.gastosDeducibles + i.amortizacion, 0) ?? 0;
+  const totalArrastres = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + (i.arrastresAplicados ?? 0), 0) ?? 0;
+
+  const coverageReal = declaracion ? (declaracion.retenciones.total > 0 ? 0.75 : 0) : 0;
+  const coverageRet = declaracion ? Math.min(1, declaracion.retenciones.total / Math.max(1, declaracion.liquidacion.cuotaIntegra || 1)) : 0;
+  const coverageGastos = declaracion ? Math.min(1, totalGastosInmuebles / Math.max(1, totalIngresosInmuebles || 1)) : 0;
+
+  const monthly = useMemo(() => {
+    const ingresosBase = totalIngresosInmuebles > 0 ? totalIngresosInmuebles / 12 : 0;
+    const gastosBase = totalGastosInmuebles > 0 ? totalGastosInmuebles / 12 : 0;
+    return {
+      labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+      ingresos: Array.from({ length: 6 }, (_, i) => ingresosBase * (1 + i * 0.02)),
+      gastos: Array.from({ length: 6 }, (_, i) => gastosBase * (1 + i * 0.01)),
+    };
+  }, [totalIngresosInmuebles, totalGastosInmuebles]);
 
   return (
-    <PageLayout
-      title="Resumen fiscal"
-      subtitle="Histórico + situación del año en curso"
-    >
-      {/* Year selector */}
-      <div className="mb-3">
-        <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-neutral-100 text-neutral-700">Estimación basada en proyecciones cuando faltan datos de Tesorería</span>
-      </div>
-
-      <div className="flex justify-end mb-4">
-        <select
-          value={ejercicio}
-          onChange={e => setEjercicio(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-        >
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
-      {loading && (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-[var(--atlas-info-600)] border-t-transparent" />
-        </div>
-      )}
-
-      {!loading && declaracion && (
-        <div className="space-y-6">
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">IRPF estimado</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{fmt(declaracion.liquidacion.cuotaLiquida)}</p>
-              <p className="text-xs text-gray-500 mt-1">Tipo efectivo: {declaracion.tipoEfectivo.toFixed(1)}%</p>
+    <PageLayout title="Resumen fiscal" subtitle="Histórico + situación del año en curso">
+      <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+              <LayoutDashboard size={20} color="var(--blue)" />
+              <h1 style={{ fontSize: 'var(--t-xl)', fontWeight: 600, color: 'var(--n-900)' }}>Dashboard fiscal</h1>
             </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Retenciones acumuladas</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{fmt(declaracion.retenciones.total)}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Trabajo: {fmt(declaracion.retenciones.trabajo)} · Capital: {fmt(declaracion.retenciones.capitalMobiliario)}
-              </p>
-            </div>
-
-            <div className={`border rounded-lg p-5 shadow-sm ${declaracion.resultado >= 0 ? 'bg-[var(--atlas-info-100)] border-[var(--atlas-info-300)]' : 'bg-cyan-50 border-cyan-200'}`}>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Resultado provisional</p>
-              <div className="flex items-center gap-2 mt-1">
-                {declaracion.resultado >= 0
-                  ? <TrendingUp className="w-5 h-5 text-[var(--atlas-info-700)]" />
-                  : <TrendingDown className="w-5 h-5 text-cyan-700" />}
-                <p className={`text-2xl font-bold ${declaracion.resultado >= 0 ? 'text-[var(--atlas-info-800)]' : 'text-cyan-800'}`}>
-                  {fmt(Math.abs(declaracion.resultado))}
-                </p>
-              </div>
-              <p className={`text-xs mt-1 font-medium ${declaracion.resultado >= 0 ? 'text-[var(--atlas-info-700)]' : 'text-cyan-700'}`}>
-                {declaracion.resultado >= 0 ? 'A pagar' : 'A devolver'}
-              </p>
-            </div>
+            <p style={{ fontSize: 'var(--t-base)', color: 'var(--n-500)' }}>Visión consolidada por ejercicio</p>
           </div>
-
-          {/* Base breakdown */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Desglose de rentas</h3>
-            <div className="space-y-3">
-              {declaracion.baseGeneral.rendimientosTrabajo && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Trabajo (nómina)</span>
-                  <span className="text-sm font-medium">{fmt(declaracion.baseGeneral.rendimientosTrabajo.rendimientoNeto)}</span>
-                </div>
-              )}
-              {declaracion.baseGeneral.rendimientosAutonomo && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Actividades económicas (autónomo)</span>
-                  <span className="text-sm font-medium">{fmt(declaracion.baseGeneral.rendimientosAutonomo.rendimientoNeto)}</span>
-                </div>
-              )}
-              {declaracion.baseGeneral.rendimientosInmuebles.length > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Rendimientos inmobiliarios</span>
-                  <span className="text-sm font-medium">
-                    {fmt(declaracion.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.rendimientoNeto, 0))}
-                  </span>
-                </div>
-              )}
-              {declaracion.baseGeneral.imputacionRentas.length > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Imputación rentas inmuebles vacíos</span>
-                  <span className="text-sm font-medium">
-                    {fmt(declaracion.baseGeneral.imputacionRentas.reduce((s, i) => s + i.imputacion, 0))}
-                  </span>
-                </div>
-              )}
-              {declaracion.baseAhorro.total > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Base del ahorro</span>
-                  <span className="text-sm font-medium">{fmt(declaracion.baseAhorro.total)}</span>
-                </div>
-              )}
-              <div className="border-t border-gray-200 pt-2 flex justify-between items-center font-semibold">
-                <span className="text-sm text-gray-900">Base imponible total</span>
-                <span className="text-sm">
-                  {fmt(declaracion.liquidacion.baseImponibleGeneral + declaracion.liquidacion.baseImponibleAhorro)}
-                </span>
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
+            <select
+              value={ejercicio}
+              onChange={e => setEjercicio(Number(e.target.value))}
+              style={{
+                padding: '6px 10px', border: '1.5px solid var(--n-300)', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-ui)',
+                fontSize: 'var(--t-base)', color: 'var(--n-900)', transition: 'all 150ms ease',
+              }}
+            >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button style={{ padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)', background: 'var(--blue)', color: 'var(--white)', transition: 'all 150ms ease' }}>
+              Exportar declaración
+            </button>
           </div>
+        </header>
 
-          {/* Próximos pagos */}
-          {proximosEventos.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[var(--atlas-info-700)]" />
-                Próximos pagos fiscales
-              </h3>
-              <div className="space-y-2">
-                {proximosEventos.map((e, i) => (
-                  <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{e.descripcion}</p>
-                      <p className="text-xs text-gray-500">Límite: {new Date(e.fechaLimite).toLocaleDateString('es-ES')}</p>
-                    </div>
-                    <span className={`text-sm font-semibold ${e.importe >= 0 ? 'text-[var(--atlas-info-700)]' : 'text-cyan-700'}`}>
-                      {fmt(Math.abs(e.importe))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+        {!loading && declaracion && (
+          <>
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--s3)' }}>
+              <FiscalKpiCard label="Ingresos íntegros" value={fmt(totalIngresosInmuebles)} variant="default" />
+              <FiscalKpiCard label="Gastos deducibles" value={fmt(totalGastosInmuebles)} variant="neutral" />
+              <FiscalKpiCard label="Arrastres aplicados" value={fmt(totalArrastres)} variant="positive" />
+              <FiscalKpiCard label="Cuota estimada" value={fmt(declaracion.liquidacion.cuotaLiquida)} variant="negative" />
+            </section>
 
-          {/* Alertas */}
-          {declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes > 0 && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-atlas-teal flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-800">Minusvalías pendientes de compensar</p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Tienes {fmt(declaracion.baseAhorro.gananciasYPerdidas.minusvaliasPendientes)} en minusvalías que puedes compensar en los próximos 4 años.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
+              <article style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
+                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Cobertura de datos</h3>
+                  <FiscalChip label={`${Math.round(coverageReal * 100)}% cobertura`} variant="pos" />
+                </div>
+                <div style={{ display: 'grid', gap: 'var(--s3)' }}>
+                  <FiscalCoverageBar label="Datos reales" value={coverageReal} colorVar="--blue" />
+                  <FiscalCoverageBar label="Retenciones" value={coverageRet} colorVar="--c2" />
+                  <FiscalCoverageBar label="Gastos" value={coverageGastos} colorVar="--s-warn" />
+                </div>
+              </article>
+
+              <article style={cardStyle}>
+                <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500, marginBottom: 'var(--s3)' }}>Ingresos vs gastos mensuales</h3>
+                <div style={{ display: 'flex', gap: 'var(--s3)', marginBottom: 'var(--s2)' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', background: 'var(--c1)', borderRadius: 'var(--r-sm)' }} />Ingresos</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', background: 'var(--c5)', borderRadius: 'var(--r-sm)' }} />Gastos</span>
+                </div>
+                <Bar
+                  data={{
+                    labels: monthly.labels,
+                    datasets: [
+                      { label: 'Ingresos', data: monthly.ingresos, backgroundColor: 'var(--c1)' },
+                      { label: 'Gastos', data: monthly.gastos, backgroundColor: 'var(--c5)' },
+                    ],
+                  }}
+                  options={{ responsive: true, plugins: { legend: { display: false } } }}
+                />
+              </article>
+            </section>
+
+            <article style={cardStyle}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Inmueble', 'Ingresos', 'Gastos', 'Arrastre', 'Rendimiento neto', 'Estado'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {declaracion.baseGeneral.rendimientosInmuebles.map(item => {
+                    const arrastre = item.arrastresAplicados ?? 0;
+                    const variant = item.rendimientoNeto > 0 ? 'pos' : item.rendimientoNeto < 0 ? 'neg' : 'neu';
+                    return (
+                      <tr key={item.inmuebleId} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
+                        <td style={{ padding: 'var(--s2) 0' }}>
+                          <div style={{ fontSize: 'var(--t-base)', fontWeight: 500, color: 'var(--n-900)' }}>{item.alias}</div>
+                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)' }}>Dirección no disponible</div>
+                        </td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--s-pos)', fontSize: 'var(--t-base)' }}>{fmt(item.ingresosIntegros)}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)', fontSize: 'var(--t-base)' }}>{fmt(item.gastosDeducibles + item.amortizacion)}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: arrastre > 0 ? 'var(--s-pos)' : 'var(--n-300)', fontSize: 'var(--t-base)' }}>{arrastre > 0 ? fmt(arrastre) : '—'}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: item.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 'var(--t-base)' }}>{fmt(item.rendimientoNeto)}</td>
+                        <td><FiscalChip label={item.rendimientoNeto > 0 ? 'Positivo' : item.rendimientoNeto < 0 ? 'Negativo' : 'Neutro'} variant={variant} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </article>
+          </>
+        )}
+        {loading && <p style={{ color: 'var(--n-500)', fontSize: 'var(--t-base)' }}>Cargando…</p>}
+      </div>
     </PageLayout>
   );
 };

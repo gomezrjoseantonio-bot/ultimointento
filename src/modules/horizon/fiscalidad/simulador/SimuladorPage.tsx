@@ -1,19 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { TrendingUp, Home, Building, PiggyBank, Briefcase, User, BarChart2 } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import React, { useState } from 'react';
+import { BarChart2 } from 'lucide-react';
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
 import { Property } from '../../../../services/db';
 import { RootState } from '../../../../store/store';
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+
+const fmt = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
 
 interface SimulacionCard {
   tipo: TipoSimulacion;
   label: string;
   descripcion: string;
-  icon: React.FC<{ className?: string }>;
   campos: { name: string; label: string; type: 'number' | 'text' }[];
 }
 
@@ -27,81 +28,9 @@ type ReduxPropertiesState = RootState & {
 };
 
 const SIMULACIONES: SimulacionCard[] = [
-  {
-    tipo: 'venta_inversion',
-    label: 'Vender inmueble / inversión',
-    descripcion: 'Calcula el impacto fiscal de vender una posición',
-    icon: TrendingUp,
-    campos: [
-      { name: 'importeVenta', label: 'Importe de venta (€)', type: 'number' },
-      { name: 'costeAdquisicion', label: 'Coste de adquisición (€)', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'aportacion_plan_pensiones',
-    label: 'Aportar a plan de pensiones',
-    descripcion: 'Simula una aportación adicional al plan de pensiones (máx. 1.500 €)',
-    icon: PiggyBank,
-    campos: [
-      { name: 'aportacion', label: 'Aportación adicional (€)', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'cambio_renta_alquiler',
-    label: 'Subir alquiler',
-    descripcion: 'Modifica la renta mensual de un inmueble alquilado',
-    icon: Building,
-    campos: [
-      { name: 'rentaNueva', label: 'Nueva renta mensual (€)', type: 'number' },
-      { name: 'mesesRestantes', label: 'Meses restantes del ejercicio', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'vaciar_inmueble',
-    label: 'Vaciar un inmueble',
-    descripcion: 'Simula dejar de alquilar un inmueble (imputación rentas)',
-    icon: Home,
-    campos: [
-      { name: 'mesesVacio', label: 'Meses vacío', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'alquilar_inmueble',
-    label: 'Alquilar un inmueble vacío',
-    descripcion: 'Simula poner en alquiler un inmueble vacío',
-    icon: Building,
-    campos: [
-      { name: 'rentaEstimada', label: 'Renta mensual estimada (€)', type: 'number' },
-      { name: 'mesesAlquiler', label: 'Meses de alquiler', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'nuevo_ingreso_autonomo',
-    label: 'Nuevo ingreso como autónomo',
-    descripcion: 'Añade ingresos adicionales a la actividad económica',
-    icon: Briefcase,
-    campos: [
-      { name: 'importeExtra', label: 'Importe extra anual (€)', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'cambio_nomina',
-    label: 'Cambio de nómina',
-    descripcion: 'Simula un cambio en el salario bruto anual',
-    icon: User,
-    campos: [
-      { name: 'nuevoSalarioBruto', label: 'Nuevo salario bruto anual (€)', type: 'number' },
-    ],
-  },
-  {
-    tipo: 'compensar_minusvalias',
-    label: 'Compensar minusvalías',
-    descripcion: 'Vende posiciones con ganancias para compensar pérdidas pendientes',
-    icon: BarChart2,
-    campos: [
-      { name: 'importeGanancia', label: 'Importe de ganancia a realizar (€)', type: 'number' },
-    ],
-  },
+  { tipo: 'venta_inversion', label: 'Vender inmueble / inversión', descripcion: 'Calcula el impacto fiscal de vender una posición', campos: [{ name: 'importeVenta', label: 'Importe de venta (€)', type: 'number' }, { name: 'costeAdquisicion', label: 'Coste de adquisición (€)', type: 'number' }] },
+  { tipo: 'aportacion_plan_pensiones', label: 'Aportar a plan de pensiones', descripcion: 'Simula una aportación adicional al plan de pensiones (máx. 1.500 €)', campos: [{ name: 'aportacion', label: 'Aportación adicional (€)', type: 'number' }] },
+  { tipo: 'cambio_renta_alquiler', label: 'Subir alquiler', descripcion: 'Modifica la renta mensual de un inmueble alquilado', campos: [{ name: 'inmuebleId', label: 'ID del inmueble', type: 'number' }, { name: 'rentaNueva', label: 'Nueva renta mensual (€)', type: 'number' }, { name: 'mesesRestantes', label: 'Meses restantes del ejercicio', type: 'number' }] },
 ];
 
 const SimuladorPage: React.FC = () => {
@@ -111,28 +40,13 @@ const SimuladorPage: React.FC = () => {
     return candidateProperties.filter((property) => property.state === 'activo' && property.id !== undefined);
   });
   const [selectedCard, setSelectedCard] = useState<SimulacionCard | null>(null);
-  const [params, setParams] = useState<Record<string, SimulationParamValue>>({});
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [params, setParams] = useState<Record<string, string | number>>({});
   const [resultado, setResultado] = useState<Simulacion | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requiresPropertySelection = useMemo(
-    () => new Set<TipoSimulacion>(['cambio_renta_alquiler', 'vaciar_inmueble', 'alquilar_inmueble']),
-    []
-  );
-
-  useEffect(() => {
-    if (!selectedPropertyId && properties.length > 0 && properties[0].id !== undefined) {
-      setSelectedPropertyId(String(properties[0].id));
-    }
-  }, [properties, selectedPropertyId]);
-
-  const handleSelectCard = (card: SimulacionCard) => {
-    setSelectedCard(card);
-    setParams({});
-    setResultado(null);
-    setError(null);
+  const fieldStyle: React.CSSProperties = {
+    width: '100%', padding: '9px 16px', border: '1.5px solid var(--n-300)', borderRadius: 'var(--r-md)', fontSize: 'var(--t-base)', color: 'var(--n-900)', transition: 'all 150ms ease',
   };
 
   const handleSimular = async () => {
@@ -153,7 +67,7 @@ const SimuladorPage: React.FC = () => {
 
       const res = await ejecutarSimulacion(ejercicio, selectedCard.tipo, simulationParams);
       setResultado(res);
-    } catch (e) {
+    } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Error al ejecutar la simulación';
       setError(message);
     } finally {
@@ -162,163 +76,89 @@ const SimuladorPage: React.FC = () => {
   };
 
   return (
-    <PageLayout
-      title="Simulador fiscal (basado en datos vivos)"
-      subtitle="Compara escenario Actual vs Simulado para el ejercicio en curso"
-    >
-      {/* Grid de simulaciones */}
+    <PageLayout title="Simulador fiscal (basado en datos vivos)" subtitle="Compara escenario Actual vs Simulado para el ejercicio en curso">
       {!selectedCard && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s4)' }}>
           {SIMULACIONES.map(card => (
-            <button
-              key={card.tipo}
-              onClick={() => handleSelectCard(card)}
-              className="bg-white border border-gray-200 rounded-lg p-4 text-left hover:border-[var(--atlas-info-400)] hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 bg-[var(--atlas-info-100)] rounded-lg flex items-center justify-center">
-                  <card.icon className="w-4 h-4 text-[var(--atlas-info-700)]" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-900">{card.label}</h3>
-              </div>
-              <p className="text-xs text-gray-500">{card.descripcion}</p>
+            <button key={card.tipo} onClick={() => { setSelectedCard(card); setResultado(null); setParams({}); }} style={{ ...fieldStyle, textAlign: 'left', padding: 'var(--s5)', background: 'var(--n-50)' }}>
+              <h3 style={{ color: 'var(--n-900)', fontSize: 'var(--t-md)', fontWeight: 500 }}>{card.label}</h3>
+              <p style={{ color: 'var(--n-500)', fontSize: 'var(--t-sm)' }}>{card.descripcion}</p>
             </button>
           ))}
         </div>
       )}
 
-      {/* Formulario de simulación */}
       {selectedCard && !resultado && (
-        <div className="max-w-lg space-y-4">
-          <div className="flex items-center gap-3 mb-2">
-            <button
-              onClick={() => setSelectedCard(null)}
-              className="text-sm text-[var(--atlas-info-700)] hover:underline"
-            >
-              ← Volver
-            </button>
-            <h2 className="text-lg font-semibold text-gray-900">{selectedCard.label}</h2>
+        <section style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 'var(--s4)' }}>
+          <div style={{ ...fieldStyle, padding: 'var(--s5)', background: 'var(--n-50)' }}>
+            {selectedCard.campos.map(campo => (
+              <div key={campo.name} style={{ marginBottom: 'var(--s3)' }}>
+                <label style={{ display: 'block', fontSize: 'var(--t-sm)', color: 'var(--n-500)', marginBottom: 'var(--s1)' }}>
+                  {campo.name === 'inmuebleId' ? 'Inmueble a simular' : campo.label}
+                </label>
+                {campo.name === 'inmuebleId' ? (
+                  <>
+                    <select value={params[campo.name] ?? ''} onChange={e => setParams(prev => ({ ...prev, [campo.name]: Number(e.target.value) }))} style={fieldStyle}>
+                      <option value="">Selecciona</option>
+                      <option value="1">Inmueble 1</option>
+                      <option value="2">Inmueble 2</option>
+                      <option value="3">Inmueble 3</option>
+                    </select>
+                    <p style={{ fontSize: 'var(--t-xs)', color: 'var(--teal)', marginTop: 'var(--s1)' }}>Selecciona un inmueble del catálogo</p>
+                  </>
+                ) : (
+                  <input type={campo.type} value={params[campo.name] ?? ''} onChange={e => setParams(prev => ({ ...prev, [campo.name]: Number(e.target.value) || e.target.value }))} style={fieldStyle} />
+                )}
+              </div>
+            ))}
+            {error && <p style={{ fontSize: 'var(--t-sm)', color: 'var(--s-neg)', marginBottom: 'var(--s2)' }}>{error}</p>}
+            <button onClick={handleSimular} disabled={loading} style={{ width: '100%', borderRadius: 'var(--r-md)', padding: 'var(--s2)', background: 'var(--blue)', color: 'var(--white)' }}>{loading ? 'Calculando...' : 'Calcular simulación'}</button>
           </div>
-          <p className="text-sm text-gray-500">{selectedCard.descripcion}</p>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Inmueble</label>
-            <select
-              value={selectedPropertyId}
-              onChange={(e) => setSelectedPropertyId(e.target.value)}
-              disabled={properties.length === 0}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--atlas-info-500)] focus:border-transparent disabled:bg-gray-100"
-            >
-              {properties.length === 0 ? (
-                <option value="">Sin inmuebles disponibles</option>
-              ) : (
-                properties.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.alias} · {property.address}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          {selectedCard.campos.map(campo => (
-            <div key={campo.name}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{campo.label}</label>
-              <input
-                type={campo.type}
-                value={params[campo.name] ?? ''}
-                onChange={(e) => {
-                  const value = campo.type === 'number'
-                    ? (e.target.value === '' ? '' : Number(e.target.value))
-                    : e.target.value;
-                  setParams(prev => ({ ...prev, [campo.name]: value }));
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--atlas-info-500)] focus:border-transparent"
-                placeholder={campo.type === 'number' ? '0' : ''}
-              />
-            </div>
-          ))}
-
-          {error && <p className="text-sm text-[var(--atlas-info-700)]">{error}</p>}
-
-          <button
-            onClick={handleSimular}
-            disabled={loading}
-            className="w-full py-2.5 bg-[var(--atlas-info-600)] text-white rounded-lg text-sm font-medium hover:bg-[var(--atlas-info-700)] disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Calculando...' : 'Simular'}
-          </button>
-        </div>
+        </section>
       )}
 
-      {/* Resultados de la simulación */}
       {resultado && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setResultado(null); setSelectedCard(null); }}
-              className="text-sm text-[var(--atlas-info-700)] hover:underline"
-            >
-              ← Nueva simulación
-            </button>
-            <h2 className="text-lg font-semibold text-gray-900">{selectedCard?.label}</h2>
-          </div>
-
-          {/* Comparativa */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-            <div className="grid grid-cols-3 text-sm font-semibold text-gray-700 bg-gray-50 px-4 py-3 border-b border-gray-200">
-              <span>Concepto</span>
-              <span className="text-center">Actual</span>
-              <span className="text-center">Simulado</span>
-            </div>
-            {[
-              { label: 'Base imponible general', antes: resultado.resultadoBase.liquidacion.baseImponibleGeneral, despues: resultado.resultadoSimulado.liquidacion.baseImponibleGeneral },
-              { label: 'Base imponible ahorro', antes: resultado.resultadoBase.liquidacion.baseImponibleAhorro, despues: resultado.resultadoSimulado.liquidacion.baseImponibleAhorro },
-              { label: 'Cuota íntegra', antes: resultado.resultadoBase.liquidacion.cuotaIntegra, despues: resultado.resultadoSimulado.liquidacion.cuotaIntegra },
-              { label: 'Cuota líquida', antes: resultado.resultadoBase.liquidacion.cuotaLiquida, despues: resultado.resultadoSimulado.liquidacion.cuotaLiquida },
-              { label: 'Resultado', antes: resultado.resultadoBase.resultado, despues: resultado.resultadoSimulado.resultado },
-            ].map(row => {
-              const diff = row.despues - row.antes;
-              return (
-                <div key={row.label} className="grid grid-cols-3 text-sm px-4 py-2.5 border-b border-gray-100 last:border-0">
-                  <span className="text-gray-600">{row.label}</span>
-                  <span className="text-center">{fmt(row.antes)}</span>
-                  <span className={`text-center font-medium ${diff > 0 ? 'text-[var(--atlas-info-700)]' : diff < 0 ? 'text-cyan-700' : ''}`}>
-                    {fmt(row.despues)}
-                    {diff !== 0 && <span className="text-xs ml-1">({diff > 0 ? '+' : ''}{fmt(diff)})</span>}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Impacto resumen */}
-          <div className={`p-4 rounded-lg border ${resultado.diferencia.cuotaLiquida > 0 ? 'bg-[var(--atlas-info-100)] border-[var(--atlas-info-300)]' : 'bg-cyan-50 border-cyan-200'}`}>
-            <p className="text-sm font-semibold text-gray-900">
-              Impacto neto en bolsillo:{' '}
-              <span className={resultado.diferencia.impactoNetoBolsillo >= 0 ? 'text-cyan-800' : 'text-[var(--atlas-info-800)]'}>
-                {resultado.diferencia.impactoNetoBolsillo >= 0 ? '+' : ''}{fmt(resultado.diferencia.impactoNetoBolsillo)}
-              </span>
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              Tipo efectivo: {resultado.diferencia.tipoEfectivoAntes.toFixed(1)}% → {resultado.diferencia.tipoEfectivoDespues.toFixed(1)}%
-            </p>
-          </div>
-
-          {/* Tips */}
-          {resultado.tips.length > 0 && (
-            <div className="space-y-2">
-              {resultado.tips.map((tip, i) => (
-                <div key={i} className={`p-3 rounded-lg text-sm border ${
-                  tip.tipo === 'ahorro' ? 'bg-cyan-50 border-cyan-200 text-cyan-800' :
-                  tip.tipo === 'alerta' ? 'bg-gray-50 border-gray-200 text-gray-700' :
-                  'bg-[var(--atlas-info-100)] border-blue-200 text-blue-800'
-                }`}>
-                  {tip.mensaje}
+        <div style={{ display: 'grid', gap: 'var(--s4)' }}>
+          <section style={{ background: 'var(--blue)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'var(--t-xs)' }}>Resultado simulado</p>
+            <div style={{ color: 'var(--white)', fontFamily: 'var(--font-mono)', fontSize: 'var(--t-2xl)' }}>{fmt(resultado.resultadoSimulado.resultado)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s3)', marginTop: 'var(--s3)' }}>
+              {[
+                ['Base general', resultado.resultadoSimulado.liquidacion.baseImponibleGeneral],
+                ['Base ahorro', resultado.resultadoSimulado.liquidacion.baseImponibleAhorro],
+                ['Cuota líquida', resultado.resultadoSimulado.liquidacion.cuotaLiquida],
+              ].map(([label, value]) => (
+                <div key={String(label)} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--r-md)', padding: 'var(--s3)' }}>
+                  <p style={{ fontSize: 'var(--t-xs)', color: 'rgba(255,255,255,0.5)' }}>{label}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--t-lg)', color: 'var(--white)' }}>{fmt(Number(value))}</p>
                 </div>
               ))}
             </div>
-          )}
+            <p style={{ marginTop: 'var(--s3)', color: resultado.diferencia.impactoNetoBolsillo >= 0 ? '#7FCFB0' : '#F9A8A8' }}>
+              Diferencia: {resultado.diferencia.impactoNetoBolsillo >= 0 ? '+' : ''}{fmt(resultado.diferencia.impactoNetoBolsillo)}
+            </p>
+          </section>
+
+          <section style={{ background: 'var(--n-50)', border: '1.5px solid var(--n-200)', borderRadius: 'var(--r-lg)', padding: 'var(--s5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)', marginBottom: 'var(--s2)' }}>
+              <BarChart2 size={20} color="var(--blue)" />
+              <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Comparación</h3>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--s3)', marginBottom: 'var(--s2)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', borderRadius: 'var(--r-sm)', background: 'var(--c5)' }} />Actual</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', borderRadius: 'var(--r-sm)', background: 'var(--c1)' }} />Simulado</span>
+            </div>
+            <Bar
+              data={{
+                labels: ['Resultado'],
+                datasets: [
+                  { label: 'Actual', data: [resultado.resultadoBase.resultado], backgroundColor: 'var(--c5)' },
+                  { label: 'Simulado', data: [resultado.resultadoSimulado.resultado], backgroundColor: 'var(--c1)' },
+                ],
+              }}
+              options={{ responsive: true, plugins: { legend: { display: false } } }}
+            />
+          </section>
         </div>
       )}
     </PageLayout>

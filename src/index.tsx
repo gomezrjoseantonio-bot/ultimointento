@@ -1,3 +1,6 @@
+import './styles/fiscal-tokens.css';
+import '@fontsource/ibm-plex-sans';
+import '@fontsource/ibm-plex-mono';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
