@@ -2,6 +2,7 @@ import { initDB, EjercicioFiscal, EstadoEjercicio } from './db';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
 
 const STORE_NAME = 'ejerciciosFiscales';
+const FISCAL_MIN_YEAR = 2010;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -9,8 +10,8 @@ function round2(n: number): number {
 
 function validateAño(año: number): void {
   const currentYear = new Date().getFullYear();
-  if (!Number.isInteger(año) || año < 2020 || año > currentYear + 1) {
-    throw new Error(`Año inválido: ${año}. Debe estar entre 2020 y ${currentYear + 1}.`);
+  if (!Number.isInteger(año) || año < FISCAL_MIN_YEAR || año > currentYear + 1) {
+    throw new Error(`Año fiscal fuera del rango permitido (${FISCAL_MIN_YEAR} – ${currentYear + 1})`);
   }
 }
 

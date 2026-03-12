@@ -53,6 +53,21 @@ describe('ejercicioFiscalService', () => {
     expect(persisted?.año).toBe(EJERCICIO);
   });
 
+  test('getOrCreateEjercicio permite años históricos desde 2010', async () => {
+    const historico = await getOrCreateEjercicio(2010);
+
+    expect(historico.año).toBe(2010);
+    expect(historico.estado).toBe('vivo');
+  });
+
+  test('getOrCreateEjercicio rechaza años anteriores a 2010', async () => {
+    const currentYear = new Date().getFullYear();
+
+    await expect(getOrCreateEjercicio(2009)).rejects.toThrow(
+      `Año fiscal fuera del rango permitido (2010 – ${currentYear + 1})`
+    );
+  });
+
   test('getOrCreateEjercicio retorna existente si ya hay', async () => {
     const created = await getOrCreateEjercicio(EJERCICIO);
     const found = await getOrCreateEjercicio(EJERCICIO);
@@ -89,7 +104,7 @@ describe('ejercicioFiscalService', () => {
     jest.spyOn(irpfCalculationService, 'calcularDeclaracionIRPF').mockResolvedValue(buildDeclaracionMock());
     await cerrarEjercicio(EJERCICIO);
 
-    await expect(cerrarEjercicio(EJERCICIO)).rejects.toThrow('No se puede actualizar el resumen');
+    await expect(cerrarEjercicio(EJERCICIO)).rejects.toThrow('No se puede cerrar');
   });
 
   test('reabrirEjercicio cambia estado de cerrado a vivo', async () => {
