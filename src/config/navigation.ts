@@ -18,6 +18,7 @@ import {
   Book,
   Calendar,
   KeyRound,
+  Wrench,
 } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
@@ -144,6 +145,13 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Extracción fiscal', href: '/documentacion/fiscal', icon: Receipt, module: 'shared' },
       { name: 'Inspecciones', href: '/documentacion/inspecciones', icon: UserCircle, module: 'shared' },
     ]
+  },
+  {
+    name: 'Herramientas',
+    href: '/herramientas',
+    icon: Wrench,
+    module: 'shared',
+    section: 'documentation'
   },
   {
     name: 'Glosario',

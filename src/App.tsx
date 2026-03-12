@@ -91,6 +91,7 @@ const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
 
 // Glossary page - Sprint 3: Accessible technical terms reference
 const GlossaryPage = React.lazy(() => import('./pages/GlossaryPage'));
+const HerramientasPage = React.lazy(() => import('./pages/HerramientasPage'));
 
 function App() {
   // Initialize bank profiles and performance monitoring on app start
@@ -212,6 +213,11 @@ function App() {
             <Route path="documentacion/filtros" element={<Navigate to="/inbox" replace />} />
             <Route path="documentacion/fiscal" element={<Navigate to="/inbox" replace />} />
             <Route path="documentacion/inspecciones" element={<Navigate to="/inbox" replace />} />
+            <Route path="herramientas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <HerramientasPage />
+              </React.Suspense>
+            } />
             
             {/* Image Description Feature */}
             <Route path="describe-image" element={
