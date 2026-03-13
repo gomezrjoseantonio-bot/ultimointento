@@ -1,0 +1,44 @@
+.tax-view { font-family: var(--font); color: var(--n-700); display: grid; gap: var(--s3); }
+.tax-topbar { display: flex; justify-content: space-between; align-items: center; }
+.tax-topbar h2 { color: var(--blue); }
+.tax-topbar__right { display: flex; align-items: center; gap: var(--s2); }
+.tax-tabs { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.tax-tabs button { border: 1px solid var(--n-300); background: var(--white); color: var(--n-700); padding: var(--s2) var(--s3); border-radius: var(--r-pill); }
+.tax-tabs .is-active { background: var(--blue); color: var(--white); }
+.tax-stack { display: grid; gap: var(--s3); }
+.tax-hero { background: var(--blue); color: var(--white); border-radius: var(--r-lg); padding: var(--s4); display: grid; gap: var(--s2); }
+.tax-hero__eyebrow { color: var(--teal); }
+.tax-hero__value { font-family: var(--mono); font-size: 2.5rem; }
+.tax-hero__badge { width: fit-content; padding: var(--s1) var(--s2); border-radius: var(--r-pill); }
+.tax-hero__badge.is-neg { background: var(--s-neg-bg); color: var(--s-neg); }
+.tax-hero__badge.is-pos { background: var(--s-pos-bg); color: var(--s-pos); }
+.tax-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.tax-kpis > div { background: var(--n-50); border: 1px solid var(--n-300); border-radius: var(--r-md); padding: var(--s2); display: grid; gap: var(--s1); }
+.tax-kpis strong { font-family: var(--mono); color: var(--n-700); }
+.tax-kpis strong.pos { color: var(--s-pos); }
+.tax-section-card { background: var(--white); border: 1px solid var(--n-300); border-radius: var(--r-lg); padding: var(--s3); display: grid; gap: var(--s3); }
+.tax-section-card__header { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+.tax-grid { display: grid; gap: var(--s2); }
+.tax-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tax-field-row { display: grid; gap: var(--s1); }
+.tax-field-row__input, .tax-table input, .tax-table select { border: 1px solid var(--n-300); border-radius: var(--r-sm); padding: var(--s2); color: var(--n-700); font-family: var(--mono); width: 100%; }
+.tax-calculated-row { display: grid; gap: var(--s1); background: var(--n-50); color: var(--n-900); padding: var(--s2); border-radius: var(--r-md); }
+.tax-calculated-row span, .mono { font-family: var(--mono); color: var(--n-700); }
+.tax-table-wrap { overflow-x: auto; }
+.tax-table { width: 100%; border-collapse: collapse; }
+.tax-table th, .tax-table td { padding: var(--s2); border-bottom: 1px solid var(--n-100); text-align: left; color: var(--n-700); }
+.tax-subcard { background: var(--n-50); padding: var(--s2); border-radius: var(--r-md); display: grid; gap: var(--s2); }
+.tax-inline-row { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.carry-forward-badge { display: inline-flex; align-items: center; gap: var(--s1); padding: var(--s1) var(--s2); border-radius: var(--r-pill); }
+.carry-forward-badge.is-warning { background: var(--s-warn-bg); color: var(--s-warn); }
+.carry-forward-badge.is-ok { background: var(--s-pos-bg); color: var(--s-pos); }
+.btn-primary { background: var(--blue); color: var(--white); border: 0; border-radius: var(--r-md); padding: var(--s2) var(--s3); display: inline-flex; align-items: center; gap: var(--s1); }
+.btn-icon { background: var(--n-50); border: 1px solid var(--n-300); color: var(--n-700); border-radius: var(--r-sm); padding: var(--s1); }
+.tax-breakdown-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid var(--n-100); }
+.tax-result-list { display: grid; gap: var(--s1); }
+.tax-result-list > div { display: flex; justify-content: space-between; padding: var(--s1) 0; }
+.tax-result-final { border-top: 1px solid var(--n-300); margin-top: var(--s2); padding-top: var(--s2); }
+.tax-result-final .neg { color: var(--s-neg); }
+.tax-result-final .pos { color: var(--s-pos); }
+.tax-note { color: var(--n-500); }
+.tax-footnote { display: inline-flex; gap: var(--s1); align-items: center; color: var(--n-500); }
