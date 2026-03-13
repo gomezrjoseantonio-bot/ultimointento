@@ -14,6 +14,7 @@ import {
   Wallet,
   ArrowUpRight,
   TrendingUp,
+  TrendingDown,
   Shield,
   AlertTriangle,
   CircleCheck,
@@ -686,6 +687,7 @@ function TabCartera({
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle"><Eye size={15} /></button>
+                    <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/gastos?propertyId=${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Pack gastos alquileres"><TrendingDown size={15} /></button>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}/editar`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Editar inmueble"><Pencil size={15} /></button>
                   </div>
                 </td>
