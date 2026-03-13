@@ -1,7 +1,6 @@
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
 import { initDB, Property } from '../../services/db';
-import { calculateFiscalSummary } from '../../services/fiscalSummaryService';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -137,6 +136,14 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
     diasDisposicion: i.diasVacio,
     valorCatastralRevisado: false,
     ingresosIntegros: round2(i.ingresosIntegros),
+    interesesFinanciacion: 0,
+    gastosReparacion: 0,
+    gastosComunidad: 0,
+    serviciosPersonales: 0,
+    suministros: 0,
+    seguro: 0,
+    tributosRecargos: 0,
+    amortizacionMuebles: 0,
     arrastres: i.arrastresAplicados && i.arrastresAplicados > 0
       ? [{ ejercicio: declaracion.ejercicio - 1, pendienteInicio: i.arrastresAplicados, aplicado: i.arrastresAplicados, pendienteFuturo: 0 }]
       : [],
